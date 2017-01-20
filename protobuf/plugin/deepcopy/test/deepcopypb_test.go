@@ -17,6 +17,7 @@ It has these top-level messages:
 	NonNullableExternalStruct
 	RepeatedNonNullableExternalStruct
 	MapStruct
+	OneOf
 */
 package test
 
@@ -39,18 +40,18 @@ func TestBasicScalarProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedBasicScalar(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &BasicScalar{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if !p.Equal(msg) {
 		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
@@ -70,18 +71,18 @@ func TestRepeatedScalarProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRepeatedScalar(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &RepeatedScalar{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if !p.Equal(msg) {
 		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
@@ -101,18 +102,18 @@ func TestRepeatedScalarPackedProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRepeatedScalarPacked(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &RepeatedScalarPacked{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if !p.Equal(msg) {
 		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
@@ -132,18 +133,18 @@ func TestExternalStructProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedExternalStruct(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &ExternalStruct{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if !p.Equal(msg) {
 		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
@@ -163,18 +164,18 @@ func TestRepeatedExternalStructProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRepeatedExternalStruct(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &RepeatedExternalStruct{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if !p.Equal(msg) {
 		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
@@ -194,18 +195,18 @@ func TestNonNullableExternalStructProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedNonNullableExternalStruct(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &NonNullableExternalStruct{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if !p.Equal(msg) {
 		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
@@ -225,18 +226,18 @@ func TestRepeatedNonNullableExternalStructProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRepeatedNonNullableExternalStruct(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &RepeatedNonNullableExternalStruct{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if !p.Equal(msg) {
 		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
@@ -256,18 +257,49 @@ func TestMapStructProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedMapStruct(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &MapStruct{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+	if len(littlefuzz) > 0 {
+		fuzzamount := 100
+		for i := 0; i < fuzzamount; i++ {
+			littlefuzz[popr.Intn(len(littlefuzz))] = byte(popr.Intn(256))
+			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
+		}
+		// shouldn't panic
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
+	}
+}
+
+func TestOneOfProto(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedOneOf(popr, false)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &OneOf{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if !p.Equal(msg) {
 		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
@@ -427,13 +459,31 @@ func TestMapStructJSON(t *testing.T) {
 		t.Fatalf("seed = %d, %#v !Json Equal %#v", seed, msg, p)
 	}
 }
+func TestOneOfJSON(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedOneOf(popr, true)
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
+	jsondata, err := marshaler.MarshalToString(p)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	msg := &OneOf{}
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	if err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Json Equal %#v", seed, msg, p)
+	}
+}
 func TestBasicScalarProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedBasicScalar(popr, true)
-	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &BasicScalar{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -445,9 +495,9 @@ func TestBasicScalarProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedBasicScalar(popr, true)
-	data := github_com_gogo_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &BasicScalar{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -459,9 +509,9 @@ func TestRepeatedScalarProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRepeatedScalar(popr, true)
-	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &RepeatedScalar{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -473,9 +523,9 @@ func TestRepeatedScalarProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRepeatedScalar(popr, true)
-	data := github_com_gogo_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &RepeatedScalar{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -487,9 +537,9 @@ func TestRepeatedScalarPackedProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRepeatedScalarPacked(popr, true)
-	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &RepeatedScalarPacked{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -501,9 +551,9 @@ func TestRepeatedScalarPackedProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRepeatedScalarPacked(popr, true)
-	data := github_com_gogo_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &RepeatedScalarPacked{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -515,9 +565,9 @@ func TestExternalStructProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedExternalStruct(popr, true)
-	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &ExternalStruct{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -529,9 +579,9 @@ func TestExternalStructProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedExternalStruct(popr, true)
-	data := github_com_gogo_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &ExternalStruct{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -543,9 +593,9 @@ func TestRepeatedExternalStructProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRepeatedExternalStruct(popr, true)
-	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &RepeatedExternalStruct{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -557,9 +607,9 @@ func TestRepeatedExternalStructProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRepeatedExternalStruct(popr, true)
-	data := github_com_gogo_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &RepeatedExternalStruct{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -571,9 +621,9 @@ func TestNonNullableExternalStructProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedNonNullableExternalStruct(popr, true)
-	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &NonNullableExternalStruct{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -585,9 +635,9 @@ func TestNonNullableExternalStructProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedNonNullableExternalStruct(popr, true)
-	data := github_com_gogo_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &NonNullableExternalStruct{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -599,9 +649,9 @@ func TestRepeatedNonNullableExternalStructProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRepeatedNonNullableExternalStruct(popr, true)
-	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &RepeatedNonNullableExternalStruct{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -613,9 +663,9 @@ func TestRepeatedNonNullableExternalStructProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRepeatedNonNullableExternalStruct(popr, true)
-	data := github_com_gogo_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &RepeatedNonNullableExternalStruct{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -627,9 +677,9 @@ func TestMapStructProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedMapStruct(popr, true)
-	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &MapStruct{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -641,9 +691,37 @@ func TestMapStructProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedMapStruct(popr, true)
-	data := github_com_gogo_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &MapStruct{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestOneOfProtoText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedOneOf(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	msg := &OneOf{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
+		t.Fatalf("seed = %d, err = %v", seed, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("seed = %d, %#v !Proto %#v", seed, msg, p)
+	}
+}
+
+func TestOneOfProtoCompactText(t *testing.T) {
+	seed := time.Now().UnixNano()
+	popr := math_rand.New(math_rand.NewSource(seed))
+	p := NewPopulatedOneOf(popr, true)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
+	msg := &OneOf{}
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if !p.Equal(msg) {
@@ -703,7 +781,14 @@ func TestBasicScalarCopy(t *testing.T) {
 	if &in.Field15 == &out.Field15 {
 		t.Fatalf("Field15: %#v == %#v", &in.Field15, &out.Field15)
 	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
 }
+
 func TestRepeatedScalarCopy(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	in := NewPopulatedRepeatedScalar(popr, true)
@@ -756,7 +841,14 @@ func TestRepeatedScalarCopy(t *testing.T) {
 	if &in.Field15 == &out.Field15 {
 		t.Fatalf("Field15: %#v == %#v", &in.Field15, &out.Field15)
 	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
 }
+
 func TestRepeatedScalarPackedCopy(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	in := NewPopulatedRepeatedScalarPacked(popr, true)
@@ -803,7 +895,14 @@ func TestRepeatedScalarPackedCopy(t *testing.T) {
 	if &in.Field13 == &out.Field13 {
 		t.Fatalf("Field13: %#v == %#v", &in.Field13, &out.Field13)
 	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
 }
+
 func TestExternalStructCopy(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	in := NewPopulatedExternalStruct(popr, true)
@@ -820,7 +919,14 @@ func TestExternalStructCopy(t *testing.T) {
 	if &in.Field3 == &out.Field3 {
 		t.Fatalf("Field3: %#v == %#v", &in.Field3, &out.Field3)
 	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
 }
+
 func TestRepeatedExternalStructCopy(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	in := NewPopulatedRepeatedExternalStruct(popr, true)
@@ -837,7 +943,14 @@ func TestRepeatedExternalStructCopy(t *testing.T) {
 	if &in.Field3 == &out.Field3 {
 		t.Fatalf("Field3: %#v == %#v", &in.Field3, &out.Field3)
 	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
 }
+
 func TestNonNullableExternalStructCopy(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	in := NewPopulatedNonNullableExternalStruct(popr, true)
@@ -854,7 +967,14 @@ func TestNonNullableExternalStructCopy(t *testing.T) {
 	if &in.Field3 == &out.Field3 {
 		t.Fatalf("Field3: %#v == %#v", &in.Field3, &out.Field3)
 	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
 }
+
 func TestRepeatedNonNullableExternalStructCopy(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	in := NewPopulatedRepeatedNonNullableExternalStruct(popr, true)
@@ -871,7 +991,14 @@ func TestRepeatedNonNullableExternalStructCopy(t *testing.T) {
 	if &in.Field3 == &out.Field3 {
 		t.Fatalf("Field3: %#v == %#v", &in.Field3, &out.Field3)
 	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
 }
+
 func TestMapStructCopy(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	in := NewPopulatedMapStruct(popr, true)
@@ -884,6 +1011,60 @@ func TestMapStructCopy(t *testing.T) {
 	}
 	if &in.NonnullableMap == &out.NonnullableMap {
 		t.Fatalf("NonnullableMap: %#v == %#v", &in.NonnullableMap, &out.NonnullableMap)
+	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
+	}
+}
+
+func TestOneOfCopy(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	in := NewPopulatedOneOf(popr, true)
+	out := in.Copy()
+	if !in.Equal(out) {
+		t.Fatalf("%#v != %#v", in, out)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.Fields == &out.Fields {
+		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	}
+	if &in.FieldsTwo == &out.FieldsTwo {
+		t.Fatalf("FieldsTwo: %#v == %#v", &in.FieldsTwo, &out.FieldsTwo)
+	}
+	if &in.FieldsTwo == &out.FieldsTwo {
+		t.Fatalf("FieldsTwo: %#v == %#v", &in.FieldsTwo, &out.FieldsTwo)
+	}
+
+	in = nil
+	out = in.Copy()
+	if out != nil {
+		t.Fatalf("copying nil should return nil, returned: %#v", out)
 	}
 }
 func TestBasicScalarStringer(t *testing.T) {
@@ -952,6 +1133,15 @@ func TestRepeatedNonNullableExternalStructStringer(t *testing.T) {
 func TestMapStructStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedMapStruct(popr, false)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
+	if s1 != s2 {
+		t.Fatalf("String want %v got %v", s1, s2)
+	}
+}
+func TestOneOfStringer(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedOneOf(popr, false)
 	s1 := p.String()
 	s2 := fmt.Sprintf("%v", p)
 	if s1 != s2 {

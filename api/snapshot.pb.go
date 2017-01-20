@@ -10,6 +10,8 @@ import math "math"
 
 // skipping weak import gogoproto "github.com/gogo/protobuf/gogoproto"
 
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
@@ -59,7 +61,7 @@ func (*StoreSnapshot) Descriptor() ([]byte, []int) { return fileDescriptorSnapsh
 // ClusterSnapshot stores cluster membership information in snapshots.
 type ClusterSnapshot struct {
 	Members []*RaftMember `protobuf:"bytes,1,rep,name=members" json:"members,omitempty"`
-	Removed []uint64      `protobuf:"varint,2,rep,name=removed" json:"removed,omitempty"`
+	Removed []uint64      `protobuf:"varint,2,rep,packed,name=removed" json:"removed,omitempty"`
 }
 
 func (m *ClusterSnapshot) Reset()                    { *m = ClusterSnapshot{} }
@@ -87,88 +89,106 @@ func (m *StoreSnapshot) Copy() *StoreSnapshot {
 	if m == nil {
 		return nil
 	}
-
 	o := &StoreSnapshot{}
-
-	if m.Nodes != nil {
-		o.Nodes = make([]*Node, 0, len(m.Nodes))
-		for _, v := range m.Nodes {
-			o.Nodes = append(o.Nodes, v.Copy())
-		}
-	}
-
-	if m.Services != nil {
-		o.Services = make([]*Service, 0, len(m.Services))
-		for _, v := range m.Services {
-			o.Services = append(o.Services, v.Copy())
-		}
-	}
-
-	if m.Networks != nil {
-		o.Networks = make([]*Network, 0, len(m.Networks))
-		for _, v := range m.Networks {
-			o.Networks = append(o.Networks, v.Copy())
-		}
-	}
-
-	if m.Tasks != nil {
-		o.Tasks = make([]*Task, 0, len(m.Tasks))
-		for _, v := range m.Tasks {
-			o.Tasks = append(o.Tasks, v.Copy())
-		}
-	}
-
-	if m.Clusters != nil {
-		o.Clusters = make([]*Cluster, 0, len(m.Clusters))
-		for _, v := range m.Clusters {
-			o.Clusters = append(o.Clusters, v.Copy())
-		}
-	}
-
-	if m.Secrets != nil {
-		o.Secrets = make([]*Secret, 0, len(m.Secrets))
-		for _, v := range m.Secrets {
-			o.Secrets = append(o.Secrets, v.Copy())
-		}
-	}
-
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *StoreSnapshot) CopyFrom(src interface{}) {
+
+	o := src.(*StoreSnapshot)
+	if o.Nodes != nil {
+		m.Nodes = make([]*Node, len(o.Nodes))
+		for i := range m.Nodes {
+			m.Nodes[i] = &Node{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Nodes[i], o.Nodes[i])
+		}
+	}
+
+	if o.Services != nil {
+		m.Services = make([]*Service, len(o.Services))
+		for i := range m.Services {
+			m.Services[i] = &Service{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Services[i], o.Services[i])
+		}
+	}
+
+	if o.Networks != nil {
+		m.Networks = make([]*Network, len(o.Networks))
+		for i := range m.Networks {
+			m.Networks[i] = &Network{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Networks[i], o.Networks[i])
+		}
+	}
+
+	if o.Tasks != nil {
+		m.Tasks = make([]*Task, len(o.Tasks))
+		for i := range m.Tasks {
+			m.Tasks[i] = &Task{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Tasks[i], o.Tasks[i])
+		}
+	}
+
+	if o.Clusters != nil {
+		m.Clusters = make([]*Cluster, len(o.Clusters))
+		for i := range m.Clusters {
+			m.Clusters[i] = &Cluster{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Clusters[i], o.Clusters[i])
+		}
+	}
+
+	if o.Secrets != nil {
+		m.Secrets = make([]*Secret, len(o.Secrets))
+		for i := range m.Secrets {
+			m.Secrets[i] = &Secret{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Secrets[i], o.Secrets[i])
+		}
+	}
+
 }
 
 func (m *ClusterSnapshot) Copy() *ClusterSnapshot {
 	if m == nil {
 		return nil
 	}
-
 	o := &ClusterSnapshot{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Members != nil {
-		o.Members = make([]*RaftMember, 0, len(m.Members))
-		for _, v := range m.Members {
-			o.Members = append(o.Members, v.Copy())
+func (m *ClusterSnapshot) CopyFrom(src interface{}) {
+
+	o := src.(*ClusterSnapshot)
+	if o.Members != nil {
+		m.Members = make([]*RaftMember, len(o.Members))
+		for i := range m.Members {
+			m.Members[i] = &RaftMember{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Members[i], o.Members[i])
 		}
 	}
 
-	if m.Removed != nil {
-		o.Removed = make([]uint64, 0, len(m.Removed))
-		o.Removed = append(o.Removed, m.Removed...)
+	if o.Removed != nil {
+		m.Removed = make([]uint64, len(o.Removed))
+		copy(m.Removed, o.Removed)
 	}
 
-	return o
 }
 
 func (m *Snapshot) Copy() *Snapshot {
 	if m == nil {
 		return nil
 	}
-
-	o := &Snapshot{
-		Version:    m.Version,
-		Membership: *m.Membership.Copy(),
-		Store:      *m.Store.Copy(),
-	}
-
+	o := &Snapshot{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *Snapshot) CopyFrom(src interface{}) {
+
+	o := src.(*Snapshot)
+	m.Version = o.Version
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Membership, &o.Membership)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Store, &o.Store)
 }
 
 func (this *StoreSnapshot) GoString() string {
@@ -249,27 +269,27 @@ func extensionToGoStringSnapshot(m github_com_gogo_protobuf_proto.Message) strin
 	s += strings.Join(ss, ",") + "})"
 	return s
 }
-func (m *StoreSnapshot) Marshal() (data []byte, err error) {
+func (m *StoreSnapshot) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *StoreSnapshot) MarshalTo(data []byte) (int, error) {
+func (m *StoreSnapshot) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.Nodes) > 0 {
 		for _, msg := range m.Nodes {
-			data[i] = 0xa
+			dAtA[i] = 0xa
 			i++
-			i = encodeVarintSnapshot(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintSnapshot(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -278,10 +298,10 @@ func (m *StoreSnapshot) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.Services) > 0 {
 		for _, msg := range m.Services {
-			data[i] = 0x12
+			dAtA[i] = 0x12
 			i++
-			i = encodeVarintSnapshot(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintSnapshot(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -290,10 +310,10 @@ func (m *StoreSnapshot) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.Networks) > 0 {
 		for _, msg := range m.Networks {
-			data[i] = 0x1a
+			dAtA[i] = 0x1a
 			i++
-			i = encodeVarintSnapshot(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintSnapshot(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -302,10 +322,10 @@ func (m *StoreSnapshot) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.Tasks) > 0 {
 		for _, msg := range m.Tasks {
-			data[i] = 0x22
+			dAtA[i] = 0x22
 			i++
-			i = encodeVarintSnapshot(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintSnapshot(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -314,10 +334,10 @@ func (m *StoreSnapshot) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.Clusters) > 0 {
 		for _, msg := range m.Clusters {
-			data[i] = 0x2a
+			dAtA[i] = 0x2a
 			i++
-			i = encodeVarintSnapshot(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintSnapshot(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -326,10 +346,10 @@ func (m *StoreSnapshot) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.Secrets) > 0 {
 		for _, msg := range m.Secrets {
-			data[i] = 0x32
+			dAtA[i] = 0x32
 			i++
-			i = encodeVarintSnapshot(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintSnapshot(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -339,27 +359,27 @@ func (m *StoreSnapshot) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *ClusterSnapshot) Marshal() (data []byte, err error) {
+func (m *ClusterSnapshot) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *ClusterSnapshot) MarshalTo(data []byte) (int, error) {
+func (m *ClusterSnapshot) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.Members) > 0 {
 		for _, msg := range m.Members {
-			data[i] = 0xa
+			dAtA[i] = 0xa
 			i++
-			i = encodeVarintSnapshot(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintSnapshot(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -367,79 +387,89 @@ func (m *ClusterSnapshot) MarshalTo(data []byte) (int, error) {
 		}
 	}
 	if len(m.Removed) > 0 {
+		dAtA2 := make([]byte, len(m.Removed)*10)
+		var j1 int
 		for _, num := range m.Removed {
-			data[i] = 0x10
-			i++
-			i = encodeVarintSnapshot(data, i, uint64(num))
+			for num >= 1<<7 {
+				dAtA2[j1] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j1++
+			}
+			dAtA2[j1] = uint8(num)
+			j1++
 		}
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintSnapshot(dAtA, i, uint64(j1))
+		i += copy(dAtA[i:], dAtA2[:j1])
 	}
 	return i, nil
 }
 
-func (m *Snapshot) Marshal() (data []byte, err error) {
+func (m *Snapshot) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *Snapshot) MarshalTo(data []byte) (int, error) {
+func (m *Snapshot) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Version != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintSnapshot(data, i, uint64(m.Version))
+		i = encodeVarintSnapshot(dAtA, i, uint64(m.Version))
 	}
-	data[i] = 0x12
+	dAtA[i] = 0x12
 	i++
-	i = encodeVarintSnapshot(data, i, uint64(m.Membership.Size()))
-	n1, err := m.Membership.MarshalTo(data[i:])
+	i = encodeVarintSnapshot(dAtA, i, uint64(m.Membership.Size()))
+	n3, err := m.Membership.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n1
-	data[i] = 0x1a
+	i += n3
+	dAtA[i] = 0x1a
 	i++
-	i = encodeVarintSnapshot(data, i, uint64(m.Store.Size()))
-	n2, err := m.Store.MarshalTo(data[i:])
+	i = encodeVarintSnapshot(dAtA, i, uint64(m.Store.Size()))
+	n4, err := m.Store.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n2
+	i += n4
 	return i, nil
 }
 
-func encodeFixed64Snapshot(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
+func encodeFixed64Snapshot(dAtA []byte, offset int, v uint64) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
+	dAtA[offset+4] = uint8(v >> 32)
+	dAtA[offset+5] = uint8(v >> 40)
+	dAtA[offset+6] = uint8(v >> 48)
+	dAtA[offset+7] = uint8(v >> 56)
 	return offset + 8
 }
-func encodeFixed32Snapshot(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
+func encodeFixed32Snapshot(dAtA []byte, offset int, v uint32) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
 	return offset + 4
 }
-func encodeVarintSnapshot(data []byte, offset int, v uint64) int {
+func encodeVarintSnapshot(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
+		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
-	data[offset] = uint8(v)
+	dAtA[offset] = uint8(v)
 	return offset + 1
 }
 
@@ -495,9 +525,11 @@ func (m *ClusterSnapshot) Size() (n int) {
 		}
 	}
 	if len(m.Removed) > 0 {
+		l = 0
 		for _, e := range m.Removed {
-			n += 1 + sovSnapshot(uint64(e))
+			l += sovSnapshot(uint64(e))
 		}
+		n += 1 + sovSnapshot(uint64(l)) + l
 	}
 	return n
 }
@@ -574,8 +606,8 @@ func valueToStringSnapshot(v interface{}) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
 }
-func (m *StoreSnapshot) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *StoreSnapshot) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -587,7 +619,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -615,7 +647,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -630,7 +662,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Nodes = append(m.Nodes, &Node{})
-			if err := m.Nodes[len(m.Nodes)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Nodes[len(m.Nodes)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -646,7 +678,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -661,7 +693,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Services = append(m.Services, &Service{})
-			if err := m.Services[len(m.Services)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Services[len(m.Services)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -677,7 +709,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -692,7 +724,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Networks = append(m.Networks, &Network{})
-			if err := m.Networks[len(m.Networks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Networks[len(m.Networks)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -708,7 +740,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -723,7 +755,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Tasks = append(m.Tasks, &Task{})
-			if err := m.Tasks[len(m.Tasks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Tasks[len(m.Tasks)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -739,7 +771,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -754,7 +786,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Clusters = append(m.Clusters, &Cluster{})
-			if err := m.Clusters[len(m.Clusters)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Clusters[len(m.Clusters)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -770,7 +802,7 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -785,13 +817,13 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Secrets = append(m.Secrets, &Secret{})
-			if err := m.Secrets[len(m.Secrets)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Secrets[len(m.Secrets)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipSnapshot(data[iNdEx:])
+			skippy, err := skipSnapshot(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -810,8 +842,8 @@ func (m *StoreSnapshot) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *ClusterSnapshot) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *ClusterSnapshot) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -823,7 +855,7 @@ func (m *ClusterSnapshot) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -851,7 +883,7 @@ func (m *ClusterSnapshot) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -866,33 +898,75 @@ func (m *ClusterSnapshot) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Members = append(m.Members, &RaftMember{})
-			if err := m.Members[len(m.Members)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Members[len(m.Members)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Removed", wireType)
-			}
-			var v uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowSnapshot
+			if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowSnapshot
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= (int(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
 				}
-				if iNdEx >= l {
+				if packedLen < 0 {
+					return ErrInvalidLengthSnapshot
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex > l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
+				for iNdEx < postIndex {
+					var v uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowSnapshot
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= (uint64(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.Removed = append(m.Removed, v)
 				}
+			} else if wireType == 0 {
+				var v uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowSnapshot
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.Removed = append(m.Removed, v)
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field Removed", wireType)
 			}
-			m.Removed = append(m.Removed, v)
 		default:
 			iNdEx = preIndex
-			skippy, err := skipSnapshot(data[iNdEx:])
+			skippy, err := skipSnapshot(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -911,8 +985,8 @@ func (m *ClusterSnapshot) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Snapshot) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *Snapshot) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -924,7 +998,7 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -952,7 +1026,7 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Version |= (Snapshot_Version(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -971,7 +1045,7 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -985,7 +1059,7 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.Membership.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Membership.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1001,7 +1075,7 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1015,13 +1089,13 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.Store.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Store.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipSnapshot(data[iNdEx:])
+			skippy, err := skipSnapshot(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -1040,8 +1114,8 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func skipSnapshot(data []byte) (n int, err error) {
-	l := len(data)
+func skipSnapshot(dAtA []byte) (n int, err error) {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		var wire uint64
@@ -1052,7 +1126,7 @@ func skipSnapshot(data []byte) (n int, err error) {
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1070,7 +1144,7 @@ func skipSnapshot(data []byte) (n int, err error) {
 					return 0, io.ErrUnexpectedEOF
 				}
 				iNdEx++
-				if data[iNdEx-1] < 0x80 {
+				if dAtA[iNdEx-1] < 0x80 {
 					break
 				}
 			}
@@ -1087,7 +1161,7 @@ func skipSnapshot(data []byte) (n int, err error) {
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				length |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1110,7 +1184,7 @@ func skipSnapshot(data []byte) (n int, err error) {
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
-					b := data[iNdEx]
+					b := dAtA[iNdEx]
 					iNdEx++
 					innerWire |= (uint64(b) & 0x7F) << shift
 					if b < 0x80 {
@@ -1121,7 +1195,7 @@ func skipSnapshot(data []byte) (n int, err error) {
 				if innerWireType == 4 {
 					break
 				}
-				next, err := skipSnapshot(data[start:])
+				next, err := skipSnapshot(dAtA[start:])
 				if err != nil {
 					return 0, err
 				}

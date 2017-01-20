@@ -1,8 +1,6 @@
 package deepcopy
 
 import (
-	"sort"
-
 	"github.com/docker/swarmkit/protobuf/plugin"
 	"github.com/gogo/protobuf/gogoproto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
@@ -10,7 +8,9 @@ import (
 )
 
 type deepCopyGen struct {
-	gen *generator.Generator
+	*generator.Generator
+	generator.PluginImports
+	copyPkg generator.Single
 }
 
 func init() {
@@ -22,201 +22,243 @@ func (d *deepCopyGen) Name() string {
 }
 
 func (d *deepCopyGen) Init(g *generator.Generator) {
-	d.gen = g
+	d.Generator = g
+}
+
+func (d *deepCopyGen) genCopyFunc(dst, src string) {
+	d.P(d.copyPkg.Use(), ".Copy(", dst, ", ", src, ")")
 }
 
 func (d *deepCopyGen) genMsgDeepCopy(m *generator.Descriptor) {
-	if !plugin.DeepcopyEnabled(m.Options) {
+	ccTypeName := generator.CamelCaseSlice(m.TypeName())
+
+	// Generate backwards compatible, type-safe Copy() function.
+	d.P("func (m *", ccTypeName, ") Copy() *", ccTypeName, "{")
+	d.In()
+	d.P("if m == nil {")
+	d.In()
+	d.P("return nil")
+	d.Out()
+	d.P("}")
+	d.P("o := &", ccTypeName, "{}")
+	d.P("o.CopyFrom(m)")
+	d.P("return o")
+	d.Out()
+	d.P("}")
+	d.P()
+
+	if len(m.Field) == 0 {
+		d.P("func (m *", ccTypeName, ") CopyFrom(src interface{})", " {}")
 		return
 	}
 
-	ccTypeName := generator.CamelCaseSlice(m.TypeName())
-	d.gen.P("func (m *", ccTypeName, ") Copy() *", ccTypeName, "{")
-	d.gen.P("\tif m == nil {")
-	d.gen.P("\t\treturn nil")
-	d.gen.P("\t}")
-	d.gen.P()
+	d.P("func (m *", ccTypeName, ") CopyFrom(src interface{})", " {")
+	d.P()
 
-	d.gen.P("\to := &", ccTypeName, "{")
+	d.P("o := src.(*", ccTypeName, ")")
 
-	var funcs []func()
-	oneOfFuncs := make(map[string][]func())
+	oneofByIndex := [][]*descriptor.FieldDescriptorProto{}
 	for _, f := range m.Field {
 		fName := generator.CamelCase(*f.Name)
 		if gogoproto.IsCustomName(f) {
 			fName = gogoproto.GetCustomName(f)
 		}
 
-		notNullablePrefix := ""
-		if !gogoproto.IsNullable(f) {
-			notNullablePrefix = "*"
+		// Handle oneof type, we defer them to a loop below
+		if f.OneofIndex != nil {
+			if len(oneofByIndex) <= int(*f.OneofIndex) {
+				oneofByIndex = append(oneofByIndex, []*descriptor.FieldDescriptorProto{})
+			}
 
+			oneofByIndex[*f.OneofIndex] = append(oneofByIndex[*f.OneofIndex], f)
+			continue
 		}
 
 		// Handle all kinds of message type
 		if f.IsMessage() {
 			// Handle map type
-			if mapfunc := d.genMapWriter(m, f, notNullablePrefix); mapfunc != nil {
-				funcs = append(funcs, mapfunc)
+			if d.genMap(m, f) {
 				continue
 			}
 
 			// Handle any message which is not repeated or part of oneof
 			if !f.IsRepeated() && f.OneofIndex == nil {
-				d.gen.P("\t\t", fName, ": ", notNullablePrefix, "m.", fName, ".Copy(),")
+				if !gogoproto.IsNullable(f) {
+					d.genCopyFunc("&m."+fName, "&o."+fName)
+				} else {
+					d.P("if o.", fName, " != nil {")
+					d.In()
+					// allocate dst object
+					d.P("m.", fName, " = &", d.TypeName(d.ObjectNamed(f.GetTypeName())), "{}")
+					// copy into the allocated struct
+					d.genCopyFunc("m."+fName, "o."+fName)
+
+					d.Out()
+					d.P("}")
+				}
 				continue
 			}
 		}
 
 		// Handle repeated field
 		if f.IsRepeated() {
-			funcs = append(funcs, d.genRepeatedWriter(m, f, notNullablePrefix))
-			continue
-		}
-
-		// Handle oneof type
-		if f.OneofIndex != nil {
-			d.genOneOfWriter(m, f, oneOfFuncs)
+			d.genRepeated(m, f)
 			continue
 		}
 
 		// Handle all kinds of scalar type
-		d.gen.P("\t\t", fName, ": m.", fName, ",")
+		d.P("m.", fName, " = o.", fName)
 	}
 
-	d.gen.P("\t}")
-	d.gen.P()
-
-	for _, fn := range funcs {
-		fn()
+	for i, oo := range m.GetOneofDecl() {
+		d.genOneOf(m, oo, oneofByIndex[i])
 	}
 
-	// Sort map keys from oneOfFuncs so that generated code has consistent
-	// ordering.
-	oneOfKeys := make([]string, 0, len(oneOfFuncs))
-	for key := range oneOfFuncs {
-		oneOfKeys = append(oneOfKeys, key)
-	}
-	sort.Strings(oneOfKeys)
-
-	for _, key := range oneOfKeys {
-		oneOfNameFuncs := oneOfFuncs[key]
-		for _, oneOfFunc := range oneOfNameFuncs {
-			oneOfFunc()
-		}
-		d.gen.P("\t}")
-		d.gen.P()
-	}
-
-	d.gen.P("\treturn o")
-	d.gen.P("}")
-	d.gen.P()
+	d.P("}")
+	d.P()
 }
 
-func (d *deepCopyGen) genMapWriter(m *generator.Descriptor, f *descriptor.FieldDescriptorProto, notNullablePrefix string) func() {
+func (d *deepCopyGen) genMap(m *generator.Descriptor, f *descriptor.FieldDescriptorProto) bool {
 	fName := generator.CamelCase(*f.Name)
 	if gogoproto.IsCustomName(f) {
 		fName = gogoproto.GetCustomName(f)
 	}
 
-	dv := d.gen.ObjectNamed(f.GetTypeName())
-	if desc, ok := dv.(*generator.Descriptor); ok && desc.GetOptions().GetMapEntry() {
-		mt := d.gen.GoMapType(desc, f)
-		typename := mt.GoType
-		valueIsMessage := mt.ValueField.IsMessage()
-		mapfunc := func() {
-			d.gen.P("\tif m.", fName, " != nil {")
-			d.gen.P("\t\to.", fName, " = make(", typename, ")")
-			d.gen.P("\t\tfor k, v := range m.", fName, " {")
-			if valueIsMessage {
-				d.gen.P("\t\t\to.", fName, "[k] = ", notNullablePrefix, "v.Copy()")
-			} else {
-				d.gen.P("\t\t\to.", fName, "[k] = v")
-			}
-			d.gen.P("\t\t}")
-			d.gen.P("\t}")
-			d.gen.P()
-		}
-
-		return mapfunc
+	dv := d.ObjectNamed(f.GetTypeName())
+	desc, ok := dv.(*generator.Descriptor)
+	if !ok || !desc.GetOptions().GetMapEntry() {
+		return false
 	}
 
-	return nil
-}
+	mt := d.GoMapType(desc, f)
+	typename := mt.GoType
 
-func (d *deepCopyGen) genRepeatedWriter(m *generator.Descriptor, f *descriptor.FieldDescriptorProto, notNullablePrefix string) func() {
-	fName := generator.CamelCase(*f.Name)
-	if gogoproto.IsCustomName(f) {
-		fName = gogoproto.GetCustomName(f)
-	}
-
-	typename, _ := d.gen.GoType(m, f)
-	isMessage := f.IsMessage()
-
-	repeatedFunc := func() {
-		d.gen.P("\tif m.", fName, " != nil {")
-		d.gen.P("\t\to.", fName, " = make(", typename, ", 0, len(m.", fName, "))")
-		if isMessage {
-			d.gen.P("\t\tfor _, v := range m.", fName, " {")
-			d.gen.P("\t\t\to.", fName, " = append(o.", fName, ", ", notNullablePrefix, "v.Copy())")
-			d.gen.P("\t\t}")
+	d.P("if o.", fName, " != nil {")
+	d.In()
+	d.P("m.", fName, " = make(", typename, ", ", "len(o.", fName, "))")
+	d.P("for k, v := range o.", fName, " {")
+	d.In()
+	if mt.ValueField.IsMessage() {
+		if !gogoproto.IsNullable(f) {
+			d.P("n := ", d.TypeName(d.ObjectNamed(mt.ValueField.GetTypeName())), "{}")
+			d.genCopyFunc("&n", "&v")
+			d.P("m.", fName, "[k] = ", "n")
 		} else {
-			d.gen.P("\t\to.", fName, " = append(o.", fName, ", m.", fName, "...)")
+			d.P("m.", fName, "[k] = &", d.TypeName(d.ObjectNamed(mt.ValueField.GetTypeName())), "{}")
+			d.genCopyFunc("m."+fName+"[k]", "v")
 		}
-		d.gen.P("\t}")
-		d.gen.P()
+	} else {
+		d.P("m.", fName, "[k] = v")
 	}
+	d.Out()
+	d.P("}")
+	d.Out()
+	d.P("}")
+	d.P()
 
-	return repeatedFunc
+	return true
 }
 
-func (d *deepCopyGen) genOneOfWriter(m *generator.Descriptor, f *descriptor.FieldDescriptorProto, oneOfFuncs map[string][]func()) {
-	ccTypeName := generator.CamelCaseSlice(m.TypeName())
+func (d *deepCopyGen) genRepeated(m *generator.Descriptor, f *descriptor.FieldDescriptorProto) {
 	fName := generator.CamelCase(*f.Name)
 	if gogoproto.IsCustomName(f) {
 		fName = gogoproto.GetCustomName(f)
 	}
 
-	odp := m.OneofDecl[int(*f.OneofIndex)]
-	oneOfName := generator.CamelCase(odp.GetName())
-	oneOfNameFuncs, ok := oneOfFuncs[oneOfName]
-	if !ok {
-		oneOfFunc := func() {
-			d.gen.P("\tswitch m.", oneOfName, ".(type) {")
-		}
-		oneOfNameFuncs = append(oneOfNameFuncs, oneOfFunc)
-	}
+	typename, _ := d.GoType(m, f)
 
-	isMessage := f.IsMessage()
-	oneOfFunc := func() {
+	d.P("if o.", fName, " != nil {")
+	d.In()
+	if f.IsMessage() {
+		d.P("m.", fName, " = make(", typename, ", len(o.", fName, "))")
+
+		// TODO(stevvooe): Handle custom type here?
+		goType := d.TypeName(d.ObjectNamed(f.GetTypeName())) // elides [] or *
+
+		d.P("for i := range m.", fName, " {")
+		d.In()
+		if !gogoproto.IsNullable(f) {
+			d.genCopyFunc("&m."+fName+"[i]", "&o."+fName+"[i]")
+		} else {
+			d.P("m.", fName, "[i] = &", goType, "{}")
+			d.genCopyFunc("m."+fName+"[i]", "o."+fName+"[i]")
+		}
+		d.Out()
+		d.P("}")
+	} else {
+		d.P("m.", fName, " = make(", typename, ", len(o.", fName, "))")
+		d.P("copy(m.", fName, ", ", "o.", fName, ")")
+	}
+	d.Out()
+	d.P("}")
+	d.P()
+}
+
+func (d *deepCopyGen) genOneOf(m *generator.Descriptor, oneof *descriptor.OneofDescriptorProto, fields []*descriptor.FieldDescriptorProto) {
+	oneOfName := generator.CamelCase(oneof.GetName())
+
+	d.P("if o.", oneOfName, " != nil {")
+	d.In()
+	d.P("switch o.", oneOfName, ".(type) {")
+
+	for _, f := range fields {
+		ccTypeName := generator.CamelCaseSlice(m.TypeName())
+		fName := generator.CamelCase(*f.Name)
+		if gogoproto.IsCustomName(f) {
+			fName = gogoproto.GetCustomName(f)
+		}
+
 		tName := ccTypeName + "_" + fName
-		d.gen.P("\tcase *", tName, ":")
-		d.gen.P("\t\ti := &", tName, " {")
-		if isMessage {
-			d.gen.P("\t\t\t", fName, ": m.Get", fName, "().Copy(),")
+		d.P("case *", tName, ":")
+		d.In()
+		d.P("v := ", tName, " {")
+		d.In()
+
+		var rhs string
+		if f.IsMessage() {
+			goType := d.TypeName(d.ObjectNamed(f.GetTypeName())) // elides [] or *
+			rhs = "&" + goType + "{}"
 		} else {
-			d.gen.P("\t\t\t", fName, ": m.Get", fName, "(),")
+			rhs = "o.Get" + fName + "()"
 		}
-		d.gen.P("\t\t}")
-		d.gen.P()
-		d.gen.P("\t\to.", oneOfName, " = i")
+		d.P(fName, ": ", rhs, ",")
+		d.Out()
+		d.P("}")
+
+		if f.IsMessage() {
+			d.genCopyFunc("v."+fName, "o.Get"+fName+"()")
+		}
+
+		d.P("m.", oneOfName, " = &v")
+		d.Out()
 	}
 
-	oneOfNameFuncs = append(oneOfNameFuncs, oneOfFunc)
-	oneOfFuncs[oneOfName] = oneOfNameFuncs
+	d.Out()
+	d.P("}")
+	d.Out()
+	d.P("}")
+	d.P()
 }
 
 func (d *deepCopyGen) Generate(file *generator.FileDescriptor) {
-	d.gen.P()
+	d.PluginImports = generator.NewPluginImports(d.Generator)
+
+	// TODO(stevvooe): Ideally, this could be taken as a parameter to the
+	// deepcopy plugin to control the package import, but this is good enough,
+	// for now.
+	d.copyPkg = d.NewImport("github.com/docker/swarmkit/api/deepcopy")
+
+	d.P()
 	for _, m := range file.Messages() {
 		if m.DescriptorProto.GetOptions().GetMapEntry() {
 			continue
 		}
 
+		if !plugin.DeepcopyEnabled(m.Options) {
+			continue
+		}
+
 		d.genMsgDeepCopy(m)
 	}
-	d.gen.P()
-}
-
-func (d *deepCopyGen) GenerateImports(file *generator.FileDescriptor) {
+	d.P()
 }

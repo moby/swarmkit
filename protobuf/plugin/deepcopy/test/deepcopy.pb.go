@@ -17,6 +17,7 @@ It has these top-level messages:
 	NonNullableExternalStruct
 	RepeatedNonNullableExternalStruct
 	MapStruct
+	OneOf
 */
 package test
 
@@ -24,6 +25,8 @@ import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
+
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import bytes "bytes"
 
@@ -65,19 +68,19 @@ func (*BasicScalar) ProtoMessage()               {}
 func (*BasicScalar) Descriptor() ([]byte, []int) { return fileDescriptorDeepcopy, []int{0} }
 
 type RepeatedScalar struct {
-	Field1  []float64 `protobuf:"fixed64,1,rep,name=Field1,json=field1" json:"Field1,omitempty"`
-	Field2  []float32 `protobuf:"fixed32,2,rep,name=Field2,json=field2" json:"Field2,omitempty"`
-	Field3  []int32   `protobuf:"varint,3,rep,name=Field3,json=field3" json:"Field3,omitempty"`
-	Field4  []int64   `protobuf:"varint,4,rep,name=Field4,json=field4" json:"Field4,omitempty"`
-	Field5  []uint32  `protobuf:"varint,5,rep,name=Field5,json=field5" json:"Field5,omitempty"`
-	Field6  []uint64  `protobuf:"varint,6,rep,name=Field6,json=field6" json:"Field6,omitempty"`
-	Field7  []int32   `protobuf:"zigzag32,7,rep,name=Field7,json=field7" json:"Field7,omitempty"`
-	Field8  []int64   `protobuf:"zigzag64,8,rep,name=Field8,json=field8" json:"Field8,omitempty"`
-	Field9  []uint32  `protobuf:"fixed32,9,rep,name=Field9,json=field9" json:"Field9,omitempty"`
-	Field10 []int32   `protobuf:"fixed32,10,rep,name=Field10,json=field10" json:"Field10,omitempty"`
-	Field11 []uint64  `protobuf:"fixed64,11,rep,name=Field11,json=field11" json:"Field11,omitempty"`
-	Field12 []int64   `protobuf:"fixed64,12,rep,name=Field12,json=field12" json:"Field12,omitempty"`
-	Field13 []bool    `protobuf:"varint,13,rep,name=Field13,json=field13" json:"Field13,omitempty"`
+	Field1  []float64 `protobuf:"fixed64,1,rep,packed,name=Field1,json=field1" json:"Field1,omitempty"`
+	Field2  []float32 `protobuf:"fixed32,2,rep,packed,name=Field2,json=field2" json:"Field2,omitempty"`
+	Field3  []int32   `protobuf:"varint,3,rep,packed,name=Field3,json=field3" json:"Field3,omitempty"`
+	Field4  []int64   `protobuf:"varint,4,rep,packed,name=Field4,json=field4" json:"Field4,omitempty"`
+	Field5  []uint32  `protobuf:"varint,5,rep,packed,name=Field5,json=field5" json:"Field5,omitempty"`
+	Field6  []uint64  `protobuf:"varint,6,rep,packed,name=Field6,json=field6" json:"Field6,omitempty"`
+	Field7  []int32   `protobuf:"zigzag32,7,rep,packed,name=Field7,json=field7" json:"Field7,omitempty"`
+	Field8  []int64   `protobuf:"zigzag64,8,rep,packed,name=Field8,json=field8" json:"Field8,omitempty"`
+	Field9  []uint32  `protobuf:"fixed32,9,rep,packed,name=Field9,json=field9" json:"Field9,omitempty"`
+	Field10 []int32   `protobuf:"fixed32,10,rep,packed,name=Field10,json=field10" json:"Field10,omitempty"`
+	Field11 []uint64  `protobuf:"fixed64,11,rep,packed,name=Field11,json=field11" json:"Field11,omitempty"`
+	Field12 []int64   `protobuf:"fixed64,12,rep,packed,name=Field12,json=field12" json:"Field12,omitempty"`
+	Field13 []bool    `protobuf:"varint,13,rep,packed,name=Field13,json=field13" json:"Field13,omitempty"`
 	Field14 []string  `protobuf:"bytes,14,rep,name=Field14,json=field14" json:"Field14,omitempty"`
 	Field15 [][]byte  `protobuf:"bytes,15,rep,name=Field15,json=field15" json:"Field15,omitempty"`
 }
@@ -159,6 +162,397 @@ func (m *MapStruct) Reset()                    { *m = MapStruct{} }
 func (*MapStruct) ProtoMessage()               {}
 func (*MapStruct) Descriptor() ([]byte, []int) { return fileDescriptorDeepcopy, []int{7} }
 
+type OneOf struct {
+	// Types that are valid to be assigned to Fields:
+	//	*OneOf_Field1
+	//	*OneOf_Field2
+	//	*OneOf_Field3
+	//	*OneOf_Field4
+	//	*OneOf_Field5
+	//	*OneOf_Field6
+	//	*OneOf_Field7
+	//	*OneOf_Field8
+	//	*OneOf_Field9
+	Fields isOneOf_Fields `protobuf_oneof:"fields"`
+	// Types that are valid to be assigned to FieldsTwo:
+	//	*OneOf_Field10
+	//	*OneOf_Field11
+	FieldsTwo isOneOf_FieldsTwo `protobuf_oneof:"fieldsTwo"`
+}
+
+func (m *OneOf) Reset()                    { *m = OneOf{} }
+func (*OneOf) ProtoMessage()               {}
+func (*OneOf) Descriptor() ([]byte, []int) { return fileDescriptorDeepcopy, []int{8} }
+
+type isOneOf_Fields interface {
+	isOneOf_Fields()
+	Equal(interface{}) bool
+}
+type isOneOf_FieldsTwo interface {
+	isOneOf_FieldsTwo()
+	Equal(interface{}) bool
+}
+
+type OneOf_Field1 struct {
+	Field1 float64 `protobuf:"fixed64,1,opt,name=Field1,json=field1,proto3,oneof"`
+}
+type OneOf_Field2 struct {
+	Field2 float32 `protobuf:"fixed32,2,opt,name=Field2,json=field2,proto3,oneof"`
+}
+type OneOf_Field3 struct {
+	Field3 int32 `protobuf:"varint,3,opt,name=Field3,json=field3,proto3,oneof"`
+}
+type OneOf_Field4 struct {
+	Field4 int64 `protobuf:"varint,4,opt,name=Field4,json=field4,proto3,oneof"`
+}
+type OneOf_Field5 struct {
+	Field5 uint32 `protobuf:"varint,5,opt,name=Field5,json=field5,proto3,oneof"`
+}
+type OneOf_Field6 struct {
+	Field6 string `protobuf:"bytes,6,opt,name=Field6,json=field6,proto3,oneof"`
+}
+type OneOf_Field7 struct {
+	Field7 []byte `protobuf:"bytes,7,opt,name=Field7,json=field7,proto3,oneof"`
+}
+type OneOf_Field8 struct {
+	Field8 *MapStruct `protobuf:"bytes,8,opt,name=Field8,json=field8,oneof"`
+}
+type OneOf_Field9 struct {
+	Field9 *RepeatedNonNullableExternalStruct `protobuf:"bytes,9,opt,name=Field9,json=field9,oneof"`
+}
+type OneOf_Field10 struct {
+	Field10 *NonNullableExternalStruct `protobuf:"bytes,10,opt,name=Field10,json=field10,oneof"`
+}
+type OneOf_Field11 struct {
+	Field11 *RepeatedExternalStruct `protobuf:"bytes,11,opt,name=Field11,json=field11,oneof"`
+}
+
+func (*OneOf_Field1) isOneOf_Fields()     {}
+func (*OneOf_Field2) isOneOf_Fields()     {}
+func (*OneOf_Field3) isOneOf_Fields()     {}
+func (*OneOf_Field4) isOneOf_Fields()     {}
+func (*OneOf_Field5) isOneOf_Fields()     {}
+func (*OneOf_Field6) isOneOf_Fields()     {}
+func (*OneOf_Field7) isOneOf_Fields()     {}
+func (*OneOf_Field8) isOneOf_Fields()     {}
+func (*OneOf_Field9) isOneOf_Fields()     {}
+func (*OneOf_Field10) isOneOf_FieldsTwo() {}
+func (*OneOf_Field11) isOneOf_FieldsTwo() {}
+
+func (m *OneOf) GetFields() isOneOf_Fields {
+	if m != nil {
+		return m.Fields
+	}
+	return nil
+}
+func (m *OneOf) GetFieldsTwo() isOneOf_FieldsTwo {
+	if m != nil {
+		return m.FieldsTwo
+	}
+	return nil
+}
+
+func (m *OneOf) GetField1() float64 {
+	if x, ok := m.GetFields().(*OneOf_Field1); ok {
+		return x.Field1
+	}
+	return 0
+}
+
+func (m *OneOf) GetField2() float32 {
+	if x, ok := m.GetFields().(*OneOf_Field2); ok {
+		return x.Field2
+	}
+	return 0
+}
+
+func (m *OneOf) GetField3() int32 {
+	if x, ok := m.GetFields().(*OneOf_Field3); ok {
+		return x.Field3
+	}
+	return 0
+}
+
+func (m *OneOf) GetField4() int64 {
+	if x, ok := m.GetFields().(*OneOf_Field4); ok {
+		return x.Field4
+	}
+	return 0
+}
+
+func (m *OneOf) GetField5() uint32 {
+	if x, ok := m.GetFields().(*OneOf_Field5); ok {
+		return x.Field5
+	}
+	return 0
+}
+
+func (m *OneOf) GetField6() string {
+	if x, ok := m.GetFields().(*OneOf_Field6); ok {
+		return x.Field6
+	}
+	return ""
+}
+
+func (m *OneOf) GetField7() []byte {
+	if x, ok := m.GetFields().(*OneOf_Field7); ok {
+		return x.Field7
+	}
+	return nil
+}
+
+func (m *OneOf) GetField8() *MapStruct {
+	if x, ok := m.GetFields().(*OneOf_Field8); ok {
+		return x.Field8
+	}
+	return nil
+}
+
+func (m *OneOf) GetField9() *RepeatedNonNullableExternalStruct {
+	if x, ok := m.GetFields().(*OneOf_Field9); ok {
+		return x.Field9
+	}
+	return nil
+}
+
+func (m *OneOf) GetField10() *NonNullableExternalStruct {
+	if x, ok := m.GetFieldsTwo().(*OneOf_Field10); ok {
+		return x.Field10
+	}
+	return nil
+}
+
+func (m *OneOf) GetField11() *RepeatedExternalStruct {
+	if x, ok := m.GetFieldsTwo().(*OneOf_Field11); ok {
+		return x.Field11
+	}
+	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*OneOf) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _OneOf_OneofMarshaler, _OneOf_OneofUnmarshaler, _OneOf_OneofSizer, []interface{}{
+		(*OneOf_Field1)(nil),
+		(*OneOf_Field2)(nil),
+		(*OneOf_Field3)(nil),
+		(*OneOf_Field4)(nil),
+		(*OneOf_Field5)(nil),
+		(*OneOf_Field6)(nil),
+		(*OneOf_Field7)(nil),
+		(*OneOf_Field8)(nil),
+		(*OneOf_Field9)(nil),
+		(*OneOf_Field10)(nil),
+		(*OneOf_Field11)(nil),
+	}
+}
+
+func _OneOf_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*OneOf)
+	// fields
+	switch x := m.Fields.(type) {
+	case *OneOf_Field1:
+		_ = b.EncodeVarint(1<<3 | proto.WireFixed64)
+		_ = b.EncodeFixed64(math.Float64bits(x.Field1))
+	case *OneOf_Field2:
+		_ = b.EncodeVarint(2<<3 | proto.WireFixed32)
+		_ = b.EncodeFixed32(uint64(math.Float32bits(x.Field2)))
+	case *OneOf_Field3:
+		_ = b.EncodeVarint(3<<3 | proto.WireVarint)
+		_ = b.EncodeVarint(uint64(x.Field3))
+	case *OneOf_Field4:
+		_ = b.EncodeVarint(4<<3 | proto.WireVarint)
+		_ = b.EncodeVarint(uint64(x.Field4))
+	case *OneOf_Field5:
+		_ = b.EncodeVarint(5<<3 | proto.WireVarint)
+		_ = b.EncodeVarint(uint64(x.Field5))
+	case *OneOf_Field6:
+		_ = b.EncodeVarint(6<<3 | proto.WireBytes)
+		_ = b.EncodeStringBytes(x.Field6)
+	case *OneOf_Field7:
+		_ = b.EncodeVarint(7<<3 | proto.WireBytes)
+		_ = b.EncodeRawBytes(x.Field7)
+	case *OneOf_Field8:
+		_ = b.EncodeVarint(8<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Field8); err != nil {
+			return err
+		}
+	case *OneOf_Field9:
+		_ = b.EncodeVarint(9<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Field9); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("OneOf.Fields has unexpected type %T", x)
+	}
+	// fieldsTwo
+	switch x := m.FieldsTwo.(type) {
+	case *OneOf_Field10:
+		_ = b.EncodeVarint(10<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Field10); err != nil {
+			return err
+		}
+	case *OneOf_Field11:
+		_ = b.EncodeVarint(11<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.Field11); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("OneOf.FieldsTwo has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _OneOf_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*OneOf)
+	switch tag {
+	case 1: // fields.Field1
+		if wire != proto.WireFixed64 {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeFixed64()
+		m.Fields = &OneOf_Field1{math.Float64frombits(x)}
+		return true, err
+	case 2: // fields.Field2
+		if wire != proto.WireFixed32 {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeFixed32()
+		m.Fields = &OneOf_Field2{math.Float32frombits(uint32(x))}
+		return true, err
+	case 3: // fields.Field3
+		if wire != proto.WireVarint {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeVarint()
+		m.Fields = &OneOf_Field3{int32(x)}
+		return true, err
+	case 4: // fields.Field4
+		if wire != proto.WireVarint {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeVarint()
+		m.Fields = &OneOf_Field4{int64(x)}
+		return true, err
+	case 5: // fields.Field5
+		if wire != proto.WireVarint {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeVarint()
+		m.Fields = &OneOf_Field5{uint32(x)}
+		return true, err
+	case 6: // fields.Field6
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeStringBytes()
+		m.Fields = &OneOf_Field6{x}
+		return true, err
+	case 7: // fields.Field7
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeRawBytes(true)
+		m.Fields = &OneOf_Field7{x}
+		return true, err
+	case 8: // fields.Field8
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(MapStruct)
+		err := b.DecodeMessage(msg)
+		m.Fields = &OneOf_Field8{msg}
+		return true, err
+	case 9: // fields.Field9
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(RepeatedNonNullableExternalStruct)
+		err := b.DecodeMessage(msg)
+		m.Fields = &OneOf_Field9{msg}
+		return true, err
+	case 10: // fieldsTwo.Field10
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(NonNullableExternalStruct)
+		err := b.DecodeMessage(msg)
+		m.FieldsTwo = &OneOf_Field10{msg}
+		return true, err
+	case 11: // fieldsTwo.Field11
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(RepeatedExternalStruct)
+		err := b.DecodeMessage(msg)
+		m.FieldsTwo = &OneOf_Field11{msg}
+		return true, err
+	default:
+		return false, nil
+	}
+}
+
+func _OneOf_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*OneOf)
+	// fields
+	switch x := m.Fields.(type) {
+	case *OneOf_Field1:
+		n += proto.SizeVarint(1<<3 | proto.WireFixed64)
+		n += 8
+	case *OneOf_Field2:
+		n += proto.SizeVarint(2<<3 | proto.WireFixed32)
+		n += 4
+	case *OneOf_Field3:
+		n += proto.SizeVarint(3<<3 | proto.WireVarint)
+		n += proto.SizeVarint(uint64(x.Field3))
+	case *OneOf_Field4:
+		n += proto.SizeVarint(4<<3 | proto.WireVarint)
+		n += proto.SizeVarint(uint64(x.Field4))
+	case *OneOf_Field5:
+		n += proto.SizeVarint(5<<3 | proto.WireVarint)
+		n += proto.SizeVarint(uint64(x.Field5))
+	case *OneOf_Field6:
+		n += proto.SizeVarint(6<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.Field6)))
+		n += len(x.Field6)
+	case *OneOf_Field7:
+		n += proto.SizeVarint(7<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.Field7)))
+		n += len(x.Field7)
+	case *OneOf_Field8:
+		s := proto.Size(x.Field8)
+		n += proto.SizeVarint(8<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *OneOf_Field9:
+		s := proto.Size(x.Field9)
+		n += proto.SizeVarint(9<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	// fieldsTwo
+	switch x := m.FieldsTwo.(type) {
+	case *OneOf_Field10:
+		s := proto.Size(x.Field10)
+		n += proto.SizeVarint(10<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *OneOf_Field11:
+		s := proto.Size(x.Field11)
+		n += proto.SizeVarint(11<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 func init() {
 	proto.RegisterType((*BasicScalar)(nil), "test.BasicScalar")
 	proto.RegisterType((*RepeatedScalar)(nil), "test.RepeatedScalar")
@@ -168,306 +562,434 @@ func init() {
 	proto.RegisterType((*NonNullableExternalStruct)(nil), "test.NonNullableExternalStruct")
 	proto.RegisterType((*RepeatedNonNullableExternalStruct)(nil), "test.RepeatedNonNullableExternalStruct")
 	proto.RegisterType((*MapStruct)(nil), "test.MapStruct")
+	proto.RegisterType((*OneOf)(nil), "test.OneOf")
 }
 
 func (m *BasicScalar) Copy() *BasicScalar {
 	if m == nil {
 		return nil
 	}
-
-	o := &BasicScalar{
-		Field1:  m.Field1,
-		Field2:  m.Field2,
-		Field3:  m.Field3,
-		Field4:  m.Field4,
-		Field5:  m.Field5,
-		Field6:  m.Field6,
-		Field7:  m.Field7,
-		Field8:  m.Field8,
-		Field9:  m.Field9,
-		Field10: m.Field10,
-		Field11: m.Field11,
-		Field12: m.Field12,
-		Field13: m.Field13,
-		Field14: m.Field14,
-		Field15: m.Field15,
-	}
-
+	o := &BasicScalar{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *BasicScalar) CopyFrom(src interface{}) {
+
+	o := src.(*BasicScalar)
+	m.Field1 = o.Field1
+	m.Field2 = o.Field2
+	m.Field3 = o.Field3
+	m.Field4 = o.Field4
+	m.Field5 = o.Field5
+	m.Field6 = o.Field6
+	m.Field7 = o.Field7
+	m.Field8 = o.Field8
+	m.Field9 = o.Field9
+	m.Field10 = o.Field10
+	m.Field11 = o.Field11
+	m.Field12 = o.Field12
+	m.Field13 = o.Field13
+	m.Field14 = o.Field14
+	m.Field15 = o.Field15
 }
 
 func (m *RepeatedScalar) Copy() *RepeatedScalar {
 	if m == nil {
 		return nil
 	}
-
 	o := &RepeatedScalar{}
-
-	if m.Field1 != nil {
-		o.Field1 = make([]float64, 0, len(m.Field1))
-		o.Field1 = append(o.Field1, m.Field1...)
-	}
-
-	if m.Field2 != nil {
-		o.Field2 = make([]float32, 0, len(m.Field2))
-		o.Field2 = append(o.Field2, m.Field2...)
-	}
-
-	if m.Field3 != nil {
-		o.Field3 = make([]int32, 0, len(m.Field3))
-		o.Field3 = append(o.Field3, m.Field3...)
-	}
-
-	if m.Field4 != nil {
-		o.Field4 = make([]int64, 0, len(m.Field4))
-		o.Field4 = append(o.Field4, m.Field4...)
-	}
-
-	if m.Field5 != nil {
-		o.Field5 = make([]uint32, 0, len(m.Field5))
-		o.Field5 = append(o.Field5, m.Field5...)
-	}
-
-	if m.Field6 != nil {
-		o.Field6 = make([]uint64, 0, len(m.Field6))
-		o.Field6 = append(o.Field6, m.Field6...)
-	}
-
-	if m.Field7 != nil {
-		o.Field7 = make([]int32, 0, len(m.Field7))
-		o.Field7 = append(o.Field7, m.Field7...)
-	}
-
-	if m.Field8 != nil {
-		o.Field8 = make([]int64, 0, len(m.Field8))
-		o.Field8 = append(o.Field8, m.Field8...)
-	}
-
-	if m.Field9 != nil {
-		o.Field9 = make([]uint32, 0, len(m.Field9))
-		o.Field9 = append(o.Field9, m.Field9...)
-	}
-
-	if m.Field10 != nil {
-		o.Field10 = make([]int32, 0, len(m.Field10))
-		o.Field10 = append(o.Field10, m.Field10...)
-	}
-
-	if m.Field11 != nil {
-		o.Field11 = make([]uint64, 0, len(m.Field11))
-		o.Field11 = append(o.Field11, m.Field11...)
-	}
-
-	if m.Field12 != nil {
-		o.Field12 = make([]int64, 0, len(m.Field12))
-		o.Field12 = append(o.Field12, m.Field12...)
-	}
-
-	if m.Field13 != nil {
-		o.Field13 = make([]bool, 0, len(m.Field13))
-		o.Field13 = append(o.Field13, m.Field13...)
-	}
-
-	if m.Field14 != nil {
-		o.Field14 = make([]string, 0, len(m.Field14))
-		o.Field14 = append(o.Field14, m.Field14...)
-	}
-
-	if m.Field15 != nil {
-		o.Field15 = make([][]byte, 0, len(m.Field15))
-		o.Field15 = append(o.Field15, m.Field15...)
-	}
-
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *RepeatedScalar) CopyFrom(src interface{}) {
+
+	o := src.(*RepeatedScalar)
+	if o.Field1 != nil {
+		m.Field1 = make([]float64, len(o.Field1))
+		copy(m.Field1, o.Field1)
+	}
+
+	if o.Field2 != nil {
+		m.Field2 = make([]float32, len(o.Field2))
+		copy(m.Field2, o.Field2)
+	}
+
+	if o.Field3 != nil {
+		m.Field3 = make([]int32, len(o.Field3))
+		copy(m.Field3, o.Field3)
+	}
+
+	if o.Field4 != nil {
+		m.Field4 = make([]int64, len(o.Field4))
+		copy(m.Field4, o.Field4)
+	}
+
+	if o.Field5 != nil {
+		m.Field5 = make([]uint32, len(o.Field5))
+		copy(m.Field5, o.Field5)
+	}
+
+	if o.Field6 != nil {
+		m.Field6 = make([]uint64, len(o.Field6))
+		copy(m.Field6, o.Field6)
+	}
+
+	if o.Field7 != nil {
+		m.Field7 = make([]int32, len(o.Field7))
+		copy(m.Field7, o.Field7)
+	}
+
+	if o.Field8 != nil {
+		m.Field8 = make([]int64, len(o.Field8))
+		copy(m.Field8, o.Field8)
+	}
+
+	if o.Field9 != nil {
+		m.Field9 = make([]uint32, len(o.Field9))
+		copy(m.Field9, o.Field9)
+	}
+
+	if o.Field10 != nil {
+		m.Field10 = make([]int32, len(o.Field10))
+		copy(m.Field10, o.Field10)
+	}
+
+	if o.Field11 != nil {
+		m.Field11 = make([]uint64, len(o.Field11))
+		copy(m.Field11, o.Field11)
+	}
+
+	if o.Field12 != nil {
+		m.Field12 = make([]int64, len(o.Field12))
+		copy(m.Field12, o.Field12)
+	}
+
+	if o.Field13 != nil {
+		m.Field13 = make([]bool, len(o.Field13))
+		copy(m.Field13, o.Field13)
+	}
+
+	if o.Field14 != nil {
+		m.Field14 = make([]string, len(o.Field14))
+		copy(m.Field14, o.Field14)
+	}
+
+	if o.Field15 != nil {
+		m.Field15 = make([][]byte, len(o.Field15))
+		copy(m.Field15, o.Field15)
+	}
+
 }
 
 func (m *RepeatedScalarPacked) Copy() *RepeatedScalarPacked {
 	if m == nil {
 		return nil
 	}
-
 	o := &RepeatedScalarPacked{}
-
-	if m.Field1 != nil {
-		o.Field1 = make([]float64, 0, len(m.Field1))
-		o.Field1 = append(o.Field1, m.Field1...)
-	}
-
-	if m.Field2 != nil {
-		o.Field2 = make([]float32, 0, len(m.Field2))
-		o.Field2 = append(o.Field2, m.Field2...)
-	}
-
-	if m.Field3 != nil {
-		o.Field3 = make([]int32, 0, len(m.Field3))
-		o.Field3 = append(o.Field3, m.Field3...)
-	}
-
-	if m.Field4 != nil {
-		o.Field4 = make([]int64, 0, len(m.Field4))
-		o.Field4 = append(o.Field4, m.Field4...)
-	}
-
-	if m.Field5 != nil {
-		o.Field5 = make([]uint32, 0, len(m.Field5))
-		o.Field5 = append(o.Field5, m.Field5...)
-	}
-
-	if m.Field6 != nil {
-		o.Field6 = make([]uint64, 0, len(m.Field6))
-		o.Field6 = append(o.Field6, m.Field6...)
-	}
-
-	if m.Field7 != nil {
-		o.Field7 = make([]int32, 0, len(m.Field7))
-		o.Field7 = append(o.Field7, m.Field7...)
-	}
-
-	if m.Field8 != nil {
-		o.Field8 = make([]int64, 0, len(m.Field8))
-		o.Field8 = append(o.Field8, m.Field8...)
-	}
-
-	if m.Field9 != nil {
-		o.Field9 = make([]uint32, 0, len(m.Field9))
-		o.Field9 = append(o.Field9, m.Field9...)
-	}
-
-	if m.Field10 != nil {
-		o.Field10 = make([]int32, 0, len(m.Field10))
-		o.Field10 = append(o.Field10, m.Field10...)
-	}
-
-	if m.Field11 != nil {
-		o.Field11 = make([]uint64, 0, len(m.Field11))
-		o.Field11 = append(o.Field11, m.Field11...)
-	}
-
-	if m.Field12 != nil {
-		o.Field12 = make([]int64, 0, len(m.Field12))
-		o.Field12 = append(o.Field12, m.Field12...)
-	}
-
-	if m.Field13 != nil {
-		o.Field13 = make([]bool, 0, len(m.Field13))
-		o.Field13 = append(o.Field13, m.Field13...)
-	}
-
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *RepeatedScalarPacked) CopyFrom(src interface{}) {
+
+	o := src.(*RepeatedScalarPacked)
+	if o.Field1 != nil {
+		m.Field1 = make([]float64, len(o.Field1))
+		copy(m.Field1, o.Field1)
+	}
+
+	if o.Field2 != nil {
+		m.Field2 = make([]float32, len(o.Field2))
+		copy(m.Field2, o.Field2)
+	}
+
+	if o.Field3 != nil {
+		m.Field3 = make([]int32, len(o.Field3))
+		copy(m.Field3, o.Field3)
+	}
+
+	if o.Field4 != nil {
+		m.Field4 = make([]int64, len(o.Field4))
+		copy(m.Field4, o.Field4)
+	}
+
+	if o.Field5 != nil {
+		m.Field5 = make([]uint32, len(o.Field5))
+		copy(m.Field5, o.Field5)
+	}
+
+	if o.Field6 != nil {
+		m.Field6 = make([]uint64, len(o.Field6))
+		copy(m.Field6, o.Field6)
+	}
+
+	if o.Field7 != nil {
+		m.Field7 = make([]int32, len(o.Field7))
+		copy(m.Field7, o.Field7)
+	}
+
+	if o.Field8 != nil {
+		m.Field8 = make([]int64, len(o.Field8))
+		copy(m.Field8, o.Field8)
+	}
+
+	if o.Field9 != nil {
+		m.Field9 = make([]uint32, len(o.Field9))
+		copy(m.Field9, o.Field9)
+	}
+
+	if o.Field10 != nil {
+		m.Field10 = make([]int32, len(o.Field10))
+		copy(m.Field10, o.Field10)
+	}
+
+	if o.Field11 != nil {
+		m.Field11 = make([]uint64, len(o.Field11))
+		copy(m.Field11, o.Field11)
+	}
+
+	if o.Field12 != nil {
+		m.Field12 = make([]int64, len(o.Field12))
+		copy(m.Field12, o.Field12)
+	}
+
+	if o.Field13 != nil {
+		m.Field13 = make([]bool, len(o.Field13))
+		copy(m.Field13, o.Field13)
+	}
+
 }
 
 func (m *ExternalStruct) Copy() *ExternalStruct {
 	if m == nil {
 		return nil
 	}
-
-	o := &ExternalStruct{
-		Field1: m.Field1.Copy(),
-		Field2: m.Field2.Copy(),
-		Field3: m.Field3.Copy(),
-	}
-
+	o := &ExternalStruct{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *ExternalStruct) CopyFrom(src interface{}) {
+
+	o := src.(*ExternalStruct)
+	if o.Field1 != nil {
+		m.Field1 = &BasicScalar{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Field1, o.Field1)
+	}
+	if o.Field2 != nil {
+		m.Field2 = &RepeatedScalar{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Field2, o.Field2)
+	}
+	if o.Field3 != nil {
+		m.Field3 = &RepeatedScalarPacked{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Field3, o.Field3)
+	}
 }
 
 func (m *RepeatedExternalStruct) Copy() *RepeatedExternalStruct {
 	if m == nil {
 		return nil
 	}
-
 	o := &RepeatedExternalStruct{}
-
-	if m.Field1 != nil {
-		o.Field1 = make([]*BasicScalar, 0, len(m.Field1))
-		for _, v := range m.Field1 {
-			o.Field1 = append(o.Field1, v.Copy())
-		}
-	}
-
-	if m.Field2 != nil {
-		o.Field2 = make([]*RepeatedScalar, 0, len(m.Field2))
-		for _, v := range m.Field2 {
-			o.Field2 = append(o.Field2, v.Copy())
-		}
-	}
-
-	if m.Field3 != nil {
-		o.Field3 = make([]*RepeatedScalarPacked, 0, len(m.Field3))
-		for _, v := range m.Field3 {
-			o.Field3 = append(o.Field3, v.Copy())
-		}
-	}
-
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *RepeatedExternalStruct) CopyFrom(src interface{}) {
+
+	o := src.(*RepeatedExternalStruct)
+	if o.Field1 != nil {
+		m.Field1 = make([]*BasicScalar, len(o.Field1))
+		for i := range m.Field1 {
+			m.Field1[i] = &BasicScalar{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Field1[i], o.Field1[i])
+		}
+	}
+
+	if o.Field2 != nil {
+		m.Field2 = make([]*RepeatedScalar, len(o.Field2))
+		for i := range m.Field2 {
+			m.Field2[i] = &RepeatedScalar{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Field2[i], o.Field2[i])
+		}
+	}
+
+	if o.Field3 != nil {
+		m.Field3 = make([]*RepeatedScalarPacked, len(o.Field3))
+		for i := range m.Field3 {
+			m.Field3[i] = &RepeatedScalarPacked{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Field3[i], o.Field3[i])
+		}
+	}
+
 }
 
 func (m *NonNullableExternalStruct) Copy() *NonNullableExternalStruct {
 	if m == nil {
 		return nil
 	}
-
-	o := &NonNullableExternalStruct{
-		Field1: *m.Field1.Copy(),
-		Field2: *m.Field2.Copy(),
-		Field3: *m.Field3.Copy(),
-	}
-
+	o := &NonNullableExternalStruct{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *NonNullableExternalStruct) CopyFrom(src interface{}) {
+
+	o := src.(*NonNullableExternalStruct)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field1, &o.Field1)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field2, &o.Field2)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field3, &o.Field3)
 }
 
 func (m *RepeatedNonNullableExternalStruct) Copy() *RepeatedNonNullableExternalStruct {
 	if m == nil {
 		return nil
 	}
-
 	o := &RepeatedNonNullableExternalStruct{}
-
-	if m.Field1 != nil {
-		o.Field1 = make([]BasicScalar, 0, len(m.Field1))
-		for _, v := range m.Field1 {
-			o.Field1 = append(o.Field1, *v.Copy())
-		}
-	}
-
-	if m.Field2 != nil {
-		o.Field2 = make([]RepeatedScalar, 0, len(m.Field2))
-		for _, v := range m.Field2 {
-			o.Field2 = append(o.Field2, *v.Copy())
-		}
-	}
-
-	if m.Field3 != nil {
-		o.Field3 = make([]RepeatedScalarPacked, 0, len(m.Field3))
-		for _, v := range m.Field3 {
-			o.Field3 = append(o.Field3, *v.Copy())
-		}
-	}
-
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *RepeatedNonNullableExternalStruct) CopyFrom(src interface{}) {
+
+	o := src.(*RepeatedNonNullableExternalStruct)
+	if o.Field1 != nil {
+		m.Field1 = make([]BasicScalar, len(o.Field1))
+		for i := range m.Field1 {
+			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field1[i], &o.Field1[i])
+		}
+	}
+
+	if o.Field2 != nil {
+		m.Field2 = make([]RepeatedScalar, len(o.Field2))
+		for i := range m.Field2 {
+			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field2[i], &o.Field2[i])
+		}
+	}
+
+	if o.Field3 != nil {
+		m.Field3 = make([]RepeatedScalarPacked, len(o.Field3))
+		for i := range m.Field3 {
+			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field3[i], &o.Field3[i])
+		}
+	}
+
 }
 
 func (m *MapStruct) Copy() *MapStruct {
 	if m == nil {
 		return nil
 	}
-
 	o := &MapStruct{}
-
-	if m.NullableMap != nil {
-		o.NullableMap = make(map[string]*BasicScalar)
-		for k, v := range m.NullableMap {
-			o.NullableMap[k] = v.Copy()
-		}
-	}
-
-	if m.NonnullableMap != nil {
-		o.NonnullableMap = make(map[string]BasicScalar)
-		for k, v := range m.NonnullableMap {
-			o.NonnullableMap[k] = *v.Copy()
-		}
-	}
-
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *MapStruct) CopyFrom(src interface{}) {
+
+	o := src.(*MapStruct)
+	if o.NullableMap != nil {
+		m.NullableMap = make(map[string]*BasicScalar, len(o.NullableMap))
+		for k, v := range o.NullableMap {
+			m.NullableMap[k] = &BasicScalar{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.NullableMap[k], v)
+		}
+	}
+
+	if o.NonnullableMap != nil {
+		m.NonnullableMap = make(map[string]BasicScalar, len(o.NonnullableMap))
+		for k, v := range o.NonnullableMap {
+			n := BasicScalar{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(&n, &v)
+			m.NonnullableMap[k] = n
+		}
+	}
+
+}
+
+func (m *OneOf) Copy() *OneOf {
+	if m == nil {
+		return nil
+	}
+	o := &OneOf{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *OneOf) CopyFrom(src interface{}) {
+
+	o := src.(*OneOf)
+	if o.Fields != nil {
+		switch o.Fields.(type) {
+		case *OneOf_Field1:
+			v := OneOf_Field1{
+				Field1: o.GetField1(),
+			}
+			m.Fields = &v
+		case *OneOf_Field2:
+			v := OneOf_Field2{
+				Field2: o.GetField2(),
+			}
+			m.Fields = &v
+		case *OneOf_Field3:
+			v := OneOf_Field3{
+				Field3: o.GetField3(),
+			}
+			m.Fields = &v
+		case *OneOf_Field4:
+			v := OneOf_Field4{
+				Field4: o.GetField4(),
+			}
+			m.Fields = &v
+		case *OneOf_Field5:
+			v := OneOf_Field5{
+				Field5: o.GetField5(),
+			}
+			m.Fields = &v
+		case *OneOf_Field6:
+			v := OneOf_Field6{
+				Field6: o.GetField6(),
+			}
+			m.Fields = &v
+		case *OneOf_Field7:
+			v := OneOf_Field7{
+				Field7: o.GetField7(),
+			}
+			m.Fields = &v
+		case *OneOf_Field8:
+			v := OneOf_Field8{
+				Field8: &MapStruct{},
+			}
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Field8, o.GetField8())
+			m.Fields = &v
+		case *OneOf_Field9:
+			v := OneOf_Field9{
+				Field9: &RepeatedNonNullableExternalStruct{},
+			}
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Field9, o.GetField9())
+			m.Fields = &v
+		}
+	}
+
+	if o.FieldsTwo != nil {
+		switch o.FieldsTwo.(type) {
+		case *OneOf_Field10:
+			v := OneOf_Field10{
+				Field10: &NonNullableExternalStruct{},
+			}
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Field10, o.GetField10())
+			m.FieldsTwo = &v
+		case *OneOf_Field11:
+			v := OneOf_Field11{
+				Field11: &RepeatedExternalStruct{},
+			}
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Field11, o.GetField11())
+			m.FieldsTwo = &v
+		}
+	}
+
 }
 
 func (this *BasicScalar) Equal(that interface{}) bool {
@@ -1039,6 +1561,381 @@ func (this *MapStruct) Equal(that interface{}) bool {
 	}
 	return true
 }
+func (this *OneOf) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*OneOf)
+	if !ok {
+		that2, ok := that.(OneOf)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if that1.Fields == nil {
+		if this.Fields != nil {
+			return false
+		}
+	} else if this.Fields == nil {
+		return false
+	} else if !this.Fields.Equal(that1.Fields) {
+		return false
+	}
+	if that1.FieldsTwo == nil {
+		if this.FieldsTwo != nil {
+			return false
+		}
+	} else if this.FieldsTwo == nil {
+		return false
+	} else if !this.FieldsTwo.Equal(that1.FieldsTwo) {
+		return false
+	}
+	return true
+}
+func (this *OneOf_Field1) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*OneOf_Field1)
+	if !ok {
+		that2, ok := that.(OneOf_Field1)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.Field1 != that1.Field1 {
+		return false
+	}
+	return true
+}
+func (this *OneOf_Field2) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*OneOf_Field2)
+	if !ok {
+		that2, ok := that.(OneOf_Field2)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.Field2 != that1.Field2 {
+		return false
+	}
+	return true
+}
+func (this *OneOf_Field3) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*OneOf_Field3)
+	if !ok {
+		that2, ok := that.(OneOf_Field3)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.Field3 != that1.Field3 {
+		return false
+	}
+	return true
+}
+func (this *OneOf_Field4) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*OneOf_Field4)
+	if !ok {
+		that2, ok := that.(OneOf_Field4)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.Field4 != that1.Field4 {
+		return false
+	}
+	return true
+}
+func (this *OneOf_Field5) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*OneOf_Field5)
+	if !ok {
+		that2, ok := that.(OneOf_Field5)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.Field5 != that1.Field5 {
+		return false
+	}
+	return true
+}
+func (this *OneOf_Field6) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*OneOf_Field6)
+	if !ok {
+		that2, ok := that.(OneOf_Field6)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.Field6 != that1.Field6 {
+		return false
+	}
+	return true
+}
+func (this *OneOf_Field7) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*OneOf_Field7)
+	if !ok {
+		that2, ok := that.(OneOf_Field7)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.Field7, that1.Field7) {
+		return false
+	}
+	return true
+}
+func (this *OneOf_Field8) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*OneOf_Field8)
+	if !ok {
+		that2, ok := that.(OneOf_Field8)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.Field8.Equal(that1.Field8) {
+		return false
+	}
+	return true
+}
+func (this *OneOf_Field9) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*OneOf_Field9)
+	if !ok {
+		that2, ok := that.(OneOf_Field9)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.Field9.Equal(that1.Field9) {
+		return false
+	}
+	return true
+}
+func (this *OneOf_Field10) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*OneOf_Field10)
+	if !ok {
+		that2, ok := that.(OneOf_Field10)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.Field10.Equal(that1.Field10) {
+		return false
+	}
+	return true
+}
+func (this *OneOf_Field11) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*OneOf_Field11)
+	if !ok {
+		that2, ok := that.(OneOf_Field11)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.Field11.Equal(that1.Field11) {
+		return false
+	}
+	return true
+}
 func NewPopulatedBasicScalar(r randyDeepcopy, easy bool) *BasicScalar {
 	this := &BasicScalar{}
 	this.Field1 = float64(r.Float64())
@@ -1078,7 +1975,7 @@ func NewPopulatedBasicScalar(r randyDeepcopy, easy bool) *BasicScalar {
 		this.Field12 *= -1
 	}
 	this.Field13 = bool(bool(r.Intn(2) == 0))
-	this.Field14 = randStringDeepcopy(r)
+	this.Field14 = string(randStringDeepcopy(r))
 	v1 := r.Intn(100)
 	this.Field15 = make([]byte, v1)
 	for i := 0; i < v1; i++ {
@@ -1183,7 +2080,7 @@ func NewPopulatedRepeatedScalar(r randyDeepcopy, easy bool) *RepeatedScalar {
 	v15 := r.Intn(10)
 	this.Field14 = make([]string, v15)
 	for i := 0; i < v15; i++ {
-		this.Field14[i] = randStringDeepcopy(r)
+		this.Field14[i] = string(randStringDeepcopy(r))
 	}
 	v16 := r.Intn(10)
 	this.Field15 = make([][]byte, v16)
@@ -1404,6 +2301,113 @@ func NewPopulatedMapStruct(r randyDeepcopy, easy bool) *MapStruct {
 	return this
 }
 
+func NewPopulatedOneOf(r randyDeepcopy, easy bool) *OneOf {
+	this := &OneOf{}
+	oneofNumber_Fields := []int32{1, 2, 3, 4, 5, 6, 7, 8, 9}[r.Intn(9)]
+	switch oneofNumber_Fields {
+	case 1:
+		this.Fields = NewPopulatedOneOf_Field1(r, easy)
+	case 2:
+		this.Fields = NewPopulatedOneOf_Field2(r, easy)
+	case 3:
+		this.Fields = NewPopulatedOneOf_Field3(r, easy)
+	case 4:
+		this.Fields = NewPopulatedOneOf_Field4(r, easy)
+	case 5:
+		this.Fields = NewPopulatedOneOf_Field5(r, easy)
+	case 6:
+		this.Fields = NewPopulatedOneOf_Field6(r, easy)
+	case 7:
+		this.Fields = NewPopulatedOneOf_Field7(r, easy)
+	case 8:
+		this.Fields = NewPopulatedOneOf_Field8(r, easy)
+	case 9:
+		this.Fields = NewPopulatedOneOf_Field9(r, easy)
+	}
+	oneofNumber_FieldsTwo := []int32{10, 11}[r.Intn(2)]
+	switch oneofNumber_FieldsTwo {
+	case 10:
+		this.FieldsTwo = NewPopulatedOneOf_Field10(r, easy)
+	case 11:
+		this.FieldsTwo = NewPopulatedOneOf_Field11(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedOneOf_Field1(r randyDeepcopy, easy bool) *OneOf_Field1 {
+	this := &OneOf_Field1{}
+	this.Field1 = float64(r.Float64())
+	if r.Intn(2) == 0 {
+		this.Field1 *= -1
+	}
+	return this
+}
+func NewPopulatedOneOf_Field2(r randyDeepcopy, easy bool) *OneOf_Field2 {
+	this := &OneOf_Field2{}
+	this.Field2 = float32(r.Float32())
+	if r.Intn(2) == 0 {
+		this.Field2 *= -1
+	}
+	return this
+}
+func NewPopulatedOneOf_Field3(r randyDeepcopy, easy bool) *OneOf_Field3 {
+	this := &OneOf_Field3{}
+	this.Field3 = int32(r.Int31())
+	if r.Intn(2) == 0 {
+		this.Field3 *= -1
+	}
+	return this
+}
+func NewPopulatedOneOf_Field4(r randyDeepcopy, easy bool) *OneOf_Field4 {
+	this := &OneOf_Field4{}
+	this.Field4 = int64(r.Int63())
+	if r.Intn(2) == 0 {
+		this.Field4 *= -1
+	}
+	return this
+}
+func NewPopulatedOneOf_Field5(r randyDeepcopy, easy bool) *OneOf_Field5 {
+	this := &OneOf_Field5{}
+	this.Field5 = uint32(r.Uint32())
+	return this
+}
+func NewPopulatedOneOf_Field6(r randyDeepcopy, easy bool) *OneOf_Field6 {
+	this := &OneOf_Field6{}
+	this.Field6 = string(randStringDeepcopy(r))
+	return this
+}
+func NewPopulatedOneOf_Field7(r randyDeepcopy, easy bool) *OneOf_Field7 {
+	this := &OneOf_Field7{}
+	v45 := r.Intn(100)
+	this.Field7 = make([]byte, v45)
+	for i := 0; i < v45; i++ {
+		this.Field7[i] = byte(r.Intn(256))
+	}
+	return this
+}
+func NewPopulatedOneOf_Field8(r randyDeepcopy, easy bool) *OneOf_Field8 {
+	this := &OneOf_Field8{}
+	this.Field8 = NewPopulatedMapStruct(r, easy)
+	return this
+}
+func NewPopulatedOneOf_Field9(r randyDeepcopy, easy bool) *OneOf_Field9 {
+	this := &OneOf_Field9{}
+	this.Field9 = NewPopulatedRepeatedNonNullableExternalStruct(r, easy)
+	return this
+}
+func NewPopulatedOneOf_Field10(r randyDeepcopy, easy bool) *OneOf_Field10 {
+	this := &OneOf_Field10{}
+	this.Field10 = NewPopulatedNonNullableExternalStruct(r, easy)
+	return this
+}
+func NewPopulatedOneOf_Field11(r randyDeepcopy, easy bool) *OneOf_Field11 {
+	this := &OneOf_Field11{}
+	this.Field11 = NewPopulatedRepeatedExternalStruct(r, easy)
+	return this
+}
+
 type randyDeepcopy interface {
 	Float32() float32
 	Float64() float64
@@ -1423,14 +2427,14 @@ func randUTF8RuneDeepcopy(r randyDeepcopy) rune {
 	return rune(ru + 61)
 }
 func randStringDeepcopy(r randyDeepcopy) string {
-	v45 := r.Intn(100)
-	tmps := make([]rune, v45)
-	for i := 0; i < v45; i++ {
+	v46 := r.Intn(100)
+	tmps := make([]rune, v46)
+	for i := 0; i < v46; i++ {
 		tmps[i] = randUTF8RuneDeepcopy(r)
 	}
 	return string(tmps)
 }
-func randUnrecognizedDeepcopy(r randyDeepcopy, maxFieldNumber int) (data []byte) {
+func randUnrecognizedDeepcopy(r randyDeepcopy, maxFieldNumber int) (dAtA []byte) {
 	l := r.Intn(5)
 	for i := 0; i < l; i++ {
 		wire := r.Intn(4)
@@ -1438,43 +2442,43 @@ func randUnrecognizedDeepcopy(r randyDeepcopy, maxFieldNumber int) (data []byte)
 			wire = 5
 		}
 		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldDeepcopy(data, r, fieldNumber, wire)
+		dAtA = randFieldDeepcopy(dAtA, r, fieldNumber, wire)
 	}
-	return data
+	return dAtA
 }
-func randFieldDeepcopy(data []byte, r randyDeepcopy, fieldNumber int, wire int) []byte {
+func randFieldDeepcopy(dAtA []byte, r randyDeepcopy, fieldNumber int, wire int) []byte {
 	key := uint32(fieldNumber)<<3 | uint32(wire)
 	switch wire {
 	case 0:
-		data = encodeVarintPopulateDeepcopy(data, uint64(key))
-		v46 := r.Int63()
+		dAtA = encodeVarintPopulateDeepcopy(dAtA, uint64(key))
+		v47 := r.Int63()
 		if r.Intn(2) == 0 {
-			v46 *= -1
+			v47 *= -1
 		}
-		data = encodeVarintPopulateDeepcopy(data, uint64(v46))
+		dAtA = encodeVarintPopulateDeepcopy(dAtA, uint64(v47))
 	case 1:
-		data = encodeVarintPopulateDeepcopy(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+		dAtA = encodeVarintPopulateDeepcopy(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
 	case 2:
-		data = encodeVarintPopulateDeepcopy(data, uint64(key))
+		dAtA = encodeVarintPopulateDeepcopy(dAtA, uint64(key))
 		ll := r.Intn(100)
-		data = encodeVarintPopulateDeepcopy(data, uint64(ll))
+		dAtA = encodeVarintPopulateDeepcopy(dAtA, uint64(ll))
 		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
+			dAtA = append(dAtA, byte(r.Intn(256)))
 		}
 	default:
-		data = encodeVarintPopulateDeepcopy(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+		dAtA = encodeVarintPopulateDeepcopy(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
 	}
-	return data
+	return dAtA
 }
-func encodeVarintPopulateDeepcopy(data []byte, v uint64) []byte {
+func encodeVarintPopulateDeepcopy(dAtA []byte, v uint64) []byte {
 	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		dAtA = append(dAtA, uint8(uint64(v)&0x7f|0x80))
 		v >>= 7
 	}
-	data = append(data, uint8(v))
-	return data
+	dAtA = append(dAtA, uint8(v))
+	return dAtA
 }
 func (this *BasicScalar) String() string {
 	if this == nil {
@@ -1625,6 +2629,127 @@ func (this *MapStruct) String() string {
 	}, "")
 	return s
 }
+func (this *OneOf) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&OneOf{`,
+		`Fields:` + fmt.Sprintf("%v", this.Fields) + `,`,
+		`FieldsTwo:` + fmt.Sprintf("%v", this.FieldsTwo) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *OneOf_Field1) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&OneOf_Field1{`,
+		`Field1:` + fmt.Sprintf("%v", this.Field1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *OneOf_Field2) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&OneOf_Field2{`,
+		`Field2:` + fmt.Sprintf("%v", this.Field2) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *OneOf_Field3) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&OneOf_Field3{`,
+		`Field3:` + fmt.Sprintf("%v", this.Field3) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *OneOf_Field4) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&OneOf_Field4{`,
+		`Field4:` + fmt.Sprintf("%v", this.Field4) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *OneOf_Field5) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&OneOf_Field5{`,
+		`Field5:` + fmt.Sprintf("%v", this.Field5) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *OneOf_Field6) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&OneOf_Field6{`,
+		`Field6:` + fmt.Sprintf("%v", this.Field6) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *OneOf_Field7) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&OneOf_Field7{`,
+		`Field7:` + fmt.Sprintf("%v", this.Field7) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *OneOf_Field8) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&OneOf_Field8{`,
+		`Field8:` + strings.Replace(fmt.Sprintf("%v", this.Field8), "MapStruct", "MapStruct", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *OneOf_Field9) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&OneOf_Field9{`,
+		`Field9:` + strings.Replace(fmt.Sprintf("%v", this.Field9), "RepeatedNonNullableExternalStruct", "RepeatedNonNullableExternalStruct", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *OneOf_Field10) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&OneOf_Field10{`,
+		`Field10:` + strings.Replace(fmt.Sprintf("%v", this.Field10), "NonNullableExternalStruct", "NonNullableExternalStruct", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *OneOf_Field11) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&OneOf_Field11{`,
+		`Field11:` + strings.Replace(fmt.Sprintf("%v", this.Field11), "RepeatedExternalStruct", "RepeatedExternalStruct", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
 func valueToStringDeepcopy(v interface{}) string {
 	rv := reflect.ValueOf(v)
 	if rv.IsNil() {
@@ -1637,52 +2762,60 @@ func valueToStringDeepcopy(v interface{}) string {
 func init() { proto.RegisterFile("deepcopy.proto", fileDescriptorDeepcopy) }
 
 var fileDescriptorDeepcopy = []byte{
-	// 750 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xa4, 0x96, 0x31, 0x6f, 0xd3, 0x40,
-	0x14, 0xc7, 0x7d, 0xb9, 0x34, 0x69, 0x2e, 0x6d, 0x9a, 0x9a, 0xaa, 0x3a, 0xa2, 0xea, 0x38, 0xc2,
-	0xc0, 0x21, 0x41, 0xda, 0xd8, 0x49, 0x9b, 0x32, 0x06, 0xca, 0xd6, 0x0a, 0x52, 0x76, 0xe4, 0x24,
-	0x6e, 0xa9, 0x9a, 0xda, 0x56, 0xea, 0x20, 0xba, 0x15, 0x89, 0x89, 0xef, 0x80, 0xc4, 0x82, 0xc4,
-	0x47, 0x40, 0x8c, 0x4c, 0x5d, 0x90, 0x3a, 0x32, 0x21, 0xe2, 0x2e, 0x1d, 0x3b, 0x76, 0x44, 0xb5,
-	0xcf, 0x67, 0x3b, 0xe4, 0x20, 0x85, 0x2d, 0xfe, 0xff, 0x9e, 0xcf, 0xef, 0xdd, 0xef, 0x74, 0x0a,
-	0x2a, 0x74, 0x4d, 0xd3, 0xe9, 0xd8, 0xce, 0x51, 0xc5, 0xe9, 0xdb, 0xae, 0xad, 0xa6, 0x5d, 0xf3,
-	0xd0, 0x2d, 0x3d, 0xd8, 0xdd, 0x73, 0x5f, 0x0e, 0xda, 0x95, 0x8e, 0x7d, 0xb0, 0xbc, 0x6b, 0xef,
-	0xda, 0xcb, 0x3e, 0x6c, 0x0f, 0x76, 0xfc, 0x27, 0xff, 0xc1, 0xff, 0x15, 0xbc, 0x54, 0x7e, 0x03,
-	0x51, 0xbe, 0x69, 0x1c, 0xee, 0x75, 0xb6, 0x3b, 0x46, 0xcf, 0xe8, 0xab, 0x8b, 0x28, 0xf3, 0x64,
-	0xcf, 0xec, 0x75, 0xab, 0x18, 0x50, 0xc0, 0x40, 0x2b, 0xb3, 0xe3, 0x3f, 0x89, 0x5c, 0xc3, 0x29,
-	0x0a, 0x58, 0x8a, 0xe7, 0x9a, 0xc8, 0x75, 0x0c, 0x29, 0x60, 0x53, 0x3c, 0xd7, 0x45, 0x5e, 0xc3,
-	0x69, 0x0a, 0x18, 0xe4, 0x79, 0x4d, 0xe4, 0x75, 0x3c, 0x45, 0x01, 0x9b, 0xe5, 0x79, 0x5d, 0xe4,
-	0xab, 0x38, 0x43, 0x01, 0x4b, 0xf3, 0x7c, 0x55, 0xe4, 0x6b, 0x38, 0x4b, 0x01, 0x9b, 0xe7, 0xf9,
-	0x9a, 0xc8, 0x1b, 0x78, 0x9a, 0x02, 0xa6, 0xf2, 0xbc, 0x21, 0xf2, 0x75, 0x9c, 0xa3, 0x80, 0x65,
-	0x79, 0xbe, 0xae, 0x62, 0x94, 0x0d, 0xe6, 0x5a, 0xc1, 0x88, 0x02, 0x36, 0xd7, 0xca, 0x06, 0x83,
-	0xad, 0x44, 0xa4, 0x8a, 0xf3, 0x14, 0xb0, 0x4c, 0x48, 0xaa, 0x11, 0xd1, 0xf0, 0x0c, 0x05, 0xac,
-	0x18, 0x12, 0x2d, 0x22, 0x3a, 0x9e, 0xa5, 0x80, 0x4d, 0x87, 0x44, 0x8f, 0x48, 0x0d, 0x17, 0x28,
-	0x60, 0xb9, 0x90, 0xd4, 0x22, 0x52, 0xc7, 0x73, 0x14, 0xb0, 0x99, 0x90, 0xd4, 0xcb, 0x6f, 0x21,
-	0x2a, 0xb4, 0x4c, 0xc7, 0x34, 0x5c, 0xb3, 0x3b, 0x46, 0x03, 0x94, 0x68, 0x80, 0x12, 0x0d, 0x50,
-	0xa2, 0x01, 0x4a, 0x34, 0x40, 0x89, 0x06, 0x28, 0xd1, 0x00, 0x25, 0x1a, 0xa0, 0x44, 0x03, 0x94,
-	0x69, 0x80, 0x52, 0x0d, 0x50, 0xaa, 0x01, 0x4a, 0x35, 0x40, 0xa9, 0x06, 0x28, 0xd5, 0x00, 0xe3,
-	0x1a, 0xde, 0x41, 0xb4, 0x90, 0xd4, 0xf0, 0xd4, 0xe8, 0xec, 0x9b, 0x5d, 0xb5, 0x94, 0x94, 0xd1,
-	0x4c, 0x15, 0x23, 0x21, 0xa5, 0xa4, 0x90, 0x18, 0xd3, 0x04, 0xe3, 0x52, 0x62, 0x4c, 0x17, 0x8c,
-	0x8b, 0x89, 0xb1, 0x9a, 0x60, 0x5c, 0x4e, 0x8c, 0xd5, 0x05, 0xe3, 0x82, 0x62, 0x6c, 0x55, 0x30,
-	0x2e, 0x29, 0xc6, 0xd6, 0x04, 0xe3, 0xa2, 0x62, 0xac, 0x21, 0x18, 0x97, 0x15, 0x63, 0xeb, 0xea,
-	0xd2, 0x88, 0x30, 0x1f, 0x0a, 0x69, 0x4b, 0x23, 0xd2, 0xe2, 0xb4, 0x1a, 0x51, 0x2e, 0x2e, 0x4e,
-	0xb5, 0x88, 0x72, 0x79, 0x71, 0xaa, 0x97, 0xdf, 0x03, 0x54, 0xd8, 0x78, 0xed, 0x9a, 0x7d, 0xcb,
-	0xe8, 0x6d, 0xbb, 0xfd, 0x41, 0xc7, 0x55, 0xef, 0x25, 0xae, 0xa6, 0xbc, 0x36, 0x5f, 0xb9, 0xba,
-	0xf0, 0x2a, 0xb1, 0xdb, 0x4b, 0x58, 0xb9, 0x9f, 0xb8, 0xad, 0xf2, 0xda, 0x42, 0x50, 0x9a, 0xb4,
-	0x2b, 0x3c, 0x69, 0x89, 0x3b, 0x2c, 0xaf, 0x95, 0xc6, 0x55, 0x07, 0x67, 0x21, 0xf4, 0x57, 0xfe,
-	0x08, 0xd0, 0x62, 0x58, 0xf0, 0x87, 0x3e, 0xe1, 0xe4, 0x7d, 0xc2, 0x6b, 0xf5, 0x09, 0x27, 0xec,
-	0xf3, 0x0b, 0x40, 0x37, 0xb7, 0x6c, 0x6b, 0x6b, 0xd0, 0xeb, 0x19, 0xed, 0x9e, 0x39, 0xd2, 0xea,
-	0xf2, 0x5f, 0xb7, 0xb4, 0x99, 0x3e, 0xf9, 0x71, 0x4b, 0x11, 0x0d, 0x6b, 0x93, 0x6c, 0x6c, 0xe2,
-	0x1d, 0x4d, 0x6d, 0x4c, 0xbe, 0xbd, 0x89, 0x37, 0xf5, 0xf2, 0x57, 0x80, 0x6e, 0x87, 0x65, 0x93,
-	0x0d, 0x01, 0xaf, 0x3b, 0x04, 0xfc, 0x87, 0x21, 0xe0, 0xb5, 0x86, 0xf8, 0x96, 0x42, 0xb9, 0x4d,
-	0xc3, 0xe1, 0xcd, 0x3e, 0x42, 0x33, 0x16, 0x1f, 0xe3, 0xc5, 0x81, 0xe1, 0xf0, 0x96, 0x69, 0xb0,
-	0x9a, 0x28, 0xab, 0x84, 0xa3, 0x6e, 0x1a, 0xce, 0x86, 0xe5, 0xf6, 0x8f, 0x5a, 0x79, 0x2b, 0x4a,
-	0xd4, 0x16, 0x9a, 0xb3, 0x6c, 0x2b, 0xb1, 0x4e, 0x30, 0xc9, 0x9d, 0xdf, 0xd6, 0x89, 0xca, 0xc2,
-	0xa5, 0x78, 0x7b, 0x05, 0x2b, 0x81, 0x4a, 0xcf, 0x50, 0x71, 0xf4, 0xa3, 0x6a, 0x11, 0xc1, 0x7d,
-	0xf3, 0xc8, 0x3f, 0x1b, 0xb9, 0xd6, 0xd5, 0x4f, 0xf5, 0x2e, 0x9a, 0x7a, 0x65, 0xf4, 0x06, 0x26,
-	0xd7, 0x3f, 0xe6, 0x68, 0x07, 0xfc, 0x61, 0xaa, 0x01, 0x4a, 0xcf, 0xd1, 0x8d, 0x31, 0xdf, 0xff,
-	0xcf, 0x55, 0x9b, 0x8f, 0x4f, 0x86, 0x44, 0x39, 0x1d, 0x12, 0xe5, 0xfb, 0x90, 0x28, 0xe7, 0x43,
-	0xa2, 0x5c, 0x0c, 0x89, 0x72, 0x39, 0x24, 0xe0, 0xd8, 0x23, 0xe0, 0x93, 0x47, 0xc0, 0x67, 0x8f,
-	0x80, 0x13, 0x8f, 0x28, 0xa7, 0x1e, 0x51, 0x7e, 0x7a, 0x44, 0x39, 0xf7, 0x88, 0x72, 0xe1, 0x11,
-	0xe5, 0xd2, 0x23, 0xca, 0xf1, 0x19, 0x51, 0x3e, 0x9c, 0x11, 0xa5, 0x9d, 0xf1, 0xff, 0xfe, 0xe8,
-	0xbf, 0x02, 0x00, 0x00, 0xff, 0xff, 0x95, 0x64, 0x5b, 0xe4, 0x45, 0x09, 0x00, 0x00,
+	// 876 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xa4, 0x96, 0xcf, 0x8f, 0xdb, 0x44,
+	0x14, 0xc7, 0x3d, 0x99, 0xdd, 0x64, 0x33, 0x4e, 0x93, 0xd4, 0x54, 0xd5, 0x10, 0xad, 0xa6, 0x43,
+	0x38, 0xd4, 0x48, 0x90, 0x6d, 0xc6, 0xf9, 0x09, 0x27, 0x02, 0x45, 0xbd, 0xb4, 0x85, 0xb4, 0x77,
+	0xe4, 0x24, 0xde, 0x65, 0xd5, 0xd4, 0x8e, 0xb2, 0x0e, 0xb0, 0xb7, 0x22, 0x71, 0xe2, 0x7f, 0x40,
+	0xe2, 0x82, 0xc4, 0x9f, 0x00, 0x1c, 0x39, 0xed, 0x05, 0xa9, 0x47, 0x4e, 0x88, 0xb8, 0x97, 0x1e,
+	0x7b, 0xec, 0x11, 0xd5, 0x1e, 0x3f, 0x7b, 0x42, 0x06, 0xb2, 0xf4, 0x66, 0x7f, 0x3f, 0xe3, 0xc9,
+	0x7b, 0xfe, 0x38, 0xa3, 0x47, 0xaa, 0x33, 0xcf, 0x5b, 0x4c, 0x83, 0xc5, 0x79, 0x6b, 0xb1, 0x0c,
+	0xc2, 0xc0, 0xda, 0x0b, 0xbd, 0xb3, 0xb0, 0xf1, 0xde, 0xc9, 0x69, 0xf8, 0xc5, 0x6a, 0xd2, 0x9a,
+	0x06, 0x8f, 0x8f, 0x4e, 0x82, 0x93, 0xe0, 0x28, 0x86, 0x93, 0xd5, 0x71, 0x7c, 0x17, 0xdf, 0xc4,
+	0x57, 0xc9, 0x43, 0xcd, 0x6f, 0x30, 0x31, 0x47, 0xee, 0xd9, 0xe9, 0xf4, 0xc1, 0xd4, 0x9d, 0xbb,
+	0x4b, 0xeb, 0x3a, 0x29, 0x7e, 0x72, 0xea, 0xcd, 0x67, 0x6d, 0x8a, 0x38, 0xb2, 0xd1, 0xb8, 0x78,
+	0x1c, 0xdf, 0x41, 0x2e, 0x68, 0x81, 0x23, 0xbb, 0x20, 0x73, 0x01, 0xb9, 0x43, 0x31, 0x47, 0xf6,
+	0xbe, 0xcc, 0x1d, 0xc8, 0x3b, 0x74, 0x8f, 0x23, 0x1b, 0xcb, 0xbc, 0x03, 0x79, 0x97, 0xee, 0x73,
+	0x64, 0x5f, 0x91, 0x79, 0x17, 0xf2, 0x1e, 0x2d, 0x72, 0x64, 0xef, 0xc9, 0xbc, 0x07, 0x79, 0x9f,
+	0x96, 0x38, 0xb2, 0xaf, 0xca, 0xbc, 0x0f, 0xf9, 0x80, 0x1e, 0x70, 0x64, 0x5b, 0x32, 0x1f, 0x40,
+	0x3e, 0xa4, 0x65, 0x8e, 0xec, 0x92, 0xcc, 0x87, 0x16, 0x25, 0xa5, 0xa4, 0xaf, 0x5b, 0x94, 0x70,
+	0x64, 0xd7, 0xc6, 0xa5, 0xa4, 0xb1, 0x5b, 0x19, 0x69, 0x53, 0x93, 0x23, 0xbb, 0x98, 0x92, 0x76,
+	0x46, 0x04, 0xad, 0x70, 0x64, 0xd7, 0x53, 0x22, 0x32, 0xe2, 0xd0, 0x2b, 0x1c, 0xd9, 0x07, 0x29,
+	0x71, 0x32, 0xd2, 0xa1, 0x55, 0x8e, 0xec, 0x72, 0x4a, 0x3a, 0x19, 0xe9, 0xd2, 0x1a, 0x47, 0x76,
+	0x25, 0x25, 0xdd, 0xe6, 0xb7, 0x98, 0x54, 0xc7, 0xde, 0xc2, 0x73, 0x43, 0x6f, 0xb6, 0x45, 0x03,
+	0xd6, 0x68, 0xc0, 0x1a, 0x0d, 0x58, 0xa3, 0x01, 0x6b, 0x34, 0x60, 0x8d, 0x06, 0xac, 0xd1, 0x80,
+	0x35, 0x1a, 0xb0, 0x46, 0x03, 0xd6, 0x69, 0xc0, 0x5a, 0x0d, 0x58, 0xab, 0x01, 0x6b, 0x35, 0x60,
+	0xad, 0x06, 0xac, 0xd5, 0x80, 0xf3, 0x1a, 0xbe, 0xc3, 0xe4, 0x9a, 0xaa, 0xe1, 0x53, 0x77, 0xfa,
+	0xc8, 0x9b, 0x59, 0x0d, 0x55, 0xc6, 0xa8, 0x50, 0xcf, 0x84, 0x34, 0x54, 0x21, 0x39, 0x26, 0x80,
+	0x49, 0x29, 0x39, 0xe6, 0x00, 0x93, 0x62, 0x72, 0xac, 0x03, 0x4c, 0xca, 0xc9, 0xb1, 0x2e, 0x30,
+	0x29, 0x28, 0xc7, 0x7a, 0xc0, 0xa4, 0xa4, 0x1c, 0xeb, 0x03, 0x93, 0xa2, 0x72, 0x6c, 0x00, 0x4c,
+	0xca, 0xca, 0xb1, 0xa1, 0x75, 0xb8, 0x21, 0x2c, 0x86, 0x20, 0xed, 0x70, 0x43, 0x5a, 0x9e, 0xb6,
+	0x33, 0x2a, 0xc5, 0xe5, 0xa9, 0xc8, 0xa8, 0x94, 0x97, 0xa7, 0x4e, 0xf3, 0x7b, 0x44, 0xaa, 0xb7,
+	0xbf, 0x0e, 0xbd, 0xa5, 0xef, 0xce, 0x1f, 0x84, 0xcb, 0xd5, 0x34, 0xb4, 0xde, 0x51, 0x8e, 0x26,
+	0x53, 0x5c, 0x6d, 0xbd, 0x3a, 0xf0, 0x5a, 0xb9, 0xd3, 0x0b, 0xac, 0xbc, 0xab, 0x9c, 0x56, 0xa6,
+	0xb8, 0x96, 0x2c, 0x55, 0xed, 0x82, 0x27, 0xa1, 0x9c, 0x61, 0xa6, 0x68, 0x6c, 0x5b, 0x9d, 0x7c,
+	0x0b, 0xa9, 0xbf, 0xe6, 0x8f, 0x88, 0x5c, 0x4f, 0x17, 0xfc, 0x4b, 0x9d, 0x78, 0xf7, 0x3a, 0xf1,
+	0xa5, 0xea, 0xc4, 0x3b, 0xd6, 0xf9, 0x2b, 0x22, 0x6f, 0xde, 0x0b, 0xfc, 0x7b, 0xab, 0xf9, 0xdc,
+	0x9d, 0xcc, 0xbd, 0x8d, 0x52, 0x8f, 0xfe, 0xf3, 0x95, 0x8e, 0xf6, 0x2e, 0xfe, 0xbc, 0x61, 0x40,
+	0xc1, 0x62, 0x97, 0x17, 0xab, 0x3c, 0x23, 0xac, 0xc1, 0xee, 0xaf, 0x57, 0x79, 0xd2, 0x69, 0xfe,
+	0x86, 0xc8, 0x5b, 0xe9, 0xb2, 0xdd, 0x9a, 0xc0, 0x97, 0x6d, 0x02, 0xff, 0x8f, 0x26, 0xf0, 0xa5,
+	0x9a, 0xf8, 0xbd, 0x40, 0xca, 0x77, 0xdd, 0x85, 0x2c, 0xf6, 0x23, 0x52, 0xf1, 0x65, 0x1b, 0x9f,
+	0x3f, 0x76, 0x17, 0xb2, 0x64, 0x9e, 0xec, 0x06, 0xcb, 0x5a, 0x69, 0xab, 0x77, 0xdd, 0xc5, 0x6d,
+	0x3f, 0x5c, 0x9e, 0x8f, 0x4d, 0x3f, 0x4b, 0xac, 0x31, 0xa9, 0xf9, 0x81, 0xaf, 0xec, 0x93, 0x74,
+	0xf2, 0xf6, 0x3f, 0xf6, 0xc9, 0x96, 0xa5, 0x5b, 0xc9, 0xf2, 0xaa, 0xbe, 0x82, 0x1a, 0x9f, 0x91,
+	0xfa, 0xe6, 0x8f, 0x5a, 0x75, 0x82, 0x1f, 0x79, 0xe7, 0xf1, 0xb7, 0x51, 0x1e, 0xbf, 0xba, 0xb4,
+	0x6e, 0x92, 0xfd, 0x2f, 0xdd, 0xf9, 0xca, 0x93, 0xfa, 0xb7, 0x7c, 0xda, 0x09, 0x7f, 0xbf, 0x30,
+	0x40, 0x8d, 0x87, 0xe4, 0x8d, 0x2d, 0xbf, 0xff, 0x9a, 0xbb, 0x36, 0x7f, 0xc1, 0x64, 0xff, 0xbe,
+	0xef, 0xdd, 0x3f, 0xb6, 0xa8, 0x3a, 0xab, 0xdc, 0xc9, 0x0c, 0x53, 0x75, 0x5a, 0xb9, 0x93, 0x79,
+	0xa4, 0xea, 0xbc, 0x02, 0xc4, 0x01, 0x22, 0x27, 0x16, 0x20, 0x1d, 0x20, 0x72, 0x66, 0x01, 0xd2,
+	0x05, 0x92, 0x4c, 0x2d, 0x65, 0x20, 0x3d, 0x20, 0xc9, 0xdc, 0x52, 0x01, 0xd2, 0x87, 0xe3, 0x21,
+	0x99, 0x5c, 0x4c, 0x51, 0xdb, 0x70, 0x06, 0x4b, 0x07, 0xd6, 0x87, 0xca, 0x30, 0x63, 0x8a, 0x9b,
+	0xea, 0x47, 0xa7, 0xfd, 0x4b, 0xc0, 0x16, 0x43, 0xeb, 0x03, 0x75, 0xee, 0x31, 0xc5, 0x8d, 0x64,
+	0x0f, 0xfd, 0xb3, 0xb9, 0xe3, 0x7d, 0xa0, 0x8e, 0x46, 0xa6, 0x38, 0x54, 0x0b, 0xd0, 0x3d, 0xd9,
+	0x1e, 0x1d, 0x90, 0xa4, 0x80, 0xb3, 0x91, 0x49, 0xca, 0xc9, 0xd5, 0xc3, 0xaf, 0x82, 0xd1, 0xc7,
+	0x17, 0x6b, 0x66, 0x3c, 0x5d, 0x33, 0xe3, 0x8f, 0x35, 0x33, 0x9e, 0xaf, 0x99, 0xf1, 0x62, 0xcd,
+	0x8c, 0x97, 0x6b, 0x86, 0x9e, 0x44, 0x0c, 0xfd, 0x14, 0x31, 0xf4, 0x73, 0xc4, 0xd0, 0x45, 0xc4,
+	0x8c, 0xa7, 0x11, 0x33, 0xfe, 0x8a, 0x98, 0xf1, 0x3c, 0x62, 0xc6, 0x8b, 0x88, 0x19, 0x2f, 0x23,
+	0x66, 0x3c, 0x79, 0xc6, 0x8c, 0x1f, 0x9e, 0x31, 0x63, 0x52, 0x8c, 0x47, 0x57, 0xe7, 0xef, 0x00,
+	0x00, 0x00, 0xff, 0xff, 0xb5, 0x50, 0xda, 0x20, 0x01, 0x0b, 0x00, 0x00,
 }
