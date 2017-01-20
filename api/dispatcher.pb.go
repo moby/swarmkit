@@ -472,11 +472,11 @@ func (m *SessionRequest) Copy() *SessionRequest {
 func (m *SessionRequest) CopyFrom(src interface{}) {
 
 	o := src.(*SessionRequest)
+	*m = *o
 	if o.Description != nil {
 		m.Description = &NodeDescription{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Description, o.Description)
 	}
-	m.SessionID = o.SessionID
 }
 
 func (m *SessionMessage) Copy() *SessionMessage {
@@ -491,7 +491,7 @@ func (m *SessionMessage) Copy() *SessionMessage {
 func (m *SessionMessage) CopyFrom(src interface{}) {
 
 	o := src.(*SessionMessage)
-	m.SessionID = o.SessionID
+	*m = *o
 	if o.Node != nil {
 		m.Node = &Node{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Node, o.Node)
@@ -526,7 +526,7 @@ func (m *HeartbeatRequest) Copy() *HeartbeatRequest {
 func (m *HeartbeatRequest) CopyFrom(src interface{}) {
 
 	o := src.(*HeartbeatRequest)
-	m.SessionID = o.SessionID
+	*m = *o
 }
 
 func (m *HeartbeatResponse) Copy() *HeartbeatResponse {
@@ -541,6 +541,7 @@ func (m *HeartbeatResponse) Copy() *HeartbeatResponse {
 func (m *HeartbeatResponse) CopyFrom(src interface{}) {
 
 	o := src.(*HeartbeatResponse)
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Period, &o.Period)
 }
 
@@ -556,7 +557,7 @@ func (m *UpdateTaskStatusRequest) Copy() *UpdateTaskStatusRequest {
 func (m *UpdateTaskStatusRequest) CopyFrom(src interface{}) {
 
 	o := src.(*UpdateTaskStatusRequest)
-	m.SessionID = o.SessionID
+	*m = *o
 	if o.Updates != nil {
 		m.Updates = make([]*UpdateTaskStatusRequest_TaskStatusUpdate, len(o.Updates))
 		for i := range m.Updates {
@@ -579,7 +580,7 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Copy() *UpdateTaskStatusReque
 func (m *UpdateTaskStatusRequest_TaskStatusUpdate) CopyFrom(src interface{}) {
 
 	o := src.(*UpdateTaskStatusRequest_TaskStatusUpdate)
-	m.TaskID = o.TaskID
+	*m = *o
 	if o.Status != nil {
 		m.Status = &TaskStatus{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Status, o.Status)
@@ -608,7 +609,7 @@ func (m *TasksRequest) Copy() *TasksRequest {
 func (m *TasksRequest) CopyFrom(src interface{}) {
 
 	o := src.(*TasksRequest)
-	m.SessionID = o.SessionID
+	*m = *o
 }
 
 func (m *TasksMessage) Copy() *TasksMessage {
@@ -623,6 +624,7 @@ func (m *TasksMessage) Copy() *TasksMessage {
 func (m *TasksMessage) CopyFrom(src interface{}) {
 
 	o := src.(*TasksMessage)
+	*m = *o
 	if o.Tasks != nil {
 		m.Tasks = make([]*Task, len(o.Tasks))
 		for i := range m.Tasks {
@@ -645,7 +647,7 @@ func (m *AssignmentsRequest) Copy() *AssignmentsRequest {
 func (m *AssignmentsRequest) CopyFrom(src interface{}) {
 
 	o := src.(*AssignmentsRequest)
-	m.SessionID = o.SessionID
+	*m = *o
 }
 
 func (m *Assignment) Copy() *Assignment {
@@ -660,6 +662,7 @@ func (m *Assignment) Copy() *Assignment {
 func (m *Assignment) CopyFrom(src interface{}) {
 
 	o := src.(*Assignment)
+	*m = *o
 	if o.Item != nil {
 		switch o.Item.(type) {
 		case *Assignment_Task:
@@ -691,11 +694,11 @@ func (m *AssignmentChange) Copy() *AssignmentChange {
 func (m *AssignmentChange) CopyFrom(src interface{}) {
 
 	o := src.(*AssignmentChange)
+	*m = *o
 	if o.Assignment != nil {
 		m.Assignment = &Assignment{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Assignment, o.Assignment)
 	}
-	m.Action = o.Action
 }
 
 func (m *AssignmentsMessage) Copy() *AssignmentsMessage {
@@ -710,9 +713,7 @@ func (m *AssignmentsMessage) Copy() *AssignmentsMessage {
 func (m *AssignmentsMessage) CopyFrom(src interface{}) {
 
 	o := src.(*AssignmentsMessage)
-	m.Type = o.Type
-	m.AppliesTo = o.AppliesTo
-	m.ResultsIn = o.ResultsIn
+	*m = *o
 	if o.Changes != nil {
 		m.Changes = make([]*AssignmentChange, len(o.Changes))
 		for i := range m.Changes {

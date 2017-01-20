@@ -577,21 +577,7 @@ func (m *BasicScalar) Copy() *BasicScalar {
 func (m *BasicScalar) CopyFrom(src interface{}) {
 
 	o := src.(*BasicScalar)
-	m.Field1 = o.Field1
-	m.Field2 = o.Field2
-	m.Field3 = o.Field3
-	m.Field4 = o.Field4
-	m.Field5 = o.Field5
-	m.Field6 = o.Field6
-	m.Field7 = o.Field7
-	m.Field8 = o.Field8
-	m.Field9 = o.Field9
-	m.Field10 = o.Field10
-	m.Field11 = o.Field11
-	m.Field12 = o.Field12
-	m.Field13 = o.Field13
-	m.Field14 = o.Field14
-	m.Field15 = o.Field15
+	*m = *o
 }
 
 func (m *RepeatedScalar) Copy() *RepeatedScalar {
@@ -606,6 +592,7 @@ func (m *RepeatedScalar) Copy() *RepeatedScalar {
 func (m *RepeatedScalar) CopyFrom(src interface{}) {
 
 	o := src.(*RepeatedScalar)
+	*m = *o
 	if o.Field1 != nil {
 		m.Field1 = make([]float64, len(o.Field1))
 		copy(m.Field1, o.Field1)
@@ -695,6 +682,7 @@ func (m *RepeatedScalarPacked) Copy() *RepeatedScalarPacked {
 func (m *RepeatedScalarPacked) CopyFrom(src interface{}) {
 
 	o := src.(*RepeatedScalarPacked)
+	*m = *o
 	if o.Field1 != nil {
 		m.Field1 = make([]float64, len(o.Field1))
 		copy(m.Field1, o.Field1)
@@ -774,6 +762,7 @@ func (m *ExternalStruct) Copy() *ExternalStruct {
 func (m *ExternalStruct) CopyFrom(src interface{}) {
 
 	o := src.(*ExternalStruct)
+	*m = *o
 	if o.Field1 != nil {
 		m.Field1 = &BasicScalar{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Field1, o.Field1)
@@ -800,6 +789,7 @@ func (m *RepeatedExternalStruct) Copy() *RepeatedExternalStruct {
 func (m *RepeatedExternalStruct) CopyFrom(src interface{}) {
 
 	o := src.(*RepeatedExternalStruct)
+	*m = *o
 	if o.Field1 != nil {
 		m.Field1 = make([]*BasicScalar, len(o.Field1))
 		for i := range m.Field1 {
@@ -838,6 +828,7 @@ func (m *NonNullableExternalStruct) Copy() *NonNullableExternalStruct {
 func (m *NonNullableExternalStruct) CopyFrom(src interface{}) {
 
 	o := src.(*NonNullableExternalStruct)
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field1, &o.Field1)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field2, &o.Field2)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field3, &o.Field3)
@@ -855,6 +846,7 @@ func (m *RepeatedNonNullableExternalStruct) Copy() *RepeatedNonNullableExternalS
 func (m *RepeatedNonNullableExternalStruct) CopyFrom(src interface{}) {
 
 	o := src.(*RepeatedNonNullableExternalStruct)
+	*m = *o
 	if o.Field1 != nil {
 		m.Field1 = make([]BasicScalar, len(o.Field1))
 		for i := range m.Field1 {
@@ -890,6 +882,7 @@ func (m *MapStruct) Copy() *MapStruct {
 func (m *MapStruct) CopyFrom(src interface{}) {
 
 	o := src.(*MapStruct)
+	*m = *o
 	if o.NullableMap != nil {
 		m.NullableMap = make(map[string]*BasicScalar, len(o.NullableMap))
 		for k, v := range o.NullableMap {
@@ -921,6 +914,7 @@ func (m *OneOf) Copy() *OneOf {
 func (m *OneOf) CopyFrom(src interface{}) {
 
 	o := src.(*OneOf)
+	*m = *o
 	if o.Fields != nil {
 		switch o.Fields.(type) {
 		case *OneOf_Field1:

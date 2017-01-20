@@ -114,7 +114,7 @@ func (m *HealthCheckRequest) Copy() *HealthCheckRequest {
 func (m *HealthCheckRequest) CopyFrom(src interface{}) {
 
 	o := src.(*HealthCheckRequest)
-	m.Service = o.Service
+	*m = *o
 }
 
 func (m *HealthCheckResponse) Copy() *HealthCheckResponse {
@@ -129,7 +129,7 @@ func (m *HealthCheckResponse) Copy() *HealthCheckResponse {
 func (m *HealthCheckResponse) CopyFrom(src interface{}) {
 
 	o := src.(*HealthCheckResponse)
-	m.Status = o.Status
+	*m = *o
 }
 
 func (this *HealthCheckRequest) GoString() string {

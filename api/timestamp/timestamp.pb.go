@@ -123,8 +123,7 @@ func (m *Timestamp) Copy() *Timestamp {
 func (m *Timestamp) CopyFrom(src interface{}) {
 
 	o := src.(*Timestamp)
-	m.Seconds = o.Seconds
-	m.Nanos = o.Nanos
+	*m = *o
 }
 
 func (this *Timestamp) GoString() string {
