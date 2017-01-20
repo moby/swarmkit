@@ -343,10 +343,13 @@ func TestDemoteDownedManager(t *testing.T) {
 	leader, err := cl.Leader()
 	require.NoError(t, err)
 
-	// add a new manager so we have 3, then find one (not the leader) to demote
+	// Find a manager (not the leader) to demote. It must not be the third
+	// manager we added, because there may not have been enough time for
+	// that one to write anything to its WAL.
 	var demotee *testNode
 	for _, n := range cl.nodes {
-		if n.IsManager() && n.node.NodeID() != leader.node.NodeID() {
+		nodeID := n.node.NodeID()
+		if n.IsManager() && nodeID != leader.node.NodeID() && cl.nodesOrder[nodeID] != 3 {
 			demotee = n
 			break
 		}
