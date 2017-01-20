@@ -361,7 +361,7 @@ func checkDo(ctx context.Context, t *testing.T, task *api.Task, ctlr Controller,
 		assert.Nil(t, err)
 
 		if current.Before(previous) {
-			// ensure that the timestamp alwways proceeds forward
+			// ensure that the timestamp always proceeds forward
 			t.Fatalf("timestamp must proceed forward: %v < %v", current, previous)
 		}
 	}
