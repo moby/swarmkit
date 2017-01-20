@@ -657,10 +657,8 @@ func (m *NodeSpec) Copy() *NodeSpec {
 func (m *NodeSpec) CopyFrom(src interface{}) {
 
 	o := src.(*NodeSpec)
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
-	m.DesiredRole = o.DesiredRole
-	m.Membership = o.Membership
-	m.Availability = o.Availability
 }
 
 func (m *ServiceSpec) Copy() *ServiceSpec {
@@ -675,6 +673,7 @@ func (m *ServiceSpec) Copy() *ServiceSpec {
 func (m *ServiceSpec) CopyFrom(src interface{}) {
 
 	o := src.(*ServiceSpec)
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Task, &o.Task)
 	if o.Update != nil {
@@ -724,7 +723,7 @@ func (m *ReplicatedService) Copy() *ReplicatedService {
 func (m *ReplicatedService) CopyFrom(src interface{}) {
 
 	o := src.(*ReplicatedService)
-	m.Replicas = o.Replicas
+	*m = *o
 }
 
 func (m *GlobalService) Copy() *GlobalService {
@@ -749,6 +748,7 @@ func (m *TaskSpec) Copy() *TaskSpec {
 func (m *TaskSpec) CopyFrom(src interface{}) {
 
 	o := src.(*TaskSpec)
+	*m = *o
 	if o.Resources != nil {
 		m.Resources = &ResourceRequirements{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Resources, o.Resources)
@@ -773,7 +773,6 @@ func (m *TaskSpec) CopyFrom(src interface{}) {
 		}
 	}
 
-	m.ForceUpdate = o.ForceUpdate
 	if o.Runtime != nil {
 		switch o.Runtime.(type) {
 		case *TaskSpec_Attachment:
@@ -805,7 +804,7 @@ func (m *NetworkAttachmentSpec) Copy() *NetworkAttachmentSpec {
 func (m *NetworkAttachmentSpec) CopyFrom(src interface{}) {
 
 	o := src.(*NetworkAttachmentSpec)
-	m.ContainerID = o.ContainerID
+	*m = *o
 }
 
 func (m *ContainerSpec) Copy() *ContainerSpec {
@@ -820,7 +819,7 @@ func (m *ContainerSpec) Copy() *ContainerSpec {
 func (m *ContainerSpec) CopyFrom(src interface{}) {
 
 	o := src.(*ContainerSpec)
-	m.Image = o.Image
+	*m = *o
 	if o.Labels != nil {
 		m.Labels = make(map[string]string, len(o.Labels))
 		for k, v := range o.Labels {
@@ -838,21 +837,16 @@ func (m *ContainerSpec) CopyFrom(src interface{}) {
 		copy(m.Args, o.Args)
 	}
 
-	m.Hostname = o.Hostname
 	if o.Env != nil {
 		m.Env = make([]string, len(o.Env))
 		copy(m.Env, o.Env)
 	}
 
-	m.Dir = o.Dir
-	m.User = o.User
 	if o.Groups != nil {
 		m.Groups = make([]string, len(o.Groups))
 		copy(m.Groups, o.Groups)
 	}
 
-	m.TTY = o.TTY
-	m.OpenStdin = o.OpenStdin
 	if o.Mounts != nil {
 		m.Mounts = make([]Mount, len(o.Mounts))
 		for i := range m.Mounts {
@@ -903,7 +897,7 @@ func (m *ContainerSpec_PullOptions) Copy() *ContainerSpec_PullOptions {
 func (m *ContainerSpec_PullOptions) CopyFrom(src interface{}) {
 
 	o := src.(*ContainerSpec_PullOptions)
-	m.RegistryAuth = o.RegistryAuth
+	*m = *o
 }
 
 func (m *ContainerSpec_DNSConfig) Copy() *ContainerSpec_DNSConfig {
@@ -918,6 +912,7 @@ func (m *ContainerSpec_DNSConfig) Copy() *ContainerSpec_DNSConfig {
 func (m *ContainerSpec_DNSConfig) CopyFrom(src interface{}) {
 
 	o := src.(*ContainerSpec_DNSConfig)
+	*m = *o
 	if o.Nameservers != nil {
 		m.Nameservers = make([]string, len(o.Nameservers))
 		copy(m.Nameservers, o.Nameservers)
@@ -947,7 +942,7 @@ func (m *EndpointSpec) Copy() *EndpointSpec {
 func (m *EndpointSpec) CopyFrom(src interface{}) {
 
 	o := src.(*EndpointSpec)
-	m.Mode = o.Mode
+	*m = *o
 	if o.Ports != nil {
 		m.Ports = make([]*PortConfig, len(o.Ports))
 		for i := range m.Ports {
@@ -970,18 +965,16 @@ func (m *NetworkSpec) Copy() *NetworkSpec {
 func (m *NetworkSpec) CopyFrom(src interface{}) {
 
 	o := src.(*NetworkSpec)
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
 	if o.DriverConfig != nil {
 		m.DriverConfig = &Driver{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.DriverConfig, o.DriverConfig)
 	}
-	m.Ipv6Enabled = o.Ipv6Enabled
-	m.Internal = o.Internal
 	if o.IPAM != nil {
 		m.IPAM = &IPAMOptions{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.IPAM, o.IPAM)
 	}
-	m.Attachable = o.Attachable
 }
 
 func (m *ClusterSpec) Copy() *ClusterSpec {
@@ -996,6 +989,7 @@ func (m *ClusterSpec) Copy() *ClusterSpec {
 func (m *ClusterSpec) CopyFrom(src interface{}) {
 
 	o := src.(*ClusterSpec)
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.AcceptancePolicy, &o.AcceptancePolicy)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Orchestration, &o.Orchestration)
@@ -1018,8 +1012,8 @@ func (m *SecretSpec) Copy() *SecretSpec {
 func (m *SecretSpec) CopyFrom(src interface{}) {
 
 	o := src.(*SecretSpec)
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
-	m.Data = o.Data
 }
 
 func (this *NodeSpec) GoString() string {

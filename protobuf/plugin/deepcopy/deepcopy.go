@@ -57,6 +57,9 @@ func (d *deepCopyGen) genMsgDeepCopy(m *generator.Descriptor) {
 
 	d.P("o := src.(*", ccTypeName, ")")
 
+	// shallow copy handles all scalars
+	d.P("*m = *o")
+
 	oneofByIndex := [][]*descriptor.FieldDescriptorProto{}
 	for _, f := range m.Field {
 		fName := generator.CamelCase(*f.Name)
@@ -106,8 +109,7 @@ func (d *deepCopyGen) genMsgDeepCopy(m *generator.Descriptor) {
 			continue
 		}
 
-		// Handle all kinds of scalar type
-		d.P("m.", fName, " = o.", fName)
+		// skip: field was a scalar handled by shallow copy!
 	}
 
 	for i, oo := range m.GetOneofDecl() {

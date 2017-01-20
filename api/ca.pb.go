@@ -179,7 +179,7 @@ func (m *NodeCertificateStatusRequest) Copy() *NodeCertificateStatusRequest {
 func (m *NodeCertificateStatusRequest) CopyFrom(src interface{}) {
 
 	o := src.(*NodeCertificateStatusRequest)
-	m.NodeID = o.NodeID
+	*m = *o
 }
 
 func (m *NodeCertificateStatusResponse) Copy() *NodeCertificateStatusResponse {
@@ -194,6 +194,7 @@ func (m *NodeCertificateStatusResponse) Copy() *NodeCertificateStatusResponse {
 func (m *NodeCertificateStatusResponse) CopyFrom(src interface{}) {
 
 	o := src.(*NodeCertificateStatusResponse)
+	*m = *o
 	if o.Status != nil {
 		m.Status = &IssuanceStatus{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Status, o.Status)
@@ -216,10 +217,7 @@ func (m *IssueNodeCertificateRequest) Copy() *IssueNodeCertificateRequest {
 func (m *IssueNodeCertificateRequest) CopyFrom(src interface{}) {
 
 	o := src.(*IssueNodeCertificateRequest)
-	m.Role = o.Role
-	m.CSR = o.CSR
-	m.Token = o.Token
-	m.Availability = o.Availability
+	*m = *o
 }
 
 func (m *IssueNodeCertificateResponse) Copy() *IssueNodeCertificateResponse {
@@ -234,8 +232,7 @@ func (m *IssueNodeCertificateResponse) Copy() *IssueNodeCertificateResponse {
 func (m *IssueNodeCertificateResponse) CopyFrom(src interface{}) {
 
 	o := src.(*IssueNodeCertificateResponse)
-	m.NodeID = o.NodeID
-	m.NodeMembership = o.NodeMembership
+	*m = *o
 }
 
 func (m *GetRootCACertificateRequest) Copy() *GetRootCACertificateRequest {
@@ -260,7 +257,7 @@ func (m *GetRootCACertificateResponse) Copy() *GetRootCACertificateResponse {
 func (m *GetRootCACertificateResponse) CopyFrom(src interface{}) {
 
 	o := src.(*GetRootCACertificateResponse)
-	m.Certificate = o.Certificate
+	*m = *o
 }
 
 func (m *GetUnlockKeyRequest) Copy() *GetUnlockKeyRequest {
@@ -285,7 +282,7 @@ func (m *GetUnlockKeyResponse) Copy() *GetUnlockKeyResponse {
 func (m *GetUnlockKeyResponse) CopyFrom(src interface{}) {
 
 	o := src.(*GetUnlockKeyResponse)
-	m.UnlockKey = o.UnlockKey
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Version, &o.Version)
 }
 

@@ -299,6 +299,7 @@ func (m *Meta) Copy() *Meta {
 func (m *Meta) CopyFrom(src interface{}) {
 
 	o := src.(*Meta)
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Version, &o.Version)
 	if o.CreatedAt != nil {
 		m.CreatedAt = &docker_swarmkit_v1.Timestamp{}
@@ -322,7 +323,7 @@ func (m *Node) Copy() *Node {
 func (m *Node) CopyFrom(src interface{}) {
 
 	o := src.(*Node)
-	m.ID = o.ID
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
 	if o.Description != nil {
@@ -339,7 +340,6 @@ func (m *Node) CopyFrom(src interface{}) {
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Attachment, o.Attachment)
 	}
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Certificate, &o.Certificate)
-	m.Role = o.Role
 }
 
 func (m *Service) Copy() *Service {
@@ -354,7 +354,7 @@ func (m *Service) Copy() *Service {
 func (m *Service) CopyFrom(src interface{}) {
 
 	o := src.(*Service)
-	m.ID = o.ID
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
 	if o.PreviousSpec != nil {
@@ -383,6 +383,7 @@ func (m *Endpoint) Copy() *Endpoint {
 func (m *Endpoint) CopyFrom(src interface{}) {
 
 	o := src.(*Endpoint)
+	*m = *o
 	if o.Spec != nil {
 		m.Spec = &EndpointSpec{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
@@ -417,8 +418,7 @@ func (m *Endpoint_VirtualIP) Copy() *Endpoint_VirtualIP {
 func (m *Endpoint_VirtualIP) CopyFrom(src interface{}) {
 
 	o := src.(*Endpoint_VirtualIP)
-	m.NetworkID = o.NetworkID
-	m.Addr = o.Addr
+	*m = *o
 }
 
 func (m *Task) Copy() *Task {
@@ -433,16 +433,12 @@ func (m *Task) Copy() *Task {
 func (m *Task) CopyFrom(src interface{}) {
 
 	o := src.(*Task)
-	m.ID = o.ID
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
-	m.ServiceID = o.ServiceID
-	m.Slot = o.Slot
-	m.NodeID = o.NodeID
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.ServiceAnnotations, &o.ServiceAnnotations)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Status, &o.Status)
-	m.DesiredState = o.DesiredState
 	if o.Networks != nil {
 		m.Networks = make([]*NetworkAttachment, len(o.Networks))
 		for i := range m.Networks {
@@ -473,6 +469,7 @@ func (m *NetworkAttachment) Copy() *NetworkAttachment {
 func (m *NetworkAttachment) CopyFrom(src interface{}) {
 
 	o := src.(*NetworkAttachment)
+	*m = *o
 	if o.Network != nil {
 		m.Network = &Network{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Network, o.Network)
@@ -501,7 +498,7 @@ func (m *Network) Copy() *Network {
 func (m *Network) CopyFrom(src interface{}) {
 
 	o := src.(*Network)
-	m.ID = o.ID
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
 	if o.DriverState != nil {
@@ -526,7 +523,7 @@ func (m *Cluster) Copy() *Cluster {
 func (m *Cluster) CopyFrom(src interface{}) {
 
 	o := src.(*Cluster)
-	m.ID = o.ID
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.RootCA, &o.RootCA)
@@ -538,7 +535,6 @@ func (m *Cluster) CopyFrom(src interface{}) {
 		}
 	}
 
-	m.EncryptionKeyLamportClock = o.EncryptionKeyLamportClock
 	if o.BlacklistedCertificates != nil {
 		m.BlacklistedCertificates = make(map[string]*BlacklistedCertificate, len(o.BlacklistedCertificates))
 		for k, v := range o.BlacklistedCertificates {
@@ -569,10 +565,9 @@ func (m *Secret) Copy() *Secret {
 func (m *Secret) CopyFrom(src interface{}) {
 
 	o := src.(*Secret)
-	m.ID = o.ID
+	*m = *o
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
-	m.Internal = o.Internal
 }
 
 func (this *Meta) GoString() string {

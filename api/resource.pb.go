@@ -115,11 +115,11 @@ func (m *AttachNetworkRequest) Copy() *AttachNetworkRequest {
 func (m *AttachNetworkRequest) CopyFrom(src interface{}) {
 
 	o := src.(*AttachNetworkRequest)
+	*m = *o
 	if o.Config != nil {
 		m.Config = &NetworkAttachmentConfig{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.Config, o.Config)
 	}
-	m.ContainerID = o.ContainerID
 }
 
 func (m *AttachNetworkResponse) Copy() *AttachNetworkResponse {
@@ -134,7 +134,7 @@ func (m *AttachNetworkResponse) Copy() *AttachNetworkResponse {
 func (m *AttachNetworkResponse) CopyFrom(src interface{}) {
 
 	o := src.(*AttachNetworkResponse)
-	m.AttachmentID = o.AttachmentID
+	*m = *o
 }
 
 func (m *DetachNetworkRequest) Copy() *DetachNetworkRequest {
@@ -149,7 +149,7 @@ func (m *DetachNetworkRequest) Copy() *DetachNetworkRequest {
 func (m *DetachNetworkRequest) CopyFrom(src interface{}) {
 
 	o := src.(*DetachNetworkRequest)
-	m.AttachmentID = o.AttachmentID
+	*m = *o
 }
 
 func (m *DetachNetworkResponse) Copy() *DetachNetworkResponse {
