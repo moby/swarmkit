@@ -12,7 +12,7 @@ import (
 func main() {
 	req := command.Read()
 	files := req.GetProtoFile()
-	files = vanity.FilterFiles(files, vanity.NotInPackageGoogleProtobuf)
+	files = vanity.FilterFiles(files, vanity.NotGoogleProtobufDescriptorProto)
 
 	for _, opt := range []func(*descriptor.FileDescriptorProto){
 		vanity.TurnOnGoStringAll,

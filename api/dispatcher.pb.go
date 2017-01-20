@@ -11,6 +11,8 @@ import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 import docker_swarmkit_v11 "github.com/docker/swarmkit/api/duration"
 
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
@@ -462,206 +464,263 @@ func (m *SessionRequest) Copy() *SessionRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &SessionRequest{
-		Description: m.Description.Copy(),
-		SessionID:   m.SessionID,
-	}
-
+	o := &SessionRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *SessionRequest) CopyFrom(src interface{}) {
+
+	o := src.(*SessionRequest)
+	if o.Description != nil {
+		m.Description = &NodeDescription{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Description, o.Description)
+	}
+	m.SessionID = o.SessionID
 }
 
 func (m *SessionMessage) Copy() *SessionMessage {
 	if m == nil {
 		return nil
 	}
-
-	o := &SessionMessage{
-		SessionID: m.SessionID,
-		Node:      m.Node.Copy(),
-	}
-
-	if m.Managers != nil {
-		o.Managers = make([]*WeightedPeer, 0, len(m.Managers))
-		for _, v := range m.Managers {
-			o.Managers = append(o.Managers, v.Copy())
-		}
-	}
-
-	if m.NetworkBootstrapKeys != nil {
-		o.NetworkBootstrapKeys = make([]*EncryptionKey, 0, len(m.NetworkBootstrapKeys))
-		for _, v := range m.NetworkBootstrapKeys {
-			o.NetworkBootstrapKeys = append(o.NetworkBootstrapKeys, v.Copy())
-		}
-	}
-
+	o := &SessionMessage{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *SessionMessage) CopyFrom(src interface{}) {
+
+	o := src.(*SessionMessage)
+	m.SessionID = o.SessionID
+	if o.Node != nil {
+		m.Node = &Node{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Node, o.Node)
+	}
+	if o.Managers != nil {
+		m.Managers = make([]*WeightedPeer, len(o.Managers))
+		for i := range m.Managers {
+			m.Managers[i] = &WeightedPeer{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Managers[i], o.Managers[i])
+		}
+	}
+
+	if o.NetworkBootstrapKeys != nil {
+		m.NetworkBootstrapKeys = make([]*EncryptionKey, len(o.NetworkBootstrapKeys))
+		for i := range m.NetworkBootstrapKeys {
+			m.NetworkBootstrapKeys[i] = &EncryptionKey{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.NetworkBootstrapKeys[i], o.NetworkBootstrapKeys[i])
+		}
+	}
+
 }
 
 func (m *HeartbeatRequest) Copy() *HeartbeatRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &HeartbeatRequest{
-		SessionID: m.SessionID,
-	}
-
+	o := &HeartbeatRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *HeartbeatRequest) CopyFrom(src interface{}) {
+
+	o := src.(*HeartbeatRequest)
+	m.SessionID = o.SessionID
 }
 
 func (m *HeartbeatResponse) Copy() *HeartbeatResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &HeartbeatResponse{
-		Period: *m.Period.Copy(),
-	}
-
+	o := &HeartbeatResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *HeartbeatResponse) CopyFrom(src interface{}) {
+
+	o := src.(*HeartbeatResponse)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Period, &o.Period)
 }
 
 func (m *UpdateTaskStatusRequest) Copy() *UpdateTaskStatusRequest {
 	if m == nil {
 		return nil
 	}
+	o := &UpdateTaskStatusRequest{}
+	o.CopyFrom(m)
+	return o
+}
 
-	o := &UpdateTaskStatusRequest{
-		SessionID: m.SessionID,
-	}
+func (m *UpdateTaskStatusRequest) CopyFrom(src interface{}) {
 
-	if m.Updates != nil {
-		o.Updates = make([]*UpdateTaskStatusRequest_TaskStatusUpdate, 0, len(m.Updates))
-		for _, v := range m.Updates {
-			o.Updates = append(o.Updates, v.Copy())
+	o := src.(*UpdateTaskStatusRequest)
+	m.SessionID = o.SessionID
+	if o.Updates != nil {
+		m.Updates = make([]*UpdateTaskStatusRequest_TaskStatusUpdate, len(o.Updates))
+		for i := range m.Updates {
+			m.Updates[i] = &UpdateTaskStatusRequest_TaskStatusUpdate{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Updates[i], o.Updates[i])
 		}
 	}
 
-	return o
 }
 
 func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Copy() *UpdateTaskStatusRequest_TaskStatusUpdate {
 	if m == nil {
 		return nil
 	}
-
-	o := &UpdateTaskStatusRequest_TaskStatusUpdate{
-		TaskID: m.TaskID,
-		Status: m.Status.Copy(),
-	}
-
+	o := &UpdateTaskStatusRequest_TaskStatusUpdate{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) CopyFrom(src interface{}) {
+
+	o := src.(*UpdateTaskStatusRequest_TaskStatusUpdate)
+	m.TaskID = o.TaskID
+	if o.Status != nil {
+		m.Status = &TaskStatus{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Status, o.Status)
+	}
 }
 
 func (m *UpdateTaskStatusResponse) Copy() *UpdateTaskStatusResponse {
 	if m == nil {
 		return nil
 	}
-
 	o := &UpdateTaskStatusResponse{}
-
+	o.CopyFrom(m)
 	return o
 }
 
+func (m *UpdateTaskStatusResponse) CopyFrom(src interface{}) {}
 func (m *TasksRequest) Copy() *TasksRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &TasksRequest{
-		SessionID: m.SessionID,
-	}
-
+	o := &TasksRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *TasksRequest) CopyFrom(src interface{}) {
+
+	o := src.(*TasksRequest)
+	m.SessionID = o.SessionID
 }
 
 func (m *TasksMessage) Copy() *TasksMessage {
 	if m == nil {
 		return nil
 	}
-
 	o := &TasksMessage{}
+	o.CopyFrom(m)
+	return o
+}
 
-	if m.Tasks != nil {
-		o.Tasks = make([]*Task, 0, len(m.Tasks))
-		for _, v := range m.Tasks {
-			o.Tasks = append(o.Tasks, v.Copy())
+func (m *TasksMessage) CopyFrom(src interface{}) {
+
+	o := src.(*TasksMessage)
+	if o.Tasks != nil {
+		m.Tasks = make([]*Task, len(o.Tasks))
+		for i := range m.Tasks {
+			m.Tasks[i] = &Task{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Tasks[i], o.Tasks[i])
 		}
 	}
 
-	return o
 }
 
 func (m *AssignmentsRequest) Copy() *AssignmentsRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &AssignmentsRequest{
-		SessionID: m.SessionID,
-	}
-
+	o := &AssignmentsRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *AssignmentsRequest) CopyFrom(src interface{}) {
+
+	o := src.(*AssignmentsRequest)
+	m.SessionID = o.SessionID
 }
 
 func (m *Assignment) Copy() *Assignment {
 	if m == nil {
 		return nil
 	}
-
 	o := &Assignment{}
+	o.CopyFrom(m)
+	return o
+}
 
-	switch m.Item.(type) {
-	case *Assignment_Task:
-		i := &Assignment_Task{
-			Task: m.GetTask().Copy(),
+func (m *Assignment) CopyFrom(src interface{}) {
+
+	o := src.(*Assignment)
+	if o.Item != nil {
+		switch o.Item.(type) {
+		case *Assignment_Task:
+			v := Assignment_Task{
+				Task: &Task{},
+			}
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Task, o.GetTask())
+			m.Item = &v
+		case *Assignment_Secret:
+			v := Assignment_Secret{
+				Secret: &Secret{},
+			}
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Secret, o.GetSecret())
+			m.Item = &v
 		}
-
-		o.Item = i
-	case *Assignment_Secret:
-		i := &Assignment_Secret{
-			Secret: m.GetSecret().Copy(),
-		}
-
-		o.Item = i
 	}
 
-	return o
 }
 
 func (m *AssignmentChange) Copy() *AssignmentChange {
 	if m == nil {
 		return nil
 	}
-
-	o := &AssignmentChange{
-		Assignment: m.Assignment.Copy(),
-		Action:     m.Action,
-	}
-
+	o := &AssignmentChange{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *AssignmentChange) CopyFrom(src interface{}) {
+
+	o := src.(*AssignmentChange)
+	if o.Assignment != nil {
+		m.Assignment = &Assignment{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Assignment, o.Assignment)
+	}
+	m.Action = o.Action
 }
 
 func (m *AssignmentsMessage) Copy() *AssignmentsMessage {
 	if m == nil {
 		return nil
 	}
+	o := &AssignmentsMessage{}
+	o.CopyFrom(m)
+	return o
+}
 
-	o := &AssignmentsMessage{
-		Type:      m.Type,
-		AppliesTo: m.AppliesTo,
-		ResultsIn: m.ResultsIn,
-	}
+func (m *AssignmentsMessage) CopyFrom(src interface{}) {
 
-	if m.Changes != nil {
-		o.Changes = make([]*AssignmentChange, 0, len(m.Changes))
-		for _, v := range m.Changes {
-			o.Changes = append(o.Changes, v.Copy())
+	o := src.(*AssignmentsMessage)
+	m.Type = o.Type
+	m.AppliesTo = o.AppliesTo
+	m.ResultsIn = o.ResultsIn
+	if o.Changes != nil {
+		m.Changes = make([]*AssignmentChange, len(o.Changes))
+		for i := range m.Changes {
+			m.Changes[i] = &AssignmentChange{}
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Changes[i], o.Changes[i])
 		}
 	}
 
-	return o
 }
 
 func (this *SessionRequest) GoString() string {
@@ -872,7 +931,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion3
+const _ = grpc.SupportPackageIsVersion4
 
 // Client API for Dispatcher service
 
@@ -1197,69 +1256,69 @@ var _Dispatcher_serviceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: fileDescriptorDispatcher,
+	Metadata: "dispatcher.proto",
 }
 
-func (m *SessionRequest) Marshal() (data []byte, err error) {
+func (m *SessionRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *SessionRequest) MarshalTo(data []byte) (int, error) {
+func (m *SessionRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Description != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(m.Description.Size()))
-		n1, err := m.Description.MarshalTo(data[i:])
+		i = encodeVarintDispatcher(dAtA, i, uint64(m.Description.Size()))
+		n1, err := m.Description.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n1
 	}
 	if len(m.SessionID) > 0 {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(len(m.SessionID)))
-		i += copy(data[i:], m.SessionID)
+		i = encodeVarintDispatcher(dAtA, i, uint64(len(m.SessionID)))
+		i += copy(dAtA[i:], m.SessionID)
 	}
 	return i, nil
 }
 
-func (m *SessionMessage) Marshal() (data []byte, err error) {
+func (m *SessionMessage) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *SessionMessage) MarshalTo(data []byte) (int, error) {
+func (m *SessionMessage) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.SessionID) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(len(m.SessionID)))
-		i += copy(data[i:], m.SessionID)
+		i = encodeVarintDispatcher(dAtA, i, uint64(len(m.SessionID)))
+		i += copy(dAtA[i:], m.SessionID)
 	}
 	if m.Node != nil {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(m.Node.Size()))
-		n2, err := m.Node.MarshalTo(data[i:])
+		i = encodeVarintDispatcher(dAtA, i, uint64(m.Node.Size()))
+		n2, err := m.Node.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -1267,10 +1326,10 @@ func (m *SessionMessage) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.Managers) > 0 {
 		for _, msg := range m.Managers {
-			data[i] = 0x1a
+			dAtA[i] = 0x1a
 			i++
-			i = encodeVarintDispatcher(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintDispatcher(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -1279,10 +1338,10 @@ func (m *SessionMessage) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.NetworkBootstrapKeys) > 0 {
 		for _, msg := range m.NetworkBootstrapKeys {
-			data[i] = 0x22
+			dAtA[i] = 0x22
 			i++
-			i = encodeVarintDispatcher(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintDispatcher(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -1292,49 +1351,49 @@ func (m *SessionMessage) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *HeartbeatRequest) Marshal() (data []byte, err error) {
+func (m *HeartbeatRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *HeartbeatRequest) MarshalTo(data []byte) (int, error) {
+func (m *HeartbeatRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.SessionID) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(len(m.SessionID)))
-		i += copy(data[i:], m.SessionID)
+		i = encodeVarintDispatcher(dAtA, i, uint64(len(m.SessionID)))
+		i += copy(dAtA[i:], m.SessionID)
 	}
 	return i, nil
 }
 
-func (m *HeartbeatResponse) Marshal() (data []byte, err error) {
+func (m *HeartbeatResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *HeartbeatResponse) MarshalTo(data []byte) (int, error) {
+func (m *HeartbeatResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	data[i] = 0xa
+	dAtA[i] = 0xa
 	i++
-	i = encodeVarintDispatcher(data, i, uint64(m.Period.Size()))
-	n3, err := m.Period.MarshalTo(data[i:])
+	i = encodeVarintDispatcher(dAtA, i, uint64(m.Period.Size()))
+	n3, err := m.Period.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
@@ -1342,33 +1401,33 @@ func (m *HeartbeatResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *UpdateTaskStatusRequest) Marshal() (data []byte, err error) {
+func (m *UpdateTaskStatusRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *UpdateTaskStatusRequest) MarshalTo(data []byte) (int, error) {
+func (m *UpdateTaskStatusRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.SessionID) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(len(m.SessionID)))
-		i += copy(data[i:], m.SessionID)
+		i = encodeVarintDispatcher(dAtA, i, uint64(len(m.SessionID)))
+		i += copy(dAtA[i:], m.SessionID)
 	}
 	if len(m.Updates) > 0 {
 		for _, msg := range m.Updates {
-			data[i] = 0x1a
+			dAtA[i] = 0x1a
 			i++
-			i = encodeVarintDispatcher(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintDispatcher(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -1378,32 +1437,32 @@ func (m *UpdateTaskStatusRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Marshal() (data []byte, err error) {
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *UpdateTaskStatusRequest_TaskStatusUpdate) MarshalTo(data []byte) (int, error) {
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.TaskID) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(len(m.TaskID)))
-		i += copy(data[i:], m.TaskID)
+		i = encodeVarintDispatcher(dAtA, i, uint64(len(m.TaskID)))
+		i += copy(dAtA[i:], m.TaskID)
 	}
 	if m.Status != nil {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(m.Status.Size()))
-		n4, err := m.Status.MarshalTo(data[i:])
+		i = encodeVarintDispatcher(dAtA, i, uint64(m.Status.Size()))
+		n4, err := m.Status.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -1412,17 +1471,17 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) MarshalTo(data []byte) (int, 
 	return i, nil
 }
 
-func (m *UpdateTaskStatusResponse) Marshal() (data []byte, err error) {
+func (m *UpdateTaskStatusResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *UpdateTaskStatusResponse) MarshalTo(data []byte) (int, error) {
+func (m *UpdateTaskStatusResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1430,51 +1489,51 @@ func (m *UpdateTaskStatusResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *TasksRequest) Marshal() (data []byte, err error) {
+func (m *TasksRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *TasksRequest) MarshalTo(data []byte) (int, error) {
+func (m *TasksRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.SessionID) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(len(m.SessionID)))
-		i += copy(data[i:], m.SessionID)
+		i = encodeVarintDispatcher(dAtA, i, uint64(len(m.SessionID)))
+		i += copy(dAtA[i:], m.SessionID)
 	}
 	return i, nil
 }
 
-func (m *TasksMessage) Marshal() (data []byte, err error) {
+func (m *TasksMessage) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *TasksMessage) MarshalTo(data []byte) (int, error) {
+func (m *TasksMessage) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.Tasks) > 0 {
 		for _, msg := range m.Tasks {
-			data[i] = 0xa
+			dAtA[i] = 0xa
 			i++
-			i = encodeVarintDispatcher(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintDispatcher(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -1484,47 +1543,47 @@ func (m *TasksMessage) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *AssignmentsRequest) Marshal() (data []byte, err error) {
+func (m *AssignmentsRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AssignmentsRequest) MarshalTo(data []byte) (int, error) {
+func (m *AssignmentsRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.SessionID) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(len(m.SessionID)))
-		i += copy(data[i:], m.SessionID)
+		i = encodeVarintDispatcher(dAtA, i, uint64(len(m.SessionID)))
+		i += copy(dAtA[i:], m.SessionID)
 	}
 	return i, nil
 }
 
-func (m *Assignment) Marshal() (data []byte, err error) {
+func (m *Assignment) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *Assignment) MarshalTo(data []byte) (int, error) {
+func (m *Assignment) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Item != nil {
-		nn5, err := m.Item.MarshalTo(data[i:])
+		nn5, err := m.Item.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -1533,13 +1592,13 @@ func (m *Assignment) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Assignment_Task) MarshalTo(data []byte) (int, error) {
+func (m *Assignment_Task) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.Task != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(m.Task.Size()))
-		n6, err := m.Task.MarshalTo(data[i:])
+		i = encodeVarintDispatcher(dAtA, i, uint64(m.Task.Size()))
+		n6, err := m.Task.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -1547,13 +1606,13 @@ func (m *Assignment_Task) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *Assignment_Secret) MarshalTo(data []byte) (int, error) {
+func (m *Assignment_Secret) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.Secret != nil {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(m.Secret.Size()))
-		n7, err := m.Secret.MarshalTo(data[i:])
+		i = encodeVarintDispatcher(dAtA, i, uint64(m.Secret.Size()))
+		n7, err := m.Secret.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -1561,77 +1620,77 @@ func (m *Assignment_Secret) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *AssignmentChange) Marshal() (data []byte, err error) {
+func (m *AssignmentChange) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AssignmentChange) MarshalTo(data []byte) (int, error) {
+func (m *AssignmentChange) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Assignment != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(m.Assignment.Size()))
-		n8, err := m.Assignment.MarshalTo(data[i:])
+		i = encodeVarintDispatcher(dAtA, i, uint64(m.Assignment.Size()))
+		n8, err := m.Assignment.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n8
 	}
 	if m.Action != 0 {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(m.Action))
+		i = encodeVarintDispatcher(dAtA, i, uint64(m.Action))
 	}
 	return i, nil
 }
 
-func (m *AssignmentsMessage) Marshal() (data []byte, err error) {
+func (m *AssignmentsMessage) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AssignmentsMessage) MarshalTo(data []byte) (int, error) {
+func (m *AssignmentsMessage) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Type != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(m.Type))
+		i = encodeVarintDispatcher(dAtA, i, uint64(m.Type))
 	}
 	if len(m.AppliesTo) > 0 {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(len(m.AppliesTo)))
-		i += copy(data[i:], m.AppliesTo)
+		i = encodeVarintDispatcher(dAtA, i, uint64(len(m.AppliesTo)))
+		i += copy(dAtA[i:], m.AppliesTo)
 	}
 	if len(m.ResultsIn) > 0 {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintDispatcher(data, i, uint64(len(m.ResultsIn)))
-		i += copy(data[i:], m.ResultsIn)
+		i = encodeVarintDispatcher(dAtA, i, uint64(len(m.ResultsIn)))
+		i += copy(dAtA[i:], m.ResultsIn)
 	}
 	if len(m.Changes) > 0 {
 		for _, msg := range m.Changes {
-			data[i] = 0x22
+			dAtA[i] = 0x22
 			i++
-			i = encodeVarintDispatcher(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintDispatcher(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -1641,31 +1700,31 @@ func (m *AssignmentsMessage) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func encodeFixed64Dispatcher(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
+func encodeFixed64Dispatcher(dAtA []byte, offset int, v uint64) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
+	dAtA[offset+4] = uint8(v >> 32)
+	dAtA[offset+5] = uint8(v >> 40)
+	dAtA[offset+6] = uint8(v >> 48)
+	dAtA[offset+7] = uint8(v >> 56)
 	return offset + 8
 }
-func encodeFixed32Dispatcher(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
+func encodeFixed32Dispatcher(dAtA []byte, offset int, v uint32) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
 	return offset + 4
 }
-func encodeVarintDispatcher(data []byte, offset int, v uint64) int {
+func encodeVarintDispatcher(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
+		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
-	data[offset] = uint8(v)
+	dAtA[offset] = uint8(v)
 	return offset + 1
 }
 
@@ -2333,8 +2392,8 @@ func valueToStringDispatcher(v interface{}) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
 }
-func (m *SessionRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *SessionRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -2346,7 +2405,7 @@ func (m *SessionRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -2374,7 +2433,7 @@ func (m *SessionRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2391,7 +2450,7 @@ func (m *SessionRequest) Unmarshal(data []byte) error {
 			if m.Description == nil {
 				m.Description = &NodeDescription{}
 			}
-			if err := m.Description.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Description.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2407,7 +2466,7 @@ func (m *SessionRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2422,11 +2481,11 @@ func (m *SessionRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SessionID = string(data[iNdEx:postIndex])
+			m.SessionID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipDispatcher(data[iNdEx:])
+			skippy, err := skipDispatcher(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -2445,8 +2504,8 @@ func (m *SessionRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *SessionMessage) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *SessionMessage) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -2458,7 +2517,7 @@ func (m *SessionMessage) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -2486,7 +2545,7 @@ func (m *SessionMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2501,7 +2560,7 @@ func (m *SessionMessage) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SessionID = string(data[iNdEx:postIndex])
+			m.SessionID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -2515,7 +2574,7 @@ func (m *SessionMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2532,7 +2591,7 @@ func (m *SessionMessage) Unmarshal(data []byte) error {
 			if m.Node == nil {
 				m.Node = &Node{}
 			}
-			if err := m.Node.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Node.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2548,7 +2607,7 @@ func (m *SessionMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2563,7 +2622,7 @@ func (m *SessionMessage) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Managers = append(m.Managers, &WeightedPeer{})
-			if err := m.Managers[len(m.Managers)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Managers[len(m.Managers)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2579,7 +2638,7 @@ func (m *SessionMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2594,13 +2653,13 @@ func (m *SessionMessage) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.NetworkBootstrapKeys = append(m.NetworkBootstrapKeys, &EncryptionKey{})
-			if err := m.NetworkBootstrapKeys[len(m.NetworkBootstrapKeys)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.NetworkBootstrapKeys[len(m.NetworkBootstrapKeys)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipDispatcher(data[iNdEx:])
+			skippy, err := skipDispatcher(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -2619,8 +2678,8 @@ func (m *SessionMessage) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *HeartbeatRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *HeartbeatRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -2632,7 +2691,7 @@ func (m *HeartbeatRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -2660,7 +2719,7 @@ func (m *HeartbeatRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2675,11 +2734,11 @@ func (m *HeartbeatRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SessionID = string(data[iNdEx:postIndex])
+			m.SessionID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipDispatcher(data[iNdEx:])
+			skippy, err := skipDispatcher(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -2698,8 +2757,8 @@ func (m *HeartbeatRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *HeartbeatResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *HeartbeatResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -2711,7 +2770,7 @@ func (m *HeartbeatResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -2739,7 +2798,7 @@ func (m *HeartbeatResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2753,13 +2812,13 @@ func (m *HeartbeatResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.Period.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Period.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipDispatcher(data[iNdEx:])
+			skippy, err := skipDispatcher(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -2778,8 +2837,8 @@ func (m *HeartbeatResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *UpdateTaskStatusRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *UpdateTaskStatusRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -2791,7 +2850,7 @@ func (m *UpdateTaskStatusRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -2819,7 +2878,7 @@ func (m *UpdateTaskStatusRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2834,7 +2893,7 @@ func (m *UpdateTaskStatusRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SessionID = string(data[iNdEx:postIndex])
+			m.SessionID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -2848,7 +2907,7 @@ func (m *UpdateTaskStatusRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2863,13 +2922,13 @@ func (m *UpdateTaskStatusRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Updates = append(m.Updates, &UpdateTaskStatusRequest_TaskStatusUpdate{})
-			if err := m.Updates[len(m.Updates)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Updates[len(m.Updates)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipDispatcher(data[iNdEx:])
+			skippy, err := skipDispatcher(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -2888,8 +2947,8 @@ func (m *UpdateTaskStatusRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -2901,7 +2960,7 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Unmarshal(data []byte) error 
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -2929,7 +2988,7 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Unmarshal(data []byte) error 
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2944,7 +3003,7 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Unmarshal(data []byte) error 
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.TaskID = string(data[iNdEx:postIndex])
+			m.TaskID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -2958,7 +3017,7 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Unmarshal(data []byte) error 
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2975,13 +3034,13 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Unmarshal(data []byte) error 
 			if m.Status == nil {
 				m.Status = &TaskStatus{}
 			}
-			if err := m.Status.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Status.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipDispatcher(data[iNdEx:])
+			skippy, err := skipDispatcher(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -3000,8 +3059,8 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Unmarshal(data []byte) error 
 	}
 	return nil
 }
-func (m *UpdateTaskStatusResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *UpdateTaskStatusResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -3013,7 +3072,7 @@ func (m *UpdateTaskStatusResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -3031,7 +3090,7 @@ func (m *UpdateTaskStatusResponse) Unmarshal(data []byte) error {
 		switch fieldNum {
 		default:
 			iNdEx = preIndex
-			skippy, err := skipDispatcher(data[iNdEx:])
+			skippy, err := skipDispatcher(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -3050,8 +3109,8 @@ func (m *UpdateTaskStatusResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *TasksRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *TasksRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -3063,7 +3122,7 @@ func (m *TasksRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -3091,7 +3150,7 @@ func (m *TasksRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3106,11 +3165,11 @@ func (m *TasksRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SessionID = string(data[iNdEx:postIndex])
+			m.SessionID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipDispatcher(data[iNdEx:])
+			skippy, err := skipDispatcher(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -3129,8 +3188,8 @@ func (m *TasksRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *TasksMessage) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *TasksMessage) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -3142,7 +3201,7 @@ func (m *TasksMessage) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -3170,7 +3229,7 @@ func (m *TasksMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3185,13 +3244,13 @@ func (m *TasksMessage) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Tasks = append(m.Tasks, &Task{})
-			if err := m.Tasks[len(m.Tasks)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Tasks[len(m.Tasks)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipDispatcher(data[iNdEx:])
+			skippy, err := skipDispatcher(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -3210,8 +3269,8 @@ func (m *TasksMessage) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AssignmentsRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AssignmentsRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -3223,7 +3282,7 @@ func (m *AssignmentsRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -3251,7 +3310,7 @@ func (m *AssignmentsRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3266,11 +3325,11 @@ func (m *AssignmentsRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SessionID = string(data[iNdEx:postIndex])
+			m.SessionID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipDispatcher(data[iNdEx:])
+			skippy, err := skipDispatcher(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -3289,8 +3348,8 @@ func (m *AssignmentsRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Assignment) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *Assignment) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -3302,7 +3361,7 @@ func (m *Assignment) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -3330,7 +3389,7 @@ func (m *Assignment) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3345,7 +3404,7 @@ func (m *Assignment) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &Task{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.Item = &Assignment_Task{v}
@@ -3362,7 +3421,7 @@ func (m *Assignment) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3377,14 +3436,14 @@ func (m *Assignment) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &Secret{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.Item = &Assignment_Secret{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipDispatcher(data[iNdEx:])
+			skippy, err := skipDispatcher(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -3403,8 +3462,8 @@ func (m *Assignment) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AssignmentChange) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AssignmentChange) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -3416,7 +3475,7 @@ func (m *AssignmentChange) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -3444,7 +3503,7 @@ func (m *AssignmentChange) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3461,7 +3520,7 @@ func (m *AssignmentChange) Unmarshal(data []byte) error {
 			if m.Assignment == nil {
 				m.Assignment = &Assignment{}
 			}
-			if err := m.Assignment.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Assignment.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -3477,7 +3536,7 @@ func (m *AssignmentChange) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Action |= (AssignmentChange_AssignmentAction(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3486,7 +3545,7 @@ func (m *AssignmentChange) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipDispatcher(data[iNdEx:])
+			skippy, err := skipDispatcher(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -3505,8 +3564,8 @@ func (m *AssignmentChange) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AssignmentsMessage) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AssignmentsMessage) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -3518,7 +3577,7 @@ func (m *AssignmentsMessage) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -3546,7 +3605,7 @@ func (m *AssignmentsMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Type |= (AssignmentsMessage_Type(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3565,7 +3624,7 @@ func (m *AssignmentsMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3580,7 +3639,7 @@ func (m *AssignmentsMessage) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.AppliesTo = string(data[iNdEx:postIndex])
+			m.AppliesTo = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -3594,7 +3653,7 @@ func (m *AssignmentsMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3609,7 +3668,7 @@ func (m *AssignmentsMessage) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ResultsIn = string(data[iNdEx:postIndex])
+			m.ResultsIn = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -3623,7 +3682,7 @@ func (m *AssignmentsMessage) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3638,13 +3697,13 @@ func (m *AssignmentsMessage) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Changes = append(m.Changes, &AssignmentChange{})
-			if err := m.Changes[len(m.Changes)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Changes[len(m.Changes)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipDispatcher(data[iNdEx:])
+			skippy, err := skipDispatcher(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -3663,8 +3722,8 @@ func (m *AssignmentsMessage) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func skipDispatcher(data []byte) (n int, err error) {
-	l := len(data)
+func skipDispatcher(dAtA []byte) (n int, err error) {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		var wire uint64
@@ -3675,7 +3734,7 @@ func skipDispatcher(data []byte) (n int, err error) {
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -3693,7 +3752,7 @@ func skipDispatcher(data []byte) (n int, err error) {
 					return 0, io.ErrUnexpectedEOF
 				}
 				iNdEx++
-				if data[iNdEx-1] < 0x80 {
+				if dAtA[iNdEx-1] < 0x80 {
 					break
 				}
 			}
@@ -3710,7 +3769,7 @@ func skipDispatcher(data []byte) (n int, err error) {
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				length |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3733,7 +3792,7 @@ func skipDispatcher(data []byte) (n int, err error) {
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
-					b := data[iNdEx]
+					b := dAtA[iNdEx]
 					iNdEx++
 					innerWire |= (uint64(b) & 0x7F) << shift
 					if b < 0x80 {
@@ -3744,7 +3803,7 @@ func skipDispatcher(data []byte) (n int, err error) {
 				if innerWireType == 4 {
 					break
 				}
-				next, err := skipDispatcher(data[start:])
+				next, err := skipDispatcher(dAtA[start:])
 				if err != nil {
 					return 0, err
 				}

@@ -10,6 +10,8 @@ import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
@@ -169,98 +171,122 @@ func (m *NodeCertificateStatusRequest) Copy() *NodeCertificateStatusRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &NodeCertificateStatusRequest{
-		NodeID: m.NodeID,
-	}
-
+	o := &NodeCertificateStatusRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *NodeCertificateStatusRequest) CopyFrom(src interface{}) {
+
+	o := src.(*NodeCertificateStatusRequest)
+	m.NodeID = o.NodeID
 }
 
 func (m *NodeCertificateStatusResponse) Copy() *NodeCertificateStatusResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &NodeCertificateStatusResponse{
-		Status:      m.Status.Copy(),
-		Certificate: m.Certificate.Copy(),
-	}
-
+	o := &NodeCertificateStatusResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *NodeCertificateStatusResponse) CopyFrom(src interface{}) {
+
+	o := src.(*NodeCertificateStatusResponse)
+	if o.Status != nil {
+		m.Status = &IssuanceStatus{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Status, o.Status)
+	}
+	if o.Certificate != nil {
+		m.Certificate = &Certificate{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Certificate, o.Certificate)
+	}
 }
 
 func (m *IssueNodeCertificateRequest) Copy() *IssueNodeCertificateRequest {
 	if m == nil {
 		return nil
 	}
-
-	o := &IssueNodeCertificateRequest{
-		Role:         m.Role,
-		CSR:          m.CSR,
-		Token:        m.Token,
-		Availability: m.Availability,
-	}
-
+	o := &IssueNodeCertificateRequest{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *IssueNodeCertificateRequest) CopyFrom(src interface{}) {
+
+	o := src.(*IssueNodeCertificateRequest)
+	m.Role = o.Role
+	m.CSR = o.CSR
+	m.Token = o.Token
+	m.Availability = o.Availability
 }
 
 func (m *IssueNodeCertificateResponse) Copy() *IssueNodeCertificateResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &IssueNodeCertificateResponse{
-		NodeID:         m.NodeID,
-		NodeMembership: m.NodeMembership,
-	}
-
+	o := &IssueNodeCertificateResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *IssueNodeCertificateResponse) CopyFrom(src interface{}) {
+
+	o := src.(*IssueNodeCertificateResponse)
+	m.NodeID = o.NodeID
+	m.NodeMembership = o.NodeMembership
 }
 
 func (m *GetRootCACertificateRequest) Copy() *GetRootCACertificateRequest {
 	if m == nil {
 		return nil
 	}
-
 	o := &GetRootCACertificateRequest{}
-
+	o.CopyFrom(m)
 	return o
 }
 
+func (m *GetRootCACertificateRequest) CopyFrom(src interface{}) {}
 func (m *GetRootCACertificateResponse) Copy() *GetRootCACertificateResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetRootCACertificateResponse{
-		Certificate: m.Certificate,
-	}
-
+	o := &GetRootCACertificateResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetRootCACertificateResponse) CopyFrom(src interface{}) {
+
+	o := src.(*GetRootCACertificateResponse)
+	m.Certificate = o.Certificate
 }
 
 func (m *GetUnlockKeyRequest) Copy() *GetUnlockKeyRequest {
 	if m == nil {
 		return nil
 	}
-
 	o := &GetUnlockKeyRequest{}
-
+	o.CopyFrom(m)
 	return o
 }
 
+func (m *GetUnlockKeyRequest) CopyFrom(src interface{}) {}
 func (m *GetUnlockKeyResponse) Copy() *GetUnlockKeyResponse {
 	if m == nil {
 		return nil
 	}
-
-	o := &GetUnlockKeyResponse{
-		UnlockKey: m.UnlockKey,
-		Version:   *m.Version.Copy(),
-	}
-
+	o := &GetUnlockKeyResponse{}
+	o.CopyFrom(m)
 	return o
+}
+
+func (m *GetUnlockKeyResponse) CopyFrom(src interface{}) {
+
+	o := src.(*GetUnlockKeyResponse)
+	m.UnlockKey = o.UnlockKey
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Version, &o.Version)
 }
 
 func (this *NodeCertificateStatusRequest) GoString() string {
@@ -384,7 +410,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion3
+const _ = grpc.SupportPackageIsVersion4
 
 // Client API for CA service
 
@@ -484,7 +510,7 @@ var _CA_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: fileDescriptorCa,
+	Metadata: "ca.proto",
 }
 
 // Client API for NodeCA service
@@ -581,63 +607,63 @@ var _NodeCA_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: fileDescriptorCa,
+	Metadata: "ca.proto",
 }
 
-func (m *NodeCertificateStatusRequest) Marshal() (data []byte, err error) {
+func (m *NodeCertificateStatusRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *NodeCertificateStatusRequest) MarshalTo(data []byte) (int, error) {
+func (m *NodeCertificateStatusRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.NodeID) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintCa(data, i, uint64(len(m.NodeID)))
-		i += copy(data[i:], m.NodeID)
+		i = encodeVarintCa(dAtA, i, uint64(len(m.NodeID)))
+		i += copy(dAtA[i:], m.NodeID)
 	}
 	return i, nil
 }
 
-func (m *NodeCertificateStatusResponse) Marshal() (data []byte, err error) {
+func (m *NodeCertificateStatusResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *NodeCertificateStatusResponse) MarshalTo(data []byte) (int, error) {
+func (m *NodeCertificateStatusResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Status != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintCa(data, i, uint64(m.Status.Size()))
-		n1, err := m.Status.MarshalTo(data[i:])
+		i = encodeVarintCa(dAtA, i, uint64(m.Status.Size()))
+		n1, err := m.Status.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n1
 	}
 	if m.Certificate != nil {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintCa(data, i, uint64(m.Certificate.Size()))
-		n2, err := m.Certificate.MarshalTo(data[i:])
+		i = encodeVarintCa(dAtA, i, uint64(m.Certificate.Size()))
+		n2, err := m.Certificate.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -646,86 +672,86 @@ func (m *NodeCertificateStatusResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *IssueNodeCertificateRequest) Marshal() (data []byte, err error) {
+func (m *IssueNodeCertificateRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *IssueNodeCertificateRequest) MarshalTo(data []byte) (int, error) {
+func (m *IssueNodeCertificateRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Role != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintCa(data, i, uint64(m.Role))
+		i = encodeVarintCa(dAtA, i, uint64(m.Role))
 	}
 	if len(m.CSR) > 0 {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintCa(data, i, uint64(len(m.CSR)))
-		i += copy(data[i:], m.CSR)
+		i = encodeVarintCa(dAtA, i, uint64(len(m.CSR)))
+		i += copy(dAtA[i:], m.CSR)
 	}
 	if len(m.Token) > 0 {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintCa(data, i, uint64(len(m.Token)))
-		i += copy(data[i:], m.Token)
+		i = encodeVarintCa(dAtA, i, uint64(len(m.Token)))
+		i += copy(dAtA[i:], m.Token)
 	}
 	if m.Availability != 0 {
-		data[i] = 0x20
+		dAtA[i] = 0x20
 		i++
-		i = encodeVarintCa(data, i, uint64(m.Availability))
+		i = encodeVarintCa(dAtA, i, uint64(m.Availability))
 	}
 	return i, nil
 }
 
-func (m *IssueNodeCertificateResponse) Marshal() (data []byte, err error) {
+func (m *IssueNodeCertificateResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *IssueNodeCertificateResponse) MarshalTo(data []byte) (int, error) {
+func (m *IssueNodeCertificateResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.NodeID) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintCa(data, i, uint64(len(m.NodeID)))
-		i += copy(data[i:], m.NodeID)
+		i = encodeVarintCa(dAtA, i, uint64(len(m.NodeID)))
+		i += copy(dAtA[i:], m.NodeID)
 	}
 	if m.NodeMembership != 0 {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintCa(data, i, uint64(m.NodeMembership))
+		i = encodeVarintCa(dAtA, i, uint64(m.NodeMembership))
 	}
 	return i, nil
 }
 
-func (m *GetRootCACertificateRequest) Marshal() (data []byte, err error) {
+func (m *GetRootCACertificateRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *GetRootCACertificateRequest) MarshalTo(data []byte) (int, error) {
+func (m *GetRootCACertificateRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -733,41 +759,41 @@ func (m *GetRootCACertificateRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *GetRootCACertificateResponse) Marshal() (data []byte, err error) {
+func (m *GetRootCACertificateResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *GetRootCACertificateResponse) MarshalTo(data []byte) (int, error) {
+func (m *GetRootCACertificateResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.Certificate) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintCa(data, i, uint64(len(m.Certificate)))
-		i += copy(data[i:], m.Certificate)
+		i = encodeVarintCa(dAtA, i, uint64(len(m.Certificate)))
+		i += copy(dAtA[i:], m.Certificate)
 	}
 	return i, nil
 }
 
-func (m *GetUnlockKeyRequest) Marshal() (data []byte, err error) {
+func (m *GetUnlockKeyRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *GetUnlockKeyRequest) MarshalTo(data []byte) (int, error) {
+func (m *GetUnlockKeyRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -775,31 +801,31 @@ func (m *GetUnlockKeyRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *GetUnlockKeyResponse) Marshal() (data []byte, err error) {
+func (m *GetUnlockKeyResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *GetUnlockKeyResponse) MarshalTo(data []byte) (int, error) {
+func (m *GetUnlockKeyResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.UnlockKey) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintCa(data, i, uint64(len(m.UnlockKey)))
-		i += copy(data[i:], m.UnlockKey)
+		i = encodeVarintCa(dAtA, i, uint64(len(m.UnlockKey)))
+		i += copy(dAtA[i:], m.UnlockKey)
 	}
-	data[i] = 0x12
+	dAtA[i] = 0x12
 	i++
-	i = encodeVarintCa(data, i, uint64(m.Version.Size()))
-	n3, err := m.Version.MarshalTo(data[i:])
+	i = encodeVarintCa(dAtA, i, uint64(m.Version.Size()))
+	n3, err := m.Version.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
@@ -807,31 +833,31 @@ func (m *GetUnlockKeyResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func encodeFixed64Ca(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
+func encodeFixed64Ca(dAtA []byte, offset int, v uint64) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
+	dAtA[offset+4] = uint8(v >> 32)
+	dAtA[offset+5] = uint8(v >> 40)
+	dAtA[offset+6] = uint8(v >> 48)
+	dAtA[offset+7] = uint8(v >> 56)
 	return offset + 8
 }
-func encodeFixed32Ca(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
+func encodeFixed32Ca(dAtA []byte, offset int, v uint32) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
 	return offset + 4
 }
-func encodeVarintCa(data []byte, offset int, v uint64) int {
+func encodeVarintCa(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
+		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
-	data[offset] = uint8(v)
+	dAtA[offset] = uint8(v)
 	return offset + 1
 }
 
@@ -1315,8 +1341,8 @@ func valueToStringCa(v interface{}) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
 }
-func (m *NodeCertificateStatusRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *NodeCertificateStatusRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -1328,7 +1354,7 @@ func (m *NodeCertificateStatusRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1356,7 +1382,7 @@ func (m *NodeCertificateStatusRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1371,11 +1397,11 @@ func (m *NodeCertificateStatusRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.NodeID = string(data[iNdEx:postIndex])
+			m.NodeID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipCa(data[iNdEx:])
+			skippy, err := skipCa(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -1394,8 +1420,8 @@ func (m *NodeCertificateStatusRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *NodeCertificateStatusResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *NodeCertificateStatusResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -1407,7 +1433,7 @@ func (m *NodeCertificateStatusResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1435,7 +1461,7 @@ func (m *NodeCertificateStatusResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1452,7 +1478,7 @@ func (m *NodeCertificateStatusResponse) Unmarshal(data []byte) error {
 			if m.Status == nil {
 				m.Status = &IssuanceStatus{}
 			}
-			if err := m.Status.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Status.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1468,7 +1494,7 @@ func (m *NodeCertificateStatusResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1485,13 +1511,13 @@ func (m *NodeCertificateStatusResponse) Unmarshal(data []byte) error {
 			if m.Certificate == nil {
 				m.Certificate = &Certificate{}
 			}
-			if err := m.Certificate.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Certificate.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipCa(data[iNdEx:])
+			skippy, err := skipCa(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -1510,8 +1536,8 @@ func (m *NodeCertificateStatusResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *IssueNodeCertificateRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *IssueNodeCertificateRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -1523,7 +1549,7 @@ func (m *IssueNodeCertificateRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1551,7 +1577,7 @@ func (m *IssueNodeCertificateRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Role |= (NodeRole(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1570,7 +1596,7 @@ func (m *IssueNodeCertificateRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1584,7 +1610,7 @@ func (m *IssueNodeCertificateRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.CSR = append(m.CSR[:0], data[iNdEx:postIndex]...)
+			m.CSR = append(m.CSR[:0], dAtA[iNdEx:postIndex]...)
 			if m.CSR == nil {
 				m.CSR = []byte{}
 			}
@@ -1601,7 +1627,7 @@ func (m *IssueNodeCertificateRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1616,7 +1642,7 @@ func (m *IssueNodeCertificateRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Token = string(data[iNdEx:postIndex])
+			m.Token = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 4:
 			if wireType != 0 {
@@ -1630,7 +1656,7 @@ func (m *IssueNodeCertificateRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Availability |= (NodeSpec_Availability(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1639,7 +1665,7 @@ func (m *IssueNodeCertificateRequest) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipCa(data[iNdEx:])
+			skippy, err := skipCa(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -1658,8 +1684,8 @@ func (m *IssueNodeCertificateRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *IssueNodeCertificateResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *IssueNodeCertificateResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -1671,7 +1697,7 @@ func (m *IssueNodeCertificateResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1699,7 +1725,7 @@ func (m *IssueNodeCertificateResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1714,7 +1740,7 @@ func (m *IssueNodeCertificateResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.NodeID = string(data[iNdEx:postIndex])
+			m.NodeID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 0 {
@@ -1728,7 +1754,7 @@ func (m *IssueNodeCertificateResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.NodeMembership |= (NodeSpec_Membership(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1737,7 +1763,7 @@ func (m *IssueNodeCertificateResponse) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipCa(data[iNdEx:])
+			skippy, err := skipCa(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -1756,8 +1782,8 @@ func (m *IssueNodeCertificateResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *GetRootCACertificateRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *GetRootCACertificateRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -1769,7 +1795,7 @@ func (m *GetRootCACertificateRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1787,7 +1813,7 @@ func (m *GetRootCACertificateRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		default:
 			iNdEx = preIndex
-			skippy, err := skipCa(data[iNdEx:])
+			skippy, err := skipCa(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -1806,8 +1832,8 @@ func (m *GetRootCACertificateRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *GetRootCACertificateResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *GetRootCACertificateResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -1819,7 +1845,7 @@ func (m *GetRootCACertificateResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1847,7 +1873,7 @@ func (m *GetRootCACertificateResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1861,14 +1887,14 @@ func (m *GetRootCACertificateResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Certificate = append(m.Certificate[:0], data[iNdEx:postIndex]...)
+			m.Certificate = append(m.Certificate[:0], dAtA[iNdEx:postIndex]...)
 			if m.Certificate == nil {
 				m.Certificate = []byte{}
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipCa(data[iNdEx:])
+			skippy, err := skipCa(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -1887,8 +1913,8 @@ func (m *GetRootCACertificateResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *GetUnlockKeyRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *GetUnlockKeyRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -1900,7 +1926,7 @@ func (m *GetUnlockKeyRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1918,7 +1944,7 @@ func (m *GetUnlockKeyRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		default:
 			iNdEx = preIndex
-			skippy, err := skipCa(data[iNdEx:])
+			skippy, err := skipCa(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -1937,8 +1963,8 @@ func (m *GetUnlockKeyRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *GetUnlockKeyResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *GetUnlockKeyResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -1950,7 +1976,7 @@ func (m *GetUnlockKeyResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1978,7 +2004,7 @@ func (m *GetUnlockKeyResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1992,7 +2018,7 @@ func (m *GetUnlockKeyResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.UnlockKey = append(m.UnlockKey[:0], data[iNdEx:postIndex]...)
+			m.UnlockKey = append(m.UnlockKey[:0], dAtA[iNdEx:postIndex]...)
 			if m.UnlockKey == nil {
 				m.UnlockKey = []byte{}
 			}
@@ -2009,7 +2035,7 @@ func (m *GetUnlockKeyResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2023,13 +2049,13 @@ func (m *GetUnlockKeyResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.Version.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Version.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipCa(data[iNdEx:])
+			skippy, err := skipCa(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -2048,8 +2074,8 @@ func (m *GetUnlockKeyResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func skipCa(data []byte) (n int, err error) {
-	l := len(data)
+func skipCa(dAtA []byte) (n int, err error) {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		var wire uint64
@@ -2060,7 +2086,7 @@ func skipCa(data []byte) (n int, err error) {
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -2078,7 +2104,7 @@ func skipCa(data []byte) (n int, err error) {
 					return 0, io.ErrUnexpectedEOF
 				}
 				iNdEx++
-				if data[iNdEx-1] < 0x80 {
+				if dAtA[iNdEx-1] < 0x80 {
 					break
 				}
 			}
@@ -2095,7 +2121,7 @@ func skipCa(data []byte) (n int, err error) {
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				length |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -2118,7 +2144,7 @@ func skipCa(data []byte) (n int, err error) {
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
-					b := data[iNdEx]
+					b := dAtA[iNdEx]
 					iNdEx++
 					innerWire |= (uint64(b) & 0x7F) << shift
 					if b < 0x80 {
@@ -2129,7 +2155,7 @@ func skipCa(data []byte) (n int, err error) {
 				if innerWireType == 4 {
 					break
 				}
-				next, err := skipCa(data[start:])
+				next, err := skipCa(dAtA[start:])
 				if err != nil {
 					return 0, err
 				}
