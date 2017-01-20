@@ -238,7 +238,7 @@ func validateSecretRefsSpec(spec *api.ServiceSpec) error {
 			return grpc.Errorf(codes.InvalidArgument, "malformed secret reference")
 		}
 
-		// Every secret referece requires a Target
+		// Every secret reference requires a Target
 		if secretRef.GetTarget() == nil {
 			return grpc.Errorf(codes.InvalidArgument, "malformed secret reference, no target provided")
 		}
