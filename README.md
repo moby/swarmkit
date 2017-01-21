@@ -55,6 +55,7 @@ Some of *SwarmKit*'s main features are:
         |:------------- |:-------------| :-------------|
         | node.id | node's ID | `node.id == 2ivku8v2gvtg4`|
         | node.hostname | node's hostname | `node.hostname != node-2`|
+        | node.ip | node's IP address | `node.ip != 172.19.17.0/24`|
         | node.role |  node's manager or worker role | `node.role == manager`|
         | node.platform.os |  node's operating system | `node.platform.os == linux`|
         | node.platform.arch |  node's architecture | `node.platform.arch == x86_64`|
