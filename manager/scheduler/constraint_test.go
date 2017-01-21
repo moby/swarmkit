@@ -49,6 +49,10 @@ func setupEnv() {
 					Labels: make(map[string]string),
 				},
 			},
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+				Addr:  "186.17.9.41",
+			},
 		},
 		Tasks: make(map[string]*api.Task),
 		DesiredRunningTasksCountByService: make(map[string]int),
@@ -109,6 +113,76 @@ func TestNodeHostname(t *testing.T) {
 	// case insensitive
 	ni.Node.Description.Hostname = "NODe-1"
 	assert.False(t, f.Check(ni))
+}
+
+func TestNodeIP(t *testing.T) {
+	setupEnv()
+	f := ConstraintFilter{}
+
+	type testcase struct {
+		constraints    []string
+		requireVerdict bool
+		assertVerdict  bool
+	}
+
+	testFunc := func(tc testcase) {
+		task1.Spec.Placement = &api.Placement{
+			Constraints: tc.constraints,
+		}
+		require.Equal(t, f.SetTask(task1), tc.requireVerdict)
+		if tc.requireVerdict {
+			assert.Equal(t, f.Check(ni), tc.assertVerdict)
+		}
+	}
+
+	ipv4tests := []testcase{
+		{[]string{"node.ip == 186.17.9.41"}, true, true},
+		{[]string{"node.ip != 186.17.9.41"}, true, false},
+		{[]string{"node.ip == 186.17.9.42"}, true, false},
+		{[]string{"node.ip == 186.17.9.4/24"}, true, true},
+		{[]string{"node.ip == 186.17.8.41/24"}, true, false},
+		// invalid CIDR format
+		{[]string{"node.ip == 186.17.9.41/34"}, true, false},
+		// malformed IP
+		{[]string{"node.ip != 266.17.9.41"}, true, false},
+		// zero
+		{[]string{"node.ip != 0.0.0.0"}, true, true},
+		// invalid input, detected by SetTask
+		{[]string{"node.ip == "}, false, true},
+		// invalid input, not detected by SetTask
+		{[]string{"node.ip == not_ip_addr"}, true, false},
+	}
+
+	for _, tc := range ipv4tests {
+		testFunc(tc)
+	}
+
+	// IPv6 address
+	ni.Status.Addr = "2001:db8::2"
+	ipv6tests := []testcase{
+		{[]string{"node.ip == 2001:db8::2"}, true, true},
+		// same IPv6 address, different format
+		{[]string{"node.ip == 2001:db8:0::2"}, true, true},
+		{[]string{"node.ip != 2001:db8::2/128"}, true, false},
+		{[]string{"node.ip == 2001:db8::/64"}, true, true},
+		{[]string{"node.ip == 2001:db9::/64"}, true, false},
+		{[]string{"node.ip != 2001:db9::/64"}, true, true},
+	}
+
+	for _, tc := range ipv6tests {
+		testFunc(tc)
+	}
+
+	// node doesn't have address
+	ni.Status.Addr = ""
+	edgetests := []testcase{
+		{[]string{"node.ip == 0.0.0.0"}, true, false},
+		{[]string{"node.ip != 0.0.0.0"}, true, true},
+	}
+
+	for _, tc := range edgetests {
+		testFunc(tc)
+	}
 }
 
 func TestNodeID(t *testing.T) {
