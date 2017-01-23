@@ -2064,7 +2064,7 @@ func (this *HeartbeatResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&HeartbeatResponse{`,
-		`Period:` + strings.Replace(strings.Replace(this.Period.String(), "Duration", "google_protobuf.Duration", 1), `&`, ``, 1) + `,`,
+		`Period:` + strings.Replace(strings.Replace(this.Period.String(), "Duration", "google_protobuf1.Duration", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s

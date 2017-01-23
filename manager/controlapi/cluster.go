@@ -8,7 +8,6 @@ import (
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/protobuf/ptypes"
 	gogotypes "github.com/gogo/protobuf/types"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -254,7 +253,7 @@ func expireBlacklistedCerts(cluster *api.Cluster) {
 			continue
 		}
 
-		expiry, err := ptypes.Timestamp(blacklistedCert.Expiry)
+		expiry, err := gogotypes.TimestampFromProto(blacklistedCert.Expiry)
 		if err == nil && nowMinusGrace.After(expiry) {
 			delete(cluster.BlacklistedCertificates, cn)
 		}

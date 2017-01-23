@@ -10,7 +10,7 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +19,7 @@ func printTaskStatus(w io.Writer, t *api.Task) {
 	fmt.Fprintf(w, "  Desired State\t: %s\n", t.DesiredState.String())
 	fmt.Fprintf(w, "  Last State\t: %s\n", t.Status.State.String())
 	if t.Status.Timestamp != nil {
-		fmt.Fprintf(w, "  Timestamp\t: %s\n", ptypes.TimestampString(t.Status.Timestamp))
+		fmt.Fprintf(w, "  Timestamp\t: %s\n", gogotypes.TimestampString(t.Status.Timestamp))
 	}
 	if t.Status.Message != "" {
 		fmt.Fprintf(w, "  Message\t: %s\n", t.Status.Message)

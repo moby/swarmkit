@@ -8,7 +8,7 @@ import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
-import google_protobuf "github.com/gogo/protobuf/types"
+import google_protobuf1 "github.com/gogo/protobuf/types"
 
 import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
@@ -488,7 +488,7 @@ type ContainerSpec struct {
 	// StopGracePeriod the grace period for stopping the container before
 	// forcefully killing the container.
 	// Note: Can't use stdduration here because this needs to be nullable.
-	StopGracePeriod *google_protobuf.Duration `protobuf:"bytes,9,opt,name=stop_grace_period,json=stopGracePeriod" json:"stop_grace_period,omitempty"`
+	StopGracePeriod *google_protobuf1.Duration `protobuf:"bytes,9,opt,name=stop_grace_period,json=stopGracePeriod" json:"stop_grace_period,omitempty"`
 	// PullOptions parameterize the behavior of image pulls.
 	PullOptions *ContainerSpec_PullOptions `protobuf:"bytes,10,opt,name=pull_options,json=pullOptions" json:"pull_options,omitempty"`
 	// SecretReference contains references to zero or more secrets that
@@ -853,7 +853,7 @@ func (m *ContainerSpec) CopyFrom(src interface{}) {
 	}
 
 	if o.StopGracePeriod != nil {
-		m.StopGracePeriod = &google_protobuf.Duration{}
+		m.StopGracePeriod = &google_protobuf1.Duration{}
 		github_com_docker_swarmkit_api_deepcopy.Copy(m.StopGracePeriod, o.StopGracePeriod)
 	}
 	if o.PullOptions != nil {
@@ -2387,7 +2387,7 @@ func (this *ContainerSpec) String() string {
 		`Dir:` + fmt.Sprintf("%v", this.Dir) + `,`,
 		`User:` + fmt.Sprintf("%v", this.User) + `,`,
 		`Mounts:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Mounts), "Mount", "Mount", 1), `&`, ``, 1) + `,`,
-		`StopGracePeriod:` + strings.Replace(fmt.Sprintf("%v", this.StopGracePeriod), "Duration", "google_protobuf.Duration", 1) + `,`,
+		`StopGracePeriod:` + strings.Replace(fmt.Sprintf("%v", this.StopGracePeriod), "Duration", "google_protobuf1.Duration", 1) + `,`,
 		`PullOptions:` + strings.Replace(fmt.Sprintf("%v", this.PullOptions), "ContainerSpec_PullOptions", "ContainerSpec_PullOptions", 1) + `,`,
 		`Groups:` + fmt.Sprintf("%v", this.Groups) + `,`,
 		`Secrets:` + strings.Replace(fmt.Sprintf("%v", this.Secrets), "SecretReference", "SecretReference", 1) + `,`,
@@ -3764,7 +3764,7 @@ func (m *ContainerSpec) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.StopGracePeriod == nil {
-				m.StopGracePeriod = &google_protobuf.Duration{}
+				m.StopGracePeriod = &google_protobuf1.Duration{}
 			}
 			if err := m.StopGracePeriod.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
