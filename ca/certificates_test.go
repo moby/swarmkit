@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -19,6 +20,7 @@ import (
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state"
+	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/opencontainers/go-digest"
 	"github.com/phayes/permbits"
@@ -256,11 +258,63 @@ func TestGetRemoteCA(t *testing.T) {
 	mdStr := hex.EncodeToString(md)
 
 	d, err := digest.Parse("sha256:" + mdStr)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	cert, err := ca.GetRemoteCA(tc.Context, d, tc.ConnBroker)
-	assert.NoError(t, err)
-	assert.NotNil(t, cert)
+	downloadedRootCA, err := ca.GetRemoteCA(tc.Context, d, tc.ConnBroker)
+	require.NoError(t, err)
+	require.Equal(t, downloadedRootCA.Cert, tc.RootCA.Cert)
+
+	// update the test CA to include a multi-certificate bundle as the root - the digest
+	// we use to verify with must be the digest of the whole bundle
+	tmpDir, err := ioutil.TempDir("", "GetRemoteCA")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+	paths := ca.NewConfigPaths(tmpDir)
+
+	otherRootCA, err := ca.CreateRootCA("other", paths.RootCA)
+	require.NoError(t, err)
+
+	comboCertBundle := append(tc.RootCA.Cert, otherRootCA.Cert...)
+	require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
+		cluster := store.GetCluster(tx, tc.Organization)
+		cluster.RootCA.CACert = comboCertBundle
+		cluster.RootCA.CAKey = tc.RootCA.Key
+		return store.UpdateCluster(tx, cluster)
+	}))
+	require.NoError(t, raftutils.PollFunc(nil, func() error {
+		_, err := ca.GetRemoteCA(tc.Context, d, tc.ConnBroker)
+		if err == nil {
+			return fmt.Errorf("testca's rootca hasn't updated yet")
+		}
+		require.Contains(t, err.Error(), "remote CA does not match fingerprint")
+		return nil
+	}))
+
+	// If we provide the right digest, the root CA is updated and we can validate
+	// certs signed by either one
+	d = digest.FromBytes(comboCertBundle)
+	downloadedRootCA, err = ca.GetRemoteCA(tc.Context, d, tc.ConnBroker)
+	require.NoError(t, err)
+	require.Equal(t, comboCertBundle, downloadedRootCA.Cert)
+	require.Equal(t, 2, len(downloadedRootCA.Pool.Subjects()))
+
+	for _, rootCA := range []ca.RootCA{tc.RootCA, otherRootCA} {
+		krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
+		_, err := rootCA.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
+		require.NoError(t, err)
+
+		certPEM, _, err := krw.Read()
+		require.NoError(t, err)
+
+		cert, err := helpers.ParseCertificatesPEM(certPEM)
+		require.NoError(t, err)
+
+		chains, err := cert[0].Verify(x509.VerifyOptions{
+			Roots: downloadedRootCA.Pool,
+		})
+		require.NoError(t, err)
+		require.Len(t, chains, 1)
+	}
 }
 
 func TestCanSign(t *testing.T) {
