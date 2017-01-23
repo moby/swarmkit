@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package docker.swarmkit.v1;
 
-import "timestamp/timestamp.proto"; // TODO(stevvooe): use our own until we fix gogoproto/deepcopy
+import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
 import "gogoproto/gogo.proto";
 
@@ -346,11 +346,13 @@ message UpdateStatus {
 	UpdateState state = 1;
 
 	// StartedAt is the time at which the update was started.
-	Timestamp started_at = 2;
+	// Note: can't use stdtime because this field is nullable.
+	google.protobuf.Timestamp started_at = 2;
 
 	// CompletedAt is the time at which the update completed successfully,
 	// paused, or finished rolling back.
-	Timestamp completed_at = 3;
+	// Note: can't use stdtime because this field is nullable.
+	google.protobuf.Timestamp completed_at = 3;
 
 	// TODO(aaronl): Consider adding a timestamp showing when the most
 	// recent task update took place. Currently, this is nontrivial
@@ -421,7 +423,8 @@ message PortStatus {
 }
 
 message TaskStatus {
-	Timestamp timestamp = 1;
+	// Note: can't use stdtime because this field is nullable.
+	google.protobuf.Timestamp timestamp = 1;
 
 	// State expresses the current state of the task.
 	TaskState state = 2;
@@ -834,7 +837,8 @@ message SecretReference {
 message BlacklistedCertificate {
 	// Expiry is the latest known expiration time of a certificate that
 	// was issued for the given CN.
-	Timestamp expiry = 1;
+	// Note: can't use stdtime because this field is nullable.
+	google.protobuf.Timestamp expiry = 1;
 }
 
 // HealthConfig holds configuration settings for the HEALTHCHECK feature.

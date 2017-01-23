@@ -39,6 +39,7 @@ import (
 	"time"
 
 	tspb "github.com/docker/swarmkit/api/timestamp"
+	gogotypes "github.com/gogo/protobuf/types"
 )
 
 const (
@@ -116,8 +117,8 @@ func TimestampProto(t time.Time) (*tspb.Timestamp, error) {
 
 // MustTimestampProto converts time.Time to a google.protobuf.Timestamp proto.
 // It panics if input timestamp is invalid.
-func MustTimestampProto(t time.Time) *tspb.Timestamp {
-	ts, err := TimestampProto(t)
+func MustTimestampProto(t time.Time) *gogotypes.Timestamp {
+	ts, err := gogotypes.TimestampProto(t)
 	if err != nil {
 		panic(err.Error())
 	}

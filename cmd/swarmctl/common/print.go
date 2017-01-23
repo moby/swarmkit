@@ -5,9 +5,8 @@ import (
 	"io"
 	"strings"
 
-	tspb "github.com/docker/swarmkit/api/timestamp"
-	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/dustin/go-humanize"
+	gogotypes "github.com/gogo/protobuf/types"
 )
 
 // PrintHeader prints a nice little header.
@@ -30,11 +29,11 @@ func FprintfIfNotEmpty(w io.Writer, format string, v interface{}) {
 }
 
 // TimestampAgo returns a relatime time string from a timestamp (e.g. "12 seconds ago").
-func TimestampAgo(ts *tspb.Timestamp) string {
+func TimestampAgo(ts *gogotypes.Timestamp) string {
 	if ts == nil {
 		return ""
 	}
-	t, err := ptypes.Timestamp(ts)
+	t, err := gogotypes.TimestampFromProto(ts)
 	if err != nil {
 		panic(err)
 	}

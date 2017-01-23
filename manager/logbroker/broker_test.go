@@ -16,6 +16,7 @@ import (
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -803,7 +804,7 @@ func testBrokerClient(t *testing.T, tca *testutils.TestCA, addr string) (api.Log
 
 func printLogMessages(msgs ...api.LogMessage) {
 	for _, msg := range msgs {
-		ts, _ := ptypes.Timestamp(msg.Timestamp)
+		ts, _ := gogotypes.TimestampFromProto(msg.Timestamp)
 		fmt.Printf("%v %v %s\n", msg.Context, ts, string(msg.Data))
 	}
 }
