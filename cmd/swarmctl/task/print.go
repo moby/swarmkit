@@ -8,7 +8,7 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 )
 
 type tasksBySlot []*api.Task
@@ -26,11 +26,11 @@ func (t tasksBySlot) Less(i, j int) bool {
 	}
 
 	// If same slot, sort by most recent.
-	it, err := ptypes.Timestamp(t[i].Meta.CreatedAt)
+	it, err := gogotypes.TimestampFromProto(t[i].Meta.CreatedAt)
 	if err != nil {
 		panic(err)
 	}
-	jt, err := ptypes.Timestamp(t[j].Meta.CreatedAt)
+	jt, err := gogotypes.TimestampFromProto(t[j].Meta.CreatedAt)
 	if err != nil {
 		panic(err)
 	}

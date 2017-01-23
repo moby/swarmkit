@@ -9,7 +9,7 @@ import (
 	"github.com/docker/swarmkit/manager/orchestrator/restart"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -83,7 +83,7 @@ func TestUpdater(t *testing.T) {
 			},
 			Update: &api.UpdateConfig{
 				// avoid having Run block for a long time to watch for failures
-				Monitor: ptypes.DurationProto(50 * time.Millisecond),
+				Monitor: gogotypes.DurationProto(50 * time.Millisecond),
 			},
 		},
 	}
@@ -122,7 +122,7 @@ func TestUpdater(t *testing.T) {
 	cluster.Spec.TaskDefaults.LogDriver = &api.Driver{Name: "clusterlogdriver"} // make cluster default logdriver.
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
-		Monitor:     ptypes.DurationProto(50 * time.Millisecond),
+		Monitor:     gogotypes.DurationProto(50 * time.Millisecond),
 	}
 	updater = NewUpdater(s, restart.NewSupervisor(s), cluster, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
@@ -138,8 +138,8 @@ func TestUpdater(t *testing.T) {
 	service.Spec.Task.LogDriver = nil // use cluster default now.
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
-		Delay:       *ptypes.DurationProto(10 * time.Millisecond),
-		Monitor:     ptypes.DurationProto(50 * time.Millisecond),
+		Delay:       10 * time.Millisecond,
+		Monitor:     gogotypes.DurationProto(50 * time.Millisecond),
 	}
 	updater = NewUpdater(s, restart.NewSupervisor(s), cluster, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
@@ -217,8 +217,8 @@ func TestUpdaterFailureAction(t *testing.T) {
 			Update: &api.UpdateConfig{
 				FailureAction: api.UpdateConfig_PAUSE,
 				Parallelism:   1,
-				Delay:         *ptypes.DurationProto(500 * time.Millisecond),
-				Monitor:       ptypes.DurationProto(500 * time.Millisecond),
+				Delay:         500 * time.Millisecond,
+				Monitor:       gogotypes.DurationProto(500 * time.Millisecond),
 			},
 		},
 	}
@@ -362,7 +362,7 @@ func TestUpdaterTaskTimeout(t *testing.T) {
 			},
 			Update: &api.UpdateConfig{
 				// avoid having Run block for a long time to watch for failures
-				Monitor: ptypes.DurationProto(50 * time.Millisecond),
+				Monitor: gogotypes.DurationProto(50 * time.Millisecond),
 			},
 		},
 	}

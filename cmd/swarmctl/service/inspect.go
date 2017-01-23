@@ -12,8 +12,8 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
 	"github.com/docker/swarmkit/cmd/swarmctl/task"
-	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/dustin/go-humanize"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/spf13/cobra"
 )
 
@@ -35,12 +35,12 @@ func printServiceSummary(service *api.Service, running int) {
 	if service.UpdateStatus != nil {
 		fmt.Fprintln(w, "Update Status\t")
 		fmt.Fprintln(w, " State\t:", service.UpdateStatus.State)
-		started, err := ptypes.Timestamp(service.UpdateStatus.StartedAt)
+		started, err := gogotypes.TimestampFromProto(service.UpdateStatus.StartedAt)
 		if err == nil {
 			fmt.Fprintln(w, " Started\t:", humanize.Time(started))
 		}
 		if service.UpdateStatus.State == api.UpdateStatus_COMPLETED {
-			completed, err := ptypes.Timestamp(service.UpdateStatus.CompletedAt)
+			completed, err := gogotypes.TimestampFromProto(service.UpdateStatus.CompletedAt)
 			if err == nil {
 				fmt.Fprintln(w, " Completed\t:", humanize.Time(completed))
 			}

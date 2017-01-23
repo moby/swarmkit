@@ -8,7 +8,7 @@ import (
 	"github.com/docker/swarmkit/manager/orchestrator/testutils"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -41,7 +41,7 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 					},
 					Restart: &api.RestartPolicy{
 						Condition: api.RestartOnAny,
-						Delay:     ptypes.DurationProto(0),
+						Delay:     gogotypes.DurationProto(0),
 					},
 				},
 				Mode: &api.ServiceSpec_Replicated{
@@ -144,7 +144,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 					},
 					Restart: &api.RestartPolicy{
 						Condition: api.RestartOnFailure,
-						Delay:     ptypes.DurationProto(0),
+						Delay:     gogotypes.DurationProto(0),
 					},
 				},
 				Mode: &api.ServiceSpec_Replicated{
@@ -340,7 +340,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 					},
 					Restart: &api.RestartPolicy{
 						Condition: api.RestartOnAny,
-						Delay:     ptypes.DurationProto(100 * time.Millisecond),
+						Delay:     gogotypes.DurationProto(100 * time.Millisecond),
 					},
 				},
 				Mode: &api.ServiceSpec_Replicated{
@@ -437,7 +437,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 					},
 					Restart: &api.RestartPolicy{
 						Condition:   api.RestartOnAny,
-						Delay:       ptypes.DurationProto(100 * time.Millisecond),
+						Delay:       gogotypes.DurationProto(100 * time.Millisecond),
 						MaxAttempts: 1,
 					},
 				},
@@ -570,9 +570,9 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 				Task: api.TaskSpec{
 					Restart: &api.RestartPolicy{
 						Condition:   api.RestartOnAny,
-						Delay:       ptypes.DurationProto(100 * time.Millisecond),
+						Delay:       gogotypes.DurationProto(100 * time.Millisecond),
 						MaxAttempts: 1,
-						Window:      ptypes.DurationProto(500 * time.Millisecond),
+						Window:      gogotypes.DurationProto(500 * time.Millisecond),
 					},
 				},
 			},

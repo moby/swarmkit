@@ -35,9 +35,9 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/docker/swarmkit/remotes"
 	"github.com/docker/swarmkit/xnet"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -966,7 +966,7 @@ func defaultClusterObject(
 				TaskHistoryRetentionLimit: defaultTaskHistoryRetentionLimit,
 			},
 			Dispatcher: api.DispatcherConfig{
-				HeartbeatPeriod: ptypes.DurationProto(dispatcher.DefaultHeartBeatPeriod),
+				HeartbeatPeriod: gogotypes.DurationProto(dispatcher.DefaultHeartBeatPeriod),
 			},
 			Raft:             raftCfg,
 			CAConfig:         initialCAConfig,
