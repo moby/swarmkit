@@ -9,7 +9,7 @@ import (
 	"github.com/docker/swarmkit/manager/orchestrator/testutils"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -105,8 +105,8 @@ func TestUpdaterRollback(t *testing.T) {
 				Update: &api.UpdateConfig{
 					FailureAction:   api.UpdateConfig_ROLLBACK,
 					Parallelism:     1,
-					Delay:           *ptypes.DurationProto(10 * time.Millisecond),
-					Monitor:         ptypes.DurationProto(500 * time.Millisecond),
+					Delay:           10 * time.Millisecond,
+					Monitor:         gogotypes.DurationProto(500 * time.Millisecond),
 					MaxFailureRatio: 0.4,
 				},
 			},

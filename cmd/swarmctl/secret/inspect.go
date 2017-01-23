@@ -8,7 +8,7 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +25,7 @@ func printSecretSummary(secret *api.Secret) {
 		}
 	}
 
-	common.FprintfIfNotEmpty(w, "Created\t: %s\n", ptypes.TimestampString(secret.Meta.CreatedAt))
+	common.FprintfIfNotEmpty(w, "Created\t: %s\n", gogotypes.TimestampString(secret.Meta.CreatedAt))
 }
 
 var (

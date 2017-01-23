@@ -9,7 +9,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/cli"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +47,7 @@ var (
 				if err != nil {
 					return err
 				}
-				ceProtoPeriod := ptypes.DurationProto(cePeriod)
+				ceProtoPeriod := gogotypes.DurationProto(cePeriod)
 				spec.CAConfig.NodeCertExpiry = ceProtoPeriod
 			}
 			if flags.Changed("external-ca") {
@@ -65,7 +65,7 @@ var (
 				if err != nil {
 					return err
 				}
-				spec.Dispatcher.HeartbeatPeriod = ptypes.DurationProto(hbPeriod)
+				spec.Dispatcher.HeartbeatPeriod = gogotypes.DurationProto(hbPeriod)
 			}
 			if flags.Changed("rotate-join-token") {
 				rotateJoinToken, err := flags.GetString("rotate-join-token")

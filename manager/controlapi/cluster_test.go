@@ -9,6 +9,7 @@ import (
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -22,7 +23,7 @@ func createClusterSpec(name string) *api.ClusterSpec {
 			Name: name,
 		},
 		CAConfig: api.CAConfig{
-			NodeCertExpiry: ptypes.DurationProto(ca.DefaultNodeCertExpiration),
+			NodeCertExpiry: gogotypes.DurationProto(ca.DefaultNodeCertExpiration),
 		},
 	}
 }
@@ -71,7 +72,7 @@ func TestValidateClusterSpec(t *testing.T) {
 					Name: "name",
 				},
 				CAConfig: api.CAConfig{
-					NodeCertExpiry: ptypes.DurationProto(29 * time.Minute),
+					NodeCertExpiry: gogotypes.DurationProto(29 * time.Minute),
 				},
 			},
 			c: codes.InvalidArgument,
@@ -82,7 +83,7 @@ func TestValidateClusterSpec(t *testing.T) {
 					Name: "name",
 				},
 				Dispatcher: api.DispatcherConfig{
-					HeartbeatPeriod: ptypes.DurationProto(-29 * time.Minute),
+					HeartbeatPeriod: gogotypes.DurationProto(-29 * time.Minute),
 				},
 			},
 			c: codes.InvalidArgument,

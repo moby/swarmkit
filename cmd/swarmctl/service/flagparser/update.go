@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/spf13/pflag"
 )
 
@@ -35,7 +34,7 @@ func parseUpdate(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		if spec.Update == nil {
 			spec.Update = &api.UpdateConfig{}
 		}
-		spec.Update.Delay = *ptypes.DurationProto(delayDuration)
+		spec.Update.Delay = delayDuration
 	}
 
 	if flags.Changed("update-on-failure") {

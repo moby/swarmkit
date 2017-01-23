@@ -9,8 +9,8 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
-	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/dustin/go-humanize"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/spf13/cobra"
 )
 
@@ -19,11 +19,11 @@ type secretSorter []*api.Secret
 func (k secretSorter) Len() int      { return len(k) }
 func (k secretSorter) Swap(i, j int) { k[i], k[j] = k[j], k[i] }
 func (k secretSorter) Less(i, j int) bool {
-	iTime, err := ptypes.Timestamp(k[i].Meta.CreatedAt)
+	iTime, err := gogotypes.TimestampFromProto(k[i].Meta.CreatedAt)
 	if err != nil {
 		panic(err)
 	}
-	jTime, err := ptypes.Timestamp(k[j].Meta.CreatedAt)
+	jTime, err := gogotypes.TimestampFromProto(k[j].Meta.CreatedAt)
 	if err != nil {
 		panic(err)
 	}
@@ -65,7 +65,7 @@ var (
 				}()
 				common.PrintHeader(w, "ID", "Name", "Created")
 				output = func(s *api.Secret) {
-					created, err := ptypes.Timestamp(s.Meta.CreatedAt)
+					created, err := gogotypes.TimestampFromProto(s.Meta.CreatedAt)
 					if err != nil {
 						panic(err)
 					}

@@ -9,7 +9,7 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +22,7 @@ func printClusterSummary(cluster *api.Cluster) {
 	fmt.Fprintf(w, "Orchestration settings:\n")
 	fmt.Fprintf(w, "  Task history entries: %d\n", cluster.Spec.Orchestration.TaskHistoryRetentionLimit)
 
-	heartbeatPeriod, err := ptypes.Duration(cluster.Spec.Dispatcher.HeartbeatPeriod)
+	heartbeatPeriod, err := gogotypes.DurationFromProto(cluster.Spec.Dispatcher.HeartbeatPeriod)
 	if err == nil {
 		fmt.Fprintf(w, "Dispatcher settings:\n")
 		fmt.Fprintf(w, "  Dispatcher heartbeat period: %s\n", heartbeatPeriod.String())
@@ -30,7 +30,7 @@ func printClusterSummary(cluster *api.Cluster) {
 
 	fmt.Fprintf(w, "Certificate Authority settings:\n")
 	if cluster.Spec.CAConfig.NodeCertExpiry != nil {
-		clusterDuration, err := ptypes.Duration(cluster.Spec.CAConfig.NodeCertExpiry)
+		clusterDuration, err := gogotypes.DurationFromProto(cluster.Spec.CAConfig.NodeCertExpiry)
 		if err != nil {
 			fmt.Fprintf(w, "  Certificate Validity Duration: [ERROR PARSING DURATION]\n")
 		} else {

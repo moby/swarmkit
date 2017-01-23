@@ -1,7 +1,11 @@
 package deepcopy
 
-import "fmt"
-import "github.com/gogo/protobuf/types"
+import (
+	"fmt"
+	"time"
+
+	"github.com/gogo/protobuf/types"
+)
 
 // CopierFrom can be implemented if an object knows how to copy another into itself.
 type CopierFrom interface {
@@ -22,6 +26,12 @@ type CopierFrom interface {
 // types that use this function.
 func Copy(dst, src interface{}) {
 	switch dst := dst.(type) {
+	case *types.Duration:
+		src := src.(*types.Duration)
+		*dst = *src
+	case *time.Duration:
+		src := src.(*time.Duration)
+		*dst = *src
 	case *types.Timestamp:
 		src := src.(*types.Timestamp)
 		*dst = *src
