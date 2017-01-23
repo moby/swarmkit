@@ -15,7 +15,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -331,7 +331,7 @@ func genTask(t *testing.T) *api.Task {
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image:           reference,
-					StopGracePeriod: ptypes.DurationProto(10 * time.Second),
+					StopGracePeriod: gogotypes.DurationProto(10 * time.Second),
 				},
 			},
 		},

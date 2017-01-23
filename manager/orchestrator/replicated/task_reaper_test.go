@@ -9,7 +9,7 @@ import (
 	"github.com/docker/swarmkit/manager/orchestrator/testutils"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -61,7 +61,7 @@ func TestTaskHistory(t *testing.T) {
 				Task: api.TaskSpec{
 					Restart: &api.RestartPolicy{
 						Condition: api.RestartOnAny,
-						Delay:     ptypes.DurationProto(0),
+						Delay:     gogotypes.DurationProto(0),
 					},
 				},
 			},

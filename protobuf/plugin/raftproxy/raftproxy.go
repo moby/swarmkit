@@ -332,7 +332,7 @@ func (g *raftProxyGen) genProxyMethod(s *descriptor.ServiceDescriptorProto, m *d
 
 func (g *raftProxyGen) genPollNewLeaderConn(s *descriptor.ServiceDescriptorProto) {
 	g.gen.P(`func (p *` + serviceTypeName(s) + `) pollNewLeaderConn(ctx context.Context) (*grpc.ClientConn, error) {
-		ticker := time.NewTicker(500 * time.Millisecond)
+		ticker := rafttime.NewTicker(500 * rafttime.Millisecond)
 		defer ticker.Stop()
 		for {
 			select {
@@ -378,5 +378,6 @@ func (g *raftProxyGen) GenerateImports(file *generator.FileDescriptor) {
 	g.gen.P("import codes \"google.golang.org/grpc/codes\"")
 	g.gen.P("import metadata \"google.golang.org/grpc/metadata\"")
 	g.gen.P("import transport \"google.golang.org/grpc/transport\"")
-	g.gen.P("import time \"time\"")
+	// don't conflict with import added by ptypes
+	g.gen.P("import rafttime \"time\"")
 }

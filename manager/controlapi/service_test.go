@@ -7,9 +7,8 @@ import (
 	"time"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/duration"
 	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -249,19 +248,19 @@ func TestValidateServiceSpec(t *testing.T) {
 func TestValidateRestartPolicy(t *testing.T) {
 	bad := []*api.RestartPolicy{
 		{
-			Delay:  ptypes.DurationProto(time.Duration(-1 * time.Second)),
-			Window: ptypes.DurationProto(time.Duration(-1 * time.Second)),
+			Delay:  gogotypes.DurationProto(time.Duration(-1 * time.Second)),
+			Window: gogotypes.DurationProto(time.Duration(-1 * time.Second)),
 		},
 		{
-			Delay:  ptypes.DurationProto(time.Duration(20 * time.Second)),
-			Window: ptypes.DurationProto(time.Duration(-4 * time.Second)),
+			Delay:  gogotypes.DurationProto(time.Duration(20 * time.Second)),
+			Window: gogotypes.DurationProto(time.Duration(-4 * time.Second)),
 		},
 	}
 
 	good := []*api.RestartPolicy{
 		{
-			Delay:  ptypes.DurationProto(time.Duration(10 * time.Second)),
-			Window: ptypes.DurationProto(time.Duration(1 * time.Second)),
+			Delay:  gogotypes.DurationProto(time.Duration(10 * time.Second)),
+			Window: gogotypes.DurationProto(time.Duration(1 * time.Second)),
 		},
 	}
 
@@ -278,12 +277,12 @@ func TestValidateRestartPolicy(t *testing.T) {
 
 func TestValidateUpdate(t *testing.T) {
 	bad := []*api.UpdateConfig{
-		{Delay: duration.Duration{Seconds: -1, Nanos: 0}},
-		{Delay: duration.Duration{Seconds: -1000, Nanos: 0}},
+		{Delay: -1 * time.Second},
+		{Delay: -1000 * time.Second},
 	}
 
 	good := []*api.UpdateConfig{
-		{Delay: duration.Duration{Seconds: 1, Nanos: 0}},
+		{Delay: time.Second},
 	}
 
 	for _, b := range bad {

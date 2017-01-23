@@ -15,7 +15,6 @@ func main() {
 	files = vanity.FilterFiles(files, vanity.NotGoogleProtobufDescriptorProto)
 
 	for _, opt := range []func(*descriptor.FileDescriptorProto){
-		vanity.TurnOnGoStringAll,
 		vanity.TurnOffGoGettersAll,
 		vanity.TurnOffGoStringerAll,
 		vanity.TurnOnMarshalerAll,
