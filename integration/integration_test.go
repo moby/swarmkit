@@ -125,7 +125,7 @@ func pollServiceReady(t *testing.T, c *testCluster, sid string) {
 func newCluster(t *testing.T, numWorker, numManager int) *testCluster {
 	cl := newTestCluster()
 	for i := 0; i < numManager; i++ {
-		require.NoError(t, cl.AddManager(), "manager number %d", i+1)
+		require.NoError(t, cl.AddManager(false), "manager number %d", i+1)
 	}
 	for i := 0; i < numWorker; i++ {
 		require.NoError(t, cl.AddAgent(), "agent number %d", i+1)
@@ -143,6 +143,28 @@ func TestClusterCreate(t *testing.T) {
 	defer func() {
 		require.NoError(t, cl.Stop())
 	}()
+}
+
+func TestServiceCreateLateBind(t *testing.T) {
+	t.Parallel()
+
+	numWorker, numManager := 3, 3
+
+	cl := newTestCluster()
+	for i := 0; i < numManager; i++ {
+		require.NoError(t, cl.AddManager(true), "manager number %d", i+1)
+	}
+	for i := 0; i < numWorker; i++ {
+		require.NoError(t, cl.AddAgent(), "agent number %d", i+1)
+	}
+
+	defer func() {
+		require.NoError(t, cl.Stop())
+	}()
+
+	sid, err := cl.CreateService("test_service", 60)
+	require.NoError(t, err)
+	pollServiceReady(t, cl, sid)
 }
 
 func TestServiceCreate(t *testing.T) {
