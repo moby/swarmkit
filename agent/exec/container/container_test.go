@@ -7,7 +7,7 @@ import (
 
 	enginecontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 )
 
 func TestVolumesAndBinds(t *testing.T) {
@@ -72,8 +72,8 @@ func TestHealthcheck(t *testing.T) {
 				Container: &api.ContainerSpec{
 					Healthcheck: &api.HealthConfig{
 						Test:     []string{"a", "b", "c"},
-						Interval: ptypes.DurationProto(time.Second),
-						Timeout:  ptypes.DurationProto(time.Minute),
+						Interval: gogotypes.DurationProto(time.Second),
+						Timeout:  gogotypes.DurationProto(time.Minute),
 						Retries:  10,
 					},
 				},

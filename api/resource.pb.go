@@ -12,12 +12,6 @@ import _ "github.com/docker/swarmkit/protobuf/plugin"
 
 import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
-import strings "strings"
-import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
-import sort "sort"
-import strconv "strconv"
-import reflect "reflect"
-
 import (
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
@@ -27,7 +21,10 @@ import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
-import time "time"
+import rafttime "time"
+
+import strings "strings"
+import reflect "reflect"
 
 import io "io"
 
@@ -162,75 +159,6 @@ func (m *DetachNetworkResponse) Copy() *DetachNetworkResponse {
 }
 
 func (m *DetachNetworkResponse) CopyFrom(src interface{}) {}
-
-func (this *AttachNetworkRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 6)
-	s = append(s, "&api.AttachNetworkRequest{")
-	if this.Config != nil {
-		s = append(s, "Config: "+fmt.Sprintf("%#v", this.Config)+",\n")
-	}
-	s = append(s, "ContainerID: "+fmt.Sprintf("%#v", this.ContainerID)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *AttachNetworkResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.AttachNetworkResponse{")
-	s = append(s, "AttachmentID: "+fmt.Sprintf("%#v", this.AttachmentID)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *DetachNetworkRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.DetachNetworkRequest{")
-	s = append(s, "AttachmentID: "+fmt.Sprintf("%#v", this.AttachmentID)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *DetachNetworkResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 4)
-	s = append(s, "&api.DetachNetworkResponse{")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func valueToGoStringResource(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
-func extensionToGoStringResource(m github_com_gogo_protobuf_proto.Message) string {
-	e := github_com_gogo_protobuf_proto.GetUnsafeExtensionsMap(m)
-	if e == nil {
-		return "nil"
-	}
-	s := "proto.NewUnsafeXXX_InternalExtensions(map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "})"
-	return s
-}
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
@@ -514,7 +442,7 @@ func (p *raftProxyResourceAllocatorServer) runCtxMods(ctx context.Context, ctxMo
 	return ctx, nil
 }
 func (p *raftProxyResourceAllocatorServer) pollNewLeaderConn(ctx context.Context) (*grpc.ClientConn, error) {
-	ticker := time.NewTicker(500 * time.Millisecond)
+	ticker := rafttime.NewTicker(500 * rafttime.Millisecond)
 	defer ticker.Stop()
 	for {
 		select {
@@ -1136,7 +1064,7 @@ var (
 func init() { proto.RegisterFile("resource.proto", fileDescriptorResource) }
 
 var fileDescriptorResource = []byte{
-	// 373 bytes of a gzipped FileDescriptorProto
+	// 368 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x2b, 0x4a, 0x2d, 0xce,
 	0x2f, 0x2d, 0x4a, 0x4e, 0xd5, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x12, 0x4a, 0xc9, 0x4f, 0xce,
 	0x4e, 0x2d, 0xd2, 0x2b, 0x2e, 0x4f, 0x2c, 0xca, 0xcd, 0xce, 0x2c, 0xd1, 0x2b, 0x33, 0x94, 0xe2,
@@ -1157,8 +1085,7 @@ var fileDescriptorResource = []byte{
 	0x93, 0x08, 0x95, 0x10, 0xcb, 0x95, 0x94, 0x4f, 0xad, 0x7b, 0x37, 0x83, 0x49, 0x96, 0x8b, 0x07,
 	0xac, 0x54, 0x17, 0x24, 0x97, 0x5a, 0xc4, 0xc5, 0x0b, 0xe1, 0xe5, 0x26, 0xe6, 0x25, 0xa6, 0xa7,
 	0x42, 0xdc, 0x82, 0xe2, 0x76, 0xec, 0x6e, 0xc1, 0x16, 0x5a, 0xd8, 0xdd, 0x82, 0x35, 0x20, 0x88,
-	0x72, 0x8b, 0x93, 0xcc, 0x89, 0x87, 0x72, 0x0c, 0x37, 0x1e, 0xca, 0x31, 0x7c, 0x78, 0x28, 0xc7,
-	0xd8, 0xf0, 0x48, 0x8e, 0xf1, 0xc4, 0x23, 0x39, 0xc6, 0x0b, 0x8f, 0xe4, 0x18, 0x1f, 0x3c, 0x92,
-	0x63, 0x4c, 0x62, 0x03, 0x27, 0x4e, 0x63, 0x40, 0x00, 0x00, 0x00, 0xff, 0xff, 0xef, 0x94, 0x58,
-	0xde, 0xfa, 0x02, 0x00, 0x00,
+	0x72, 0x8b, 0x93, 0xc4, 0x89, 0x87, 0x72, 0x0c, 0x37, 0x1e, 0xca, 0x31, 0x34, 0x3c, 0x92, 0x63,
+	0x3c, 0xf1, 0x48, 0x8e, 0xf1, 0xc2, 0x23, 0x39, 0xc6, 0x07, 0x8f, 0xe4, 0x18, 0x93, 0xd8, 0xc0,
+	0x09, 0xd3, 0x18, 0x10, 0x00, 0x00, 0xff, 0xff, 0x1c, 0x48, 0x12, 0x41, 0xf6, 0x02, 0x00, 0x00,
 }

@@ -10,12 +10,6 @@ import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 
-import strings "strings"
-import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
-import sort "sort"
-import strconv "strconv"
-import reflect "reflect"
-
 import (
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
@@ -25,7 +19,10 @@ import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
-import time "time"
+import rafttime "time"
+
+import strings "strings"
+import reflect "reflect"
 
 import io "io"
 
@@ -130,53 +127,6 @@ func (m *HealthCheckResponse) CopyFrom(src interface{}) {
 
 	o := src.(*HealthCheckResponse)
 	*m = *o
-}
-
-func (this *HealthCheckRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.HealthCheckRequest{")
-	s = append(s, "Service: "+fmt.Sprintf("%#v", this.Service)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func (this *HealthCheckResponse) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := make([]string, 0, 5)
-	s = append(s, "&api.HealthCheckResponse{")
-	s = append(s, "Status: "+fmt.Sprintf("%#v", this.Status)+",\n")
-	s = append(s, "}")
-	return strings.Join(s, "")
-}
-func valueToGoStringHealth(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
-func extensionToGoStringHealth(m github_com_gogo_protobuf_proto.Message) string {
-	e := github_com_gogo_protobuf_proto.GetUnsafeExtensionsMap(m)
-	if e == nil {
-		return "nil"
-	}
-	s := "proto.NewUnsafeXXX_InternalExtensions(map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "})"
-	return s
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -375,7 +325,7 @@ func (p *raftProxyHealthServer) runCtxMods(ctx context.Context, ctxMods []func(c
 	return ctx, nil
 }
 func (p *raftProxyHealthServer) pollNewLeaderConn(ctx context.Context) (*grpc.ClientConn, error) {
-	ticker := time.NewTicker(500 * time.Millisecond)
+	ticker := rafttime.NewTicker(500 * rafttime.Millisecond)
 	defer ticker.Stop()
 	for {
 		select {
@@ -749,7 +699,7 @@ var (
 func init() { proto.RegisterFile("health.proto", fileDescriptorHealth) }
 
 var fileDescriptorHealth = []byte{
-	// 291 bytes of a gzipped FileDescriptorProto
+	// 287 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0xc9, 0x48, 0x4d, 0xcc,
 	0x29, 0xc9, 0xd0, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x12, 0x4a, 0xc9, 0x4f, 0xce, 0x4e, 0x2d,
 	0xd2, 0x2b, 0x2e, 0x4f, 0x2c, 0xca, 0xcd, 0xce, 0x2c, 0xd1, 0x2b, 0x33, 0x94, 0x12, 0x49, 0xcf,
@@ -765,8 +715,7 @@ var fileDescriptorHealth = []byte{
 	0xc4, 0xc3, 0x04, 0x98, 0x8c, 0x2a, 0xb9, 0xd8, 0x20, 0x16, 0x09, 0xe5, 0x73, 0xb1, 0x82, 0x2d,
 	0x13, 0x52, 0x23, 0xe8, 0x1a, 0xb0, 0xbf, 0xa5, 0xd4, 0x89, 0x74, 0xb5, 0x92, 0xe8, 0xa9, 0x75,
 	0xef, 0x66, 0x30, 0xf1, 0x73, 0xf1, 0x82, 0x15, 0xea, 0xe6, 0x26, 0xe6, 0x25, 0xa6, 0xa7, 0x16,
-	0x39, 0xc9, 0x9c, 0x78, 0x28, 0xc7, 0x70, 0xe3, 0xa1, 0x1c, 0xc3, 0x87, 0x87, 0x72, 0x8c, 0x0d,
-	0x8f, 0xe4, 0x18, 0x4f, 0x3c, 0x92, 0x63, 0xbc, 0xf0, 0x48, 0x8e, 0xf1, 0xc1, 0x23, 0x39, 0xc6,
-	0x24, 0x36, 0x70, 0x90, 0x1b, 0x03, 0x02, 0x00, 0x00, 0xff, 0xff, 0xf7, 0x14, 0x7c, 0x23, 0xc1,
-	0x01, 0x00, 0x00,
+	0x39, 0x49, 0x9c, 0x78, 0x28, 0xc7, 0x70, 0xe3, 0xa1, 0x1c, 0x43, 0xc3, 0x23, 0x39, 0xc6, 0x13,
+	0x8f, 0xe4, 0x18, 0x2f, 0x3c, 0x92, 0x63, 0x7c, 0xf0, 0x48, 0x8e, 0x31, 0x89, 0x0d, 0x1c, 0xdc,
+	0xc6, 0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0x59, 0xcd, 0x52, 0xee, 0xbd, 0x01, 0x00, 0x00,
 }

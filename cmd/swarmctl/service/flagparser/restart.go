@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/spf13/pflag"
 )
 
@@ -46,7 +46,7 @@ func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			return err
 		}
 
-		spec.Task.Restart.Delay = ptypes.DurationProto(delayDuration)
+		spec.Task.Restart.Delay = gogotypes.DurationProto(delayDuration)
 	}
 
 	if flags.Changed("restart-max-attempts") {
@@ -69,7 +69,7 @@ func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			return err
 		}
 
-		spec.Task.Restart.Window = ptypes.DurationProto(windowDelay)
+		spec.Task.Restart.Window = gogotypes.DurationProto(windowDelay)
 	}
 
 	return nil
