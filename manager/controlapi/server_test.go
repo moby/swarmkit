@@ -60,7 +60,7 @@ func newTestServer(t *testing.T) *testServer {
 
 	ts.Store = store.NewMemoryStore(&mockProposer{})
 	assert.NotNil(t, ts.Store)
-	ts.Server = NewServer(ts.Store, nil, &tc.RootCA, nil)
+	ts.Server = NewServer(ts.Store, nil, &tc.RootCA)
 	assert.NotNil(t, ts.Server)
 
 	temp, err := ioutil.TempFile("", "test-socket")
