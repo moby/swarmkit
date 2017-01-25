@@ -1,0 +1,185 @@
+syntax = "proto3";
+
+package docker.swarmkit.v1;
+
+import "specs.proto";
+import "objects.proto";
+import "raft.proto";
+import "types.proto";
+import "gogoproto/gogo.proto";
+import "plugin/plugin.proto";
+
+message Object {
+	oneof Object {
+		Node node = 1;
+		Service service = 2;
+		Network network = 3;
+		Task task = 4;
+		Cluster cluster = 5;
+		Secret secret = 6;
+		Resource resource = 7;
+		Extension extension = 8;
+	}
+}
+
+// FIXME(aaronl): These messages should ideally be embedded in SelectBy, but
+// protoc generates bad code for that.
+message SelectBySlot {
+	string service_id = 1 [(gogoproto.customname) = "ServiceID"];
+	uint64 slot = 2;
+}
+
+message SelectByCustom {
+	string kind = 1;
+	string index = 2;
+	string value = 3;
+}
+
+message SelectBy {
+	// TODO(aaronl): Are all of these things we want to expose in
+	// the API? Exposing them may commit us to maintaining those
+	// internal indices going forward.
+	oneof By {
+		// supported by all object types
+		string id = 1 [(gogoproto.customname) = "ID"]; // not applicable for FindObjects - use GetObject instead
+		string id_prefix = 2 [(gogoproto.customname) = "IDPrefix"];
+		string name = 3;
+		string name_prefix = 4;
+		SelectByCustom custom = 5;
+		SelectByCustom custom_prefix = 6;
+
+		// supported by tasks only
+		string service_id = 7 [(gogoproto.customname) = "ServiceID"];
+		string node_id = 8 [(gogoproto.customname) = "NodeID"];
+		SelectBySlot slot = 9;
+		TaskState desired_state = 10;
+
+		// supported by nodes only
+		NodeRole role = 11;
+		NodeSpec.Membership membership = 12;
+
+		// supported by: service, task
+		string referenced_network_id = 13 [(gogoproto.customname) = "ReferencedNetworkID"];
+		string referenced_secret_id = 14 [(gogoproto.customname) = "ReferencedSecretID"];
+
+		// supported by: resource
+		string kind = 15;
+	}
+}
+
+
+// Store defines the RPC methods for interacting with the data store.
+service Store {
+	// GetObject retrieves an object by its ID.
+	// - Returns `NotFound` if the object is not found.
+	rpc GetObject(GetObjectRequest) returns (Object) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	};
+
+	// FindObjects returns a set of objects of a given type, according to
+	// selectors included in the request.
+	rpc FindObjects(FindObjectsRequest) returns (FindObjectsResponse) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	};
+
+	// CreateObject creates the specified object. The ID and Meta fields
+	// should be left empty, and will be filled in and included in the
+	// returned object.
+	rpc CreateObject(Object) returns (Object) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	};
+
+	// UpdateObjects atomically commits the supplied objects to the data store.
+	// - Returns `FailedPrecondition` and does not commit any changes if
+	//   any of the objects have changed since they were retrieved.
+	rpc UpdateObjects(UpdateObjectsRequest) returns (UpdateObjectsResponse) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	};
+
+	// Watch starts a stream that returns any changes to objects that match
+	// the specified selectors. When the stream begins, it immediately sends
+	// an empty message back to the client. It is important to wait for
+	// this message before taking any actions that depend on an established
+	// stream of changes for consistency.
+	rpc Watch(WatchRequest) returns (stream WatchMessage) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	};
+
+	// View creates a snapshot of the current state of the store, and
+	// accepts a stream of queries against it. Each query returns a
+	// response in the response stream.
+	// TODO(aaronl): Does it make sense to support this in the API?
+	//rpc View(stream ViewRequest) returns (stream ViewResponse) {
+	//	option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	//}
+}
+
+message GetObjectRequest {
+	// Kind can contain a builtin type such as "node", "secret", etc. or
+	// the kind specified by a custom-defined object.
+	string kind = 1;
+
+	// ID of the object to retrieve.
+	string object_id = 2 [(gogoproto.customname) = "ObjectID"];
+}
+
+message FindObjectsRequest {
+	// Kind can contain a builtin type such as "node", "secret", etc. or
+	// the kind specified by a custom-defined object.
+	string kind = 1;
+
+	// Selectors are combined with OR logic. An empty list of selectors
+	// causes all objects of the given type to be returned.
+	repeated SelectBy selectors = 2;
+}
+
+message FindObjectsResponse {
+	repeated Object results = 1;
+}
+
+message UpdateObjectsRequest {
+	repeated Object objects = 1;
+}
+
+message UpdateObjectsResponse {
+	// Objects contains the updated objects. On a successful return, these
+	// will be the same as the objects passed in UpdateObjectsRequest,
+	// except with Meta updated.
+	repeated Object objects = 1;
+
+	// TODO(aaronl): Provide structured information about which object
+	// couldn't be updated, and why, in error cases?
+}
+
+message WatchRequest {
+	message WatchEntry {
+		// Kind can contain a builtin type such as "node", "secret", etc. or
+		// the kind specified by a custom-defined object.
+		string kind = 1;
+
+		// Action (create/update/delete)
+		StoreActionKind action = 2;
+
+		// Filters are combined using AND logic - an event must match
+		// all of them to pass the filter.
+		repeated SelectBy filters = 3;
+	}
+
+	// Multiple entries are combined using OR logic - i.e. if an event
+	// matches all of the selectors specified in any single watch entry,
+	// the event will be sent to the client.
+	repeated WatchEntry entries = 1;
+}
+
+// WatchMessage is the type of the stream that's returned to the client by
+// Watch. Note that the first item of this stream will always be a WatchMessage
+// with a nil Object, to signal that the stream has started.
+message WatchMessage {
+	// Action (create/update/delete)
+	// Note that WatchMessage does not expose "commit" events that mark
+	// transaction boundaries.
+	StoreActionKind action = 1;
+
+	// Matched object
+	Object object = 2;
+}
