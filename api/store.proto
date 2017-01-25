@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package docker.swarmkit.v1;
+
+import "specs.proto";
+import "objects.proto";
+import "raft.proto";
+import "types.proto";
+import "gogoproto/gogo.proto";
+import "plugin/plugin.proto";
+
+message Object {
+	oneof Object {
+		Node node = 1;
+		Service service = 2;
+		Network network = 3;
+		Task task = 4;
+		Cluster cluster = 5;
+		Secret secret = 6;
+		Resource resource = 7;
+		Extension extension = 8;
+	}
+}
+
+// FIXME(aaronl): These messages should ideally be embedded in SelectBy, but
+// protoc generates bad code for that.
+message SelectBySlot {
+	string service_id = 1 [(gogoproto.customname) = "ServiceID"];
+	uint64 slot = 2;
+}
+
+message SelectByCustom {
+	string kind = 1;
+	string index = 2;
+	string value = 3;
+}
+
+message SelectBy {
+	// TODO(aaronl): Are all of these things we want to expose in
+	// the API? Exposing them may commit us to maintaining those
+	// internal indices going forward.
+	oneof By {
+		// supported by all object types
+		string id = 1 [(gogoproto.customname) = "ID"]; // not applicable for FindObjects - use GetObject instead
+		string id_prefix = 2 [(gogoproto.customname) = "IDPrefix"];
+		string name = 3;
+		string name_prefix = 4;
+		SelectByCustom custom = 5;
+		SelectByCustom custom_prefix = 6;
+
+		// supported by tasks only
+		string service_id = 7 [(gogoproto.customname) = "ServiceID"];
+		string node_id = 8 [(gogoproto.customname) = "NodeID"];
+		SelectBySlot slot = 9;
+		TaskState desired_state = 10;
+
+		// supported by nodes only
+		NodeRole role = 11;
+		NodeSpec.Membership membership = 12;
+
+		// supported by: service, task
+		string referenced_network_id = 13 [(gogoproto.customname) = "ReferencedNetworkID"];
+		string referenced_secret_id = 14 [(gogoproto.customname) = "ReferencedSecretID"];
+
+		// supported by: resource
+		string kind = 15;
+	}
+}
+
+
+// Store defines the RPC methods for interacting with the data store.
+service Store {
+	// Watch starts a stream that returns any changes to objects that match
+	// the specified selectors. When the stream begins, it immediately sends
+	// an empty message back to the client. It is important to wait for
+	// this message before taking any actions that depend on an established
+	// stream of changes for consistency.
+	rpc Watch(WatchRequest) returns (stream WatchMessage) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	};
+}
+
+message WatchRequest {
+	message WatchEntry {
+		// Kind can contain a builtin type such as "node", "secret", etc. or
+		// the kind specified by a custom-defined object.
+		string kind = 1;
+
+		// Action (create/update/delete)
+		StoreActionKind action = 2;
+
+		// Filters are combined using AND logic - an event must match
+		// all of them to pass the filter.
+		repeated SelectBy filters = 3;
+	}
+
+	// Multiple entries are combined using OR logic - i.e. if an event
+	// matches all of the selectors specified in any single watch entry,
+	// the event will be sent to the client.
+	repeated WatchEntry entries = 1;
+}
+
+// WatchMessage is the type of the stream that's returned to the client by
+// Watch. Note that the first item of this stream will always be a WatchMessage
+// with a nil Object, to signal that the stream has started.
+message WatchMessage {
+	// Action (create/update/delete)
+	// Note that WatchMessage does not expose "commit" events that mark
+	// transaction boundaries.
+	StoreActionKind action = 1;
+
+	// Matched object
+	Object object = 2;
+}
