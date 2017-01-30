@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/docker/swarmkit/protobuf/plugin"
 	_ "github.com/docker/swarmkit/protobuf/plugin/authenticatedwrapper"
 	_ "github.com/docker/swarmkit/protobuf/plugin/deepcopy"
 	_ "github.com/docker/swarmkit/protobuf/plugin/raftproxy"
@@ -21,6 +22,7 @@ func main() {
 		vanity.TurnOnStringerAll,
 		vanity.TurnOnUnmarshalerAll,
 		vanity.TurnOnSizerAll,
+		plugin.CustomNameID,
 	} {
 		vanity.ForEachFile(files, opt)
 	}
