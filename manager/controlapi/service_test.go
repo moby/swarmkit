@@ -144,6 +144,30 @@ func TestValidateResourceRequirements(t *testing.T) {
 	}
 }
 
+func TestValidateMode(t *testing.T) {
+	negative := -4
+	bad := []*api.ServiceSpec{
+		// -4 jammed into the replicas field, underflowing the uint64
+		{Mode: &api.ServiceSpec_Replicated{Replicated: &api.ReplicatedService{Replicas: uint64(negative)}}},
+		{},
+	}
+
+	good := []*api.ServiceSpec{
+		{Mode: &api.ServiceSpec_Replicated{Replicated: &api.ReplicatedService{Replicas: 2}}},
+		{Mode: &api.ServiceSpec_Global{}},
+	}
+
+	for _, b := range bad {
+		err := validateMode(b)
+		assert.Error(t, err)
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	}
+
+	for _, g := range good {
+		assert.NoError(t, validateMode(g))
+	}
+}
+
 func TestValidateTask(t *testing.T) {
 	type badSource struct {
 		s api.TaskSpec
