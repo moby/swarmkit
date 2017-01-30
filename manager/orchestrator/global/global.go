@@ -54,6 +54,10 @@ func NewGlobalOrchestrator(store *store.MemoryStore) *Orchestrator {
 	}
 }
 
+func (g *Orchestrator) initTasks(ctx context.Context, readTx store.ReadTx) error {
+	return orchestrator.InitTasks(ctx, g.store, readTx, orchestrator.IsGlobalService, g.restarts)
+}
+
 // Run contains the global orchestrator event loop
 func (g *Orchestrator) Run(ctx context.Context) error {
 	defer close(g.doneChan)
@@ -94,6 +98,13 @@ func (g *Orchestrator) Run(ctx context.Context) error {
 	var existingServices []*api.Service
 	g.store.View(func(readTx store.ReadTx) {
 		existingServices, err = store.FindServices(readTx, store.All)
+	})
+	if err != nil {
+		return err
+	}
+
+	g.store.View(func(readTx store.ReadTx) {
+		err = g.initTasks(ctx, readTx)
 	})
 	if err != nil {
 		return err
