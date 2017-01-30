@@ -264,6 +264,110 @@ func TestServiceAllocatePorts(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestPortsAllocatedInHostPublishMode(t *testing.T) {
+	pa, err := newPortAllocator()
+	assert.NoError(t, err)
+
+	type Data struct {
+		input  *api.Service
+		expect bool
+	}
+
+	testCases := []Data{
+		{
+			// both Endpoint and Spec.Endpoint are nil
+			input: &api.Service{
+				Spec: api.ServiceSpec{
+					Endpoint: nil,
+				},
+				Endpoint: nil,
+			},
+			expect: true,
+		},
+		{
+			// non host mode does not impact
+			input: &api.Service{
+				Spec: api.ServiceSpec{
+					Endpoint: &api.EndpointSpec{
+						Ports: []*api.PortConfig{
+							{
+								Name:          "test1",
+								Protocol:      api.ProtocolTCP,
+								TargetPort:    10000,
+								PublishedPort: 10000,
+							},
+						},
+					},
+				},
+				Endpoint: nil,
+			},
+			expect: true,
+		},
+		{
+			// publish mode is different
+			input: &api.Service{
+				Spec: api.ServiceSpec{
+					Endpoint: &api.EndpointSpec{
+						Ports: []*api.PortConfig{
+							{
+								Name:          "test1",
+								Protocol:      api.ProtocolTCP,
+								TargetPort:    10000,
+								PublishedPort: 10000,
+								PublishMode:   api.PublishModeHost,
+							},
+						},
+					},
+				},
+				Endpoint: &api.Endpoint{
+					Ports: []*api.PortConfig{
+						{
+							Name:          "test1",
+							Protocol:      api.ProtocolTCP,
+							TargetPort:    10000,
+							PublishedPort: 10000,
+						},
+					},
+				},
+			},
+			expect: false,
+		},
+		{
+			input: &api.Service{
+				Spec: api.ServiceSpec{
+					Endpoint: &api.EndpointSpec{
+						Ports: []*api.PortConfig{
+							{
+								Name:          "test1",
+								Protocol:      api.ProtocolTCP,
+								TargetPort:    10000,
+								PublishedPort: 10000,
+								PublishMode:   api.PublishModeHost,
+							},
+						},
+					},
+				},
+				Endpoint: &api.Endpoint{
+					Ports: []*api.PortConfig{
+						{
+							Name:          "test1",
+							Protocol:      api.ProtocolTCP,
+							TargetPort:    10000,
+							PublishedPort: 10000,
+							PublishMode:   api.PublishModeHost,
+						},
+					},
+				},
+			},
+			expect: true,
+		},
+	}
+	for _, singleTest := range testCases {
+		expect := pa.portsAllocatedInHostPublishMode(singleTest.input)
+		assert.Equal(t, expect, singleTest.expect)
+	}
+}
+
 func TestIsPortsAllocated(t *testing.T) {
 	pa, err := newPortAllocator()
 	assert.NoError(t, err)
