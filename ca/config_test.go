@@ -54,9 +54,14 @@ func TestDownloadRootCAWrongCAHash(t *testing.T) {
 	os.RemoveAll(tc.Paths.RootCA.Cert)
 
 	// invalid token
-	_, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, "invalidtoken", tc.ConnBroker)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid join token")
+	for _, invalid := range []string{
+		"invalidtoken", // completely invalid
+		"SWMTKN-1-3wkodtpeoipd1u1hi0ykdcdwhw16dk73ulqqtn14b3indz68rf-4myj5xihyto11dg1cn55w8p6", // mistyped
+	} {
+		_, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, invalid, tc.ConnBroker)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid join token")
+	}
 
 	// invalid hash token
 	splitToken := strings.Split(tc.ManagerToken, "-")
@@ -65,7 +70,7 @@ func TestDownloadRootCAWrongCAHash(t *testing.T) {
 
 	os.RemoveAll(tc.Paths.RootCA.Cert)
 
-	_, err = ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, replacementToken, tc.ConnBroker)
+	_, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, replacementToken, tc.ConnBroker)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "remote CA does not match fingerprint.")
 }
