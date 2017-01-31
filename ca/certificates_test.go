@@ -34,6 +34,21 @@ func init() {
 	os.Setenv(ca.PassphraseENVVarPrev, "")
 }
 
+func checkSingleCert(t *testing.T, certBytes []byte, issuerName, cn, ou, org string, additionalDNSNames ...string) {
+	certs, err := helpers.ParseCertificatesPEM(certBytes)
+	require.NoError(t, err)
+	require.Len(t, certs, 1)
+	require.Equal(t, issuerName, certs[0].Issuer.CommonName)
+	require.Equal(t, cn, certs[0].Subject.CommonName)
+	require.Equal(t, []string{ou}, certs[0].Subject.OrganizationalUnit)
+	require.Equal(t, []string{org}, certs[0].Subject.Organization)
+
+	require.Len(t, certs[0].DNSNames, len(additionalDNSNames)+2)
+	for _, dnsName := range append(additionalDNSNames, cn, ou) {
+		require.Contains(t, certs[0].DNSNames, dnsName)
+	}
+}
+
 // TestMain runs every test in this file twice - once with a local CA and
 // again with an external CA server.
 func TestMain(m *testing.M) {
@@ -195,15 +210,7 @@ func TestParseValidateAndSignCSR(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, signedCert)
 
-	parsedCert, err := helpers.ParseCertificatesPEM(signedCert)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(parsedCert))
-	assert.Equal(t, "CN", parsedCert[0].Subject.CommonName)
-	assert.Equal(t, 1, len(parsedCert[0].Subject.OrganizationalUnit))
-	assert.Equal(t, "OU", parsedCert[0].Subject.OrganizationalUnit[0])
-	assert.Equal(t, 3, len(parsedCert[0].Subject.Names))
-	assert.Equal(t, "ORG", parsedCert[0].Subject.Organization[0])
-	assert.Equal(t, "rootCN", parsedCert[1].Subject.CommonName)
+	checkSingleCert(t, signedCert, "rootCN", "CN", "OU", "ORG")
 }
 
 func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
@@ -236,16 +243,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, signedCert)
 
-	parsedCert, err := helpers.ParseCertificatesPEM(signedCert)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(parsedCert))
-	assert.Equal(t, "CN", parsedCert[0].Subject.CommonName)
-	assert.Equal(t, 1, len(parsedCert[0].Subject.OrganizationalUnit))
-	assert.Equal(t, "OU", parsedCert[0].Subject.OrganizationalUnit[0])
-	assert.Equal(t, 3, len(parsedCert[0].Subject.Names))
-	assert.Empty(t, parsedCert[0].Subject.Locality)
-	assert.Equal(t, "ORG", parsedCert[0].Subject.Organization[0])
-	assert.Equal(t, "rootCN", parsedCert[1].Subject.CommonName)
+	checkSingleCert(t, signedCert, "rootCN", "CN", "OU", "ORG")
 }
 
 func TestGetRemoteCA(t *testing.T) {
@@ -422,16 +420,8 @@ func TestIssueAndSaveNewCertificates(t *testing.T) {
 
 	certBytes, err := ioutil.ReadFile(tc.Paths.Node.Cert)
 	assert.NoError(t, err)
-	certs, err := helpers.ParseCertificatesPEM(certBytes)
-	assert.NoError(t, err)
-	assert.Len(t, certs, 2)
-	assert.Equal(t, "CN", certs[0].Subject.CommonName)
-	assert.Equal(t, ca.ManagerRole, certs[0].Subject.OrganizationalUnit[0])
-	assert.Equal(t, tc.Organization, certs[0].Subject.Organization[0])
-	assert.Equal(t, "swarm-test-CA", certs[1].Subject.CommonName)
-	assert.Contains(t, certs[0].DNSNames, "CN")
-	assert.Contains(t, certs[0].DNSNames, "swarm-ca")
-	assert.Contains(t, certs[0].DNSNames, "swarm-manager")
+
+	checkSingleCert(t, certBytes, "swarm-test-CA", "CN", ca.ManagerRole, tc.Organization, ca.CARole)
 
 	// Test the creation of a worker node cert
 	cert, err = tc.RootCA.IssueAndSaveNewCertificates(tc.KeyReadWriter, "CN", ca.WorkerRole, tc.Organization)
@@ -444,16 +434,7 @@ func TestIssueAndSaveNewCertificates(t *testing.T) {
 
 	certBytes, err = ioutil.ReadFile(tc.Paths.Node.Cert)
 	assert.NoError(t, err)
-	certs, err = helpers.ParseCertificatesPEM(certBytes)
-	assert.NoError(t, err)
-	assert.Len(t, certs, 2)
-	assert.Equal(t, "CN", certs[0].Subject.CommonName)
-	assert.Equal(t, ca.WorkerRole, certs[0].Subject.OrganizationalUnit[0])
-	assert.Equal(t, tc.Organization, certs[0].Subject.Organization[0])
-	assert.Equal(t, "swarm-test-CA", certs[1].Subject.CommonName)
-	assert.Contains(t, certs[0].DNSNames, "CN")
-	assert.Contains(t, certs[0].DNSNames, "swarm-worker")
-
+	checkSingleCert(t, certBytes, "swarm-test-CA", "CN", ca.WorkerRole, tc.Organization)
 }
 
 func TestGetRemoteSignedCertificate(t *testing.T) {
@@ -475,7 +456,7 @@ func TestGetRemoteSignedCertificate(t *testing.T) {
 	// Test the expiration for a manager certificate
 	parsedCerts, err := helpers.ParseCertificatesPEM(certs)
 	assert.NoError(t, err)
-	assert.Len(t, parsedCerts, 2)
+	assert.Len(t, parsedCerts, 1)
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, -1).Before(parsedCerts[0].NotAfter))
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, 1).After(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.ManagerRole)
@@ -490,7 +471,7 @@ func TestGetRemoteSignedCertificate(t *testing.T) {
 	assert.NotNil(t, certs)
 	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
 	assert.NoError(t, err)
-	assert.Len(t, parsedCerts, 2)
+	assert.Len(t, parsedCerts, 1)
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, -1).Before(parsedCerts[0].NotAfter))
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, 1).After(parsedCerts[0].NotAfter))
 	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.WorkerRole)
@@ -598,14 +579,7 @@ func TestNewRootCABundle(t *testing.T) {
 
 	certBytes, err := ioutil.ReadFile(paths.Node.Cert)
 	assert.NoError(t, err)
-	certs, err := helpers.ParseCertificatesPEM(certBytes)
-	assert.NoError(t, err)
-	assert.Len(t, certs, 2)
-	assert.Equal(t, "CN", certs[0].Subject.CommonName)
-	assert.Equal(t, "OU", certs[0].Subject.OrganizationalUnit[0])
-	assert.Equal(t, "ORG", certs[0].Subject.Organization[0])
-	assert.Equal(t, "rootCN1", certs[1].Subject.CommonName)
-
+	checkSingleCert(t, certBytes, "rootCN1", "CN", "OU", "ORG")
 }
 
 func TestNewRootCANonDefaultExpiry(t *testing.T) {
@@ -629,7 +603,7 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 
 	parsedCerts, err := helpers.ParseCertificatesPEM(cert)
 	assert.NoError(t, err)
-	assert.Len(t, parsedCerts, 2)
+	assert.Len(t, parsedCerts, 1)
 	assert.True(t, time.Now().Add(time.Minute*59).Before(parsedCerts[0].NotAfter))
 	assert.True(t, time.Now().Add(time.Hour).Add(time.Minute).After(parsedCerts[0].NotAfter))
 
@@ -643,7 +617,7 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 
 	parsedCerts, err = helpers.ParseCertificatesPEM(cert)
 	assert.NoError(t, err)
-	assert.Len(t, parsedCerts, 2)
+	assert.Len(t, parsedCerts, 1)
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, -1).Before(parsedCerts[0].NotAfter))
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, 1).After(parsedCerts[0].NotAfter))
 }

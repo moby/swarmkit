@@ -317,31 +317,7 @@ func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, ou, org string) 
 		return nil, errors.Wrap(err, "failed to sign node certificate")
 	}
 
-	return rca.AppendFirstRootPEM(cert)
-}
-
-// AppendFirstRootPEM appends the first certificate from this RootCA's cert
-// bundle to the given cert bundle (which should already be encoded as a series
-// of PEM-encoded certificate blocks).
-func (rca *RootCA) AppendFirstRootPEM(cert []byte) ([]byte, error) {
-	// Append the first root CA Cert to the certificate, to create a valid chain
-	// Get the first Root CA Cert on the bundle
-	firstRootCA, _, err := helpers.ParseOneCertificateFromPEM(rca.Cert)
-	if err != nil {
-		return nil, err
-	}
-	if len(firstRootCA) < 1 {
-		return nil, errors.New("no valid Root CA certificates found")
-	}
-	// Convert the first root CA back to PEM
-	firstRootCAPEM := helpers.EncodeCertificatePEM(firstRootCA[0])
-	if firstRootCAPEM == nil {
-		return nil, errors.New("error while encoding the Root CA certificate")
-	}
-	// Append this Root CA to the certificate to make [Cert PEM]\n[Root PEM][EOF]
-	certChain := append(cert, firstRootCAPEM...)
-
-	return certChain, nil
+	return cert, nil
 }
 
 // NewRootCA creates a new RootCA object from unparsed PEM cert bundle and key byte
