@@ -189,7 +189,7 @@ func GenerateJoinToken(rootCA *RootCA) string {
 
 func getCAHashFromToken(token string) (digest.Digest, error) {
 	split := strings.Split(token, "-")
-	if len(split) != 4 || split[0] != "SWMTKN" || split[1] != "1" {
+	if len(split) != 4 || split[0] != "SWMTKN" || split[1] != "1" || len(split[2]) != base36DigestLen || len(split[3]) != maxGeneratedSecretLength {
 		return "", errors.New("invalid join token")
 	}
 
