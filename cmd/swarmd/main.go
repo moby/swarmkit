@@ -17,6 +17,8 @@ import (
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/docker/swarmkit/node"
 	"github.com/docker/swarmkit/version"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -74,6 +76,11 @@ var (
 			}
 
 			unix, err := cmd.Flags().GetString("listen-control-api")
+			if err != nil {
+				return err
+			}
+
+			metricsAddr, err := cmd.Flags().GetString("listen-metrics")
 			if err != nil {
 				return err
 			}
@@ -155,6 +162,24 @@ var (
 				}()
 			}
 
+			if metricsAddr != "" {
+				// This allows to measure latency distribution.
+				grpc_prometheus.EnableHandlingTimeHistogram()
+
+				l, err := net.Listen("tcp", metricsAddr)
+				if err != nil {
+					panic(err)
+				}
+				mux := http.NewServeMux()
+				mux.Handle("/metrics", prometheus.Handler())
+
+				go func() {
+					if err := http.Serve(l, mux); err != nil {
+						logrus.Errorf("serve metrics api: %s", err)
+					}
+				}()
+			}
+
 			n, err := node.New(&node.Config{
 				Hostname:         hostname,
 				ForceNewCluster:  forceNewCluster,
@@ -210,6 +235,7 @@ func init() {
 	mainCmd.Flags().String("listen-remote-api", "0.0.0.0:4242", "Listen address for remote API")
 	mainCmd.Flags().String("listen-control-api", "./swarmkitstate/swarmd.sock", "Listen socket for control API")
 	mainCmd.Flags().String("listen-debug", "", "Bind the Go debug server on the provided address")
+	mainCmd.Flags().String("listen-metrics", "", "Listen address for metrics")
 	mainCmd.Flags().String("join-addr", "", "Join cluster with a node at this address")
 	mainCmd.Flags().Bool("force-new-cluster", false, "Force the creation of a new cluster from data directory")
 	mainCmd.Flags().Uint32("heartbeat-tick", 1, "Defines the heartbeat interval (in seconds) for raft member health-check")
