@@ -568,7 +568,7 @@ func (n *Node) loadSecurityConfig(ctx context.Context) (*ca.SecurityConfig, erro
 		return nil, err
 	}
 	if err == nil {
-		securityConfig, err = ca.LoadSecurityConfig(ctx, rootCA, krw)
+		securityConfig, err = ca.LoadSecurityConfig(ctx, rootCA, krw, false)
 		if err != nil {
 			_, isInvalidKEK := errors.Cause(err).(ca.ErrInvalidKEK)
 			if isInvalidKEK {
@@ -606,7 +606,7 @@ func (n *Node) loadSecurityConfig(ctx context.Context) (*ca.SecurityConfig, erro
 		// - We wait for CreateSecurityConfig to finish since we need a certificate to operate.
 
 		// Attempt to load certificate from disk
-		securityConfig, err = ca.LoadSecurityConfig(ctx, rootCA, krw)
+		securityConfig, err = ca.LoadSecurityConfig(ctx, rootCA, krw, false)
 		if err == nil {
 			log.G(ctx).WithFields(logrus.Fields{
 				"node.id": securityConfig.ClientTLSCreds.NodeID(),

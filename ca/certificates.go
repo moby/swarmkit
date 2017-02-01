@@ -153,13 +153,16 @@ func (rca *RootCA) IssueAndSaveNewCertificates(kw KeyWriter, cn, ou, org string)
 
 // Normally we can just call cert.Verify(opts), but since we actually want more information about
 // whether a certificate is not yet valid or expired, we also need to perform the expiry checks ourselves.
-func verifyCertificate(cert *x509.Certificate, opts x509.VerifyOptions) error {
+func verifyCertificate(cert *x509.Certificate, opts x509.VerifyOptions, allowExpired bool) error {
 	_, err := cert.Verify(opts)
 	if invalidErr, ok := err.(x509.CertificateInvalidError); ok && invalidErr.Reason == x509.Expired {
 		now := time.Now().UTC()
 		if now.Before(cert.NotBefore) {
 			return errors.Wrapf(err, "certificate not valid before %s, and it is currently %s",
 				cert.NotBefore.UTC().Format(time.RFC1123), now.Format(time.RFC1123))
+		}
+		if allowExpired {
+			return nil
 		}
 		return errors.Wrapf(err, "certificate expires at %s, and it is currently %s",
 			cert.NotAfter.UTC().Format(time.RFC1123), now.Format(time.RFC1123))
@@ -215,7 +218,7 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 		Roots: rca.Pool,
 	}
 	// Check to see if this certificate was signed by our CA, and isn't expired
-	if err := verifyCertificate(X509Cert, opts); err != nil {
+	if err := verifyCertificate(X509Cert, opts, false); err != nil {
 		return nil, err
 	}
 

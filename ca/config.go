@@ -242,7 +242,7 @@ func DownloadRootCA(ctx context.Context, paths CertPaths, token string, connBrok
 
 // LoadSecurityConfig loads TLS credentials from disk, or returns an error if
 // these credentials do not exist or are unusable.
-func LoadSecurityConfig(ctx context.Context, rootCA RootCA, krw *KeyReadWriter) (*SecurityConfig, error) {
+func LoadSecurityConfig(ctx context.Context, rootCA RootCA, krw *KeyReadWriter, allowExpired bool) (*SecurityConfig, error) {
 	ctx = log.WithModule(ctx, "tls")
 
 	// At this point we've successfully loaded the CA details from disk, or
@@ -273,7 +273,7 @@ func LoadSecurityConfig(ctx context.Context, rootCA RootCA, krw *KeyReadWriter) 
 	}
 
 	// Check to see if this certificate was signed by our CA, and isn't expired
-	if err := verifyCertificate(X509Cert, opts); err != nil {
+	if err := verifyCertificate(X509Cert, opts, allowExpired); err != nil {
 		return nil, err
 	}
 
