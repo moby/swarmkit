@@ -41,6 +41,18 @@ func TestResolve(t *testing.T) {
 	assert.Equal(t, executor.err, err)
 	assert.Equal(t, api.TaskStateRejected, status.State)
 
+	// on Resolve failure, tasks already started should be considered failed
+	task = newTestTask(t, api.TaskStateStarting, api.TaskStateRunning)
+	_, status, err = Resolve(ctx, task, executor)
+	assert.Equal(t, executor.err, err)
+	assert.Equal(t, api.TaskStateFailed, status.State)
+
+	// on Resolve failure, tasks already in terminated state don't need update
+	task = newTestTask(t, api.TaskStateCompleted, api.TaskStateRunning)
+	_, status, err = Resolve(ctx, task, executor)
+	assert.Equal(t, executor.err, err)
+	assert.Equal(t, api.TaskStateCompleted, status.State)
+
 	// task is now foobared, from a reporting perspective but we can now
 	// resolve the controller for some reason. Ensure the task state isn't
 	// touched.
