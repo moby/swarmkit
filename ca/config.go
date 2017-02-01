@@ -273,7 +273,7 @@ func LoadSecurityConfig(ctx context.Context, rootCA RootCA, krw *KeyReadWriter) 
 	}
 
 	// Check to see if this certificate was signed by our CA, and isn't expired
-	if _, err := X509Cert.Verify(opts); err != nil {
+	if err := verifyCertificate(X509Cert, opts); err != nil {
 		return nil, err
 	}
 
