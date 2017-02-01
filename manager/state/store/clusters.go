@@ -61,6 +61,12 @@ func init() {
 			}
 			return nil
 		},
+		Object: func(sa *api.StoreAction) (Object, error) {
+			if cluster, ok := sa.Target.(*api.StoreAction_Cluster); ok {
+				return clusterEntry{Cluster: cluster.Cluster}, nil
+			}
+			return nil, errUnknownStoreAction
+		},
 		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Cluster:

@@ -55,6 +55,12 @@ func init() {
 			}
 			return nil
 		},
+		Object: func(sa *api.StoreAction) (Object, error) {
+			if network, ok := sa.Target.(*api.StoreAction_Network); ok {
+				return networkEntry{Network: network.Network}, nil
+			}
+			return nil, errUnknownStoreAction
+		},
 		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Network:

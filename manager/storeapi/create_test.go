@@ -45,5 +45,5 @@ func TestCreateObject(t *testing.T) {
 		storeNode = store.GetNode(readTx, returnedObj.GetNode().ID)
 	})
 	assert.Equal(t, storeNode, returnedObj.GetNode())
-	assert.Equal(t, uint64(9), returnedObj.GetNode().Meta.Version.Index)
+	assert.Equal(t, uint64(0), returnedObj.GetNode().Meta.Version.Index)
 }

@@ -90,6 +90,12 @@ func init() {
 			}
 			return nil
 		},
+		Object: func(sa *api.StoreAction) (Object, error) {
+			if task, ok := sa.Target.(*api.StoreAction_Task); ok {
+				return taskEntry{Task: task.Task}, nil
+			}
+			return nil, errUnknownStoreAction
+		},
 		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Task:

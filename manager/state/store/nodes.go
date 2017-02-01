@@ -65,6 +65,12 @@ func init() {
 			}
 			return nil
 		},
+		Object: func(sa *api.StoreAction) (Object, error) {
+			if node, ok := sa.Target.(*api.StoreAction_Node); ok {
+				return nodeEntry{Node: node.Node}, nil
+			}
+			return nil, errUnknownStoreAction
+		},
 		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Node:

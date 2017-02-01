@@ -55,6 +55,12 @@ func init() {
 			}
 			return nil
 		},
+		Object: func(sa *api.StoreAction) (Object, error) {
+			if secret, ok := sa.Target.(*api.StoreAction_Secret); ok {
+				return secretEntry{Secret: secret.Secret}, nil
+			}
+			return nil, errUnknownStoreAction
+		},
 		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Secret:

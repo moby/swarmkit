@@ -56,6 +56,12 @@ func init() {
 			}
 			return nil
 		},
+		Object: func(sa *api.StoreAction) (Object, error) {
+			if extension, ok := sa.Target.(*api.StoreAction_Extension); ok {
+				return extensionEntry{Extension: extension.Extension}, nil
+			}
+			return nil, errUnknownStoreAction
+		},
 		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Extension:

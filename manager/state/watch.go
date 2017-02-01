@@ -21,7 +21,9 @@ type Event interface {
 }
 
 // EventCommit delineates a transaction boundary.
-type EventCommit struct{}
+type EventCommit struct {
+	Version *api.Version
+}
 
 func (e EventCommit) matches(watchEvent events.Event) bool {
 	_, ok := watchEvent.(EventCommit)
