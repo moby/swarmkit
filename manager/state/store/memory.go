@@ -180,6 +180,33 @@ type tx struct {
 	changelist []api.Event
 }
 
+// changelistBetweenVersions returns the changes after "from" up to and
+// including "to".
+func (s *MemoryStore) changelistBetweenVersions(from, to api.Version) ([]api.Event, error) {
+	if s.proposer == nil {
+		return nil, errors.New("store does not support versioning")
+	}
+	changes, err := s.proposer.ChangesBetween(from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	var changelist []api.Event
+
+	for _, change := range changes {
+		for _, sa := range change.StoreActions {
+			event, err := api.EventFromStoreAction(sa)
+			if err != nil {
+				return nil, err
+			}
+			changelist = append(changelist, event)
+		}
+		changelist = append(changelist, state.EventCommit{Version: change.Version.Copy()})
+	}
+
+	return changelist, nil
+}
+
 // ApplyStoreActions updates a store based on StoreAction messages.
 func (s *MemoryStore) ApplyStoreActions(actions []api.StoreAction) error {
 	s.updateLock.Lock()
@@ -261,7 +288,11 @@ func (s *MemoryStore) update(proposer state.Proposer, cb func(Tx) error) error {
 			s.queue.Publish(c)
 		}
 		if len(tx.changelist) != 0 {
-			s.queue.Publish(state.EventCommit{})
+			if proposer != nil {
+				curVersion = proposer.GetVersion()
+			}
+
+			s.queue.Publish(state.EventCommit{Version: curVersion})
 		}
 	} else {
 		memDBTx.Abort()
@@ -753,6 +784,91 @@ func ViewAndWatch(store *MemoryStore, cb func(ReadTx) error, specifiers ...api.E
 		watch = nil
 	}
 	return
+}
+
+// WatchFrom returns a channel that will return past events from starting
+// from "version", and new events until the channel is closed. If "version"
+// is nil, this function is equivalent to
+//
+//     state.Watch(store.WatchQueue(), specifiers...).
+//
+// If the log has been compacted and it's not possible to produce the exact
+// set of events leading from "version" to the current state, this function
+// will return an error, and the caller should re-sync.
+//
+// The watch channel must be released with watch.StopWatch when it is no
+// longer needed.
+func WatchFrom(store *MemoryStore, version *api.Version, specifiers ...api.Event) (chan events.Event, func(), error) {
+	if version == nil {
+		ch, cancel := state.Watch(store.WatchQueue(), specifiers...)
+		return ch, cancel, nil
+	}
+
+	if store.proposer == nil {
+		return nil, nil, errors.New("store does not support versioning")
+	}
+
+	var (
+		curVersion  *api.Version
+		watch       chan events.Event
+		cancelWatch func()
+	)
+	// Using Update to lock the store
+	err := store.Update(func(tx Tx) error {
+		// Get current version
+		curVersion = store.proposer.GetVersion()
+		// Start the watch with the store locked so events cannot be
+		// missed
+		watch, cancelWatch = state.Watch(store.WatchQueue(), specifiers...)
+		return nil
+	})
+	if watch != nil && err != nil {
+		cancelWatch()
+		return nil, nil, err
+	}
+
+	if curVersion == nil {
+		cancelWatch()
+		return nil, nil, errors.New("could not get current version from store")
+	}
+
+	changelist, err := store.changelistBetweenVersions(*version, *curVersion)
+	if err != nil {
+		cancelWatch()
+		return nil, nil, err
+	}
+
+	ch := make(chan events.Event)
+	stop := make(chan struct{})
+	cancel := func() {
+		close(stop)
+	}
+
+	go func() {
+		defer cancelWatch()
+
+		matcher := state.Matcher(specifiers...)
+		for _, change := range changelist {
+			if matcher(change) {
+				select {
+				case ch <- change:
+				case <-stop:
+					return
+				}
+			}
+		}
+
+		for {
+			select {
+			case <-stop:
+				return
+			case e := <-watch:
+				ch <- e
+			}
+		}
+	}()
+
+	return ch, cancel, nil
 }
 
 // touchMeta updates an object's timestamps when necessary and bumps the version

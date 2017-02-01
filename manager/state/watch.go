@@ -8,6 +8,17 @@ import (
 	"github.com/docker/swarmkit/watch"
 )
 
+// EventCommit delineates a transaction boundary.
+type EventCommit struct {
+	Version *api.Version
+}
+
+// Matches returns true if this event is a commit event.
+func (e EventCommit) Matches(watchEvent events.Event) bool {
+	_, ok := watchEvent.(EventCommit)
+	return ok
+}
+
 func checkCustom(a1, a2 api.Annotations) bool {
 	if len(a1.Indices) == 1 {
 		for _, ind := range a2.Indices {
@@ -28,15 +39,6 @@ func checkCustomPrefix(a1, a2 api.Annotations) bool {
 		}
 	}
 	return false
-}
-
-// EventCommit delineates a transaction boundary.
-type EventCommit struct{}
-
-// Matches returns true if this event is a commit event.
-func (e EventCommit) Matches(watchEvent events.Event) bool {
-	_, ok := watchEvent.(EventCommit)
-	return ok
 }
 
 // TaskCheckID is a TaskCheckFunc for matching task IDs.

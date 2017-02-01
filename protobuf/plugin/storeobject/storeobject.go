@@ -235,6 +235,45 @@ func (d *storeObjectGen) genNewStoreAction(topLevelObjs []string) {
 	d.P()
 }
 
+func (d *storeObjectGen) genEventFromStoreAction(topLevelObjs []string) {
+	if len(topLevelObjs) == 0 {
+		return
+	}
+
+	// Generate EventFromStoreAction
+	d.P("func EventFromStoreAction(sa StoreAction) (Event, error) {")
+	d.In()
+	d.P("switch v := sa.Target.(type) {")
+	for _, ccTypeName := range topLevelObjs {
+		d.P("case *StoreAction_", ccTypeName, ":")
+		d.In()
+		d.P("switch sa.Action {")
+
+		d.P("case StoreActionKindCreate:")
+		d.In()
+		d.P("return EventCreate", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}, nil")
+		d.Out()
+
+		d.P("case StoreActionKindUpdate:")
+		d.In()
+		d.P("return EventUpdate", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}, nil")
+		d.Out()
+
+		d.P("case StoreActionKindRemove:")
+		d.In()
+		d.P("return EventDelete", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}, nil")
+		d.Out()
+
+		d.P("}")
+		d.Out()
+	}
+	d.P("}")
+	d.P("return nil, errUnknownStoreAction")
+	d.Out()
+	d.P("}")
+	d.P()
+}
+
 func (d *storeObjectGen) Generate(file *generator.FileDescriptor) {
 	d.PluginImports = generator.NewPluginImports(d.Generator)
 	d.eventsPkg = d.NewImport("github.com/docker/go-events")
@@ -262,4 +301,5 @@ func (d *storeObjectGen) Generate(file *generator.FileDescriptor) {
 	}
 
 	d.genNewStoreAction(topLevelObjs)
+	d.genEventFromStoreAction(topLevelObjs)
 }

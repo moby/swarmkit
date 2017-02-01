@@ -7,32 +7,16 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
-
 	"google.golang.org/grpc"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
+	stateutils "github.com/docker/swarmkit/manager/state/testutils"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 )
-
-type mockProposer struct {
-	index uint64
-}
-
-func (mp *mockProposer) ProposeValue(ctx context.Context, storeAction []api.StoreAction, cb func()) error {
-	if cb != nil {
-		cb()
-	}
-	return nil
-}
-
-func (mp *mockProposer) GetVersion() *api.Version {
-	mp.index += 3
-	return &api.Version{Index: mp.index}
-}
 
 type testServer struct {
 	Server *Server
@@ -61,7 +45,7 @@ func newTestServer(t *testing.T) *testServer {
 	tc.Stop()
 	assert.NoError(t, err)
 
-	ts.Store = store.NewMemoryStore(&mockProposer{})
+	ts.Store = store.NewMemoryStore(&stateutils.MockProposer{})
 	assert.NotNil(t, ts.Store)
 
 	ts.Server = NewServer(ts.Store, nil, securityConfig, ca.NewServer(ts.Store, securityConfig), nil)

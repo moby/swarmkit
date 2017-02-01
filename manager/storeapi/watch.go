@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state"
+	"github.com/docker/swarmkit/manager/state/store"
 )
 
 var errConflictingFilters = grpc.Errorf(codes.InvalidArgument, "conflicting filters specified")
@@ -586,56 +587,56 @@ func convertWatchArgs(entries []*api.WatchRequest_WatchEntry) ([]api.Event, erro
 	return events, nil
 }
 
-func watchMessage(event api.Event) *api.WatchMessage {
+func watchMessageEvent(event api.Event) *api.WatchMessage_Event {
 	switch v := event.(type) {
 	case api.EventCreateTask:
-		return &api.WatchMessage{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Task{Task: v.Task}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Task{Task: v.Task}}}
 	case api.EventUpdateTask:
-		return &api.WatchMessage{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Task{Task: v.Task}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Task{Task: v.Task}}}
 	case api.EventDeleteTask:
-		return &api.WatchMessage{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Task{Task: v.Task}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Task{Task: v.Task}}}
 	case api.EventCreateService:
-		return &api.WatchMessage{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Service{Service: v.Service}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Service{Service: v.Service}}}
 	case api.EventUpdateService:
-		return &api.WatchMessage{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Service{Service: v.Service}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Service{Service: v.Service}}}
 	case api.EventDeleteService:
-		return &api.WatchMessage{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Service{Service: v.Service}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Service{Service: v.Service}}}
 	case api.EventCreateNetwork:
-		return &api.WatchMessage{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Network{Network: v.Network}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Network{Network: v.Network}}}
 	case api.EventUpdateNetwork:
-		return &api.WatchMessage{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Network{Network: v.Network}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Network{Network: v.Network}}}
 	case api.EventDeleteNetwork:
-		return &api.WatchMessage{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Network{Network: v.Network}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Network{Network: v.Network}}}
 	case api.EventCreateNode:
-		return &api.WatchMessage{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Node{Node: v.Node}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Node{Node: v.Node}}}
 	case api.EventUpdateNode:
-		return &api.WatchMessage{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Node{Node: v.Node}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Node{Node: v.Node}}}
 	case api.EventDeleteNode:
-		return &api.WatchMessage{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Node{Node: v.Node}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Node{Node: v.Node}}}
 	case api.EventCreateCluster:
-		return &api.WatchMessage{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Cluster{Cluster: v.Cluster}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Cluster{Cluster: v.Cluster}}}
 	case api.EventUpdateCluster:
-		return &api.WatchMessage{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Cluster{Cluster: v.Cluster}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Cluster{Cluster: v.Cluster}}}
 	case api.EventDeleteCluster:
-		return &api.WatchMessage{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Cluster{Cluster: v.Cluster}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Cluster{Cluster: v.Cluster}}}
 	case api.EventCreateSecret:
-		return &api.WatchMessage{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Secret{Secret: v.Secret}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Secret{Secret: v.Secret}}}
 	case api.EventUpdateSecret:
-		return &api.WatchMessage{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Secret{Secret: v.Secret}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Secret{Secret: v.Secret}}}
 	case api.EventDeleteSecret:
-		return &api.WatchMessage{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Secret{Secret: v.Secret}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Secret{Secret: v.Secret}}}
 	case api.EventCreateResource:
-		return &api.WatchMessage{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Resource{Resource: v.Resource}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Resource{Resource: v.Resource}}}
 	case api.EventUpdateResource:
-		return &api.WatchMessage{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Resource{Resource: v.Resource}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Resource{Resource: v.Resource}}}
 	case api.EventDeleteResource:
-		return &api.WatchMessage{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Resource{Resource: v.Resource}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Resource{Resource: v.Resource}}}
 	case api.EventCreateExtension:
-		return &api.WatchMessage{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Extension{Extension: v.Extension}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Extension{Extension: v.Extension}}}
 	case api.EventUpdateExtension:
-		return &api.WatchMessage{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Extension{Extension: v.Extension}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Extension{Extension: v.Extension}}}
 	case api.EventDeleteExtension:
-		return &api.WatchMessage{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Extension{Extension: v.Extension}}}
+		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Extension{Extension: v.Extension}}}
 	}
 	return nil
 }
@@ -653,23 +654,31 @@ func (s *Server) Watch(request *api.WatchRequest, stream api.Store_WatchServer) 
 		return err
 	}
 
-	watch, cancel := state.Watch(s.store.WatchQueue(), watchArgs...)
+	watchArgs = append(watchArgs, state.EventCommit{})
+	watch, cancel, err := store.WatchFrom(s.store, request.ResumeFrom, watchArgs...)
+	if err != nil {
+		return err
+	}
 	defer cancel()
 
+	// TODO(aaronl): Send current version in this WatchMessage?
 	if err := stream.Send(&api.WatchMessage{}); err != nil {
 		return err
 	}
 
+	var events []*api.WatchMessage_Event
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case event := <-watch:
-			message := watchMessage(event.(api.Event))
-			if message != nil {
-				if err := stream.Send(message); err != nil {
+			if commitEvent, ok := event.(state.EventCommit); ok && len(events) > 0 {
+				if err := stream.Send(&api.WatchMessage{Events: events, Version: commitEvent.Version}); err != nil {
 					return err
 				}
+				events = nil
+			} else if eventMessage := watchMessageEvent(event.(api.Event)); eventMessage != nil {
+				events = append(events, eventMessage)
 			}
 		}
 	}

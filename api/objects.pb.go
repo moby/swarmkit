@@ -2925,6 +2925,84 @@ func NewStoreAction(c Event) (StoreAction, error) {
 	return sa, nil
 }
 
+func EventFromStoreAction(sa StoreAction) (Event, error) {
+	switch v := sa.Target.(type) {
+	case *StoreAction_Node:
+		switch sa.Action {
+		case StoreActionKindCreate:
+			return EventCreateNode{Node: v.Node}, nil
+		case StoreActionKindUpdate:
+			return EventUpdateNode{Node: v.Node}, nil
+		case StoreActionKindRemove:
+			return EventDeleteNode{Node: v.Node}, nil
+		}
+	case *StoreAction_Service:
+		switch sa.Action {
+		case StoreActionKindCreate:
+			return EventCreateService{Service: v.Service}, nil
+		case StoreActionKindUpdate:
+			return EventUpdateService{Service: v.Service}, nil
+		case StoreActionKindRemove:
+			return EventDeleteService{Service: v.Service}, nil
+		}
+	case *StoreAction_Task:
+		switch sa.Action {
+		case StoreActionKindCreate:
+			return EventCreateTask{Task: v.Task}, nil
+		case StoreActionKindUpdate:
+			return EventUpdateTask{Task: v.Task}, nil
+		case StoreActionKindRemove:
+			return EventDeleteTask{Task: v.Task}, nil
+		}
+	case *StoreAction_Network:
+		switch sa.Action {
+		case StoreActionKindCreate:
+			return EventCreateNetwork{Network: v.Network}, nil
+		case StoreActionKindUpdate:
+			return EventUpdateNetwork{Network: v.Network}, nil
+		case StoreActionKindRemove:
+			return EventDeleteNetwork{Network: v.Network}, nil
+		}
+	case *StoreAction_Cluster:
+		switch sa.Action {
+		case StoreActionKindCreate:
+			return EventCreateCluster{Cluster: v.Cluster}, nil
+		case StoreActionKindUpdate:
+			return EventUpdateCluster{Cluster: v.Cluster}, nil
+		case StoreActionKindRemove:
+			return EventDeleteCluster{Cluster: v.Cluster}, nil
+		}
+	case *StoreAction_Secret:
+		switch sa.Action {
+		case StoreActionKindCreate:
+			return EventCreateSecret{Secret: v.Secret}, nil
+		case StoreActionKindUpdate:
+			return EventUpdateSecret{Secret: v.Secret}, nil
+		case StoreActionKindRemove:
+			return EventDeleteSecret{Secret: v.Secret}, nil
+		}
+	case *StoreAction_Resource:
+		switch sa.Action {
+		case StoreActionKindCreate:
+			return EventCreateResource{Resource: v.Resource}, nil
+		case StoreActionKindUpdate:
+			return EventUpdateResource{Resource: v.Resource}, nil
+		case StoreActionKindRemove:
+			return EventDeleteResource{Resource: v.Resource}, nil
+		}
+	case *StoreAction_Extension:
+		switch sa.Action {
+		case StoreActionKindCreate:
+			return EventCreateExtension{Extension: v.Extension}, nil
+		case StoreActionKindUpdate:
+			return EventUpdateExtension{Extension: v.Extension}, nil
+		case StoreActionKindRemove:
+			return EventDeleteExtension{Extension: v.Extension}, nil
+		}
+	}
+	return nil, errUnknownStoreAction
+}
+
 func (this *Meta) String() string {
 	if this == nil {
 		return "nil"
