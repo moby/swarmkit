@@ -8,6 +8,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
@@ -322,6 +323,8 @@ func (t *Transport) longestActive() (*peer, error) {
 
 func (t *Transport) dial(addr string) (*grpc.ClientConn, error) {
 	grpcOptions := []grpc.DialOption{
+		grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
+		grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
 		grpc.WithBackoffMaxDelay(8 * time.Second),
 	}
 	if t.config.Credentials != nil {

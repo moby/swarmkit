@@ -654,6 +654,8 @@ func (m *Manager) updateKEK(ctx context.Context, cluster *api.Cluster) error {
 
 			conn, err := grpc.Dial(
 				m.config.ControlAPI,
+				grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
+				grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
 				grpc.WithTransportCredentials(insecureCreds),
 				grpc.WithDialer(
 					func(addr string, timeout time.Duration) (net.Conn, error) {
