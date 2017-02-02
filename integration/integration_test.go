@@ -1,16 +1,24 @@
 package integration
 
 import (
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"golang.org/x/net/context"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/ca"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -125,7 +133,7 @@ func pollServiceReady(t *testing.T, c *testCluster, sid string) {
 func newCluster(t *testing.T, numWorker, numManager int) *testCluster {
 	cl := newTestCluster()
 	for i := 0; i < numManager; i++ {
-		require.NoError(t, cl.AddManager(false), "manager number %d", i+1)
+		require.NoError(t, cl.AddManager(false, nil), "manager number %d", i+1)
 	}
 	for i := 0; i < numWorker; i++ {
 		require.NoError(t, cl.AddAgent(), "agent number %d", i+1)
@@ -152,7 +160,7 @@ func TestServiceCreateLateBind(t *testing.T) {
 
 	cl := newTestCluster()
 	for i := 0; i < numManager; i++ {
-		require.NoError(t, cl.AddManager(true), "manager number %d", i+1)
+		require.NoError(t, cl.AddManager(true, nil), "manager number %d", i+1)
 	}
 	for i := 0; i < numWorker; i++ {
 		require.NoError(t, cl.AddAgent(), "agent number %d", i+1)
@@ -386,7 +394,7 @@ func TestDemoteDownedManager(t *testing.T) {
 
 	// stop the node, then demote it, and start it back up again so when it comes back up it has to realize
 	// it's not running anymore
-	require.NoError(t, demotee.Pause())
+	require.NoError(t, demotee.Pause(false))
 
 	// demote node, but don't use SetNodeRole, which waits until it successfully becomes a worker, since
 	// the node is currently down
@@ -429,7 +437,7 @@ func TestRestartLeader(t *testing.T) {
 
 	origLeaderID := leader.node.NodeID()
 
-	require.NoError(t, leader.Pause())
+	require.NoError(t, leader.Pause(false))
 
 	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
 		resp, err := cl.api.ListNodes(context.Background(), &api.ListNodesRequest{})
@@ -451,4 +459,82 @@ func TestRestartLeader(t *testing.T) {
 	require.NoError(t, cl.StartNode(origLeaderID))
 
 	pollClusterReady(t, cl, numWorker, numManager)
+}
+
+func TestForceNewCluster(t *testing.T) {
+	t.Parallel()
+	logrus.SetLevel(logrus.DebugLevel)
+
+	// create an external CA so that we can use it to generate expired certificates
+	tempDir, err := ioutil.TempDir("", "external-ca")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+	rootCA, err := ca.CreateRootCA("externalRoot", ca.NewConfigPaths(tempDir).RootCA)
+	require.NoError(t, err)
+
+	// start a new cluster with the external CA bootstrapped
+	numWorker, numManager := 0, 1
+	cl := newTestCluster()
+	defer func() {
+		require.NoError(t, cl.Stop())
+	}()
+	require.NoError(t, cl.AddManager(false, &rootCA), "manager number 1")
+	pollClusterReady(t, cl, numWorker, numManager)
+
+	leader, err := cl.Leader()
+	require.NoError(t, err)
+
+	sid, err := cl.CreateService("test_service", 2)
+	require.NoError(t, err)
+	pollServiceReady(t, cl, sid)
+
+	// generate an expired certificate
+	rootKey, err := helpers.ParsePrivateKeyPEM(rootCA.Key)
+	require.NoError(t, err)
+	rootCert, err := helpers.ParseCertificatePEM(rootCA.Cert)
+	require.NoError(t, err)
+
+	managerCertFile := filepath.Join(leader.stateDir, "certificates", "swarm-node.crt")
+	certBytes, err := ioutil.ReadFile(managerCertFile)
+	require.NoError(t, err)
+	managerCerts, err := helpers.ParseCertificatesPEM(certBytes)
+	require.NoError(t, err)
+	expiredCertTemplate := managerCerts[0]
+	expiredCertTemplate.NotBefore = time.Now().Add(time.Hour * -5)
+	expiredCertTemplate.NotAfter = time.Now().Add(time.Hour * -3)
+	expiredCertDERBytes, err := x509.CreateCertificate(rand.Reader, expiredCertTemplate, rootCert, expiredCertTemplate.PublicKey, rootKey)
+	require.NoError(t, err)
+	expiredCertPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: expiredCertDERBytes,
+	})
+
+	// restart node with an expired certificate while forcing a new cluster - it should start without error and the certificate should be renewed
+	nodeID := leader.node.NodeID()
+	require.NoError(t, leader.Pause(true))
+	require.NoError(t, ioutil.WriteFile(managerCertFile, expiredCertPEM, 0644))
+	require.NoError(t, cl.StartNode(nodeID))
+	pollClusterReady(t, cl, numWorker, numManager)
+	pollServiceReady(t, cl, sid)
+
+	err = raftutils.PollFuncWithTimeout(nil, func() error {
+		certBytes, err := ioutil.ReadFile(managerCertFile)
+		if err != nil {
+			return err
+		}
+		managerCerts, err := helpers.ParseCertificatesPEM(certBytes)
+		if err != nil {
+			return err
+		}
+		if managerCerts[0].NotAfter.Before(time.Now()) {
+			return errors.New("certificate hasn't been renewed yet")
+		}
+		return nil
+	}, opsTimeout)
+	require.NoError(t, err)
+
+	// restart node with an expired certificate without forcing a new cluster - it should error on start
+	require.NoError(t, leader.Pause(true))
+	require.NoError(t, ioutil.WriteFile(managerCertFile, expiredCertPEM, 0644))
+	require.Error(t, cl.StartNode(nodeID))
 }

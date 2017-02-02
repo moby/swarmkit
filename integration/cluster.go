@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/log"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"golang.org/x/net/context"
@@ -75,12 +76,13 @@ func (c *testCluster) RandomManager() *testNode {
 
 // AddManager adds a node with the Manager role. The node will function as both
 // an agent and a manager. If lateBind is set, the manager is started before a
-// remote API port is bound. This setting only applies to the first manager.
-func (c *testCluster) AddManager(lateBind bool) error {
+// remote API port is bound. If rootCA is set, the manager is bootstrapped using
+// said root CA.  These settings only apply to the first manager.
+func (c *testCluster) AddManager(lateBind bool, rootCA *ca.RootCA) error {
 	// first node
 	var n *testNode
 	if len(c.nodes) == 0 {
-		node, err := newTestNode("", "", lateBind)
+		node, err := newTestNode("", "", lateBind, rootCA)
 		if err != nil {
 			return err
 		}
@@ -98,7 +100,7 @@ func (c *testCluster) AddManager(lateBind bool) error {
 		if len(clusterInfo.Clusters) == 0 {
 			return fmt.Errorf("joining manager: there is no cluster created in storage")
 		}
-		node, err := newTestNode(joinAddr, clusterInfo.Clusters[0].RootCA.JoinTokens.Manager, false)
+		node, err := newTestNode(joinAddr, clusterInfo.Clusters[0].RootCA.JoinTokens.Manager, false, nil)
 		if err != nil {
 			return err
 		}
@@ -157,7 +159,7 @@ func (c *testCluster) AddAgent() error {
 	if len(clusterInfo.Clusters) == 0 {
 		return fmt.Errorf("joining agent: there is no cluster created in storage")
 	}
-	node, err := newTestNode(joinAddr, clusterInfo.Clusters[0].RootCA.JoinTokens.Worker, false)
+	node, err := newTestNode(joinAddr, clusterInfo.Clusters[0].RootCA.JoinTokens.Worker, false, nil)
 	if err != nil {
 		return err
 	}
