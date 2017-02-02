@@ -1,7 +1,12 @@
 package ca_test
 
 import (
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"strings"
 	"testing"
@@ -10,10 +15,12 @@ import (
 	"golang.org/x/net/context"
 
 	cfconfig "github.com/cloudflare/cfssl/config"
+	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/ioutils"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -54,9 +61,14 @@ func TestDownloadRootCAWrongCAHash(t *testing.T) {
 	os.RemoveAll(tc.Paths.RootCA.Cert)
 
 	// invalid token
-	_, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, "invalidtoken", tc.ConnBroker)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid join token")
+	for _, invalid := range []string{
+		"invalidtoken", // completely invalid
+		"SWMTKN-1-3wkodtpeoipd1u1hi0ykdcdwhw16dk73ulqqtn14b3indz68rf-4myj5xihyto11dg1cn55w8p6", // mistyped
+	} {
+		_, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, invalid, tc.ConnBroker)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid join token")
+	}
 
 	// invalid hash token
 	splitToken := strings.Split(tc.ManagerToken, "-")
@@ -65,7 +77,7 @@ func TestDownloadRootCAWrongCAHash(t *testing.T) {
 
 	os.RemoveAll(tc.Paths.RootCA.Cert)
 
-	_, err = ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, replacementToken, tc.ConnBroker)
+	_, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, replacementToken, tc.ConnBroker)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "remote CA does not match fingerprint.")
 }
@@ -125,6 +137,70 @@ func TestCreateSecurityConfigNoCerts(t *testing.T) {
 	assert.Equal(t, rootCA, *nodeConfig.RootCA())
 }
 
+func TestLoadSecurityConfigExpiredCert(t *testing.T) {
+	tc := testutils.NewTestCA(t)
+	defer tc.Stop()
+
+	_, key, err := ca.GenerateNewCSR()
+	require.NoError(t, err)
+	require.NoError(t, ioutil.WriteFile(tc.Paths.Node.Key, key, 0600))
+	certKey, err := helpers.ParsePrivateKeyPEM(key)
+	require.NoError(t, err)
+
+	rootKey, err := helpers.ParsePrivateKeyPEM(tc.RootCA.Key)
+	require.NoError(t, err)
+	rootCert, err := helpers.ParseCertificatePEM(tc.RootCA.Cert)
+	require.NoError(t, err)
+
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	require.NoError(t, err)
+
+	genCert := func(notBefore, notAfter time.Time) {
+		derBytes, err := x509.CreateCertificate(rand.Reader, &x509.Certificate{
+			SerialNumber: serialNumber,
+			Subject: pkix.Name{
+				CommonName:         "CN",
+				OrganizationalUnit: []string{"OU"},
+				Organization:       []string{"ORG"},
+			},
+			NotBefore: notBefore,
+			NotAfter:  notAfter,
+		}, rootCert, certKey.Public(), rootKey)
+		require.NoError(t, err)
+		certBytes := pem.EncodeToMemory(&pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: derBytes,
+		})
+		require.NoError(t, ioutil.WriteFile(tc.Paths.Node.Cert, certBytes, 0644))
+	}
+
+	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
+	now := time.Now()
+
+	// A cert that is not yet valid is not valid even if expiry is allowed
+	genCert(now.Add(time.Hour), now.Add(time.Hour*2))
+
+	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
+	require.Error(t, err)
+	require.IsType(t, x509.CertificateInvalidError{}, errors.Cause(err))
+
+	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, true)
+	require.Error(t, err)
+	require.IsType(t, x509.CertificateInvalidError{}, errors.Cause(err))
+
+	// a cert that is expired is not valid if expiry is not allowed
+	genCert(now.Add(time.Hour*-3), now.Add(time.Hour*-1))
+
+	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
+	require.Error(t, err)
+	require.IsType(t, x509.CertificateInvalidError{}, errors.Cause(err))
+
+	// but it is valid if expiry is allowed
+	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, true)
+	require.NoError(t, err)
+}
+
 func TestLoadSecurityConfigInvalidCert(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
@@ -136,7 +212,7 @@ some random garbage\n
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 
-	_, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw)
+	_, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
 	assert.Error(t, err)
 
 	nodeConfig, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
@@ -162,7 +238,7 @@ some random garbage\n
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 
-	_, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw)
+	_, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
 	assert.Error(t, err)
 
 	nodeConfig, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
@@ -185,7 +261,7 @@ func TestLoadSecurityConfigIncorrectPassphrase(t *testing.T) {
 		"nodeID", ca.WorkerRole, tc.Organization)
 	require.NoError(t, err)
 
-	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, ca.NewKeyReadWriter(paths.Node, nil, nil))
+	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, ca.NewKeyReadWriter(paths.Node, nil, nil), false)
 	require.IsType(t, ca.ErrInvalidKEK{}, err)
 }
 
