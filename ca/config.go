@@ -51,6 +51,13 @@ const (
 	base36DigestLen = 50
 )
 
+// RenewTLSExponentialBackoff sets the exponential backoff when trying to renew TLS certificates that have expired
+var RenewTLSExponentialBackoff = events.ExponentialBackoffConfig{
+	Base:   time.Second * 5,
+	Factor: time.Minute,
+	Max:    1 * time.Hour,
+}
+
 // SecurityConfig is used to represent a node's security configuration. It includes information about
 // the RootCA and ServerTLSCreds/ClientTLSCreds transport authenticators to be used for MTLS
 type SecurityConfig struct {
@@ -446,15 +453,9 @@ func RenewTLSConfigNow(ctx context.Context, s *SecurityConfig, connBroker *conne
 func RenewTLSConfig(ctx context.Context, s *SecurityConfig, connBroker *connectionbroker.Broker, renew <-chan struct{}) <-chan CertificateUpdate {
 	updates := make(chan CertificateUpdate)
 
-	backoffConfig := events.ExponentialBackoffConfig{
-		Base:   time.Second * 5,
-		Factor: time.Minute,
-		Max:    1 * time.Hour,
-	}
-
 	go func() {
 		var retry time.Duration
-		expBackoff := events.NewExponentialBackoff(backoffConfig)
+		expBackoff := events.NewExponentialBackoff(RenewTLSExponentialBackoff)
 		defer close(updates)
 		for {
 			ctx = log.WithModule(ctx, "tls")
@@ -494,7 +495,7 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, connBroker *connecti
 
 			log.WithFields(logrus.Fields{
 				"time": time.Now().Add(retry),
-			}).Debugf("next certificate renewal scheduled")
+			}).Debugf("next certificate renewal scheduled for %v from now", retry)
 
 			select {
 			case <-time.After(retry):
@@ -513,7 +514,7 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, connBroker *connecti
 				expBackoff.Failure(nil, nil)
 			} else {
 				certUpdate.Role = s.ClientTLSCreds.Role()
-				expBackoff = events.NewExponentialBackoff(backoffConfig)
+				expBackoff = events.NewExponentialBackoff(RenewTLSExponentialBackoff)
 			}
 
 			select {

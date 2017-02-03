@@ -12,6 +12,7 @@ import (
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/log"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
+	"github.com/docker/swarmkit/node"
 	"golang.org/x/net/context"
 )
 
@@ -330,15 +331,30 @@ func (c *testCluster) StartNode(id string) error {
 	}
 
 	ctx := log.WithLogger(c.ctx, log.L.WithField("testnode", c.nodesOrder[id]))
+	errCtx, cancel := context.WithCancel(context.Background())
+	done := make(chan error)
+	defer cancel()
+	defer close(done)
 
-	c.wg.Add(1)
+	c.wg.Add(2)
 	go func() {
 		c.errs <- n.node.Start(ctx)
 		c.wg.Done()
 	}()
+	go func(n *node.Node) {
+		err := n.Err(errCtx)
+		select {
+		case <-errCtx.Done():
+		default:
+			done <- err
+		}
+		c.wg.Done()
+	}(n.node)
 
 	select {
 	case <-n.node.Ready():
+	case err := <-done:
+		return err
 	case <-time.After(opsTimeout):
 		return fmt.Errorf("node did not ready in time")
 	}
