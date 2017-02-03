@@ -17,6 +17,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/cloudflare/cfssl/helpers"
+	events "github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
@@ -44,6 +45,10 @@ func printTrace() {
 }
 
 func TestMain(m *testing.M) {
+	ca.RenewTLSExponentialBackoff = events.ExponentialBackoffConfig{
+		Factor: time.Millisecond * 500,
+		Max:    time.Minute,
+	}
 	flag.Parse()
 	res := m.Run()
 	if *showTrace {
@@ -463,7 +468,6 @@ func TestRestartLeader(t *testing.T) {
 
 func TestForceNewCluster(t *testing.T) {
 	t.Parallel()
-	logrus.SetLevel(logrus.DebugLevel)
 
 	// create an external CA so that we can use it to generate expired certificates
 	tempDir, err := ioutil.TempDir("", "external-ca")
