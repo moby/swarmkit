@@ -29,8 +29,10 @@ import (
 	"github.com/docker/swarmkit/manager/state/raft/storage"
 	"github.com/docker/swarmkit/manager/state/raft/transport"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/docker/swarmkit/watch"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	"github.com/pivotal-golang/clock"
 	"github.com/pkg/errors"
 )
@@ -992,11 +994,12 @@ func (n *Node) updateNodeBlocking(ctx context.Context, id uint64, addr string) e
 	if m == nil {
 		return errors.Errorf("member %x is not found for update", id)
 	}
-	node := api.RaftMember{
-		RaftID: m.RaftID,
-		NodeID: m.NodeID,
-		Addr:   addr,
+	node := m.Copy()
+	if node.BackupAddrs == nil {
+		node.BackupAddrs = make(map[string]*types.Timestamp)
 	}
+	node.BackupAddrs[node.Addr] = ptypes.MustTimestampProto(time.Now())
+	node.Addr = addr
 
 	meta, err := node.Marshal()
 	if err != nil {
@@ -1168,7 +1171,12 @@ func (n *Node) reportNewAddress(ctx context.Context, id uint64) error {
 		return err
 	}
 	newAddr := net.JoinHostPort(newHost, officialPort)
-	if err := n.transport.UpdatePeerAddr(id, newAddr); err != nil {
+	addrs := []string{newAddr}
+	m := n.cluster.GetMember(id)
+	if m != nil {
+		addrs = append(addrs, memberAddrs(m.RaftMember.Copy())...)
+	}
+	if err := n.transport.UpdatePeerAddr(id, addrs...); err != nil {
 		return err
 	}
 	return nil
@@ -1193,13 +1201,9 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 	ctx, cancel := n.WithContext(ctx)
 	defer cancel()
 
-	// TODO(aaronl): Address changes are temporarily disabled.
-	// See https://github.com/docker/docker/issues/30455.
-	// This should be reenabled in the future with additional
-	// safeguards (perhaps storing multiple addresses per node).
-	//if err := n.reportNewAddress(ctx, msg.Message.From); err != nil {
-	//	log.G(ctx).WithError(err).Errorf("failed to report new address of %x to transport", msg.Message.From)
-	//}
+	if err := n.reportNewAddress(ctx, msg.Message.From); err != nil {
+		log.G(ctx).WithError(err).Errorf("failed to report new address of %x to transport", msg.Message.From)
+	}
 
 	// Reject vote requests from unreachable peers
 	if msg.Message.Type == raftpb.MsgVote {
@@ -1332,7 +1336,7 @@ func (n *Node) registerNode(node *api.RaftMember) error {
 		// address.
 		if existingMember.Addr != node.Addr {
 			if node.RaftID != n.Config.ID {
-				if err := n.transport.UpdatePeer(node.RaftID, node.Addr); err != nil {
+				if err := n.transport.UpdatePeer(node.RaftID, memberAddrs(node)...); err != nil {
 					return err
 				}
 			}
@@ -1693,6 +1697,14 @@ func (n *Node) applyAddNode(cc raftpb.ConfChange) error {
 	return nil
 }
 
+func memberAddrs(m *api.RaftMember) []string {
+	addrs := []string{m.Addr}
+	for a := range m.BackupAddrs {
+		addrs = append(addrs, a)
+	}
+	return addrs
+}
+
 // applyUpdateNode is called when we receive a ConfChange from a member in the
 // raft cluster which update the address of an existing node.
 func (n *Node) applyUpdateNode(ctx context.Context, cc raftpb.ConfChange) error {
@@ -1705,7 +1717,7 @@ func (n *Node) applyUpdateNode(ctx context.Context, cc raftpb.ConfChange) error 
 	if newMember.RaftID == n.Config.ID {
 		return nil
 	}
-	if err := n.transport.UpdatePeer(newMember.RaftID, newMember.Addr); err != nil {
+	if err := n.transport.UpdatePeer(newMember.RaftID, memberAddrs(newMember)...); err != nil {
 		return err
 	}
 	return n.cluster.UpdateMember(newMember.RaftID, newMember)
