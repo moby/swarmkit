@@ -1,7 +1,6 @@
 package node
 
 import (
-	"context"
 	"crypto/x509"
 	"encoding/pem"
 	"io/ioutil"
@@ -16,6 +15,7 @@ import (
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
 )
 
 // If there is nothing on disk and no join addr, we create a new CA and a new set of TLS certs.
