@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 )
 
 func TestBootstrapFromDisk(t *testing.T) {
