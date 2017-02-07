@@ -27,7 +27,8 @@ GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
 all: check binaries test integration ## run fmt, vet, lint, build the binaries and run the tests
 
-check: fmt vet lint ineffassign ## run fmt, vet, lint, ineffassign
+# lint is disabled temporarily because https://github.com/golang/lint/commit/3390df4df2787994aea98de825b964ac7944b817 failing (#1643)
+check: fmt vet ineffassign ## run fmt, vet, ineffassign
 
 ci: check binaries checkprotos coverage coverage-integration ## to be used by the CI
 
