@@ -165,6 +165,11 @@ func updateNode(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return errors.New("node ID missing")
 	}
+
+	if len(args) > 1 {
+		return errors.New("command takes exactly 1 argument")
+	}
+
 	c, err := common.Dial(cmd)
 	if err != nil {
 		return err
