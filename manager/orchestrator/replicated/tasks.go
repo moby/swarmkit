@@ -5,6 +5,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/orchestrator"
+	"github.com/docker/swarmkit/manager/orchestrator/taskinit"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"golang.org/x/net/context"
@@ -16,7 +17,7 @@ import (
 // and/or kills tasks to match the service definition.
 
 func (r *Orchestrator) initTasks(ctx context.Context, readTx store.ReadTx) error {
-	return orchestrator.InitTasks(ctx, r.store, readTx, orchestrator.IsReplicatedService, r.restarts)
+	return taskinit.CheckTasks(ctx, r.store, readTx, r, r.restarts)
 }
 
 func (r *Orchestrator) handleTaskEvent(ctx context.Context, event events.Event) {
@@ -114,6 +115,7 @@ func (r *Orchestrator) handleNodeChange(ctx context.Context, n *api.Node) {
 	r.restartTasksByNodeID(ctx, n.ID)
 }
 
+// handleTaskChange defines what orchestrator does when a task is updated by agent.
 func (r *Orchestrator) handleTaskChange(ctx context.Context, t *api.Task) {
 	// If we already set the desired state past TaskStateRunning, there is no
 	// further action necessary.
@@ -141,5 +143,39 @@ func (r *Orchestrator) handleTaskChange(ctx context.Context, t *api.Task) {
 	if t.Status.State > api.TaskStateRunning ||
 		(t.NodeID != "" && orchestrator.InvalidNode(n)) {
 		r.restartTasks[t.ID] = struct{}{}
+	}
+}
+
+// FixTask validates a task with the current cluster settings, and takes
+// action to make it conformant. it's called at orchestrator initialization.
+func (r *Orchestrator) FixTask(ctx context.Context, batch *store.Batch, t *api.Task) {
+	// If we already set the desired state past TaskStateRunning, there is no
+	// further action necessary.
+	if t.DesiredState > api.TaskStateRunning {
+		return
+	}
+
+	var (
+		n       *api.Node
+		service *api.Service
+	)
+	batch.Update(func(tx store.Tx) error {
+		if t.NodeID != "" {
+			n = store.GetNode(tx, t.NodeID)
+		}
+		if t.ServiceID != "" {
+			service = store.GetService(tx, t.ServiceID)
+		}
+		return nil
+	})
+
+	if !orchestrator.IsReplicatedService(service) {
+		return
+	}
+
+	if t.Status.State > api.TaskStateRunning ||
+		(t.NodeID != "" && orchestrator.InvalidNode(n)) {
+		r.restartTasks[t.ID] = struct{}{}
+		return
 	}
 }
