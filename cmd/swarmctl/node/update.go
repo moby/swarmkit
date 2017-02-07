@@ -8,7 +8,7 @@ import (
 
 var (
 	updateCmd = &cobra.Command{
-		Use:   "update [OPTIONS] <node ID>",
+		Use:   "update <node ID>",
 		Short: "Update a node",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := updateNode(cmd, args); err != nil {
