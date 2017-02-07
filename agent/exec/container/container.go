@@ -183,7 +183,7 @@ func (c *containerConfig) healthcheck() *enginecontainer.HealthConfig {
 
 func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 	hc := &enginecontainer.HostConfig{
-		Resources:    c.resources(c.spec()),
+		Resources:    c.resources(),
 		Binds:        c.binds(),
 		Tmpfs:        c.tmpfs(),
 		GroupAdd:     c.spec().Groups,
@@ -388,7 +388,7 @@ func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *volume.VolumesC
 	}
 }
 
-func (c *containerConfig) resources(spec *api.ContainerSpec) enginecontainer.Resources {
+func (c *containerConfig) resources() enginecontainer.Resources {
 	resources := enginecontainer.Resources{}
 
 	// If no limits are specified let the engine use its defaults.
