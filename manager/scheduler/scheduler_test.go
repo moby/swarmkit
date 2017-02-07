@@ -641,6 +641,422 @@ func TestHA(t *testing.T) {
 	assert.Equal(t, 1, t2Assignments["id1"])
 }
 
+func TestPreferences(t *testing.T) {
+	ctx := context.Background()
+	initialNodeSet := []*api.Node{
+		{
+			ID: "id1",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Labels: map[string]string{
+						"az": "az1",
+					},
+				},
+			},
+		},
+		{
+			ID: "id2",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Labels: map[string]string{
+						"az": "az2",
+					},
+				},
+			},
+		},
+		{
+			ID: "id3",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Labels: map[string]string{
+						"az": "az2",
+					},
+				},
+			},
+		},
+		{
+			ID: "id4",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Labels: map[string]string{
+						"az": "az2",
+					},
+				},
+			},
+		},
+		{
+			ID: "id5",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Labels: map[string]string{
+						"az": "az2",
+					},
+				},
+			},
+		},
+	}
+
+	taskTemplate1 := &api.Task{
+		DesiredState: api.TaskStateRunning,
+		ServiceID:    "service1",
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Image: "v:1",
+				},
+			},
+			Placement: &api.Placement{
+				Preferences: []*api.PlacementPreference{
+					{
+						Preference: &api.PlacementPreference_Spread{
+							Spread: &api.SpreadOver{
+								SpreadDescriptor: "node.labels.az",
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+	}
+
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	t1Instances := 8
+
+	err := s.Update(func(tx store.Tx) error {
+		// Prepoulate nodes
+		for _, n := range initialNodeSet {
+			assert.NoError(t, store.CreateNode(tx, n))
+		}
+
+		// Prepopulate tasks from template 1
+		for i := 0; i != t1Instances; i++ {
+			taskTemplate1.ID = fmt.Sprintf("t1id%d", i)
+			assert.NoError(t, store.CreateTask(tx, taskTemplate1))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(s)
+
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run(ctx))
+	}()
+	defer scheduler.Stop()
+
+	t1Assignments := make(map[string]int)
+	for i := 0; i != t1Instances; i++ {
+		assignment := watchAssignment(t, watch)
+		if !strings.HasPrefix(assignment.ID, "t1") {
+			t.Fatal("got assignment for different kind of task")
+		}
+		t1Assignments[assignment.NodeID]++
+	}
+
+	assert.Len(t, t1Assignments, 5)
+	assert.Equal(t, 4, t1Assignments["id1"])
+	assert.Equal(t, 1, t1Assignments["id2"])
+	assert.Equal(t, 1, t1Assignments["id3"])
+	assert.Equal(t, 1, t1Assignments["id4"])
+	assert.Equal(t, 1, t1Assignments["id5"])
+}
+
+func TestMultiplePreferences(t *testing.T) {
+	ctx := context.Background()
+	initialNodeSet := []*api.Node{
+		{
+			ID: "id0",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Labels: map[string]string{
+						"az":   "az1",
+						"rack": "rack1",
+					},
+				},
+			},
+			Description: &api.NodeDescription{
+				Resources: &api.Resources{
+					NanoCPUs:    1e9,
+					MemoryBytes: 1e8,
+				},
+			},
+		},
+		{
+			ID: "id1",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Labels: map[string]string{
+						"az":   "az1",
+						"rack": "rack1",
+					},
+				},
+			},
+			Description: &api.NodeDescription{
+				Resources: &api.Resources{
+					NanoCPUs:    1e9,
+					MemoryBytes: 1e9,
+				},
+			},
+		},
+		{
+			ID: "id2",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Labels: map[string]string{
+						"az":   "az2",
+						"rack": "rack1",
+					},
+				},
+			},
+			Description: &api.NodeDescription{
+				Resources: &api.Resources{
+					NanoCPUs:    1e9,
+					MemoryBytes: 1e9,
+				},
+			},
+		},
+		{
+			ID: "id3",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Labels: map[string]string{
+						"az":   "az2",
+						"rack": "rack1",
+					},
+				},
+			},
+			Description: &api.NodeDescription{
+				Resources: &api.Resources{
+					NanoCPUs:    1e9,
+					MemoryBytes: 1e9,
+				},
+			},
+		},
+		{
+			ID: "id4",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Labels: map[string]string{
+						"az":   "az2",
+						"rack": "rack1",
+					},
+				},
+			},
+			Description: &api.NodeDescription{
+				Resources: &api.Resources{
+					NanoCPUs:    1e9,
+					MemoryBytes: 1e9,
+				},
+			},
+		},
+		{
+			ID: "id5",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Labels: map[string]string{
+						"az":   "az2",
+						"rack": "rack2",
+					},
+				},
+			},
+			Description: &api.NodeDescription{
+				Resources: &api.Resources{
+					NanoCPUs:    1e9,
+					MemoryBytes: 1e9,
+				},
+			},
+		},
+		{
+			ID: "id6",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Labels: map[string]string{
+						"az":   "az2",
+						"rack": "rack2",
+					},
+				},
+			},
+			Description: &api.NodeDescription{
+				Resources: &api.Resources{
+					NanoCPUs:    1e9,
+					MemoryBytes: 1e9,
+				},
+			},
+		},
+	}
+
+	taskTemplate1 := &api.Task{
+		DesiredState: api.TaskStateRunning,
+		ServiceID:    "service1",
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Image: "v:1",
+				},
+			},
+			Placement: &api.Placement{
+				Preferences: []*api.PlacementPreference{
+					{
+						Preference: &api.PlacementPreference_Spread{
+							Spread: &api.SpreadOver{
+								SpreadDescriptor: "node.labels.az",
+							},
+						},
+					},
+					{
+						Preference: &api.PlacementPreference_Spread{
+							Spread: &api.SpreadOver{
+								SpreadDescriptor: "node.labels.rack",
+							},
+						},
+					},
+				},
+			},
+			Resources: &api.ResourceRequirements{
+				Reservations: &api.Resources{
+					MemoryBytes: 2e8,
+				},
+			},
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+	}
+
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	t1Instances := 12
+
+	err := s.Update(func(tx store.Tx) error {
+		// Prepoulate nodes
+		for _, n := range initialNodeSet {
+			assert.NoError(t, store.CreateNode(tx, n))
+		}
+
+		// Prepopulate tasks from template 1
+		for i := 0; i != t1Instances; i++ {
+			taskTemplate1.ID = fmt.Sprintf("t1id%d", i)
+			assert.NoError(t, store.CreateTask(tx, taskTemplate1))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(s)
+
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run(ctx))
+	}()
+	defer scheduler.Stop()
+
+	t1Assignments := make(map[string]int)
+	for i := 0; i != t1Instances; i++ {
+		assignment := watchAssignment(t, watch)
+		if !strings.HasPrefix(assignment.ID, "t1") {
+			t.Fatal("got assignment for different kind of task")
+		}
+		t1Assignments[assignment.NodeID]++
+	}
+
+	assert.Len(t, t1Assignments, 6)
+
+	// There should be no tasks assigned to id0 because it doesn't meet the
+	// resource requirements.
+	assert.Equal(t, 0, t1Assignments["id0"])
+
+	// There should be 5 tasks assigned to id1 because half of the 12 tasks
+	// should ideally end up in az1, but id1 can only accomodate 5 due to
+	// resource requirements.
+	assert.Equal(t, 5, t1Assignments["id1"])
+
+	// The remaining 7 tasks should be spread across rack1 and rack2 of
+	// az2.
+
+	if t1Assignments["id2"]+t1Assignments["id3"]+t1Assignments["id4"] == 4 {
+		// If rack1 gets 4 and rack2 gets 3, then one of id[2-4] will have two
+		// tasks and the others will have one.
+		if t1Assignments["id2"] == 2 {
+			assert.Equal(t, 1, t1Assignments["id3"])
+			assert.Equal(t, 1, t1Assignments["id4"])
+		} else if t1Assignments["id3"] == 2 {
+			assert.Equal(t, 1, t1Assignments["id2"])
+			assert.Equal(t, 1, t1Assignments["id4"])
+		} else {
+			assert.Equal(t, 1, t1Assignments["id2"])
+			assert.Equal(t, 1, t1Assignments["id3"])
+			assert.Equal(t, 2, t1Assignments["id4"])
+		}
+
+		// either id5 or id6 should end up with 2 tasks
+		if t1Assignments["id5"] == 1 {
+			assert.Equal(t, 2, t1Assignments["id6"])
+		} else {
+			assert.Equal(t, 2, t1Assignments["id5"])
+			assert.Equal(t, 1, t1Assignments["id6"])
+		}
+	} else if t1Assignments["id2"]+t1Assignments["id3"]+t1Assignments["id4"] == 3 {
+		// If rack2 gets 4 and rack1 gets 3, then id[2-4] will each get
+		// 1 task and id[5-6] will each get 2 tasks.
+		assert.Equal(t, 1, t1Assignments["id2"])
+		assert.Equal(t, 1, t1Assignments["id3"])
+		assert.Equal(t, 1, t1Assignments["id4"])
+		assert.Equal(t, 2, t1Assignments["id5"])
+		assert.Equal(t, 2, t1Assignments["id6"])
+	} else {
+		t.Fatal("unexpected task layout")
+	}
+}
+
 func TestSchedulerNoReadyNodes(t *testing.T) {
 	ctx := context.Background()
 	initialTask := &api.Task{
