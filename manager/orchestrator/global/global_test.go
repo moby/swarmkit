@@ -2,12 +2,15 @@ package global
 
 import (
 	"testing"
+	"time"
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/orchestrator/testutils"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -15,16 +18,38 @@ import (
 var (
 	node1 = &api.Node{
 		ID: "nodeid1",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+			Availability: api.NodeAvailabilityActive,
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
 		Description: &api.NodeDescription{
 			Hostname: "name1",
 		},
+		Role: api.NodeRoleWorker,
 	}
 	node2 = &api.Node{
 		ID: "nodeid2",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "name2",
+			},
+			Availability: api.NodeAvailabilityActive,
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
 		Description: &api.NodeDescription{
 			Hostname: "name2",
 		},
+		Role: api.NodeRoleWorker,
 	}
+
+	restartDelay = 50 * time.Millisecond
 
 	service1 = &api.Service{
 		ID: "serviceid1",
@@ -35,6 +60,10 @@ var (
 			Task: api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
+				},
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartOnAny,
+					Delay:     gogotypes.DurationProto(restartDelay),
 				},
 			},
 			Mode: &api.ServiceSpec_Global{
@@ -139,9 +168,6 @@ func TestNodeAvailability(t *testing.T) {
 	defer cancel()
 
 	SetupCluster(t, store, watch)
-
-	node1.Status.State = api.NodeStatus_READY
-	node1.Spec.Availability = api.NodeAvailabilityActive
 
 	// set node1 to drain
 	updateNodeAvailability(t, store, node1, api.NodeAvailabilityDrain)
@@ -291,6 +317,10 @@ func TestInitializationRejectedTasks(t *testing.T) {
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartOnAny,
+					Delay:     gogotypes.DurationProto(restartDelay),
+				},
 			},
 			ServiceAnnotations: api.Annotations{
 				Name: "task1",
@@ -317,17 +347,12 @@ func TestInitializationRejectedTasks(t *testing.T) {
 	observedTask1 := testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, observedTask1.ID, "task1")
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateRejected)
-	assert.Equal(t, observedTask1.DesiredState, api.TaskStateReady)
+	assert.Equal(t, observedTask1.DesiredState, api.TaskStateShutdown)
 
-	observedTask2 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask2.ID, "task1")
-	assert.Equal(t, observedTask2.Status.State, api.TaskStateRejected)
-	assert.Equal(t, observedTask2.DesiredState, api.TaskStateShutdown)
-
-	observedTask3 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask3.NodeID, "nodeid1")
-	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask3.DesiredState, api.TaskStateReady)
+	observedTask2 := testutils.WatchTaskCreate(t, watch)
+	assert.Equal(t, observedTask2.NodeID, "nodeid1")
+	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask2.DesiredState, api.TaskStateReady)
 }
 
 func TestInitializationFailedTasks(t *testing.T) {
@@ -340,6 +365,7 @@ func TestInitializationFailedTasks(t *testing.T) {
 	// where orchestrator runs, it should fix tasks to declarative state
 	addNode(t, s, node1)
 	addService(t, s, service1)
+	before := time.Now()
 	tasks := []*api.Task{
 		// nodeid1 has a failed task for serviceid1
 		{
@@ -347,11 +373,16 @@ func TestInitializationFailedTasks(t *testing.T) {
 			Slot:         0,
 			DesiredState: api.TaskStateRunning,
 			Status: api.TaskStatus{
-				State: api.TaskStateFailed,
+				State:     api.TaskStateFailed,
+				Timestamp: ptypes.MustTimestampProto(before),
 			},
 			Spec: api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
+				},
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartOnAny,
+					Delay:     gogotypes.DurationProto(restartDelay),
 				},
 			},
 			ServiceAnnotations: api.Annotations{
@@ -379,17 +410,21 @@ func TestInitializationFailedTasks(t *testing.T) {
 	observedTask1 := testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, observedTask1.ID, "task1")
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateFailed)
-	assert.Equal(t, observedTask1.DesiredState, api.TaskStateRunning)
+	assert.Equal(t, observedTask1.DesiredState, api.TaskStateShutdown)
 
-	observedTask2 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask2.ID, "task1")
-	assert.Equal(t, observedTask2.Status.State, api.TaskStateFailed)
-	assert.Equal(t, observedTask2.DesiredState, api.TaskStateShutdown)
+	observedTask2 := testutils.WatchTaskCreate(t, watch)
+	assert.Equal(t, observedTask2.NodeID, "nodeid1")
+	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask2.DesiredState, api.TaskStateReady)
 
-	observedTask3 := testutils.WatchTaskCreate(t, watch)
+	observedTask3 := testutils.WatchTaskUpdate(t, watch)
+	after := time.Now()
 	assert.Equal(t, observedTask3.NodeID, "nodeid1")
-	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask3.DesiredState, api.TaskStateReady)
+	assert.Equal(t, observedTask3.DesiredState, api.TaskStateRunning)
+
+	if after.Sub(before) < restartDelay {
+		t.Fatalf("restart delay should have elapsed. Got: %v", after.Sub(before))
+	}
 }
 
 func TestInitializationExtraTask(t *testing.T) {
@@ -415,6 +450,10 @@ func TestInitializationExtraTask(t *testing.T) {
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartOnAny,
+					Delay:     gogotypes.DurationProto(restartDelay),
+				},
 			},
 			ServiceAnnotations: api.Annotations{
 				Name: "task1",
@@ -432,6 +471,10 @@ func TestInitializationExtraTask(t *testing.T) {
 			Spec: api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
+				},
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartOnAny,
+					Delay:     gogotypes.DurationProto(restartDelay),
 				},
 			},
 			ServiceAnnotations: api.Annotations{
@@ -460,4 +503,248 @@ func TestInitializationExtraTask(t *testing.T) {
 	assert.True(t, observedTask1.ID == "task1" || observedTask1.ID == "task2")
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateRunning)
 	assert.Equal(t, observedTask1.DesiredState, api.TaskStateShutdown)
+
+	var deadCnt, liveCnt int
+	var err error
+	s.View(func(readTx store.ReadTx) {
+		var tasks []*api.Task
+		tasks, err = store.FindTasks(readTx, store.ByServiceID("serviceid1"))
+		for _, task := range tasks {
+			if task.DesiredState == api.TaskStateShutdown {
+				assert.Equal(t, task.ID, observedTask1.ID)
+				deadCnt++
+			} else {
+				assert.Equal(t, task.DesiredState, api.TaskStateRunning)
+				liveCnt++
+			}
+		}
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, deadCnt, 1)
+	assert.Equal(t, liveCnt, 1)
+}
+
+func TestInitializationTaskWithoutService(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	// create nodes, services and tasks in store directly
+	// where orchestrator runs, it should fix tasks to declarative state
+	addNode(t, s, node1)
+	addService(t, s, service1)
+	tasks := []*api.Task{
+		// nodeid1 has 1 task for serviceid1 and 1 task for serviceid2
+		{
+			ID:           "task1",
+			Slot:         0,
+			DesiredState: api.TaskStateRunning,
+			Status: api.TaskStatus{
+				State: api.TaskStateRunning,
+			},
+			Spec: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartOnAny,
+					Delay:     gogotypes.DurationProto(restartDelay),
+				},
+			},
+			ServiceAnnotations: api.Annotations{
+				Name: "task1",
+			},
+			ServiceID: "serviceid1",
+			NodeID:    "nodeid1",
+		},
+		{
+			ID:           "task2",
+			Slot:         0,
+			DesiredState: api.TaskStateRunning,
+			Status: api.TaskStatus{
+				State: api.TaskStateRunning,
+			},
+			Spec: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartOnAny,
+					Delay:     gogotypes.DurationProto(restartDelay),
+				},
+			},
+			ServiceAnnotations: api.Annotations{
+				Name: "task2",
+			},
+			ServiceID: "serviceid2",
+			NodeID:    "nodeid1",
+		},
+	}
+	for _, task := range tasks {
+		addTask(t, s, task)
+	}
+
+	// watch orchestration events
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventCreateTask{}, state.EventUpdateTask{}, state.EventDeleteTask{})
+	defer cancel()
+
+	orchestrator := NewGlobalOrchestrator(s)
+	defer orchestrator.Stop()
+
+	go func() {
+		assert.NoError(t, orchestrator.Run(ctx))
+	}()
+
+	observedTask1 := testutils.WatchTaskDelete(t, watch)
+	assert.Equal(t, observedTask1.ID, "task2")
+	assert.Equal(t, observedTask1.Status.State, api.TaskStateRunning)
+	assert.Equal(t, observedTask1.DesiredState, api.TaskStateRunning)
+}
+
+func TestInitializationTaskOnDrainedNode(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	// create nodes, services and tasks in store directly
+	// where orchestrator runs, it should fix tasks to declarative state
+	n1 := *node1
+	n1.Spec.Availability = api.NodeAvailabilityDrain
+	addNode(t, s, &n1)
+	addService(t, s, service1)
+	tasks := []*api.Task{
+		// nodeid1 has 1 task for serviceid1
+		{
+			ID:           "task1",
+			Slot:         0,
+			DesiredState: api.TaskStateRunning,
+			Status: api.TaskStatus{
+				State: api.TaskStateRunning,
+			},
+			Spec: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartOnAny,
+					Delay:     gogotypes.DurationProto(restartDelay),
+				},
+			},
+			ServiceAnnotations: api.Annotations{
+				Name: "task1",
+			},
+			ServiceID: "serviceid1",
+			NodeID:    "nodeid1",
+		},
+	}
+	for _, task := range tasks {
+		addTask(t, s, task)
+	}
+
+	// watch orchestration events
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventCreateTask{}, state.EventUpdateTask{}, state.EventDeleteTask{})
+	defer cancel()
+
+	orchestrator := NewGlobalOrchestrator(s)
+	defer orchestrator.Stop()
+
+	go func() {
+		assert.NoError(t, orchestrator.Run(ctx))
+	}()
+
+	observedTask1 := testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, observedTask1.ID, "task1")
+	assert.Equal(t, observedTask1.Status.State, api.TaskStateRunning)
+	assert.Equal(t, observedTask1.DesiredState, api.TaskStateShutdown)
+
+	var deadCnt, liveCnt int
+	var err error
+	s.View(func(readTx store.ReadTx) {
+		var tasks []*api.Task
+		tasks, err = store.FindTasks(readTx, store.ByServiceID("serviceid1"))
+		for _, task := range tasks {
+			if task.DesiredState == api.TaskStateShutdown {
+				deadCnt++
+			} else {
+				liveCnt++
+			}
+		}
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, deadCnt, 1)
+	assert.Equal(t, liveCnt, 0)
+}
+
+func TestInitializationTaskOnNonexistentNode(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	// create nodes, services and tasks in store directly
+	// where orchestrator runs, it should fix tasks to declarative state
+	addService(t, s, service1)
+	tasks := []*api.Task{
+		// 1 task for serviceid1 on nonexistent nodeid1
+		{
+			ID:           "task1",
+			Slot:         0,
+			DesiredState: api.TaskStateRunning,
+			Status: api.TaskStatus{
+				State: api.TaskStateRunning,
+			},
+			Spec: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartOnAny,
+					Delay:     gogotypes.DurationProto(restartDelay),
+				},
+			},
+			ServiceAnnotations: api.Annotations{
+				Name: "task1",
+			},
+			ServiceID: "serviceid1",
+			NodeID:    "nodeid1",
+		},
+	}
+	for _, task := range tasks {
+		addTask(t, s, task)
+	}
+
+	// watch orchestration events
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventCreateTask{}, state.EventUpdateTask{}, state.EventDeleteTask{})
+	defer cancel()
+
+	orchestrator := NewGlobalOrchestrator(s)
+	defer orchestrator.Stop()
+
+	go func() {
+		assert.NoError(t, orchestrator.Run(ctx))
+	}()
+
+	observedTask1 := testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, observedTask1.ID, "task1")
+	assert.Equal(t, observedTask1.Status.State, api.TaskStateRunning)
+	assert.Equal(t, observedTask1.DesiredState, api.TaskStateShutdown)
+
+	var deadCnt, liveCnt int
+	var err error
+	s.View(func(readTx store.ReadTx) {
+		var tasks []*api.Task
+		tasks, err = store.FindTasks(readTx, store.ByServiceID("serviceid1"))
+		for _, task := range tasks {
+			if task.DesiredState == api.TaskStateShutdown {
+				deadCnt++
+			} else {
+				liveCnt++
+			}
+		}
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, deadCnt, 1)
+	assert.Equal(t, liveCnt, 0)
 }
