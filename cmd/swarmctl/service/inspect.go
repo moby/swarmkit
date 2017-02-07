@@ -80,7 +80,7 @@ func printServiceSummary(service *api.Service, running int) {
 		}
 	}
 	if len(service.Spec.Task.Networks) > 0 {
-		fmt.Fprintf(w, "  Networks:\t")
+		fmt.Fprint(w, "  Networks:")
 		for _, n := range service.Spec.Task.Networks {
 			fmt.Fprintf(w, " %s", n.Target)
 		}
@@ -191,7 +191,7 @@ var (
 
 			printServiceSummary(service, running)
 			if len(r.Tasks) > 0 {
-				fmt.Printf("\n")
+				fmt.Println()
 				task.Print(r.Tasks, all, res)
 			}
 
