@@ -91,5 +91,18 @@ func parseResource(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		}
 	}
 
+	if flags.Changed("pids-limit") {
+		if spec.Task.Resources == nil {
+			spec.Task.Resources = &api.ResourceRequirements{}
+		}
+		if spec.Task.Resources.Limits == nil {
+			spec.Task.Resources.Limits = &api.Resources{}
+		}
+		pidsLimit, err := flags.GetInt64("pids-limit")
+		if err != nil {
+			return err
+		}
+		spec.Task.Resources.Limits.PidsLimit = pidsLimit
+	}
 	return nil
 }

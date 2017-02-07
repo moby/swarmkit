@@ -593,6 +593,34 @@ func TestUpdateService(t *testing.T) {
 
 }
 
+func TestUpdateServiceResources(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+	service := createService(t, ts, "name", "image", 1)
+	r, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
+	assert.NoError(t, err)
+	expected := int64(42)
+	spec := r.Service.Spec
+	if spec.Task.Resources == nil {
+		spec.Task.Resources = &api.ResourceRequirements{}
+	}
+	if spec.Task.Resources.Limits == nil {
+		spec.Task.Resources.Limits = &api.Resources{}
+	}
+	spec.Task.Resources.Limits.PidsLimit = expected
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+		ServiceID:      service.ID,
+		Spec:           &spec,
+		ServiceVersion: &r.Service.Meta.Version,
+	})
+	assert.NoError(t, err)
+	ru, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
+	assert.NoError(t, err)
+	assert.NotEqual(t, nil, ru.Service.Spec.Task.Resources)
+	assert.NotEqual(t, nil, ru.Service.Spec.Task.Resources.Limits)
+	assert.Equal(t, expected, ru.Service.Spec.Task.Resources.Limits.PidsLimit)
+}
+
 // TODO(dongluochen): Network update is not supported yet and it's blocked
 // from controlapi. This test should be removed once network update is supported.
 func TestServiceUpdateRejectNetworkChange(t *testing.T) {
