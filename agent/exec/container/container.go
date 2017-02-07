@@ -400,6 +400,8 @@ func (c *containerConfig) resources() enginecontainer.Resources {
 		return resources
 	}
 
+	resources.PidsLimit = r.Limits.PidsLimit
+
 	if r.Limits.MemoryBytes > 0 {
 		resources.Memory = r.Limits.MemoryBytes
 	}

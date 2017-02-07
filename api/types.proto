@@ -27,6 +27,9 @@ message Resources {
 
 	// Amount of memory in bytes.
 	int64 memory_bytes = 2;
+
+	// Container pid limit
+	int64 pids_limit = 3;
 }
 
 message ResourceRequirements {
