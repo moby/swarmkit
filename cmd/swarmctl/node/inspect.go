@@ -30,7 +30,7 @@ func printNodeSummary(node *api.Node) {
 		common.FprintfIfNotEmpty(w, "Hostname\t: %s\n", node.Description.Hostname)
 	}
 	if len(spec.Annotations.Labels) != 0 {
-		fmt.Fprintf(w, "Node Labels\t:")
+		fmt.Fprint(w, "Node Labels\t:")
 		// sort label output for readability
 		var keys []string
 		for k := range spec.Annotations.Labels {
@@ -46,7 +46,7 @@ func printNodeSummary(node *api.Node) {
 	common.FprintfIfNotEmpty(w, "  State\t: %s\n", node.Status.State.String())
 	common.FprintfIfNotEmpty(w, "  Message\t: %s\n", node.Status.Message)
 	common.FprintfIfNotEmpty(w, "  Availability\t: %s\n", spec.Availability.String())
-	common.FprintfIfNotEmpty(w, "  Address:\t: %s\n", node.Status.Addr)
+	common.FprintfIfNotEmpty(w, "  Address\t: %s\n", node.Status.Addr)
 
 	if node.ManagerStatus != nil {
 		fmt.Fprintln(w, "Manager status:\t")
@@ -93,7 +93,7 @@ func printNodeSummary(node *api.Node) {
 		common.FprintfIfNotEmpty(w, "Engine Version\t: %s\n", desc.Engine.EngineVersion)
 
 		if len(desc.Engine.Labels) != 0 {
-			fmt.Fprintf(w, "Engine Labels\t:")
+			fmt.Fprint(w, "Engine Labels\t:")
 			var keys []string
 			for k := range desc.Engine.Labels {
 				keys = append(keys, k)
@@ -149,7 +149,7 @@ var (
 
 			printNodeSummary(node)
 			if len(r.Tasks) > 0 {
-				fmt.Printf("\n")
+				fmt.Println()
 				task.Print(r.Tasks, all, common.NewResolver(cmd, c))
 			}
 
