@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -117,19 +118,29 @@ func pollClusterReady(t *testing.T, c *testCluster, numWorker, numManager int) {
 	require.NoError(t, err)
 }
 
-func pollServiceReady(t *testing.T, c *testCluster, sid string) {
+func pollServiceReady(t *testing.T, c *testCluster, sid string, replicas int) {
 	pollFunc := func() error {
-		req := &api.ListTasksRequest{}
+		req := &api.ListTasksRequest{Filters: &api.ListTasksRequest_Filters{
+			ServiceIDs: []string{sid},
+		}}
 		res, err := c.api.ListTasks(context.Background(), req)
 		require.NoError(t, err)
+
 		if len(res.Tasks) == 0 {
 			return fmt.Errorf("tasks list is empty")
 		}
+		var running int
+		var states []string
 		for _, task := range res.Tasks {
-			if task.Status.State != api.TaskStateRunning {
-				return fmt.Errorf("task %s is not running, status %s", task.ID, task.Status.State)
+			if task.Status.State == api.TaskStateRunning {
+				running++
 			}
+			states = append(states, fmt.Sprintf("[task %s: %s]", task.ID, task.Status.State))
 		}
+		if running != replicas {
+			return fmt.Errorf("only %d running tasks, but expecting %d replicas: %s", running, replicas, strings.Join(states, ", "))
+		}
+
 		return nil
 	}
 	require.NoError(t, raftutils.PollFuncWithTimeout(nil, pollFunc, opsTimeout))
@@ -177,7 +188,7 @@ func TestServiceCreateLateBind(t *testing.T) {
 
 	sid, err := cl.CreateService("test_service", 60)
 	require.NoError(t, err)
-	pollServiceReady(t, cl, sid)
+	pollServiceReady(t, cl, sid, 60)
 }
 
 func TestServiceCreate(t *testing.T) {
@@ -191,7 +202,7 @@ func TestServiceCreate(t *testing.T) {
 
 	sid, err := cl.CreateService("test_service", 60)
 	require.NoError(t, err)
-	pollServiceReady(t, cl, sid)
+	pollServiceReady(t, cl, sid, 60)
 }
 
 func TestNodeOps(t *testing.T) {
@@ -490,7 +501,7 @@ func TestForceNewCluster(t *testing.T) {
 
 	sid, err := cl.CreateService("test_service", 2)
 	require.NoError(t, err)
-	pollServiceReady(t, cl, sid)
+	pollServiceReady(t, cl, sid, 2)
 
 	// generate an expired certificate
 	rootKey, err := helpers.ParsePrivateKeyPEM(rootCA.Key)
@@ -519,7 +530,7 @@ func TestForceNewCluster(t *testing.T) {
 	require.NoError(t, ioutil.WriteFile(managerCertFile, expiredCertPEM, 0644))
 	require.NoError(t, cl.StartNode(nodeID))
 	pollClusterReady(t, cl, numWorker, numManager)
-	pollServiceReady(t, cl, sid)
+	pollServiceReady(t, cl, sid, 2)
 
 	err = raftutils.PollFuncWithTimeout(nil, func() error {
 		certBytes, err := ioutil.ReadFile(managerCertFile)
