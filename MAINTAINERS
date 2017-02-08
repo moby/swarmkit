@@ -26,7 +26,7 @@
 	[Org."Docs maintainers"]
 
 		people = [
-			"sfsmithcha",
+			"misty",
 			"thajeztah"
 		]
 
@@ -98,6 +98,11 @@
 	Name = "Jana Radhakrishnan"
 	Email = "mrjana@docker.com"
 	GitHub = "mrjana"
+
+	[people.misty]
+	Name = "Misty Stanley-Jones"
+	Email = "misty@docker.com"
+	GitHub = "mstanleyjones"
 
 	[people.nishanttotla]
 	Name = "Nishant Totla"
