@@ -295,6 +295,19 @@ func (t *Transport) Active(id uint64) bool {
 	return active
 }
 
+// LongestActive returns the ID of the peer that has been active for the longest
+// length of time.
+func (t *Transport) LongestActive() (uint64, error) {
+	p, err := t.longestActive()
+	if err != nil {
+		return 0, err
+	}
+
+	return p.id, nil
+}
+
+// longestActive returns the peer that has been active for the longest length of
+// time.
 func (t *Transport) longestActive() (*peer, error) {
 	var longest *peer
 	var longestTime time.Time

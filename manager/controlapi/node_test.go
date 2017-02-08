@@ -532,7 +532,7 @@ func TestUpdateNode(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func testUpdateNodeDemote(leader bool, t *testing.T) {
+func testUpdateNodeDemote(t *testing.T) {
 	tc := cautils.NewTestCA(nil)
 	defer tc.Stop()
 	ts := newTestServer(t)
@@ -654,14 +654,8 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 		return nil
 	}))
 
-	var demoteNode, lastNode *raftutils.TestNode
-	if leader {
-		demoteNode = nodes[1]
-		lastNode = nodes[2]
-	} else {
-		demoteNode = nodes[2]
-		lastNode = nodes[1]
-	}
+	demoteNode := nodes[2]
+	lastNode := nodes[1]
 
 	raftMember = ts.Server.raft.GetMemberByNodeID(demoteNode.SecurityConfig.ClientTLSCreds.NodeID())
 	assert.NotNil(t, raftMember)
@@ -734,10 +728,5 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 
 func TestUpdateNodeDemote(t *testing.T) {
 	t.Parallel()
-	testUpdateNodeDemote(false, t)
-}
-
-func TestUpdateNodeDemoteLeader(t *testing.T) {
-	t.Parallel()
-	testUpdateNodeDemote(true, t)
+	testUpdateNodeDemote(t)
 }
