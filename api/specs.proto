@@ -75,6 +75,8 @@ message ServiceSpec {
 	// Rollback contains settings which affect rollbacks of updates.
 	UpdateConfig rollback = 9;
 
+	bool Reconcilable = 10;
+
 	// ServiceSpec.Networks has been deprecated and is replaced by
 	// Networks field in Task (TaskSpec.Networks).
 	// This field (ServiceSpec.Networks) is kept for compatibility.

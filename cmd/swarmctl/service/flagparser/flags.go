@@ -35,6 +35,8 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.StringSlice("ports", nil, "ports")
 	flags.String("network", "", "network name")
 
+	flags.Bool("no-reconcilable", false, "Disable reconciliation.")
+
 	flags.String("memory-reservation", "", "amount of reserved memory (e.g. 512m)")
 	flags.String("memory-limit", "", "memory limit (e.g. 512m)")
 	flags.String("cpu-reservation", "", "number of CPU cores reserved (e.g. 0.5)")
@@ -94,6 +96,14 @@ func Merge(cmd *cobra.Command, spec *api.ServiceSpec, c api.ControlClient) error
 			}
 			spec.Annotations.Labels[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 		}
+	}
+
+	if flags.Changed("no-reconcilable") {
+		noReconcilable, err := flags.GetBool("no-reconcilable")
+		if err != nil {
+			return err
+		}
+		spec.Reconcilable = noReconcilable
 	}
 
 	if err := parseMode(flags, spec); err != nil {

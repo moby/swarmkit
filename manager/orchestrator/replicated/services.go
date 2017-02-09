@@ -88,6 +88,10 @@ func (r *Orchestrator) resolveService(ctx context.Context, task *api.Task) *api.
 }
 
 func (r *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
+	if service.Spec.Reconcilable == false {
+		log.G(ctx).Debugf("Service %s has reconciliation set to false.", service.ID)
+		return
+	}
 	runningSlots, deadSlots, err := orchestrator.GetRunnableAndDeadSlots(r.store, service.ID)
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("reconcile failed finding tasks")

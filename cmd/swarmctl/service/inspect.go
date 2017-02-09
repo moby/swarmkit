@@ -24,6 +24,7 @@ func printServiceSummary(service *api.Service, running int) {
 	task := service.Spec.Task
 	common.FprintfIfNotEmpty(w, "ID\t: %s\n", service.ID)
 	common.FprintfIfNotEmpty(w, "Name\t: %s\n", service.Spec.Annotations.Name)
+	common.FprintfIfNotEmpty(w, "Reconcilable\t: %t\n", service.Spec.Reconcilable)
 	if len(service.Spec.Annotations.Labels) > 0 {
 		fmt.Fprintln(w, "Labels\t")
 		for k, v := range service.Spec.Annotations.Labels {

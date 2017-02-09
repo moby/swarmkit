@@ -50,7 +50,6 @@ var (
 			if reflect.DeepEqual(spec, &service.Spec) {
 				return errors.New("no changes detected")
 			}
-
 			r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{
 				ServiceID:      service.ID,
 				ServiceVersion: &service.Meta.Version,

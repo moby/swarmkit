@@ -29,6 +29,7 @@ var (
 			}
 
 			spec := &api.ServiceSpec{
+				Reconcilable: true,
 				Mode: &api.ServiceSpec_Replicated{
 					Replicated: &api.ReplicatedService{
 						Replicas: 1,
