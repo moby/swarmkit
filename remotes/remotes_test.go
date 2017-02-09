@@ -293,7 +293,7 @@ func TestRemotesPractical(t *testing.T) {
 	// one bad observation should mark the node as bad
 	remotes.Observe(peers[0], -DefaultObservationWeight)
 
-	seen = map[api.Peer]int{} // resut
+	seen = map[api.Peer]int{} // result
 	for i := 0; i < selections; i++ {
 		peer, err := remotes.Select()
 		if err != nil {

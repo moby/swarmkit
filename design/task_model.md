@@ -64,7 +64,7 @@ independent of any service. These do not have a value set in `service_id`.
 
 ### Slot
 
-`slot` is used for replicated tasks to identify which slot the task satisifies.
+`slot` is used for replicated tasks to identify which slot the task satisfies.
 The slot model is discussed in more detail below.
 
 ### Node ID
@@ -144,7 +144,7 @@ track the history of a particular replica over time.
 
 For example, a replicated service with three replicas would lead to three tasks,
 with slot numbers 1, 2, and 3. If the task in slot 2 fails, a new task would be
-started with `Slot = 2`. Through the slot numbers, the administator would be
+started with `Slot = 2`. Through the slot numbers, the administrator would be
 able to see that the new task was a replacement for the previous one in slot 2
 that failed.
 
