@@ -464,7 +464,7 @@ func (m mockTester) Errorf(format string, args ...interface{}) {
 // the timeout should be short, because it's not very useful to wait long amounts of time just in case
 // an unexpected event comes in - a short timeout should catch an incorrect event at least often enough
 // to make the test flaky and alert us to the problem. But in the cases where we don't expect a timeout,
-// the timeout should be on the order of serveral seconds, so the test doesn't fail just because it's run
+// the timeout should be on the order of several seconds, so the test doesn't fail just because it's run
 // on a relatively slow system, or there's a load spike.
 func getWatchTimeout(expectTimeout bool) time.Duration {
 	if expectTimeout {

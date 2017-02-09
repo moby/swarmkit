@@ -1015,7 +1015,7 @@ func TestMultiplePreferences(t *testing.T) {
 	assert.Equal(t, 0, t1Assignments["id0"])
 
 	// There should be 5 tasks assigned to id1 because half of the 12 tasks
-	// should ideally end up in az1, but id1 can only accomodate 5 due to
+	// should ideally end up in az1, but id1 can only accommodate 5 due to
 	// resource requirements.
 	assert.Equal(t, 5, t1Assignments["id1"])
 
