@@ -91,7 +91,7 @@ func printNetworkSummary(network *api.Network) {
 			for _, config := range ipam.Configs {
 				fmt.Fprintln(w, "  IPAM Config:\t")
 				common.FprintfIfNotEmpty(w, "    Family\t: %s\n", config.Family.String())
-				common.FprintfIfNotEmpty(w, "    Subnt\t: %s\n", config.Subnet)
+				common.FprintfIfNotEmpty(w, "    Subnet\t: %s\n", config.Subnet)
 				common.FprintfIfNotEmpty(w, "    Range\t: %s\n", config.Range)
 				common.FprintfIfNotEmpty(w, "    Range\t: %s\n", config.Range)
 				common.FprintfIfNotEmpty(w, "    Gateway\t: %s\n", config.Gateway)

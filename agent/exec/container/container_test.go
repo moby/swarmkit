@@ -37,7 +37,7 @@ func TestVolumesAndBinds(t *testing.T) {
 
 	hostConfig := c.hostConfig()
 	if len(hostConfig.Binds) != 4 {
-		t.Fatalf("exepcted 4 binds: %v", hostConfig.Binds)
+		t.Fatalf("expected 4 binds: %v", hostConfig.Binds)
 	}
 
 	expected := "/banana:/kerfluffle"

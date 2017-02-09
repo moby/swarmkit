@@ -62,7 +62,7 @@ func parseTmpfs(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 						// try to parse this into bytes
 						i, err := strconv.ParseInt(meat, 10, 64)
 						if err != nil {
-							// remove suffux and try again
+							// remove suffix and try again
 							suffix := meat[len(meat)-1]
 							meat = meat[:len(meat)-1]
 							var multiplier int64 = 1
