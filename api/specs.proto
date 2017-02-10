@@ -260,10 +260,10 @@ message ContainerSpec {
 	HealthConfig healthcheck = 16;
 
 	message SecurityConfig {
-	    string userns = 30;
-	    string credential_spec = 31 [(gogoproto.customname) = "CredentialSpec"];
+	    string userns = 1;
+	    string credential_spec = 2 [(gogoproto.customname) = "CredentialSpec"];
 	}
-	SecurityConfig security_config = 40;
+	SecurityConfig security_config = 20;
 }
 
 // EndpointSpec defines the properties that can be configured to
