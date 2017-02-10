@@ -28,7 +28,7 @@ func FprintfIfNotEmpty(w io.Writer, format string, v interface{}) {
 	}
 }
 
-// TimestampAgo returns a relatime time string from a timestamp (e.g. "12 seconds ago").
+// TimestampAgo returns a relative time string from a timestamp (e.g. "12 seconds ago").
 func TimestampAgo(ts *gogotypes.Timestamp) string {
 	if ts == nil {
 		return ""
