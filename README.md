@@ -142,7 +142,11 @@ Certificate Authority settings:
     Manager: SWMTKN-1-3vi7ajem0jed8guusgvyl98nfg18ibg4pclify6wzac6ucrhg3-d1ohk84br3ph0njyexw0wdagx
 ```
 
-In two additional terminals, join two nodes (note: replace `127.0.0.1:4242` with the address of the first node, and use the `<Worker Token>` acquired above. In this example, the `<Worker Token>` is `SWMTKN-1-3vi7ajem0jed8guusgvyl98nfg18ibg4pclify6wzac6ucrhg3-0117z3s2ytr6egmmnlr6gd37n`):   
+In two additional terminals, join two nodes. From the example below, replace `127.0.0.1:4242`
+with the address of the first node, and use the `<Worker Token>` acquired above.
+In this example, the `<Worker Token>` is `SWMTKN-1-3vi7ajem0jed8guusgvyl98nfg18ibg4pclify6wzac6ucrhg3-0117z3s2ytr6egmmnlr6gd37n`.
+If the joining nodes run on the same host as `node-1`, select a different remote
+listening port, e.g., `--listen-remote-api 127.0.0.1:4343`.
 
 ```sh
 $ swarmd -d /tmp/node-2 --hostname node-2 --join-addr 127.0.0.1:4242 --join-token <Worker Token>
