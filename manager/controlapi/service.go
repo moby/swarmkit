@@ -406,7 +406,7 @@ func (s *Server) checkSecretExistence(tx store.Tx, spec *api.ServiceSpec) error 
 	return nil
 }
 
-// CreateService creates and return a Service based on the provided ServiceSpec.
+// CreateService creates and returns a Service based on the provided ServiceSpec.
 // - Returns `InvalidArgument` if the ServiceSpec is malformed.
 // - Returns `Unimplemented` if the ServiceSpec references unimplemented features.
 // - Returns `AlreadyExists` if the ServiceID conflicts.
