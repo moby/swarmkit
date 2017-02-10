@@ -190,6 +190,9 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 		PortBindings: c.portBindings(),
 	}
 
+	// apply security config to HostConfig
+	applySecurityConfig(hc, c.spec().SecurityConfig)
+
 	// The format of extra hosts on swarmkit is specified in:
 	// http://man7.org/linux/man-pages/man5/hosts.5.html
 	//    IP_address canonical_hostname [aliases...]
