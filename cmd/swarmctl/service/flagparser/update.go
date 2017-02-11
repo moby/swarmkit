@@ -51,9 +51,59 @@ func parseUpdate(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			spec.Update.FailureAction = api.UpdateConfig_PAUSE
 		case "continue":
 			spec.Update.FailureAction = api.UpdateConfig_CONTINUE
+		case "rollback":
+			spec.Update.FailureAction = api.UpdateConfig_ROLLBACK
 		default:
 			return errors.New("--update-on-failure value must be pause or continue")
 		}
 	}
+
+	if flags.Changed("rollback-parallelism") {
+		parallelism, err := flags.GetUint64("rollback-parallelism")
+		if err != nil {
+			return err
+		}
+		if spec.Rollback == nil {
+			spec.Rollback = &api.UpdateConfig{}
+		}
+		spec.Rollback.Parallelism = parallelism
+	}
+
+	if flags.Changed("rollback-delay") {
+		delay, err := flags.GetString("rollback-delay")
+		if err != nil {
+			return err
+		}
+
+		delayDuration, err := time.ParseDuration(delay)
+		if err != nil {
+			return err
+		}
+
+		if spec.Rollback == nil {
+			spec.Rollback = &api.UpdateConfig{}
+		}
+		spec.Rollback.Delay = delayDuration
+	}
+
+	if flags.Changed("rollback-on-failure") {
+		if spec.Rollback == nil {
+			spec.Rollback = &api.UpdateConfig{}
+		}
+
+		action, err := flags.GetString("rollback-on-failure")
+		if err != nil {
+			return err
+		}
+		switch action {
+		case "pause":
+			spec.Rollback.FailureAction = api.UpdateConfig_PAUSE
+		case "continue":
+			spec.Rollback.FailureAction = api.UpdateConfig_CONTINUE
+		default:
+			return errors.New("--rollback-on-failure value must be pause or continue")
+		}
+	}
+
 	return nil
 }
