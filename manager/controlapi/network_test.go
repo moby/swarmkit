@@ -96,7 +96,9 @@ func TestValidateDriver(t *testing.T) {
 func TestValidateIPAMConfiguration(t *testing.T) {
 	err := validateIPAMConfiguration(nil)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	for _, singleErr := range err {
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+	}
 
 	IPAMConf := &api.IPAMConfig{
 		Subnet: "",
@@ -104,12 +106,16 @@ func TestValidateIPAMConfiguration(t *testing.T) {
 
 	err = validateIPAMConfiguration(IPAMConf)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	for _, singleErr := range err {
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+	}
 
 	IPAMConf.Subnet = "bad"
 	err = validateIPAMConfiguration(IPAMConf)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	for _, singleErr := range err {
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+	}
 
 	IPAMConf.Subnet = "192.168.0.0/16"
 	err = validateIPAMConfiguration(IPAMConf)
@@ -118,12 +124,16 @@ func TestValidateIPAMConfiguration(t *testing.T) {
 	IPAMConf.Range = "bad"
 	err = validateIPAMConfiguration(IPAMConf)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	for _, singleErr := range err {
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+	}
 
 	IPAMConf.Range = "192.169.1.0/24"
 	err = validateIPAMConfiguration(IPAMConf)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	for _, singleErr := range err {
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+	}
 
 	IPAMConf.Range = "192.168.1.0/24"
 	err = validateIPAMConfiguration(IPAMConf)
@@ -132,25 +142,70 @@ func TestValidateIPAMConfiguration(t *testing.T) {
 	IPAMConf.Gateway = "bad"
 	err = validateIPAMConfiguration(IPAMConf)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	for _, singleErr := range err {
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+	}
 
 	IPAMConf.Gateway = "192.169.1.1"
 	err = validateIPAMConfiguration(IPAMConf)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	for _, singleErr := range err {
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+	}
 
 	IPAMConf.Gateway = "192.168.1.1"
 	err = validateIPAMConfiguration(IPAMConf)
 	assert.NoError(t, err)
 }
 
+func TestValidateIPAM(t *testing.T) {
+	assert.NoError(t, validateIPAM(nil))
+	ipam := &api.IPAMOptions{
+		Driver: &api.Driver{
+			Name: "external",
+		},
+	}
+
+	err := validateIPAM(ipam)
+	assert.Error(t, err)
+	for _, singleErr := range err {
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+	}
+}
+
+func TestValidateNetworkSpec(t *testing.T) {
+	err := validateNetworkSpec(nil)
+	assert.Error(t, err)
+	for _, singleErr := range err {
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+	}
+
+	spec := createNetworkSpec("invalid_driver")
+	spec.DriverConfig = &api.Driver{
+		Name: "external",
+	}
+
+	err = validateNetworkSpec(spec)
+	assert.Error(t, err)
+	for _, singleErr := range err {
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+	}
+
+}
+
 func TestCreateNetwork(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
-	nr, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
-		Spec: createNetworkSpec("testnet1"),
+
+	spec := createNetworkSpec("testnet1")
+
+	err1 := validateNetworkSpec(spec)
+	assert.NoError(t, err1)
+
+	nr, err2 := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
+		Spec: spec,
 	})
-	assert.NoError(t, err)
+	assert.NoError(t, err2)
 	assert.NotEqual(t, nr.Network, nil)
 	assert.NotEqual(t, nr.Network.ID, "")
 }

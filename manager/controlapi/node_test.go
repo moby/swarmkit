@@ -460,12 +460,20 @@ func TestUpdateNode(t *testing.T) {
 	_, err := ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID: nodeID,
 		Spec: &api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node1",
+			},
+			Membership:   api.NodeMembershipPending,
 			Availability: api.NodeAvailabilityDrain,
 		},
 		NodeVersion: &api.Version{},
 	})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err))
+	if multiErr, OK := err.(MultiError); OK {
+		for _, singleErr := range multiErr {
+			assert.Equal(t, codes.InvalidArgument, grpc.Code(singleErr))
+		}
+	}
 
 	// Create a node object for the manager
 	assert.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
@@ -485,7 +493,6 @@ func TestUpdateNode(t *testing.T) {
 
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: "invalid", Spec: &api.NodeSpec{}, NodeVersion: &api.Version{}})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err))
 
 	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodeID})
 	assert.NoError(t, err)
@@ -512,7 +519,7 @@ func TestUpdateNode(t *testing.T) {
 		Spec:        spec,
 		NodeVersion: &r.Node.Meta.Version,
 	})
-	assert.NoError(t, err)
+	assert.Error(t, err)
 
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodeID})
 	assert.NoError(t, err)
@@ -521,11 +528,11 @@ func TestUpdateNode(t *testing.T) {
 	}
 	assert.NotNil(t, r.Node)
 	assert.NotNil(t, r.Node.Spec)
-	assert.Equal(t, api.NodeAvailabilityDrain, r.Node.Spec.Availability)
+	assert.Equal(t, r.Node.Spec.Availability, api.NodeAvailabilityActive)
 
 	version := &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, NodeVersion: version})
-	assert.NoError(t, err)
+	assert.Error(t, err)
 
 	// Perform an update with the "old" version.
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, NodeVersion: version})
@@ -594,7 +601,14 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodes[2].SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec := r.Node.Spec.Copy()
+<<<<<<< HEAD
 	spec.DesiredRole = api.NodeRoleWorker
+=======
+	spec.Role = api.NodeRoleWorker
+	spec.Annotations = api.Annotations{
+		Name: "name1",
+	}
+>>>>>>> return all validation error in spec
 	version := &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      nodes[2].SecurityConfig.ClientTLSCreds.NodeID(),
@@ -627,7 +641,14 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodes[3].SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
+<<<<<<< HEAD
 	spec.DesiredRole = api.NodeRoleWorker
+=======
+	spec.Role = api.NodeRoleWorker
+	spec.Annotations = api.Annotations{
+		Name: "name1",
+	}
+>>>>>>> return all validation error in spec
 	version = &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      nodes[3].SecurityConfig.ClientTLSCreds.NodeID(),
@@ -670,7 +691,14 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: demoteNode.SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
+<<<<<<< HEAD
 	spec.DesiredRole = api.NodeRoleWorker
+=======
+	spec.Role = api.NodeRoleWorker
+	spec.Annotations = api.Annotations{
+		Name: "name1",
+	}
+>>>>>>> return all validation error in spec
 	version = &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      demoteNode.SecurityConfig.ClientTLSCreds.NodeID(),
@@ -703,7 +731,14 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
+<<<<<<< HEAD
 	spec.DesiredRole = api.NodeRoleWorker
+=======
+	spec.Role = api.NodeRoleWorker
+	spec.Annotations = api.Annotations{
+		Name: "name1",
+	}
+>>>>>>> return all validation error in spec
 	version = &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      lastNode.SecurityConfig.ClientTLSCreds.NodeID(),
@@ -718,6 +753,9 @@ func testUpdateNodeDemote(leader bool, t *testing.T) {
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
 	spec.Availability = api.NodeAvailabilityDrain
+	spec.Annotations = api.Annotations{
+		Name: "name1",
+	}
 	version = &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      lastNode.SecurityConfig.ClientTLSCreds.NodeID(),

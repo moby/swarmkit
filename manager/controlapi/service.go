@@ -27,35 +27,41 @@ var (
 	errModeChangeNotAllowed      = errors.New("service mode change is not allowed")
 )
 
-func validateResources(r *api.Resources) error {
+func validateResources(r *api.Resources) (me MultiError) {
 	if r == nil {
 		return nil
 	}
 
 	if r.NanoCPUs != 0 && r.NanoCPUs < 1e6 {
-		return grpc.Errorf(codes.InvalidArgument, "invalid cpu value %g: Must be at least %g", float64(r.NanoCPUs)/1e9, 1e6/1e9)
+		err := grpc.Errorf(codes.InvalidArgument, "invalid cpu value %g: must be at least %g", float64(r.NanoCPUs)/1e9, 1e6/1e9)
+		me = append(me, err)
 	}
 
 	if r.MemoryBytes != 0 && r.MemoryBytes < 4*1024*1024 {
-		return grpc.Errorf(codes.InvalidArgument, "invalid memory value %d: Must be at least 4MiB", r.MemoryBytes)
+		err := grpc.Errorf(codes.InvalidArgument, "invalid memory value %d: must be at least 4MiB", r.MemoryBytes)
+		me = append(me, err)
 	}
-	return nil
+
+	return
 }
 
-func validateResourceRequirements(r *api.ResourceRequirements) error {
+func validateResourceRequirements(r *api.ResourceRequirements) (me MultiError) {
 	if r == nil {
 		return nil
 	}
-	if err := validateResources(r.Limits); err != nil {
-		return err
+
+	if mError := validateResources(r.Limits); err != nil {
+		me = append(me, mError...)
 	}
-	if err := validateResources(r.Reservations); err != nil {
-		return err
+
+	if mError := validateResources(r.Reservations); err != nil {
+		me = append(me, mError...)
 	}
-	return nil
+
+	return
 }
 
-func validateRestartPolicy(rp *api.RestartPolicy) error {
+func validateRestartPolicy(rp *api.RestartPolicy) (me MultiError) {
 	if rp == nil {
 		return nil
 	}
@@ -63,49 +69,56 @@ func validateRestartPolicy(rp *api.RestartPolicy) error {
 	if rp.Delay != nil {
 		delay, err := gogotypes.DurationFromProto(rp.Delay)
 		if err != nil {
-			return err
-		}
-		if delay < 0 {
-			return grpc.Errorf(codes.InvalidArgument, "TaskSpec: restart-delay cannot be negative")
+			me = append(me, grpc.Errorf(codes.InvalidArgument, "TaskSpec: restart-delay parse error: %v", err))
+		} else if delay < 0 {
+			me = append(me, grpc.Errorf(codes.InvalidArgument, "TaskSpec: restart-delay cannot be negative"))
 		}
 	}
 
 	if rp.Window != nil {
 		win, err := gogotypes.DurationFromProto(rp.Window)
 		if err != nil {
-			return err
-		}
-		if win < 0 {
-			return grpc.Errorf(codes.InvalidArgument, "TaskSpec: restart-window cannot be negative")
+			me = append(me, grpc.Errorf(codes.InvalidArgument, "TaskSpec: restart-window parse error: %v", err))
+		} else if win < 0 {
+			me = append(me, grpc.Errorf(codes.InvalidArgument, "TaskSpec: restart-window cannot be negative"))
 		}
 	}
 
-	return nil
+	if rp.Condition != api.RestartOnNone && rp.Condition != api.RestartOnFailure && rp.Condition != api.RestartOnAny {
+		me = append(me, grpc.Errorf(codes.InvalidArgument, "TaskSpec: unimplemented restart-condition in task spec"))
+	}
+
+	return
 }
 
-func validatePlacement(placement *api.Placement) error {
+func validatePlacement(placement *api.Placement) (me MultiError) {
 	if placement == nil {
 		return nil
 	}
-	_, err := constraint.Parse(placement.Constraints)
-	return err
+
+	if _, err := constraint.Parse(placement.Constraints); err != nil {
+		me = append(me, err)
+	}
+
+	return
 }
 
-func validateUpdate(uc *api.UpdateConfig) error {
+func validateUpdate(uc *api.UpdateConfig) (me MultiError) {
 	if uc == nil {
 		return nil
 	}
 
 	if uc.Delay < 0 {
-		return grpc.Errorf(codes.InvalidArgument, "TaskSpec: update-delay cannot be negative")
+		me = append(me, grpc.Errorf(codes.InvalidArgument, "TaskSpec: update-delay cannot be negative"))
 	}
 
-	return nil
+	return
 }
 
-func validateContainerSpec(container *api.ContainerSpec) error {
+func validateContainerSpec(container *api.ContainerSpec) (me MultiError) {
 	if container == nil {
-		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: missing in service spec")
+		me = append(me, grpc.Errorf(codes.InvalidArgument, "ContainerSpec: missing in service spec"))
+		return
 	}
 
 	if container.Image == "" {
@@ -119,34 +132,31 @@ func validateContainerSpec(container *api.ContainerSpec) error {
 	mountMap := make(map[string]bool)
 	for _, mount := range container.Mounts {
 		if _, exists := mountMap[mount.Target]; exists {
-			return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: duplicate mount point: %s", mount.Target)
+			me = append(me, grpc.Errorf(codes.InvalidArgument, "ContainerSpec: duplicate mount point: %s", mount.Target))
 		}
 		mountMap[mount.Target] = true
 	}
 
-	return nil
+	return
 }
 
-func validateTask(taskSpec api.TaskSpec) error {
-	if err := validateResourceRequirements(taskSpec.Resources); err != nil {
-		return err
+func validateTask(taskSpec api.TaskSpec) (me MultiError) {
+	if mError := validateResourceRequirements(taskSpec.Resources); err != nil {
+		me = append(me, mError...)
 	}
 
-	if err := validateRestartPolicy(taskSpec.Restart); err != nil {
-		return err
+	if mError := validateRestartPolicy(taskSpec.Restart); err != nil {
+		me = append(me, mError...)
 	}
 
-	if err := validatePlacement(taskSpec.Placement); err != nil {
-		return err
+	if mError := validatePlacement(taskSpec.Placement); err != nil {
+		me = append(me, mError...)
 	}
 
 	if taskSpec.GetRuntime() == nil {
-		return grpc.Errorf(codes.InvalidArgument, "TaskSpec: missing runtime")
-	}
-
-	_, ok := taskSpec.GetRuntime().(*api.TaskSpec_Container)
-	if !ok {
-		return grpc.Errorf(codes.Unimplemented, "RuntimeSpec: unimplemented runtime in service spec")
+		me = append(me, grpc.Errorf(codes.InvalidArgument, "TaskSpec: missing runtime"))
+	} else if _, ok := taskSpec.GetRuntime().(*api.TaskSpec_Container); !ok {
+		me = append(me, grpc.Errorf(codes.Unimplemented, "RuntimeSpec: unimplemented runtime in service spec"))
 	}
 
 	// Building a empty/dummy Task to validate the templating and
@@ -168,16 +178,42 @@ func validateTask(taskSpec api.TaskSpec) error {
 		LogDriver: taskSpec.LogDriver,
 	})
 	if err != nil {
-		return grpc.Errorf(codes.InvalidArgument, err.Error())
+		me = append(me, grpc.Errorf(codes.InvalidArgument, err.Error()))
+		return
 	}
-	if err := validateContainerSpec(preparedSpec); err != nil {
-		return err
+	if mError := validateContainerSpec(preparedSpec); err != nil {
+		me = append(me, mError...)
+	}
+	container := taskSpec.GetContainer()
+	if container == nil {
+		me = append(me, grpc.Errorf(codes.InvalidArgument, "ContainerSpec: missing in service spec"))
+		return
 	}
 
-	return nil
+	if container.Image == "" {
+		err := grpc.Errorf(codes.InvalidArgument, "ContainerSpec: image reference must be provided")
+		me = append(me, err)
+		return
+	}
+
+	if _, err := reference.ParseNamed(container.Image); err != nil {
+		err := grpc.Errorf(codes.InvalidArgument, "ContainerSpec: %q is not a valid repository/tag", container.Image)
+		me = append(me, err)
+	}
+
+	mountMap := make(map[string]bool)
+	for _, mount := range container.Mounts {
+		if _, exists := mountMap[mount.Target]; exists {
+			err := grpc.Errorf(codes.InvalidArgument, "ContainerSpec: duplicate mount point: %s", mount.Target)
+			me = append(me, err)
+		}
+		mountMap[mount.Target] = true
+	}
+
+	return
 }
 
-func validateEndpointSpec(epSpec *api.EndpointSpec) error {
+func validateEndpointSpec(epSpec *api.EndpointSpec) (me MultiError) {
 	// Endpoint spec is optional
 	if epSpec == nil {
 		return nil
@@ -198,7 +234,7 @@ func validateEndpointSpec(epSpec *api.EndpointSpec) error {
 		// for the backend network and hence we accept that configuration.
 
 		if epSpec.Mode == api.ResolutionModeDNSRoundRobin && port.PublishMode == api.PublishModeIngress {
-			return grpc.Errorf(codes.InvalidArgument, "EndpointSpec: port published with ingress mode can't be used with dnsrr mode")
+			me = append(me, grpc.Errorf(codes.InvalidArgument, "EndpointSpec: port published with ingress mode can't be used with dnsrr mode"))
 		}
 
 		// If published port is not specified, it does not conflict
@@ -209,13 +245,14 @@ func validateEndpointSpec(epSpec *api.EndpointSpec) error {
 
 		portSpec := portSpec{publishedPort: port.PublishedPort, protocol: port.Protocol}
 		if _, ok := portSet[portSpec]; ok {
-			return grpc.Errorf(codes.InvalidArgument, "EndpointSpec: duplicate published ports provided")
+			err := grpc.Errorf(codes.InvalidArgument, "EndpointSpec: duplicate published ports provided")
+			me = append(me, err)
 		}
 
 		portSet[portSpec] = struct{}{}
 	}
 
-	return nil
+	return
 }
 
 // validateSecretRefsSpec finds if the secrets passed in spec are valid and have no
@@ -259,7 +296,8 @@ func validateSecretRefsSpec(spec *api.ServiceSpec) error {
 
 	return nil
 }
-func (s *Server) validateNetworks(networks []*api.NetworkAttachmentConfig) error {
+
+func (s *Server) validateNetworks(networks []*api.NetworkAttachmentConfig) (me MultiError) {
 	for _, na := range networks {
 		var network *api.Network
 		s.store.View(func(tx store.ReadTx) {
@@ -269,12 +307,13 @@ func (s *Server) validateNetworks(networks []*api.NetworkAttachmentConfig) error
 			continue
 		}
 		if _, ok := network.Spec.Annotations.Labels["com.docker.swarm.internal"]; ok {
-			return grpc.Errorf(codes.InvalidArgument,
+			err := grpc.Errorf(codes.InvalidArgument,
 				"Service cannot be explicitly attached to %q network which is a swarm internal network",
 				network.Spec.Annotations.Name)
+			me = append(me, err)
 		}
 	}
-	return nil
+	return
 }
 
 func validateMode(s *api.ServiceSpec) error {
@@ -292,31 +331,33 @@ func validateMode(s *api.ServiceSpec) error {
 	return nil
 }
 
-func validateServiceSpec(spec *api.ServiceSpec) error {
+func validateServiceSpec(spec *api.ServiceSpec) (me MultiError) {
 	if spec == nil {
-		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		me = append(me, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error()))
+		return
 	}
+
 	if err := validateAnnotations(spec.Annotations); err != nil {
-		return err
+		me = append(me, err)
 	}
 	if err := validateTask(spec.Task); err != nil {
-		return err
+		me = append(me, err...)
 	}
 	if err := validateUpdate(spec.Update); err != nil {
-		return err
+		me = append(me, err...)
 	}
 	if err := validateEndpointSpec(spec.Endpoint); err != nil {
-		return err
+		me = append(me, err...)
 	}
 	if err := validateMode(spec); err != nil {
-		return err
+		me = append(me, err)
 	}
 	// Check to see if the Secret Reference portion of the spec is valid
 	if err := validateSecretRefsSpec(spec); err != nil {
 		return err
 	}
 
-	return nil
+	return
 }
 
 // checkPortConflicts does a best effort to find if the passed in spec has port
