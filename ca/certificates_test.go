@@ -533,18 +533,18 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 }
 
 func TestNewRootCA(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempBaseDir)
-
-	paths := ca.NewConfigPaths(tempBaseDir)
-
-	rootCA, err := ca.CreateRootCA("rootCN", paths.RootCA)
-	assert.NoError(t, err)
-
-	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Key, ca.DefaultNodeCertExpiration)
-	assert.NoError(t, err)
-	assert.Equal(t, rootCA, newRootCA)
+	for _, pair := range []struct{ cert, key []byte }{
+		{cert: testutils.ECDSA256SHA256Cert, key: testutils.ECDSA256Key},
+		{cert: testutils.RSA2048SHA256Cert, key: testutils.RSA2048Key},
+	} {
+		rootCA, err := ca.NewRootCA(pair.cert, pair.key, ca.DefaultNodeCertExpiration)
+		require.NoError(t, err, string(pair.key))
+		require.Equal(t, pair.cert, rootCA.Cert)
+		require.Equal(t, pair.key, rootCA.Key)
+		require.NotNil(t, rootCA.Signer)
+		_, err = rootCA.Digest.Verifier().Write(pair.cert)
+		require.NoError(t, err)
+	}
 }
 
 func TestNewRootCABundle(t *testing.T) {
@@ -620,6 +620,73 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 	assert.Len(t, parsedCerts, 1)
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, -1).Before(parsedCerts[0].NotAfter))
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, 1).After(parsedCerts[0].NotAfter))
+}
+
+type invalidCertKeyTestCase struct {
+	cert     []byte
+	key      []byte
+	errorStr string
+}
+
+func TestNewRootCAInvalidCertAndKeys(t *testing.T) {
+	invalids := []invalidCertKeyTestCase{
+		{
+			cert:     []byte("malformed"),
+			key:      testutils.ECDSA256Key,
+			errorStr: "Failed to decode certificate",
+		},
+		{
+			cert:     testutils.NotYetValidCert,
+			key:      testutils.NotYetValidKey,
+			errorStr: "not yet valid",
+		},
+		{
+			cert:     testutils.ExpiredCert,
+			key:      testutils.ExpiredKey,
+			errorStr: "expired",
+		},
+		{
+			cert:     testutils.RSA2048SHA1Cert,
+			key:      testutils.RSA2048Key,
+			errorStr: "unsupported signature algorithm",
+		},
+		{
+			cert:     testutils.ECDSA256SHA1Cert,
+			key:      testutils.ECDSA256Key,
+			errorStr: "unsupported signature algorithm",
+		},
+		{
+			cert:     testutils.ECDSA256SHA256Cert,
+			key:      []byte("malformed"),
+			errorStr: "malformed private key",
+		},
+		{
+			cert:     testutils.RSA1024Cert,
+			key:      testutils.RSA1024Key,
+			errorStr: "unsupported RSA key parameters",
+		},
+		{
+			cert:     testutils.ECDSA224Cert,
+			key:      testutils.ECDSA224Key,
+			errorStr: "unsupported ECDSA key parameters",
+		},
+		{
+			cert:     testutils.ECDSA256SHA256Cert,
+			key:      testutils.ECDSA224Key,
+			errorStr: "certificate key mismatch",
+		},
+		{
+			cert:     testutils.DSA2048Cert,
+			key:      testutils.DSA2048Key,
+			errorStr: "unsupported signature algorithm",
+		},
+	}
+
+	for _, invalid := range invalids {
+		_, err := ca.NewRootCA(invalid.cert, invalid.key, ca.DefaultNodeCertExpiration)
+		require.Error(t, err, invalid.errorStr)
+		require.Contains(t, err.Error(), invalid.errorStr)
+	}
 }
 
 func TestNewRootCAWithPassphrase(t *testing.T) {
