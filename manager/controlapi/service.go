@@ -100,6 +100,20 @@ func validateUpdate(uc *api.UpdateConfig) error {
 		return grpc.Errorf(codes.InvalidArgument, "TaskSpec: update-delay cannot be negative")
 	}
 
+	if uc.Monitor != nil {
+		monitor, err := gogotypes.DurationFromProto(uc.Monitor)
+		if err != nil {
+			return err
+		}
+		if monitor < 0 {
+			return grpc.Errorf(codes.InvalidArgument, "TaskSpec: update-monitor cannot be negative")
+		}
+	}
+
+	if uc.MaxFailureRatio < 0 || uc.MaxFailureRatio > 1 {
+		return grpc.Errorf(codes.InvalidArgument, "TaskSpec: update-maxfailureratio cannot be less than 0 or bigger than 1")
+	}
+
 	return nil
 }
 
