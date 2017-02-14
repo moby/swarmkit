@@ -303,10 +303,16 @@ func TestValidateUpdate(t *testing.T) {
 	bad := []*api.UpdateConfig{
 		{Delay: -1 * time.Second},
 		{Delay: -1000 * time.Second},
+		{Monitor: gogotypes.DurationProto(time.Duration(-1 * time.Second))},
+		{Monitor: gogotypes.DurationProto(time.Duration(-1000 * time.Second))},
+		{MaxFailureRatio: -0.1},
+		{MaxFailureRatio: 1.1},
 	}
 
 	good := []*api.UpdateConfig{
 		{Delay: time.Second},
+		{Monitor: gogotypes.DurationProto(time.Duration(time.Second))},
+		{MaxFailureRatio: 0.5},
 	}
 
 	for _, b := range bad {
