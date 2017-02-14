@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"bytes"
+
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarmkit/api"
@@ -542,10 +544,8 @@ func TestNewRootCA(t *testing.T) {
 	} {
 		rootCA, err := ca.NewRootCA(pair.cert, pair.key, ca.DefaultNodeCertExpiration)
 		require.NoError(t, err, string(pair.key))
-		require.Equal(t, pair.cert, rootCA.Cert)
-		require.Equal(t, pair.key, rootCA.Signer.Key)
-		// require.Equal(t, bytes.TrimSpace(pair.cert), bytes.TrimSpace(rootCA.Cert))
-		// require.Equal(t, bytes.TrimSpace(pair.key), bytes.TrimSpace(rootCA.Signer.Key))
+		require.Equal(t, bytes.TrimSpace(pair.cert), bytes.TrimSpace(rootCA.Cert))
+		require.Equal(t, bytes.TrimSpace(pair.key), bytes.TrimSpace(rootCA.Signer.Key))
 		require.NotNil(t, rootCA.Signer)
 		_, err = rootCA.Digest.Verifier().Write(pair.cert)
 		require.NoError(t, err)
@@ -706,44 +706,38 @@ func TestNewRootCAWithPassphrase(t *testing.T) {
 	rootCA, err := ca.CreateRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	// Ensure that we're encrypting the Key bytes out of NewRoot if there
-	// is a passphrase set as an env Var
-	os.Setenv(ca.PassphraseENVVar, "password1")
-	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Signer.Key, ca.DefaultNodeCertExpiration)
-	assert.NoError(t, err)
-	assert.NotEqual(t, rootCA.Signer.Key, newRootCA.Signer.Key)
-	assert.Equal(t, rootCA.Cert, newRootCA.Cert)
-	assert.NotContains(t, string(rootCA.Signer.Key), string(newRootCA.Signer.Key))
-	assert.Contains(t, string(newRootCA.Signer.Key), "Proc-Type: 4,ENCRYPTED")
-
 	// Ensure that we're decrypting the Key bytes out of NewRoot if there
 	// is a passphrase set as an env Var
-	anotherNewRootCA, err := ca.NewRootCA(newRootCA.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration)
+	passwd := "password1"
+	encryptedKey, err := ca.EncryptECPrivateKey(rootCA.Signer.Key, "password1")
 	assert.NoError(t, err)
-	assert.Equal(t, newRootCA, anotherNewRootCA)
-	assert.NotContains(t, string(rootCA.Signer.Key), string(anotherNewRootCA.Signer.Key))
-	assert.Contains(t, string(anotherNewRootCA.Signer.Key), "Proc-Type: 4,ENCRYPTED")
+	assert.NotEqual(t, rootCA.Signer.Key, encryptedKey)
+	assert.Contains(t, string(encryptedKey), "Proc-Type: 4,ENCRYPTED")
+
+	os.Setenv(ca.PassphraseENVVar, passwd)
+
+	anotherNewRootCA, err := ca.NewRootCA(rootCA.Cert, encryptedKey, ca.DefaultNodeCertExpiration)
+	assert.NoError(t, err)
+	assert.Equal(t, rootCA.Signer.Key, anotherNewRootCA.Signer.Key)
 
 	// Ensure that we cant decrypt the Key bytes out of NewRoot if there
 	// is a wrong passphrase set as an env Var
 	os.Setenv(ca.PassphraseENVVar, "password2")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration)
+	anotherNewRootCA, err = ca.NewRootCA(rootCA.Cert, encryptedKey, ca.DefaultNodeCertExpiration)
 	assert.Error(t, err)
 
 	// Ensure that we cant decrypt the Key bytes out of NewRoot if there
-	// is a wrong passphrase set as an env Var
+	// is a wrong passphrase set as the previous env Var as well
 	os.Setenv(ca.PassphraseENVVarPrev, "password2")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration)
+	anotherNewRootCA, err = ca.NewRootCA(rootCA.Cert, encryptedKey, ca.DefaultNodeCertExpiration)
 	assert.Error(t, err)
 
 	// Ensure that we can decrypt the Key bytes out of NewRoot if there
 	// is a wrong passphrase set as an env Var, but a valid as Prev
 	os.Setenv(ca.PassphraseENVVarPrev, "password1")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration)
+	anotherNewRootCA, err = ca.NewRootCA(rootCA.Cert, encryptedKey, ca.DefaultNodeCertExpiration)
 	assert.NoError(t, err)
-	assert.Equal(t, newRootCA, anotherNewRootCA)
-	assert.NotContains(t, string(rootCA.Signer.Key), string(anotherNewRootCA.Signer.Key))
-	assert.Contains(t, string(anotherNewRootCA.Signer.Key), "Proc-Type: 4,ENCRYPTED")
+	assert.Equal(t, rootCA.Signer.Key, anotherNewRootCA.Signer.Key)
 }
 
 type certTestCase struct {
