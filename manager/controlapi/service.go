@@ -127,7 +127,7 @@ func validateContainerSpec(container *api.ContainerSpec) error {
 	return nil
 }
 
-func validateTask(taskSpec api.TaskSpec) error {
+func validateTaskSpec(taskSpec api.TaskSpec) error {
 	if err := validateResourceRequirements(taskSpec.Resources); err != nil {
 		return err
 	}
@@ -137,6 +137,11 @@ func validateTask(taskSpec api.TaskSpec) error {
 	}
 
 	if err := validatePlacement(taskSpec.Placement); err != nil {
+		return err
+	}
+
+	// Check to see if the Secret Reference portion of the spec is valid
+	if err := validateSecretRefsSpec(taskSpec); err != nil {
 		return err
 	}
 
@@ -220,8 +225,8 @@ func validateEndpointSpec(epSpec *api.EndpointSpec) error {
 
 // validateSecretRefsSpec finds if the secrets passed in spec are valid and have no
 // conflicting targets.
-func validateSecretRefsSpec(spec *api.ServiceSpec) error {
-	container := spec.Task.GetContainer()
+func validateSecretRefsSpec(spec api.TaskSpec) error {
+	container := spec.GetContainer()
 	if container == nil {
 		return nil
 	}
@@ -259,6 +264,7 @@ func validateSecretRefsSpec(spec *api.ServiceSpec) error {
 
 	return nil
 }
+
 func (s *Server) validateNetworks(networks []*api.NetworkAttachmentConfig) error {
 	for _, na := range networks {
 		var network *api.Network
@@ -299,7 +305,7 @@ func validateServiceSpec(spec *api.ServiceSpec) error {
 	if err := validateAnnotations(spec.Annotations); err != nil {
 		return err
 	}
-	if err := validateTask(spec.Task); err != nil {
+	if err := validateTaskSpec(spec.Task); err != nil {
 		return err
 	}
 	if err := validateUpdate(spec.Update); err != nil {
@@ -309,10 +315,6 @@ func validateServiceSpec(spec *api.ServiceSpec) error {
 		return err
 	}
 	if err := validateMode(spec); err != nil {
-		return err
-	}
-	// Check to see if the Secret Reference portion of the spec is valid
-	if err := validateSecretRefsSpec(spec); err != nil {
 		return err
 	}
 
