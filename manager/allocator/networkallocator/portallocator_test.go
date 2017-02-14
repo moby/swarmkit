@@ -361,6 +361,121 @@ func TestPortsAllocatedInHostPublishMode(t *testing.T) {
 			},
 			expect: true,
 		},
+		{
+			// published port not specified
+			// we are not in charge of allocating one, for us it
+			// is as allocated, we need to skip the allocation
+			input: &api.Service{
+				Spec: api.ServiceSpec{
+					Endpoint: &api.EndpointSpec{
+						Ports: []*api.PortConfig{
+							{
+								Name:        "test4",
+								Protocol:    api.ProtocolUDP,
+								TargetPort:  99,
+								PublishMode: api.PublishModeHost,
+							},
+						},
+					},
+				},
+				Endpoint: &api.Endpoint{
+					Ports: []*api.PortConfig{
+						{
+							Name:        "test4",
+							Protocol:    api.ProtocolUDP,
+							TargetPort:  99,
+							PublishMode: api.PublishModeHost,
+						},
+					},
+				},
+			},
+			expect: true,
+		},
+		{
+			// one published port not specified, the other specified
+			// we are still in charge of allocating one
+			input: &api.Service{
+				Spec: api.ServiceSpec{
+					Endpoint: &api.EndpointSpec{
+						Ports: []*api.PortConfig{
+							{
+								Name:        "test5",
+								Protocol:    api.ProtocolUDP,
+								TargetPort:  99,
+								PublishMode: api.PublishModeHost,
+							},
+							{
+								Name:          "test5",
+								Protocol:      api.ProtocolTCP,
+								TargetPort:    99,
+								PublishedPort: 30099,
+								PublishMode:   api.PublishModeHost,
+							},
+						},
+					},
+				},
+				Endpoint: &api.Endpoint{
+					Ports: []*api.PortConfig{
+						{
+							Name:        "test5",
+							Protocol:    api.ProtocolUDP,
+							TargetPort:  99,
+							PublishMode: api.PublishModeHost,
+						},
+						{
+							Name:        "test5",
+							Protocol:    api.ProtocolTCP,
+							TargetPort:  99,
+							PublishMode: api.PublishModeHost,
+						},
+					},
+				},
+			},
+			expect: false,
+		},
+		{
+			// one published port not specified, the other specified
+			// we are still in charge of allocating one and we did.
+			input: &api.Service{
+				Spec: api.ServiceSpec{
+					Endpoint: &api.EndpointSpec{
+						Ports: []*api.PortConfig{
+							{
+								Name:        "test6",
+								Protocol:    api.ProtocolUDP,
+								TargetPort:  99,
+								PublishMode: api.PublishModeHost,
+							},
+							{
+								Name:          "test6",
+								Protocol:      api.ProtocolTCP,
+								TargetPort:    99,
+								PublishedPort: 30099,
+								PublishMode:   api.PublishModeHost,
+							},
+						},
+					},
+				},
+				Endpoint: &api.Endpoint{
+					Ports: []*api.PortConfig{
+						{
+							Name:        "test6",
+							Protocol:    api.ProtocolUDP,
+							TargetPort:  99,
+							PublishMode: api.PublishModeHost,
+						},
+						{
+							Name:          "test6",
+							Protocol:      api.ProtocolTCP,
+							TargetPort:    99,
+							PublishedPort: 30099,
+							PublishMode:   api.PublishModeHost,
+						},
+					},
+				},
+			},
+			expect: true,
+		},
 	}
 	for _, singleTest := range testCases {
 		expect := pa.portsAllocatedInHostPublishMode(singleTest.input)
