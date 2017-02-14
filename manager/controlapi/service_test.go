@@ -168,7 +168,7 @@ func TestValidateMode(t *testing.T) {
 	}
 }
 
-func TestValidateTask(t *testing.T) {
+func TestValidateTaskSpec(t *testing.T) {
 	type badSource struct {
 		s api.TaskSpec
 		c codes.Code
@@ -210,7 +210,7 @@ func TestValidateTask(t *testing.T) {
 			c: codes.InvalidArgument,
 		},
 	} {
-		err := validateTask(bad.s)
+		err := validateTaskSpec(bad.s)
 		assert.Error(t, err)
 		assert.Equal(t, bad.c, grpc.Code(err))
 	}
@@ -219,7 +219,7 @@ func TestValidateTask(t *testing.T) {
 		createSpec("", "image", 0).Task,
 		createSpecWithHostnameTemplate("service", "{{.Service.Name}}-{{.Task.Slot}}").Task,
 	} {
-		err := validateTask(good)
+		err := validateTaskSpec(good)
 		assert.NoError(t, err)
 	}
 }
