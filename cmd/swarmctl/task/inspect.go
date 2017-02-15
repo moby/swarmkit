@@ -125,7 +125,7 @@ var (
 
 			printTaskSummary(task, res)
 			if len(previous) > 0 {
-				fmt.Printf("\n===> Task Parents\n")
+				fmt.Println("\n===> Task Parents")
 				Print(previous, true, res)
 			}
 
