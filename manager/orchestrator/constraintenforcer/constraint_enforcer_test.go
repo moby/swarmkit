@@ -131,9 +131,10 @@ func TestConstraintEnforcer(t *testing.T) {
 
 	go constraintEnforcer.Run()
 
-	// id0 should be killed immediately
-	shutdown1 := testutils.WatchShutdownTask(t, watch)
+	// id0 should be rejected immediately
+	shutdown1 := testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, "id0", shutdown1.ID)
+	assert.Equal(t, api.TaskStateRejected, shutdown1.Status.State)
 
 	// Change node id1 to a manager
 	err = s.Update(func(tx store.Tx) error {
@@ -147,8 +148,9 @@ func TestConstraintEnforcer(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	shutdown2 := testutils.WatchShutdownTask(t, watch)
+	shutdown2 := testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, "id2", shutdown2.ID)
+	assert.Equal(t, api.TaskStateRejected, shutdown2.Status.State)
 
 	// Change resources on node id2
 	err = s.Update(func(tx store.Tx) error {
@@ -162,6 +164,7 @@ func TestConstraintEnforcer(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	shutdown3 := testutils.WatchShutdownTask(t, watch)
+	shutdown3 := testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, "id4", shutdown3.ID)
+	assert.Equal(t, api.TaskStateRejected, shutdown3.Status.State)
 }
