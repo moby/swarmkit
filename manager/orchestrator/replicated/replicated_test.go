@@ -2,11 +2,14 @@ package replicated
 
 import (
 	"testing"
+	"time"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/orchestrator/testutils"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/protobuf/ptypes"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -423,4 +426,464 @@ func TestReplicatedScaleDown(t *testing.T) {
 			assert.Equal(t, "node2", tasks[1].NodeID)
 		}
 	})
+}
+
+func TestInitializationRejectedTasks(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	service1 := &api.Service{
+		ID: "serviceid1",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+			},
+			Mode: &api.ServiceSpec_Replicated{
+				Replicated: &api.ReplicatedService{
+					Replicas: 1,
+				},
+			},
+		},
+	}
+
+	err := s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateService(tx, service1))
+
+		nodes := []*api.Node{
+			{
+				ID: "node1",
+				Spec: api.NodeSpec{
+					Annotations: api.Annotations{
+						Name: "name1",
+					},
+					Availability: api.NodeAvailabilityActive,
+				},
+				Status: api.NodeStatus{
+					State: api.NodeStatus_READY,
+				},
+			},
+		}
+		for _, node := range nodes {
+			assert.NoError(t, store.CreateNode(tx, node))
+		}
+
+		// 1 rejected task is in store before orchestrator starts
+		tasks := []*api.Task{
+			{
+				ID:           "task1",
+				Slot:         1,
+				DesiredState: api.TaskStateReady,
+				Status: api.TaskStatus{
+					State: api.TaskStateRejected,
+				},
+				Spec: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{},
+					},
+				},
+				ServiceAnnotations: api.Annotations{
+					Name: "task1",
+				},
+				ServiceID: "serviceid1",
+				NodeID:    "node1",
+			},
+		}
+		for _, task := range tasks {
+			assert.NoError(t, store.CreateTask(tx, task))
+		}
+
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// watch orchestration events
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventCreateTask{}, state.EventUpdateTask{}, state.EventDeleteTask{})
+	defer cancel()
+
+	orchestrator := NewReplicatedOrchestrator(s)
+	defer orchestrator.Stop()
+
+	go func() {
+		assert.NoError(t, orchestrator.Run(ctx))
+	}()
+
+	// initTask triggers an update event
+	observedTask1 := testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, observedTask1.ID, "task1")
+	assert.Equal(t, observedTask1.Status.State, api.TaskStateRejected)
+	assert.Equal(t, observedTask1.DesiredState, api.TaskStateShutdown)
+
+	// a new task is created
+	observedTask2 := testutils.WatchTaskCreate(t, watch)
+	assert.Equal(t, observedTask2.ServiceID, "serviceid1")
+	// it has not been scheduled
+	assert.Equal(t, observedTask2.NodeID, "")
+	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask2.DesiredState, api.TaskStateReady)
+
+	var deadCnt, liveCnt int
+	s.View(func(readTx store.ReadTx) {
+		var tasks []*api.Task
+		tasks, err = store.FindTasks(readTx, store.ByServiceID("serviceid1"))
+		for _, task := range tasks {
+			if task.DesiredState == api.TaskStateShutdown {
+				assert.Equal(t, task.ID, "task1")
+				deadCnt++
+			} else {
+				liveCnt++
+			}
+		}
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, deadCnt, 1)
+	assert.Equal(t, liveCnt, 1)
+}
+
+func TestInitializationFailedTasks(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	service1 := &api.Service{
+		ID: "serviceid1",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+			},
+			Mode: &api.ServiceSpec_Replicated{
+				Replicated: &api.ReplicatedService{
+					Replicas: 2,
+				},
+			},
+		},
+	}
+
+	err := s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateService(tx, service1))
+
+		nodes := []*api.Node{
+			{
+				ID: "node1",
+				Spec: api.NodeSpec{
+					Annotations: api.Annotations{
+						Name: "name1",
+					},
+					Availability: api.NodeAvailabilityActive,
+				},
+				Status: api.NodeStatus{
+					State: api.NodeStatus_READY,
+				},
+			},
+		}
+		for _, node := range nodes {
+			assert.NoError(t, store.CreateNode(tx, node))
+		}
+
+		// 1 failed task is in store before orchestrator starts
+		tasks := []*api.Task{
+			{
+				ID:           "task1",
+				Slot:         1,
+				DesiredState: api.TaskStateRunning,
+				Status: api.TaskStatus{
+					State: api.TaskStateFailed,
+				},
+				Spec: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{},
+					},
+				},
+				ServiceAnnotations: api.Annotations{
+					Name: "task1",
+				},
+				ServiceID: "serviceid1",
+				NodeID:    "node1",
+			},
+			{
+				ID:           "task2",
+				Slot:         2,
+				DesiredState: api.TaskStateRunning,
+				Status: api.TaskStatus{
+					State: api.TaskStateStarting,
+				},
+				Spec: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{},
+					},
+				},
+				ServiceAnnotations: api.Annotations{
+					Name: "task2",
+				},
+				ServiceID: "serviceid1",
+				NodeID:    "node1",
+			},
+		}
+		for _, task := range tasks {
+			assert.NoError(t, store.CreateTask(tx, task))
+		}
+
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// watch orchestration events
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventCreateTask{}, state.EventUpdateTask{}, state.EventDeleteTask{})
+	defer cancel()
+
+	orchestrator := NewReplicatedOrchestrator(s)
+	defer orchestrator.Stop()
+
+	go func() {
+		assert.NoError(t, orchestrator.Run(ctx))
+	}()
+
+	// initTask triggers an update
+	observedTask1 := testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, observedTask1.ID, "task1")
+	assert.Equal(t, observedTask1.Status.State, api.TaskStateFailed)
+	assert.Equal(t, observedTask1.DesiredState, api.TaskStateShutdown)
+
+	// a new task is created
+	observedTask2 := testutils.WatchTaskCreate(t, watch)
+	assert.Equal(t, observedTask2.ServiceID, "serviceid1")
+	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask2.DesiredState, api.TaskStateReady)
+
+	var deadCnt, liveCnt int
+	s.View(func(readTx store.ReadTx) {
+		var tasks []*api.Task
+		tasks, err = store.FindTasks(readTx, store.ByServiceID("serviceid1"))
+		for _, task := range tasks {
+			if task.DesiredState == api.TaskStateShutdown {
+				assert.Equal(t, task.ID, "task1")
+				deadCnt++
+			} else {
+				liveCnt++
+			}
+		}
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, deadCnt, 1)
+	assert.Equal(t, liveCnt, 2)
+}
+
+func TestInitializationNodeDown(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	service1 := &api.Service{
+		ID: "serviceid1",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+			},
+			Mode: &api.ServiceSpec_Replicated{
+				Replicated: &api.ReplicatedService{
+					Replicas: 1,
+				},
+			},
+		},
+	}
+
+	err := s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateService(tx, service1))
+
+		nodes := []*api.Node{
+			{
+				ID: "node1",
+				Spec: api.NodeSpec{
+					Annotations: api.Annotations{
+						Name: "name1",
+					},
+					Availability: api.NodeAvailabilityActive,
+				},
+				Status: api.NodeStatus{
+					State: api.NodeStatus_DOWN,
+				},
+			},
+		}
+		for _, node := range nodes {
+			assert.NoError(t, store.CreateNode(tx, node))
+		}
+
+		// 1 failed task is in store before orchestrator starts
+		tasks := []*api.Task{
+			{
+				ID:           "task1",
+				Slot:         1,
+				DesiredState: api.TaskStateRunning,
+				Status: api.TaskStatus{
+					State: api.TaskStateRunning,
+				},
+				Spec: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{},
+					},
+				},
+				ServiceAnnotations: api.Annotations{
+					Name: "task1",
+				},
+				ServiceID: "serviceid1",
+				NodeID:    "node1",
+			},
+		}
+		for _, task := range tasks {
+			assert.NoError(t, store.CreateTask(tx, task))
+		}
+
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// watch orchestration events
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventCreateTask{}, state.EventUpdateTask{}, state.EventDeleteTask{})
+	defer cancel()
+
+	orchestrator := NewReplicatedOrchestrator(s)
+	defer orchestrator.Stop()
+
+	go func() {
+		assert.NoError(t, orchestrator.Run(ctx))
+	}()
+
+	// initTask triggers an update
+	observedTask1 := testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, observedTask1.ID, "task1")
+	assert.Equal(t, observedTask1.Status.State, api.TaskStateRunning)
+	assert.Equal(t, observedTask1.DesiredState, api.TaskStateShutdown)
+
+	// a new task is created
+	observedTask2 := testutils.WatchTaskCreate(t, watch)
+	assert.Equal(t, observedTask2.ServiceID, "serviceid1")
+	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask2.DesiredState, api.TaskStateReady)
+}
+
+func TestInitializationDelayStart(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	service1 := &api.Service{
+		ID: "serviceid1",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartOnAny,
+					Delay:     gogotypes.DurationProto(100 * time.Millisecond),
+				},
+			},
+			Mode: &api.ServiceSpec_Replicated{
+				Replicated: &api.ReplicatedService{
+					Replicas: 1,
+				},
+			},
+		},
+	}
+
+	before := time.Now()
+	err := s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateService(tx, service1))
+
+		nodes := []*api.Node{
+			{
+				ID: "node1",
+				Spec: api.NodeSpec{
+					Annotations: api.Annotations{
+						Name: "name1",
+					},
+					Availability: api.NodeAvailabilityActive,
+				},
+				Status: api.NodeStatus{
+					State: api.NodeStatus_READY,
+				},
+			},
+		}
+		for _, node := range nodes {
+			assert.NoError(t, store.CreateNode(tx, node))
+		}
+
+		// 1 failed task is in store before orchestrator starts
+		tasks := []*api.Task{
+			{
+				ID:           "task1",
+				Slot:         1,
+				DesiredState: api.TaskStateReady,
+				Status: api.TaskStatus{
+					State:     api.TaskStateReady,
+					Timestamp: ptypes.MustTimestampProto(before),
+				},
+				Spec: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{},
+					},
+					Restart: &api.RestartPolicy{
+						Condition: api.RestartOnAny,
+						Delay:     gogotypes.DurationProto(100 * time.Millisecond),
+					},
+				},
+				ServiceAnnotations: api.Annotations{
+					Name: "task1",
+				},
+				ServiceID: "serviceid1",
+				NodeID:    "node1",
+			},
+		}
+		for _, task := range tasks {
+			assert.NoError(t, store.CreateTask(tx, task))
+		}
+
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// watch orchestration events
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventCreateTask{}, state.EventUpdateTask{}, state.EventDeleteTask{})
+	defer cancel()
+
+	orchestrator := NewReplicatedOrchestrator(s)
+	defer orchestrator.Stop()
+
+	go func() {
+		assert.NoError(t, orchestrator.Run(ctx))
+	}()
+
+	// initTask triggers an update
+	observedTask1 := testutils.WatchTaskUpdate(t, watch)
+	after := time.Now()
+	assert.Equal(t, observedTask1.ID, "task1")
+	assert.Equal(t, observedTask1.Status.State, api.TaskStateReady)
+	assert.Equal(t, observedTask1.DesiredState, api.TaskStateRunning)
+
+	// At least 100 ms should have elapsed
+	if after.Sub(before) < 100*time.Millisecond {
+		t.Fatalf("restart delay should have elapsed. Got: %v", after.Sub(before))
+	}
 }
