@@ -51,7 +51,7 @@ func (c *Collector) Stats(w io.Writer, unit time.Duration) {
 	t := c.t.Snapshot()
 	ps := t.Percentiles([]float64{0.5, 0.75, 0.95, 0.99, 0.999})
 
-	fmt.Fprintf(w, "stats:\n")
+	fmt.Fprintln(w, "stats:")
 	fmt.Fprintf(w, "  count:       %9d\n", t.Count())
 	fmt.Fprintf(w, "  min:         %12.2f%s\n", float64(t.Min())/du, duSuffix)
 	fmt.Fprintf(w, "  max:         %12.2f%s\n", float64(t.Max())/du, duSuffix)

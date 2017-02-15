@@ -19,26 +19,26 @@ func printClusterSummary(cluster *api.Cluster) {
 
 	common.FprintfIfNotEmpty(w, "ID\t: %s\n", cluster.ID)
 	common.FprintfIfNotEmpty(w, "Name\t: %s\n", cluster.Spec.Annotations.Name)
-	fmt.Fprintf(w, "Orchestration settings:\n")
+	fmt.Fprintln(w, "Orchestration settings:")
 	fmt.Fprintf(w, "  Task history entries: %d\n", cluster.Spec.Orchestration.TaskHistoryRetentionLimit)
 
 	heartbeatPeriod, err := gogotypes.DurationFromProto(cluster.Spec.Dispatcher.HeartbeatPeriod)
 	if err == nil {
-		fmt.Fprintf(w, "Dispatcher settings:\n")
+		fmt.Fprintln(w, "Dispatcher settings:")
 		fmt.Fprintf(w, "  Dispatcher heartbeat period: %s\n", heartbeatPeriod.String())
 	}
 
-	fmt.Fprintf(w, "Certificate Authority settings:\n")
+	fmt.Fprintln(w, "Certificate Authority settings:")
 	if cluster.Spec.CAConfig.NodeCertExpiry != nil {
 		clusterDuration, err := gogotypes.DurationFromProto(cluster.Spec.CAConfig.NodeCertExpiry)
 		if err != nil {
-			fmt.Fprintf(w, "  Certificate Validity Duration: [ERROR PARSING DURATION]\n")
+			fmt.Fprintln(w, "  Certificate Validity Duration: [ERROR PARSING DURATION]")
 		} else {
 			fmt.Fprintf(w, "  Certificate Validity Duration: %s\n", clusterDuration.String())
 		}
 	}
 	if len(cluster.Spec.CAConfig.ExternalCAs) > 0 {
-		fmt.Fprintf(w, "  External CAs:\n")
+		fmt.Fprintln(w, "  External CAs:")
 		for _, ca := range cluster.Spec.CAConfig.ExternalCAs {
 			fmt.Fprintf(w, "    %s: %s\n", ca.Protocol, ca.URL)
 		}
