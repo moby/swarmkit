@@ -139,6 +139,7 @@ func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
 func (c *containerConfig) config() *enginecontainer.Config {
 	config := &enginecontainer.Config{
 		Labels:       c.labels(),
+		StopSignal:   c.spec().StopSignal,
 		User:         c.spec().User,
 		Hostname:     c.spec().Hostname,
 		Env:          c.spec().Env,
