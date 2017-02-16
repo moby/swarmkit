@@ -130,3 +130,21 @@ func TestExtraHosts(t *testing.T) {
 		t.Fatalf("expected %s, got %s", expected, actual)
 	}
 }
+
+func TestStopSignal(t *testing.T) {
+	c := containerConfig{
+		task: &api.Task{
+			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					StopSignal: "SIGWINCH",
+				},
+			}},
+		},
+	}
+
+	expected := "SIGWINCH"
+	actual := c.config().StopSignal
+	if actual != expected {
+		t.Fatalf("expected %s, got %s", expected, actual)
+	}
+}

@@ -203,6 +203,9 @@ message ContainerSpec {
 	// they will be decided by the modes passed in the mount definition.
 	bool read_only = 19;
 
+	// StopSignal defines the signal to stop the container.
+	string stop_signal = 20;
+
 	repeated Mount mounts = 8 [(gogoproto.nullable) = false];
 
 	// StopGracePeriod the grace period for stopping the container before
