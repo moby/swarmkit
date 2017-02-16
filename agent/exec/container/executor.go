@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/docker/docker/api/types/filters"
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/agent/secrets"
@@ -50,7 +51,7 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 	addPlugins("Authorization", info.Plugins.Authorization)
 
 	// retrieve v2 plugins
-	v2plugins, err := e.client.PluginList(ctx)
+	v2plugins, err := e.client.PluginList(ctx, filters.NewArgs())
 	if err != nil {
 		log.L.WithError(err).Warning("PluginList operation failed")
 	} else {
