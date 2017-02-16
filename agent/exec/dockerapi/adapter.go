@@ -29,8 +29,8 @@ type containerAdapter struct {
 	secrets   exec.SecretGetter
 }
 
-func newContainerAdapter(client engineapi.APIClient, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
-	ctnr, err := newContainerConfig(task)
+func newContainerAdapter(client engineapi.APIClient, nodeDescription *api.NodeDescription, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
+	ctnr, err := newContainerConfig(nodeDescription, task)
 	if err != nil {
 		return nil, err
 	}

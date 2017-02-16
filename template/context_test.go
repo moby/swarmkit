@@ -10,11 +10,12 @@ import (
 
 func TestTemplateContext(t *testing.T) {
 	for _, testcase := range []struct {
-		Test     string
-		Task     *api.Task
-		Context  Context
-		Expected *api.ContainerSpec
-		Err      error
+		Test            string
+		Task            *api.Task
+		Context         Context
+		Expected        *api.ContainerSpec
+		Err             error
+		NodeDescription *api.NodeDescription
 	}{
 		{
 			Test: "Identity",
@@ -34,6 +35,8 @@ func TestTemplateContext(t *testing.T) {
 						},
 					},
 				}
+			}),
+			NodeDescription: modifyNode(func(n *api.NodeDescription) {
 			}),
 			Expected: &api.ContainerSpec{
 				Env: []string{
@@ -69,6 +72,8 @@ func TestTemplateContext(t *testing.T) {
 						},
 					},
 				}
+			}),
+			NodeDescription: modifyNode(func(n *api.NodeDescription) {
 			}),
 			Expected: &api.ContainerSpec{
 				Labels: map[string]string{
@@ -106,6 +111,8 @@ func TestTemplateContext(t *testing.T) {
 					},
 				}
 			}),
+			NodeDescription: modifyNode(func(n *api.NodeDescription) {
+			}),
 			Expected: &api.ContainerSpec{
 				Mounts: []api.Mount{
 					{
@@ -130,13 +137,53 @@ func TestTemplateContext(t *testing.T) {
 					},
 				}
 			}),
+			NodeDescription: modifyNode(func(n *api.NodeDescription) {
+			}),
 			Expected: &api.ContainerSpec{
 				Hostname: "myhost-10",
 			},
 		},
+		{
+			Test: "Node hostname",
+			Task: modifyTask(func(t *api.Task) {
+				t.Spec = api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{
+							Hostname: "myservice-{{.Node.Hostname}}",
+						},
+					},
+				}
+			}),
+			NodeDescription: modifyNode(func(n *api.NodeDescription) {
+				n.Hostname = "mynode"
+			}),
+			Expected: &api.ContainerSpec{
+				Hostname: "myservice-mynode",
+			},
+		},
+		{
+			Test: "Node architecture",
+			Task: modifyTask(func(t *api.Task) {
+				t.Spec = api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{
+							Hostname: "{{.Node.Hostname}}-{{.Node.Platform.OS}}-{{.Node.Platform.Architecture}}",
+						},
+					},
+				}
+			}),
+			NodeDescription: modifyNode(func(n *api.NodeDescription) {
+				n.Hostname = "mynode"
+				n.Platform.Architecture = "myarchitecture"
+				n.Platform.OS = "myos"
+			}),
+			Expected: &api.ContainerSpec{
+				Hostname: "mynode-myos-myarchitecture",
+			},
+		},
 	} {
 		t.Run(testcase.Test, func(t *testing.T) {
-			spec, err := ExpandContainerSpec(testcase.Task)
+			spec, err := ExpandContainerSpec(testcase.NodeDescription, testcase.Task)
 			if err != nil {
 				if testcase.Err == nil {
 					t.Fatalf("unexpected error: %v", err)
@@ -192,6 +239,22 @@ func modifyTask(fn func(t *api.Task)) *api.Task {
 	fn(t)
 
 	return t
+}
+
+// modifyNode generates a node with interesting values then calls the function
+// with it. The caller can then modify the node and return the result.
+func modifyNode(fn func(n *api.NodeDescription)) *api.NodeDescription {
+	n := &api.NodeDescription{
+		Hostname: "nodeHostname",
+		Platform: &api.Platform{
+			Architecture: "x86_64",
+			OS:           "linux",
+		},
+	}
+
+	fn(n)
+
+	return n
 }
 
 // visitAllTemplatedFields does just that.

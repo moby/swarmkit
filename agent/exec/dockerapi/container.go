@@ -42,12 +42,12 @@ type containerConfig struct {
 
 // newContainerConfig returns a validated container config. No methods should
 // return an error if this function returns without error.
-func newContainerConfig(t *api.Task) (*containerConfig, error) {
+func newContainerConfig(n *api.NodeDescription, t *api.Task) (*containerConfig, error) {
 	var c containerConfig
-	return &c, c.setTask(t)
+	return &c, c.setTask(n, t)
 }
 
-func (c *containerConfig) setTask(t *api.Task) error {
+func (c *containerConfig) setTask(n *api.NodeDescription, t *api.Task) error {
 	container := t.Spec.GetContainer()
 	if container == nil {
 		return exec.ErrRuntimeUnsupported
@@ -64,7 +64,7 @@ func (c *containerConfig) setTask(t *api.Task) error {
 	}
 
 	c.task = t
-	preparedSpec, err := template.ExpandContainerSpec(t)
+	preparedSpec, err := template.ExpandContainerSpec(n, t)
 	if err != nil {
 		return err
 	}

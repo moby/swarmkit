@@ -411,11 +411,19 @@ func TestControllerRemove(t *testing.T) {
 }
 
 func genTestControllerEnv(t *testing.T, task *api.Task) (context.Context, *StubAPIClient, exec.Controller, *containerConfig, func()) {
+	testNodeDescription := &api.NodeDescription{
+		Hostname: "testHostname",
+		Platform: &api.Platform{
+			OS:           "linux",
+			Architecture: "x86_64",
+		},
+	}
+
 	client := NewStubAPIClient()
-	ctlr, err := newController(client, task, nil)
+	ctlr, err := newController(client, testNodeDescription, task, nil)
 	assert.NoError(t, err)
 
-	config, err := newContainerConfig(task)
+	config, err := newContainerConfig(testNodeDescription, task)
 	assert.NoError(t, err)
 	assert.NotNil(t, config)
 

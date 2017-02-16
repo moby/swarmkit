@@ -80,7 +80,7 @@ func TestControllerFlowIntegration(t *testing.T) {
 		return nil
 	})
 
-	ctlr, err := newController(client, task, nil)
+	ctlr, err := newController(client, nil, task, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, ctlr)
 	assert.NoError(t, ctlr.Prepare(ctx))
