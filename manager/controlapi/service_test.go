@@ -39,6 +39,17 @@ func createSpec(name, image string, instances uint64) *api.ServiceSpec {
 	}
 }
 
+func createPluginSpec(name, image string) *api.ServiceSpec {
+	spec := createSpec(name, image, 0)
+	spec.Task.Runtime = &api.TaskSpec_Plugin{
+		Plugin: &api.PluginSpec{
+			Image: image,
+		},
+	}
+	spec.Mode = &api.ServiceSpec_Global{}
+	return spec
+}
+
 func createSpecWithDuplicateMounts(name string) *api.ServiceSpec {
 	service := createSpec("", "image", 1)
 	mounts := []api.Mount{
@@ -183,22 +194,24 @@ func TestValidateTaskSpec(t *testing.T) {
 			},
 			c: codes.InvalidArgument,
 		},
-		// NOTE(stevvooe): can't actually test this case because we don't have
-		// another runtime defined.
-		// {
-		//	s: &api.ServiceSpec{
-		//		Template: &api.TaskSpec{
-		//			Runtime:
-		//		},
-		//	},
-		//	c: codes.Unimplemented,
-		// },
+		{
+			s: api.TaskSpec{
+				Runtime: &api.TaskSpec_Attachment{
+					Attachment: &api.NetworkAttachmentSpec{},
+				},
+			},
+			c: codes.Unimplemented,
+		},
 		{
 			s: createSpec("", "", 0).Task,
 			c: codes.InvalidArgument,
 		},
 		{
 			s: createSpec("", "busybox###", 0).Task,
+			c: codes.InvalidArgument,
+		},
+		{
+			s: createPluginSpec("", "busybox###").Task,
 			c: codes.InvalidArgument,
 		},
 		{
@@ -217,6 +230,7 @@ func TestValidateTaskSpec(t *testing.T) {
 
 	for _, good := range []api.TaskSpec{
 		createSpec("", "image", 0).Task,
+		createPluginSpec("", "image").Task,
 		createSpecWithHostnameTemplate("service", "{{.Service.Name}}-{{.Task.Slot}}").Task,
 	} {
 		err := validateTaskSpec(good)
