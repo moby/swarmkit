@@ -9,6 +9,7 @@ import (
 	"github.com/docker/swarmkit/api/equality"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/protobuf/ptypes"
+	"github.com/docker/swarmkit/tracer"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -190,7 +191,7 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 			panic("err must not be nil when fatal")
 		}
 
-		span.SetTag("error", err)
+		tracer.SetError(span, err)
 
 		if cs, ok := err.(ContainerStatuser); ok {
 			var err error
