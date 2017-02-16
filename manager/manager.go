@@ -15,7 +15,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/pkg/plugingetter"
-	"github.com/docker/go-events"
+	events "github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/connectionbroker"
@@ -38,6 +38,8 @@ import (
 	"github.com/docker/swarmkit/remotes"
 	"github.com/docker/swarmkit/xnet"
 	gogotypes "github.com/gogo/protobuf/types"
+	// "github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
+
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -201,7 +203,9 @@ func New(config *Config) (*Manager, error) {
 	raftNode := raft.NewNode(newNodeOpts)
 
 	opts := []grpc.ServerOption{
-		grpc.Creds(config.SecurityConfig.ServerTLSCreds)}
+		grpc.Creds(config.SecurityConfig.ServerTLSCreds),
+		// grpc.UnaryInterceptor(otgrpc.OpenTracingServerInterceptor(opentracing.GlobalTracer())),
+	}
 
 	m := &Manager{
 		config:          *config,

@@ -17,6 +17,7 @@ import (
 	"github.com/docker/swarmkit/log"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -38,7 +39,7 @@ func TestControllerPrepare(t *testing.T) {
 	gomock.InOrder(
 		client.EXPECT().ImagePull(gomock.Any(), config.image(), gomock.Any()).
 			Return(ioutil.NopCloser(bytes.NewBuffer([]byte{})), nil),
-		client.EXPECT().ContainerCreate(gomock.Any(), config.config(), config.hostConfig(), config.networkingConfig(), config.name()).
+		client.EXPECT().ContainerCreate(ctxWithTraces(ctx, 2), config.config(), config.hostConfig(), config.networkingConfig(), config.name()).
 			Return(containertypes.ContainerCreateCreatedBody{ID: "container-id-" + task.ID}, nil),
 	)
 
@@ -54,9 +55,9 @@ func TestControllerPrepareAlreadyPrepared(t *testing.T) {
 		client.EXPECT().ImagePull(gomock.Any(), config.image(), gomock.Any()).
 			Return(ioutil.NopCloser(bytes.NewBuffer([]byte{})), nil),
 		client.EXPECT().ContainerCreate(
-			ctx, config.config(), config.hostConfig(), config.networkingConfig(), config.name()).
+			ctxWithTraces(ctx, 2), config.config(), config.hostConfig(), config.networkingConfig(), config.name()).
 			Return(containertypes.ContainerCreateCreatedBody{}, fmt.Errorf("Conflict. The name")),
-		client.EXPECT().ContainerInspect(ctx, config.name()).
+		client.EXPECT().ContainerInspect(ctxWithTraces(ctx, 1), config.name()).
 			Return(types.ContainerJSON{}, nil),
 	)
 
@@ -72,7 +73,7 @@ func TestControllerStart(t *testing.T) {
 	defer finish(t)
 
 	gomock.InOrder(
-		client.EXPECT().ContainerInspect(ctx, config.name()).
+		client.EXPECT().ContainerInspect(ctxWithTraces(ctx, 1), config.name()).
 			Return(types.ContainerJSON{
 				ContainerJSONBase: &types.ContainerJSONBase{
 					State: &types.ContainerState{
@@ -80,7 +81,7 @@ func TestControllerStart(t *testing.T) {
 					},
 				},
 			}, nil),
-		client.EXPECT().ContainerStart(ctx, config.name(), types.ContainerStartOptions{}).
+		client.EXPECT().ContainerStart(ctxWithTraces(ctx, 2), config.name(), types.ContainerStartOptions{}).
 			Return(nil),
 	)
 
@@ -93,7 +94,7 @@ func TestControllerStartAlreadyStarted(t *testing.T) {
 	defer finish(t)
 
 	gomock.InOrder(
-		client.EXPECT().ContainerInspect(ctx, config.name()).
+		client.EXPECT().ContainerInspect(ctxWithTraces(ctx, 1), config.name()).
 			Return(types.ContainerJSON{
 				ContainerJSONBase: &types.ContainerJSONBase{
 					State: &types.ContainerState{
@@ -314,6 +315,17 @@ func genTestControllerEnv(t *testing.T, task *api.Task) (context.Context, *MockA
 		cancel()
 		mocks.Finish()
 	}
+}
+
+// ctxWithTraces returns a context with N trace values attached, ensuring mocks
+// match.
+func ctxWithTraces(ctx context.Context, n int) context.Context {
+	var span opentracing.Span
+	for i := 0; i < n; i++ {
+		span, ctx = opentracing.StartSpanFromContext(ctx, "test")
+		defer span.Finish()
+	}
+	return ctx
 }
 
 func genTask(t *testing.T) *api.Task {

@@ -15,6 +15,7 @@ const DefaultRestartDelay = 5 * time.Second
 
 // NewTask creates a new task.
 func NewTask(cluster *api.Cluster, service *api.Service, slot uint64, nodeID string) *api.Task {
+	// TODO(tonyhb): potentially trace and add span context information here
 	var logDriver *api.Driver
 	if service.Spec.Task.LogDriver != nil {
 		// use the log driver specific to the task, if we have it.

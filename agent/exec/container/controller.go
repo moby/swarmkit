@@ -18,6 +18,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	gogotypes "github.com/gogo/protobuf/types"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"golang.org/x/time/rate"
@@ -93,6 +94,9 @@ func (r *controller) Update(ctx context.Context, t *api.Task) error {
 //
 // If the container has already be created, exec.ErrTaskPrepared is returned.
 func (r *controller) Prepare(ctx context.Context) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "container.Prepare")
+	defer span.Finish()
+
 	if err := r.checkClosed(); err != nil {
 		return err
 	}
@@ -113,9 +117,12 @@ func (r *controller) Prepare(ctx context.Context) error {
 		// operation to be re-entrant on calls to prepare, resuming from the
 		// same point after cancellation.
 		var pctx context.Context
+		// ensure that the fresh pull context is still associated with the
+		// current tracing span
+		pctx = opentracing.ContextWithSpan(context.Background(), span)
 
 		r.pulled = make(chan struct{})
-		pctx, r.cancelPull = context.WithCancel(context.Background()) // TODO(stevvooe): Bind a context to the entire controller.
+		pctx, r.cancelPull = context.WithCancel(pctx) // TODO(stevvooe): Bind a context to the entire controller.
 
 		go func() {
 			defer close(r.pulled)
@@ -161,6 +168,9 @@ func (r *controller) Prepare(ctx context.Context) error {
 
 // Start the container. An error will be returned if the container is already started.
 func (r *controller) Start(ctx context.Context) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "container.Start")
+	defer span.Finish()
+
 	if err := r.checkClosed(); err != nil {
 		return err
 	}

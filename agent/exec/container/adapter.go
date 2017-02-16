@@ -15,6 +15,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	gogotypes "github.com/gogo/protobuf/types"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"golang.org/x/time/rate"
@@ -59,6 +60,10 @@ func (c *containerConfig) imagePullOptions() types.ImagePullOptions {
 }
 
 func (c *containerAdapter) pullImage(ctx context.Context) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "containerAdapter.pullImage")
+	span.SetTag("image", c.container.image())
+	defer span.Finish()
+
 	rc, err := c.client.ImagePull(ctx, c.container.image(), c.container.imagePullOptions())
 	if err != nil {
 		return err
@@ -110,6 +115,9 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 }
 
 func (c *containerAdapter) createNetworks(ctx context.Context) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "containerAdapter.createNetworks")
+	defer span.Finish()
+
 	for _, network := range c.container.networks() {
 		opts, err := c.container.networkCreateOptions(network)
 		if err != nil {
@@ -144,6 +152,10 @@ func (c *containerAdapter) removeNetworks(ctx context.Context) error {
 }
 
 func (c *containerAdapter) create(ctx context.Context) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "containerAdapter.create")
+	span.SetTag("container.name", c.container.name())
+	defer span.Finish()
+
 	if _, err := c.client.ContainerCreate(ctx,
 		c.container.config(),
 		c.container.hostConfig(),
@@ -156,6 +168,9 @@ func (c *containerAdapter) create(ctx context.Context) error {
 }
 
 func (c *containerAdapter) start(ctx context.Context) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "containerAdapter.start")
+	span.SetTag("container.name", c.container.name())
+	defer span.Finish()
 	// TODO(nishanttotla): Consider adding checkpoint handling later
 	return c.client.ContainerStart(ctx, c.container.name(), types.ContainerStartOptions{})
 }
@@ -231,6 +246,9 @@ func (c *containerAdapter) remove(ctx context.Context) error {
 }
 
 func (c *containerAdapter) createVolumes(ctx context.Context) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "containerAdapter.createVolumes")
+	defer span.Finish()
+
 	// Create plugin volumes that are embedded inside a Mount
 	for _, mount := range c.container.spec().Mounts {
 		if mount.Type != api.MountTypeVolume {

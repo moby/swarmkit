@@ -9,6 +9,7 @@ import (
 	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/tracer"
 	"golang.org/x/net/context"
 )
 
@@ -179,6 +180,10 @@ func (r *Orchestrator) reconcile(ctx context.Context, service *api.Service) {
 }
 
 func (r *Orchestrator) addTasks(ctx context.Context, batch *store.Batch, service *api.Service, runningSlots map[uint64]orchestrator.Slot, deadSlots map[uint64]orchestrator.Slot, count uint64) {
+	span := tracer.Unmarshal("replicated.addTasks", service.Spec.Annotations.Labels["span"])
+	span.SetTag("service.name", service.Spec.Annotations.Name)
+	defer span.Finish()
+
 	slot := uint64(0)
 	for i := uint64(0); i < count; i++ {
 		// Find a slot number that is missing a running task
