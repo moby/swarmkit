@@ -4,19 +4,19 @@
 package container
 
 import (
-	io "io"
-	time "time"
-
 	types "github.com/docker/docker/api/types"
 	container "github.com/docker/docker/api/types/container"
 	events "github.com/docker/docker/api/types/events"
 	filters "github.com/docker/docker/api/types/filters"
+	image "github.com/docker/docker/api/types/image"
 	network "github.com/docker/docker/api/types/network"
 	registry "github.com/docker/docker/api/types/registry"
 	swarm "github.com/docker/docker/api/types/swarm"
 	volume "github.com/docker/docker/api/types/volume"
 	gomock "github.com/golang/mock/gomock"
 	context "golang.org/x/net/context"
+	io "io"
+	time "time"
 )
 
 // Mock of APIClient interface
@@ -114,9 +114,9 @@ func (_mr *_MockAPIClientRecorder) ContainerCreate(arg0, arg1, arg2, arg3, arg4 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerCreate", arg0, arg1, arg2, arg3, arg4)
 }
 
-func (_m *MockAPIClient) ContainerDiff(_param0 context.Context, _param1 string) ([]types.ContainerChange, error) {
+func (_m *MockAPIClient) ContainerDiff(_param0 context.Context, _param1 string) ([]container.ContainerChangeResponseItem, error) {
 	ret := _m.ctrl.Call(_m, "ContainerDiff", _param0, _param1)
-	ret0, _ := ret[0].([]types.ContainerChange)
+	ret0, _ := ret[0].([]container.ContainerChangeResponseItem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -336,9 +336,9 @@ func (_mr *_MockAPIClientRecorder) ContainerStop(arg0, arg1, arg2 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ContainerStop", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ContainerTop(_param0 context.Context, _param1 string, _param2 []string) (types.ContainerProcessList, error) {
+func (_m *MockAPIClient) ContainerTop(_param0 context.Context, _param1 string, _param2 []string) (container.ContainerTopOKBody, error) {
 	ret := _m.ctrl.Call(_m, "ContainerTop", _param0, _param1, _param2)
-	ret0, _ := ret[0].(types.ContainerProcessList)
+	ret0, _ := ret[0].(container.ContainerTopOKBody)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -456,9 +456,9 @@ func (_mr *_MockAPIClientRecorder) ImageCreate(arg0, arg1, arg2 interface{}) *go
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImageCreate", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ImageHistory(_param0 context.Context, _param1 string) ([]types.ImageHistory, error) {
+func (_m *MockAPIClient) ImageHistory(_param0 context.Context, _param1 string) ([]image.HistoryResponseItem, error) {
 	ret := _m.ctrl.Call(_m, "ImageHistory", _param0, _param1)
-	ret0, _ := ret[0].([]types.ImageHistory)
+	ret0, _ := ret[0].([]image.HistoryResponseItem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -534,9 +534,9 @@ func (_mr *_MockAPIClientRecorder) ImagePush(arg0, arg1, arg2 interface{}) *gomo
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ImagePush", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) ImageRemove(_param0 context.Context, _param1 string, _param2 types.ImageRemoveOptions) ([]types.ImageDelete, error) {
+func (_m *MockAPIClient) ImageRemove(_param0 context.Context, _param1 string, _param2 types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error) {
 	ret := _m.ctrl.Call(_m, "ImageRemove", _param0, _param1, _param2)
-	ret0, _ := ret[0].([]types.ImageDelete)
+	ret0, _ := ret[0].([]types.ImageDeleteResponseItem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -792,15 +792,15 @@ func (_mr *_MockAPIClientRecorder) PluginInstall(arg0, arg1, arg2 interface{}) *
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PluginInstall", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) PluginList(_param0 context.Context) (types.PluginsListResponse, error) {
-	ret := _m.ctrl.Call(_m, "PluginList", _param0)
+func (_m *MockAPIClient) PluginList(_param0 context.Context, _param1 filters.Args) (types.PluginsListResponse, error) {
+	ret := _m.ctrl.Call(_m, "PluginList", _param0, _param1)
 	ret0, _ := ret[0].(types.PluginsListResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockAPIClientRecorder) PluginList(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "PluginList", arg0)
+func (_mr *_MockAPIClientRecorder) PluginList(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "PluginList", arg0, arg1)
 }
 
 func (_m *MockAPIClient) PluginPush(_param0 context.Context, _param1 string, _param2 string) (io.ReadCloser, error) {
@@ -832,6 +832,17 @@ func (_m *MockAPIClient) PluginSet(_param0 context.Context, _param1 string, _par
 
 func (_mr *_MockAPIClientRecorder) PluginSet(arg0, arg1, arg2 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "PluginSet", arg0, arg1, arg2)
+}
+
+func (_m *MockAPIClient) PluginUpgrade(_param0 context.Context, _param1 string, _param2 types.PluginInstallOptions) (io.ReadCloser, error) {
+	ret := _m.ctrl.Call(_m, "PluginUpgrade", _param0, _param1, _param2)
+	ret0, _ := ret[0].(io.ReadCloser)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockAPIClientRecorder) PluginUpgrade(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "PluginUpgrade", arg0, arg1, arg2)
 }
 
 func (_m *MockAPIClient) RegistryLogin(_param0 context.Context, _param1 types.AuthConfig) (registry.AuthenticateOKBody, error) {
@@ -887,6 +898,16 @@ func (_m *MockAPIClient) SecretRemove(_param0 context.Context, _param1 string) e
 
 func (_mr *_MockAPIClientRecorder) SecretRemove(arg0, arg1 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SecretRemove", arg0, arg1)
+}
+
+func (_m *MockAPIClient) SecretUpdate(_param0 context.Context, _param1 string, _param2 swarm.Version, _param3 swarm.SecretSpec) error {
+	ret := _m.ctrl.Call(_m, "SecretUpdate", _param0, _param1, _param2, _param3)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockAPIClientRecorder) SecretUpdate(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SecretUpdate", arg0, arg1, arg2, arg3)
 }
 
 func (_m *MockAPIClient) ServerVersion(_param0 context.Context) (types.Version, error) {
