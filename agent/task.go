@@ -8,6 +8,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/equality"
 	"github.com/docker/swarmkit/log"
+	opentracing "github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 )
 
@@ -75,6 +76,9 @@ func (tm *taskManager) Logs(ctx context.Context, options api.LogSubscriptionOpti
 }
 
 func (tm *taskManager) run(ctx context.Context) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "taskManager.run")
+	defer span.Finish()
+
 	ctx, cancelAll := context.WithCancel(ctx)
 	defer cancelAll() // cancel all child operations on exit.
 
@@ -121,6 +125,11 @@ func (tm *taskManager) run(ctx context.Context) {
 			updated = false
 			go runctx(ctx, tm.closed, errs, func(ctx context.Context) error {
 				defer opcancel()
+				// Here we need to finish the taskManager.run span so that
+				// the span is sent to the collector; otherwise, the deferred
+				// .Finish() above will never be called for a long running task
+				// and child spans will have no parent
+				defer span.Finish()
 
 				if updatedLocal {
 					// before we do anything, update the task for the controller.
@@ -176,6 +185,7 @@ func (tm *taskManager) run(ctx context.Context) {
 			case nil, context.Canceled, context.DeadlineExceeded:
 				// no log in this case
 			default:
+				span.SetTag("error", err.Error())
 				log.G(ctx).WithError(err).Error("task operation failed")
 			}
 

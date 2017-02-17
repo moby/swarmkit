@@ -16,7 +16,9 @@ import (
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/docker/swarmkit/node"
+	"github.com/docker/swarmkit/tracer"
 	"github.com/docker/swarmkit/version"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -79,6 +81,16 @@ var (
 			}
 
 			debugAddr, err := cmd.Flags().GetString("listen-debug")
+			if err != nil {
+				return err
+			}
+
+			tracingBackend, err := cmd.Flags().GetString("tracing-backend")
+			if err != nil {
+				return err
+			}
+
+			tracingAddr, err := cmd.Flags().GetString("tracing-addr")
 			if err != nil {
 				return err
 			}
@@ -155,6 +167,18 @@ var (
 				}()
 			}
 
+			if tracingAddr != "" && tracingBackend != "" {
+				t, err := tracer.NewTracer(tracer.Opts{
+					Backend:  tracingBackend,
+					Addr:     tracingAddr,
+					Hostname: hostname,
+				})
+				if err != nil {
+					return err
+				}
+				opentracing.InitGlobalTracer(t)
+			}
+
 			n, err := node.New(&node.Config{
 				Hostname:         hostname,
 				ForceNewCluster:  forceNewCluster,
@@ -210,6 +234,8 @@ func init() {
 	mainCmd.Flags().String("listen-remote-api", "0.0.0.0:4242", "Listen address for remote API")
 	mainCmd.Flags().String("listen-control-api", "./swarmkitstate/swarmd.sock", "Listen socket for control API")
 	mainCmd.Flags().String("listen-debug", "", "Bind the Go debug server on the provided address")
+	mainCmd.Flags().String("tracing-addr", "", "Send tracing metrics to the provided opentracing compatible backend")
+	mainCmd.Flags().String("tracing-backend", "", "The tracer type to use when configuring opentracing; one of 'jaeger' or 'lightstep'")
 	mainCmd.Flags().String("join-addr", "", "Join cluster with a node at this address")
 	mainCmd.Flags().Bool("force-new-cluster", false, "Force the creation of a new cluster from data directory")
 	mainCmd.Flags().Uint32("heartbeat-tick", 1, "Defines the heartbeat interval (in seconds) for raft member health-check")

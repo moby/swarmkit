@@ -9,6 +9,7 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
+	"github.com/docker/swarmkit/tracer"
 	"golang.org/x/net/context"
 )
 
@@ -398,6 +399,11 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 				// Update exactly one task inside this Update
 				// callback.
 				for taskID, decision := range schedulingDecisions {
+					if decision.new.ServiceAnnotations.Labels != nil {
+						span := tracer.Unmarshal("scheduler.applySchedulingDecisions", decision.new.ServiceAnnotations.Labels["span"])
+						defer span.Finish()
+					}
+
 					delete(schedulingDecisions, taskID)
 
 					t := store.GetTask(tx, taskID)

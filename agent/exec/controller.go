@@ -9,6 +9,8 @@ import (
 	"github.com/docker/swarmkit/api/equality"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/protobuf/ptypes"
+	"github.com/docker/swarmkit/tracer"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -94,6 +96,9 @@ type PortStatuser interface {
 // Unlike Do, if an error is returned, the status should still be reported. The
 // error merely reports the failure at getting the controller.
 func Resolve(ctx context.Context, task *api.Task, executor Executor) (Controller, *api.TaskStatus, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "exec.Resolve")
+	defer span.Finish()
+
 	status := task.Status.Copy()
 
 	defer func() {
@@ -140,6 +145,9 @@ func Resolve(ctx context.Context, task *api.Task, executor Executor) (Controller
 // change. If ErrTaskDead is returned, calls to Do will no longer result in any
 // action.
 func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "exec.Do")
+	defer span.Finish()
+
 	status := task.Status.Copy()
 
 	// stay in the current state.
@@ -183,6 +191,8 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 			panic("err must not be nil when fatal")
 		}
 
+		tracer.SetError(span, err)
+
 		if cs, ok := err.(ContainerStatuser); ok {
 			var err error
 			containerStatus, err = cs.ContainerStatus(ctx)
@@ -223,6 +233,10 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 	// below, we have several callbacks that are run after the state transition
 	// is completed.
 	defer func() {
+		span.SetTag("state.desired", task.DesiredState)
+		span.SetTag("state.from", task.Status.State)
+		span.SetTag("state.next", status.State)
+
 		logStateChange(ctx, task.DesiredState, task.Status.State, status.State)
 
 		if !equality.TaskStatusesEqualStable(status, &task.Status) {

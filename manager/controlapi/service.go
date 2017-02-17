@@ -15,7 +15,9 @@ import (
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/docker/swarmkit/template"
+	"github.com/docker/swarmkit/tracer"
 	gogotypes "github.com/gogo/protobuf/types"
+	opentracing "github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -430,6 +432,9 @@ func (s *Server) checkSecretExistence(tx store.Tx, spec *api.ServiceSpec) error 
 // - Returns `AlreadyExists` if the ServiceID conflicts.
 // - Returns an error if the creation fails.
 func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRequest) (*api.CreateServiceResponse, error) {
+	span, _ := opentracing.StartSpanFromContext(ctx, "manager.CreateService")
+	defer span.Finish()
+
 	if err := validateServiceSpec(request.Spec); err != nil {
 		return nil, err
 	}
@@ -442,11 +447,30 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 		return nil, err
 	}
 
+	span.SetTag("service.name", request.Spec.Annotations.Name)
+
+	// Ensure that we send the parent span's context, created above, so
+	// that each operation within swarm's nodes can create child spans
+	// referencing this operation.  We do this by adding an annotation
+	// to the service so that any swarmkit component (dispatcher etc.)
+	// or node can associate their tasks with this span.
+	spec := *request.Spec
+	marshalledSpan, _ := tracer.Marshal(span)
+	if marshalledSpan != "" {
+		if spec.Annotations.Labels == nil {
+			spec.Annotations.Labels = map[string]string{
+				"span": marshalledSpan,
+			}
+		} else {
+			spec.Annotations.Labels["span"] = marshalledSpan
+		}
+	}
+
 	// TODO(aluzzardi): Consider using `Name` as a primary key to handle
 	// duplicate creations. See #65
 	service := &api.Service{
 		ID:   identity.NewID(),
-		Spec: *request.Spec,
+		Spec: spec,
 	}
 
 	err := s.store.Update(func(tx store.Tx) error {

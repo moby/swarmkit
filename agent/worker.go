@@ -8,7 +8,9 @@ import (
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/tracer"
 	"github.com/docker/swarmkit/watch"
+	opentracing "github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 )
 
@@ -369,6 +371,11 @@ func (w *worker) Listen(ctx context.Context, reporter StatusReporter) {
 }
 
 func (w *worker) startTask(ctx context.Context, tx *bolt.Tx, task *api.Task) error {
+	span, ctx := tracer.StartSpanFromTask(ctx, "worker.startTask", task)
+	span.SetBaggageItem("task.id", task.ID) // set a task id as opentracing baggage, passed down to every child span
+	span.SetTag("task.id", task.ID)
+	defer span.Finish()
+
 	w.taskevents.Publish(task.Copy())
 	_, err := w.taskManager(ctx, tx, task) // side-effect taskManager creation.
 
@@ -400,6 +407,8 @@ func (w *worker) newTaskManager(ctx context.Context, tx *bolt.Tx, task *api.Task
 		"task.id":    task.ID,
 		"service.id": task.ServiceID,
 	}))
+	span, ctx := opentracing.StartSpanFromContext(ctx, "worker.newTaskManager")
+	defer span.Finish()
 
 	ctlr, status, err := exec.Resolve(ctx, task, w.executor)
 	if err := w.updateTaskStatus(ctx, tx, task.ID, status); err != nil {
