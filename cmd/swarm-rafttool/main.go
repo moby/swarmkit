@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -39,6 +40,94 @@ var (
 			return decryptRaftData(stateDir, outDir, unlockKey)
 		},
 	}
+
+	dumpWALCmd = &cobra.Command{
+		Use:   "dump-wal",
+		Short: "Display entries from the Raft log",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			stateDir, err := cmd.Flags().GetString("state-dir")
+			if err != nil {
+				return err
+			}
+
+			unlockKey, err := cmd.Flags().GetString("unlock-key")
+			if err != nil {
+				return err
+			}
+
+			start, err := cmd.Flags().GetUint64("start")
+			if err != nil {
+				return err
+			}
+
+			end, err := cmd.Flags().GetUint64("end")
+			if err != nil {
+				return err
+			}
+
+			return dumpWAL(stateDir, unlockKey, start, end)
+		},
+	}
+
+	dumpSnapshotCmd = &cobra.Command{
+		Use:   "dump-snapshot",
+		Short: "Display entries from the latest Raft snapshot",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			stateDir, err := cmd.Flags().GetString("state-dir")
+			if err != nil {
+				return err
+			}
+
+			unlockKey, err := cmd.Flags().GetString("unlock-key")
+			if err != nil {
+				return err
+			}
+
+			return dumpSnapshot(stateDir, unlockKey)
+		},
+	}
+
+	dumpObjectCmd = &cobra.Command{
+		Use:   "dump-object [type]",
+		Short: "Display an object from the Raft snapshot/WAL",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("dump-object subcommand takes exactly 1 argument")
+			}
+
+			stateDir, err := cmd.Flags().GetString("state-dir")
+			if err != nil {
+				return err
+			}
+
+			unlockKey, err := cmd.Flags().GetString("unlock-key")
+			if err != nil {
+				return err
+			}
+
+			selector := objSelector{all: true}
+
+			id, err := cmd.Flags().GetString("id")
+			if err != nil {
+				return err
+			}
+			if id != "" {
+				selector.id = id
+				selector.all = false
+			}
+
+			name, err := cmd.Flags().GetString("name")
+			if err != nil {
+				return err
+			}
+			if name != "" {
+				selector.name = name
+				selector.all = false
+			}
+
+			return dumpObject(stateDir, unlockKey, args[0], selector)
+		},
+	}
 )
 
 func init() {
@@ -47,7 +136,16 @@ func init() {
 	decryptCmd.Flags().StringP("output-dir", "o", "plaintext_raft", "Output directory for decrypted raft logs")
 	mainCmd.AddCommand(
 		decryptCmd,
+		dumpWALCmd,
+		dumpSnapshotCmd,
+		dumpObjectCmd,
 	)
+
+	dumpWALCmd.Flags().Uint64("start", 0, "Start of index range to dump")
+	dumpWALCmd.Flags().Uint64("end", 0, "End of index range to dump")
+
+	dumpObjectCmd.Flags().String("id", "", "Look up object by ID")
+	dumpObjectCmd.Flags().String("name", "", "Look up object by name")
 }
 
 func main() {
