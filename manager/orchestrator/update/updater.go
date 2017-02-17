@@ -354,7 +354,7 @@ func (u *Updater) worker(ctx context.Context, queue <-chan orchestrator.Slot, de
 
 		if delay != 0 {
 			select {
-			case <-time.After(u.newService.Spec.Update.Delay):
+			case <-time.After(delay):
 			case <-u.stopChan:
 				return
 			}
