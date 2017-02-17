@@ -21,7 +21,7 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 )
 
-const defaultMonitor = 30 * time.Second
+const defaultMonitor = 5 * time.Second
 
 // Supervisor supervises a set of updates. It's responsible for keeping track of updates,
 // shutting them down and replacing them.
