@@ -17,6 +17,7 @@
 		health.proto
 		resource.proto
 		logbroker.proto
+		privileges.proto
 
 	It has these top-level messages:
 		Version
@@ -185,6 +186,9 @@
 		SubscriptionMessage
 		PublishLogsMessage
 		PublishLogsResponse
+		PrivilegeProfiles
+		WindowsRawPrivilegeProfile
+		LinuxRawPrivilegeProfile
 */
 package api
 
