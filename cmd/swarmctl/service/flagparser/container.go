@@ -64,5 +64,17 @@ func parseContainer(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		spec.Task.GetContainer().OpenStdin = openStdin
 	}
 
+	if err := parseBind(flags, spec); err != nil {
+		return err
+	}
+
+	if err := parseVolume(flags, spec); err != nil {
+		return err
+	}
+
+	if err := parseTmpfs(flags, spec); err != nil {
+		return err
+	}
+
 	return nil
 }
