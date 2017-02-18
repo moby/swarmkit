@@ -22,6 +22,7 @@ import (
 const (
 	indexID           = "id"
 	indexName         = "name"
+	indexRuntime      = "runtime"
 	indexServiceID    = "serviceid"
 	indexNodeID       = "nodeid"
 	indexSlot         = "slot"
@@ -570,6 +571,12 @@ func (tx readTx) findIterators(table string, by By, checkType func(By) error) ([
 		return []memdb.ResultIterator{it}, nil
 	case byNamePrefix:
 		it, err := tx.memDBTx.Get(table, indexName+prefix, strings.ToLower(string(v)))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byRuntime:
+		it, err := tx.memDBTx.Get(table, indexRuntime, string(v))
 		if err != nil {
 			return nil, err
 		}

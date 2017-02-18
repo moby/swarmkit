@@ -54,6 +54,16 @@ type byService string
 func (b byService) isBy() {
 }
 
+type byRuntime string
+
+func (b byRuntime) isBy() {
+}
+
+// ByRuntime creates an object to pass to Find to select by runtime.
+func ByRuntime(runtime string) By {
+	return byRuntime(runtime)
+}
+
 // ByServiceID creates an object to pass to Find to select by service.
 func ByServiceID(serviceID string) By {
 	return byService(serviceID)

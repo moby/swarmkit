@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/naming"
 	memdb "github.com/hashicorp/go-memdb"
 )
 
@@ -23,6 +24,11 @@ func init() {
 					Name:    indexName,
 					Unique:  true,
 					Indexer: api.ServiceIndexerByName{},
+				},
+				indexRuntime: {
+					Name:         indexRuntime,
+					AllowMissing: true,
+					Indexer:      serviceIndexerByRuntime{},
 				},
 				indexNetwork: {
 					Name:         indexNetwork,
@@ -125,7 +131,7 @@ func GetService(tx ReadTx, id string) *api.Service {
 func FindServices(tx ReadTx, by By) ([]*api.Service, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byNamePrefix, byIDPrefix, byReferencedNetworkID, byReferencedSecretID, byCustom, byCustomPrefix:
+		case byName, byNamePrefix, byIDPrefix, byRuntime, byReferencedNetworkID, byReferencedSecretID, byCustom, byCustomPrefix:
 			return nil
 		default:
 			return ErrInvalidFindBy
@@ -139,6 +145,25 @@ func FindServices(tx ReadTx, by By) ([]*api.Service, error) {
 
 	err := tx.find(tableService, by, checkType, appendResult)
 	return serviceList, err
+}
+
+type serviceIndexerByRuntime struct{}
+
+func (si serviceIndexerByRuntime) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (si serviceIndexerByRuntime) FromObject(obj interface{}) (bool, []byte, error) {
+	s := obj.(*api.Service)
+	r, err := naming.Runtime(s.Spec.Task)
+	if err != nil {
+		return false, nil, nil
+	}
+	return true, []byte(r + "\x00"), nil
+}
+
+func (si serviceIndexerByRuntime) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
 }
 
 type serviceIndexerByNetwork struct{}
