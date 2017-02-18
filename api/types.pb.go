@@ -71,6 +71,7 @@
 		ReplicatedService
 		GlobalService
 		TaskSpec
+		GenericRuntimeSpec
 		NetworkAttachmentSpec
 		ContainerSpec
 		EndpointSpec

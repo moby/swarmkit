@@ -15,6 +15,20 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+func createGenericSpec(name, runtime string) *api.ServiceSpec {
+	spec := createSpec(name, runtime, 0)
+	spec.Task.Runtime = &api.TaskSpec_Generic{
+		Generic: &api.GenericRuntimeSpec{
+			Kind: runtime,
+			Payload: &gogotypes.Any{
+				TypeUrl: "com.docker.custom.runtime",
+				Value:   []byte{0},
+			},
+		},
+	}
+	return spec
+}
+
 func createSpec(name, image string, instances uint64) *api.ServiceSpec {
 	return &api.ServiceSpec{
 		Annotations: api.Annotations{
@@ -102,6 +116,13 @@ func createService(t *testing.T, ts *testServer, name, image string, instances u
 	return r.Service
 }
 
+func createGenericService(t *testing.T, ts *testServer, name, runtime string) *api.Service {
+	spec := createGenericSpec(name, runtime)
+	r, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	assert.NoError(t, err)
+	return r.Service
+}
+
 func TestValidateResources(t *testing.T) {
 	bad := []*api.Resources{
 		{MemoryBytes: 1},
@@ -183,22 +204,28 @@ func TestValidateTaskSpec(t *testing.T) {
 			},
 			c: codes.InvalidArgument,
 		},
-		// NOTE(stevvooe): can't actually test this case because we don't have
-		// another runtime defined.
-		// {
-		//	s: &api.ServiceSpec{
-		//		Template: &api.TaskSpec{
-		//			Runtime:
-		//		},
-		//	},
-		//	c: codes.Unimplemented,
-		// },
+		{
+			s: api.TaskSpec{
+				Runtime: &api.TaskSpec_Attachment{
+					Attachment: &api.NetworkAttachmentSpec{},
+				},
+			},
+			c: codes.Unimplemented,
+		},
 		{
 			s: createSpec("", "", 0).Task,
 			c: codes.InvalidArgument,
 		},
 		{
 			s: createSpec("", "busybox###", 0).Task,
+			c: codes.InvalidArgument,
+		},
+		{
+			s: createGenericSpec("name", "").Task,
+			c: codes.InvalidArgument,
+		},
+		{
+			s: createGenericSpec("name", "c").Task,
 			c: codes.InvalidArgument,
 		},
 		{
@@ -217,6 +244,7 @@ func TestValidateTaskSpec(t *testing.T) {
 
 	for _, good := range []api.TaskSpec{
 		createSpec("", "image", 0).Task,
+		createGenericSpec("", "custom").Task,
 		createSpecWithHostnameTemplate("service", "{{.Service.Name}}-{{.Task.Slot}}").Task,
 	} {
 		err := validateTaskSpec(good)
@@ -850,12 +878,38 @@ func TestListServices(t *testing.T) {
 	assert.Equal(t, 1, len(r.Services))
 
 	createService(t, ts, "name2", "image", 1)
-	createService(t, ts, "name3", "image", 1)
+	s3 := createGenericService(t, ts, "name3", "my-runtime")
 
 	// List all.
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Services))
+
+	// List by runtime.
+	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
+		Filters: &api.ListServicesRequest_Filters{
+			Runtimes: []string{"container"},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(r.Services))
+
+	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
+		Filters: &api.ListServicesRequest_Filters{
+			Runtimes: []string{"my-runtime"},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(r.Services))
+	assert.Equal(t, s3.ID, r.Services[0].ID)
+
+	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
+		Filters: &api.ListServicesRequest_Filters{
+			Runtimes: []string{"invalid"},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Empty(t, r.Services)
 
 	// List with an ID prefix.
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
@@ -923,6 +977,17 @@ func TestListServices(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r.Services))
+
+	r, err = ts.Client.ListServices(context.Background(),
+		&api.ListServicesRequest{
+			Filters: &api.ListServicesRequest_Filters{
+				NamePrefixes: []string{"name3"},
+				Runtimes:     []string{"my-runtime"},
+			},
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(r.Services))
 
 	// List filter by label.
 	r, err = ts.Client.ListServices(context.Background(),
