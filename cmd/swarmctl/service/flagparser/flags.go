@@ -17,13 +17,20 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 
 	flags.Uint64("replicas", 1, "number of replicas for the service (only works in replicated service mode)")
 
+	flags.String("runtime", "container", "task runtime")
 	flags.String("image", "", "container image")
+
+	// Container runtime specific flags
 	flags.String("hostname", "", "container hostname")
 	flags.StringSlice("command", nil, "override entrypoint")
 	flags.StringSlice("args", nil, "container args")
 	flags.StringSlice("env", nil, "container env")
 	flags.Bool("tty", false, "open a tty on standard streams")
 	flags.Bool("open-stdin", false, "open standard input")
+	// TODO(stevvooe): Replace these with a more interesting mount flag.
+	flags.StringSlice("bind", nil, "define a bind mount")
+	flags.StringSlice("volume", nil, "define a volume mount")
+	flags.StringSlice("tmpfs", nil, "define a tmpfs mount")
 
 	flags.StringSlice("ports", nil, "ports")
 	flags.String("network", "", "network name")
@@ -47,11 +54,6 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.String("restart-window", "0s", "time window to evaluate restart attempts (0 = unbound)")
 
 	flags.StringSlice("constraint", nil, "Placement constraint (e.g. node.labels.key==value)")
-
-	// TODO(stevvooe): Replace these with a more interesting mount flag.
-	flags.StringSlice("bind", nil, "define a bind mount")
-	flags.StringSlice("volume", nil, "define a volume mount")
-	flags.StringSlice("tmpfs", nil, "define a tmpfs mount")
 
 	flags.String("log-driver", "", "specify a log driver")
 	flags.StringSlice("log-opt", nil, "log driver options, as key value pairs")
@@ -98,7 +100,7 @@ func Merge(cmd *cobra.Command, spec *api.ServiceSpec, c api.ControlClient) error
 		return err
 	}
 
-	if err := parseContainer(flags, spec); err != nil {
+	if err := parseRuntime(flags, spec); err != nil {
 		return err
 	}
 
@@ -123,18 +125,6 @@ func Merge(cmd *cobra.Command, spec *api.ServiceSpec, c api.ControlClient) error
 	}
 
 	if err := parsePlacement(flags, spec); err != nil {
-		return err
-	}
-
-	if err := parseBind(flags, spec); err != nil {
-		return err
-	}
-
-	if err := parseVolume(flags, spec); err != nil {
-		return err
-	}
-
-	if err := parseTmpfs(flags, spec); err != nil {
 		return err
 	}
 
