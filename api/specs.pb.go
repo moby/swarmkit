@@ -75,7 +75,7 @@ func (NodeSpec_Availability) EnumDescriptor() ([]byte, []int) { return fileDescr
 
 // ResolutionMode specifies the mode of resolution to use for
 // internal loadbalancing between tasks which are all within
-// the cluster. This is sometimes calles east-west data path.
+// the cluster. This is sometimes calls east-west data path.
 type EndpointSpec_ResolutionMode int32
 
 const (
@@ -459,7 +459,7 @@ func _TaskSpec_OneofSizer(msg proto.Message) (n int) {
 // NetworkAttachmentSpec specifies runtime parameters required to attach
 // a container to a network.
 type NetworkAttachmentSpec struct {
-	// ContainerID spcifies a unique ID of the container for which
+	// ContainerID specifies a unique ID of the container for which
 	// this attachment is for.
 	ContainerID string `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
 }
