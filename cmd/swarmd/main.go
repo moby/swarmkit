@@ -11,7 +11,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	engineapi "github.com/docker/docker/client"
-	"github.com/docker/swarmkit/agent/exec/container"
+	"github.com/docker/swarmkit/agent/exec/dockerapi"
 	"github.com/docker/swarmkit/cli"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/encryption"
@@ -151,7 +151,7 @@ var (
 				return err
 			}
 
-			executor := container.NewExecutor(client)
+			executor := dockerapi.NewExecutor(client)
 
 			if debugAddr != "" {
 				go func() {
