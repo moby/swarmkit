@@ -1780,7 +1780,7 @@ func watchAssignmentFailure(t *testing.T, watch chan events.Event) *api.Task {
 				}
 			}
 		case <-time.After(time.Second):
-			t.Fatalf("no task assignment failure")
+			t.Fatal("no task assignment failure")
 		}
 	}
 }
@@ -1797,7 +1797,7 @@ func watchAssignment(t *testing.T, watch chan events.Event) *api.Task {
 				}
 			}
 		case <-time.After(time.Second):
-			t.Fatalf("no task assignment")
+			t.Fatal("no task assignment")
 		}
 	}
 }

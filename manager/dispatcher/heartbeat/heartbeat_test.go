@@ -17,7 +17,7 @@ func TestHeartbeatBeat(t *testing.T) {
 	hb.Stop()
 	select {
 	case <-ch:
-		t.Fatalf("Heartbeat was expired")
+		t.Fatal("Heartbeat was expired")
 	case <-time.After(100 * time.Millisecond):
 	}
 }
@@ -31,7 +31,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 	select {
 	case <-ch:
 	case <-time.After(500 * time.Millisecond):
-		t.Fatalf("timeoutFunc wasn't called in timely fashion")
+		t.Fatal("timeoutFunc wasn't called in timely fashion")
 	}
 }
 
@@ -48,7 +48,7 @@ func TestHeartbeatReactivate(t *testing.T) {
 		select {
 		case <-ch:
 		case <-time.After(500 * time.Millisecond):
-			t.Fatalf("timeoutFunc wasn't called in timely fashion")
+			t.Fatal("timeoutFunc wasn't called in timely fashion")
 		}
 	}
 }
@@ -65,6 +65,6 @@ func TestHeartbeatUpdate(t *testing.T) {
 	select {
 	case <-ch:
 	case <-time.After(500 * time.Millisecond):
-		t.Fatalf("timeoutFunc wasn't called in timely fashion")
+		t.Fatal("timeoutFunc wasn't called in timely fashion")
 	}
 }

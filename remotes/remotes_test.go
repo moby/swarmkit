@@ -184,7 +184,7 @@ func TestRemotesZeroWeights(t *testing.T) {
 	// here, we ensure that three is at least three times more likely to be
 	// selected. This is somewhat arbitrary.
 	if count[api.Peer{Addr: "three"}] <= count[api.Peer{Addr: "one"}]*3 || count[api.Peer{Addr: "three"}] <= count[api.Peer{Addr: "two"}] {
-		t.Fatalf("three should outpace one and two")
+		t.Fatal("three should outpace one and two")
 	}
 }
 
