@@ -46,7 +46,7 @@ func TestTaskManager(t *testing.T) {
 			select {
 			case <-ready:
 			default:
-				t.Fatalf("should be running before ready")
+				t.Fatal("should be running before ready")
 			}
 		case api.TaskStateCompleted:
 			select {
@@ -80,7 +80,7 @@ func TestTaskManager(t *testing.T) {
 			select {
 			case <-tm.closed:
 			default:
-				t.Fatalf("not actually closed")
+				t.Fatal("not actually closed")
 			}
 
 			assert.NoError(t, tm.Close()) // hit a second time to make sure it behaves

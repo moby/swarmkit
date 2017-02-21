@@ -127,7 +127,7 @@ func TestHandleSessionMessage(t *testing.T) {
 	for _, m := range messages {
 		err := agent.handleSessionMessage(ctx, m)
 		if err != nil {
-			t.Fatalf("err should be nil")
+			t.Fatal("err should be nil")
 		}
 	}
 }
