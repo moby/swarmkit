@@ -1091,7 +1091,7 @@ func TestBatchFailure(t *testing.T) {
 	// Shouldn't be anything after the first transaction
 	select {
 	case <-watch:
-		t.Fatalf("unexpected additional events")
+		t.Fatal("unexpected additional events")
 	case <-time.After(50 * time.Millisecond):
 	}
 }
