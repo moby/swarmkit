@@ -40,7 +40,7 @@ func TestReporter(t *testing.T) {
 		key := uniqueStatus{taskID, status}
 		// make sure we get the status only once.
 		if _, ok := unique[key]; ok {
-			t.Fatalf("encountered status twice")
+			t.Fatal("encountered status twice")
 		}
 
 		if status.State == api.TaskStateCompleted {
