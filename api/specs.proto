@@ -132,7 +132,7 @@ message TaskSpec {
 // NetworkAttachmentSpec specifies runtime parameters required to attach
 // a container to a network.
 message NetworkAttachmentSpec {
-	// ContainerID spcifies a unique ID of the container for which
+	// ContainerID specifies a unique ID of the container for which
 	// this attachment is for.
 	string container_id = 1;
 }
@@ -280,7 +280,7 @@ message PluginSpec {
 message EndpointSpec {
 	// ResolutionMode specifies the mode of resolution to use for
 	// internal loadbalancing between tasks which are all within
-	// the cluster. This is sometimes calles east-west data path.
+	// the cluster. This is sometimes calls east-west data path.
 	enum ResolutionMode {
 		option (gogoproto.goproto_enum_prefix) = false;
 

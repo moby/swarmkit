@@ -109,7 +109,7 @@ func TestExtraHosts(t *testing.T) {
 
 	hostConfig := c.hostConfig()
 	if len(hostConfig.ExtraHosts) != 3 {
-		t.Fatalf("exepcted 3 extra hosts: %v", hostConfig.ExtraHosts)
+		t.Fatalf("expected 3 extra hosts: %v", hostConfig.ExtraHosts)
 	}
 
 	expected := "example.com:1.2.3.4"
