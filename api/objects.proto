@@ -4,8 +4,8 @@ package docker.swarmkit.v1;
 
 import "types.proto";
 import "specs.proto";
-import "google/protobuf/timestamp.proto";
 import "gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
 import "google/protobuf/any.proto";
 import "plugin/plugin.proto";
 
@@ -433,18 +433,5 @@ message Extension {
 
 	string description = 4;
 
-	// TODO(aaronl): Add optional indexing capabilities. It would be
-	// extremely useful be able to automatically introspect protobuf, json,
-	// etc. objects and automatically index them based on a schema and field
-	// paths defined here.
-	//
-	//oneof Schema {
-	//	google.protobuf.Descriptor protobuf = 1;
-	//	bytes json = 2;
-	//}
-	//
-	//Schema schema = 5;
-	//
-	// // Indices, with values expressed as Go templates.
-	//repeated IndexEntry index_templates = 6;
+	IndexSpec autoindex = 5;
 }

@@ -6,6 +6,7 @@ import "types.proto";
 import "gogoproto/gogo.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/any.proto";
+import "descriptor/descriptor.proto";
 
 // Specs are container objects for user provided input. All creations and
 // updates are done through spec types. As a convention, user input from a spec
@@ -396,4 +397,41 @@ message ConfigSpec {
 	// TODO(aaronl): Do we want to revise this to include multiple payloads in a single
 	// ConfigSpec? Define this to be a tar? etc...
 	bytes data = 2;
+}
+
+message IndexDeclaration {
+	// Key is the name of this index. It can be chosen arbitrarily.
+	string key = 1;
+
+	// Field is the dot-separated field path which should be used to find
+	// the value corresponding to this index.
+	// TODO(aaronl): Ideally, this should be expressed with Go templates,
+	// potentially allowing multiple extracted values to be combined as
+	// an index value.
+	string field = 2;
+}
+
+// IndexSpec provides instructions for automatically indexing stored objects.
+message IndexSpec {
+	// Indices
+	// In each entry, Key is the index key, and Val is 
+	// TODO(aaronl): Express the values as Go templates instead of just a
+	// fully-qualified field path.
+	repeated IndexDeclaration indices = 1;
+
+	message ProtobufSchema {
+		// FIXME(aaronl): Forking this is highly unfortunate, but gogo
+		// internals import the original version, and trying to import
+		// our own copy under the same name would cause duplicate
+		// registrations.
+		descriptor.FileDescriptorSet descriptor_set = 1;
+		// Fully qualified type name
+		string type = 2;
+	}
+
+	oneof Schema {
+		ProtobufSchema protobuf = 2;
+		// TODO(aaronl): Support JSON
+		//bytes json = 3;
+	}
 }

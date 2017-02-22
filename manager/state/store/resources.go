@@ -76,40 +76,50 @@ func init() {
 
 type resourceEntry struct {
 	*api.Resource
+	extension extensionEntry
 }
 
 func (r resourceEntry) CopyStoreObject() api.StoreObject {
-	return resourceEntry{Resource: r.Resource.Copy()}
+	return resourceEntry{Resource: r.Resource.Copy(), extension: r.extension}
 }
 
-func confirmExtension(tx Tx, r *api.Resource) error {
+func getExtension(tx Tx, r *api.Resource) (extensionEntry, error) {
 	// There must be an extension corresponding to the Kind field.
-	extensions, err := FindExtensions(tx, ByName(r.Kind))
+	var extensions []extensionEntry
+	appendResult := func(o api.StoreObject) {
+		extensions = append(extensions, o.(extensionEntry))
+	}
+	err := tx.find(tableExtension, ByName(r.Kind), func(by By) error { return nil }, appendResult)
 	if err != nil {
-		return errors.Wrap(err, "failed to query extensions")
+		return extensionEntry{}, errors.Wrap(err, "failed to query extension")
 	}
 	if len(extensions) == 0 {
-		return errors.Errorf("object kind %s is unregistered", r.Kind)
+		return extensionEntry{}, errors.Errorf("object kind %s is unregistered", r.Kind)
 	}
-	return nil
+	if len(extensions) > 1 {
+		panic("find by name returned multiple results")
+	}
+	return extensions[0], nil
 }
 
 // CreateResource adds a new resource object to the store.
 // Returns ErrExist if the ID is already taken.
 func CreateResource(tx Tx, r *api.Resource) error {
-	if err := confirmExtension(tx, r); err != nil {
+	extension, err := getExtension(tx, r)
+	if err != nil {
 		return err
 	}
-	return tx.create(tableResource, resourceEntry{r})
+	return tx.create(tableResource, resourceEntry{Resource: r, extension: extension})
 }
 
 // UpdateResource updates an existing resource object in the store.
 // Returns ErrNotExist if the object doesn't exist.
 func UpdateResource(tx Tx, r *api.Resource) error {
-	if err := confirmExtension(tx, r); err != nil {
+	extension, err := getExtension(tx, r)
+	if err != nil {
 		return err
 	}
-	return tx.update(tableResource, resourceEntry{r})
+	return tx.update(tableResource, resourceEntry{Resource: r, extension: extension})
 }
 
 // DeleteResource removes a resource object from the store.
@@ -195,5 +205,39 @@ func (indexer resourceCustomIndexer) PrefixFromArgs(args ...interface{}) ([]byte
 	return api.ResourceCustomIndexer{}.PrefixFromArgs(args...)
 }
 func (indexer resourceCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, error) {
-	return api.ResourceCustomIndexer{}.FromObject(obj.(resourceEntry).Resource)
+	r := obj.(resourceEntry)
+
+	var autoIndices [][]byte
+
+	// Automatic index?
+	if r.extension.indexer != nil && r.Payload != nil {
+		res, err := r.extension.indexer.Index(r.Payload.Value)
+		if err != nil {
+			return false, nil, err
+		}
+
+		for _, entry := range res {
+			index := make([]byte, 0, len(r.Kind)+1+len(entry.Key)+1+len(entry.Val)+1)
+			index = append(index, []byte(r.Kind)...)
+			index = append(index, '|')
+			index = append(index, []byte(entry.Key)...)
+			index = append(index, '|')
+			index = append(index, []byte(entry.Val)...)
+			index = append(index, '\x00')
+			autoIndices = append(autoIndices, index)
+		}
+	}
+
+	_, customIndices, _ := api.ResourceCustomIndexer{}.FromObject(r.Resource)
+
+	if len(customIndices) == 0 {
+		return len(autoIndices) != 0, autoIndices, nil
+	}
+
+	if len(autoIndices) != 0 {
+		// TODO(aaronl): There should probably be some protection
+		// between conflicting manual and automatic indices.
+		customIndices = append(customIndices, autoIndices...)
+	}
+	return len(customIndices) != 0, customIndices, nil
 }
