@@ -107,6 +107,15 @@ bin/%: cmd/% FORCE
 binaries: $(BINARIES) ## build binaries
 	@echo "🐳 $@"
 
+release-binaries:
+	@echo "🐳 $@"
+	docker build -t swarm-v2-build -f Dockerfile.build .
+	$(eval CID := $(shell docker create swarm-v2-build sh))
+	@( for bin in ${BINARIES}; do \
+		docker cp "${CID}:${DESTDIR}/$$bin" $$bin; \
+	done )
+	@docker rm -f ${CID}
+
 clean: ## clean up binaries
 	@echo "🐳 $@"
 	@rm -f $(BINARIES)
