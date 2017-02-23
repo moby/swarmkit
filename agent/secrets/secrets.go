@@ -76,8 +76,7 @@ func (sp *taskRestrictedSecretsProvider) Get(secretID string) *api.Secret {
 func Restrict(secrets exec.SecretGetter, t *api.Task) exec.SecretGetter {
 	sids := map[string]struct{}{}
 
-	container := t.Spec.GetContainer()
-	if container != nil {
+	if container := t.Spec.GetContainer(); container != nil {
 		for _, ref := range container.Secrets {
 			sids[ref.SecretID] = struct{}{}
 		}
