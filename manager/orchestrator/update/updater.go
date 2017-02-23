@@ -157,7 +157,7 @@ func (u *Updater) Run(ctx context.Context, slots []orchestrator.Slot) {
 	}
 
 	var (
-		parallelism            int
+		parallelism            = 1
 		delay                  time.Duration
 		failureAction          = api.UpdateConfig_PAUSE
 		allowedFailureFraction = float32(0)
