@@ -26,6 +26,14 @@ var (
 			if err != nil {
 				return err
 			}
+			noStdout, err := cmd.Flags().GetBool("no-stdout")
+			if err != nil {
+				return err
+			}
+			noStderr, err := cmd.Flags().GetBool("no-stderr")
+			if err != nil {
+				return err
+			}
 
 			ctx := context.Background()
 			conn, err := common.DialConn(cmd)
@@ -45,13 +53,21 @@ var (
 				serviceIDs = append(serviceIDs, service.ID)
 			}
 
+			stdstreams := []api.LogStream{}
+			if !noStdout {
+				stdstreams = append(stdstreams, api.LogStreamStdout)
+			}
+			if !noStderr {
+				stdstreams = append(stdstreams, api.LogStreamStderr)
+			}
 			client := api.NewLogsClient(conn)
 			stream, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
 				Selector: &api.LogSelector{
 					ServiceIDs: serviceIDs,
 				},
 				Options: &api.LogSubscriptionOptions{
-					Follow: follow,
+					Follow:  follow,
+					Streams: stdstreams,
 				},
 			})
 			if err != nil {
@@ -86,4 +102,6 @@ var (
 
 func init() {
 	logsCmd.Flags().BoolP("follow", "f", false, "Follow log output")
+	logsCmd.Flags().Bool("no-stdout", false, "Ignore stdout messages")
+	logsCmd.Flags().Bool("no-stderr", false, "Ignore stderr messages")
 }
