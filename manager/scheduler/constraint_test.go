@@ -55,7 +55,7 @@ func setupEnv() {
 			},
 		},
 		Tasks: make(map[string]*api.Task),
-		DesiredRunningTasksCountByService: make(map[string]int),
+		ActiveTasksCountByService: make(map[string]int),
 	}
 }
 
