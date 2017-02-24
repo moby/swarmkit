@@ -400,3 +400,110 @@ func TestManagerLockUnlock(t *testing.T) {
 	// error.
 	<-done
 }
+
+// If the root CA material is updated in the memory store, a manager will update its own
+// security configs even if it's "not the leader" (which we will fake by calling `becomeFollower`)
+func TestManagerUpdatesSecurityConfig(t *testing.T) {
+	ctx := context.Background()
+
+	temp, err := ioutil.TempFile("", "test-manager-update-security-config")
+	require.NoError(t, err)
+	require.NoError(t, temp.Close())
+	require.NoError(t, os.Remove(temp.Name()))
+
+	defer os.RemoveAll(temp.Name())
+
+	stateDir, err := ioutil.TempDir("", "test-raft")
+	require.NoError(t, err)
+	defer os.RemoveAll(stateDir)
+
+	tc := testutils.NewTestCA(t)
+	defer tc.Stop()
+
+	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
+	require.NoError(t, err)
+
+	_, _, err = managerSecurityConfig.KeyReader().Read()
+	require.NoError(t, err)
+
+	m, err := New(&Config{
+		RemoteAPI:      &RemoteAddrs{ListenAddr: "127.0.0.1:0"},
+		ControlAPI:     temp.Name(),
+		StateDir:       stateDir,
+		SecurityConfig: managerSecurityConfig,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, m)
+
+	done := make(chan error)
+	defer close(done)
+	go func() {
+		done <- m.Run(ctx)
+	}()
+
+	// wait until the CA server is running
+	opts := []grpc.DialOption{
+		grpc.WithTimeout(10 * time.Second),
+		grpc.WithTransportCredentials(managerSecurityConfig.ClientTLSCreds),
+	}
+
+	conn, err := grpc.Dial(m.Addr(), opts...)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, conn.Close())
+	}()
+
+	client := api.NewCAClient(conn)
+
+	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+		ctx, _ := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		_, err := client.GetRootCACertificate(ctx, &api.GetRootCACertificateRequest{})
+		return err
+	}, time.Second))
+
+	// wait until the cluster is up
+	var clusters []*api.Cluster
+
+	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+		var err error
+		m.raftNode.MemoryStore().View(func(tx store.ReadTx) {
+			clusters, err = store.FindClusters(tx, store.ByName(store.DefaultClusterName))
+		})
+		if err != nil {
+			return err
+		}
+		if len(clusters) == 0 {
+			return fmt.Errorf("cluster not ready yet")
+		}
+		return nil
+	}, 1*time.Second))
+
+	// stop running CA server and other leader functions
+	m.becomeFollower()
+
+	newRootCert, _, err := testutils.CreateRootCertAndKey("rootOther")
+	require.NoError(t, err)
+	updatedCA := append(tc.RootCA.Cert, newRootCert...)
+
+	// Update the RootCA to have a bundle
+	require.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
+		cluster := store.GetCluster(tx, clusters[0].ID)
+		cluster.RootCA.CACert = updatedCA
+		return store.UpdateCluster(tx, cluster)
+	}))
+
+	// wait for the manager's security config to be updated
+	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+		if !bytes.Equal(managerSecurityConfig.RootCA().Cert, updatedCA) {
+			return fmt.Errorf("root CA not updated yet")
+		}
+		return nil
+	}, 1*time.Second))
+
+	m.Stop(ctx, false)
+
+	// After stopping we should MAY receive an error from ListenAndServe if
+	// all this happened before WaitForLeader completed, so don't check the
+	// error.
+	<-done
+}

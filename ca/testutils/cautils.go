@@ -167,7 +167,7 @@ func NewTestCA(t *testing.T, krwGenerators ...func(ca.CertPaths) *ca.KeyReadWrit
 	workerToken := ca.GenerateJoinToken(&rootCA)
 
 	createClusterObject(t, s, organization, workerToken, managerToken, externalCAs...)
-	caServer := ca.NewServer(s, managerConfig)
+	caServer := ca.NewServer(s, managerConfig, false)
 	caServer.SetReconciliationRetryInterval(50 * time.Millisecond)
 	api.RegisterCAServer(grpcServer, caServer)
 	api.RegisterNodeCAServer(grpcServer, caServer)

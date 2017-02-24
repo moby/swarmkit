@@ -36,6 +36,10 @@ type Server struct {
 	joinTokens                  *api.JoinTokens
 	reconciliationRetryInterval time.Duration
 
+	// skipAutoUpdateRootCA, if set to true, causes the CA server to skip automatically updating
+	// the signing credentials based on changes in the memory store
+	skipAutoUpdateRootCA bool
+
 	// pending is a map of nodes with pending certificates issuance or
 	// renewal. They are indexed by node ID.
 	pending map[string]*api.Node
@@ -53,13 +57,14 @@ func DefaultCAConfig() api.CAConfig {
 }
 
 // NewServer creates a CA API server.
-func NewServer(store *store.MemoryStore, securityConfig *SecurityConfig) *Server {
+func NewServer(store *store.MemoryStore, securityConfig *SecurityConfig, skipAutoUpdateRootCA bool) *Server {
 	return &Server{
 		store:                       store,
 		securityConfig:              securityConfig,
 		pending:                     make(map[string]*api.Node),
 		started:                     make(chan struct{}),
 		reconciliationRetryInterval: defaultReconciliationRetryInterval,
+		skipAutoUpdateRootCA:        skipAutoUpdateRootCA,
 	}
 }
 
@@ -382,6 +387,13 @@ func (s *Server) Run(ctx context.Context) error {
 	// Retrieve the channels to keep track of changes in the cluster
 	// Retrieve all the currently registered nodes
 	var nodes []*api.Node
+	specifiers := []state.Event{
+		state.EventCreateNode{},
+		state.EventUpdateNode{},
+	}
+	if !s.skipAutoUpdateRootCA {
+		specifiers = append(specifiers, state.EventUpdateCluster{})
+	}
 	updates, cancel, err := store.ViewAndWatch(
 		s.store,
 		func(readTx store.ReadTx) error {
@@ -392,14 +404,14 @@ func (s *Server) Run(ctx context.Context) error {
 			if len(clusters) != 1 {
 				return errors.New("could not find cluster object")
 			}
-			s.updateCluster(ctx, clusters[0])
+			if !s.skipAutoUpdateRootCA {
+				s.UpdateRootCA(ctx, clusters[0])
+			}
 
 			nodes, err = store.FindNodes(readTx, store.All)
 			return err
 		},
-		state.EventCreateNode{},
-		state.EventUpdateNode{},
-		state.EventUpdateCluster{},
+		specifiers...,
 	)
 
 	// Do this after updateCluster has been called, so isRunning never
@@ -435,6 +447,12 @@ func (s *Server) Run(ctx context.Context) error {
 	// to the cluster
 	for {
 		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
+
+		select {
 		case event := <-updates:
 			switch v := event.(type) {
 			case state.EventCreateNode:
@@ -446,7 +464,7 @@ func (s *Server) Run(ctx context.Context) error {
 					s.evaluateAndSignNodeCert(ctx, v.Node)
 				}
 			case state.EventUpdateCluster:
-				s.updateCluster(ctx, v.Cluster)
+				s.UpdateRootCA(ctx, v.Cluster)
 			}
 		case <-ticker.C:
 			for _, node := range s.pending {
@@ -512,9 +530,10 @@ func (s *Server) isRunning() bool {
 	return true
 }
 
-// updateCluster is called when there are cluster changes, and it ensures that the local RootCA is
-// always aware of changes in clusterExpiry and the Root CA key material
-func (s *Server) updateCluster(ctx context.Context, cluster *api.Cluster) {
+// UpdateRootCA is called when there are cluster changes, and it ensures that the local RootCA is
+// always aware of changes in clusterExpiry and the Root CA key material - this can be called by
+// anything to update the root CA material
+func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) {
 	s.mu.Lock()
 	s.joinTokens = cluster.RootCA.JoinTokens.Copy()
 	s.mu.Unlock()

@@ -208,8 +208,9 @@ func New(config *Config) (*Manager, error) {
 	}
 
 	m := &Manager{
-		config:          *config,
-		caserver:        ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig),
+		config: *config,
+		// manager will tell the CA server to update the RootCA, so skip having the CA server autoupdate the root ca material
+		caserver:        ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig, true),
 		dispatcher:      dispatcher.New(raftNode, dispatcher.DefaultConfig()),
 		logbroker:       logbroker.New(raftNode.MemoryStore()),
 		server:          grpc.NewServer(opts...),
@@ -514,7 +515,7 @@ func (m *Manager) Run(parent context.Context) error {
 	}
 	raftConfig := c.Spec.Raft
 
-	if err := m.watchForKEKChanges(ctx); err != nil {
+	if err := m.watchForClusterChanges(ctx); err != nil {
 		return err
 	}
 
@@ -679,7 +680,7 @@ func (m *Manager) updateKEK(ctx context.Context, cluster *api.Cluster) error {
 	return nil
 }
 
-func (m *Manager) watchForKEKChanges(ctx context.Context) error {
+func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 	clusterID := m.config.SecurityConfig.ClientTLSCreds.Organization()
 	clusterWatch, clusterWatchCancel, err := store.ViewAndWatch(m.raftNode.MemoryStore(),
 		func(tx store.ReadTx) error {
@@ -687,6 +688,7 @@ func (m *Manager) watchForKEKChanges(ctx context.Context) error {
 			if cluster == nil {
 				return fmt.Errorf("unable to get current cluster")
 			}
+			m.caserver.UpdateRootCA(ctx, cluster)
 			return m.updateKEK(ctx, cluster)
 		},
 		state.EventUpdateCluster{
@@ -702,6 +704,7 @@ func (m *Manager) watchForKEKChanges(ctx context.Context) error {
 			select {
 			case event := <-clusterWatch:
 				clusterEvent := event.(state.EventUpdateCluster)
+				m.caserver.UpdateRootCA(ctx, clusterEvent.Cluster)
 				m.updateKEK(ctx, clusterEvent.Cluster)
 			case <-ctx.Done():
 				clusterWatchCancel()
