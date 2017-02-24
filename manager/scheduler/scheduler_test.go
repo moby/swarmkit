@@ -1689,6 +1689,213 @@ func TestSchedulerPreexistingDeadTask(t *testing.T) {
 	assert.Equal(t, "id1", assignment.NodeID)
 }
 
+func TestSchedulerCompatiblePlatform(t *testing.T) {
+	ctx := context.Background()
+	// create tasks
+	// task1 - has a node it can run on
+	task1 := &api.Task{
+		ID:           "id1",
+		DesiredState: api.TaskStateRunning,
+		ServiceAnnotations: api.Annotations{
+			Name: "name1",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+		Spec: api.TaskSpec{
+			Placement: &api.Placement{
+				Platforms: []*api.Platform{
+					{
+						Architecture: "amd64",
+						OS:           "linux",
+					},
+				},
+			},
+		},
+	}
+
+	// task2 - has no node it can run on
+	task2 := &api.Task{
+		ID:           "id2",
+		DesiredState: api.TaskStateRunning,
+		ServiceAnnotations: api.Annotations{
+			Name: "name2",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+		Spec: api.TaskSpec{
+			Placement: &api.Placement{
+				Platforms: []*api.Platform{
+					{
+						Architecture: "intel",
+						OS:           "linux",
+					},
+				},
+			},
+		},
+	}
+
+	// task3 - no platform constraints, should run on any node
+	task3 := &api.Task{
+		ID:           "id3",
+		DesiredState: api.TaskStateRunning,
+		ServiceAnnotations: api.Annotations{
+			Name: "name3",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+	}
+
+	// task4 - only OS constraint, is runnable on any linux node
+	task4 := &api.Task{
+		ID:           "id4",
+		DesiredState: api.TaskStateRunning,
+		ServiceAnnotations: api.Annotations{
+			Name: "name4",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+		Spec: api.TaskSpec{
+			Placement: &api.Placement{
+				Platforms: []*api.Platform{
+					{
+						Architecture: "",
+						OS:           "linux",
+					},
+				},
+			},
+		},
+	}
+
+	// task5 - supported on multiple platforms
+	task5 := &api.Task{
+		ID:           "id5",
+		DesiredState: api.TaskStateRunning,
+		ServiceAnnotations: api.Annotations{
+			Name: "name5",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+		Spec: api.TaskSpec{
+			Placement: &api.Placement{
+				Platforms: []*api.Platform{
+					{
+						Architecture: "amd64",
+						OS:           "linux",
+					},
+					{
+						Architecture: "amd64",
+						OS:           "windows",
+					},
+				},
+			},
+		},
+	}
+
+	node1 := &api.Node{
+		ID: "node1",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node1",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+		Description: &api.NodeDescription{
+			Platform: &api.Platform{
+				Architecture: "amd64",
+				OS:           "linux",
+			},
+		},
+	}
+
+	node2 := &api.Node{
+		ID: "node2",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node2",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+		Description: &api.NodeDescription{
+			Platform: &api.Platform{
+				Architecture: "amd64",
+				OS:           "windows",
+			},
+		},
+	}
+
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	err := s.Update(func(tx store.Tx) error {
+		// Add initial task and nodes to the store
+		assert.NoError(t, store.CreateTask(tx, task1))
+		assert.NoError(t, store.CreateNode(tx, node1))
+		assert.NoError(t, store.CreateNode(tx, node2))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(s)
+
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run(ctx))
+	}()
+	defer scheduler.Stop()
+
+	// task1 should get assigned
+	assignment1 := watchAssignment(t, watch)
+	assert.Equal(t, "node1", assignment1.NodeID)
+
+	// add task2
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, task2))
+		return nil
+	})
+	assert.NoError(t, err)
+	failure := watchAssignmentFailure(t, watch)
+	assert.Equal(t, "no suitable node (unsupported platform on 2 nodes)", failure.Status.Message)
+
+	// add task3
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, task3))
+		return nil
+	})
+	assert.NoError(t, err)
+	assignment2 := watchAssignment(t, watch)
+	assert.Regexp(t, assignment2.NodeID, "(node1|node2)")
+
+	// add task4
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, task4))
+		return nil
+	})
+	assert.NoError(t, err)
+	assignment3 := watchAssignment(t, watch)
+	assert.Equal(t, "node1", assignment3.NodeID)
+
+	// add task5
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, task5))
+		return nil
+	})
+	assert.NoError(t, err)
+	assignment4 := watchAssignment(t, watch)
+	assert.Regexp(t, assignment4.NodeID, "(node1|node2)")
+}
+
 func TestPreassignedTasks(t *testing.T) {
 	ctx := context.Background()
 	initialNodeSet := []*api.Node{
