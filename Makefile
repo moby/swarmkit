@@ -27,7 +27,7 @@ GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
 all: check binaries test integration ## run fmt, vet, lint, build the binaries and run the tests
 
-check: fmt vet lint ineffassign ## run fmt, vet, lint, ineffassign
+check: fmt vet lint ineffassign misspell ## run fmt, vet, lint, ineffassign, misspell
 
 ci: check binaries checkprotos coverage coverage-integration ## to be used by the CI
 
@@ -45,6 +45,7 @@ setup: ## install dependencies
 	#@go get -u github.com/kisielk/errcheck
 	@go get -u github.com/golang/mock/mockgen
 	@go get -u github.com/gordonklaus/ineffassign
+	@go get -u github.com/client9/misspell/cmd/misspell
 
 generate: bin/protoc-gen-gogoswarm ## generate protobuf
 	@echo "🐳 $@"
@@ -61,6 +62,10 @@ checkprotos: generate ## check if protobufs needs to be generated again
 vet: binaries ## run go vet
 	@echo "🐳 $@"
 	@test -z "$$(go vet ${PACKAGES} 2>&1 | grep -v 'constant [0-9]* not a string in call to Errorf' | egrep -v '(timestamp_test.go|duration_test.go|exit status 1)' | tee /dev/stderr)"
+
+misspell:
+	@echo "🐳 $@"
+	@test -z "$$(find . -type f | grep -v vendor/ | grep -v bin/ | grep -v .git/ | grep -v MAINTAINERS | xargs misspell | tee /dev/stderr)"
 
 fmt: ## run go fmt
 	@echo "🐳 $@"
