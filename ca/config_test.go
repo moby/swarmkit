@@ -7,12 +7,17 @@ import (
 	"encoding/pem"
 	"io/ioutil"
 	"math/big"
+	"net"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"google.golang.org/grpc"
+
 	"golang.org/x/net/context"
+
+	"crypto/tls"
 
 	cfconfig "github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/helpers"
@@ -263,6 +268,99 @@ func TestLoadSecurityConfigIncorrectPassphrase(t *testing.T) {
 
 	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, ca.NewKeyReadWriter(paths.Node, nil, nil), false)
 	require.IsType(t, ca.ErrInvalidKEK{}, err)
+}
+
+func TestSecurityConfigUpdateRootCA(t *testing.T) {
+	tc := testutils.NewTestCA(t)
+	defer tc.Stop()
+	tcConfig, err := tc.NewNodeConfig("worker")
+	require.NoError(t, err)
+
+	// create the "original" security config, and we'll update it to trust the test server's
+	cert, key, err := testutils.CreateRootCertAndKey("root1")
+	require.NoError(t, err)
+	rootCA, err := ca.NewRootCA(cert, key, ca.DefaultNodeCertExpiration)
+	require.NoError(t, err)
+
+	tempdir, err := ioutil.TempDir("", "test-security-config-update")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+	configPaths := ca.NewConfigPaths(tempdir)
+
+	secConfig, err := rootCA.CreateSecurityConfig(context.Background(),
+		ca.NewKeyReadWriter(configPaths.Node, nil, nil), ca.CertificateRequestConfig{})
+	require.NoError(t, err)
+	// update the server TLS to require certificates, otherwise this will all pass
+	// even if the root pools aren't updated
+	secConfig.ServerTLSCreds.Config().ClientAuth = tls.RequireAndVerifyClientCert
+
+	// set up a GRPC server using these credentials
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	serverOpts := []grpc.ServerOption{grpc.Creds(secConfig.ServerTLSCreds)}
+	grpcServer := grpc.NewServer(serverOpts...)
+	go grpcServer.Serve(l)
+	defer grpcServer.Stop()
+
+	// we should not be able to connect to the test CA server using the original security config, and should not
+	// be able to connect to new server using the test CA's client credentials
+	dialOptsBase := []grpc.DialOption{
+		grpc.WithBlock(),
+		grpc.WithTimeout(10 * time.Second),
+	}
+	dialOpts := append(dialOptsBase, grpc.WithTransportCredentials(secConfig.ClientTLSCreds))
+	_, err = grpc.Dial(tc.Addr, dialOpts...)
+	require.Error(t, err)
+	require.IsType(t, x509.UnknownAuthorityError{}, err)
+
+	dialOpts = append(dialOptsBase, grpc.WithTransportCredentials(tcConfig.ClientTLSCreds))
+	_, err = grpc.Dial(l.Addr().String(), dialOpts...)
+	require.Error(t, err)
+	require.IsType(t, x509.UnknownAuthorityError{}, err)
+
+	// we can't connect to the test CA's external server either
+	csr, _, err := ca.GenerateNewCSR()
+	require.NoError(t, err)
+	req := ca.PrepareCSR(csr, "cn", ca.ManagerRole, secConfig.ClientTLSCreds.Organization())
+
+	externalServer := tc.ExternalSigningServer
+	if testutils.External {
+		// stop the external server and create a new one because the external server actually has to trust our client certs as well.
+		updatedRoot, err := ca.NewRootCA(append(tc.RootCA.Cert, cert...), tc.RootCA.Key, ca.DefaultNodeCertExpiration)
+		require.NoError(t, err)
+		externalServer, err = testutils.NewExternalSigningServer(updatedRoot, tc.TempDir)
+		require.NoError(t, err)
+		defer externalServer.Stop()
+
+		secConfig.ExternalCA().UpdateURLs(externalServer.URL)
+		_, err = secConfig.ExternalCA().Sign(context.Background(), req)
+		require.Error(t, err)
+		// the type is weird (it's wrapped in a bunch of other things in ctxhttp), so just compare strings
+		require.Contains(t, err.Error(), x509.UnknownAuthorityError{}.Error())
+	}
+
+	// update the root CA on the "original"" security config to support both the old root
+	// and the "new root" (the testing CA root)
+	err = secConfig.UpdateRootCA(append(rootCA.Cert, tc.RootCA.Cert...), rootCA.Key, ca.DefaultNodeCertExpiration)
+	require.NoError(t, err)
+
+	// can now connect to the test CA using our modified security config, and can cannect to our server using
+	// the test CA config
+	conn, err := grpc.Dial(tc.Addr, dialOpts...)
+	require.NoError(t, err)
+	conn.Close()
+
+	dialOpts = append(dialOptsBase, grpc.WithTransportCredentials(secConfig.ClientTLSCreds))
+	conn, err = grpc.Dial(tc.Addr, dialOpts...)
+	require.NoError(t, err)
+	conn.Close()
+
+	// we can also now connect to the test CA's external signing server
+	if testutils.External {
+		secConfig.ExternalCA().UpdateURLs(externalServer.URL)
+		_, err := secConfig.ExternalCA().Sign(context.Background(), req)
+		require.NoError(t, err)
+	}
 }
 
 func TestRenewTLSConfigWorker(t *testing.T) {
