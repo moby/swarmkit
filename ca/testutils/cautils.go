@@ -50,7 +50,7 @@ type TestCA struct {
 	KeyReadWriter         *ca.KeyReadWriter
 }
 
-// Stop cleansup after TestCA
+// Stop cleans up after TestCA
 func (tc *TestCA) Stop() {
 	os.RemoveAll(tc.TempDir)
 	for _, conn := range tc.Conns {
