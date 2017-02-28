@@ -24,3 +24,7 @@ _testmain.go
 *.prof
 
 bin/
+
+# ignore the obvious locations of swarmkitstate
+swarmkitstate
+bin/swarmkitstate
