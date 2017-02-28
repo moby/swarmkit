@@ -147,7 +147,18 @@ func pollServiceReady(t *testing.T, c *testCluster, sid string, replicas int) {
 }
 
 func newCluster(t *testing.T, numWorker, numManager int) *testCluster {
-	cl := newTestCluster()
+	// Get name of caller
+	var testName string
+	pc, _, _, ok := runtime.Caller(1)
+	if ok {
+		funcName := runtime.FuncForPC(pc).Name()
+		splitted := strings.Split(funcName, ".")
+		if len(splitted) > 1 {
+			testName = splitted[len(splitted)-1]
+		}
+	}
+
+	cl := newTestCluster(testName)
 	for i := 0; i < numManager; i++ {
 		require.NoError(t, cl.AddManager(false, nil), "manager number %d", i+1)
 	}
@@ -174,7 +185,7 @@ func TestServiceCreateLateBind(t *testing.T) {
 
 	numWorker, numManager := 3, 3
 
-	cl := newTestCluster()
+	cl := newTestCluster("TestServiceCreateLateBind")
 	for i := 0; i < numManager; i++ {
 		require.NoError(t, cl.AddManager(true, nil), "manager number %d", i+1)
 	}
@@ -489,7 +500,7 @@ func TestForceNewCluster(t *testing.T) {
 
 	// start a new cluster with the external CA bootstrapped
 	numWorker, numManager := 0, 1
-	cl := newTestCluster()
+	cl := newTestCluster("TestForceNewCluster")
 	defer func() {
 		require.NoError(t, cl.Stop())
 	}()
