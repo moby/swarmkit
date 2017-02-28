@@ -25,7 +25,7 @@ func TestRaftSnapshot(t *testing.T) {
 
 	// Bring up a 3 node cluster
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc, &api.RaftConfig{SnapshotInterval: 9, LogEntriesForSlowFollowers: 0})
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7", "id8", "id9", "id10", "id11", "id12"}
 	values := make([]*api.Node, len(nodeIDs))
@@ -135,7 +135,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Bring up a 3 node cluster
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc, &api.RaftConfig{SnapshotInterval: 10, LogEntriesForSlowFollowers: 0})
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7"}
 	values := make([]*api.Node, len(nodeIDs))
@@ -257,7 +257,7 @@ func TestRaftSnapshotForceNewCluster(t *testing.T) {
 
 	// Bring up a 3 node cluster
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc, &api.RaftConfig{SnapshotInterval: 10, LogEntriesForSlowFollowers: 0})
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5"}
 
@@ -374,12 +374,12 @@ func TestGCWAL(t *testing.T) {
 		return nil
 	}))
 
-	raftutils.TeardownCluster(t, nodes)
+	raftutils.TeardownCluster(nodes)
 
 	// Repeat this test, but trigger the snapshot after the WAL has rotated
 	proposals++
 	nodes, clockSource = raftutils.NewRaftCluster(t, tc, &api.RaftConfig{SnapshotInterval: uint64(proposals + extraLogEntries), LogEntriesForSlowFollowers: 0})
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	for i := 0; i != proposals; i++ {
 		_, err := proposeLargeValue(t, nodes[1], DefaultProposalTime, fmt.Sprintf("id%d", i))
@@ -524,7 +524,7 @@ func TestRaftEncryptionKeyRotationWait(t *testing.T) {
 
 	raftConfig := raft.DefaultRaftConfig()
 	nodes[1], clockSource = raftutils.NewInitNode(t, tc, &raftConfig)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	nodeIDs := []string{"id1", "id2", "id3"}
 	values := make([]*api.Node, len(nodeIDs))
@@ -744,7 +744,7 @@ func TestRaftEncryptionKeyRotationStress(t *testing.T) {
 
 	// Bring up a 3 nodes cluster
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 	leader := nodes[1]
 
 	// constantly propose values
