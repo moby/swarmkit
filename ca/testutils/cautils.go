@@ -21,6 +21,7 @@ import (
 	"github.com/docker/swarmkit/connectionbroker"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/ioutils"
+	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/remotes"
 	"github.com/opencontainers/go-digest"
@@ -48,10 +49,12 @@ type TestCA struct {
 	ManagerToken          string
 	ConnBroker            *connectionbroker.Broker
 	KeyReadWriter         *ca.KeyReadWriter
+	watchCancel           func()
 }
 
 // Stop cleans up after TestCA
 func (tc *TestCA) Stop() {
+	tc.watchCancel()
 	os.RemoveAll(tc.TempDir)
 	for _, conn := range tc.Conns {
 		conn.Close()
@@ -167,12 +170,37 @@ func NewTestCA(t *testing.T, krwGenerators ...func(ca.CertPaths) *ca.KeyReadWrit
 	workerToken := ca.GenerateJoinToken(&rootCA)
 
 	createClusterObject(t, s, organization, workerToken, managerToken, externalCAs...)
-	caServer := ca.NewServer(s, managerConfig, false)
+	caServer := ca.NewServer(s, managerConfig)
 	caServer.SetReconciliationRetryInterval(50 * time.Millisecond)
 	api.RegisterCAServer(grpcServer, caServer)
 	api.RegisterNodeCAServer(grpcServer, caServer)
 
 	ctx := context.Background()
+
+	clusterWatch, clusterWatchCancel, err := store.ViewAndWatch(
+		s, func(tx store.ReadTx) error {
+			cluster := store.GetCluster(tx, organization)
+			caServer.UpdateRootCA(ctx, cluster)
+			return nil
+		},
+		state.EventUpdateCluster{
+			Cluster: &api.Cluster{ID: organization},
+			Checks:  []state.ClusterCheckFunc{state.ClusterCheckID},
+		},
+	)
+	assert.NoError(t, err)
+	go func() {
+		for {
+			select {
+			case event := <-clusterWatch:
+				clusterEvent := event.(state.EventUpdateCluster)
+				caServer.UpdateRootCA(ctx, clusterEvent.Cluster)
+			case <-ctx.Done():
+				clusterWatchCancel()
+				return
+			}
+		}
+	}()
 
 	go grpcServer.Serve(l)
 	go caServer.Run(ctx)
@@ -202,6 +230,7 @@ func NewTestCA(t *testing.T, krwGenerators ...func(ca.CertPaths) *ca.KeyReadWrit
 		ManagerToken:          managerToken,
 		ConnBroker:            connectionbroker.New(remotes),
 		KeyReadWriter:         krw,
+		watchCancel:           clusterWatchCancel,
 	}
 }
 

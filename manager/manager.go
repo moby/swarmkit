@@ -208,9 +208,8 @@ func New(config *Config) (*Manager, error) {
 	}
 
 	m := &Manager{
-		config: *config,
-		// manager will tell the CA server to update the RootCA, so skip having the CA server autoupdate the root ca material
-		caserver:        ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig, true),
+		config:          *config,
+		caserver:        ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig),
 		dispatcher:      dispatcher.New(raftNode, dispatcher.DefaultConfig()),
 		logbroker:       logbroker.New(raftNode.MemoryStore()),
 		server:          grpc.NewServer(opts...),
