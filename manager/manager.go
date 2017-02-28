@@ -983,7 +983,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	}(m.globalOrchestrator)
 
 	go func(roleManager *roleManager) {
-		roleManager.Run()
+		roleManager.Run(ctx)
 	}(m.roleManager)
 }
 
