@@ -56,7 +56,7 @@ func TestRaftBootstrap(t *testing.T) {
 	t.Parallel()
 
 	nodes, _ := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	assert.Len(t, nodes[1].GetMemberlist(), 3)
 	assert.Len(t, nodes[2].GetMemberlist(), 3)
@@ -83,7 +83,7 @@ func TestRaftJoinTwice(t *testing.T) {
 	t.Parallel()
 
 	nodes, _ := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Node 3 tries to join again
 	// Use gRPC instead of calling handler directly because of
@@ -103,7 +103,7 @@ func TestRaftLeader(t *testing.T) {
 	t.Parallel()
 
 	nodes, _ := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	assert.True(t, nodes[1].IsLeader(), "error: node 1 is not the Leader")
 
@@ -117,7 +117,7 @@ func TestRaftLeaderDown(t *testing.T) {
 	t.Parallel()
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Stop node 1
 	nodes[1].ShutdownRaft()
@@ -170,7 +170,7 @@ func TestRaftFollowerDown(t *testing.T) {
 	t.Parallel()
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Stop node 3
 	nodes[3].ShutdownRaft()
@@ -195,7 +195,7 @@ func TestRaftLogReplication(t *testing.T) {
 	t.Parallel()
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Propose a value
 	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
@@ -210,7 +210,7 @@ func TestRaftLogReplication(t *testing.T) {
 func TestRaftLogReplicationWithoutLeader(t *testing.T) {
 	t.Parallel()
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Stop the leader
 	nodes[1].ShutdownRaft()
@@ -231,7 +231,7 @@ func TestRaftQuorumFailure(t *testing.T) {
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Lose a majority
 	for i := uint64(3); i <= 5; i++ {
@@ -255,7 +255,7 @@ func TestRaftQuorumRecovery(t *testing.T) {
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Lose a majority
 	for i := uint64(1); i <= 3; i++ {
@@ -290,7 +290,7 @@ func TestRaftFollowerLeave(t *testing.T) {
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Node 5 leaves the cluster
 	// Use gRPC instead of calling handler directly because of
@@ -331,7 +331,7 @@ func TestRaftLeaderLeave(t *testing.T) {
 	t.Parallel()
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// node 1 is the leader
 	assert.Equal(t, nodes[1].Leader(), nodes[1].Config.ID)
@@ -392,7 +392,7 @@ func TestRaftLeaderLeave(t *testing.T) {
 	raftutils.CheckValue(t, clockSource, followerNode, value)
 	assert.Len(t, followerNode.GetMemberlist(), 2)
 
-	raftutils.TeardownCluster(t, newCluster)
+	raftutils.TeardownCluster(newCluster)
 }
 
 func TestRaftNewNodeGetsData(t *testing.T) {
@@ -400,7 +400,7 @@ func TestRaftNewNodeGetsData(t *testing.T) {
 
 	// Bring up a 3 node cluster
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Propose a value
 	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
@@ -422,7 +422,7 @@ func TestRaftRejoin(t *testing.T) {
 	t.Parallel()
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	ids := []string{"id1", "id2"}
 
@@ -457,7 +457,7 @@ func TestRaftRejoin(t *testing.T) {
 
 func testRaftRestartCluster(t *testing.T, stagger bool) {
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Propose a value
 	values := make([]*api.Node, 2)
@@ -535,7 +535,7 @@ func TestRaftWipedState(t *testing.T) {
 	t.Parallel()
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Stop node 3
 	nodes[3].Server.Stop()
@@ -557,7 +557,7 @@ func TestRaftForceNewCluster(t *testing.T) {
 	t.Parallel()
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Propose a value
 	values := make([]*api.Node, 2)
@@ -582,7 +582,7 @@ func TestRaftForceNewCluster(t *testing.T) {
 		2: nodes[2],
 		3: nodes[3],
 	}
-	raftutils.TeardownCluster(t, toClean)
+	raftutils.TeardownCluster(toClean)
 	delete(nodes, 2)
 	delete(nodes, 3)
 
@@ -605,7 +605,7 @@ func TestRaftForceNewCluster(t *testing.T) {
 		2: nodes[2],
 		3: nodes[3],
 	}
-	defer raftutils.TeardownCluster(t, newCluster)
+	defer raftutils.TeardownCluster(newCluster)
 
 	// The memberlist should contain 3 members on each node
 	for i := 1; i <= 3; i++ {
@@ -681,7 +681,7 @@ func TestRaftUnreachableNode(t *testing.T) {
 	}()
 
 	raftutils.WaitForCluster(t, clockSource, nodes)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Propose a value
 	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
@@ -719,7 +719,7 @@ func TestStress(t *testing.T) {
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// number of nodes that are running
 	nup := len(nodes)

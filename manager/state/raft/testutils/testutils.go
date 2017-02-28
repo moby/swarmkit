@@ -483,7 +483,7 @@ func AddRaftNode(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint6
 }
 
 // TeardownCluster destroys a raft cluster used for tests
-func TeardownCluster(t *testing.T, nodes map[uint64]*TestNode) {
+func TeardownCluster(nodes map[uint64]*TestNode) {
 	for _, node := range nodes {
 		ShutdownNode(node)
 	}
