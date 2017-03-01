@@ -888,3 +888,66 @@ func TestValidateCertificateChain(t *testing.T) {
 		require.NoError(t, err)
 	}
 }
+
+// Tests cross-signing using a certificate
+func TestRootCACrossSignCACertificate(t *testing.T) {
+	t.Parallel()
+
+	cert1, key1, err := testutils.CreateRootCertAndKey("rootCN")
+	require.NoError(t, err)
+
+	rootCA1, err := ca.NewRootCA(cert1, key1, ca.DefaultNodeCertExpiration)
+	require.NoError(t, err)
+
+	cert2, key2, err := testutils.CreateRootCertAndKey("rootCN2")
+	require.NoError(t, err)
+
+	rootCA2, err := ca.NewRootCA(cert2, key2, ca.DefaultNodeCertExpiration)
+	require.NoError(t, err)
+
+	tempdir, err := ioutil.TempDir("", "cross-sign-cert")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+	paths := ca.NewConfigPaths(tempdir)
+	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
+
+	_, err = rootCA2.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
+	require.NoError(t, err)
+	certBytes, _, err := krw.Read()
+	require.NoError(t, err)
+	leafCert, err := helpers.ParseCertificatePEM(certBytes)
+	require.NoError(t, err)
+
+	// cross-signing a non-CA fails
+	_, err = rootCA1.CrossSignCACertificate(certBytes)
+	require.Error(t, err)
+
+	// cross-signing some non-cert PEM bytes fail
+	_, err = rootCA1.CrossSignCACertificate(key1)
+	require.Error(t, err)
+
+	intermediate, err := rootCA1.CrossSignCACertificate(cert2)
+	require.NoError(t, err)
+	parsedIntermediate, err := helpers.ParseCertificatePEM(intermediate)
+	require.NoError(t, err)
+	parsedRoot2, err := helpers.ParseCertificatePEM(cert2)
+	require.NoError(t, err)
+	require.Equal(t, parsedRoot2.RawSubject, parsedIntermediate.RawSubject)
+	require.Equal(t, parsedRoot2.RawSubjectPublicKeyInfo, parsedIntermediate.RawSubjectPublicKeyInfo)
+	require.True(t, parsedIntermediate.IsCA)
+
+	intermediatePool := x509.NewCertPool()
+	intermediatePool.AddCert(parsedIntermediate)
+
+	// we can validate a chain from the leaf to the first root through the intermediate,
+	// or from the leaf cert to the second root with or without the intermediate
+	_, err = leafCert.Verify(x509.VerifyOptions{Roots: rootCA1.Pool})
+	require.Error(t, err)
+	_, err = leafCert.Verify(x509.VerifyOptions{Roots: rootCA1.Pool, Intermediates: intermediatePool})
+	require.NoError(t, err)
+
+	_, err = leafCert.Verify(x509.VerifyOptions{Roots: rootCA2.Pool})
+	require.NoError(t, err)
+	_, err = leafCert.Verify(x509.VerifyOptions{Roots: rootCA2.Pool, Intermediates: intermediatePool})
+	require.NoError(t, err)
+}
