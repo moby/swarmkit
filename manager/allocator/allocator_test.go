@@ -32,6 +32,18 @@ func TestAllocator(t *testing.T) {
 
 	// Try adding some objects to store before allocator is started
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		// populate ingress network
+		in := &api.Network{
+			ID: "ingress-nw-id",
+			Spec: api.NetworkSpec{
+				Annotations: api.Annotations{
+					Name: "default-ingress",
+				},
+				Ingress: true,
+			},
+		}
+		assert.NoError(t, store.CreateNetwork(tx, in))
+
 		n1 := &api.Network{
 			ID: "testID1",
 			Spec: api.NetworkSpec{

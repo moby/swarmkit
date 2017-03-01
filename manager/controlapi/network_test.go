@@ -1,7 +1,6 @@
 package controlapi
 
 import (
-	"fmt"
 	"testing"
 
 	"golang.org/x/net/context"
@@ -155,19 +154,6 @@ func TestCreateNetwork(t *testing.T) {
 	assert.NotEqual(t, nr.Network.ID, "")
 }
 
-func TestCreateInternalNetwork(t *testing.T) {
-	ts := newTestServer(t)
-	defer ts.Stop()
-	spec := createNetworkSpec("testnetint")
-	spec.Annotations.Labels = map[string]string{"com.docker.swarm.internal": "true"}
-	nr, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
-		Spec: spec,
-	})
-	assert.Error(t, err)
-	assert.Equal(t, grpc.Code(err), codes.PermissionDenied)
-	assert.Nil(t, nr)
-}
-
 func TestGetNetwork(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
@@ -210,34 +196,6 @@ func TestRemoveNetworkWithAttachedService(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestRemoveInternalNetwork(t *testing.T) {
-	ts := newTestServer(t)
-	defer ts.Stop()
-
-	name := "testnet3"
-	spec := createNetworkSpec(name)
-	// add label denoting internal network
-	spec.Annotations.Labels = map[string]string{"com.docker.swarm.internal": "true"}
-	nr, err := ts.Server.createInternalNetwork(context.Background(), &api.CreateNetworkRequest{
-		Spec: spec,
-	})
-	assert.NoError(t, err)
-	assert.NotEqual(t, nr.Network, nil)
-	assert.NotEqual(t, nr.Network.ID, "")
-
-	_, err = ts.Client.RemoveNetwork(context.Background(), &api.RemoveNetworkRequest{NetworkID: nr.Network.ID})
-	// this SHOULD fail, because the internal network cannot be removed
-	assert.Error(t, err)
-	assert.Equal(t, grpc.Code(err), codes.PermissionDenied)
-	assert.Contains(t, err.Error(), fmt.Sprintf("%s (%s) is a pre-defined network and cannot be removed", name, nr.Network.ID))
-
-	// then, check to make sure network is still there
-	ng, err := ts.Client.GetNetwork(context.Background(), &api.GetNetworkRequest{NetworkID: nr.Network.ID})
-	assert.NoError(t, err)
-	assert.NotEqual(t, ng.Network, nil)
-	assert.NotEqual(t, ng.Network.ID, "")
-}
-
 func TestListNetworks(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
@@ -258,7 +216,11 @@ func TestListNetworks(t *testing.T) {
 
 	r, err := ts.Client.ListNetworks(context.Background(), &api.ListNetworksRequest{})
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(r.Networks))
-	assert.True(t, r.Networks[0].ID == nr1.Network.ID || r.Networks[0].ID == nr2.Network.ID)
-	assert.True(t, r.Networks[1].ID == nr1.Network.ID || r.Networks[1].ID == nr2.Network.ID)
+	assert.Equal(t, 3, len(r.Networks)) // Account ingress network
+	for _, nw := range r.Networks {
+		if nw.Spec.Ingress {
+			continue
+		}
+		assert.True(t, nw.ID == nr1.Network.ID || nw.ID == nr2.Network.ID)
+	}
 }
