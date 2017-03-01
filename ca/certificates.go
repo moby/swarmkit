@@ -100,22 +100,29 @@ type CertPaths struct {
 	Cert, Key string
 }
 
-// RootCA is the representation of everything we need to sign certificates
-type RootCA struct {
+// LocalSigner is a signer that can sign CSRs
+type LocalSigner struct {
+	cfsigner.Signer
+
 	// Key will only be used by the original manager to put the private
 	// key-material in raft, no signing operations depend on it.
 	Key []byte
+}
 
+// RootCA is the representation of everything we need to sign certificates
+type RootCA struct {
 	// Cert contains a bundle of PEM encoded Certificate for the Root CA, the first one of which
-	// must correspond to the key, if provided
+	// must correspond to the key in the local signer, if provided
 	Cert []byte
+
+	// Pool is the root pool used to validate TLS certificates
 	Pool *x509.CertPool
 
 	// Digest of the serialized bytes of the certificate(s)
 	Digest digest.Digest
 
 	// This signer will be nil if the node doesn't have the appropriate key material
-	Signer cfsigner.Signer
+	Signer *LocalSigner
 }
 
 // CanSign ensures that the signer has all three necessary elements needed to operate
@@ -387,7 +394,7 @@ func NewRootCA(certBytes, keyBytes []byte, certExpiry time.Duration) (RootCA, er
 		}
 	}
 
-	return RootCA{Signer: signer, Key: keyBytes, Digest: digest, Cert: certBytes, Pool: pool}, nil
+	return RootCA{Signer: &LocalSigner{Signer: signer, Key: keyBytes}, Digest: digest, Cert: certBytes, Pool: pool}, nil
 }
 
 // ValidateCertChain checks checks that the certificates provided chain up to the root pool provided.  In addition
