@@ -90,5 +90,16 @@ func newTestServer(t *testing.T) *testServer {
 
 	ts.Client = api.NewControlClient(conn)
 
+	// Create ingress network
+	ts.Client.CreateNetwork(context.Background(),
+		&api.CreateNetworkRequest{
+			Spec: &api.NetworkSpec{
+				Ingress: true,
+				Annotations: api.Annotations{
+					Name: "test-ingress",
+				},
+			},
+		})
+
 	return ts
 }
