@@ -252,7 +252,7 @@ func TestValidateConfigurationChange(t *testing.T) {
 
 func TestCanRemoveMember(t *testing.T) {
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Stop node 2 and node 3 (2 nodes out of 3)
 	nodes[2].Server.Stop()

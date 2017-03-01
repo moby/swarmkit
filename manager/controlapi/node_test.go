@@ -263,7 +263,7 @@ func TestListManagerNodes(t *testing.T) {
 	defer ts.Stop()
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Create a node object for each of the managers
 	assert.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
@@ -449,7 +449,7 @@ func TestUpdateNode(t *testing.T) {
 
 	nodes := make(map[uint64]*raftutils.TestNode)
 	nodes[1], _ = raftutils.NewInitNode(t, tc, nil)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	nodeID := nodes[1].SecurityConfig.ClientTLSCreds.NodeID()
 
@@ -539,7 +539,7 @@ func testUpdateNodeDemote(t *testing.T) {
 	defer ts.Stop()
 
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
-	defer raftutils.TeardownCluster(t, nodes)
+	defer raftutils.TeardownCluster(nodes)
 
 	// Assign one of the raft node to the test server
 	ts.Server.raft = nodes[1].Node
