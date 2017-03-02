@@ -1,7 +1,8 @@
 package ca_test
 
 import (
-	"crypto/rand"
+	cryptorand "crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -16,8 +17,6 @@ import (
 	"google.golang.org/grpc"
 
 	"golang.org/x/net/context"
-
-	"crypto/tls"
 
 	cfconfig "github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/helpers"
@@ -158,11 +157,11 @@ func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 	require.NoError(t, err)
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	serialNumber, err := cryptorand.Int(cryptorand.Reader, serialNumberLimit)
 	require.NoError(t, err)
 
 	genCert := func(notBefore, notAfter time.Time) {
-		derBytes, err := x509.CreateCertificate(rand.Reader, &x509.Certificate{
+		derBytes, err := x509.CreateCertificate(cryptorand.Reader, &x509.Certificate{
 			SerialNumber: serialNumber,
 			Subject: pkix.Name{
 				CommonName:         "CN",

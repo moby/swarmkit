@@ -3,7 +3,7 @@ package ca_test
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/rand"
+	cryptorand "crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
@@ -128,7 +128,7 @@ func TestGetLocalRootCA(t *testing.T) {
 	assert.True(t, rootCA3.CanSign())
 
 	// Try with a private key that does not match the CA cert public key.
-	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	privKey, err := ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
 	assert.NoError(t, err)
 	privKeyBytes, err := x509.MarshalECPrivateKey(privKey)
 	assert.NoError(t, err)
