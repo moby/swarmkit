@@ -405,6 +405,9 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TODO(cyli):  add test for RequestAndSaveNewCertificates but with intermediates - this involves adding
+// support for appending intermediates on the CA server first
+
 func TestIssueAndSaveNewCertificates(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
@@ -740,4 +743,147 @@ func TestNewRootCAWithPassphrase(t *testing.T) {
 	assert.NotContains(t, string(rootCA.Key), string(anotherNewRootCA.Key))
 	assert.Contains(t, string(anotherNewRootCA.Key), "Proc-Type: 4,ENCRYPTED")
 
+}
+
+type certTestCase struct {
+	cert        []byte
+	errorStr    string
+	root        []byte
+	allowExpiry bool
+}
+
+func TestValidateCertificateChain(t *testing.T) {
+	leaf, intermediate, root := testutils.ECDSACertChain[0], testutils.ECDSACertChain[1], testutils.ECDSACertChain[2]
+	intermediateKey, rootKey := testutils.ECDSACertChainKeys[1], testutils.ECDSACertChainKeys[2] // we don't care about the leaf key
+
+	chain := func(certs ...[]byte) []byte {
+		var all []byte
+		for _, cert := range certs {
+			all = append(all, cert...)
+		}
+		return all
+	}
+
+	now := time.Now()
+	expiredLeaf := testutils.ReDateCert(t, leaf, intermediate, intermediateKey, now.Add(-10*time.Hour), now.Add(-1*time.Minute))
+	expiredIntermediate := testutils.ReDateCert(t, intermediate, root, rootKey, now.Add(-10*time.Hour), now.Add(-1*time.Minute))
+	notYetValidLeaf := testutils.ReDateCert(t, leaf, intermediate, intermediateKey, now.Add(time.Hour), now.Add(2*time.Hour))
+	notYetValidIntermediate := testutils.ReDateCert(t, intermediate, root, rootKey, now.Add(time.Hour), now.Add(2*time.Hour))
+
+	rootPool := x509.NewCertPool()
+	rootPool.AppendCertsFromPEM(root)
+
+	invalids := []certTestCase{
+		{
+			cert:     nil,
+			root:     root,
+			errorStr: "no certificates to validate",
+		},
+		{
+			cert:     []byte("malformed"),
+			root:     root,
+			errorStr: "Failed to decode certificate",
+		},
+		{
+			cert:     chain(leaf, intermediate, leaf),
+			root:     root,
+			errorStr: "certificates do not form a chain",
+		},
+		{
+			cert:     chain(leaf, intermediate),
+			root:     testutils.ECDSA256SHA256Cert,
+			errorStr: "unknown authority",
+		},
+		{
+			cert:     chain(expiredLeaf, intermediate),
+			root:     root,
+			errorStr: "not valid after",
+		},
+		{
+			cert:     chain(leaf, expiredIntermediate),
+			root:     root,
+			errorStr: "not valid after",
+		},
+		{
+			cert:     chain(notYetValidLeaf, intermediate),
+			root:     root,
+			errorStr: "not valid before",
+		},
+		{
+			cert:     chain(leaf, notYetValidIntermediate),
+			root:     root,
+			errorStr: "not valid before",
+		},
+
+		// if we allow expiry, we still don't allow not yet valid certs or expired certs that don't chain up to the root
+		{
+			cert:        chain(notYetValidLeaf, intermediate),
+			root:        root,
+			allowExpiry: true,
+			errorStr:    "not valid before",
+		},
+		{
+			cert:        chain(leaf, notYetValidIntermediate),
+			root:        root,
+			allowExpiry: true,
+			errorStr:    "not valid before",
+		},
+		{
+			cert:        chain(expiredLeaf, intermediate),
+			root:        testutils.ECDSA256SHA256Cert,
+			allowExpiry: true,
+			errorStr:    "unknown authority",
+		},
+
+		// construct a weird cases where one cert is expired, we allow expiry, but the other cert is not yet valid at the first cert's expiry
+		// (this is not something that can happen unless we allow expiry, because if the cert periods don't overlap, one or the other will
+		// be either not yet valid or already expired)
+		{
+			cert: chain(
+				testutils.ReDateCert(t, leaf, intermediate, intermediateKey, now.Add(-3*helpers.OneDay), now.Add(-2*helpers.OneDay)),
+				testutils.ReDateCert(t, intermediate, root, rootKey, now.Add(-1*helpers.OneDay), now.Add(helpers.OneDay))),
+			root:        root,
+			allowExpiry: true,
+			errorStr:    "there is no time span",
+		},
+		// similarly, but for root pool
+		{
+			cert:        chain(expiredLeaf, expiredIntermediate),
+			root:        testutils.ReDateCert(t, root, root, rootKey, now.Add(-3*helpers.OneYear), now.Add(-2*helpers.OneYear)),
+			allowExpiry: true,
+			errorStr:    "there is no time span",
+		},
+	}
+
+	for _, invalid := range invalids {
+		pool := x509.NewCertPool()
+		pool.AppendCertsFromPEM(invalid.root)
+		_, err := ca.ValidateCertChain(pool, invalid.cert, invalid.allowExpiry)
+		require.Error(t, err, invalid.errorStr)
+		require.Contains(t, err.Error(), invalid.errorStr)
+	}
+
+	// these will default to using the root pool, so we don't have to specify the root pool
+	valids := []certTestCase{
+		{cert: chain(leaf, intermediate, root)},
+		{cert: chain(leaf, intermediate)},
+		{cert: intermediate},
+		{
+			cert:        chain(expiredLeaf, intermediate),
+			allowExpiry: true,
+		},
+		{
+			cert:        chain(leaf, expiredIntermediate),
+			allowExpiry: true,
+		},
+		{
+			cert:        chain(expiredLeaf, expiredIntermediate),
+			allowExpiry: true,
+		},
+	}
+
+	for _, valid := range valids {
+		_, err := ca.ValidateCertChain(rootPool, valid.cert, valid.allowExpiry)
+		require.NoError(t, err)
+	}
 }
