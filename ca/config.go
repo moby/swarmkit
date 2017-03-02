@@ -4,7 +4,6 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -290,25 +289,8 @@ func LoadSecurityConfig(ctx context.Context, rootCA RootCA, krw *KeyReadWriter, 
 		return nil, err
 	}
 
-	// Create an x509 certificate out of the contents on disk
-	certBlock, _ := pem.Decode([]byte(cert))
-	if certBlock == nil {
-		return nil, errors.New("failed to parse certificate PEM")
-	}
-
-	// Create an X509Cert so we can .Verify()
-	X509Cert, err := x509.ParseCertificate(certBlock.Bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	// Include our root pool
-	opts := x509.VerifyOptions{
-		Roots: rootCA.Pool,
-	}
-
 	// Check to see if this certificate was signed by our CA, and isn't expired
-	if err := verifyCertificate(X509Cert, opts, allowExpired); err != nil {
+	if _, err := ValidateCertChain(rootCA.Pool, cert, allowExpired); err != nil {
 		return nil, err
 	}
 

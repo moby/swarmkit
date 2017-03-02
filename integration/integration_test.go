@@ -1,9 +1,6 @@
 package integration
 
 import (
-	cryptorand "crypto/rand"
-	"crypto/x509"
-	"encoding/pem"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -21,6 +18,7 @@ import (
 	events "github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/ca/testutils"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -503,25 +501,12 @@ func TestForceNewCluster(t *testing.T) {
 	pollServiceReady(t, cl, sid, 2)
 
 	// generate an expired certificate
-	rootKey, err := helpers.ParsePrivateKeyPEM(rootCA.Key)
-	require.NoError(t, err)
-	rootCert, err := helpers.ParseCertificatePEM(rootCA.Cert)
-	require.NoError(t, err)
-
 	managerCertFile := filepath.Join(leader.stateDir, "certificates", "swarm-node.crt")
 	certBytes, err := ioutil.ReadFile(managerCertFile)
 	require.NoError(t, err)
-	managerCerts, err := helpers.ParseCertificatesPEM(certBytes)
-	require.NoError(t, err)
-	expiredCertTemplate := managerCerts[0]
-	expiredCertTemplate.NotBefore = time.Now().Add(time.Hour * -5)
-	expiredCertTemplate.NotAfter = time.Now().Add(time.Hour * -3)
-	expiredCertDERBytes, err := x509.CreateCertificate(cryptorand.Reader, expiredCertTemplate, rootCert, expiredCertTemplate.PublicKey, rootKey)
-	require.NoError(t, err)
-	expiredCertPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: expiredCertDERBytes,
-	})
+	now := time.Now()
+	// we don't want it too expired, because it can't have expired before the root CA cert is valid
+	expiredCertPEM := testutils.ReDateCert(t, certBytes, rootCA.Cert, rootCA.Key, now.Add(-1*time.Hour), now.Add(-1*time.Second))
 
 	// restart node with an expired certificate while forcing a new cluster - it should start without error and the certificate should be renewed
 	nodeID := leader.node.NodeID()
