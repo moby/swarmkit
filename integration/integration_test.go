@@ -1,7 +1,7 @@
 package integration
 
 import (
-	"crypto/rand"
+	cryptorand "crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"flag"
@@ -517,7 +517,7 @@ func TestForceNewCluster(t *testing.T) {
 	expiredCertTemplate := managerCerts[0]
 	expiredCertTemplate.NotBefore = time.Now().Add(time.Hour * -5)
 	expiredCertTemplate.NotAfter = time.Now().Add(time.Hour * -3)
-	expiredCertDERBytes, err := x509.CreateCertificate(rand.Reader, expiredCertTemplate, rootCert, expiredCertTemplate.PublicKey, rootKey)
+	expiredCertDERBytes, err := x509.CreateCertificate(cryptorand.Reader, expiredCertTemplate, rootCert, expiredCertTemplate.PublicKey, rootKey)
 	require.NoError(t, err)
 	expiredCertPEM := pem.EncodeToMemory(&pem.Block{
 		Type:  "CERTIFICATE",
