@@ -666,17 +666,11 @@ func saveRootCA(rootCA RootCA, paths CertPaths) error {
 }
 
 // GenerateNewCSR returns a newly generated key and CSR signed with said key
-func GenerateNewCSR() (csr, key []byte, err error) {
+func GenerateNewCSR() ([]byte, []byte, error) {
 	req := &cfcsr.CertificateRequest{
 		KeyRequest: cfcsr.NewBasicKeyRequest(),
 	}
-
-	csr, key, err = cfcsr.ParseRequest(req)
-	if err != nil {
-		return
-	}
-
-	return
+	return cfcsr.ParseRequest(req)
 }
 
 // EncryptECPrivateKey receives a PEM encoded private key and returns an encrypted

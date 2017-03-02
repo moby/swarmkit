@@ -112,6 +112,11 @@ func (s *SecurityConfig) RootCA() *RootCA {
 	return s.rootCA
 }
 
+// ExternalCA returns the external CA.
+func (s *SecurityConfig) ExternalCA() *ExternalCA {
+	return s.externalCA
+}
+
 // KeyWriter returns the object that can write keys to disk
 func (s *SecurityConfig) KeyWriter() KeyWriter {
 	return s.keyReadWriter
@@ -129,11 +134,33 @@ func (s *SecurityConfig) UpdateRootCA(cert, key []byte, certExpiry time.Duration
 	defer s.mu.Unlock()
 
 	rootCA, err := NewRootCA(cert, key, certExpiry)
-	if err == nil {
-		s.rootCA = &rootCA
+	if err != nil {
+		return err
 	}
 
-	return err
+	// the RootCA pool should validate against the TLS certificate in the credentials
+	if s.ClientTLSCreds != nil {
+		s.ClientTLSCreds.UpdateCAs(rootCA.Pool, nil)
+	}
+
+	if s.ServerTLSCreds != nil {
+		s.ServerTLSCreds.UpdateCAs(rootCA.Pool, rootCA.Pool)
+	}
+
+	if s.externalCA != nil {
+		clientTLSConfig := s.ClientTLSCreds.Config()
+
+		externalCATLSConfig := &tls.Config{
+			Certificates: clientTLSConfig.Certificates,
+			RootCAs:      rootCA.Pool,
+			MinVersion:   tls.VersionTLS12,
+		}
+
+		s.externalCA.UpdateTLSConfig(externalCATLSConfig)
+	}
+
+	s.rootCA = &rootCA
+	return nil
 }
 
 // SigningPolicy creates a policy used by the signer to ensure that the only fields

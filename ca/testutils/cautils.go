@@ -34,22 +34,22 @@ import (
 
 // TestCA is a structure that encapsulates everything needed to test a CA Server
 type TestCA struct {
-	RootCA                ca.RootCA
-	ExternalSigningServer *ExternalSigningServer
-	MemoryStore           *store.MemoryStore
-	TempDir, Organization string
-	Paths                 *ca.SecurityConfigPaths
-	Server                *grpc.Server
-	CAServer              *ca.Server
-	Context               context.Context
-	NodeCAClients         []api.NodeCAClient
-	CAClients             []api.CAClient
-	Conns                 []*grpc.ClientConn
-	WorkerToken           string
-	ManagerToken          string
-	ConnBroker            *connectionbroker.Broker
-	KeyReadWriter         *ca.KeyReadWriter
-	watchCancel           func()
+	RootCA                      ca.RootCA
+	ExternalSigningServer       *ExternalSigningServer
+	MemoryStore                 *store.MemoryStore
+	Addr, TempDir, Organization string
+	Paths                       *ca.SecurityConfigPaths
+	Server                      *grpc.Server
+	CAServer                    *ca.Server
+	Context                     context.Context
+	NodeCAClients               []api.NodeCAClient
+	CAClients                   []api.CAClient
+	Conns                       []*grpc.ClientConn
+	WorkerToken                 string
+	ManagerToken                string
+	ConnBroker                  *connectionbroker.Broker
+	KeyReadWriter               *ca.KeyReadWriter
+	watchCancel                 func()
 }
 
 // Stop cleans up after TestCA
@@ -224,6 +224,7 @@ func NewTestCA(t *testing.T, krwGenerators ...func(ca.CertPaths) *ca.KeyReadWrit
 		CAClients:             caClients,
 		NodeCAClients:         nodeCAClients,
 		Conns:                 conns,
+		Addr:                  l.Addr().String(),
 		Server:                grpcServer,
 		CAServer:              caServer,
 		WorkerToken:           workerToken,
