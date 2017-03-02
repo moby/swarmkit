@@ -5,7 +5,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/rand"
+	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
@@ -686,7 +686,7 @@ func EncryptECPrivateKey(key []byte, passphraseStr string) ([]byte, error) {
 		return nil, errors.New("error while decoding PEM key")
 	}
 
-	encryptedPEMBlock, err := x509.EncryptPEMBlock(rand.Reader,
+	encryptedPEMBlock, err := x509.EncryptPEMBlock(cryptorand.Reader,
 		"EC PRIVATE KEY",
 		keyBlock.Bytes,
 		passphrase,

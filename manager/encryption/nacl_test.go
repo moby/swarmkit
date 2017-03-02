@@ -1,7 +1,7 @@
 package encryption
 
 import (
-	"crypto/rand"
+	cryptorand "crypto/rand"
 	"io"
 	"testing"
 
@@ -14,7 +14,7 @@ import (
 // of these can be decrypted into the same data though.
 func TestNACLSecretbox(t *testing.T) {
 	key := make([]byte, 32)
-	_, err := io.ReadFull(rand.Reader, key)
+	_, err := io.ReadFull(cryptorand.Reader, key)
 	require.NoError(t, err)
 
 	crypter := NewNACLSecretbox(key)
@@ -40,7 +40,7 @@ func TestNACLSecretbox(t *testing.T) {
 
 func TestNACLSecretboxInvalidAlgorithm(t *testing.T) {
 	key := make([]byte, 32)
-	_, err := io.ReadFull(rand.Reader, key)
+	_, err := io.ReadFull(cryptorand.Reader, key)
 	require.NoError(t, err)
 
 	crypter := NewNACLSecretbox(key)
@@ -55,7 +55,7 @@ func TestNACLSecretboxInvalidAlgorithm(t *testing.T) {
 
 func TestNACLSecretboxCannotDecryptWithoutRightKey(t *testing.T) {
 	key := make([]byte, 32)
-	_, err := io.ReadFull(rand.Reader, key)
+	_, err := io.ReadFull(cryptorand.Reader, key)
 	require.NoError(t, err)
 
 	crypter := NewNACLSecretbox(key)
@@ -69,7 +69,7 @@ func TestNACLSecretboxCannotDecryptWithoutRightKey(t *testing.T) {
 
 func TestNACLSecretboxInvalidNonce(t *testing.T) {
 	key := make([]byte, 32)
-	_, err := io.ReadFull(rand.Reader, key)
+	_, err := io.ReadFull(cryptorand.Reader, key)
 	require.NoError(t, err)
 
 	crypter := NewNACLSecretbox(key)
