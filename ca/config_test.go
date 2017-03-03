@@ -1,13 +1,9 @@
 package ca_test
 
 import (
-	cryptorand "crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
 	"io/ioutil"
-	"math/big"
 	"net"
 	"os"
 	"strings"
@@ -19,7 +15,6 @@ import (
 	"golang.org/x/net/context"
 
 	cfconfig "github.com/cloudflare/cfssl/config"
-	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/ioutils"
@@ -145,45 +140,17 @@ func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	_, key, err := ca.GenerateNewCSR()
-	require.NoError(t, err)
-	require.NoError(t, ioutil.WriteFile(tc.Paths.Node.Key, key, 0600))
-	certKey, err := helpers.ParsePrivateKeyPEM(key)
-	require.NoError(t, err)
-
-	rootKey, err := helpers.ParsePrivateKeyPEM(tc.RootCA.Key)
-	require.NoError(t, err)
-	rootCert, err := helpers.ParseCertificatePEM(tc.RootCA.Cert)
-	require.NoError(t, err)
-
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, err := cryptorand.Int(cryptorand.Reader, serialNumberLimit)
-	require.NoError(t, err)
-
-	genCert := func(notBefore, notAfter time.Time) {
-		derBytes, err := x509.CreateCertificate(cryptorand.Reader, &x509.Certificate{
-			SerialNumber: serialNumber,
-			Subject: pkix.Name{
-				CommonName:         "CN",
-				OrganizationalUnit: []string{"OU"},
-				Organization:       []string{"ORG"},
-			},
-			NotBefore: notBefore,
-			NotAfter:  notAfter,
-		}, rootCert, certKey.Public(), rootKey)
-		require.NoError(t, err)
-		certBytes := pem.EncodeToMemory(&pem.Block{
-			Type:  "CERTIFICATE",
-			Bytes: derBytes,
-		})
-		require.NoError(t, ioutil.WriteFile(tc.Paths.Node.Cert, certBytes, 0644))
-	}
-
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 	now := time.Now()
 
+	_, err := tc.RootCA.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
+	require.NoError(t, err)
+	certBytes, _, err := krw.Read()
+	require.NoError(t, err)
+
 	// A cert that is not yet valid is not valid even if expiry is allowed
-	genCert(now.Add(time.Hour), now.Add(time.Hour*2))
+	invalidCert := testutils.ReDateCert(t, certBytes, tc.RootCA.Cert, tc.RootCA.Key, now.Add(time.Hour), now.Add(time.Hour*2))
+	require.NoError(t, ioutil.WriteFile(tc.Paths.Node.Cert, invalidCert, 0700))
 
 	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
 	require.Error(t, err)
@@ -194,7 +161,8 @@ func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 	require.IsType(t, x509.CertificateInvalidError{}, errors.Cause(err))
 
 	// a cert that is expired is not valid if expiry is not allowed
-	genCert(now.Add(time.Hour*-3), now.Add(time.Hour*-1))
+	invalidCert = testutils.ReDateCert(t, certBytes, tc.RootCA.Cert, tc.RootCA.Key, now.Add(-2*time.Minute), now.Add(-1*time.Minute))
+	require.NoError(t, ioutil.WriteFile(tc.Paths.Node.Cert, invalidCert, 0700))
 
 	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
 	require.Error(t, err)
@@ -267,6 +235,47 @@ func TestLoadSecurityConfigIncorrectPassphrase(t *testing.T) {
 
 	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, ca.NewKeyReadWriter(paths.Node, nil, nil), false)
 	require.IsType(t, ca.ErrInvalidKEK{}, err)
+}
+
+func TestLoadSecurityConfigIntermediates(t *testing.T) {
+	tempdir, err := ioutil.TempDir("", "test-load-config-with-intermediates")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+	paths := ca.NewConfigPaths(tempdir)
+	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
+
+	rootCA, err := ca.NewRootCA(testutils.ECDSACertChain[2], nil, ca.DefaultNodeCertExpiration)
+	require.NoError(t, err)
+
+	// loading the incomplete chain fails
+	require.NoError(t, krw.Write(testutils.ECDSACertChain[0], testutils.ECDSACertChainKeys[0], nil))
+	_, err = ca.LoadSecurityConfig(context.Background(), rootCA, krw, false)
+	require.Error(t, err)
+
+	// loading the complete chain succeeds
+	require.NoError(t, krw.Write(append(testutils.ECDSACertChain[0], testutils.ECDSACertChain[1]...), testutils.ECDSACertChainKeys[0], nil))
+	secConfig, err := ca.LoadSecurityConfig(context.Background(), rootCA, krw, false)
+	require.NoError(t, err)
+	require.NotNil(t, secConfig)
+
+	// set up a GRPC server using these credentials
+	secConfig.ServerTLSCreds.Config().ClientAuth = tls.RequireAndVerifyClientCert
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	serverOpts := []grpc.ServerOption{grpc.Creds(secConfig.ServerTLSCreds)}
+	grpcServer := grpc.NewServer(serverOpts...)
+	go grpcServer.Serve(l)
+	defer grpcServer.Stop()
+
+	// we should be able to connect to the server using the client credentials
+	dialOpts := []grpc.DialOption{
+		grpc.WithBlock(),
+		grpc.WithTimeout(10 * time.Second),
+		grpc.WithTransportCredentials(secConfig.ClientTLSCreds),
+	}
+	conn, err := grpc.Dial(l.Addr().String(), dialOpts...)
+	require.NoError(t, err)
+	conn.Close()
 }
 
 func TestSecurityConfigUpdateRootCA(t *testing.T) {
