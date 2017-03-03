@@ -1,8 +1,10 @@
 package testutils
 
 import (
+	cryptorand "crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"io/ioutil"
 	"net"
 	"os"
@@ -27,6 +29,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -431,4 +434,24 @@ func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duratio
 		Pool:   pool,
 		Digest: digest.FromBytes(cert),
 	}, nil
+}
+
+// ReDateCert takes an existing cert and changes the not before and not after date, to make it easier
+// to test expiry
+func ReDateCert(t *testing.T, cert, signerCert, signerKey []byte, notBefore, notAfter time.Time) []byte {
+	signee, err := helpers.ParseCertificatePEM(cert)
+	require.NoError(t, err)
+	signer, err := helpers.ParseCertificatePEM(signerCert)
+	require.NoError(t, err)
+	key, err := helpers.ParsePrivateKeyPEM(signerKey)
+	require.NoError(t, err)
+	signee.NotBefore = notBefore
+	signee.NotAfter = notAfter
+
+	derBytes, err := x509.CreateCertificate(cryptorand.Reader, signee, signer, signee.PublicKey, key)
+	require.NoError(t, err)
+	return pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: derBytes,
+	})
 }
