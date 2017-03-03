@@ -270,7 +270,7 @@ func (c *containerAdapter) logs(ctx context.Context, options api.LogSubscription
 		if err != nil {
 			return nil, err
 		}
-		apiOptions.Since = since.Format(time.RFC3339Nano)
+		apiOptions.Since = fmt.Sprintf("%d.%09d", since.Unix(), int64(since.Nanosecond()))
 	}
 
 	if options.Tail < 0 {
