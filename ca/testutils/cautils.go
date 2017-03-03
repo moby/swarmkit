@@ -428,8 +428,10 @@ func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duratio
 	}
 
 	return ca.RootCA{
-		Signer: signer,
-		Key:    key,
+		Signer: &ca.LocalSigner{
+			Signer: signer,
+			Key:    key,
+		},
 		Cert:   cert,
 		Pool:   pool,
 		Digest: digest.FromBytes(cert),
