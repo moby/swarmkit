@@ -1050,7 +1050,7 @@ func defaultClusterObject(
 			EncryptionConfig: encryptionConfig,
 		},
 		RootCA: api.RootCA{
-			CAKey:      rootCA.Key,
+			CAKey:      rootCA.Signer.Key,
 			CACert:     rootCA.Cert,
 			CACertHash: rootCA.Digest.String(),
 			JoinTokens: api.JoinTokens{
