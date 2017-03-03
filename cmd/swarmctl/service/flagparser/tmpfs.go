@@ -1,7 +1,6 @@
 package flagparser
 
 import (
-	"fmt"
 	"os"
 	"path"
 	"strconv"
@@ -105,7 +104,6 @@ func parseTmpfs(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 				m.TmpfsOptions = &opts
 			}
 
-			fmt.Println("mount", m)
 			container.Mounts = append(container.Mounts, m)
 		}
 	}
