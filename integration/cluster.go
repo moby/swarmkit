@@ -227,7 +227,7 @@ func (c *testCluster) Leader() (*testNode, error) {
 			return tn, nil
 		}
 	}
-	return nil, fmt.Errorf("cluster leader is not found in storage")
+	return nil, fmt.Errorf("cluster leader is not found in api response")
 }
 
 // RemoveNode removes node entirely. It tries to demote managers.

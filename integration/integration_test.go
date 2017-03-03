@@ -332,7 +332,6 @@ func TestDemotePromoteLeader(t *testing.T) {
 	pollClusterReady(t, cl, numWorker, numManager)
 }
 
-// TODO: improve test to demote the leader in case of 2 remaining managers
 func TestDemoteToSingleManager(t *testing.T) {
 	t.Parallel()
 
