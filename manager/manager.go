@@ -1032,6 +1032,10 @@ func defaultClusterObject(
 	encryptionConfig api.EncryptionConfig,
 	initialUnlockKeys []*api.EncryptionKey,
 	rootCA *ca.RootCA) *api.Cluster {
+	var caKey []byte
+	if rootCA.Signer != nil {
+		caKey = rootCA.Signer.Key
+	}
 
 	return &api.Cluster{
 		ID: clusterID,
@@ -1050,7 +1054,7 @@ func defaultClusterObject(
 			EncryptionConfig: encryptionConfig,
 		},
 		RootCA: api.RootCA{
-			CAKey:      rootCA.Signer.Key,
+			CAKey:      caKey,
 			CACert:     rootCA.Cert,
 			CACertHash: rootCA.Digest.String(),
 			JoinTokens: api.JoinTokens{
