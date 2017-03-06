@@ -15,7 +15,6 @@
 			"dongluochen",
 			"dperny",
 			"lk4d4",
-			"mrjana",
 			"nishanttotla",
 			"stevvooe",
 			"tonistiigi",
@@ -93,11 +92,6 @@
 	Name = "Alexander Morozov"
 	Email = "lk4d4@docker.com"
 	GitHub = "lk4d4"
-
-	[people.mrjana]
-	Name = "Jana Radhakrishnan"
-	Email = "mrjana@docker.com"
-	GitHub = "mrjana"
 
 	[people.misty]
 	Name = "Misty Stanley-Jones"
