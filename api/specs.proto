@@ -3,6 +3,7 @@ syntax = "proto3";
 package docker.swarmkit.v1;
 
 import "types.proto";
+import "privileges.proto";
 import "gogoproto/gogo.proto";
 import "google/protobuf/duration.proto";
 
@@ -265,6 +266,9 @@ message ContainerSpec {
 	// task will exit and a new task will be rescheduled elsewhere. A container
 	// is considered unhealthy after `Retries` number of consecutive failures.
 	HealthConfig healthcheck = 16;
+
+	// PrivilegeProfiles specifies per-architecture security options required by the container
+	PrivilegeProfiles security_profiles = 21;
 }
 
 // PluginSpec specifies runtime parameters for a plugin.
@@ -273,6 +277,9 @@ message PluginSpec {
 	// distribution/reference package. This may include a registry host, name,
 	// tag or digest.
 	string image = 1;
+
+	// PrivilegeProfiles specifies per-architecture security options required by the container
+	PrivilegeProfiles security_profiles = 2;
 }
 
 // EndpointSpec defines the properties that can be configured to
