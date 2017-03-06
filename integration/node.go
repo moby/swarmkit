@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"google.golang.org/grpc"
 
@@ -108,6 +109,20 @@ func (n *testNode) stop() error {
 	defer cancel()
 	isManager := n.IsManager()
 	if err := n.node.Stop(ctx); err != nil {
+		// TODO(aaronl): This stack dumping may be removed in the
+		// future once context deadline issues while shutting down
+		// nodes are resolved.
+		buf := make([]byte, 1024)
+		for {
+			n := runtime.Stack(buf, true)
+			if n < len(buf) {
+				buf = buf[:n]
+				break
+			}
+			buf = make([]byte, 2*len(buf))
+		}
+		os.Stderr.Write(buf)
+
 		if isManager {
 			return fmt.Errorf("error stop manager %s: %v", n.node.NodeID(), err)
 		}
