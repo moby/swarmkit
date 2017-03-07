@@ -16,7 +16,7 @@ func TestNewMutableTLS(t *testing.T) {
 	cert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.KeyReadWriter, "CN", ca.ManagerRole, tc.Organization)
 	assert.NoError(t, err)
 
-	tlsConfig, err := ca.NewServerTLSConfig(cert, tc.RootCA.Pool)
+	tlsConfig, err := ca.NewServerTLSConfig([]tls.Certificate{*cert}, tc.RootCA.Pool)
 	assert.NoError(t, err)
 	creds, err := ca.NewMutableTLS(tlsConfig)
 	assert.NoError(t, err)
@@ -47,9 +47,9 @@ func TestLoadNewTLSConfig(t *testing.T) {
 	assert.NoError(t, err)
 	cert2, err := tc.RootCA.IssueAndSaveNewCertificates(tc.KeyReadWriter, "CN2", ca.WorkerRole, tc.Organization)
 	assert.NoError(t, err)
-	tlsConfig1, err := ca.NewServerTLSConfig(cert1, tc.RootCA.Pool)
+	tlsConfig1, err := ca.NewServerTLSConfig([]tls.Certificate{*cert1}, tc.RootCA.Pool)
 	assert.NoError(t, err)
-	tlsConfig2, err := ca.NewServerTLSConfig(cert2, tc.RootCA.Pool)
+	tlsConfig2, err := ca.NewServerTLSConfig([]tls.Certificate{*cert2}, tc.RootCA.Pool)
 	assert.NoError(t, err)
 
 	// Load the first TLS config into a MutableTLS
