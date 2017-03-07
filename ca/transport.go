@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/docker/docker/pkg/tlsconfig"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/credentials"
@@ -121,8 +120,8 @@ func (c *MutableTLSCreds) ServerHandshake(rawConn net.Conn) (net.Conn, credentia
 	return conn, credentials.TLSInfo{State: conn.ConnectionState()}, nil
 }
 
-// LoadNewTLSConfig replaces the currently loaded TLS config with a new one
-func (c *MutableTLSCreds) LoadNewTLSConfig(newConfig *tls.Config) error {
+// loadNewTLSConfig replaces the currently loaded TLS config with a new one
+func (c *MutableTLSCreds) loadNewTLSConfig(newConfig *tls.Config) error {
 	newSubject, err := GetAndValidateCertificateSubject(newConfig.Certificates)
 	if err != nil {
 		return err
@@ -134,16 +133,6 @@ func (c *MutableTLSCreds) LoadNewTLSConfig(newConfig *tls.Config) error {
 	c.config = newConfig
 
 	return nil
-}
-
-// UpdateCAs updates the root CAs and client CAs of the existing TLS config in place
-func (c *MutableTLSCreds) UpdateCAs(rootCAs, clientCAs *x509.CertPool) {
-	c.Lock()
-	defer c.Unlock()
-	config := tlsconfig.Clone(c.config)
-	config.RootCAs = rootCAs
-	config.ClientCAs = clientCAs
-	c.config = config
 }
 
 // Config returns the current underlying TLS config.
