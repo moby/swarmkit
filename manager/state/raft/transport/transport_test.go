@@ -61,7 +61,7 @@ func testSend(ctx context.Context, c *mockCluster, from uint64, to []uint64, msg
 						continue loop
 					}
 				}
-				t.Fatalf("shapshot ot %d is not reported", id)
+				t.Fatalf("snapshot id %d is not reported", id)
 			}
 		}
 	}
