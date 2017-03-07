@@ -155,7 +155,7 @@ func (s *SecurityConfig) updateTLSCredentials(certificates []tls.Certificate) er
 		return errors.Wrap(err, "failed to create a new server config using the new root CA")
 	}
 
-	if err := s.ClientTLSCreds.LoadNewTLSConfig(clientConfig); err != nil {
+	if err := s.ClientTLSCreds.loadNewTLSConfig(clientConfig); err != nil {
 		return errors.Wrap(err, "failed to update the client credentials")
 	}
 
@@ -167,7 +167,7 @@ func (s *SecurityConfig) updateTLSCredentials(certificates []tls.Certificate) er
 		MinVersion:   tls.VersionTLS12,
 	})
 
-	if err := s.ServerTLSCreds.LoadNewTLSConfig(serverConfig); err != nil {
+	if err := s.ServerTLSCreds.loadNewTLSConfig(serverConfig); err != nil {
 		return errors.Wrap(err, "failed to update the server TLS credentials")
 	}
 
