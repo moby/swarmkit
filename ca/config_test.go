@@ -3,6 +3,7 @@ package ca_test
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"os"
@@ -368,6 +369,57 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 		secConfig.ExternalCA().UpdateURLs(externalServer.URL)
 		_, err := secConfig.ExternalCA().Sign(context.Background(), req)
 		require.NoError(t, err)
+	}
+}
+
+// enforce that no matter what order updating the root CA and updating TLS credential happens, we
+// end up with a security config that has updated certs, and an updated root pool
+func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
+	tc := testutils.NewTestCA(t)
+	defer tc.Stop()
+	paths := ca.NewConfigPaths(tc.TempDir)
+
+	secConfig, err := tc.WriteNewNodeConfig(ca.WorkerRole)
+	require.NoError(t, err)
+
+	leafCert, err := ioutil.ReadFile(paths.Node.Cert)
+	require.NoError(t, err)
+
+	for i := 0; i < 5; i++ {
+		cert, _, err := testutils.CreateRootCertAndKey(fmt.Sprintf("root %d", i+2))
+		require.NoError(t, err)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		done1, done2 := make(chan struct{}), make(chan struct{})
+		rootCA := secConfig.RootCA()
+		go func() {
+			defer close(done1)
+			var key []byte
+			if rootCA.Signer != nil {
+				key = rootCA.Signer.Key
+			}
+			require.NoError(t, secConfig.UpdateRootCA(append(rootCA.Cert, cert...), key, ca.DefaultNodeCertExpiration))
+		}()
+
+		go func() {
+			defer close(done2)
+			require.NoError(t, ca.RenewTLSConfigNow(ctx, secConfig, tc.ConnBroker))
+		}()
+
+		<-done1
+		<-done2
+
+		newCert, err := ioutil.ReadFile(paths.Node.Cert)
+		require.NoError(t, err)
+
+		require.NotEqual(t, newCert, leafCert)
+		leafCert = newCert
+
+		// at the start of this loop had i+1 certs, afterward should have added one more
+		require.Len(t, secConfig.ClientTLSCreds.Config().RootCAs.Subjects(), i+2)
+		require.Len(t, secConfig.ServerTLSCreds.Config().RootCAs.Subjects(), i+2)
 	}
 }
 
