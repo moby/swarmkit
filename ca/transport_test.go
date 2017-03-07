@@ -1,66 +1,85 @@
-package ca_test
+package ca
 
 import (
 	"crypto/tls"
+	"io/ioutil"
+	"os"
 	"testing"
 
-	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewMutableTLS(t *testing.T) {
-	tc := testutils.NewTestCA(t)
-	defer tc.Stop()
+	tempdir, err := ioutil.TempDir("", "test-transport")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+	paths := NewConfigPaths(tempdir)
+	krw := NewKeyReadWriter(paths.Node, nil, nil)
 
-	cert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.KeyReadWriter, "CN", ca.ManagerRole, tc.Organization)
+	rootCA, err := CreateRootCA("rootCN", paths.RootCA)
+	require.NoError(t, err)
+
+	cert, err := rootCA.IssueAndSaveNewCertificates(krw, "CN", ManagerRole, "org")
 	assert.NoError(t, err)
 
-	tlsConfig, err := ca.NewServerTLSConfig(cert, tc.RootCA.Pool)
+	tlsConfig, err := NewServerTLSConfig([]tls.Certificate{*cert}, rootCA.Pool)
 	assert.NoError(t, err)
-	creds, err := ca.NewMutableTLS(tlsConfig)
+	creds, err := NewMutableTLS(tlsConfig)
 	assert.NoError(t, err)
-	assert.Equal(t, ca.ManagerRole, creds.Role())
+	assert.Equal(t, ManagerRole, creds.Role())
 	assert.Equal(t, "CN", creds.NodeID())
 }
 
 func TestGetAndValidateCertificateSubject(t *testing.T) {
-	tc := testutils.NewTestCA(t)
-	defer tc.Stop()
+	tempdir, err := ioutil.TempDir("", "test-transport")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+	paths := NewConfigPaths(tempdir)
+	krw := NewKeyReadWriter(paths.Node, nil, nil)
 
-	cert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.KeyReadWriter, "CN", ca.ManagerRole, tc.Organization)
+	rootCA, err := CreateRootCA("rootCN", paths.RootCA)
+	require.NoError(t, err)
+
+	cert, err := rootCA.IssueAndSaveNewCertificates(krw, "CN", ManagerRole, "org")
 	assert.NoError(t, err)
 
-	name, err := ca.GetAndValidateCertificateSubject([]tls.Certificate{*cert})
+	name, err := GetAndValidateCertificateSubject([]tls.Certificate{*cert})
 	assert.NoError(t, err)
 	assert.Equal(t, "CN", name.CommonName)
 	assert.Len(t, name.OrganizationalUnit, 1)
-	assert.Equal(t, ca.ManagerRole, name.OrganizationalUnit[0])
+	assert.Equal(t, ManagerRole, name.OrganizationalUnit[0])
 }
 
 func TestLoadNewTLSConfig(t *testing.T) {
-	tc := testutils.NewTestCA(t)
-	defer tc.Stop()
+	tempdir, err := ioutil.TempDir("", "test-transport")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+	paths := NewConfigPaths(tempdir)
+	krw := NewKeyReadWriter(paths.Node, nil, nil)
+
+	rootCA, err := CreateRootCA("rootCN", paths.RootCA)
+	require.NoError(t, err)
 
 	// Create two different certs and two different TLS configs
-	cert1, err := tc.RootCA.IssueAndSaveNewCertificates(tc.KeyReadWriter, "CN1", ca.ManagerRole, tc.Organization)
+	cert1, err := rootCA.IssueAndSaveNewCertificates(krw, "CN1", ManagerRole, "org")
 	assert.NoError(t, err)
-	cert2, err := tc.RootCA.IssueAndSaveNewCertificates(tc.KeyReadWriter, "CN2", ca.WorkerRole, tc.Organization)
+	cert2, err := rootCA.IssueAndSaveNewCertificates(krw, "CN2", WorkerRole, "org")
 	assert.NoError(t, err)
-	tlsConfig1, err := ca.NewServerTLSConfig(cert1, tc.RootCA.Pool)
+	tlsConfig1, err := NewServerTLSConfig([]tls.Certificate{*cert1}, rootCA.Pool)
 	assert.NoError(t, err)
-	tlsConfig2, err := ca.NewServerTLSConfig(cert2, tc.RootCA.Pool)
+	tlsConfig2, err := NewServerTLSConfig([]tls.Certificate{*cert2}, rootCA.Pool)
 	assert.NoError(t, err)
 
 	// Load the first TLS config into a MutableTLS
-	creds, err := ca.NewMutableTLS(tlsConfig1)
+	creds, err := NewMutableTLS(tlsConfig1)
 	assert.NoError(t, err)
-	assert.Equal(t, ca.ManagerRole, creds.Role())
+	assert.Equal(t, ManagerRole, creds.Role())
 	assert.Equal(t, "CN1", creds.NodeID())
 
 	// Load the new Config and assert it changed
-	err = creds.LoadNewTLSConfig(tlsConfig2)
+	err = creds.loadNewTLSConfig(tlsConfig2)
 	assert.NoError(t, err)
-	assert.Equal(t, ca.WorkerRole, creds.Role())
+	assert.Equal(t, WorkerRole, creds.Role())
 	assert.Equal(t, "CN2", creds.NodeID())
 }
