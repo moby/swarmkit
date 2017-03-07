@@ -12,6 +12,7 @@ import (
 	"encoding/asn1"
 	"errors"
 	"math/big"
+	"net/http"
 	"strings"
 	"time"
 
@@ -99,6 +100,7 @@ type Signer interface {
 	SetPolicy(*config.Signing)
 	SigAlgo() x509.SignatureAlgorithm
 	Sign(req SignRequest) (cert []byte, err error)
+	SetReqModifier(func(*http.Request, []byte))
 }
 
 // Profile gets the specific profile from the signer
@@ -231,6 +233,9 @@ func ComputeSKI(template *x509.Certificate) ([]byte, error) {
 // and SKI.
 func FillTemplate(template *x509.Certificate, defaultProfile, profile *config.SigningProfile) error {
 	ski, err := ComputeSKI(template)
+	if err != nil {
+		return err
+	}
 
 	var (
 		eku             []x509.ExtKeyUsage
