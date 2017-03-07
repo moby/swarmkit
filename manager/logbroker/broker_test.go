@@ -394,7 +394,10 @@ func TestLogBrokerNoFollow(t *testing.T) {
 		if err := store.CreateTask(tx, &api.Task{
 			ID:        "task1",
 			ServiceID: "service",
-			NodeID:    agent1Security.ServerTLSCreds.NodeID(),
+			Status: api.TaskStatus{
+				State: api.TaskStateRunning,
+			},
+			NodeID: agent1Security.ServerTLSCreds.NodeID(),
 		}); err != nil {
 			return err
 		}
@@ -402,7 +405,10 @@ func TestLogBrokerNoFollow(t *testing.T) {
 		if err := store.CreateTask(tx, &api.Task{
 			ID:        "task2",
 			ServiceID: "service",
-			NodeID:    agent2Security.ServerTLSCreds.NodeID(),
+			Status: api.TaskStatus{
+				State: api.TaskStateRunning,
+			},
+			NodeID: agent2Security.ServerTLSCreds.NodeID(),
 		}); err != nil {
 			return err
 		}
@@ -510,7 +516,10 @@ func TestLogBrokerNoFollowMissingNode(t *testing.T) {
 		if err := store.CreateTask(tx, &api.Task{
 			ID:        "task1",
 			ServiceID: "service",
-			NodeID:    agentSecurity.ServerTLSCreds.NodeID(),
+			Status: api.TaskStatus{
+				State: api.TaskStateRunning,
+			},
+			NodeID: agentSecurity.ServerTLSCreds.NodeID(),
 		}); err != nil {
 			return err
 		}
@@ -519,6 +528,9 @@ func TestLogBrokerNoFollowMissingNode(t *testing.T) {
 			ID:        "task2",
 			ServiceID: "service",
 			NodeID:    "node-2",
+			Status: api.TaskStatus{
+				State: api.TaskStateRunning,
+			},
 		}); err != nil {
 			return err
 		}
@@ -578,7 +590,7 @@ func TestLogBrokerNoFollowMissingNode(t *testing.T) {
 	require.Contains(t, err.Error(), "node-2 is not available")
 }
 
-func TestLogBrokerNoFollowUnscheduledTask(t *testing.T) {
+func TestLogBrokerNoFollowNotYetRunningTask(t *testing.T) {
 	ctx, ca, _, serverAddr, _, done := testLogBrokerEnv(t)
 	defer done()
 
@@ -590,6 +602,9 @@ func TestLogBrokerNoFollowUnscheduledTask(t *testing.T) {
 		return store.CreateTask(tx, &api.Task{
 			ID:        "task1",
 			ServiceID: "service",
+			Status: api.TaskStatus{
+				State: api.TaskStateNew,
+			},
 		})
 	}))
 
@@ -604,10 +619,10 @@ func TestLogBrokerNoFollowUnscheduledTask(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Ensure we receive the message that we could grab
+	// The log stream should be empty, because the task was not yet running
 	_, err = logs.Recv()
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "task1 has not been scheduled")
+	require.Equal(t, err, io.EOF)
 }
 
 func TestLogBrokerNoFollowDisconnect(t *testing.T) {
@@ -632,7 +647,10 @@ func TestLogBrokerNoFollowDisconnect(t *testing.T) {
 		if err := store.CreateTask(tx, &api.Task{
 			ID:        "task1",
 			ServiceID: "service",
-			NodeID:    agent1Security.ServerTLSCreds.NodeID(),
+			Status: api.TaskStatus{
+				State: api.TaskStateRunning,
+			},
+			NodeID: agent1Security.ServerTLSCreds.NodeID(),
 		}); err != nil {
 			return err
 		}
@@ -640,7 +658,10 @@ func TestLogBrokerNoFollowDisconnect(t *testing.T) {
 		if err := store.CreateTask(tx, &api.Task{
 			ID:        "task2",
 			ServiceID: "service",
-			NodeID:    agent2Security.ServerTLSCreds.NodeID(),
+			Status: api.TaskStatus{
+				State: api.TaskStateRunning,
+			},
+			NodeID: agent2Security.ServerTLSCreds.NodeID(),
 		}); err != nil {
 			return err
 		}
