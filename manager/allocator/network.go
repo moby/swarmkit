@@ -387,6 +387,9 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			return a.commitAllocatedService(ctx, batch, s)
 		}); err != nil {
 			log.G(ctx).WithError(err).Errorf("Failed to commit allocation during update for service %s", s.ID)
+			nc.unallocatedServices[s.ID] = s
+		} else {
+			delete(nc.unallocatedServices, s.ID)
 		}
 	case state.EventDeleteService:
 		s := v.Service.Copy()
