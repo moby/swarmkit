@@ -36,6 +36,11 @@ func init() {
 					AllowMissing: true,
 					Indexer:      serviceIndexerBySecret{},
 				},
+				indexResource: {
+					Name:         indexResource,
+					AllowMissing: true,
+					Indexer:      serviceIndexerByResource{},
+				},
 				indexCustom: {
 					Name:         indexCustom,
 					Indexer:      serviceCustomIndexer{},
@@ -182,7 +187,7 @@ func GetService(tx ReadTx, id string) *api.Service {
 func FindServices(tx ReadTx, by By) ([]*api.Service, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byNamePrefix, byIDPrefix, byReferencedNetworkID, byReferencedSecretID, byCustom, byCustomPrefix:
+		case byName, byNamePrefix, byIDPrefix, byReferencedNetworkID, byReferencedSecretID, byReferencedResourceID, byCustom, byCustomPrefix:
 			return nil
 		default:
 			return ErrInvalidFindBy
@@ -292,6 +297,28 @@ func (si serviceIndexerBySecret) FromObject(obj interface{}) (bool, [][]byte, er
 	}
 
 	return len(secretIDs) != 0, secretIDs, nil
+}
+
+type serviceIndexerByResource struct{}
+
+func (si serviceIndexerByResource) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (si serviceIndexerByResource) FromObject(obj interface{}) (bool, [][]byte, error) {
+	s, ok := obj.(serviceEntry)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	var resourceIDs [][]byte
+
+	for _, resourceID := range s.Spec.Task.ResourceReferences {
+		// Add the null character as a terminator
+		resourceIDs = append(resourceIDs, []byte(resourceID+"\x00"))
+	}
+
+	return len(resourceIDs) != 0, resourceIDs, nil
 }
 
 type serviceCustomIndexer struct{}

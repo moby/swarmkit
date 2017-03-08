@@ -126,6 +126,16 @@ message TaskSpec {
 	// using the same reconciliation-based mechanism that performs rolling
 	// updates.
 	uint64 force_update = 9;
+
+	// ResourceReferences provides a generic way to specify resources that
+	// are used by this task, and should be sent down to agents along with
+	// the task. Inside the runtime field there may be more specific
+	// information about how to use the resource, but ResourceReferences
+	// establishes the relationship at the store level, and instructs the
+	// dispatcher to send the related objects.
+	//
+	// ResourceReferences is a list of Resource IDs used by the task.
+	repeated string resource_references = 11;
 }
 
 // NetworkAttachmentSpec specifies runtime parameters required to attach

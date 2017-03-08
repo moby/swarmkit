@@ -144,6 +144,17 @@ func ByReferencedSecretID(secretID string) By {
 	return byReferencedSecretID(secretID)
 }
 
+type byReferencedResourceID string
+
+func (b byReferencedResourceID) isBy() {
+}
+
+// ByReferencedResourceID creates an object to pass to Find to search for a
+// service or task that references a resource with the given ID.
+func ByReferencedResourceID(resourceID string) By {
+	return byReferencedResourceID(resourceID)
+}
+
 type byKind string
 
 func (b byKind) isBy() {
