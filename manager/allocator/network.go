@@ -281,7 +281,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 	}
 
 	for _, t := range tasks {
-		if taskDead(t) {
+		if t.Status.State > api.TaskStateRunning {
 			continue
 		}
 
@@ -486,17 +486,6 @@ func (a *Allocator) doNodeAlloc(ctx context.Context, ev events.Event) {
 	}
 }
 
-// taskRunning checks whether a task is either actively running, or in the
-// process of starting up.
-func taskRunning(t *api.Task) bool {
-	return t.DesiredState <= api.TaskStateRunning && t.Status.State <= api.TaskStateRunning
-}
-
-// taskDead checks whether a task is not actively running as far as allocator purposes are concerned.
-func taskDead(t *api.Task) bool {
-	return t.DesiredState > api.TaskStateRunning && t.Status.State > api.TaskStateRunning
-}
-
 // taskReadyForNetworkVote checks if the task is ready for a network
 // vote to move it to PENDING state.
 func taskReadyForNetworkVote(t *api.Task, s *api.Service, nc *networkContext) bool {
@@ -599,10 +588,9 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, ev events.Event) {
 
 	nc := a.netCtx
 
-	// If the task has stopped running or it's being deleted then
-	// we should free the network resources associated with the
-	// task right away.
-	if taskDead(t) || isDelete {
+	// If the task has stopped running then we should free the network
+	// resources associated with the task right away.
+	if t.Status.State > api.TaskStateRunning || isDelete {
 		if nc.nwkAllocator.IsTaskAllocated(t) {
 			if err := nc.nwkAllocator.DeallocateTask(t); err != nil {
 				log.G(ctx).WithError(err).Errorf("Failed freeing network resources for task %s", t.ID)
@@ -637,7 +625,7 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, ev events.Event) {
 			// available in store. But we still need to
 			// cleanup network resources associated with
 			// the task.
-			if taskRunning(t) && !isDelete {
+			if t.Status.State <= api.TaskStateRunning && !isDelete {
 				log.G(ctx).Errorf("Event %T: Failed to get service %s for task %s state %s: could not find service %s", ev, t.ServiceID, t.ID, t.Status.State, t.ServiceID)
 				return
 			}
