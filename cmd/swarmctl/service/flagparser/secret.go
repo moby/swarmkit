@@ -62,7 +62,7 @@ func ParseAddSecret(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) 
 			secretRef := &api.SecretReference{
 				SecretName: n,
 				Target: &api.SecretReference_File{
-					File: &api.SecretReference_FileTarget{
+					File: &api.FileTarget{
 						Name: p,
 						Mode: 0444,
 					},

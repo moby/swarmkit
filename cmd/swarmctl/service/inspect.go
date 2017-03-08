@@ -118,6 +118,18 @@ func printServiceSummary(service *api.Service, running int) {
 		}
 	}
 
+	if len(ctr.Configs) > 0 {
+		fmt.Fprintln(w, "  Configs:")
+		for _, cr := range ctr.Configs {
+			var targetName, mode string
+			if cr.GetFile() != nil {
+				targetName = cr.GetFile().Name
+				mode = "FILE"
+			}
+			fmt.Fprintf(w, "    [%s] %s@%s:%s\n", mode, cr.ConfigName, cr.ConfigID, targetName)
+		}
+	}
+
 	if task.LogDriver != nil {
 		fmt.Fprintf(w, "  LogDriver\t: %s\n", task.LogDriver.Name)
 		var keys []string

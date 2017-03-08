@@ -272,7 +272,8 @@ func (a *Agent) run(ctx context.Context) {
 
 			switch msg.Type {
 			case api.AssignmentsMessage_COMPLETE:
-				// Need to assign secrets before tasks, because tasks might depend on new secrets
+				// Need to assign secrets and configs before tasks,
+				// because tasks might depend on new secrets or configs
 				if err := a.worker.Assign(ctx, msg.Changes); err != nil {
 					log.G(ctx).WithError(err).Error("failed to synchronize worker assignments")
 				}
