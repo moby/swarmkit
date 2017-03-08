@@ -251,18 +251,26 @@ func (n *Node) run(ctx context.Context) (err error) {
 	}
 	defer db.Close()
 
+	agentDone := make(chan struct{})
+
 	forceCertRenewal := make(chan struct{})
 	renewCert := func() {
-		select {
-		case forceCertRenewal <- struct{}{}:
-		case <-ctx.Done():
+		for {
+			select {
+			case forceCertRenewal <- struct{}{}:
+				return
+			case <-agentDone:
+				return
+			case <-n.notifyNodeChange:
+				// consume from the channel to avoid blocking the writer
+			}
 		}
 	}
 
 	go func() {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-agentDone:
 				return
 			case node := <-n.notifyNodeChange:
 				// If the server is sending us a ForceRenewal State, renew
@@ -320,6 +328,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 		agentErr = n.runAgent(ctx, db, securityConfig.ClientTLSCreds, agentReady)
 		wg.Done()
 		cancel()
+		close(agentDone)
 	}()
 
 	go func() {
