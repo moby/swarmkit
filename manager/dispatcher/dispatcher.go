@@ -346,9 +346,9 @@ func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
 
 				expireFunc := func() {
 					log := log.WithField("node", nodeID)
-					log.Debugf("heartbeat expiration for unknown node")
+					log.Debug("heartbeat expiration for unknown node")
 					if err := d.markNodeNotReady(nodeID, api.NodeStatus_DOWN, `heartbeat failure for node in "unknown" state`); err != nil {
-						log.WithError(err).Errorf(`failed deregistering node after heartbeat expiration for node in "unknown" state`)
+						log.WithError(err).Error(`failed deregistering node after heartbeat expiration for node in "unknown" state`)
 					}
 				}
 				if err := d.nodes.AddUnknown(node, expireFunc); err != nil {
@@ -360,7 +360,7 @@ func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
 				return nil
 			})
 			if err != nil {
-				log.WithField("node", n.ID).WithError(err).Errorf(`failed to move node to "unknown" state`)
+				log.WithField("node", n.ID).WithError(err).Error(`failed to move node to "unknown" state`)
 			}
 		}
 		return nil
@@ -457,7 +457,7 @@ func (d *Dispatcher) register(ctx context.Context, nodeID string, description *a
 
 	addr, err := nodeIPFromContext(ctx)
 	if err != nil {
-		log.G(ctx).Debugf(err.Error())
+		log.G(ctx).Debug(err.Error())
 	}
 
 	if err := d.markNodeReady(dctx, nodeID, description, addr); err != nil {
