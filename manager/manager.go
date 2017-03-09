@@ -2,8 +2,6 @@ package manager
 
 import (
 	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"net"
 	"os"
@@ -12,6 +10,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"crypto/subtle"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/pkg/plugingetter"
@@ -714,28 +714,17 @@ func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 	return nil
 }
 
-// rotateRootCAKEK will attempt to rotate the key-encryption-key for root CA key-material in raft.
-// If there is no passphrase set in ENV, it returns.
-// If there is plain-text root key-material, and a passphrase set, it encrypts it.
-// If there is encrypted root key-material and it is using the current passphrase, it returns.
-// If there is encrypted root key-material, and it is using the previous passphrase, it
-// re-encrypts it with the current passphrase.
-func (m *Manager) rotateRootCAKEK(ctx context.Context, clusterID string) error {
-	// If we don't have a KEK, we won't ever be rotating anything
-	strPassphrase := os.Getenv(ca.PassphraseENVVar)
-	if strPassphrase == "" {
-		return nil
-	}
-	strPassphrasePrev := os.Getenv(ca.PassphraseENVVarPrev)
-	passphrase := []byte(strPassphrase)
-	passphrasePrev := []byte(strPassphrasePrev)
-
+// TODO(cyli/diogomonica): Remove in 17.09
+// decryptRootCA will attempt to decrypt the root CA key-material in raft - encrypting the root key
+// material in raft was a legacy feature that is no longer necessary now that the raft logs are
+// encrypted on disk.
+// If there is plain-text root key-material, it returns
+// If there is encrypted root key-material and it is using the current or previous passphrase, it
+// decrypts the key and updates it in raft.
+// If there is encrypted root key-material and no valid decryption key is provided, it errors.
+func (m *Manager) decryptRootCA(ctx context.Context, clusterID string) error {
 	s := m.raftNode.MemoryStore()
-	var (
-		cluster  *api.Cluster
-		err      error
-		finalKey []byte
-	)
+	var cluster *api.Cluster
 	// Retrieve the cluster identified by ClusterID
 	s.View(func(readTx store.ReadTx) {
 		cluster = store.GetCluster(readTx, clusterID)
@@ -744,65 +733,30 @@ func (m *Manager) rotateRootCAKEK(ctx context.Context, clusterID string) error {
 		return fmt.Errorf("cluster not found: %s", clusterID)
 	}
 
-	// Try to get the private key from the cluster
-	privKeyPEM := cluster.RootCA.CAKey
-	if len(privKeyPEM) == 0 {
-		// We have no PEM root private key in this cluster.
-		log.G(ctx).Warnf("cluster %s does not have private key material", clusterID)
+	// If we don't have a private key, don't bother decrypting
+	if len(cluster.RootCA.CAKey) == 0 {
 		return nil
 	}
-
-	// Decode the PEM private key
-	keyBlock, _ := pem.Decode(privKeyPEM)
-	if keyBlock == nil {
-		return fmt.Errorf("invalid PEM-encoded private key inside of cluster %s", clusterID)
-	}
-	// If this key is not encrypted, then we have to encrypt it
-	if !x509.IsEncryptedPEMBlock(keyBlock) {
-		finalKey, err = ca.EncryptECPrivateKey(privKeyPEM, strPassphrase)
-		if err != nil {
-			return err
-		}
-	} else {
-		// This key is already encrypted, let's try to decrypt with the current main passphrase
-		_, err = x509.DecryptPEMBlock(keyBlock, []byte(passphrase))
-		if err == nil {
-			// The main key is the correct KEK, nothing to do here
-			return nil
-		}
-		// This key is already encrypted, but failed with current main passphrase.
-		// Let's try to decrypt with the previous passphrase
-		unencryptedKey, err := x509.DecryptPEMBlock(keyBlock, []byte(passphrasePrev))
-		if err != nil {
-			// We were not able to decrypt either with the main or backup passphrase, error
-			return err
-		}
-		unencryptedKeyBlock := &pem.Block{
-			Type:    keyBlock.Type,
-			Bytes:   unencryptedKey,
-			Headers: keyBlock.Headers,
-		}
-
-		// We were able to decrypt the key, but with the previous passphrase. Let's encrypt
-		// with the new one and store it in raft
-		finalKey, err = ca.EncryptECPrivateKey(pem.EncodeToMemory(unencryptedKeyBlock), strPassphrase)
-		if err != nil {
-			log.G(ctx).Debugf("failed to rotate the key-encrypting-key for the root key material of cluster %s", clusterID)
-			return err
-		}
+	logger := log.G(ctx).WithField("cluster.id", clusterID)
+	decryptedPrivKeyPEM, err := ca.DecryptRootKeyPEM(cluster.RootCA.CAKey)
+	if err != nil {
+		logger.Error(err)
+		return err
 	}
 
-	log.G(ctx).Infof("Re-encrypting the root key material of cluster %s", clusterID)
-	// Let's update the key in the cluster object
-	return s.Update(func(tx store.Tx) error {
-		cluster = store.GetCluster(tx, clusterID)
-		if cluster == nil {
-			return fmt.Errorf("cluster not found: %s", clusterID)
-		}
-		cluster.RootCA.CAKey = finalKey
-		return store.UpdateCluster(tx, cluster)
-	})
-
+	if subtle.ConstantTimeCompare(cluster.RootCA.CAKey, decryptedPrivKeyPEM) != 1 {
+		logger.Warn("Encrypting the root key material via environment variables is deprecated and superceded by default raft log encryption.")
+		// Let's update the key in the cluster object
+		return s.Update(func(tx store.Tx) error {
+			cluster = store.GetCluster(tx, clusterID)
+			if cluster == nil {
+				return fmt.Errorf("cluster not found: %s", clusterID)
+			}
+			cluster.RootCA.CAKey = decryptedPrivKeyPEM
+			return store.UpdateCluster(tx, cluster)
+		})
+	}
+	return nil
 }
 
 // handleLeadershipEvents handles the is leader event or is follower event.
@@ -896,10 +850,10 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		return nil
 	})
 
-	// Attempt to rotate the key-encrypting-key of the root CA key-material
-	err := m.rotateRootCAKEK(ctx, clusterID)
+	// Decrypt the root CA key-material if it's encrypted
+	err := m.decryptRootCA(ctx, clusterID)
 	if err != nil {
-		log.G(ctx).WithError(err).Error("root key-encrypting-key rotation failed")
+		log.G(ctx).WithError(err).Error("decrypting root CA failed")
 	}
 
 	m.replicatedOrchestrator = replicated.NewReplicatedOrchestrator(s)

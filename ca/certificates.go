@@ -50,10 +50,12 @@ const (
 	RootKeyAlgo = "ecdsa"
 	// PassphraseENVVar defines the environment variable to look for the
 	// root CA private key material encryption key
+	// TODO (cyli/diogomonica): remove in 17.09
 	PassphraseENVVar = "SWARM_ROOT_CA_PASSPHRASE"
 	// PassphraseENVVarPrev defines the alternate environment variable to look for the
 	// root CA private key material encryption key. It can be used for seamless
 	// KEK rotations.
+	// TODO (cyli/diogomonica): remove in 17.09
 	PassphraseENVVarPrev = "SWARM_ROOT_CA_PASSPHRASE_PREV"
 	// RootCAExpiration represents the default expiration for the root CA in seconds (20 years)
 	RootCAExpiration = "630720000s"
@@ -305,6 +307,31 @@ func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, ou, org string) 
 	return cert, nil
 }
 
+// DecryptRootKeyPEM decrypts a root key in PEM format using passphrases stored
+// in environment variables.
+// TODO (cyli/diogomonica) This provides legacy support for an unadvertised
+// feature, and should be removed in 17.09.
+func DecryptRootKeyPEM(privKeyPEM []byte) ([]byte, error) {
+	// Decode the PEM private key
+	keyBlock, _ := pem.Decode(privKeyPEM)
+	if keyBlock == nil {
+		return nil, errors.New("malformed private key")
+	}
+	for _, envVar := range []string{PassphraseENVVar, PassphraseENVVarPrev} {
+		var kek []byte
+		strPassphrase := os.Getenv(envVar)
+		if strPassphrase != "" {
+			kek = []byte(strPassphrase)
+		}
+		decrypted, err := decryptPEMKeyBlock(keyBlock, kek)
+		if err != nil {
+			continue
+		}
+		return pem.EncodeToMemory(decrypted), nil
+	}
+	return nil, errors.New("no valid key-encrypting-key for the root private key")
+}
+
 // NewRootCA creates a new RootCA object from unparsed PEM cert bundle and key byte
 // slices. key may be nil, and in this case NewRootCA will return a RootCA
 // without a signer.
@@ -346,28 +373,15 @@ func NewRootCA(certBytes, keyBytes []byte, certExpiry time.Duration) (RootCA, er
 		return RootCA{Cert: certBytes, Digest: digest, Pool: pool}, nil
 	}
 
-	var (
-		passphraseStr              string
-		passphrase, passphrasePrev []byte
-		priv                       crypto.Signer
-	)
-
-	// Attempt two distinct passphrases, so we can do a hitless passphrase rotation
-	if passphraseStr = os.Getenv(PassphraseENVVar); passphraseStr != "" {
-		passphrase = []byte(passphraseStr)
-	}
-
-	if p := os.Getenv(PassphraseENVVarPrev); p != "" {
-		passphrasePrev = []byte(p)
-	}
-
-	// Attempt to decrypt the current private-key with the passphrases provided
-	priv, err = helpers.ParsePrivateKeyPEMWithPassword(keyBytes, passphrase)
+	// TODO (cyli/diogomonica): Remove in 17.09
+	keyBytes, err = DecryptRootKeyPEM(keyBytes)
 	if err != nil {
-		priv, err = helpers.ParsePrivateKeyPEMWithPassword(keyBytes, passphrasePrev)
-		if err != nil {
-			return RootCA{}, errors.Wrap(err, "malformed private key")
-		}
+		return RootCA{}, err
+	}
+
+	priv, err := helpers.ParsePrivateKeyPEM(keyBytes)
+	if err != nil {
+		return RootCA{}, err
 	}
 
 	// We will always use the first certificate inside of the root bundle as the active one
@@ -378,20 +392,6 @@ func NewRootCA(certBytes, keyBytes []byte, certExpiry time.Duration) (RootCA, er
 	signer, err := local.NewSigner(priv, parsedCerts[0], cfsigner.DefaultSigAlgo(priv), SigningPolicy(certExpiry))
 	if err != nil {
 		return RootCA{}, err
-	}
-
-	// If the key was loaded from disk unencrypted, but there is a passphrase set,
-	// ensure it is encrypted, so it doesn't hit raft in plain-text
-	keyBlock, _ := pem.Decode(keyBytes)
-	if keyBlock == nil {
-		// This RootCA does not have a valid signer.
-		return RootCA{Cert: certBytes, Digest: digest, Pool: pool}, nil
-	}
-	if passphraseStr != "" && !x509.IsEncryptedPEMBlock(keyBlock) {
-		keyBytes, err = EncryptECPrivateKey(keyBytes, passphraseStr)
-		if err != nil {
-			return RootCA{}, err
-		}
 	}
 
 	return RootCA{Signer: &LocalSigner{Signer: signer, Key: keyBytes}, Digest: digest, Cert: certBytes, Pool: pool}, nil

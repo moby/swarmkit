@@ -316,29 +316,7 @@ func (k *KeyReadWriter) readKey() (*pem.Block, error) {
 		return nil, err
 	}
 
-	if !x509.IsEncryptedPEMBlock(keyBlock) {
-		return keyBlock, nil
-	}
-
-	// If it's encrypted, we can't read without a passphrase (we're assuming
-	// empty passphrases are invalid)
-	if k.kekData.KEK == nil {
-		return nil, ErrInvalidKEK{Wrapped: x509.IncorrectPasswordError}
-	}
-
-	derBytes, err := x509.DecryptPEMBlock(keyBlock, k.kekData.KEK)
-	if err != nil {
-		return nil, ErrInvalidKEK{Wrapped: err}
-	}
-	// remove encryption PEM headers
-	headers := make(map[string]string)
-	mergePEMHeaders(headers, keyBlock.Headers)
-
-	return &pem.Block{
-		Type:    keyBlock.Type, // the key type doesn't change
-		Bytes:   derBytes,
-		Headers: headers,
-	}, nil
+	return decryptPEMKeyBlock(keyBlock, k.kekData.KEK)
 }
 
 // writeKey takes an unencrypted keyblock and, if the kek is not nil, encrypts it before
@@ -385,4 +363,32 @@ func mergePEMHeaders(original, newSet map[string]string) {
 			original[key] = value
 		}
 	}
+}
+
+// takes a parsed PEM key block which may be encrypted and returns a decrypted
+// PEM key block
+func decryptPEMKeyBlock(keyBlock *pem.Block, kek []byte) (*pem.Block, error) {
+	if !x509.IsEncryptedPEMBlock(keyBlock) {
+		return keyBlock, nil
+	}
+
+	// If it's encrypted, we can't read without a passphrase (we're assuming
+	// empty passphrases are invalid)
+	if kek == nil {
+		return nil, ErrInvalidKEK{Wrapped: x509.IncorrectPasswordError}
+	}
+
+	derBytes, err := x509.DecryptPEMBlock(keyBlock, kek)
+	if err != nil {
+		return nil, ErrInvalidKEK{Wrapped: err}
+	}
+	// remove encryption PEM headers
+	headers := make(map[string]string)
+	mergePEMHeaders(headers, keyBlock.Headers)
+
+	return &pem.Block{
+		Type:    keyBlock.Type, // the key type doesn't change
+		Bytes:   derBytes,
+		Headers: headers,
+	}, nil
 }

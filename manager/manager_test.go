@@ -2,6 +2,7 @@ package manager
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
@@ -507,5 +508,112 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 	// After stopping we should MAY receive an error from ListenAndServe if
 	// all this happened before WaitForLeader completed, so don't check the
 	// error.
+	<-done
+}
+
+// Tests manager decrypts encrypted root key data in the raft store
+func TestManagerNoMoreEncryptedRootKeyMaterial(t *testing.T) {
+	ctx := context.Background()
+
+	tc := testutils.NewTestCA(t)
+	defer tc.Stop()
+
+	temp, err := ioutil.TempFile("", "test-socket")
+	require.NoError(t, err)
+	require.NoError(t, temp.Close())
+	require.NoError(t, os.Remove(temp.Name()))
+
+	defer os.RemoveAll(temp.Name())
+
+	stateDir, err := ioutil.TempDir("", "test-raft")
+	require.NoError(t, err)
+	defer os.RemoveAll(stateDir)
+
+	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
+	require.NoError(t, err)
+
+	_, _, err = managerSecurityConfig.KeyReader().Read()
+	require.NoError(t, err)
+
+	config := Config{
+		RemoteAPI:      &RemoteAddrs{ListenAddr: "127.0.0.1:0"},
+		ControlAPI:     temp.Name(),
+		StateDir:       stateDir,
+		SecurityConfig: managerSecurityConfig,
+	}
+
+	m, err := New(&config)
+	require.NoError(t, err)
+	require.NotNil(t, m)
+
+	done := make(chan error)
+	defer close(done)
+	go func() {
+		done <- m.Run(ctx)
+	}()
+
+	// encrypt the root CA key
+	keyBlock, _ := pem.Decode(tc.RootCA.Signer.Key)
+	require.NotNil(t, keyBlock)
+	encryptedPEMBlock, err := x509.EncryptPEMBlock(
+		rand.Reader,
+		keyBlock.Type,
+		keyBlock.Bytes,
+		[]byte("password"),
+		x509.PEMCipherAES256,
+	)
+	require.NoError(t, err)
+
+	// update the key to be encrypted in the store
+	err = raftutils.PollFunc(nil, func() error {
+		return m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
+			clusters, err := store.FindClusters(tx, store.All)
+			if err != nil {
+				return err
+			}
+			if len(clusters) != 1 {
+				return fmt.Errorf("expected 1 cluster, got %d", len(clusters))
+			}
+			clusters[0].RootCA.CAKey = pem.EncodeToMemory(encryptedPEMBlock)
+			return store.UpdateCluster(tx, clusters[0])
+		})
+	})
+	require.NoError(t, err)
+
+	// restart
+	m.Stop(ctx, false)
+	<-done
+
+	os.Setenv(ca.PassphraseENVVar, "password")
+	defer os.Unsetenv(ca.PassphraseENVVar)
+
+	ctx = context.Background()
+	m, err = New(&config)
+	require.NoError(t, err)
+	require.NotNil(t, m)
+	go func() {
+		done <- m.Run(ctx)
+	}()
+
+	// wait until the key has been decrypted
+	require.NoError(t, raftutils.PollFunc(nil, func() error {
+		var err error
+		m.raftNode.MemoryStore().View(func(tx store.ReadTx) {
+			var clusters []*api.Cluster
+			clusters, err = store.FindClusters(tx, store.All)
+			if err == nil {
+				if len(clusters) != 1 {
+					err = fmt.Errorf("expected 1 cluster, got %d", len(clusters))
+					return
+				}
+				if !bytes.Equal(clusters[0].RootCA.CAKey, tc.RootCA.Signer.Key) {
+					err = fmt.Errorf("root ca material has not been decrypted yet")
+				}
+			}
+		})
+		return err
+	}))
+
+	m.Stop(ctx, false)
 	<-done
 }
