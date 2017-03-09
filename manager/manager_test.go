@@ -479,7 +479,9 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 	}, 1*time.Second))
 
 	// stop running CA server and other leader functions
+	m.mu.Lock()
 	m.becomeFollower()
+	m.mu.Unlock()
 
 	newRootCert, _, err := testutils.CreateRootCertAndKey("rootOther")
 	require.NoError(t, err)
