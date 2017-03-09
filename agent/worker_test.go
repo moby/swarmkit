@@ -6,6 +6,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/boltdb/bolt"
 	"github.com/docker/swarmkit/agent/exec"
+	"github.com/docker/swarmkit/agent/resources"
 	"github.com/docker/swarmkit/agent/secrets"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
@@ -34,7 +35,7 @@ func TestWorkerAssign(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	executor := &mockExecutor{t: t, secrets: secrets.NewManager()}
+	executor := &mockExecutor{t: t, secrets: secrets.NewManager(), resources: resources.NewManager()}
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
@@ -44,10 +45,11 @@ func TestWorkerAssign(t *testing.T) {
 	worker.Listen(ctx, reporter)
 
 	for _, testcase := range []struct {
-		changeSet        []*api.AssignmentChange
-		expectedTasks    []*api.Task
-		expectedSecrets  []*api.Secret
-		expectedAssigned []*api.Task
+		changeSet         []*api.AssignmentChange
+		expectedTasks     []*api.Task
+		expectedSecrets   []*api.Secret
+		expectedResources []*api.Resource
+		expectedAssigned  []*api.Task
 	}{
 		{}, // handle nil case.
 		{
@@ -64,6 +66,14 @@ func TestWorkerAssign(t *testing.T) {
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Secret{
 							Secret: &api.Secret{ID: "secret-1"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionUpdate,
+				},
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Resource{
+							Resource: &api.Resource{ID: "resource-1"},
 						},
 					},
 					Action: api.AssignmentChange_AssignmentActionUpdate,
@@ -85,12 +95,23 @@ func TestWorkerAssign(t *testing.T) {
 					},
 					Action: api.AssignmentChange_AssignmentActionRemove,
 				},
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Resource{
+							Resource: &api.Resource{ID: "resource-2"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionRemove,
+				},
 			},
 			expectedTasks: []*api.Task{
 				{ID: "task-1"},
 			},
 			expectedSecrets: []*api.Secret{
 				{ID: "secret-1"},
+			},
+			expectedResources: []*api.Resource{
+				{ID: "resource-1"},
 			},
 			expectedAssigned: []*api.Task{
 				{ID: "task-1"},
@@ -114,6 +135,14 @@ func TestWorkerAssign(t *testing.T) {
 					},
 					Action: api.AssignmentChange_AssignmentActionUpdate,
 				},
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Resource{
+							Resource: &api.Resource{ID: "resource-2"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionUpdate,
+				},
 			},
 			expectedTasks: []*api.Task{
 				{ID: "task-1"},
@@ -122,12 +151,15 @@ func TestWorkerAssign(t *testing.T) {
 			expectedSecrets: []*api.Secret{
 				{ID: "secret-2"},
 			},
+			expectedResources: []*api.Resource{
+				{ID: "resource-2"},
+			},
 			expectedAssigned: []*api.Task{
 				{ID: "task-2"},
 			},
 		},
 		{
-			// remove assigned tasks, secret no longer present
+			// remove assigned tasks, secret and resource no longer present
 			expectedTasks: []*api.Task{
 				{ID: "task-1"},
 				{ID: "task-2"},
@@ -158,6 +190,9 @@ func TestWorkerAssign(t *testing.T) {
 		for _, secret := range testcase.expectedSecrets {
 			assert.NotNil(t, executor.secrets.Get(secret.ID))
 		}
+		for _, resource := range testcase.expectedResources {
+			assert.NotNil(t, executor.resources.Get(resource.ID))
+		}
 	}
 }
 
@@ -166,7 +201,7 @@ func TestWorkerWait(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	executor := &mockExecutor{t: t, secrets: secrets.NewManager()}
+	executor := &mockExecutor{t: t, secrets: secrets.NewManager(), resources: resources.NewManager()}
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
@@ -200,6 +235,14 @@ func TestWorkerWait(t *testing.T) {
 			},
 			Action: api.AssignmentChange_AssignmentActionUpdate,
 		},
+		{
+			Assignment: &api.Assignment{
+				Item: &api.Assignment_Resource{
+					Resource: &api.Resource{ID: "resource-1"},
+				},
+			},
+			Action: api.AssignmentChange_AssignmentActionUpdate,
+		},
 	}
 
 	expectedTasks := []*api.Task{
@@ -209,6 +252,10 @@ func TestWorkerWait(t *testing.T) {
 
 	expectedSecrets := []*api.Secret{
 		{ID: "secret-1"},
+	}
+
+	expectedResources := []*api.Resource{
+		{ID: "resource-1"},
 	}
 
 	expectedAssigned := []*api.Task{
@@ -237,6 +284,9 @@ func TestWorkerWait(t *testing.T) {
 	for _, secret := range expectedSecrets {
 		assert.NotNil(t, executor.secrets.Get(secret.ID))
 	}
+	for _, resource := range expectedResources {
+		assert.NotNil(t, executor.resources.Get(resource.ID))
+	}
 
 	err := worker.Assign(ctx, nil)
 	assert.Nil(t, err)
@@ -262,7 +312,7 @@ func TestWorkerUpdate(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	executor := &mockExecutor{t: t, secrets: secrets.NewManager()}
+	executor := &mockExecutor{t: t, secrets: secrets.NewManager(), resources: resources.NewManager()}
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
@@ -271,7 +321,7 @@ func TestWorkerUpdate(t *testing.T) {
 
 	worker.Listen(ctx, reporter)
 
-	// create an existing task and secret
+	// create existing task/secret/resource
 	assert.NoError(t, worker.Assign(ctx, []*api.AssignmentChange{
 		{
 			Assignment: &api.Assignment{
@@ -289,13 +339,22 @@ func TestWorkerUpdate(t *testing.T) {
 			},
 			Action: api.AssignmentChange_AssignmentActionUpdate,
 		},
+		{
+			Assignment: &api.Assignment{
+				Item: &api.Assignment_Resource{
+					Resource: &api.Resource{ID: "resource-1"},
+				},
+			},
+			Action: api.AssignmentChange_AssignmentActionUpdate,
+		},
 	}))
 
 	for _, testcase := range []struct {
-		changeSet        []*api.AssignmentChange
-		expectedTasks    []*api.Task
-		expectedSecrets  []*api.Secret
-		expectedAssigned []*api.Task
+		changeSet         []*api.AssignmentChange
+		expectedTasks     []*api.Task
+		expectedSecrets   []*api.Secret
+		expectedResources []*api.Resource
+		expectedAssigned  []*api.Task
 	}{
 		{ // handle nil changeSet case.
 			expectedTasks: []*api.Task{
@@ -303,6 +362,9 @@ func TestWorkerUpdate(t *testing.T) {
 			},
 			expectedSecrets: []*api.Secret{
 				{ID: "secret-1"},
+			},
+			expectedResources: []*api.Resource{
+				{ID: "resource-1"},
 			},
 			expectedAssigned: []*api.Task{
 				{ID: "task-1"},
@@ -325,6 +387,9 @@ func TestWorkerUpdate(t *testing.T) {
 			},
 			expectedSecrets: []*api.Secret{
 				{ID: "secret-1"},
+			},
+			expectedResources: []*api.Resource{
+				{ID: "resource-1"},
 			},
 			expectedAssigned: []*api.Task{
 				{ID: "task-1"},
@@ -349,6 +414,14 @@ func TestWorkerUpdate(t *testing.T) {
 					},
 					Action: api.AssignmentChange_AssignmentActionUpdate,
 				},
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Resource{
+							Resource: &api.Resource{ID: "resource-2"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionUpdate,
+				},
 			},
 			expectedTasks: []*api.Task{
 				{ID: "task-1"},
@@ -357,6 +430,10 @@ func TestWorkerUpdate(t *testing.T) {
 			expectedSecrets: []*api.Secret{
 				{ID: "secret-1"},
 				{ID: "secret-2"},
+			},
+			expectedResources: []*api.Resource{
+				{ID: "resource-1"},
+				{ID: "resource-2"},
 			},
 			expectedAssigned: []*api.Task{
 				{ID: "task-1"},
@@ -390,6 +467,22 @@ func TestWorkerUpdate(t *testing.T) {
 					},
 					Action: api.AssignmentChange_AssignmentActionUpdate,
 				},
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Resource{
+							Resource: &api.Resource{ID: "resource-1"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionRemove,
+				},
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Resource{
+							Resource: &api.Resource{ID: "resource-2"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionUpdate,
+				},
 			},
 			expectedTasks: []*api.Task{
 				{ID: "task-1"},
@@ -397,6 +490,9 @@ func TestWorkerUpdate(t *testing.T) {
 			},
 			expectedSecrets: []*api.Secret{
 				{ID: "secret-2"},
+			},
+			expectedResources: []*api.Resource{
+				{ID: "resource-2"},
 			},
 			expectedAssigned: []*api.Task{
 				{ID: "task-2"},
@@ -437,6 +533,14 @@ func TestWorkerUpdate(t *testing.T) {
 					},
 					Action: api.AssignmentChange_AssignmentActionRemove,
 				},
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Resource{
+							Resource: &api.Resource{ID: "resource-2"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionRemove,
+				},
 			},
 			expectedTasks: []*api.Task{
 				{ID: "task-1"},
@@ -465,6 +569,9 @@ func TestWorkerUpdate(t *testing.T) {
 		for _, secret := range testcase.expectedSecrets {
 			assert.NotNil(t, executor.secrets.Get(secret.ID))
 		}
+		for _, resource := range testcase.expectedResources {
+			assert.NotNil(t, executor.resources.Get(resource.ID))
+		}
 	}
 }
 
@@ -487,7 +594,8 @@ func (mtc *mockTaskController) Close() error {
 type mockExecutor struct {
 	t *testing.T
 	exec.Executor
-	secrets exec.SecretsManager
+	secrets   exec.SecretsManager
+	resources exec.ResourcesManager
 }
 
 func (m *mockExecutor) Controller(task *api.Task) (exec.Controller, error) {
@@ -496,4 +604,8 @@ func (m *mockExecutor) Controller(task *api.Task) (exec.Controller, error) {
 
 func (m *mockExecutor) Secrets() exec.SecretsManager {
 	return m.secrets
+}
+
+func (m *mockExecutor) Resources() exec.ResourcesManager {
+	return m.resources
 }

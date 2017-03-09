@@ -23,12 +23,13 @@ type Worker interface {
 	// It is not safe to call any worker function after that.
 	Close()
 
-	// Assign assigns a complete set of tasks and secrets to a worker. Any task or secrets not included in
-	// this set will be removed.
+	// Assign assigns a complete set of tasks and resources/secrets to a
+	// worker. Any items not included in this set will be removed.
 	Assign(ctx context.Context, assignments []*api.AssignmentChange) error
 
-	// Updates updates an incremental set of tasks or secrets of the worker. Any task/secret not included
-	// either in added or removed will remain untouched.
+	// Updates updates an incremental set of tasks or resources/secrets of
+	// the worker. Any items not included either in added or removed will
+	// remain untouched.
 	Update(ctx context.Context, assignments []*api.AssignmentChange) error
 
 	// Listen to updates about tasks controlled by the worker. When first
@@ -119,11 +120,11 @@ func (w *worker) Close() {
 	w.taskevents.Close()
 }
 
-// Assign assigns a full set of tasks and secrets to the worker.
+// Assign assigns a full set of tasks, resources, and secrets to the worker.
 // Any tasks not previously known will be started. Any tasks that are in the task set
 // and already running will be updated, if possible. Any tasks currently running on
 // the worker outside the task set will be terminated.
-// Any secrets not in the set of assignments will be removed.
+// Anything not in the set of assignments will be removed.
 func (w *worker) Assign(ctx context.Context, assignments []*api.AssignmentChange) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -142,13 +143,20 @@ func (w *worker) Assign(ctx context.Context, assignments []*api.AssignmentChange
 		return err
 	}
 
+	err = reconcileResources(ctx, w, assignments, true)
+	if err != nil {
+		return err
+	}
+
 	return reconcileTaskState(ctx, w, assignments, true)
 }
 
-// Update updates the set of tasks and secret for the worker.
+// Update updates the set of tasks, resources, and secrets for the worker.
 // Tasks in the added set will be added to the worker, and tasks in the removed set
 // will be removed from the worker
 // Secrets in the added set will be added to the worker, and secrets in the removed set
+// will be removed from the worker.
+// Resources in the added set will be added to the worker, and resources in the removed set
 // will be removed from the worker.
 func (w *worker) Update(ctx context.Context, assignments []*api.AssignmentChange) error {
 	w.mu.Lock()
@@ -163,6 +171,11 @@ func (w *worker) Update(ctx context.Context, assignments []*api.AssignmentChange
 	}).Debug("(*worker).Update")
 
 	err := reconcileSecrets(ctx, w, assignments, false)
+	if err != nil {
+		return err
+	}
+
+	err = reconcileResources(ctx, w, assignments, false)
 	if err != nil {
 		return err
 	}
@@ -318,7 +331,7 @@ func reconcileSecrets(ctx context.Context, w *worker, assignments []*api.Assignm
 		}
 	}
 
-	provider, ok := w.executor.(exec.SecretsProvider)
+	secretsProvider, ok := w.executor.(exec.SecretsProvider)
 	if !ok {
 		if len(updatedSecrets) != 0 || len(removedSecrets) != 0 {
 			log.G(ctx).Warn("secrets update ignored; executor does not support secrets")
@@ -326,7 +339,7 @@ func reconcileSecrets(ctx context.Context, w *worker, assignments []*api.Assignm
 		return nil
 	}
 
-	secrets := provider.Secrets()
+	secrets := secretsProvider.Secrets()
 
 	log.G(ctx).WithFields(logrus.Fields{
 		"len(updatedSecrets)": len(updatedSecrets),
@@ -340,6 +353,49 @@ func reconcileSecrets(ctx context.Context, w *worker, assignments []*api.Assignm
 		secrets.Remove(removedSecrets)
 	}
 	secrets.Add(updatedSecrets...)
+
+	return nil
+}
+
+func reconcileResources(ctx context.Context, w *worker, assignments []*api.AssignmentChange, fullSnapshot bool) error {
+	var (
+		updatedResources []api.Resource
+		removedResources []string
+	)
+	for _, a := range assignments {
+		if r := a.Assignment.GetResource(); r != nil {
+			switch a.Action {
+			case api.AssignmentChange_AssignmentActionUpdate:
+				updatedResources = append(updatedResources, *r)
+			case api.AssignmentChange_AssignmentActionRemove:
+				removedResources = append(removedResources, r.ID)
+			}
+
+		}
+	}
+
+	resourcesProvider, ok := w.executor.(exec.ResourcesProvider)
+	if !ok {
+		if len(updatedResources) != 0 || len(removedResources) != 0 {
+			log.G(ctx).Warn("resources update ignored; executor does not support resources")
+		}
+		return nil
+	}
+
+	resources := resourcesProvider.Resources()
+
+	log.G(ctx).WithFields(logrus.Fields{
+		"len(updatedResources)": len(updatedResources),
+		"len(removedResources)": len(removedResources),
+	}).Debug("(*worker).reconcileResources")
+
+	// If this was a complete set of resources, we're going to clear the resources map and add all of them
+	if fullSnapshot {
+		resources.Reset()
+	} else {
+		resources.Remove(removedResources)
+	}
+	resources.Add(updatedResources...)
 
 	return nil
 }

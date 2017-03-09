@@ -28,6 +28,12 @@ type SecretsProvider interface {
 	Secrets() SecretsManager
 }
 
+// ResourcesProvider is implemented by objects that can store resources,
+// typically an executor.
+type ResourcesProvider interface {
+	Resources() ResourcesManager
+}
+
 // SecretGetter contains secret data necessary for the Controller.
 type SecretGetter interface {
 	// Get returns the the secret with a specific secret ID, if available.
@@ -42,4 +48,20 @@ type SecretsManager interface {
 	Add(secrets ...api.Secret) // add one or more secrets
 	Remove(secrets []string)   // remove the secrets by ID
 	Reset()                    // remove all secrets
+}
+
+// ResourceGetter contains resource data necessary for the Controller.
+type ResourceGetter interface {
+	// Get returns the the resource with a specific resource ID, if available.
+	// When the resource is not available, the return will be nil.
+	Get(resourceID string) *api.Resource
+}
+
+// ResourcesManager is the interface for resource storage and updates.
+type ResourcesManager interface {
+	ResourceGetter
+
+	Add(resources ...api.Resource) // add one or more resources
+	Remove(resources []string)     // remove the resources by ID
+	Reset()                        // remove all resources
 }
