@@ -8,6 +8,7 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/log"
@@ -30,10 +31,13 @@ type testCluster struct {
 	counter    int
 }
 
+var testnameKey struct{}
+
 // NewCluster creates new cluster to which nodes can be added.
 // AcceptancePolicy is set to most permissive mode on first manager node added.
-func newTestCluster() *testCluster {
+func newTestCluster(testname string) *testCluster {
 	ctx, cancel := context.WithCancel(context.Background())
+	ctx = context.WithValue(ctx, testnameKey, testname)
 	c := &testCluster{
 		ctx:        ctx,
 		cancel:     cancel,
@@ -109,7 +113,12 @@ func (c *testCluster) AddManager(lateBind bool, rootCA *ca.RootCA) error {
 	}
 
 	c.counter++
-	ctx := log.WithLogger(c.ctx, log.L.WithField("testnode", c.counter))
+	ctx := log.WithLogger(c.ctx, log.L.WithFields(
+		logrus.Fields{
+			"testnode": c.counter,
+			"testname": c.ctx.Value(testnameKey),
+		},
+	))
 
 	c.wg.Add(1)
 	go func() {
@@ -167,7 +176,12 @@ func (c *testCluster) AddAgent() error {
 	n = node
 
 	c.counter++
-	ctx := log.WithLogger(c.ctx, log.L.WithField("testnode", c.counter))
+	ctx := log.WithLogger(c.ctx, log.L.WithFields(
+		logrus.Fields{
+			"testnode": c.counter,
+			"testname": c.ctx.Value(testnameKey),
+		},
+	))
 
 	c.wg.Add(1)
 	go func() {
@@ -330,7 +344,13 @@ func (c *testCluster) StartNode(id string) error {
 		return fmt.Errorf("set node role: node %s not found", id)
 	}
 
-	ctx := log.WithLogger(c.ctx, log.L.WithField("testnode", c.nodesOrder[id]))
+	ctx := log.WithLogger(c.ctx, log.L.WithFields(
+		logrus.Fields{
+			"testnode": c.nodesOrder[id],
+			"testname": c.ctx.Value(testnameKey),
+		},
+	))
+
 	errCtx, cancel := context.WithCancel(context.Background())
 	done := make(chan error)
 	defer cancel()
