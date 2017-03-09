@@ -366,6 +366,8 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 		if err := nc.nwkAllocator.Deallocate(n); err != nil {
 			log.G(ctx).WithError(err).Errorf("Failed during network free for network %s", n.ID)
 		}
+
+		delete(nc.unallocatedNetworks, n.ID)
 	case state.EventCreateService:
 		s := v.Service.Copy()
 
