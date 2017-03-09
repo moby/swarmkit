@@ -259,6 +259,11 @@ func (c *containerAdapter) createVolumes(ctx context.Context) error {
 }
 
 func (c *containerAdapter) logs(ctx context.Context, options api.LogSubscriptionOptions) (io.ReadCloser, error) {
+	conf := c.container.config()
+	if conf != nil && conf.Tty {
+		return nil, errors.New("logs not supported on services with TTY")
+	}
+
 	apiOptions := types.ContainerLogsOptions{
 		Follow:     options.Follow,
 		Timestamps: true,
