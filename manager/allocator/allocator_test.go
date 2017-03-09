@@ -16,6 +16,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func init() {
+	// set artificially low retry interval for testing
+	retryInterval = 5 * time.Millisecond
+}
+
 func TestAllocator(t *testing.T) {
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
