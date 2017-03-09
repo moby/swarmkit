@@ -103,20 +103,28 @@ var External bool
 // NewTestCA is a helper method that creates a TestCA and a bunch of default
 // connections and security configs.
 func NewTestCA(t *testing.T, krwGenerators ...func(ca.CertPaths) *ca.KeyReadWriter) *TestCA {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
-	assert.NoError(t, err)
+	tempdir, err := ioutil.TempDir("", "swarm-ca-test-")
+	require.NoError(t, err)
+	paths := ca.NewConfigPaths(tempdir)
 
+	rootCA, err := createAndWriteRootCA("swarm-test-CA", paths.RootCA, ca.DefaultNodeCertExpiration)
+	require.NoError(t, err)
+
+	return NewTestCAFromRootCA(t, tempdir, rootCA, krwGenerators)
+}
+
+// NewTestCAFromRootCA is a helper method that creates a TestCA and a bunch of default
+// connections and security configs, given a temp directory and a RootCA to use for signing.
+func NewTestCAFromRootCA(t *testing.T, tempBaseDir string, rootCA ca.RootCA, krwGenerators []func(ca.CertPaths) *ca.KeyReadWriter) *TestCA {
 	s := store.NewMemoryStore(nil)
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 	organization := identity.NewID()
 
-	rootCA, err := createAndWriteRootCA("swarm-test-CA", paths.RootCA, ca.DefaultNodeCertExpiration)
-	assert.NoError(t, err)
-
 	var (
 		externalSigningServer *ExternalSigningServer
 		externalCAs           []*api.ExternalCA
+		err                   error
 	)
 
 	if External {
