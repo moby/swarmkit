@@ -724,10 +724,15 @@ func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 func (m *Manager) rotateRootCAKEK(ctx context.Context, clusterID string) error {
 	// If we don't have a KEK, we won't ever be rotating anything
 	strPassphrase := os.Getenv(ca.PassphraseENVVar)
-	if strPassphrase == "" {
+	strPassphrasePrev := os.Getenv(ca.PassphraseENVVarPrev)
+	if strPassphrase == "" && strPassphrasePrev == "" {
 		return nil
 	}
-	strPassphrasePrev := os.Getenv(ca.PassphraseENVVarPrev)
+	if strPassphrase != "" {
+		log.G(ctx).Warn("Encrypting the root CA key in swarm using environment variables is deprecated. " +
+			"Support for decrypting or rotating the key will be removed in the future.")
+	}
+
 	passphrase := []byte(strPassphrase)
 	passphrasePrev := []byte(strPassphrasePrev)
 
@@ -738,72 +743,72 @@ func (m *Manager) rotateRootCAKEK(ctx context.Context, clusterID string) error {
 		finalKey []byte
 	)
 	// Retrieve the cluster identified by ClusterID
-	s.View(func(readTx store.ReadTx) {
-		cluster = store.GetCluster(readTx, clusterID)
-	})
-	if cluster == nil {
-		return fmt.Errorf("cluster not found: %s", clusterID)
-	}
-
-	// Try to get the private key from the cluster
-	privKeyPEM := cluster.RootCA.CAKey
-	if len(privKeyPEM) == 0 {
-		// We have no PEM root private key in this cluster.
-		log.G(ctx).Warnf("cluster %s does not have private key material", clusterID)
-		return nil
-	}
-
-	// Decode the PEM private key
-	keyBlock, _ := pem.Decode(privKeyPEM)
-	if keyBlock == nil {
-		return fmt.Errorf("invalid PEM-encoded private key inside of cluster %s", clusterID)
-	}
-	// If this key is not encrypted, then we have to encrypt it
-	if !x509.IsEncryptedPEMBlock(keyBlock) {
-		finalKey, err = ca.EncryptECPrivateKey(privKeyPEM, strPassphrase)
-		if err != nil {
-			return err
-		}
-	} else {
-		// This key is already encrypted, let's try to decrypt with the current main passphrase
-		_, err = x509.DecryptPEMBlock(keyBlock, []byte(passphrase))
-		if err == nil {
-			// The main key is the correct KEK, nothing to do here
-			return nil
-		}
-		// This key is already encrypted, but failed with current main passphrase.
-		// Let's try to decrypt with the previous passphrase
-		unencryptedKey, err := x509.DecryptPEMBlock(keyBlock, []byte(passphrasePrev))
-		if err != nil {
-			// We were not able to decrypt either with the main or backup passphrase, error
-			return err
-		}
-		unencryptedKeyBlock := &pem.Block{
-			Type:    keyBlock.Type,
-			Bytes:   unencryptedKey,
-			Headers: keyBlock.Headers,
-		}
-
-		// We were able to decrypt the key, but with the previous passphrase. Let's encrypt
-		// with the new one and store it in raft
-		finalKey, err = ca.EncryptECPrivateKey(pem.EncodeToMemory(unencryptedKeyBlock), strPassphrase)
-		if err != nil {
-			log.G(ctx).Debugf("failed to rotate the key-encrypting-key for the root key material of cluster %s", clusterID)
-			return err
-		}
-	}
-
-	log.G(ctx).Infof("Re-encrypting the root key material of cluster %s", clusterID)
-	// Let's update the key in the cluster object
 	return s.Update(func(tx store.Tx) error {
 		cluster = store.GetCluster(tx, clusterID)
 		if cluster == nil {
 			return fmt.Errorf("cluster not found: %s", clusterID)
 		}
+
+		// Try to get the private key from the cluster
+		privKeyPEM := cluster.RootCA.CAKey
+		if len(privKeyPEM) == 0 {
+			// We have no PEM root private key in this cluster.
+			log.G(ctx).Warnf("cluster %s does not have private key material", clusterID)
+			return nil
+		}
+
+		// Decode the PEM private key
+		keyBlock, _ := pem.Decode(privKeyPEM)
+		if keyBlock == nil {
+			return fmt.Errorf("invalid PEM-encoded private key inside of cluster %s", clusterID)
+		}
+
+		if x509.IsEncryptedPEMBlock(keyBlock) {
+			// This key is already encrypted, let's try to decrypt with the current main passphrase
+			_, err = x509.DecryptPEMBlock(keyBlock, []byte(passphrase))
+			if err == nil {
+				// The main key is the correct KEK, nothing to do here
+				return nil
+			}
+			// This key is already encrypted, but failed with current main passphrase.
+			// Let's try to decrypt with the previous passphrase
+			unencryptedKey, err := x509.DecryptPEMBlock(keyBlock, []byte(passphrasePrev))
+			if err != nil {
+				// We were not able to decrypt either with the main or backup passphrase, error
+				return err
+			}
+			unencryptedKeyBlock := &pem.Block{
+				Type:  keyBlock.Type,
+				Bytes: unencryptedKey,
+			}
+
+			// we were able to decrypt the key with the previous passphrase - if the current passphrase is empty,
+			// the we store the decrypted key in raft
+			finalKey = pem.EncodeToMemory(unencryptedKeyBlock)
+
+			// the current passphrase is not empty, so let's encrypt with the new one and store it in raft
+			if strPassphrase != "" {
+				finalKey, err = ca.EncryptECPrivateKey(finalKey, strPassphrase)
+				if err != nil {
+					log.G(ctx).WithError(err).Debugf("failed to rotate the key-encrypting-key for the root key material of cluster %s", clusterID)
+					return err
+				}
+			}
+		} else if strPassphrase != "" {
+			// If this key is not encrypted, and the passphrase is not nil, then we have to encrypt it
+			finalKey, err = ca.EncryptECPrivateKey(privKeyPEM, strPassphrase)
+			if err != nil {
+				log.G(ctx).WithError(err).Debugf("failed to rotate the key-encrypting-key for the root key material of cluster %s", clusterID)
+				return err
+			}
+		} else {
+			return nil // don't update if it's not encrypted and we don't want it encrypted
+		}
+
+		log.G(ctx).Infof("Updating the encryption on the root key material of cluster %s", clusterID)
 		cluster.RootCA.CAKey = finalKey
 		return store.UpdateCluster(tx, cluster)
 	})
-
 }
 
 // handleLeadershipEvents handles the is leader event or is follower event.
