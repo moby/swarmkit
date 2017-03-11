@@ -26,6 +26,11 @@ func init() {
 					Unique:  true,
 					Indexer: networkIndexerByName{},
 				},
+				indexCustom: {
+					Name:         indexCustom,
+					Indexer:      networkCustomIndexer{},
+					AllowMissing: true,
+				},
 			},
 		},
 		Save: func(tx ReadTx, snapshot *api.StoreSnapshot) error {
@@ -167,7 +172,7 @@ func GetNetwork(tx ReadTx, id string) *api.Network {
 func FindNetworks(tx ReadTx, by By) ([]*api.Network, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byNamePrefix, byIDPrefix:
+		case byName, byNamePrefix, byIDPrefix, byCustom, byCustomPrefix:
 			return nil
 		default:
 			return ErrInvalidFindBy
@@ -221,5 +226,24 @@ func (ni networkIndexerByName) FromObject(obj interface{}) (bool, []byte, error)
 }
 
 func (ni networkIndexerByName) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
+}
+
+type networkCustomIndexer struct{}
+
+func (ni networkCustomIndexer) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (ni networkCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, error) {
+	n, ok := obj.(networkEntry)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	return customIndexer("", &n.Spec.Annotations)
+}
+
+func (ni networkCustomIndexer) PrefixFromArgs(args ...interface{}) ([]byte, error) {
 	return prefixFromArgs(args...)
 }

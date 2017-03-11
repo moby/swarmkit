@@ -26,6 +26,11 @@ func init() {
 					Unique:  true,
 					Indexer: secretIndexerByName{},
 				},
+				indexCustom: {
+					Name:         indexCustom,
+					Indexer:      secretCustomIndexer{},
+					AllowMissing: true,
+				},
 			},
 		},
 		Save: func(tx ReadTx, snapshot *api.StoreSnapshot) error {
@@ -167,7 +172,7 @@ func GetSecret(tx ReadTx, id string) *api.Secret {
 func FindSecrets(tx ReadTx, by By) ([]*api.Secret, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byNamePrefix, byIDPrefix:
+		case byName, byNamePrefix, byIDPrefix, byCustom, byCustomPrefix:
 			return nil
 		default:
 			return ErrInvalidFindBy
@@ -185,11 +190,11 @@ func FindSecrets(tx ReadTx, by By) ([]*api.Secret, error) {
 
 type secretIndexerByID struct{}
 
-func (ci secretIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
+func (si secretIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
 	return fromArgs(args...)
 }
 
-func (ci secretIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
+func (si secretIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
 	s, ok := obj.(secretEntry)
 	if !ok {
 		panic("unexpected type passed to FromObject")
@@ -200,17 +205,17 @@ func (ci secretIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
 	return true, []byte(val), nil
 }
 
-func (ci secretIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+func (si secretIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
 	return prefixFromArgs(args...)
 }
 
 type secretIndexerByName struct{}
 
-func (ci secretIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
+func (si secretIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
 	return fromArgs(args...)
 }
 
-func (ci secretIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
+func (si secretIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
 	s, ok := obj.(secretEntry)
 	if !ok {
 		panic("unexpected type passed to FromObject")
@@ -220,6 +225,25 @@ func (ci secretIndexerByName) FromObject(obj interface{}) (bool, []byte, error) 
 	return true, []byte(strings.ToLower(s.Spec.Annotations.Name) + "\x00"), nil
 }
 
-func (ci secretIndexerByName) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+func (si secretIndexerByName) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
+}
+
+type secretCustomIndexer struct{}
+
+func (si secretCustomIndexer) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (si secretCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, error) {
+	s, ok := obj.(secretEntry)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	return customIndexer("", &s.Spec.Annotations)
+}
+
+func (si secretCustomIndexer) PrefixFromArgs(args ...interface{}) ([]byte, error) {
 	return prefixFromArgs(args...)
 }

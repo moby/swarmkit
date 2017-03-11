@@ -19,8 +19,16 @@ import (
 	"github.com/docker/swarmkit/ca/testutils"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 )
+
+var testExtension = &api.Extension{
+	ID: "testextension",
+	Annotations: api.Annotations{
+		Name: "config",
+	},
+}
 
 type grpcDispatcher struct {
 	Clients          []api.DispatcherClient
@@ -363,10 +371,14 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	expectedSessionID, nodeID := getSessionAndNodeID(t, gd.Clients[0])
 
 	// create the relevant secrets and tasks
-	secrets, tasks := makeTasksAndSecrets(t, nodeID)
+	secrets, resources, tasks := makeTasksAndDependencies(t, nodeID)
 	err = gd.Store.Update(func(tx store.Tx) error {
-		for _, secret := range secrets[:] {
+		assert.NoError(t, store.CreateExtension(tx, testExtension.Copy()))
+		for _, secret := range secrets {
 			assert.NoError(t, store.CreateSecret(tx, secret))
+		}
+		for _, resource := range resources {
+			assert.NoError(t, store.CreateResource(tx, resource))
 		}
 		for _, task := range tasks {
 			assert.NoError(t, store.CreateTask(tx, task))
@@ -386,9 +398,9 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// FIXME(aaronl): This is hard to maintain.
-	assert.Equal(t, 17, len(resp.Changes))
+	assert.Equal(t, 10+7+7, len(resp.Changes))
 
-	taskChanges, secretChanges := collectTasksAndSecrets(resp.Changes)
+	taskChanges, resourceChanges, secretChanges := splitChanges(resp.Changes)
 	assert.Len(t, taskChanges, 10) // 10 types of task states >= assigned, 2 types < assigned
 	for _, task := range tasks[2:] {
 		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
@@ -396,6 +408,10 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	assert.Len(t, secretChanges, 7) // 6 different secrets for states between assigned and running inclusive plus secret12
 	for _, secret := range secrets[2:8] {
 		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
+	}
+	assert.Len(t, resourceChanges, 7) // 6 different resources for states between assigned and running inclusive plus resource12
+	for _, resource := range resources[2:8] {
+		assert.NotNil(t, resourceChanges[idAndAction{id: resource.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
 	}
 
 	// updating all the tasks will attempt to remove all the secrets for the tasks that are in state > running
@@ -412,14 +428,18 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
 
-	assert.Equal(t, 5, len(resp.Changes))
-	taskChanges, secretChanges = collectTasksAndSecrets(resp.Changes)
+	assert.Equal(t, 1+4+4, len(resp.Changes))
+	taskChanges, resourceChanges, secretChanges = splitChanges(resp.Changes)
 	assert.Len(t, taskChanges, 1)
 	assert.NotNil(t, taskChanges[idAndAction{id: tasks[2].ID, action: api.AssignmentChange_AssignmentActionUpdate}]) // this is the task in ASSIGNED
 
 	assert.Len(t, secretChanges, 4) // these are the secrets for states > running
 	for _, secret := range secrets[9 : len(secrets)-1] {
 		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionRemove}])
+	}
+	assert.Len(t, resourceChanges, 4) // these are the resources for states > running
+	for _, resource := range resources[9 : len(resources)-1] {
+		assert.NotNil(t, resourceChanges[idAndAction{id: resource.ID, action: api.AssignmentChange_AssignmentActionRemove}])
 	}
 
 	// deleting the tasks removes all the secrets for every single task, no matter
@@ -436,8 +456,8 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	// (there will be 2 tasks changes that won't be sent down)
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, len(tasks)-2+len(secrets)-2, len(resp.Changes))
-	taskChanges, secretChanges = collectTasksAndSecrets(resp.Changes)
+	assert.Equal(t, len(tasks)-2+len(secrets)-2+len(resources)-2, len(resp.Changes))
+	taskChanges, resourceChanges, secretChanges = splitChanges(resp.Changes)
 	assert.Len(t, taskChanges, len(tasks)-2)
 	for _, task := range tasks[2:] {
 		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionRemove}])
@@ -446,6 +466,11 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	assert.Len(t, secretChanges, len(secrets)-2)
 	for _, secret := range secrets[2:] {
 		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionRemove}])
+	}
+
+	assert.Len(t, resourceChanges, len(resources)-2)
+	for _, resource := range resources[2:] {
+		assert.NotNil(t, resourceChanges[idAndAction{id: resource.ID, action: api.AssignmentChange_AssignmentActionRemove}])
 	}
 }
 
@@ -471,11 +496,15 @@ func TestAssignmentsAddingTasks(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, resp.Changes)
 
-	// create the relevant secrets and tasks and update the tasks
-	secrets, tasks := makeTasksAndSecrets(t, nodeID)
+	// create the relevant secrets, resources, and tasks and update the tasks
+	secrets, resources, tasks := makeTasksAndDependencies(t, nodeID)
 	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateExtension(tx, testExtension.Copy()))
 		for _, secret := range secrets[:len(secrets)-1] {
 			assert.NoError(t, store.CreateSecret(tx, secret))
+		}
+		for _, resource := range resources[:len(resources)-1] {
+			assert.NoError(t, store.CreateResource(tx, resource))
 		}
 		for _, task := range tasks {
 			assert.NoError(t, store.CreateTask(tx, task))
@@ -499,8 +528,8 @@ func TestAssignmentsAddingTasks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// FIXME(aaronl): This is hard to maintain.
-	assert.Equal(t, 10+6, len(resp.Changes))
-	taskChanges, secretChanges := collectTasksAndSecrets(resp.Changes)
+	assert.Equal(t, 10+6+6, len(resp.Changes))
+	taskChanges, resourceChanges, secretChanges := splitChanges(resp.Changes)
 	assert.Len(t, taskChanges, 10)
 	for _, task := range tasks[2:] {
 		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
@@ -510,6 +539,12 @@ func TestAssignmentsAddingTasks(t *testing.T) {
 	// all the secrets for tasks >= ASSIGNED and <= RUNNING
 	for _, secret := range secrets[2:8] {
 		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
+	}
+
+	assert.Len(t, resourceChanges, 6)
+	// all the secrets for tasks >= ASSIGNED and <= RUNNING
+	for _, resource := range resources[2:8] {
+		assert.NotNil(t, resourceChanges[idAndAction{id: resource.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
 	}
 
 	// deleting the tasks removes all the secrets for every single task, no matter
@@ -528,8 +563,8 @@ func TestAssignmentsAddingTasks(t *testing.T) {
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
 
-	assert.Equal(t, len(tasks)-2+len(secrets)-2, len(resp.Changes))
-	taskChanges, secretChanges = collectTasksAndSecrets(resp.Changes)
+	assert.Equal(t, len(tasks)-2+len(secrets)-2+len(resources)-2, len(resp.Changes))
+	taskChanges, resourceChanges, secretChanges = splitChanges(resp.Changes)
 	assert.Len(t, taskChanges, len(tasks)-2)
 	for _, task := range tasks[2:] {
 		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionRemove}])
@@ -538,6 +573,11 @@ func TestAssignmentsAddingTasks(t *testing.T) {
 	assert.Len(t, secretChanges, len(secrets)-2)
 	for _, secret := range secrets[2:] {
 		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionRemove}])
+	}
+
+	assert.Len(t, resourceChanges, len(resources)-2)
+	for _, resource := range resources[2:] {
+		assert.NotNil(t, resourceChanges[idAndAction{id: resource.ID, action: api.AssignmentChange_AssignmentActionRemove}])
 	}
 }
 
@@ -552,10 +592,14 @@ func TestAssignmentsSecretUpdateAndDeletion(t *testing.T) {
 	expectedSessionID, nodeID := getSessionAndNodeID(t, gd.Clients[0])
 
 	// create the relevant secrets and tasks
-	secrets, tasks := makeTasksAndSecrets(t, nodeID)
+	secrets, resources, tasks := makeTasksAndDependencies(t, nodeID)
 	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateExtension(tx, testExtension.Copy()))
 		for _, secret := range secrets[:len(secrets)-1] {
 			assert.NoError(t, store.CreateSecret(tx, secret))
+		}
+		for _, resource := range resources[:len(resources)-1] {
+			assert.NoError(t, store.CreateResource(tx, resource))
 		}
 		for _, task := range tasks {
 			assert.NoError(t, store.CreateTask(tx, task))
@@ -575,8 +619,8 @@ func TestAssignmentsSecretUpdateAndDeletion(t *testing.T) {
 	assert.NoError(t, err)
 
 	// FIXME(aaronl): This is hard to maintain.
-	assert.Equal(t, 16, len(resp.Changes))
-	taskChanges, secretChanges := collectTasksAndSecrets(resp.Changes)
+	assert.Equal(t, 10+6+6, len(resp.Changes))
+	taskChanges, resourceChanges, secretChanges := splitChanges(resp.Changes)
 	assert.Len(t, taskChanges, 10) // 10 types of task states >= assigned, 2 types < assigned
 	for _, task := range tasks[2:] {
 		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
@@ -584,6 +628,10 @@ func TestAssignmentsSecretUpdateAndDeletion(t *testing.T) {
 	assert.Len(t, secretChanges, 6) // 6 types of task states between assigned and running inclusive
 	for _, secret := range secrets[2:8] {
 		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
+	}
+	assert.Len(t, resourceChanges, 6) // 6 types of task states between assigned and running inclusive
+	for _, resource := range resources[2:8] {
+		assert.NotNil(t, resourceChanges[idAndAction{id: resource.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
 	}
 
 	// updating secrets, used by tasks or not, do not cause any changes
@@ -684,9 +732,10 @@ func TestTasksStatusChange(t *testing.T) {
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
 	assert.Equal(t, len(resp.Changes), 2)
-	tasks, secrets := collectTasksAndSecrets(resp.Changes)
+	tasks, resources, secrets := splitChanges(resp.Changes)
 	assert.Len(t, tasks, 2)
 	assert.Len(t, secrets, 0)
+	assert.Len(t, resources, 0)
 	assert.NotNil(t, tasks[idAndAction{id: "testTask1", action: api.AssignmentChange_AssignmentActionUpdate}])
 	assert.NotNil(t, tasks[idAndAction{id: "testTask2", action: api.AssignmentChange_AssignmentActionUpdate}])
 
@@ -778,9 +827,10 @@ func TestTasksBatch(t *testing.T) {
 	assert.NoError(t, err)
 	// all tasks have been deleted
 
-	tasks, secrets := collectTasksAndSecrets(resp.Changes)
+	tasks, resources, secrets := splitChanges(resp.Changes)
 	assert.Len(t, tasks, 2)
 	assert.Len(t, secrets, 0)
+	assert.Len(t, resources, 0)
 	assert.Equal(t, api.AssignmentChange_AssignmentActionRemove, resp.Changes[0].Action)
 	assert.Equal(t, api.AssignmentChange_AssignmentActionRemove, resp.Changes[1].Action)
 }
@@ -995,9 +1045,10 @@ type idAndAction struct {
 	action api.AssignmentChange_AssignmentAction
 }
 
-func collectTasksAndSecrets(changes []*api.AssignmentChange) (map[idAndAction]*api.Task, map[idAndAction]*api.Secret) {
+func splitChanges(changes []*api.AssignmentChange) (map[idAndAction]*api.Task, map[idAndAction]*api.Resource, map[idAndAction]*api.Secret) {
 	tasks := make(map[idAndAction]*api.Task)
 	secrets := make(map[idAndAction]*api.Secret)
+	resources := make(map[idAndAction]*api.Resource)
 	for _, change := range changes {
 		task := change.Assignment.GetTask()
 		if task != nil {
@@ -1007,14 +1058,21 @@ func collectTasksAndSecrets(changes []*api.AssignmentChange) (map[idAndAction]*a
 		if secret != nil {
 			secrets[idAndAction{id: secret.ID, action: change.Action}] = secret
 		}
+		resource := change.Assignment.GetResource()
+		if resource != nil {
+			resources[idAndAction{id: resource.ID, action: change.Action}] = resource
+		}
 	}
 
-	return tasks, secrets
+	return tasks, resources, secrets
 }
 
-func makeTasksAndSecrets(t *testing.T, nodeID string) ([]*api.Secret, []*api.Task) {
-	var secrets []*api.Secret
-	var tasks []*api.Task
+func makeTasksAndDependencies(t *testing.T, nodeID string) ([]*api.Secret, []*api.Resource, []*api.Task) {
+	var (
+		secrets   []*api.Secret
+		resources []*api.Resource
+		tasks     []*api.Task
+	)
 	for i := 0; i <= len(taskStatesInOrder); i++ {
 		secrets = append(secrets, &api.Secret{
 			ID: fmt.Sprintf("IDsecret%d", i),
@@ -1025,17 +1083,29 @@ func makeTasksAndSecrets(t *testing.T, nodeID string) ([]*api.Secret, []*api.Tas
 				Data: []byte(fmt.Sprintf("secret%d", i)),
 			},
 		})
+		resources = append(resources, &api.Resource{
+			ID: fmt.Sprintf("config%d", i),
+			Annotations: api.Annotations{
+				Name: fmt.Sprintf("config%d", i),
+			},
+			Kind: "config",
+			Payload: &gogotypes.Any{
+				Value: []byte(fmt.Sprintf("config%d", i)),
+			},
+		})
 	}
 	for i, taskState := range taskStatesInOrder {
+		spec := taskSpecFromSecrets(secrets[i], secrets[len(secrets)-1])
+		spec.ResourceReferences = append(spec.ResourceReferences, resources[i].ID, resources[len(resources)-1].ID)
 		tasks = append(tasks, &api.Task{
 			NodeID:       nodeID,
 			ID:           fmt.Sprintf("testTask%d", i),
 			Status:       api.TaskStatus{State: taskState},
 			DesiredState: api.TaskStateReady,
-			Spec:         taskSpecFromSecrets(secrets[i], secrets[len(secrets)-1]),
+			Spec:         spec,
 		})
 	}
-	return secrets, tasks
+	return secrets, resources, tasks
 }
 
 func taskSpecFromSecrets(secrets ...*api.Secret) api.TaskSpec {
