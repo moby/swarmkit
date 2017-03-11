@@ -245,7 +245,7 @@ func TestLoadSecurityConfigIntermediates(t *testing.T) {
 	paths := ca.NewConfigPaths(tempdir)
 	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
 
-	rootCA, err := ca.NewRootCA(testutils.ECDSACertChain[2], nil, ca.DefaultNodeCertExpiration)
+	rootCA, err := ca.NewRootCA(testutils.ECDSACertChain[2], nil, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
 	// loading the incomplete chain fails
@@ -288,7 +288,7 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	// create the "original" security config, and we'll update it to trust the test server's
 	cert, key, err := testutils.CreateRootCertAndKey("root1")
 	require.NoError(t, err)
-	rootCA, err := ca.NewRootCA(cert, key, ca.DefaultNodeCertExpiration)
+	rootCA, err := ca.NewRootCA(cert, key, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
 	tempdir, err := ioutil.TempDir("", "test-security-config-update")
@@ -335,7 +335,7 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	externalServer := tc.ExternalSigningServer
 	if testutils.External {
 		// stop the external server and create a new one because the external server actually has to trust our client certs as well.
-		updatedRoot, err := ca.NewRootCA(append(tc.RootCA.Cert, cert...), tc.RootCA.Signer.Key, ca.DefaultNodeCertExpiration)
+		updatedRoot, err := ca.NewRootCA(append(tc.RootCA.Cert, cert...), tc.RootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
 		require.NoError(t, err)
 		externalServer, err = testutils.NewExternalSigningServer(updatedRoot, tc.TempDir)
 		require.NoError(t, err)
@@ -439,7 +439,7 @@ func TestRenewTLSConfigWorker(t *testing.T) {
 	// Create a new RootCA, and change the policy to issue 6 minute certificates
 	// Because of the default backdate of 5 minutes, this issues certificates
 	// valid for 1 minute.
-	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Signer.Key, ca.DefaultNodeCertExpiration)
+	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.NoError(t, err)
 	newRootCA.Signer.SetPolicy(&cfconfig.Signing{
 		Default: &cfconfig.SigningProfile{
@@ -493,7 +493,7 @@ func TestRenewTLSConfigManager(t *testing.T) {
 	// Create a new RootCA, and change the policy to issue 6 minute certificates
 	// Because of the default backdate of 5 minutes, this issues certificates
 	// valid for 1 minute.
-	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Signer.Key, ca.DefaultNodeCertExpiration)
+	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.NoError(t, err)
 	newRootCA.Signer.SetPolicy(&cfconfig.Signing{
 		Default: &cfconfig.SigningProfile{
@@ -549,7 +549,7 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 	// Create a new RootCA, and change the policy to issue 6 minute certificates.
 	// Because of the default backdate of 5 minutes, this issues certificates
 	// valid for 1 minute.
-	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Signer.Key, ca.DefaultNodeCertExpiration)
+	newRootCA, err := ca.NewRootCA(tc.RootCA.Cert, tc.RootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.NoError(t, err)
 	newRootCA.Signer.SetPolicy(&cfconfig.Signing{
 		Default: &cfconfig.SigningProfile{

@@ -1,7 +1,7 @@
 package testutils
 
 var (
-	// NotYetValidCert is an ECDSA certificate that becomes valid in 2117, and expires in 2316
+	// NotYetValidCert is an ECDSA CA certificate that becomes valid in 2117, and expires in 2316
 	NotYetValidCert = []byte(`
 -----BEGIN CERTIFICATE-----
 MIIBajCCARCgAwIBAgIUWYyg+FvrTJ/wtJd4pZF/GfO5uC0wCgYIKoZIzj0EAwIw
@@ -23,17 +23,17 @@ AwEHoUQDQgAEMLSpaZt8CRkfTXFRWPDBH7ai+i1TWJUhQPZ84Wb3dZR+DfVzKBr1
 -----END EC PRIVATE KEY-----
 `)
 
-	// ExpiredCert is an ECDSA certificate that expired in 2007
+	// ExpiredCert is an ECDSA CA certificate that expired in 2007 (1967-2007)
 	ExpiredCert = []byte(`
 -----BEGIN CERTIFICATE-----
-MIIBZjCCAQygAwIBAgIUNwwbocQMXzakEpwZoGkk7yOleRgwCgYIKoZIzj0EAwIw
-ETEPMA0GA1UEAxMGcm9vdENOMB4XDTg3MDIwMzE4MTg1MloXDTc3MDIwNTE4MTg1
-MlowETEPMA0GA1UEAxMGcm9vdENOMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE
+MIIBZzCCAQygAwIBAgIUNwwbocQMXzakEpwZoGkk7yOleRgwCgYIKoZIzj0EAwIw
+ETEPMA0GA1UEAxMGcm9vdENOMB4XDTY3MDIyNDIzMDc0MFoXDTA3MDIyNDIzMDc0
+MFowETEPMA0GA1UEAxMGcm9vdENOMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE
 MLSpaZt8CRkfTXFRWPDBH7ai+i1TWJUhQPZ84Wb3dZR+DfVzKBr108OyDtEZcmVE
 GdT0DjxNZkzMhyppr1mnDKNCMEAwDgYDVR0PAQH/BAQDAgEGMA8GA1UdEwEB/wQF
 MAMBAf8wHQYDVR0OBBYEFLXvPNd7VDa0FkbDzEYvSykTzzJBMAoGCCqGSM49BAMC
-A0gAMEUCIQDftvYe1qX/paQ+VqNHa56pOKsZ0vp7IT8Ga1mCeWB9ygIgIj+yV7Xr
-2IuYMcW9DrKSP8fJXK0vqYzCRp4W61m/IA0=
+A0kAMEYCIQCx5Lhl4b3YsjQuqHT/+vL5rnc0GV/OwJ8l2GFS2IB7EgIhAKrHZrcr
+5+MmM1YUiykjweok2j5rj0/+9sR7waa69dkW
 -----END CERTIFICATE-----
 `)
 	// ExpiredKey is the key corresponding to the ExpiredCert
@@ -45,7 +45,7 @@ AwEHoUQDQgAEMLSpaZt8CRkfTXFRWPDBH7ai+i1TWJUhQPZ84Wb3dZR+DfVzKBr1
 -----END EC PRIVATE KEY-----
 `)
 
-	// RSA2048SHA256Cert is an RSA cert with a 2048-bit key, SHA256 signature algorithm, that is currently valid and expires in 2117.
+	// RSA2048SHA256Cert is an RSA CA cert with a 2048-bit key, SHA256 signature algorithm, that is currently valid and expires in 2117.
 	// This should be valid because the key length is at least 2048 and the signature algorithm is SHA256.
 	RSA2048SHA256Cert = []byte(`
 -----BEGIN CERTIFICATE-----
@@ -70,7 +70,7 @@ fpg1gDGYtAcxpE+qZBI+YCh0r9ae/Wtg3lzw+I7/usmfO2Pm56Hb/O7ulRuLEOFu
 XL2VZMKBpOTyDpe3YXMcvp3HT4qO5PmNs1b/N3Q8GwYRwfg6DZX2fPHT9vJGEdyq
 -----END CERTIFICATE-----
 `)
-	// RSA2048SHA1Cert is an RSA cert with a 2048-bit key, SHA1 signature algorithm, that is currently valid and expires in 2117.
+	// RSA2048SHA1Cert is an RSA CA cert with a 2048-bit key, SHA1 signature algorithm, that is currently valid and expires in 2117.
 	// This should be not valid because the signature algorithm is SHA1.
 	RSA2048SHA1Cert = []byte(`
 -----BEGIN CERTIFICATE-----
@@ -126,7 +126,7 @@ U76uzbRNRlCGtKPKRwQhcSxrc6gNuCd84l1t1goCBvkQk/c0q2J/8YQi743OJLT6
 -----END RSA PRIVATE KEY-----
 `)
 
-	// RSA1024Cert is an RSA cert with a 1024-bit key, SHA256 signature algorithm, that is currently valid and expires in 2117.
+	// RSA1024Cert is an RSA CA cert with a 1024-bit key, SHA256 signature algorithm, that is currently valid and expires in 2117.
 	// This should not be a valid cert because the key is only 1024 bits.
 	RSA1024Cert = []byte(`
 -----BEGIN CERTIFICATE-----
@@ -165,7 +165,7 @@ anuVw1kAAKz5HYioZkBJpnpN5dXCHNC54ooq76cIGFpT
 -----END RSA PRIVATE KEY-----
 `)
 
-	// ECDSA224Cert is an ECDSA curve-P224 cert with a SHA256 signature algorithm
+	// ECDSA224Cert is an ECDSA curve-P224 CA cert with a SHA256 signature algorithm
 	// that is current valid and expires in 2117. This should not be a valid cert because we only accept curve-P256,
 	// curve-P385, and curve-P521 (the only keys cfssl will generate).
 	ECDSA224Cert = []byte(`
@@ -192,7 +192,7 @@ AARbHhgFiGwhyomtEzerYyW87uBjoupasYrYppMoFp8WkTlaNbCf+tQNJZsu82eZ
 -----END EC PRIVATE KEY-----
 `)
 
-	// ECDSA256SHA256Cert is an ECDSA curve-P256 cert with a SHA256 signature algorithm
+	// ECDSA256SHA256Cert is an ECDSA curve-P256 CA cert with a SHA256 signature algorithm
 	// that is current valid and expires in 2117. This is a valid cert because it has an accepted key length
 	// and an accepted signature algorithm.
 	ECDSA256SHA256Cert = []byte(`
@@ -210,7 +210,7 @@ BggqhkjOPQQDAgNIADBFAiAdIZG7qzr+vCSt6FnotFKOhRBpLw9vkq8O2kBNbPCy
 4wIhANXcKDlG507bv5bOWYo92XDWuHd1FzyZfSLren9uFVfB
 -----END CERTIFICATE-----
 `)
-	// ECDSA256SHA1Cert is an ECDSA curve-P256 cert with a SHA1 signature algorithm
+	// ECDSA256SHA1Cert is an ECDSA curve-P256 CA cert with a SHA1 signature algorithm
 	// that is current valid and expires in 2117. This should not be a valid cert because a SHA1 signature algorithm.
 	ECDSA256SHA1Cert = []byte(`
 -----BEGIN CERTIFICATE-----
@@ -236,7 +236,7 @@ AwEHoUQDQgAEebJ+AUku73gjI9h5i/+VoNR7pxdxlZkvrZ1be2brVhQNFBvnvMnG
 -----END EC PRIVATE KEY-----
 `)
 
-	// DSA2048Cert is a DSA cert with a 2048 key, SHA1 hash, that is currently valid and expires in 2117
+	// DSA2048Cert is a DSA CA cert with a 2048 key, SHA1 hash, that is currently valid and expires in 2117
 	// This should not be a valid cert because we do not accept DSA keys.
 	DSA2048Cert = []byte(`
 -----BEGIN CERTIFICATE-----
