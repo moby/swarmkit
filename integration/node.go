@@ -52,7 +52,7 @@ func newTestNode(joinAddr, joinToken string, lateBind bool, rootCA *ca.RootCA) (
 			return nil, err
 		}
 		certPaths := ca.NewConfigPaths(certDir)
-		if err := ioutil.WriteFile(certPaths.RootCA.Cert, rootCA.Cert, 0644); err != nil {
+		if err := ioutil.WriteFile(certPaths.RootCA.Cert, rootCA.Signer.Cert, 0644); err != nil {
 			return nil, err
 		}
 		if err := ioutil.WriteFile(certPaths.RootCA.Key, rootCA.Signer.Key, 0600); err != nil {

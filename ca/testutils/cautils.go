@@ -305,7 +305,7 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 	}
 
 	// Append the root CA Key to the certificate, to create a valid chain
-	certChain := append(cert, rootCA.Cert...)
+	certChain := append(cert, rootCA.Certs...)
 
 	// If we were instructed to persist the files
 	if tmpDir != "" {
@@ -341,7 +341,7 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 
 	if nonSigningRoot {
 		rootCA = ca.RootCA{
-			Cert:   rootCA.Cert,
+			Certs:  rootCA.Certs,
 			Digest: rootCA.Digest,
 			Pool:   rootCA.Pool,
 		}
@@ -438,9 +438,10 @@ func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duratio
 	return ca.RootCA{
 		Signer: &ca.LocalSigner{
 			Signer: signer,
+			Cert:   cert,
 			Key:    key,
 		},
-		Cert:   cert,
+		Certs:  cert,
 		Pool:   pool,
 		Digest: digest.FromBytes(cert),
 	}, nil

@@ -90,7 +90,7 @@ func TestCreateRootCAExpiry(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Convert the certificate into an object to create a RootCA
-	parsedCert, err := helpers.ParseCertificatePEM(rootCA.Cert)
+	parsedCert, err := helpers.ParseCertificatePEM(rootCA.Certs)
 	assert.NoError(t, err)
 	duration, err := time.ParseDuration(ca.RootCAExpiration)
 	assert.NoError(t, err)
@@ -117,14 +117,14 @@ func TestGetLocalRootCA(t *testing.T) {
 	// No private key here
 	rootCA2, err := ca.GetLocalRootCA(paths.RootCA)
 	assert.NoError(t, err)
-	assert.Equal(t, rootCA.Cert, rootCA2.Cert)
+	assert.Equal(t, rootCA.Certs, rootCA2.Certs)
 	assert.False(t, rootCA2.CanSign())
 
 	// write private key and assert we can load it and sign
 	assert.NoError(t, ioutil.WriteFile(paths.RootCA.Key, rootCA.Signer.Key, os.FileMode(0600)))
 	rootCA3, err := ca.GetLocalRootCA(paths.RootCA)
 	assert.NoError(t, err)
-	assert.Equal(t, rootCA.Cert, rootCA3.Cert)
+	assert.Equal(t, rootCA.Certs, rootCA3.Certs)
 	assert.True(t, rootCA3.CanSign())
 
 	// Try with a private key that does not match the CA cert public key.
@@ -251,7 +251,7 @@ func TestGetRemoteCA(t *testing.T) {
 	defer tc.Stop()
 
 	shaHash := sha256.New()
-	shaHash.Write(tc.RootCA.Cert)
+	shaHash.Write(tc.RootCA.Certs)
 	md := shaHash.Sum(nil)
 	mdStr := hex.EncodeToString(md)
 
@@ -260,7 +260,7 @@ func TestGetRemoteCA(t *testing.T) {
 
 	downloadedRootCA, err := ca.GetRemoteCA(tc.Context, d, tc.ConnBroker)
 	require.NoError(t, err)
-	require.Equal(t, downloadedRootCA.Cert, tc.RootCA.Cert)
+	require.Equal(t, downloadedRootCA.Certs, tc.RootCA.Certs)
 
 	// update the test CA to include a multi-certificate bundle as the root - the digest
 	// we use to verify with must be the digest of the whole bundle
@@ -272,7 +272,7 @@ func TestGetRemoteCA(t *testing.T) {
 	otherRootCA, err := ca.CreateRootCA("other", paths.RootCA)
 	require.NoError(t, err)
 
-	comboCertBundle := append(tc.RootCA.Cert, otherRootCA.Cert...)
+	comboCertBundle := append(tc.RootCA.Certs, otherRootCA.Certs...)
 	require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
 		cluster := store.GetCluster(tx, tc.Organization)
 		cluster.RootCA.CACert = comboCertBundle
@@ -293,7 +293,7 @@ func TestGetRemoteCA(t *testing.T) {
 	d = digest.FromBytes(comboCertBundle)
 	downloadedRootCA, err = ca.GetRemoteCA(tc.Context, d, tc.ConnBroker)
 	require.NoError(t, err)
-	require.Equal(t, comboCertBundle, downloadedRootCA.Cert)
+	require.Equal(t, comboCertBundle, downloadedRootCA.Certs)
 	require.Equal(t, 2, len(downloadedRootCA.Pool.Subjects()))
 
 	for _, rootCA := range []ca.RootCA{tc.RootCA, otherRootCA} {
@@ -337,7 +337,7 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 	defer tc.Stop()
 
 	// Copy the current RootCA without the signer
-	rca := ca.RootCA{Cert: tc.RootCA.Cert, Pool: tc.RootCA.Pool}
+	rca := ca.RootCA{Certs: tc.RootCA.Certs, Pool: tc.RootCA.Pool}
 	cert, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
 		ca.CertificateRequestConfig{
 			Token:      tc.ManagerToken,
@@ -540,12 +540,10 @@ func TestNewRootCA(t *testing.T) {
 		{cert: testutils.ECDSA256SHA256Cert, key: testutils.ECDSA256Key},
 		{cert: testutils.RSA2048SHA256Cert, key: testutils.RSA2048Key},
 	} {
-		rootCA, err := ca.NewRootCA(pair.cert, pair.key, ca.DefaultNodeCertExpiration, nil)
+		rootCA, err := ca.NewRootCA(pair.cert, pair.cert, pair.key, ca.DefaultNodeCertExpiration, nil)
 		require.NoError(t, err, string(pair.key))
-		require.Equal(t, pair.cert, rootCA.Cert)
+		require.Equal(t, pair.cert, rootCA.Certs)
 		require.Equal(t, pair.key, rootCA.Signer.Key)
-		// require.Equal(t, bytes.TrimSpace(pair.cert), bytes.TrimSpace(rootCA.Cert))
-		// require.Equal(t, bytes.TrimSpace(pair.key), bytes.TrimSpace(rootCA.Signer.Key))
 		require.NotNil(t, rootCA.Signer)
 		_, err = rootCA.Digest.Verifier().Write(pair.cert)
 		require.NoError(t, err)
@@ -568,13 +566,13 @@ func TestNewRootCABundle(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Overwrite the bytes of the second Root CA with the bundle, creating a valid 2 cert bundle
-	bundle := append(firstRootCA.Cert, secondRootCA.Cert...)
+	bundle := append(firstRootCA.Certs, secondRootCA.Certs...)
 	err = ioutil.WriteFile(paths.RootCA.Cert, bundle, 0644)
 	assert.NoError(t, err)
 
-	newRootCA, err := ca.NewRootCA(bundle, firstRootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
+	newRootCA, err := ca.NewRootCA(bundle, firstRootCA.Certs, firstRootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, bundle, newRootCA.Cert)
+	assert.Equal(t, bundle, newRootCA.Certs)
 	assert.Equal(t, 2, len(newRootCA.Pool.Subjects()))
 
 	// If I use newRootCA's IssueAndSaveNewCertificates to sign certs, I'll get the correct CA in the chain
@@ -597,7 +595,7 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 	rootCA, err := ca.CreateRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
 
-	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Signer.Key, 1*time.Hour, nil)
+	newRootCA, err := ca.NewRootCA(rootCA.Certs, rootCA.Certs, rootCA.Signer.Key, 1*time.Hour, nil)
 	assert.NoError(t, err)
 
 	// Create and sign a new CSR
@@ -614,7 +612,7 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 
 	// Sign the same CSR again, this time with a 59 Minute expiration RootCA (under the 60 minute minimum).
 	// This should use the default of 3 months
-	newRootCA, err = ca.NewRootCA(rootCA.Cert, rootCA.Signer.Key, 59*time.Minute, nil)
+	newRootCA, err = ca.NewRootCA(rootCA.Certs, rootCA.Certs, rootCA.Signer.Key, 59*time.Minute, nil)
 	assert.NoError(t, err)
 
 	cert, err = newRootCA.ParseValidateAndSignCSR(csr, "CN", ca.ManagerRole, "ORG")
@@ -628,70 +626,177 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 }
 
 type invalidNewRootCATestCase struct {
-	cert          []byte
-	key           []byte
-	intermediates []byte
-	errorStr      string
+	roots, cert, key, intermediates []byte
+	errorStr                        string
 }
 
 func TestNewRootCAInvalidCertAndKeys(t *testing.T) {
+	now := time.Now()
+
+	expiredIntermediate := testutils.ReDateCert(t, testutils.ECDSACertChain[1],
+		testutils.ECDSACertChain[2], testutils.ECDSACertChainKeys[2], now.Add(-10*time.Hour), now.Add(-1*time.Minute))
+	notYetValidIntermediate := testutils.ReDateCert(t, testutils.ECDSACertChain[1],
+		testutils.ECDSACertChain[2], testutils.ECDSACertChainKeys[2], now.Add(time.Hour), now.Add(2*time.Hour))
+
 	invalids := []invalidNewRootCATestCase{
+		// invalid root or signer cert
 		{
+			roots:    []byte("malformed"),
+			cert:     testutils.ECDSA256SHA256Cert,
+			key:      testutils.ECDSA256Key,
+			errorStr: "Failed to decode certificate",
+		},
+		{
+			roots:    testutils.ECDSA256SHA256Cert,
 			cert:     []byte("malformed"),
 			key:      testutils.ECDSA256Key,
 			errorStr: "Failed to decode certificate",
 		},
 		{
+			roots:    []byte("  "),
+			cert:     testutils.ECDSA256SHA256Cert,
+			key:      testutils.ECDSA256Key,
+			errorStr: "no valid root CA certificates found",
+		},
+		{
+			roots:    testutils.ECDSA256SHA256Cert,
+			cert:     []byte("  "),
+			key:      testutils.ECDSA256Key,
+			errorStr: "no valid signing CA certificates found",
+		},
+		{
+			roots:    testutils.NotYetValidCert,
+			cert:     testutils.ECDSA256SHA256Cert,
+			key:      testutils.ECDSA256Key,
+			errorStr: "not yet valid",
+		},
+		{
+			roots:    testutils.ECDSA256SHA256Cert,
 			cert:     testutils.NotYetValidCert,
 			key:      testutils.NotYetValidKey,
 			errorStr: "not yet valid",
 		},
 		{
-			cert:     testutils.ExpiredCert,
-			key:      testutils.ExpiredKey,
+			roots:    testutils.ExpiredCert,
+			cert:     testutils.ECDSA256SHA256Cert,
+			key:      testutils.ECDSA256Key,
 			errorStr: "expired",
 		},
 		{
+			roots:    testutils.ExpiredCert,
+			cert:     testutils.ECDSA256SHA256Cert,
+			key:      testutils.ECDSA256Key,
+			errorStr: "expired",
+		},
+		{
+			roots:    testutils.RSA2048SHA1Cert,
+			cert:     testutils.ECDSA256SHA256Cert,
+			key:      testutils.ECDSA256Key,
+			errorStr: "unsupported signature algorithm",
+		},
+		{
+			roots:    testutils.ECDSA256SHA256Cert,
 			cert:     testutils.RSA2048SHA1Cert,
 			key:      testutils.RSA2048Key,
 			errorStr: "unsupported signature algorithm",
 		},
 		{
+			roots:    testutils.ECDSA256SHA256Cert,
 			cert:     testutils.ECDSA256SHA1Cert,
 			key:      testutils.ECDSA256Key,
 			errorStr: "unsupported signature algorithm",
 		},
 		{
+			roots:    testutils.ECDSA256SHA1Cert,
+			cert:     testutils.ECDSA256SHA256Cert,
+			key:      testutils.ECDSA256Key,
+			errorStr: "unsupported signature algorithm",
+		},
+		{
+			roots:    testutils.ECDSA256SHA256Cert,
+			cert:     testutils.DSA2048Cert,
+			key:      testutils.DSA2048Key,
+			errorStr: "unsupported signature algorithm",
+		},
+		{
+			roots:    testutils.DSA2048Cert,
+			cert:     testutils.ECDSA256SHA256Cert,
+			key:      testutils.ECDSA256Key,
+			errorStr: "unsupported signature algorithm",
+		},
+		// invalid signer
+		{
+			roots:    testutils.ECDSA256SHA256Cert,
 			cert:     testutils.ECDSA256SHA256Cert,
 			key:      []byte("malformed"),
 			errorStr: "malformed private key",
 		},
 		{
+			roots:    testutils.RSA1024Cert,
 			cert:     testutils.RSA1024Cert,
 			key:      testutils.RSA1024Key,
 			errorStr: "unsupported RSA key parameters",
 		},
 		{
+			roots:    testutils.ECDSA224Cert,
 			cert:     testutils.ECDSA224Cert,
 			key:      testutils.ECDSA224Key,
 			errorStr: "unsupported ECDSA key parameters",
 		},
 		{
+			roots:    testutils.ECDSA256SHA256Cert,
 			cert:     testutils.ECDSA256SHA256Cert,
 			key:      testutils.ECDSA224Key,
 			errorStr: "certificate key mismatch",
 		},
 		{
-			cert:     testutils.DSA2048Cert,
-			key:      testutils.DSA2048Key,
-			errorStr: "unsupported signature algorithm",
+			roots:    testutils.ECDSA256SHA256Cert,
+			cert:     testutils.ECDSACertChain[1],
+			key:      testutils.ECDSACertChainKeys[1],
+			errorStr: "unknown authority", // signer cert doesn't chain up to the root
+		},
+		// invalid intermediates
+		{
+			roots:         testutils.ECDSACertChain[2],
+			cert:          testutils.ECDSACertChain[1],
+			key:           testutils.ECDSACertChainKeys[1],
+			intermediates: []byte("malformed"),
+			errorStr:      "Failed to decode certificate",
+		},
+		{
+			roots:         testutils.ECDSACertChain[2],
+			cert:          testutils.ECDSACertChain[1],
+			key:           testutils.ECDSACertChainKeys[1],
+			intermediates: expiredIntermediate,
+			errorStr:      "expired",
+		},
+		{
+			roots:         testutils.ECDSACertChain[2],
+			cert:          testutils.ECDSACertChain[1],
+			key:           testutils.ECDSACertChainKeys[1],
+			intermediates: notYetValidIntermediate,
+			errorStr:      "expired",
+		},
+		{
+			roots:         testutils.ECDSACertChain[2],
+			cert:          testutils.ECDSACertChain[1],
+			key:           testutils.ECDSACertChainKeys[1],
+			intermediates: append(testutils.ECDSACertChain[1], testutils.ECDSA256SHA256Cert...),
+			errorStr:      "do not form a chain",
+		},
+		{
+			roots:         testutils.ECDSACertChain[2],
+			cert:          testutils.ECDSACertChain[1],
+			key:           testutils.ECDSACertChainKeys[1],
+			intermediates: testutils.ECDSA256SHA256Cert,
+			errorStr:      "unknown authority", // intermediates don't chain up to root
 		},
 	}
 
-	for _, invalid := range invalids {
-		_, err := ca.NewRootCA(invalid.cert, invalid.key, ca.DefaultNodeCertExpiration, nil)
-		require.Error(t, err, invalid.errorStr)
-		require.Contains(t, err.Error(), invalid.errorStr)
+	for i, invalid := range invalids {
+		_, err := ca.NewRootCA(invalid.roots, invalid.cert, invalid.key, ca.DefaultNodeCertExpiration, invalid.intermediates)
+		require.Error(t, err, fmt.Sprintf("expected error containing: \"%s\", test case (%d)", invalid.errorStr, i))
+		require.Contains(t, err.Error(), invalid.errorStr, fmt.Sprintf("%d", i))
 	}
 }
 
@@ -699,13 +804,6 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 	tempdir, err := ioutil.TempDir("", "swarm-ca-test-")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
-
-	now := time.Now()
-
-	expiredIntermediate := testutils.ReDateCert(t, testutils.ECDSACertChain[1],
-		testutils.ECDSACertChain[2], testutils.ECDSACertChainKeys[2], now.Add(-10*time.Hour), now.Add(-1*time.Minute))
-	notYetValidIntermediate := testutils.ReDateCert(t, testutils.ECDSACertChain[1],
-		testutils.ECDSACertChain[2], testutils.ECDSACertChainKeys[2], now.Add(time.Hour), now.Add(2*time.Hour))
 
 	// re-generate the intermediate to be a self-signed root, and use that as the second root
 	parsedKey, err := helpers.ParsePrivateKeyPEM(testutils.ECDSACertChainKeys[1])
@@ -719,67 +817,55 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 		Bytes: fauxRootDER,
 	})
 
-	bothRoots := append(fauxRootCert, testutils.ECDSACertChain[2]...)
-
-	var invalids = []struct {
-		intermediate []byte
-		root         []byte
-	}{
-		{intermediate: []byte("malformed"), root: bothRoots},
-		{intermediate: expiredIntermediate, root: bothRoots},
-		{intermediate: notYetValidIntermediate, root: bothRoots},
-		{intermediate: append(testutils.ECDSACertChain[1], testutils.ECDSA256SHA256Cert...), root: bothRoots}, // doesn't form chain
-		{intermediate: testutils.ECDSACertChain[1], root: fauxRootCert},                                       // doesn't chain up to the root
-	}
-
-	for _, invalid := range invalids {
-		_, err := ca.NewRootCA(invalid.root, testutils.ECDSACertChainKeys[2], ca.DefaultNodeCertExpiration, invalid.intermediate)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid intermediate chain")
-	}
-
-	// Trust the new root and the old root, else the intermediate will fail to chain up to the root pool
 	// It is not required, but not wrong, for the intermediate chain to terminate with a self-signed root
-	newRoot, err := ca.NewRootCA(bothRoots, testutils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration,
-		append(testutils.ECDSACertChain[1], testutils.ECDSACertChain[2]...))
+	signWithIntermediate, err := ca.NewRootCA(testutils.ECDSACertChain[2], testutils.ECDSACertChain[1], testutils.ECDSACertChainKeys[1],
+		ca.DefaultNodeCertExpiration, append(testutils.ECDSACertChain[1], testutils.ECDSACertChain[2]...))
 	require.NoError(t, err)
 
 	// just the intermediate, without a terminating self-signed root, is also ok
-	newRoot, err = ca.NewRootCA(bothRoots, testutils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration,
-		testutils.ECDSACertChain[1])
+	signWithIntermediate, err = ca.NewRootCA(testutils.ECDSACertChain[2], testutils.ECDSACertChain[1], testutils.ECDSACertChainKeys[1],
+		ca.DefaultNodeCertExpiration, testutils.ECDSACertChain[1])
 	require.NoError(t, err)
 
 	paths := ca.NewConfigPaths(tempdir)
 	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
-	_, err = newRoot.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
+	_, err = signWithIntermediate.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
 	require.NoError(t, err)
 	tlsCert, _, err := krw.Read()
 	require.NoError(t, err)
 
-	parsedCerts, err := ca.ValidateCertChain(newRoot.Pool, tlsCert, false)
+	parsedCerts, err := ca.ValidateCertChain(signWithIntermediate.Pool, tlsCert, false)
 	require.NoError(t, err)
 	require.Len(t, parsedCerts, 2)
 	require.Equal(t, parsedIntermediate.Raw, parsedCerts[1].Raw)
 
-	oldRoot, err := ca.NewRootCA(testutils.ECDSACertChain[2], testutils.ECDSACertChainKeys[2], ca.DefaultNodeCertExpiration, nil)
+	oldRoot, err := ca.NewRootCA(testutils.ECDSACertChain[2], testutils.ECDSACertChain[2], testutils.ECDSACertChainKeys[2], ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
-	parsedCerts, err = ca.ValidateCertChain(oldRoot.Pool, tlsCert, false)
+	newRoot, err := ca.NewRootCA(fauxRootCert, fauxRootCert, testutils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
-	require.Len(t, parsedCerts, 2)
-	require.Equal(t, parsedIntermediate.Raw, parsedCerts[1].Raw)
+
+	for _, root := range []ca.RootCA{signWithIntermediate, oldRoot, newRoot} {
+		parsedCerts, err = ca.ValidateCertChain(root.Pool, tlsCert, false)
+		require.NoError(t, err)
+		require.Len(t, parsedCerts, 2)
+		require.Equal(t, parsedIntermediate.Raw, parsedCerts[1].Raw)
+	}
 
 	if !testutils.External {
 		return
 	}
 
 	// create an external signing server that generates leaf certs with the new root (but does not append the intermediate)
-	externalCARoot, err := ca.NewRootCA(fauxRootCert, testutils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration, nil)
-	require.NoError(t, err)
-	tc := testutils.NewTestCAFromRootCA(t, tempdir, externalCARoot, nil)
+	tc := testutils.NewTestCAFromRootCA(t, tempdir, newRoot, nil)
 	defer tc.Stop()
 
-	secConfig, err := newRoot.CreateSecurityConfig(context.Background(), krw, ca.CertificateRequestConfig{})
+	// we need creds that trust both the old and new root in order to connect to the test CA, and we want this root CA to
+	// append certificates
+	connectToExternalRootCA, err := ca.NewRootCA(append(testutils.ECDSACertChain[2], fauxRootCert...), testutils.ECDSACertChain[1],
+		testutils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration, testutils.ECDSACertChain[1])
+	require.NoError(t, err)
+	secConfig, err := connectToExternalRootCA.CreateSecurityConfig(context.Background(), krw, ca.CertificateRequestConfig{})
 	require.NoError(t, err)
 
 	externalCA := secConfig.ExternalCA()
@@ -791,10 +877,12 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 	tlsCert, err = externalCA.Sign(context.Background(), ca.PrepareCSR(newCSR, "cn", ca.ManagerRole, secConfig.ClientTLSCreds.Organization()))
 	require.NoError(t, err)
 
-	parsedCerts, err = ca.ValidateCertChain(oldRoot.Pool, tlsCert, false)
-	require.NoError(t, err)
-	require.Len(t, parsedCerts, 2)
-	require.Equal(t, parsedIntermediate.Raw, parsedCerts[1].Raw)
+	for _, root := range []ca.RootCA{signWithIntermediate, oldRoot, newRoot} {
+		parsedCerts, err = ca.ValidateCertChain(root.Pool, tlsCert, false)
+		require.NoError(t, err)
+		require.Len(t, parsedCerts, 2)
+		require.Equal(t, parsedIntermediate.Raw, parsedCerts[1].Raw)
+	}
 }
 
 func TestNewRootCAWithPassphrase(t *testing.T) {
@@ -812,16 +900,16 @@ func TestNewRootCAWithPassphrase(t *testing.T) {
 	// Ensure that we're encrypting the Key bytes out of NewRoot if there
 	// is a passphrase set as an env Var
 	os.Setenv(ca.PassphraseENVVar, "password1")
-	newRootCA, err := ca.NewRootCA(rootCA.Cert, rootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
+	newRootCA, err := ca.NewRootCA(rootCA.Certs, rootCA.Signer.Cert, rootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.NoError(t, err)
 	assert.NotEqual(t, rootCA.Signer.Key, newRootCA.Signer.Key)
-	assert.Equal(t, rootCA.Cert, newRootCA.Cert)
+	assert.Equal(t, rootCA.Certs, newRootCA.Certs)
 	assert.NotContains(t, string(rootCA.Signer.Key), string(newRootCA.Signer.Key))
 	assert.Contains(t, string(newRootCA.Signer.Key), "Proc-Type: 4,ENCRYPTED")
 
 	// Ensure that we're decrypting the Key bytes out of NewRoot if there
 	// is a passphrase set as an env Var
-	anotherNewRootCA, err := ca.NewRootCA(newRootCA.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
+	anotherNewRootCA, err := ca.NewRootCA(newRootCA.Certs, newRootCA.Signer.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, newRootCA, anotherNewRootCA)
 	assert.NotContains(t, string(rootCA.Signer.Key), string(anotherNewRootCA.Signer.Key))
@@ -830,19 +918,19 @@ func TestNewRootCAWithPassphrase(t *testing.T) {
 	// Ensure that we cant decrypt the Key bytes out of NewRoot if there
 	// is a wrong passphrase set as an env Var
 	os.Setenv(ca.PassphraseENVVar, "password2")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
+	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Certs, newRootCA.Signer.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.Error(t, err)
 
 	// Ensure that we cant decrypt the Key bytes out of NewRoot if there
 	// is a wrong passphrase set as an env Var
 	os.Setenv(ca.PassphraseENVVarPrev, "password2")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
+	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Certs, newRootCA.Signer.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.Error(t, err)
 
 	// Ensure that we can decrypt the Key bytes out of NewRoot if there
 	// is a wrong passphrase set as an env Var, but a valid as Prev
 	os.Setenv(ca.PassphraseENVVarPrev, "password1")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
+	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Certs, newRootCA.Signer.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, newRootCA, anotherNewRootCA)
 	assert.NotContains(t, string(rootCA.Signer.Key), string(anotherNewRootCA.Signer.Key))
@@ -999,13 +1087,13 @@ func TestRootCACrossSignCACertificate(t *testing.T) {
 	cert1, key1, err := testutils.CreateRootCertAndKey("rootCN")
 	require.NoError(t, err)
 
-	rootCA1, err := ca.NewRootCA(cert1, key1, ca.DefaultNodeCertExpiration, nil)
+	rootCA1, err := ca.NewRootCA(cert1, cert1, key1, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
 	cert2, key2, err := testutils.CreateRootCertAndKey("rootCN2")
 	require.NoError(t, err)
 
-	rootCA2, err := ca.NewRootCA(cert2, key2, ca.DefaultNodeCertExpiration, nil)
+	rootCA2, err := ca.NewRootCA(cert2, cert2, key2, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
 	tempdir, err := ioutil.TempDir("", "cross-sign-cert")

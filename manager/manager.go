@@ -1055,7 +1055,7 @@ func defaultClusterObject(
 		},
 		RootCA: api.RootCA{
 			CAKey:      caKey,
-			CACert:     rootCA.Cert,
+			CACert:     rootCA.Certs,
 			CACertHash: rootCA.Digest.String(),
 			JoinTokens: api.JoinTokens{
 				Worker:  ca.GenerateJoinToken(rootCA),

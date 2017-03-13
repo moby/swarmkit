@@ -517,7 +517,7 @@ func TestForceNewCluster(t *testing.T) {
 	require.NoError(t, err)
 	now := time.Now()
 	// we don't want it too expired, because it can't have expired before the root CA cert is valid
-	expiredCertPEM := testutils.ReDateCert(t, certBytes, rootCA.Cert, rootCA.Signer.Key, now.Add(-1*time.Hour), now.Add(-1*time.Second))
+	expiredCertPEM := testutils.ReDateCert(t, certBytes, rootCA.Signer.Cert, rootCA.Signer.Key, now.Add(-1*time.Hour), now.Add(-1*time.Second))
 
 	// restart node with an expired certificate while forcing a new cluster - it should start without error and the certificate should be renewed
 	nodeID := leader.node.NodeID()
