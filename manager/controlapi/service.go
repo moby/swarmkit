@@ -476,8 +476,9 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 	// TODO(aluzzardi): Consider using `Name` as a primary key to handle
 	// duplicate creations. See #65
 	service := &api.Service{
-		ID:   identity.NewID(),
-		Spec: *request.Spec,
+		ID:          identity.NewID(),
+		Spec:        *request.Spec,
+		SpecVersion: &api.Version{},
 	}
 
 	if doesServiceNeedIngress(service) {
@@ -599,8 +600,11 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 			}
 
 			curSpec := service.Spec.Copy()
+			curSpecVersion := service.SpecVersion
 			service.Spec = *service.PreviousSpec.Copy()
+			service.SpecVersion = service.PreviousSpecVersion.Copy()
 			service.PreviousSpec = curSpec
+			service.PreviousSpecVersion = curSpecVersion
 
 			service.UpdateStatus = &api.UpdateStatus{
 				State:     api.UpdateStatus_ROLLBACK_STARTED,
@@ -609,7 +613,13 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 			}
 		} else {
 			service.PreviousSpec = service.Spec.Copy()
+			service.PreviousSpecVersion = service.SpecVersion
 			service.Spec = *request.Spec.Copy()
+			// Set spec version. Note that this will not match the
+			// service's Meta.Version after the store update. The
+			// versionsfor the spec and the service itself are not
+			// meant to be directly comparable.
+			service.SpecVersion = service.Meta.Version.Copy()
 
 			// Reset update status
 			service.UpdateStatus = nil
