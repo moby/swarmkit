@@ -367,7 +367,7 @@ func TestScheduler(t *testing.T) {
 	assert.NotEqual(t, "id6", assignment8.NodeID)
 }
 
-func TestHA(t *testing.T) {
+func testHA(t *testing.T, useSpecVersion bool) {
 	ctx := context.Background()
 	initialNodeSet := []*api.Node{
 		{
@@ -430,6 +430,11 @@ func TestHA(t *testing.T) {
 		Status: api.TaskStatus{
 			State: api.TaskStatePending,
 		},
+	}
+
+	if useSpecVersion {
+		taskTemplate1.SpecVersion = &api.Version{Index: 1}
+		taskTemplate2.SpecVersion = &api.Version{Index: 1}
 	}
 
 	s := store.NewMemoryStore(nil)
@@ -641,7 +646,12 @@ func TestHA(t *testing.T) {
 	assert.Equal(t, 1, t2Assignments["id1"])
 }
 
-func TestPreferences(t *testing.T) {
+func TestHA(t *testing.T) {
+	t.Run("useSpecVersion=false", func(t *testing.T) { testHA(t, false) })
+	t.Run("useSpecVersion=true", func(t *testing.T) { testHA(t, true) })
+}
+
+func testPreferences(t *testing.T, useSpecVersion bool) {
 	ctx := context.Background()
 	initialNodeSet := []*api.Node{
 		{
@@ -737,6 +747,10 @@ func TestPreferences(t *testing.T) {
 		},
 	}
 
+	if useSpecVersion {
+		taskTemplate1.SpecVersion = &api.Version{Index: 1}
+	}
+
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
 	defer s.Close()
@@ -785,7 +799,12 @@ func TestPreferences(t *testing.T) {
 	assert.Equal(t, 1, t1Assignments["id5"])
 }
 
-func TestMultiplePreferences(t *testing.T) {
+func TestPreferences(t *testing.T) {
+	t.Run("useSpecVersion=false", func(t *testing.T) { testPreferences(t, false) })
+	t.Run("useSpecVersion=true", func(t *testing.T) { testPreferences(t, true) })
+}
+
+func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 	ctx := context.Background()
 	initialNodeSet := []*api.Node{
 		{
@@ -968,6 +987,10 @@ func TestMultiplePreferences(t *testing.T) {
 		},
 	}
 
+	if useSpecVersion {
+		taskTemplate1.SpecVersion = &api.Version{Index: 1}
+	}
+
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
 	defer s.Close()
@@ -1055,6 +1078,11 @@ func TestMultiplePreferences(t *testing.T) {
 	} else {
 		t.Fatal("unexpected task layout")
 	}
+}
+
+func TestMultiplePreferences(t *testing.T) {
+	t.Run("useSpecVersion=false", func(t *testing.T) { testMultiplePreferences(t, false) })
+	t.Run("useSpecVersion=true", func(t *testing.T) { testMultiplePreferences(t, true) })
 }
 
 func TestSchedulerNoReadyNodes(t *testing.T) {

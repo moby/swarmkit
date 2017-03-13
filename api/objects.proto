@@ -70,9 +70,17 @@ message Service {
 
 	ServiceSpec spec = 3 [(gogoproto.nullable) = false];
 
+	// SpecVersion versions Spec, to identify changes in the spec. Note that
+	// this is not directly comparable to the service's Version.
+	Version spec_version = 10;
+
 	// PreviousSpec is the previous service spec that was in place before
 	// "Spec".
 	ServiceSpec previous_spec = 6;
+
+	// PreviousSpecVersion versions PreviousSpec. Note that this is not
+	// directly comparable to the service's Version.
+	Version previous_spec_version = 11;
 
 	// Runtime state of service endpoint. This may be different
 	// from the spec version because the user may not have entered
@@ -131,6 +139,11 @@ message Task {
 	// Spec defines the desired state of the task as specified by the user.
 	// The system will honor this and will *never* modify it.
 	TaskSpec spec = 3 [(gogoproto.nullable) = false];
+
+	// SpecVersion is copied from Service, to identify which version of the
+	// spec this task has. Note that this is not directly comparable to the
+	// service's Version.
+	Version spec_version = 14;
 
 	// ServiceID indicates the service under which this task is orchestrated. This
 	// should almost always be set.
