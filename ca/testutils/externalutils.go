@@ -36,6 +36,10 @@ func NewExternalSigningServer(rootCA ca.RootCA, basedir string) (*ExternalSignin
 	serverCN := "external-ca-example-server"
 	serverOU := "localhost" // Make a valid server cert for localhost.
 
+	if !rootCA.CanSign() {
+		return nil, ca.ErrNoValidSigner
+	}
+
 	// Create TLS credentials for the external CA server which we will run.
 	serverPaths := ca.CertPaths{
 		Cert: filepath.Join(basedir, "server.crt"),
@@ -120,7 +124,7 @@ func (ess *ExternalSigningServer) EnableCASigning() error {
 
 	rca := ess.handler.rootCA
 
-	rootCert, err := helpers.ParseCertificatePEM(rca.Cert)
+	rootCert, err := helpers.ParseCertificatePEM(rca.Signer.Cert)
 	if err != nil {
 		return errors.Wrap(err, "could not parse old CA certificate")
 	}

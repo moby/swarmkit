@@ -485,7 +485,7 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 
 	newRootCert, _, err := testutils.CreateRootCertAndKey("rootOther")
 	require.NoError(t, err)
-	updatedCA := append(tc.RootCA.Cert, newRootCert...)
+	updatedCA := append(tc.RootCA.Certs, newRootCert...)
 
 	// Update the RootCA to have a bundle
 	require.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
@@ -496,7 +496,7 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 
 	// wait for the manager's security config to be updated
 	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
-		if !bytes.Equal(managerSecurityConfig.RootCA().Cert, updatedCA) {
+		if !bytes.Equal(managerSecurityConfig.RootCA().Certs, updatedCA) {
 			return fmt.Errorf("root CA not updated yet")
 		}
 		return nil

@@ -70,7 +70,7 @@ func TestLoadSecurityConfigPartialCertsOnDisk(t *testing.T) {
 	require.NoError(t, err)
 
 	// a new CA was generated because no existing TLS certs were present
-	require.NotEqual(t, rootCA.Cert, securityConfig.RootCA().Cert)
+	require.NotEqual(t, rootCA.Certs, securityConfig.RootCA().Certs)
 
 	// if the TLS key and cert are on disk, but there's no CA, a new CA and TLS
 	// key+cert are generated

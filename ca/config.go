@@ -132,7 +132,13 @@ func (s *SecurityConfig) UpdateRootCA(cert, key []byte, certExpiry time.Duration
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	rootCA, err := NewRootCA(cert, key, certExpiry, nil)
+	// If we have no signing key, then we shouldn't pass a signing cert either (because we don't want a local
+	// signer at all)
+	signingCert := cert
+	if len(key) == 0 {
+		signingCert = nil
+	}
+	rootCA, err := NewRootCA(cert, signingCert, key, certExpiry, nil)
 	if err != nil {
 		return err
 	}
