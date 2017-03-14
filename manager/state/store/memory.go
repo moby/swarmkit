@@ -195,7 +195,7 @@ func (s *MemoryStore) changelistBetweenVersions(from, to api.Version) ([]api.Eve
 
 	for _, change := range changes {
 		for _, sa := range change.StoreActions {
-			event, err := api.EventFromStoreAction(sa)
+			event, err := api.EventFromStoreAction(sa, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -529,7 +529,7 @@ func (tx *tx) update(table string, o api.StoreObject) error {
 
 	err := tx.memDBTx.Insert(table, copy)
 	if err == nil {
-		tx.changelist = append(tx.changelist, copy.EventUpdate())
+		tx.changelist = append(tx.changelist, copy.EventUpdate(oldN))
 		o.SetMeta(meta)
 	}
 	return err

@@ -11,13 +11,13 @@ var errUnknownStoreAction = errors.New("unrecognized action type")
 
 // StoreObject is an abstract object that can be handled by the store.
 type StoreObject interface {
-	GetID() string                // Get ID
-	GetMeta() Meta                // Retrieve metadata
-	SetMeta(Meta)                 // Set metadata
-	CopyStoreObject() StoreObject // Return a copy of this object
-	EventCreate() Event           // Return a creation event
-	EventUpdate() Event           // Return an update event
-	EventDelete() Event           // Return a deletion event
+	GetID() string                           // Get ID
+	GetMeta() Meta                           // Retrieve metadata
+	SetMeta(Meta)                            // Set metadata
+	CopyStoreObject() StoreObject            // Return a copy of this object
+	EventCreate() Event                      // Return a creation event
+	EventUpdate(oldObject StoreObject) Event // Return an update event
+	EventDelete() Event                      // Return a deletion event
 }
 
 // Event is the type used for events passed over watcher channels, and also

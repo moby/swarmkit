@@ -45,6 +45,9 @@ func (d *storeObjectGen) genMsgStoreObject(m *generator.Descriptor, storeObject 
 		d.P("type Event", event, ccTypeName, " struct {")
 		d.In()
 		d.P(ccTypeName, " *", ccTypeName)
+		if event == "Update" {
+			d.P("Old", ccTypeName, " *", ccTypeName)
+		}
 		d.P("Checks []", ccTypeName, "CheckFunc")
 		d.Out()
 		d.P("}")
@@ -109,9 +112,17 @@ func (d *storeObjectGen) genMsgStoreObject(m *generator.Descriptor, storeObject 
 	d.P("}")
 	d.P()
 
-	d.P("func (m *", ccTypeName, ") EventUpdate() Event {")
+	d.P("func (m *", ccTypeName, ") EventUpdate(oldObject StoreObject) Event {")
+	d.In()
+	d.P("if oldObject != nil {")
+	d.In()
+	d.P("return EventUpdate", ccTypeName, "{", ccTypeName, ": m, Old", ccTypeName, ": oldObject.(*", ccTypeName, ")}")
+	d.Out()
+	d.P("} else {")
 	d.In()
 	d.P("return EventUpdate", ccTypeName, "{", ccTypeName, ": m}")
+	d.Out()
+	d.P("}")
 	d.Out()
 	d.P("}")
 	d.P()
@@ -241,7 +252,7 @@ func (d *storeObjectGen) genEventFromStoreAction(topLevelObjs []string) {
 	}
 
 	// Generate EventFromStoreAction
-	d.P("func EventFromStoreAction(sa StoreAction) (Event, error) {")
+	d.P("func EventFromStoreAction(sa StoreAction, oldObject StoreObject) (Event, error) {")
 	d.In()
 	d.P("switch v := sa.Target.(type) {")
 	for _, ccTypeName := range topLevelObjs {
@@ -256,7 +267,15 @@ func (d *storeObjectGen) genEventFromStoreAction(topLevelObjs []string) {
 
 		d.P("case StoreActionKindUpdate:")
 		d.In()
+		d.P("if oldObject != nil {")
+		d.In()
+		d.P("return EventUpdate", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, ", Old", ccTypeName, ": oldObject.(*", ccTypeName, ")}, nil")
+		d.Out()
+		d.P("} else {")
+		d.In()
 		d.P("return EventUpdate", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}, nil")
+		d.Out()
+		d.P("}")
 		d.Out()
 
 		d.P("case StoreActionKindRemove:")

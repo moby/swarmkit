@@ -105,6 +105,12 @@ message WatchRequest {
 	// server has compacted its log and no longer has complete history to
 	// this point.
 	Version resume_from = 2;
+
+	// IncludeOldObject causes WatchMessages to include a copy of the
+	// previous version of the object on updates. Note that only live
+	// changes will include the old object (not historical changes
+	// retrieved using ResumeFrom).
+	bool include_old_object = 3;
 }
 
 // WatchMessage is the type of the stream that's returned to the client by
@@ -119,6 +125,11 @@ message WatchMessage {
 
 		// Matched object
 		Object object = 2;
+
+		// For updates, OldObject will optionally be included in the
+		// watch message, containing the previous version of the
+		// object, if IncludeOldObject was set in WatchRequest.
+		Object old_object = 3;
 	}
 
 	repeated Event events = 1;

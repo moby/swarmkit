@@ -1859,8 +1859,9 @@ func (e EventCreateNode) Matches(apiEvent github_com_docker_go_events.Event) boo
 }
 
 type EventUpdateNode struct {
-	Node   *Node
-	Checks []NodeCheckFunc
+	Node    *Node
+	OldNode *Node
+	Checks  []NodeCheckFunc
 }
 
 func (e EventUpdateNode) Matches(apiEvent github_com_docker_go_events.Event) bool {
@@ -1915,8 +1916,12 @@ func (m *Node) EventCreate() Event {
 	return EventCreateNode{Node: m}
 }
 
-func (m *Node) EventUpdate() Event {
-	return EventUpdateNode{Node: m}
+func (m *Node) EventUpdate(oldObject StoreObject) Event {
+	if oldObject != nil {
+		return EventUpdateNode{Node: m, OldNode: oldObject.(*Node)}
+	} else {
+		return EventUpdateNode{Node: m}
+	}
 }
 
 func (m *Node) EventDelete() Event {
@@ -1985,8 +1990,9 @@ func (e EventCreateService) Matches(apiEvent github_com_docker_go_events.Event) 
 }
 
 type EventUpdateService struct {
-	Service *Service
-	Checks  []ServiceCheckFunc
+	Service    *Service
+	OldService *Service
+	Checks     []ServiceCheckFunc
 }
 
 func (e EventUpdateService) Matches(apiEvent github_com_docker_go_events.Event) bool {
@@ -2041,8 +2047,12 @@ func (m *Service) EventCreate() Event {
 	return EventCreateService{Service: m}
 }
 
-func (m *Service) EventUpdate() Event {
-	return EventUpdateService{Service: m}
+func (m *Service) EventUpdate(oldObject StoreObject) Event {
+	if oldObject != nil {
+		return EventUpdateService{Service: m, OldService: oldObject.(*Service)}
+	} else {
+		return EventUpdateService{Service: m}
+	}
 }
 
 func (m *Service) EventDelete() Event {
@@ -2111,8 +2121,9 @@ func (e EventCreateTask) Matches(apiEvent github_com_docker_go_events.Event) boo
 }
 
 type EventUpdateTask struct {
-	Task   *Task
-	Checks []TaskCheckFunc
+	Task    *Task
+	OldTask *Task
+	Checks  []TaskCheckFunc
 }
 
 func (e EventUpdateTask) Matches(apiEvent github_com_docker_go_events.Event) bool {
@@ -2167,8 +2178,12 @@ func (m *Task) EventCreate() Event {
 	return EventCreateTask{Task: m}
 }
 
-func (m *Task) EventUpdate() Event {
-	return EventUpdateTask{Task: m}
+func (m *Task) EventUpdate(oldObject StoreObject) Event {
+	if oldObject != nil {
+		return EventUpdateTask{Task: m, OldTask: oldObject.(*Task)}
+	} else {
+		return EventUpdateTask{Task: m}
+	}
 }
 
 func (m *Task) EventDelete() Event {
@@ -2237,8 +2252,9 @@ func (e EventCreateNetwork) Matches(apiEvent github_com_docker_go_events.Event) 
 }
 
 type EventUpdateNetwork struct {
-	Network *Network
-	Checks  []NetworkCheckFunc
+	Network    *Network
+	OldNetwork *Network
+	Checks     []NetworkCheckFunc
 }
 
 func (e EventUpdateNetwork) Matches(apiEvent github_com_docker_go_events.Event) bool {
@@ -2293,8 +2309,12 @@ func (m *Network) EventCreate() Event {
 	return EventCreateNetwork{Network: m}
 }
 
-func (m *Network) EventUpdate() Event {
-	return EventUpdateNetwork{Network: m}
+func (m *Network) EventUpdate(oldObject StoreObject) Event {
+	if oldObject != nil {
+		return EventUpdateNetwork{Network: m, OldNetwork: oldObject.(*Network)}
+	} else {
+		return EventUpdateNetwork{Network: m}
+	}
 }
 
 func (m *Network) EventDelete() Event {
@@ -2363,8 +2383,9 @@ func (e EventCreateCluster) Matches(apiEvent github_com_docker_go_events.Event) 
 }
 
 type EventUpdateCluster struct {
-	Cluster *Cluster
-	Checks  []ClusterCheckFunc
+	Cluster    *Cluster
+	OldCluster *Cluster
+	Checks     []ClusterCheckFunc
 }
 
 func (e EventUpdateCluster) Matches(apiEvent github_com_docker_go_events.Event) bool {
@@ -2419,8 +2440,12 @@ func (m *Cluster) EventCreate() Event {
 	return EventCreateCluster{Cluster: m}
 }
 
-func (m *Cluster) EventUpdate() Event {
-	return EventUpdateCluster{Cluster: m}
+func (m *Cluster) EventUpdate(oldObject StoreObject) Event {
+	if oldObject != nil {
+		return EventUpdateCluster{Cluster: m, OldCluster: oldObject.(*Cluster)}
+	} else {
+		return EventUpdateCluster{Cluster: m}
+	}
 }
 
 func (m *Cluster) EventDelete() Event {
@@ -2489,8 +2514,9 @@ func (e EventCreateSecret) Matches(apiEvent github_com_docker_go_events.Event) b
 }
 
 type EventUpdateSecret struct {
-	Secret *Secret
-	Checks []SecretCheckFunc
+	Secret    *Secret
+	OldSecret *Secret
+	Checks    []SecretCheckFunc
 }
 
 func (e EventUpdateSecret) Matches(apiEvent github_com_docker_go_events.Event) bool {
@@ -2545,8 +2571,12 @@ func (m *Secret) EventCreate() Event {
 	return EventCreateSecret{Secret: m}
 }
 
-func (m *Secret) EventUpdate() Event {
-	return EventUpdateSecret{Secret: m}
+func (m *Secret) EventUpdate(oldObject StoreObject) Event {
+	if oldObject != nil {
+		return EventUpdateSecret{Secret: m, OldSecret: oldObject.(*Secret)}
+	} else {
+		return EventUpdateSecret{Secret: m}
+	}
 }
 
 func (m *Secret) EventDelete() Event {
@@ -2615,8 +2645,9 @@ func (e EventCreateResource) Matches(apiEvent github_com_docker_go_events.Event)
 }
 
 type EventUpdateResource struct {
-	Resource *Resource
-	Checks   []ResourceCheckFunc
+	Resource    *Resource
+	OldResource *Resource
+	Checks      []ResourceCheckFunc
 }
 
 func (e EventUpdateResource) Matches(apiEvent github_com_docker_go_events.Event) bool {
@@ -2671,8 +2702,12 @@ func (m *Resource) EventCreate() Event {
 	return EventCreateResource{Resource: m}
 }
 
-func (m *Resource) EventUpdate() Event {
-	return EventUpdateResource{Resource: m}
+func (m *Resource) EventUpdate(oldObject StoreObject) Event {
+	if oldObject != nil {
+		return EventUpdateResource{Resource: m, OldResource: oldObject.(*Resource)}
+	} else {
+		return EventUpdateResource{Resource: m}
+	}
 }
 
 func (m *Resource) EventDelete() Event {
@@ -2741,8 +2776,9 @@ func (e EventCreateExtension) Matches(apiEvent github_com_docker_go_events.Event
 }
 
 type EventUpdateExtension struct {
-	Extension *Extension
-	Checks    []ExtensionCheckFunc
+	Extension    *Extension
+	OldExtension *Extension
+	Checks       []ExtensionCheckFunc
 }
 
 func (e EventUpdateExtension) Matches(apiEvent github_com_docker_go_events.Event) bool {
@@ -2797,8 +2833,12 @@ func (m *Extension) EventCreate() Event {
 	return EventCreateExtension{Extension: m}
 }
 
-func (m *Extension) EventUpdate() Event {
-	return EventUpdateExtension{Extension: m}
+func (m *Extension) EventUpdate(oldObject StoreObject) Event {
+	if oldObject != nil {
+		return EventUpdateExtension{Extension: m, OldExtension: oldObject.(*Extension)}
+	} else {
+		return EventUpdateExtension{Extension: m}
+	}
 }
 
 func (m *Extension) EventDelete() Event {
@@ -2925,14 +2965,18 @@ func NewStoreAction(c Event) (StoreAction, error) {
 	return sa, nil
 }
 
-func EventFromStoreAction(sa StoreAction) (Event, error) {
+func EventFromStoreAction(sa StoreAction, oldObject StoreObject) (Event, error) {
 	switch v := sa.Target.(type) {
 	case *StoreAction_Node:
 		switch sa.Action {
 		case StoreActionKindCreate:
 			return EventCreateNode{Node: v.Node}, nil
 		case StoreActionKindUpdate:
-			return EventUpdateNode{Node: v.Node}, nil
+			if oldObject != nil {
+				return EventUpdateNode{Node: v.Node, OldNode: oldObject.(*Node)}, nil
+			} else {
+				return EventUpdateNode{Node: v.Node}, nil
+			}
 		case StoreActionKindRemove:
 			return EventDeleteNode{Node: v.Node}, nil
 		}
@@ -2941,7 +2985,11 @@ func EventFromStoreAction(sa StoreAction) (Event, error) {
 		case StoreActionKindCreate:
 			return EventCreateService{Service: v.Service}, nil
 		case StoreActionKindUpdate:
-			return EventUpdateService{Service: v.Service}, nil
+			if oldObject != nil {
+				return EventUpdateService{Service: v.Service, OldService: oldObject.(*Service)}, nil
+			} else {
+				return EventUpdateService{Service: v.Service}, nil
+			}
 		case StoreActionKindRemove:
 			return EventDeleteService{Service: v.Service}, nil
 		}
@@ -2950,7 +2998,11 @@ func EventFromStoreAction(sa StoreAction) (Event, error) {
 		case StoreActionKindCreate:
 			return EventCreateTask{Task: v.Task}, nil
 		case StoreActionKindUpdate:
-			return EventUpdateTask{Task: v.Task}, nil
+			if oldObject != nil {
+				return EventUpdateTask{Task: v.Task, OldTask: oldObject.(*Task)}, nil
+			} else {
+				return EventUpdateTask{Task: v.Task}, nil
+			}
 		case StoreActionKindRemove:
 			return EventDeleteTask{Task: v.Task}, nil
 		}
@@ -2959,7 +3011,11 @@ func EventFromStoreAction(sa StoreAction) (Event, error) {
 		case StoreActionKindCreate:
 			return EventCreateNetwork{Network: v.Network}, nil
 		case StoreActionKindUpdate:
-			return EventUpdateNetwork{Network: v.Network}, nil
+			if oldObject != nil {
+				return EventUpdateNetwork{Network: v.Network, OldNetwork: oldObject.(*Network)}, nil
+			} else {
+				return EventUpdateNetwork{Network: v.Network}, nil
+			}
 		case StoreActionKindRemove:
 			return EventDeleteNetwork{Network: v.Network}, nil
 		}
@@ -2968,7 +3024,11 @@ func EventFromStoreAction(sa StoreAction) (Event, error) {
 		case StoreActionKindCreate:
 			return EventCreateCluster{Cluster: v.Cluster}, nil
 		case StoreActionKindUpdate:
-			return EventUpdateCluster{Cluster: v.Cluster}, nil
+			if oldObject != nil {
+				return EventUpdateCluster{Cluster: v.Cluster, OldCluster: oldObject.(*Cluster)}, nil
+			} else {
+				return EventUpdateCluster{Cluster: v.Cluster}, nil
+			}
 		case StoreActionKindRemove:
 			return EventDeleteCluster{Cluster: v.Cluster}, nil
 		}
@@ -2977,7 +3037,11 @@ func EventFromStoreAction(sa StoreAction) (Event, error) {
 		case StoreActionKindCreate:
 			return EventCreateSecret{Secret: v.Secret}, nil
 		case StoreActionKindUpdate:
-			return EventUpdateSecret{Secret: v.Secret}, nil
+			if oldObject != nil {
+				return EventUpdateSecret{Secret: v.Secret, OldSecret: oldObject.(*Secret)}, nil
+			} else {
+				return EventUpdateSecret{Secret: v.Secret}, nil
+			}
 		case StoreActionKindRemove:
 			return EventDeleteSecret{Secret: v.Secret}, nil
 		}
@@ -2986,7 +3050,11 @@ func EventFromStoreAction(sa StoreAction) (Event, error) {
 		case StoreActionKindCreate:
 			return EventCreateResource{Resource: v.Resource}, nil
 		case StoreActionKindUpdate:
-			return EventUpdateResource{Resource: v.Resource}, nil
+			if oldObject != nil {
+				return EventUpdateResource{Resource: v.Resource, OldResource: oldObject.(*Resource)}, nil
+			} else {
+				return EventUpdateResource{Resource: v.Resource}, nil
+			}
 		case StoreActionKindRemove:
 			return EventDeleteResource{Resource: v.Resource}, nil
 		}
@@ -2995,7 +3063,11 @@ func EventFromStoreAction(sa StoreAction) (Event, error) {
 		case StoreActionKindCreate:
 			return EventCreateExtension{Extension: v.Extension}, nil
 		case StoreActionKindUpdate:
-			return EventUpdateExtension{Extension: v.Extension}, nil
+			if oldObject != nil {
+				return EventUpdateExtension{Extension: v.Extension, OldExtension: oldObject.(*Extension)}, nil
+			} else {
+				return EventUpdateExtension{Extension: v.Extension}, nil
+			}
 		case StoreActionKindRemove:
 			return EventDeleteExtension{Extension: v.Extension}, nil
 		}

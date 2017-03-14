@@ -160,6 +160,52 @@ func TestWatch(t *testing.T) {
 	watch.CloseSend()
 }
 
+func TestWatchIncludeOldObject(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+
+	ctx := context.Background()
+
+	// Watch for node updates
+	watch, err := ts.Client.Watch(ctx, &api.WatchRequest{
+		Entries: []*api.WatchRequest_WatchEntry{
+			{
+				Kind:   "node",
+				Action: api.StoreActionKindUpdate,
+			},
+		},
+		IncludeOldObject: true,
+	})
+	assert.NoError(t, err)
+
+	// Should receive an initial message that indicates the watch is ready
+	msg, err := watch.Recv()
+	assert.NoError(t, err)
+	assert.Equal(t, &api.WatchMessage{}, msg)
+
+	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
+
+	err = ts.Store.Update(func(tx store.Tx) error {
+		node := store.GetNode(tx, "id1")
+		require.NotNil(t, node)
+		node.Role = api.NodeRoleWorker
+		return store.UpdateNode(tx, node)
+	})
+	assert.NoError(t, err)
+
+	msg, err = watch.Recv()
+	assert.NoError(t, err)
+	assert.Equal(t, api.StoreActionKindUpdate, msg.Events[0].Action)
+	require.NotNil(t, msg.Events[0].Object.GetNode())
+	assert.Equal(t, "id1", msg.Events[0].Object.GetNode().ID)
+	assert.Equal(t, api.NodeRoleWorker, msg.Events[0].Object.GetNode().Role)
+	require.NotNil(t, msg.Events[0].OldObject.GetNode())
+	assert.Equal(t, "id1", msg.Events[0].OldObject.GetNode().ID)
+	assert.Equal(t, api.NodeRoleManager, msg.Events[0].OldObject.GetNode().Role)
+
+	watch.CloseSend()
+}
+
 func TestWatchResumeFrom(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
