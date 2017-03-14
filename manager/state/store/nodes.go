@@ -36,6 +36,11 @@ func init() {
 					Name:    indexMembership,
 					Indexer: nodeIndexerByMembership{},
 				},
+				indexCustom: {
+					Name:         indexCustom,
+					Indexer:      nodeCustomIndexer{},
+					AllowMissing: true,
+				},
 			},
 		},
 		Save: func(tx ReadTx, snapshot *api.StoreSnapshot) error {
@@ -59,6 +64,12 @@ func init() {
 				}
 			}
 			return nil
+		},
+		Object: func(sa *api.StoreAction) (Object, error) {
+			if node, ok := sa.Target.(*api.StoreAction_Node); ok {
+				return nodeEntry{Node: node.Node}, nil
+			}
+			return nil, errUnknownStoreAction
 		},
 		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
 			switch v := sa.Target.(type) {
@@ -165,7 +176,7 @@ func GetNode(tx ReadTx, id string) *api.Node {
 func FindNodes(tx ReadTx, by By) ([]*api.Node, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byNamePrefix, byIDPrefix, byRole, byMembership:
+		case byName, byNamePrefix, byIDPrefix, byRole, byMembership, byCustom, byCustomPrefix:
 			return nil
 		default:
 			return ErrInvalidFindBy
@@ -255,4 +266,23 @@ func (ni nodeIndexerByMembership) FromObject(obj interface{}) (bool, []byte, err
 
 	// Add the null character as a terminator
 	return true, []byte(strconv.FormatInt(int64(n.Spec.Membership), 10) + "\x00"), nil
+}
+
+type nodeCustomIndexer struct{}
+
+func (ni nodeCustomIndexer) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (ni nodeCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, error) {
+	n, ok := obj.(nodeEntry)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	return customIndexer("", &n.Spec.Annotations)
+}
+
+func (ni nodeCustomIndexer) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
 }

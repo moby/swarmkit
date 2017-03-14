@@ -6,7 +6,7 @@ import (
 	memdb "github.com/hashicorp/go-memdb"
 )
 
-// Object is a generic object that can be handled by the store.
+// Object is an abstract object that can be handled by the store.
 type Object interface {
 	ID() string               // Get ID
 	Meta() api.Meta           // Retrieve metadata
@@ -24,6 +24,7 @@ type ObjectStoreConfig struct {
 	Table            *memdb.TableSchema
 	Save             func(ReadTx, *api.StoreSnapshot) error
 	Restore          func(Tx, *api.StoreSnapshot) error
+	Object           func(*api.StoreAction) (Object, error)
 	ApplyStoreAction func(Tx, *api.StoreAction) error
 	NewStoreAction   func(state.Event) (api.StoreAction, error)
 }

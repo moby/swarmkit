@@ -31,6 +31,8 @@ const (
 	indexMembership   = "membership"
 	indexNetwork      = "network"
 	indexSecret       = "secret"
+	indexKind         = "kind"
+	indexCustom       = "custom"
 
 	prefix = "_prefix"
 
@@ -177,6 +179,33 @@ type tx struct {
 	changelist []state.Event
 }
 
+// changelistBetweenVersions returns the changes after "from" up to and
+// including "to".
+func (s *MemoryStore) changelistBetweenVersions(from, to api.Version) ([]state.Event, error) {
+	if s.proposer == nil {
+		return nil, errors.New("store does not support versioning")
+	}
+	changes, err := s.proposer.ChangesBetween(from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	var changelist []state.Event
+
+	for _, change := range changes {
+		for _, sa := range change.StoreActions {
+			event, err := eventFromStoreAction(sa)
+			if err != nil {
+				return nil, err
+			}
+			changelist = append(changelist, event)
+		}
+		changelist = append(changelist, state.EventCommit{Version: change.Version.Copy()})
+	}
+
+	return changelist, nil
+}
+
 // ApplyStoreActions updates a store based on StoreAction messages.
 func (s *MemoryStore) ApplyStoreActions(actions []*api.StoreAction) error {
 	s.updateLock.Lock()
@@ -219,6 +248,30 @@ func applyStoreAction(tx Tx, sa *api.StoreAction) error {
 	return errors.New("unrecognized action type")
 }
 
+func eventFromStoreAction(sa *api.StoreAction) (state.Event, error) {
+	for _, os := range objectStorers {
+		obj, err := os.Object(sa)
+		if err == errUnknownStoreAction {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		switch sa.Action {
+		case api.StoreActionKindCreate:
+			return obj.EventCreate(), nil
+		case api.StoreActionKindUpdate:
+			return obj.EventUpdate(), nil
+		case api.StoreActionKindRemove:
+			return obj.EventDelete(), nil
+		default:
+			return nil, errors.New("unrecognized action")
+		}
+	}
+
+	return nil, errors.New("unrecognized action type")
+}
+
 func (s *MemoryStore) update(proposer state.Proposer, cb func(Tx) error) error {
 	s.updateLock.Lock()
 	memDBTx := s.memDB.Txn(true)
@@ -258,7 +311,11 @@ func (s *MemoryStore) update(proposer state.Proposer, cb func(Tx) error) error {
 			s.queue.Publish(c)
 		}
 		if len(tx.changelist) != 0 {
-			s.queue.Publish(state.EventCommit{})
+			if proposer != nil {
+				curVersion = proposer.GetVersion()
+			}
+
+			s.queue.Publish(state.EventCommit{Version: curVersion})
 		}
 	} else {
 		memDBTx.Abort()
@@ -638,6 +695,36 @@ func (tx readTx) findIterators(table string, by By, checkType func(By) error) ([
 			return nil, err
 		}
 		return []memdb.ResultIterator{it}, nil
+	case byKind:
+		it, err := tx.memDBTx.Get(table, indexKind, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byCustom:
+		var key string
+		if v.objType != "" {
+			key = v.objType + "|" + v.index + "|" + v.value
+		} else {
+			key = v.index + "|" + v.value
+		}
+		it, err := tx.memDBTx.Get(table, indexCustom, key)
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byCustomPrefix:
+		var key string
+		if v.objType != "" {
+			key = v.objType + "|" + v.index + "|" + v.value
+		} else {
+			key = v.index + "|" + v.value
+		}
+		it, err := tx.memDBTx.Get(table, indexCustom+prefix, key)
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
 	default:
 		return nil, ErrInvalidFindBy
 	}
@@ -728,6 +815,91 @@ func ViewAndWatch(store *MemoryStore, cb func(ReadTx) error, specifiers ...state
 	return
 }
 
+// WatchFrom returns a channel that will return past events from starting
+// from "version", and new events until the channel is closed. If "version"
+// is nil, this function is equivalent to
+//
+//     state.Watch(store.WatchQueue(), specifiers...).
+//
+// If the log has been compacted and it's not possible to produce the exact
+// set of events leading from "version" to the current state, this function
+// will return an error, and the caller should re-sync.
+//
+// The watch channel must be released with watch.StopWatch when it is no
+// longer needed.
+func WatchFrom(store *MemoryStore, version *api.Version, specifiers ...state.Event) (chan events.Event, func(), error) {
+	if version == nil {
+		ch, cancel := state.Watch(store.WatchQueue(), specifiers...)
+		return ch, cancel, nil
+	}
+
+	if store.proposer == nil {
+		return nil, nil, errors.New("store does not support versioning")
+	}
+
+	var (
+		curVersion  *api.Version
+		watch       chan events.Event
+		cancelWatch func()
+	)
+	// Using Update to lock the store
+	err := store.Update(func(tx Tx) error {
+		// Get current version
+		curVersion = store.proposer.GetVersion()
+		// Start the watch with the store locked so events cannot be
+		// missed
+		watch, cancelWatch = state.Watch(store.WatchQueue(), specifiers...)
+		return nil
+	})
+	if watch != nil && err != nil {
+		cancelWatch()
+		return nil, nil, err
+	}
+
+	if curVersion == nil {
+		cancelWatch()
+		return nil, nil, errors.New("could not get current version from store")
+	}
+
+	changelist, err := store.changelistBetweenVersions(*version, *curVersion)
+	if err != nil {
+		cancelWatch()
+		return nil, nil, err
+	}
+
+	ch := make(chan events.Event)
+	stop := make(chan struct{})
+	cancel := func() {
+		close(stop)
+	}
+
+	go func() {
+		defer cancelWatch()
+
+		matcher := state.Matcher(specifiers...)
+		for _, change := range changelist {
+			if matcher(change) {
+				select {
+				case ch <- change:
+				case <-stop:
+					return
+				}
+			}
+		}
+
+		for {
+			select {
+			case <-stop:
+				return
+			case e := <-watch:
+				ch <- e
+			}
+		}
+	}()
+
+	return ch, cancel, nil
+}
+
 // touchMeta updates an object's timestamps when necessary and bumps the version
 // if provided.
 func touchMeta(meta *api.Meta, version *api.Version) error {
@@ -752,4 +924,24 @@ func touchMeta(meta *api.Meta, version *api.Version) error {
 	meta.UpdatedAt = now
 
 	return nil
+}
+
+func customIndexer(kind string, annotations *api.Annotations) (bool, [][]byte, error) {
+	var converted [][]byte
+
+	for _, entry := range annotations.Indices {
+		index := make([]byte, 0, len(kind)+1+len(entry.Key)+1+len(entry.Val)+1)
+		if kind != "" {
+			index = append(index, []byte(kind)...)
+			index = append(index, '|')
+		}
+		index = append(index, []byte(entry.Key)...)
+		index = append(index, '|')
+		index = append(index, []byte(entry.Val)...)
+		index = append(index, '\x00')
+		converted = append(converted, index)
+	}
+
+	// Add the null character as a terminator
+	return len(converted) != 0, converted, nil
 }

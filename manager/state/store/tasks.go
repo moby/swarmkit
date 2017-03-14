@@ -61,6 +61,11 @@ func init() {
 					AllowMissing: true,
 					Indexer:      taskIndexerBySecret{},
 				},
+				indexCustom: {
+					Name:         indexCustom,
+					Indexer:      taskCustomIndexer{},
+					AllowMissing: true,
+				},
 			},
 		},
 		Save: func(tx ReadTx, snapshot *api.StoreSnapshot) error {
@@ -84,6 +89,12 @@ func init() {
 				}
 			}
 			return nil
+		},
+		Object: func(sa *api.StoreAction) (Object, error) {
+			if task, ok := sa.Target.(*api.StoreAction_Task); ok {
+				return taskEntry{Task: task.Task}, nil
+			}
+			return nil, errUnknownStoreAction
 		},
 		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
 			switch v := sa.Target.(type) {
@@ -190,7 +201,7 @@ func GetTask(tx ReadTx, id string) *api.Task {
 func FindTasks(tx ReadTx, by By) ([]*api.Task, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byNamePrefix, byIDPrefix, byDesiredState, byTaskState, byNode, byService, bySlot, byReferencedNetworkID, byReferencedSecretID:
+		case byName, byNamePrefix, byIDPrefix, byDesiredState, byTaskState, byNode, byService, bySlot, byReferencedNetworkID, byReferencedSecretID, byCustom, byCustomPrefix:
 			return nil
 		default:
 			return ErrInvalidFindBy
@@ -379,4 +390,23 @@ func (ts taskIndexerByTaskState) FromObject(obj interface{}) (bool, []byte, erro
 
 	// Add the null character as a terminator
 	return true, []byte(strconv.FormatInt(int64(t.Status.State), 10) + "\x00"), nil
+}
+
+type taskCustomIndexer struct{}
+
+func (ti taskCustomIndexer) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (ti taskCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, error) {
+	t, ok := obj.(taskEntry)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	return customIndexer("", &t.Annotations)
+}
+
+func (ti taskCustomIndexer) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
 }

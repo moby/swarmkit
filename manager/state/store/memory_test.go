@@ -10,8 +10,9 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/state"
+	"github.com/docker/swarmkit/manager/state/testutils"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -804,6 +805,61 @@ func TestStoreSnapshot(t *testing.T) {
 	})
 }
 
+func TestCustomIndex(t *testing.T) {
+	s := NewMemoryStore(nil)
+	assert.NotNil(t, s)
+
+	setupTestStore(t, s)
+
+	// Add a custom index entry to each node
+	err := s.Update(func(tx Tx) error {
+		allNodes, err := FindNodes(tx, All)
+		assert.NoError(t, err)
+		assert.Len(t, allNodes, len(nodeSet))
+
+		for _, n := range allNodes {
+			switch n.ID {
+			case "id2":
+				n.Spec.Annotations.Indices = []api.IndexEntry{
+					{Key: "nodesbefore", Val: "id1"},
+				}
+				assert.NoError(t, UpdateNode(tx, n))
+			case "id3":
+				n.Spec.Annotations.Indices = []api.IndexEntry{
+					{Key: "nodesbefore", Val: "id1"},
+					{Key: "nodesbefore", Val: "id2"},
+				}
+				assert.NoError(t, UpdateNode(tx, n))
+			}
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	s.View(func(readTx ReadTx) {
+		foundNodes, err := FindNodes(readTx, ByCustom("", "nodesbefore", "id2"))
+		require.NoError(t, err)
+		require.Len(t, foundNodes, 1)
+		assert.Equal(t, "id3", foundNodes[0].ID)
+
+		foundNodes, err = FindNodes(readTx, ByCustom("", "nodesbefore", "id1"))
+		require.NoError(t, err)
+		require.Len(t, foundNodes, 2)
+
+		foundNodes, err = FindNodes(readTx, ByCustom("", "nodesbefore", "id3"))
+		require.NoError(t, err)
+		require.Len(t, foundNodes, 0)
+
+		foundNodes, err = FindNodes(readTx, ByCustomPrefix("", "nodesbefore", "id"))
+		require.NoError(t, err)
+		require.Len(t, foundNodes, 2)
+
+		foundNodes, err = FindNodes(readTx, ByCustomPrefix("", "nodesbefore", "id6"))
+		require.NoError(t, err)
+		require.Len(t, foundNodes, 0)
+	})
+}
+
 func TestFailedTransaction(t *testing.T) {
 	s := NewMemoryStore(nil)
 	assert.NotNil(t, s)
@@ -849,25 +905,8 @@ func TestFailedTransaction(t *testing.T) {
 	})
 }
 
-type mockProposer struct {
-	index uint64
-}
-
-func (mp *mockProposer) ProposeValue(ctx context.Context, storeAction []*api.StoreAction, cb func()) error {
-	if cb != nil {
-		cb()
-	}
-	return nil
-}
-
-func (mp *mockProposer) GetVersion() *api.Version {
-	mp.index += 3
-	return &api.Version{Index: mp.index}
-}
-
 func TestVersion(t *testing.T) {
-	var mockProposer mockProposer
-	s := NewMemoryStore(&mockProposer)
+	s := NewMemoryStore(&testutils.MockProposer{})
 	assert.NotNil(t, s)
 
 	var (
@@ -931,8 +970,7 @@ func TestVersion(t *testing.T) {
 }
 
 func TestTimestamps(t *testing.T) {
-	var mockProposer mockProposer
-	s := NewMemoryStore(&mockProposer)
+	s := NewMemoryStore(&testutils.MockProposer{})
 	assert.NotNil(t, s)
 
 	var (
@@ -983,8 +1021,7 @@ func TestTimestamps(t *testing.T) {
 }
 
 func TestBatch(t *testing.T) {
-	var mockProposer mockProposer
-	s := NewMemoryStore(&mockProposer)
+	s := NewMemoryStore(&testutils.MockProposer{})
 	assert.NotNil(t, s)
 
 	watch, cancel := s.WatchQueue().Watch()
@@ -1046,8 +1083,7 @@ func TestBatch(t *testing.T) {
 }
 
 func TestBatchFailure(t *testing.T) {
-	var mockProposer mockProposer
-	s := NewMemoryStore(&mockProposer)
+	s := NewMemoryStore(&testutils.MockProposer{})
 	assert.NotNil(t, s)
 
 	watch, cancel := s.WatchQueue().Watch()
@@ -1144,6 +1180,208 @@ func TestStoreSaveRestore(t *testing.T) {
 			assert.Equal(t, allServices[i], serviceSet[i])
 		}
 	})
+}
+
+func TestWatchFrom(t *testing.T) {
+	s := NewMemoryStore(&testutils.MockProposer{})
+	assert.NotNil(t, s)
+
+	// Create a few nodes, 2 per transaction
+	for i := 0; i != 5; i++ {
+		committed, err := s.Batch(func(batch *Batch) error {
+			node := &api.Node{
+				ID: "id" + strconv.Itoa(i),
+				Spec: api.NodeSpec{
+					Annotations: api.Annotations{
+						Name: "name" + strconv.Itoa(i),
+					},
+				},
+			}
+
+			service := &api.Service{
+				ID: "id" + strconv.Itoa(i),
+				Spec: api.ServiceSpec{
+					Annotations: api.Annotations{
+						Name: "name" + strconv.Itoa(i),
+					},
+				},
+			}
+
+			batch.Update(func(tx Tx) error {
+				assert.NoError(t, CreateNode(tx, node))
+				return nil
+			})
+			batch.Update(func(tx Tx) error {
+				assert.NoError(t, CreateService(tx, service))
+				return nil
+			})
+			return nil
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, 2, committed)
+	}
+
+	// Try to watch from an invalid index
+	_, _, err := WatchFrom(s, &api.Version{Index: 5000})
+	assert.Error(t, err)
+
+	watch1, cancel1, err := WatchFrom(s, &api.Version{Index: 10}, state.EventCreateNode{}, state.EventCommit{})
+	require.NoError(t, err)
+	defer cancel1()
+
+	for i := 0; i != 2; i++ {
+		select {
+		case event := <-watch1:
+			nodeEvent, ok := event.(state.EventCreateNode)
+			if !ok {
+				t.Fatal("wrong event type - expected node create")
+			}
+
+			if i == 0 {
+				assert.Equal(t, "id3", nodeEvent.Node.ID)
+			} else {
+				assert.Equal(t, "id4", nodeEvent.Node.ID)
+			}
+		case <-time.After(time.Second):
+			t.Fatal("timed out waiting for event")
+		}
+		select {
+		case event := <-watch1:
+			if _, ok := event.(state.EventCommit); !ok {
+				t.Fatal("wrong event type - expected commit")
+			}
+		case <-time.After(time.Second):
+			t.Fatal("timed out waiting for event")
+		}
+	}
+
+	watch2, cancel2, err := WatchFrom(s, &api.Version{Index: 13}, state.EventCreateService{}, state.EventCommit{})
+	require.NoError(t, err)
+	defer cancel2()
+
+	select {
+	case event := <-watch2:
+		serviceEvent, ok := event.(state.EventCreateService)
+		if !ok {
+			t.Fatal("wrong event type - expected service create")
+		}
+		assert.Equal(t, "id4", serviceEvent.Service.ID)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for event")
+	}
+	select {
+	case event := <-watch2:
+		if _, ok := event.(state.EventCommit); !ok {
+			t.Fatal("wrong event type - expected commit")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for event")
+	}
+
+	// Create some new objects and make sure they show up in the watches.
+	assert.NoError(t, s.Update(func(tx Tx) error {
+		node := &api.Node{
+			ID: "newnode",
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Name: "newnode",
+				},
+			},
+		}
+
+		service := &api.Service{
+			ID: "newservice",
+			Spec: api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "newservice",
+				},
+			},
+		}
+
+		assert.NoError(t, CreateNode(tx, node))
+		assert.NoError(t, CreateService(tx, service))
+		return nil
+	}))
+
+	select {
+	case event := <-watch1:
+		nodeEvent, ok := event.(state.EventCreateNode)
+		if !ok {
+			t.Fatalf("wrong event type - expected node create, got %T", event)
+		}
+		assert.Equal(t, "newnode", nodeEvent.Node.ID)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for event")
+	}
+	select {
+	case event := <-watch1:
+		if _, ok := event.(state.EventCommit); !ok {
+			t.Fatal("wrong event type - expected commit")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for event")
+	}
+
+	select {
+	case event := <-watch2:
+		serviceEvent, ok := event.(state.EventCreateService)
+		if !ok {
+			t.Fatalf("wrong event type - expected service create, got %T", event)
+		}
+		assert.Equal(t, "newservice", serviceEvent.Service.ID)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for event")
+	}
+	select {
+	case event := <-watch2:
+		if _, ok := event.(state.EventCommit); !ok {
+			t.Fatal("wrong event type - expected commit")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for event")
+	}
+
+	assert.NoError(t, s.Update(func(tx Tx) error {
+		node := &api.Node{
+			ID: "newnode2",
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Name: "newnode2",
+				},
+			},
+		}
+
+		assert.NoError(t, CreateNode(tx, node))
+		return nil
+	}))
+
+	select {
+	case event := <-watch1:
+		nodeEvent, ok := event.(state.EventCreateNode)
+		if !ok {
+			t.Fatalf("wrong event type - expected node create, got %T", event)
+		}
+		assert.Equal(t, "newnode2", nodeEvent.Node.ID)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for event")
+	}
+	select {
+	case event := <-watch1:
+		if _, ok := event.(state.EventCommit); !ok {
+			t.Fatal("wrong event type - expected commit")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for event")
+	}
+
+	select {
+	case event := <-watch2:
+		if _, ok := event.(state.EventCommit); !ok {
+			t.Fatal("wrong event type - expected commit")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for event")
+	}
 }
 
 const benchmarkNumNodes = 10000
