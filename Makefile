@@ -20,7 +20,7 @@ INTEGRATION_PACKAGE=${PROJECT_ROOT}/integration
 COMMANDS=swarmd swarmctl swarm-bench swarm-rafttool protoc-gen-gogoswarm
 BINARIES=$(addprefix bin/,$(COMMANDS))
 
-GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
+GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION) -linkmode external -extldflags \"-static -lpthread -Wl,--unresolved-symbols=ignore-in-object-files\""
 
 .PHONY: clean all AUTHORS fmt vet lint build binaries test integration setup generate checkprotos coverage ci check help install uninstall
 .DEFAULT: default
