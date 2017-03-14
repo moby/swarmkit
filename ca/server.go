@@ -1,7 +1,9 @@
 package ca
 
 import (
+	"bytes"
 	"crypto/subtle"
+	"crypto/x509"
 	"sync"
 	"time"
 
@@ -525,40 +527,59 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) {
 
 	// If the cluster has a RootCA, let's try to update our SecurityConfig to reflect the latest values
 	rCA := cluster.RootCA
-	if len(rCA.CACert) != 0 && len(rCA.CAKey) != 0 {
+	wantedExternalCACert := rCA.CACert // we want to only add external CA URLs that use this cert
+	if len(rCA.CACert) != 0 {
 		expiry := DefaultNodeCertExpiration
+		logger := log.G(ctx).WithFields(logrus.Fields{
+			"cluster.id": cluster.ID,
+			"method":     "(*Server).UpdateRootCA",
+		})
 		if cluster.Spec.CAConfig.NodeCertExpiry != nil {
 			// NodeCertExpiry exists, let's try to parse the duration out of it
 			clusterExpiry, err := gogotypes.DurationFromProto(cluster.Spec.CAConfig.NodeCertExpiry)
 			if err != nil {
-				log.G(ctx).WithFields(logrus.Fields{
-					"cluster.id": cluster.ID,
-					"method":     "(*Server).updateCluster",
-				}).WithError(err).Warn("failed to parse certificate expiration, using default")
+				logger.WithError(err).Warn("failed to parse certificate expiration, using default")
 			} else {
 				// We were able to successfully parse the expiration out of the cluster.
 				expiry = clusterExpiry
 			}
 		} else {
 			// NodeCertExpiry seems to be nil
-			log.G(ctx).WithFields(logrus.Fields{
-				"cluster.id": cluster.ID,
-				"method":     "(*Server).updateCluster",
-			}).WithError(err).Warn("failed to parse certificate expiration, using default")
-
+			logger.WithError(err).Warn("failed to parse certificate expiration, using default")
 		}
 		// Attempt to update our local RootCA with the new parameters
-		err = s.securityConfig.UpdateRootCA(rCA.CACert, rCA.CAKey, expiry)
+		var intermediates []byte
+		signingCert := rCA.CACert
+		signingKey := rCA.CAKey
+		if rCA.RootRotation != nil {
+			signingCert = rCA.RootRotation.CrossSignedCACert
+			signingKey = rCA.RootRotation.CAKey
+			intermediates = rCA.RootRotation.CrossSignedCACert
+			// we're rotating to a new root, so we only want external CAs with the new root cert
+			wantedExternalCACert = rCA.RootRotation.CACert
+		}
+		if signingKey == nil {
+			signingCert = nil
+		}
+
+		updatedRootCA, err := NewRootCA(rCA.CACert, signingCert, signingKey, expiry, intermediates)
 		if err != nil {
-			log.G(ctx).WithFields(logrus.Fields{
-				"cluster.id": cluster.ID,
-				"method":     "(*Server).updateCluster",
-			}).WithError(err).Error("updating Root CA failed")
+			logger.WithError(err).Error("invalid Root CA object in cluster")
+		}
+
+		externalCARootPool := updatedRootCA.Pool
+		if rCA.RootRotation != nil {
+			// the external CA has to trust the new CA cert
+			externalCARootPool = x509.NewCertPool()
+			externalCARootPool.AppendCertsFromPEM(rCA.CACert)
+			externalCARootPool.AppendCertsFromPEM(rCA.RootRotation.CACert)
+		}
+
+		// Attempt to update our local RootCA with the new parameters
+		if err := s.securityConfig.UpdateRootCA(&updatedRootCA, externalCARootPool); err != nil {
+			logger.WithError(err).Error("updating Root CA failed")
 		} else {
-			log.G(ctx).WithFields(logrus.Fields{
-				"cluster.id": cluster.ID,
-				"method":     "(*Server).updateCluster",
-			}).Debugf("Root CA updated successfully")
+			logger.Debugf("Root CA updated successfully")
 		}
 	}
 
@@ -569,9 +590,15 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) {
 	// ExternalCA interface that has different implementations for
 	// different CA types. At the moment, only CFSSL is supported.
 	var cfsslURLs []string
-	for _, ca := range cluster.Spec.CAConfig.ExternalCAs {
-		if ca.Protocol == api.ExternalCA_CAProtocolCFSSL {
-			cfsslURLs = append(cfsslURLs, ca.URL)
+	for _, extCA := range cluster.Spec.CAConfig.ExternalCAs {
+		// We want to support old external CA specifications which did not have a CA cert.  If there is no cert specified,
+		// we assume it's the old cert
+		certForExtCA := extCA.CACert
+		if certForExtCA == nil {
+			certForExtCA = rCA.CACert
+		}
+		if extCA.Protocol == api.ExternalCA_CAProtocolCFSSL && bytes.Equal(certForExtCA, wantedExternalCACert) {
+			cfsslURLs = append(cfsslURLs, extCA.URL)
 		}
 	}
 

@@ -71,6 +71,8 @@ type SecurityConfig struct {
 	externalCA    *ExternalCA
 	keyReadWriter *KeyReadWriter
 
+	externalCAClientRootPool *x509.CertPool
+
 	ServerTLSCreds *MutableTLSCreds
 	ClientTLSCreds *MutableTLSCreds
 }
@@ -95,11 +97,12 @@ func NewSecurityConfig(rootCA *RootCA, krw *KeyReadWriter, clientTLSCreds, serve
 	}
 
 	return &SecurityConfig{
-		rootCA:         rootCA,
-		keyReadWriter:  krw,
-		externalCA:     NewExternalCA(rootCA, externalCATLSConfig),
-		ClientTLSCreds: clientTLSCreds,
-		ServerTLSCreds: serverTLSCreds,
+		rootCA:                   rootCA,
+		keyReadWriter:            krw,
+		externalCA:               NewExternalCA(rootCA, externalCATLSConfig),
+		ClientTLSCreds:           clientTLSCreds,
+		ServerTLSCreds:           serverTLSCreds,
+		externalCAClientRootPool: rootCA.Pool,
 	}
 }
 
@@ -126,24 +129,13 @@ func (s *SecurityConfig) KeyReader() KeyReader {
 	return s.keyReadWriter
 }
 
-// UpdateRootCA replaces the root CA with a new root CA based on the specified
-// certificate, key, and the number of hours the certificates issue should last.
-func (s *SecurityConfig) UpdateRootCA(cert, key []byte, certExpiry time.Duration) error {
+// UpdateRootCA replaces the root CA with a new root CA
+func (s *SecurityConfig) UpdateRootCA(rootCA *RootCA, externalCARootPool *x509.CertPool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// If we have no signing key, then we shouldn't pass a signing cert either (because we don't want a local
-	// signer at all)
-	signingCert := cert
-	if len(key) == 0 {
-		signingCert = nil
-	}
-	rootCA, err := NewRootCA(cert, signingCert, key, certExpiry, nil)
-	if err != nil {
-		return err
-	}
-
-	s.rootCA = &rootCA
+	s.rootCA = rootCA
+	s.externalCAClientRootPool = externalCARootPool
 	clientTLSConfig := s.ClientTLSCreds.Config()
 	return s.updateTLSCredentials(clientTLSConfig.Certificates)
 }
@@ -169,7 +161,7 @@ func (s *SecurityConfig) updateTLSCredentials(certificates []tls.Certificate) er
 	// config using a copy without a serverName specified.
 	s.externalCA.UpdateTLSConfig(&tls.Config{
 		Certificates: certificates,
-		RootCAs:      s.rootCA.Pool,
+		RootCAs:      s.externalCAClientRootPool,
 		MinVersion:   tls.VersionTLS12,
 	})
 
