@@ -356,7 +356,9 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	// and the "new root" (the testing CA root)
 	rSigner, err := rootCA.Signer()
 	require.NoError(t, err)
-	err = secConfig.UpdateRootCA(append(rootCA.Certs, tc.RootCA.Certs...), rSigner.Key, ca.DefaultNodeCertExpiration)
+	updatedRootCA, err := ca.NewRootCA(append(rootCA.Certs, tc.RootCA.Certs...), rSigner.Cert, rSigner.Key, ca.DefaultNodeCertExpiration, nil)
+	require.NoError(t, err)
+	err = secConfig.UpdateRootCA(&updatedRootCA, updatedRootCA.Pool)
 	require.NoError(t, err)
 
 	// can now connect to the test CA using our modified security config, and can cannect to our server using
@@ -385,11 +387,28 @@ func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
 	defer tc.Stop()
 	paths := ca.NewConfigPaths(tc.TempDir)
 
-	secConfig, err := tc.WriteNewNodeConfig(ca.WorkerRole)
+	secConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
 	require.NoError(t, err)
 
 	leafCert, err := ioutil.ReadFile(paths.Node.Cert)
 	require.NoError(t, err)
+
+	cert, key, err := testutils.CreateRootCertAndKey("extra root cert for external CA")
+	require.NoError(t, err)
+	extraExternalRootCA, err := ca.NewRootCA(append(cert, tc.RootCA.Certs...), cert, key, ca.DefaultNodeCertExpiration, nil)
+	require.NoError(t, err)
+	extraExternalServer, err := testutils.NewExternalSigningServer(extraExternalRootCA, tc.TempDir)
+	require.NoError(t, err)
+	defer extraExternalServer.Stop()
+	secConfig.ExternalCA().UpdateURLs(extraExternalServer.URL)
+
+	externalPool := x509.NewCertPool()
+	externalPool.AppendCertsFromPEM(tc.RootCA.Certs)
+	externalPool.AppendCertsFromPEM(cert)
+
+	csr, _, err := ca.GenerateNewCSR()
+	require.NoError(t, err)
+	signReq := ca.PrepareCSR(csr, "cn", ca.WorkerRole, tc.Organization)
 
 	for i := 0; i < 5; i++ {
 		cert, _, err := testutils.CreateRootCertAndKey(fmt.Sprintf("root %d", i+2))
@@ -402,11 +421,14 @@ func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
 		rootCA := secConfig.RootCA()
 		go func() {
 			defer close(done1)
-			var key []byte
+			s := ca.LocalSigner{}
 			if signer, err := rootCA.Signer(); err == nil {
-				key = signer.Key
+				s = *signer
 			}
-			require.NoError(t, secConfig.UpdateRootCA(append(rootCA.Certs, cert...), key, ca.DefaultNodeCertExpiration))
+			updatedRootCA, err := ca.NewRootCA(append(rootCA.Certs, cert...), s.Cert, s.Key, ca.DefaultNodeCertExpiration, nil)
+			require.NoError(t, err)
+			externalPool.AppendCertsFromPEM(cert)
+			require.NoError(t, secConfig.UpdateRootCA(&updatedRootCA, externalPool))
 		}()
 
 		go func() {
@@ -426,6 +448,9 @@ func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
 		// at the start of this loop had i+1 certs, afterward should have added one more
 		require.Len(t, secConfig.ClientTLSCreds.Config().RootCAs.Subjects(), i+2)
 		require.Len(t, secConfig.ServerTLSCreds.Config().RootCAs.Subjects(), i+2)
+		// no matter what, the external CA still has the extra external CA root cert
+		_, err = secConfig.ExternalCA().Sign(context.Background(), signReq)
+		require.NoError(t, err)
 	}
 }
 

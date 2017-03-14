@@ -2,12 +2,14 @@ package ca_test
 
 import (
 	"bytes"
+	"crypto/x509"
 	"fmt"
 	"testing"
 	"time"
 
 	"golang.org/x/net/context"
 
+	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
@@ -411,4 +413,133 @@ func TestGetUnlockKey(t *testing.T) {
 		}
 		return nil
 	}, 250*time.Millisecond))
+}
+
+type clusterObjToUpdate struct {
+	clusterObj           *api.Cluster
+	rootCARoots          []byte
+	rootCASigningCert    []byte
+	rootCASigningKey     []byte
+	rootCAIntermediates  []byte
+	externalCertSignedBy []byte
+}
+
+func TestCAServerUpdateRootCA(t *testing.T) {
+	// this one needs both external CA servers for testing
+	if !testutils.External {
+		return
+	}
+
+	fakeClusterSpec := func(rootCerts, key []byte, rotation *api.RootRotation, externalCAs []*api.ExternalCA) *api.Cluster {
+		return &api.Cluster{
+			RootCA: api.RootCA{
+				CACert:     rootCerts,
+				CAKey:      key,
+				CACertHash: "hash",
+				JoinTokens: api.JoinTokens{
+					Worker:  "SWMTKN-1-worker",
+					Manager: "SWMTKN-1-manager",
+				},
+				RootRotation: rotation,
+			},
+			Spec: api.ClusterSpec{
+				CAConfig: api.CAConfig{
+					ExternalCAs: externalCAs,
+				},
+			},
+		}
+	}
+
+	tc := testutils.NewTestCA(t)
+	require.NoError(t, tc.CAServer.Stop())
+	defer tc.Stop()
+
+	cert, key, err := testutils.CreateRootCertAndKey("new root to rotate to")
+	require.NoError(t, err)
+	newRootCA, err := ca.NewRootCA(append(tc.RootCA.Certs, cert...), cert, key, ca.DefaultNodeCertExpiration, nil)
+	require.NoError(t, err)
+	externalServer, err := testutils.NewExternalSigningServer(newRootCA, tc.TempDir)
+	require.NoError(t, err)
+	defer externalServer.Stop()
+	crossSigned, err := tc.RootCA.CrossSignCACertificate(cert)
+	require.NoError(t, err)
+
+	for i, testCase := range []clusterObjToUpdate{
+		{
+			clusterObj: fakeClusterSpec(tc.RootCA.Certs, nil, nil, []*api.ExternalCA{{
+				Protocol: api.ExternalCA_CAProtocolCFSSL,
+				URL:      tc.ExternalSigningServer.URL,
+				// without a CA cert, the URL gets successfully added, and there should be no error connecting to it
+			}}),
+			rootCARoots:          tc.RootCA.Certs,
+			externalCertSignedBy: tc.RootCA.Certs,
+		},
+		{
+			clusterObj: fakeClusterSpec(tc.RootCA.Certs, nil, &api.RootRotation{
+				CACert:            cert,
+				CAKey:             key,
+				CrossSignedCACert: crossSigned,
+			}, []*api.ExternalCA{
+				{
+					Protocol: api.ExternalCA_CAProtocolCFSSL,
+					URL:      tc.ExternalSigningServer.URL,
+					// without a CA cert, we count this as the old tc.RootCA.Certs, and this should be ignored because we want the new root
+				},
+			}),
+			rootCARoots:         tc.RootCA.Certs,
+			rootCASigningCert:   crossSigned,
+			rootCASigningKey:    key,
+			rootCAIntermediates: crossSigned,
+		},
+		{
+			clusterObj: fakeClusterSpec(tc.RootCA.Certs, nil, &api.RootRotation{
+				CACert:            cert,
+				CrossSignedCACert: crossSigned,
+			}, []*api.ExternalCA{
+				{
+					Protocol: api.ExternalCA_CAProtocolCFSSL,
+					URL:      tc.ExternalSigningServer.URL,
+					// without a CA cert, we count this as the old tc.RootCA.Certs
+				},
+				{
+					Protocol: api.ExternalCA_CAProtocolCFSSL,
+					URL:      externalServer.URL,
+					CACert:   cert,
+				},
+			}),
+			rootCARoots:          tc.RootCA.Certs,
+			rootCAIntermediates:  crossSigned,
+			externalCertSignedBy: cert,
+		},
+	} {
+		tc.CAServer.UpdateRootCA(context.Background(), testCase.clusterObj)
+
+		rootCA := tc.ServingSecurityConfig.RootCA()
+		require.Equal(t, testCase.rootCARoots, rootCA.Certs)
+		var signingCert, signingKey []byte
+		if s, err := rootCA.Signer(); err == nil {
+			signingCert, signingKey = s.Cert, s.Key
+		}
+		require.Equal(t, testCase.rootCARoots, rootCA.Certs)
+		require.Equal(t, testCase.rootCASigningCert, signingCert, "%d", i)
+		require.Equal(t, testCase.rootCASigningKey, signingKey, "%d", i)
+		require.Equal(t, testCase.rootCAIntermediates, rootCA.Intermediates)
+
+		externalCA := tc.ServingSecurityConfig.ExternalCA()
+		csr, _, err := ca.GenerateNewCSR()
+		require.NoError(t, err)
+		signedCert, err := externalCA.Sign(context.Background(), ca.PrepareCSR(csr, "cn", ca.ManagerRole, tc.Organization))
+
+		if testCase.externalCertSignedBy != nil {
+			require.NoError(t, err)
+			parsed, err := helpers.ParseCertificatePEM(signedCert)
+			require.NoError(t, err)
+			rootPool := x509.NewCertPool()
+			rootPool.AppendCertsFromPEM(testCase.externalCertSignedBy)
+			_, err = parsed.Verify(x509.VerifyOptions{Roots: rootPool})
+			require.NoError(t, err)
+		} else {
+			require.Equal(t, err, ca.ErrNoExternalCAURLs)
+		}
+	}
 }
