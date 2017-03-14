@@ -5,6 +5,7 @@ package docker.swarmkit.v1;
 import "objects.proto";
 import "types.proto";
 import "github.com/coreos/etcd/raft/raftpb/raft.proto";
+import "google/protobuf/timestamp.proto";
 import weak "gogoproto/gogo.proto";
 import weak "plugin/plugin.proto";
 
@@ -50,6 +51,11 @@ message RaftMember {
 
 	// Status provides the current status of the manager from the perspective of another manager.
 	RaftMemberStatus status = 4 [(gogoproto.nullable) = false];
+
+	// BackupAddrs provides addresses which might be used if main address is
+	// unreachable. This is needed mostly for environments where there might be
+	// short paths with different addresses (nat or whatever).
+	map<string, google.protobuf.Timestamp> backup_addrs = 5;
 }
 
 message JoinRequest {

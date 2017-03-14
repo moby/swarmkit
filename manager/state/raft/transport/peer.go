@@ -29,31 +29,66 @@ type peer struct {
 	cancel context.CancelFunc
 	done   chan struct{}
 
-	mu      sync.Mutex
-	cc      *grpc.ClientConn
-	addr    string
-	newAddr string
+	mu             sync.Mutex
+	cc             *grpc.ClientConn
+	ccAddr         string
+	alternateAddrs map[string]struct{}
 
 	active       bool
 	becameActive time.Time
 }
 
-func newPeer(id uint64, addr string, tr *Transport) (*peer, error) {
-	cc, err := tr.dial(addr)
+func toAddrMap(curAddr string, addrs []string) map[string]struct{} {
+	addrMap := make(map[string]struct{}, len(addrs)-1)
+	for _, a := range addrs {
+		if a == curAddr {
+			continue
+		}
+		addrMap[a] = struct{}{}
+	}
+	return addrMap
+}
+
+func dialToAddrs(id uint64, tr *Transport, addrs ...string) (*grpc.ClientConn, string, error) {
+	if len(addrs) == 0 {
+		return nil, "", errors.New("addrs list can't be empty")
+	}
+	var (
+		cc   *grpc.ClientConn
+		addr string
+	)
+	for _, a := range addrs {
+		c, err := tr.dial(a)
+		if err == nil {
+			addr = a
+			cc = c
+			break
+		}
+		log.G(tr.ctx).WithError(err).Errorf("failed to create connection to %x at address %s", id, a)
+	}
+	if cc == nil {
+		return nil, "", errors.New("dial failed for all provided addresses")
+	}
+	return cc, addr, nil
+}
+
+func newPeer(id uint64, tr *Transport, addrs ...string) (*peer, error) {
+	cc, addr, err := dialToAddrs(id, tr, addrs...)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create conn for %x with addr %s", id, addr)
+		return nil, err
 	}
 	ctx, cancel := context.WithCancel(tr.ctx)
 	ctx = log.WithField(ctx, "peer_id", fmt.Sprintf("%x", id))
 	p := &peer{
-		id:     id,
-		addr:   addr,
-		cc:     cc,
-		tr:     tr,
-		ctx:    ctx,
-		cancel: cancel,
-		msgc:   make(chan raftpb.Message, 4096),
-		done:   make(chan struct{}),
+		id:             id,
+		ccAddr:         addr,
+		alternateAddrs: toAddrMap(addr, addrs),
+		cc:             cc,
+		tr:             tr,
+		ctx:            ctx,
+		cancel:         cancel,
+		msgc:           make(chan raftpb.Message, 4096),
+		done:           make(chan struct{}),
 	}
 	go p.run(ctx)
 	return p, nil
@@ -84,31 +119,31 @@ func (p *peer) send(m raftpb.Message) (err error) {
 	return nil
 }
 
-func (p *peer) update(addr string) error {
+func (p *peer) update(addrs ...string) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if p.addr == addr {
-		return nil
-	}
-	cc, err := p.tr.dial(addr)
+	cc, addr, err := dialToAddrs(p.id, p.tr, addrs...)
 	if err != nil {
 		return err
 	}
 
+	p.alternateAddrs = toAddrMap(addr, addrs)
+
 	p.cc.Close()
 	p.cc = cc
-	p.addr = addr
+	p.ccAddr = addr
 	return nil
 }
 
-func (p *peer) updateAddr(addr string) error {
+func (p *peer) updateAddr(addrs ...string) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if p.addr == addr {
-		return nil
+	addrMap := make(map[string]struct{}, len(addrs))
+	for _, a := range addrs {
+		addrMap[a] = struct{}{}
 	}
-	log.G(p.ctx).Debugf("peer %x updated to address %s, it will be used if old failed", p.id, addr)
-	p.newAddr = addr
+	p.alternateAddrs = addrMap
+	log.G(p.ctx).Debugf("peer %x updated to addresses %v", p.id, addrs)
 	return nil
 }
 
@@ -121,7 +156,7 @@ func (p *peer) conn() *grpc.ClientConn {
 func (p *peer) address() string {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.addr
+	return p.ccAddr
 }
 
 func (p *peer) resolveAddr(ctx context.Context, id uint64) (string, error) {
@@ -211,11 +246,22 @@ func (p *peer) drain() error {
 	}
 }
 
-func (p *peer) handleAddressChange(ctx context.Context) error {
+func (p *peer) chooseAddr() string {
 	p.mu.Lock()
-	newAddr := p.newAddr
-	p.newAddr = ""
-	p.mu.Unlock()
+	defer p.mu.Unlock()
+	if len(p.alternateAddrs) == 0 {
+		return ""
+	}
+	var addr string
+	for a := range p.alternateAddrs {
+		addr = a
+		break
+	}
+	return addr
+}
+
+func (p *peer) handleAddressChange(ctx context.Context) error {
+	newAddr := p.chooseAddr()
 	if newAddr == "" {
 		return nil
 	}
@@ -234,8 +280,10 @@ func (p *peer) handleAddressChange(ctx context.Context) error {
 	p.mu.Lock()
 	p.cc.Close()
 	p.cc = cc
-	p.addr = newAddr
-	p.tr.config.UpdateNode(p.id, p.addr)
+	p.alternateAddrs[p.ccAddr] = struct{}{}
+	delete(p.alternateAddrs, newAddr)
+	p.ccAddr = newAddr
+	p.tr.config.UpdateNode(p.id, p.ccAddr)
 	p.mu.Unlock()
 	return nil
 }
@@ -271,7 +319,7 @@ func (p *peer) run(ctx context.Context) {
 			// or timed out for correct raft work.
 			err := p.sendProcessMessage(context.Background(), m)
 			if err != nil {
-				log.G(ctx).WithError(err).Debugf("failed to send message %s", m.Type)
+				log.G(ctx).WithError(err).Debugf("failed to send message %s to address %s", m.Type, p.address())
 				p.setInactive()
 				if err := p.handleAddressChange(ctx); err != nil {
 					log.G(ctx).WithError(err).Error("failed to change address after failure")
