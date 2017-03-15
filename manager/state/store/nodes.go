@@ -12,7 +12,6 @@ const tableNode = "node"
 
 func init() {
 	register(ObjectStoreConfig{
-		Name: tableNode,
 		Table: &memdb.TableSchema{
 			Name: tableNode,
 			Indexes: map[string]*memdb.IndexSchema{

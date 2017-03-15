@@ -10,7 +10,6 @@ const tableResource = "resource"
 
 func init() {
 	register(ObjectStoreConfig{
-		Name: tableResource,
 		Table: &memdb.TableSchema{
 			Name: tableResource,
 			Indexes: map[string]*memdb.IndexSchema{

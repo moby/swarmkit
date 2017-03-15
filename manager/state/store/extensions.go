@@ -12,7 +12,6 @@ const tableExtension = "extension"
 
 func init() {
 	register(ObjectStoreConfig{
-		Name: tableExtension,
 		Table: &memdb.TableSchema{
 			Name: tableExtension,
 			Indexes: map[string]*memdb.IndexSchema{

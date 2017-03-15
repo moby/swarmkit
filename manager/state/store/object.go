@@ -8,7 +8,6 @@ import (
 // ObjectStoreConfig provides the necessary methods to store a particular object
 // type inside MemoryStore.
 type ObjectStoreConfig struct {
-	Name             string
 	Table            *memdb.TableSchema
 	Save             func(ReadTx, *api.StoreSnapshot) error
 	Restore          func(Tx, *api.StoreSnapshot) error
