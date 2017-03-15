@@ -54,7 +54,7 @@ func init() {
 			}
 			return nil
 		},
-		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
+		ApplyStoreAction: func(tx Tx, sa api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Network:
 				obj := v.Network
@@ -68,29 +68,6 @@ func init() {
 				}
 			}
 			return errUnknownStoreAction
-		},
-		NewStoreAction: func(c api.Event) (api.StoreAction, error) {
-			var sa api.StoreAction
-			switch v := c.(type) {
-			case api.EventCreateNetwork:
-				sa.Action = api.StoreActionKindCreate
-				sa.Target = &api.StoreAction_Network{
-					Network: v.Network,
-				}
-			case api.EventUpdateNetwork:
-				sa.Action = api.StoreActionKindUpdate
-				sa.Target = &api.StoreAction_Network{
-					Network: v.Network,
-				}
-			case api.EventDeleteNetwork:
-				sa.Action = api.StoreActionKindRemove
-				sa.Target = &api.StoreAction_Network{
-					Network: v.Network,
-				}
-			default:
-				return api.StoreAction{}, errUnknownStoreAction
-			}
-			return sa, nil
 		},
 	})
 }

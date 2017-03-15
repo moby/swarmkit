@@ -197,10 +197,50 @@ func (d *storeObjectGen) genPrefixFromArgs(indexerName string) {
 
 }
 
+func (d *storeObjectGen) genNewStoreAction(topLevelObjs []string) {
+	if len(topLevelObjs) == 0 {
+		return
+	}
+
+	// Generate NewStoreAction
+	d.P("func NewStoreAction(c Event) (StoreAction, error) {")
+	d.In()
+	d.P("var sa StoreAction")
+	d.P("switch v := c.(type) {")
+	for _, ccTypeName := range topLevelObjs {
+		d.P("case EventCreate", ccTypeName, ":")
+		d.In()
+		d.P("sa.Action = StoreActionKindCreate")
+		d.P("sa.Target = &StoreAction_", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}")
+		d.Out()
+		d.P("case EventUpdate", ccTypeName, ":")
+		d.In()
+		d.P("sa.Action = StoreActionKindUpdate")
+		d.P("sa.Target = &StoreAction_", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}")
+		d.Out()
+		d.P("case EventDelete", ccTypeName, ":")
+		d.In()
+		d.P("sa.Action = StoreActionKindRemove")
+		d.P("sa.Target = &StoreAction_", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}")
+		d.Out()
+	}
+	d.P("default:")
+	d.In()
+	d.P("return StoreAction{}, errUnknownStoreAction")
+	d.Out()
+	d.P("}")
+	d.P("return sa, nil")
+	d.Out()
+	d.P("}")
+	d.P()
+}
+
 func (d *storeObjectGen) Generate(file *generator.FileDescriptor) {
 	d.PluginImports = generator.NewPluginImports(d.Generator)
 	d.eventsPkg = d.NewImport("github.com/docker/go-events")
 	d.stringsPkg = d.NewImport("strings")
+
+	var topLevelObjs []string
 
 	for _, m := range file.Messages() {
 		if m.DescriptorProto.GetOptions().GetMapEntry() {
@@ -217,5 +257,9 @@ func (d *storeObjectGen) Generate(file *generator.FileDescriptor) {
 		}
 
 		d.genMsgStoreObject(m, storeObjIntf.(*plugin.StoreObject))
+
+		topLevelObjs = append(topLevelObjs, generator.CamelCaseSlice(m.TypeName()))
 	}
+
+	d.genNewStoreAction(topLevelObjs)
 }

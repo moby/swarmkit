@@ -180,7 +180,7 @@ type tx struct {
 }
 
 // ApplyStoreActions updates a store based on StoreAction messages.
-func (s *MemoryStore) ApplyStoreActions(actions []*api.StoreAction) error {
+func (s *MemoryStore) ApplyStoreActions(actions []api.StoreAction) error {
 	s.updateLock.Lock()
 	memDBTx := s.memDB.Txn(true)
 
@@ -210,7 +210,7 @@ func (s *MemoryStore) ApplyStoreActions(actions []*api.StoreAction) error {
 	return nil
 }
 
-func applyStoreAction(tx Tx, sa *api.StoreAction) error {
+func applyStoreAction(tx Tx, sa api.StoreAction) error {
 	for _, os := range objectStorers {
 		err := os.ApplyStoreAction(tx, sa)
 		if err != errUnknownStoreAction {
@@ -240,7 +240,7 @@ func (s *MemoryStore) update(proposer state.Proposer, cb func(Tx) error) error {
 		if proposer == nil {
 			memDBTx.Commit()
 		} else {
-			var sa []*api.StoreAction
+			var sa []api.StoreAction
 			sa, err = tx.changelistStoreActions()
 
 			if err == nil {
@@ -312,7 +312,7 @@ func (batch *Batch) Update(cb func(Tx) error) error {
 	batch.applied++
 
 	for batch.changelistLen < len(batch.tx.changelist) {
-		sa, err := newStoreAction(batch.tx.changelist[batch.changelistLen])
+		sa, err := api.NewStoreAction(batch.tx.changelist[batch.changelistLen])
 		if err != nil {
 			return err
 		}
@@ -350,7 +350,7 @@ func (batch *Batch) newTx() {
 
 func (batch *Batch) commit() error {
 	if batch.store.proposer != nil {
-		var sa []*api.StoreAction
+		var sa []api.StoreAction
 		sa, batch.err = batch.tx.changelistStoreActions()
 
 		if batch.err == nil {
@@ -425,24 +425,11 @@ func (tx *tx) init(memDBTx *memdb.Txn, curVersion *api.Version) {
 	tx.changelist = nil
 }
 
-func newStoreAction(c api.Event) (*api.StoreAction, error) {
-	for _, os := range objectStorers {
-		sa, err := os.NewStoreAction(c)
-		if err == nil {
-			return &sa, nil
-		} else if err != errUnknownStoreAction {
-			return nil, err
-		}
-	}
-
-	return nil, errors.New("unrecognized event type")
-}
-
-func (tx tx) changelistStoreActions() ([]*api.StoreAction, error) {
-	var actions []*api.StoreAction
+func (tx tx) changelistStoreActions() ([]api.StoreAction, error) {
+	var actions []api.StoreAction
 
 	for _, c := range tx.changelist {
-		sa, err := newStoreAction(c)
+		sa, err := api.NewStoreAction(c)
 		if err != nil {
 			return nil, err
 		}

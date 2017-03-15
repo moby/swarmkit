@@ -2844,6 +2844,87 @@ func (indexer ExtensionCustomIndexer) FromObject(obj interface{}) (bool, [][]byt
 	m := obj.(*Extension)
 	return customIndexer("", &m.Annotations)
 }
+func NewStoreAction(c Event) (StoreAction, error) {
+	var sa StoreAction
+	switch v := c.(type) {
+	case EventCreateNode:
+		sa.Action = StoreActionKindCreate
+		sa.Target = &StoreAction_Node{Node: v.Node}
+	case EventUpdateNode:
+		sa.Action = StoreActionKindUpdate
+		sa.Target = &StoreAction_Node{Node: v.Node}
+	case EventDeleteNode:
+		sa.Action = StoreActionKindRemove
+		sa.Target = &StoreAction_Node{Node: v.Node}
+	case EventCreateService:
+		sa.Action = StoreActionKindCreate
+		sa.Target = &StoreAction_Service{Service: v.Service}
+	case EventUpdateService:
+		sa.Action = StoreActionKindUpdate
+		sa.Target = &StoreAction_Service{Service: v.Service}
+	case EventDeleteService:
+		sa.Action = StoreActionKindRemove
+		sa.Target = &StoreAction_Service{Service: v.Service}
+	case EventCreateTask:
+		sa.Action = StoreActionKindCreate
+		sa.Target = &StoreAction_Task{Task: v.Task}
+	case EventUpdateTask:
+		sa.Action = StoreActionKindUpdate
+		sa.Target = &StoreAction_Task{Task: v.Task}
+	case EventDeleteTask:
+		sa.Action = StoreActionKindRemove
+		sa.Target = &StoreAction_Task{Task: v.Task}
+	case EventCreateNetwork:
+		sa.Action = StoreActionKindCreate
+		sa.Target = &StoreAction_Network{Network: v.Network}
+	case EventUpdateNetwork:
+		sa.Action = StoreActionKindUpdate
+		sa.Target = &StoreAction_Network{Network: v.Network}
+	case EventDeleteNetwork:
+		sa.Action = StoreActionKindRemove
+		sa.Target = &StoreAction_Network{Network: v.Network}
+	case EventCreateCluster:
+		sa.Action = StoreActionKindCreate
+		sa.Target = &StoreAction_Cluster{Cluster: v.Cluster}
+	case EventUpdateCluster:
+		sa.Action = StoreActionKindUpdate
+		sa.Target = &StoreAction_Cluster{Cluster: v.Cluster}
+	case EventDeleteCluster:
+		sa.Action = StoreActionKindRemove
+		sa.Target = &StoreAction_Cluster{Cluster: v.Cluster}
+	case EventCreateSecret:
+		sa.Action = StoreActionKindCreate
+		sa.Target = &StoreAction_Secret{Secret: v.Secret}
+	case EventUpdateSecret:
+		sa.Action = StoreActionKindUpdate
+		sa.Target = &StoreAction_Secret{Secret: v.Secret}
+	case EventDeleteSecret:
+		sa.Action = StoreActionKindRemove
+		sa.Target = &StoreAction_Secret{Secret: v.Secret}
+	case EventCreateResource:
+		sa.Action = StoreActionKindCreate
+		sa.Target = &StoreAction_Resource{Resource: v.Resource}
+	case EventUpdateResource:
+		sa.Action = StoreActionKindUpdate
+		sa.Target = &StoreAction_Resource{Resource: v.Resource}
+	case EventDeleteResource:
+		sa.Action = StoreActionKindRemove
+		sa.Target = &StoreAction_Resource{Resource: v.Resource}
+	case EventCreateExtension:
+		sa.Action = StoreActionKindCreate
+		sa.Target = &StoreAction_Extension{Extension: v.Extension}
+	case EventUpdateExtension:
+		sa.Action = StoreActionKindUpdate
+		sa.Target = &StoreAction_Extension{Extension: v.Extension}
+	case EventDeleteExtension:
+		sa.Action = StoreActionKindRemove
+		sa.Target = &StoreAction_Extension{Extension: v.Extension}
+	default:
+		return StoreAction{}, errUnknownStoreAction
+	}
+	return sa, nil
+}
+
 func (this *Meta) String() string {
 	if this == nil {
 		return "nil"

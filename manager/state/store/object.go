@@ -12,6 +12,5 @@ type ObjectStoreConfig struct {
 	Table            *memdb.TableSchema
 	Save             func(ReadTx, *api.StoreSnapshot) error
 	Restore          func(Tx, *api.StoreSnapshot) error
-	ApplyStoreAction func(Tx, *api.StoreAction) error
-	NewStoreAction   func(api.Event) (api.StoreAction, error)
+	ApplyStoreAction func(Tx, api.StoreAction) error
 }

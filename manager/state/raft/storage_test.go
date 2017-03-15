@@ -494,7 +494,7 @@ func proposeLargeValue(t *testing.T, raftNode *raftutils.TestNode, time time.Dur
 		},
 	}
 
-	storeActions := []*api.StoreAction{
+	storeActions := []api.StoreAction{
 		{
 			Action: api.StoreActionKindCreate,
 			Target: &api.StoreAction_Node{

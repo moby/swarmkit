@@ -54,7 +54,7 @@ func init() {
 			}
 			return nil
 		},
-		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
+		ApplyStoreAction: func(tx Tx, sa api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Secret:
 				obj := v.Secret
@@ -68,29 +68,6 @@ func init() {
 				}
 			}
 			return errUnknownStoreAction
-		},
-		NewStoreAction: func(c api.Event) (api.StoreAction, error) {
-			var sa api.StoreAction
-			switch v := c.(type) {
-			case api.EventCreateSecret:
-				sa.Action = api.StoreActionKindCreate
-				sa.Target = &api.StoreAction_Secret{
-					Secret: v.Secret,
-				}
-			case api.EventUpdateSecret:
-				sa.Action = api.StoreActionKindUpdate
-				sa.Target = &api.StoreAction_Secret{
-					Secret: v.Secret,
-				}
-			case api.EventDeleteSecret:
-				sa.Action = api.StoreActionKindRemove
-				sa.Target = &api.StoreAction_Secret{
-					Secret: v.Secret,
-				}
-			default:
-				return api.StoreAction{}, errUnknownStoreAction
-			}
-			return sa, nil
 		},
 	})
 }
