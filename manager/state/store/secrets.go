@@ -11,7 +11,6 @@ const tableSecret = "secret"
 
 func init() {
 	register(ObjectStoreConfig{
-		Name: tableSecret,
 		Table: &memdb.TableSchema{
 			Name: tableSecret,
 			Indexes: map[string]*memdb.IndexSchema{

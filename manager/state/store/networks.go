@@ -11,7 +11,6 @@ const tableNetwork = "network"
 
 func init() {
 	register(ObjectStoreConfig{
-		Name: tableNetwork,
 		Table: &memdb.TableSchema{
 			Name: tableNetwork,
 			Indexes: map[string]*memdb.IndexSchema{

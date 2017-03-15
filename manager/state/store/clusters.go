@@ -17,7 +17,6 @@ const (
 
 func init() {
 	register(ObjectStoreConfig{
-		Name: tableCluster,
 		Table: &memdb.TableSchema{
 			Name: tableCluster,
 			Indexes: map[string]*memdb.IndexSchema{

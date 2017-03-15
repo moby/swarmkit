@@ -11,7 +11,6 @@ const tableService = "service"
 
 func init() {
 	register(ObjectStoreConfig{
-		Name: tableService,
 		Table: &memdb.TableSchema{
 			Name: tableService,
 			Indexes: map[string]*memdb.IndexSchema{

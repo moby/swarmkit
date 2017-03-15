@@ -13,7 +13,6 @@ const tableTask = "task"
 
 func init() {
 	register(ObjectStoreConfig{
-		Name: tableTask,
 		Table: &memdb.TableSchema{
 			Name: tableTask,
 			Indexes: map[string]*memdb.IndexSchema{

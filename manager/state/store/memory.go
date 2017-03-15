@@ -73,7 +73,7 @@ var (
 
 func register(os ObjectStoreConfig) {
 	objectStorers = append(objectStorers, os)
-	schema.Tables[os.Name] = os.Table
+	schema.Tables[os.Table.Name] = os.Table
 }
 
 // MemoryStore is a concurrency-safe, in-memory implementation of the Store
