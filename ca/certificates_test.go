@@ -503,7 +503,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
-	updates, cancel := state.Watch(tc.MemoryStore.WatchQueue(), state.EventCreateNode{})
+	updates, cancel := state.Watch(tc.MemoryStore.WatchQueue(), api.EventCreateNode{})
 	defer cancel()
 
 	completed := make(chan error)
@@ -517,7 +517,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	}()
 
 	event := <-updates
-	node := event.(state.EventCreateNode).Node.Copy()
+	node := event.(api.EventCreateNode).Node.Copy()
 
 	// Directly update the status of the store
 	err = tc.MemoryStore.Update(func(tx store.Tx) error {

@@ -40,7 +40,7 @@ func TestTaskHistory(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -99,16 +99,16 @@ func TestTaskHistory(t *testing.T) {
 	})
 
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
 
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	observedTask3 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
 
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	observedTask4 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name1")

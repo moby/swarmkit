@@ -209,9 +209,9 @@ func (u *Updater) Run(ctx context.Context, slots []orchestrator.Slot) {
 		var cancelWatch func()
 		failedTaskWatch, cancelWatch = state.Watch(
 			u.store.WatchQueue(),
-			state.EventUpdateTask{
+			api.EventUpdateTask{
 				Task:   &api.Task{ServiceID: service.ID, Status: api.TaskStatus{State: api.TaskStateRunning}},
-				Checks: []state.TaskCheckFunc{state.TaskCheckServiceID, state.TaskCheckStateGreaterThan},
+				Checks: []api.TaskCheckFunc{state.TaskCheckServiceID, state.TaskCheckStateGreaterThan},
 			},
 		)
 		defer cancelWatch()
@@ -272,7 +272,7 @@ slotsLoop:
 				stopped = true
 				break slotsLoop
 			case ev := <-failedTaskWatch:
-				if failureTriggersAction(ev.(state.EventUpdateTask).Task) {
+				if failureTriggersAction(ev.(api.EventUpdateTask).Task) {
 					break slotsLoop
 				}
 			case slotQueue <- slot:
@@ -297,7 +297,7 @@ slotsLoop:
 			case <-doneMonitoring:
 				break monitorLoop
 			case ev := <-failedTaskWatch:
-				if failureTriggersAction(ev.(state.EventUpdateTask).Task) {
+				if failureTriggersAction(ev.(api.EventUpdateTask).Task) {
 					break monitorLoop
 				}
 			}
@@ -366,9 +366,9 @@ func (u *Updater) worker(ctx context.Context, queue <-chan orchestrator.Slot, de
 
 func (u *Updater) updateTask(ctx context.Context, slot orchestrator.Slot, updated *api.Task, order api.UpdateConfig_UpdateOrder) error {
 	// Kick off the watch before even creating the updated task. This is in order to avoid missing any event.
-	taskUpdates, cancel := state.Watch(u.watchQueue, state.EventUpdateTask{
+	taskUpdates, cancel := state.Watch(u.watchQueue, api.EventUpdateTask{
 		Task:   &api.Task{ID: updated.ID},
-		Checks: []state.TaskCheckFunc{state.TaskCheckID},
+		Checks: []api.TaskCheckFunc{state.TaskCheckID},
 	})
 	defer cancel()
 
@@ -428,7 +428,7 @@ func (u *Updater) updateTask(ctx context.Context, slot orchestrator.Slot, update
 	for {
 		select {
 		case e := <-taskUpdates:
-			updated = e.(state.EventUpdateTask).Task
+			updated = e.(api.EventUpdateTask).Task
 			if updated.Status.State >= api.TaskStateRunning {
 				u.updatedTasksMu.Lock()
 				u.updatedTasks[updated.ID] = time.Now()

@@ -2,7 +2,6 @@ package store
 
 import (
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state"
 	memdb "github.com/hashicorp/go-memdb"
 	"github.com/pkg/errors"
 )
@@ -18,12 +17,12 @@ func init() {
 				indexID: {
 					Name:    indexID,
 					Unique:  true,
-					Indexer: resourceIndexerByID{},
+					Indexer: api.ResourceIndexerByID{},
 				},
 				indexName: {
 					Name:    indexName,
 					Unique:  true,
-					Indexer: resourceIndexerByName{},
+					Indexer: api.ResourceIndexerByName{},
 				},
 				indexKind: {
 					Name:    indexKind,
@@ -31,7 +30,7 @@ func init() {
 				},
 				indexCustom: {
 					Name:         indexCustom,
-					Indexer:      resourceCustomIndexer{},
+					Indexer:      api.ResourceCustomIndexer{},
 					AllowMissing: true,
 				},
 			},
@@ -73,20 +72,20 @@ func init() {
 			}
 			return errUnknownStoreAction
 		},
-		NewStoreAction: func(c state.Event) (api.StoreAction, error) {
+		NewStoreAction: func(c api.Event) (api.StoreAction, error) {
 			var sa api.StoreAction
 			switch v := c.(type) {
-			case state.EventCreateResource:
+			case api.EventCreateResource:
 				sa.Action = api.StoreActionKindCreate
 				sa.Target = &api.StoreAction_Resource{
 					Resource: v.Resource,
 				}
-			case state.EventUpdateResource:
+			case api.EventUpdateResource:
 				sa.Action = api.StoreActionKindUpdate
 				sa.Target = &api.StoreAction_Resource{
 					Resource: v.Resource,
 				}
-			case state.EventDeleteResource:
+			case api.EventDeleteResource:
 				sa.Action = api.StoreActionKindRemove
 				sa.Target = &api.StoreAction_Resource{
 					Resource: v.Resource,
@@ -101,34 +100,6 @@ func init() {
 
 type resourceEntry struct {
 	*api.Resource
-}
-
-func (r resourceEntry) ID() string {
-	return r.Resource.ID
-}
-
-func (r resourceEntry) Meta() api.Meta {
-	return r.Resource.Meta
-}
-
-func (r resourceEntry) SetMeta(meta api.Meta) {
-	r.Resource.Meta = meta
-}
-
-func (r resourceEntry) Copy() Object {
-	return resourceEntry{r.Resource.Copy()}
-}
-
-func (r resourceEntry) EventCreate() state.Event {
-	return state.EventCreateResource{Resource: r.Resource}
-}
-
-func (r resourceEntry) EventUpdate() state.Event {
-	return state.EventUpdateResource{Resource: r.Resource}
-}
-
-func (r resourceEntry) EventDelete() state.Event {
-	return state.EventDeleteResource{Resource: r.Resource}
 }
 
 func confirmExtension(tx Tx, r *api.Resource) error {
@@ -189,50 +160,12 @@ func FindResources(tx ReadTx, by By) ([]*api.Resource, error) {
 	}
 
 	resourceList := []*api.Resource{}
-	appendResult := func(o Object) {
+	appendResult := func(o api.StoreObject) {
 		resourceList = append(resourceList, o.(resourceEntry).Resource)
 	}
 
 	err := tx.find(tableResource, by, checkType, appendResult)
 	return resourceList, err
-}
-
-type resourceIndexerByID struct{}
-
-func (ri resourceIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
-	return fromArgs(args...)
-}
-
-func (ri resourceIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
-	r, ok := obj.(resourceEntry)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
-
-	// Add the null character as a terminator
-	val := r.Resource.ID + "\x00"
-	return true, []byte(val), nil
-}
-
-func (ri resourceIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
-	return prefixFromArgs(args...)
-}
-
-type resourceIndexerByName struct{}
-
-func (ri resourceIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
-	return fromArgs(args...)
-}
-
-func (ri resourceIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
-	r, ok := obj.(resourceEntry)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
-
-	// Add the null character as a terminator
-	val := r.Resource.Annotations.Name + "\x00"
-	return true, []byte(val), nil
 }
 
 type resourceIndexerByKind struct{}
@@ -250,23 +183,4 @@ func (ri resourceIndexerByKind) FromObject(obj interface{}) (bool, []byte, error
 	// Add the null character as a terminator
 	val := r.Resource.Kind + "\x00"
 	return true, []byte(val), nil
-}
-
-type resourceCustomIndexer struct{}
-
-func (ri resourceCustomIndexer) FromArgs(args ...interface{}) ([]byte, error) {
-	return fromArgs(args...)
-}
-
-func (ri resourceCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, error) {
-	r, ok := obj.(resourceEntry)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
-
-	return customIndexer(r.Kind, &r.Annotations)
-}
-
-func (ri resourceCustomIndexer) PrefixFromArgs(args ...interface{}) ([]byte, error) {
-	return prefixFromArgs(args...)
 }
