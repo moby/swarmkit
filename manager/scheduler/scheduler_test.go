@@ -111,7 +111,7 @@ func TestScheduler(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -460,7 +460,7 @@ func testHA(t *testing.T, useSpecVersion bool) {
 
 	scheduler := New(s)
 
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -774,7 +774,7 @@ func testPreferences(t *testing.T, useSpecVersion bool) {
 
 	scheduler := New(s)
 
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1014,7 +1014,7 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 
 	scheduler := New(s)
 
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1111,7 +1111,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1203,7 +1203,7 @@ func TestSchedulerFaultyNode(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1340,7 +1340,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1487,7 +1487,7 @@ func TestSchedulerResourceConstraintHA(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1569,7 +1569,7 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1669,7 +1669,7 @@ func TestSchedulerPreexistingDeadTask(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1772,7 +1772,7 @@ func TestPreassignedTasks(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1802,7 +1802,7 @@ func watchAssignmentFailure(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
 		case event := <-watch:
-			if task, ok := event.(state.EventUpdateTask); ok {
+			if task, ok := event.(api.EventUpdateTask); ok {
 				if task.Task.Status.State < api.TaskStateAssigned {
 					return task.Task
 				}
@@ -1817,7 +1817,7 @@ func watchAssignment(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
 		case event := <-watch:
-			if task, ok := event.(state.EventUpdateTask); ok {
+			if task, ok := event.(api.EventUpdateTask); ok {
 				if task.Task.Status.State >= api.TaskStateAssigned &&
 					task.Task.Status.State <= api.TaskStateRunning &&
 					task.Task.NodeID != "" {
@@ -2031,7 +2031,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -2148,7 +2148,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 		s := store.NewMemoryStore(nil)
 		scheduler := New(s)
 
-		watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+		watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 
 		go func() {
 			_ = scheduler.Run(ctx)

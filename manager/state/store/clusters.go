@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state"
 	memdb "github.com/hashicorp/go-memdb"
 )
 
@@ -25,16 +24,16 @@ func init() {
 				indexID: {
 					Name:    indexID,
 					Unique:  true,
-					Indexer: clusterIndexerByID{},
+					Indexer: api.ClusterIndexerByID{},
 				},
 				indexName: {
 					Name:    indexName,
 					Unique:  true,
-					Indexer: clusterIndexerByName{},
+					Indexer: api.ClusterIndexerByName{},
 				},
 				indexCustom: {
 					Name:         indexCustom,
-					Indexer:      clusterCustomIndexer{},
+					Indexer:      api.ClusterCustomIndexer{},
 					AllowMissing: true,
 				},
 			},
@@ -76,20 +75,20 @@ func init() {
 			}
 			return errUnknownStoreAction
 		},
-		NewStoreAction: func(c state.Event) (api.StoreAction, error) {
+		NewStoreAction: func(c api.Event) (api.StoreAction, error) {
 			var sa api.StoreAction
 			switch v := c.(type) {
-			case state.EventCreateCluster:
+			case api.EventCreateCluster:
 				sa.Action = api.StoreActionKindCreate
 				sa.Target = &api.StoreAction_Cluster{
 					Cluster: v.Cluster,
 				}
-			case state.EventUpdateCluster:
+			case api.EventUpdateCluster:
 				sa.Action = api.StoreActionKindUpdate
 				sa.Target = &api.StoreAction_Cluster{
 					Cluster: v.Cluster,
 				}
-			case state.EventDeleteCluster:
+			case api.EventDeleteCluster:
 				sa.Action = api.StoreActionKindRemove
 				sa.Target = &api.StoreAction_Cluster{
 					Cluster: v.Cluster,
@@ -102,38 +101,6 @@ func init() {
 	})
 }
 
-type clusterEntry struct {
-	*api.Cluster
-}
-
-func (c clusterEntry) ID() string {
-	return c.Cluster.ID
-}
-
-func (c clusterEntry) Meta() api.Meta {
-	return c.Cluster.Meta
-}
-
-func (c clusterEntry) SetMeta(meta api.Meta) {
-	c.Cluster.Meta = meta
-}
-
-func (c clusterEntry) Copy() Object {
-	return clusterEntry{c.Cluster.Copy()}
-}
-
-func (c clusterEntry) EventCreate() state.Event {
-	return state.EventCreateCluster{Cluster: c.Cluster}
-}
-
-func (c clusterEntry) EventUpdate() state.Event {
-	return state.EventUpdateCluster{Cluster: c.Cluster}
-}
-
-func (c clusterEntry) EventDelete() state.Event {
-	return state.EventDeleteCluster{Cluster: c.Cluster}
-}
-
 // CreateCluster adds a new cluster to the store.
 // Returns ErrExist if the ID is already taken.
 func CreateCluster(tx Tx, c *api.Cluster) error {
@@ -142,7 +109,7 @@ func CreateCluster(tx Tx, c *api.Cluster) error {
 		return ErrNameConflict
 	}
 
-	return tx.create(tableCluster, clusterEntry{c})
+	return tx.create(tableCluster, c)
 }
 
 // UpdateCluster updates an existing cluster in the store.
@@ -150,12 +117,12 @@ func CreateCluster(tx Tx, c *api.Cluster) error {
 func UpdateCluster(tx Tx, c *api.Cluster) error {
 	// Ensure the name is either not in use or already used by this same Cluster.
 	if existing := tx.lookup(tableCluster, indexName, strings.ToLower(c.Spec.Annotations.Name)); existing != nil {
-		if existing.ID() != c.ID {
+		if existing.GetID() != c.ID {
 			return ErrNameConflict
 		}
 	}
 
-	return tx.update(tableCluster, clusterEntry{c})
+	return tx.update(tableCluster, c)
 }
 
 // DeleteCluster removes a cluster from the store.
@@ -171,7 +138,7 @@ func GetCluster(tx ReadTx, id string) *api.Cluster {
 	if n == nil {
 		return nil
 	}
-	return n.(clusterEntry).Cluster
+	return n.(*api.Cluster)
 }
 
 // FindClusters selects a set of clusters and returns them.
@@ -186,70 +153,10 @@ func FindClusters(tx ReadTx, by By) ([]*api.Cluster, error) {
 	}
 
 	clusterList := []*api.Cluster{}
-	appendResult := func(o Object) {
-		clusterList = append(clusterList, o.(clusterEntry).Cluster)
+	appendResult := func(o api.StoreObject) {
+		clusterList = append(clusterList, o.(*api.Cluster))
 	}
 
 	err := tx.find(tableCluster, by, checkType, appendResult)
 	return clusterList, err
-}
-
-type clusterIndexerByID struct{}
-
-func (ci clusterIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
-	return fromArgs(args...)
-}
-
-func (ci clusterIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
-	c, ok := obj.(clusterEntry)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
-
-	// Add the null character as a terminator
-	val := c.Cluster.ID + "\x00"
-	return true, []byte(val), nil
-}
-
-func (ci clusterIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
-	return prefixFromArgs(args...)
-}
-
-type clusterIndexerByName struct{}
-
-func (ci clusterIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
-	return fromArgs(args...)
-}
-
-func (ci clusterIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
-	c, ok := obj.(clusterEntry)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
-
-	// Add the null character as a terminator
-	return true, []byte(strings.ToLower(c.Spec.Annotations.Name) + "\x00"), nil
-}
-
-func (ci clusterIndexerByName) PrefixFromArgs(args ...interface{}) ([]byte, error) {
-	return prefixFromArgs(args...)
-}
-
-type clusterCustomIndexer struct{}
-
-func (ci clusterCustomIndexer) FromArgs(args ...interface{}) ([]byte, error) {
-	return fromArgs(args...)
-}
-
-func (ci clusterCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, error) {
-	c, ok := obj.(clusterEntry)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
-
-	return customIndexer("", &c.Spec.Annotations)
-}
-
-func (ci clusterCustomIndexer) PrefixFromArgs(args ...interface{}) ([]byte, error) {
-	return prefixFromArgs(args...)
 }

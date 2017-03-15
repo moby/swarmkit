@@ -53,11 +53,11 @@ func TestUpdater(t *testing.T) {
 	defer s.Close()
 
 	// Move tasks to their desired state.
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 	go func() {
 		for e := range watch {
-			task := e.(state.EventUpdateTask).Task
+			task := e.(api.EventUpdateTask).Task
 			if task.Status.State == task.DesiredState {
 				continue
 			}
@@ -195,11 +195,11 @@ func TestUpdaterFailureAction(t *testing.T) {
 	defer s.Close()
 
 	// Fail new tasks the updater tries to run
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 	go func() {
 		for e := range watch {
-			task := e.(state.EventUpdateTask).Task
+			task := e.(api.EventUpdateTask).Task
 			if task.DesiredState == api.TaskStateRunning && task.Status.State != api.TaskStateFailed {
 				err := s.Update(func(tx store.Tx) error {
 					task = store.GetTask(tx, task.ID)
@@ -350,11 +350,11 @@ func TestUpdaterTaskTimeout(t *testing.T) {
 	defer s.Close()
 
 	// Move tasks to their desired state.
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 	go func() {
 		for e := range watch {
-			task := e.(state.EventUpdateTask).Task
+			task := e.(api.EventUpdateTask).Task
 			err := s.Update(func(tx store.Tx) error {
 				task = store.GetTask(tx, task.ID)
 				// Explicitly do not set task state to
@@ -442,11 +442,11 @@ func TestUpdaterOrder(t *testing.T) {
 	assert.NotNil(t, s)
 
 	// Move tasks to their desired state.
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 	go func() {
 		for e := range watch {
-			task := e.(state.EventUpdateTask).Task
+			task := e.(api.EventUpdateTask).Task
 			if task.Status.State == task.DesiredState {
 				continue
 			}

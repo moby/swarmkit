@@ -22,7 +22,7 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -78,9 +78,9 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 
 	observedTask3 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
@@ -101,9 +101,9 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 
 	observedTask5 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask5.Status.State, api.TaskStateNew)
@@ -125,7 +125,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -181,9 +181,9 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 
 	observedTask3 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
@@ -205,9 +205,9 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	select {
@@ -226,7 +226,7 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -281,9 +281,9 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	select {
@@ -300,9 +300,9 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	select {
@@ -321,7 +321,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -378,9 +378,9 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 
 	observedTask3 := testutils.WatchTaskCreate(t, watch)
 	testutils.Expect(t, watch, state.EventCommit{})
@@ -413,7 +413,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -471,9 +471,9 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 
 	observedTask3 := testutils.WatchTaskCreate(t, watch)
 	testutils.Expect(t, watch, state.EventCommit{})
@@ -503,9 +503,9 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 
 	observedTask5 := testutils.WatchTaskCreate(t, watch)
 	testutils.Expect(t, watch, state.EventCommit{})
@@ -526,9 +526,9 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	select {
@@ -549,7 +549,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -605,9 +605,9 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 
 	observedTask3 := testutils.WatchTaskCreate(t, watch)
 	testutils.Expect(t, watch, state.EventCommit{})
@@ -637,9 +637,9 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 
 	observedTask5 := testutils.WatchTaskCreate(t, watch)
 	testutils.Expect(t, watch, state.EventCommit{})
@@ -661,9 +661,9 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	select {
@@ -684,9 +684,9 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, state.EventUpdateTask{})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
 
 	observedTask7 := testutils.WatchTaskCreate(t, watch)
 	testutils.Expect(t, watch, state.EventCommit{})

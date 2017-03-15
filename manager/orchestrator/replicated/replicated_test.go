@@ -24,7 +24,7 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -209,7 +209,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{}, state.EventDeleteTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
 	defer cancel()
 
 	s1 := &api.Service{
@@ -504,7 +504,7 @@ func TestInitializationRejectedTasks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// watch orchestration events
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventCreateTask{}, state.EventUpdateTask{}, state.EventDeleteTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventDeleteTask{})
 	defer cancel()
 
 	orchestrator := NewReplicatedOrchestrator(s)
@@ -640,7 +640,7 @@ func TestInitializationFailedTasks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// watch orchestration events
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventCreateTask{}, state.EventUpdateTask{}, state.EventDeleteTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventDeleteTask{})
 	defer cancel()
 
 	orchestrator := NewReplicatedOrchestrator(s)
@@ -756,7 +756,7 @@ func TestInitializationNodeDown(t *testing.T) {
 	assert.NoError(t, err)
 
 	// watch orchestration events
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventCreateTask{}, state.EventUpdateTask{}, state.EventDeleteTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventDeleteTask{})
 	defer cancel()
 
 	orchestrator := NewReplicatedOrchestrator(s)
@@ -865,7 +865,7 @@ func TestInitializationDelayStart(t *testing.T) {
 	assert.NoError(t, err)
 
 	// watch orchestration events
-	watch, cancel := state.Watch(s.WatchQueue(), state.EventCreateTask{}, state.EventUpdateTask{}, state.EventDeleteTask{})
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventDeleteTask{})
 	defer cancel()
 
 	orchestrator := NewReplicatedOrchestrator(s)

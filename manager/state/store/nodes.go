@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state"
 	memdb "github.com/hashicorp/go-memdb"
 )
 
@@ -20,7 +19,7 @@ func init() {
 				indexID: {
 					Name:    indexID,
 					Unique:  true,
-					Indexer: nodeIndexerByID{},
+					Indexer: api.NodeIndexerByID{},
 				},
 				// TODO(aluzzardi): Use `indexHostname` instead.
 				indexName: {
@@ -38,7 +37,7 @@ func init() {
 				},
 				indexCustom: {
 					Name:         indexCustom,
-					Indexer:      nodeCustomIndexer{},
+					Indexer:      api.NodeCustomIndexer{},
 					AllowMissing: true,
 				},
 			},
@@ -80,20 +79,20 @@ func init() {
 			}
 			return errUnknownStoreAction
 		},
-		NewStoreAction: func(c state.Event) (api.StoreAction, error) {
+		NewStoreAction: func(c api.Event) (api.StoreAction, error) {
 			var sa api.StoreAction
 			switch v := c.(type) {
-			case state.EventCreateNode:
+			case api.EventCreateNode:
 				sa.Action = api.StoreActionKindCreate
 				sa.Target = &api.StoreAction_Node{
 					Node: v.Node,
 				}
-			case state.EventUpdateNode:
+			case api.EventUpdateNode:
 				sa.Action = api.StoreActionKindUpdate
 				sa.Target = &api.StoreAction_Node{
 					Node: v.Node,
 				}
-			case state.EventDeleteNode:
+			case api.EventDeleteNode:
 				sa.Action = api.StoreActionKindRemove
 				sa.Target = &api.StoreAction_Node{
 					Node: v.Node,
@@ -106,48 +105,16 @@ func init() {
 	})
 }
 
-type nodeEntry struct {
-	*api.Node
-}
-
-func (n nodeEntry) ID() string {
-	return n.Node.ID
-}
-
-func (n nodeEntry) Meta() api.Meta {
-	return n.Node.Meta
-}
-
-func (n nodeEntry) SetMeta(meta api.Meta) {
-	n.Node.Meta = meta
-}
-
-func (n nodeEntry) Copy() Object {
-	return nodeEntry{n.Node.Copy()}
-}
-
-func (n nodeEntry) EventCreate() state.Event {
-	return state.EventCreateNode{Node: n.Node}
-}
-
-func (n nodeEntry) EventUpdate() state.Event {
-	return state.EventUpdateNode{Node: n.Node}
-}
-
-func (n nodeEntry) EventDelete() state.Event {
-	return state.EventDeleteNode{Node: n.Node}
-}
-
 // CreateNode adds a new node to the store.
 // Returns ErrExist if the ID is already taken.
 func CreateNode(tx Tx, n *api.Node) error {
-	return tx.create(tableNode, nodeEntry{n})
+	return tx.create(tableNode, n)
 }
 
 // UpdateNode updates an existing node in the store.
 // Returns ErrNotExist if the node doesn't exist.
 func UpdateNode(tx Tx, n *api.Node) error {
-	return tx.update(tableNode, nodeEntry{n})
+	return tx.update(tableNode, n)
 }
 
 // DeleteNode removes a node from the store.
@@ -163,7 +130,7 @@ func GetNode(tx ReadTx, id string) *api.Node {
 	if n == nil {
 		return nil
 	}
-	return n.(nodeEntry).Node
+	return n.(*api.Node)
 }
 
 // FindNodes selects a set of nodes and returns them.
@@ -178,33 +145,12 @@ func FindNodes(tx ReadTx, by By) ([]*api.Node, error) {
 	}
 
 	nodeList := []*api.Node{}
-	appendResult := func(o Object) {
-		nodeList = append(nodeList, o.(nodeEntry).Node)
+	appendResult := func(o api.StoreObject) {
+		nodeList = append(nodeList, o.(*api.Node))
 	}
 
 	err := tx.find(tableNode, by, checkType, appendResult)
 	return nodeList, err
-}
-
-type nodeIndexerByID struct{}
-
-func (ni nodeIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
-	return fromArgs(args...)
-}
-
-func (ni nodeIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
-	n, ok := obj.(nodeEntry)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
-
-	// Add the null character as a terminator
-	val := n.Node.ID + "\x00"
-	return true, []byte(val), nil
-}
-
-func (ni nodeIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
-	return prefixFromArgs(args...)
 }
 
 type nodeIndexerByHostname struct{}
@@ -214,7 +160,7 @@ func (ni nodeIndexerByHostname) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ni nodeIndexerByHostname) FromObject(obj interface{}) (bool, []byte, error) {
-	n, ok := obj.(nodeEntry)
+	n, ok := obj.(*api.Node)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -237,7 +183,7 @@ func (ni nodeIndexerByRole) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ni nodeIndexerByRole) FromObject(obj interface{}) (bool, []byte, error) {
-	n, ok := obj.(nodeEntry)
+	n, ok := obj.(*api.Node)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -253,30 +199,11 @@ func (ni nodeIndexerByMembership) FromArgs(args ...interface{}) ([]byte, error) 
 }
 
 func (ni nodeIndexerByMembership) FromObject(obj interface{}) (bool, []byte, error) {
-	n, ok := obj.(nodeEntry)
+	n, ok := obj.(*api.Node)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
 
 	// Add the null character as a terminator
 	return true, []byte(strconv.FormatInt(int64(n.Spec.Membership), 10) + "\x00"), nil
-}
-
-type nodeCustomIndexer struct{}
-
-func (ni nodeCustomIndexer) FromArgs(args ...interface{}) ([]byte, error) {
-	return fromArgs(args...)
-}
-
-func (ni nodeCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, error) {
-	n, ok := obj.(nodeEntry)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
-
-	return customIndexer("", &n.Spec.Annotations)
-}
-
-func (ni nodeCustomIndexer) PrefixFromArgs(args ...interface{}) ([]byte, error) {
-	return prefixFromArgs(args...)
 }

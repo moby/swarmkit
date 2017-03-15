@@ -1071,7 +1071,7 @@ func TestBatch(t *testing.T) {
 
 	for i := 0; i != MaxChangesPerTransaction; i++ {
 		event := <-watch
-		if _, ok := event.(state.EventCreateNode); !ok {
+		if _, ok := event.(api.EventCreateNode); !ok {
 			t.Fatalf("expected EventCreateNode; got %#v", event)
 		}
 	}
@@ -1081,7 +1081,7 @@ func TestBatch(t *testing.T) {
 	}
 	for i := 0; i != MaxChangesPerTransaction; i++ {
 		event := <-watch
-		if _, ok := event.(state.EventCreateNode); !ok {
+		if _, ok := event.(api.EventCreateNode); !ok {
 			t.Fatalf("expected EventCreateNode; got %#v", event)
 		}
 	}
@@ -1091,7 +1091,7 @@ func TestBatch(t *testing.T) {
 	}
 	for i := 0; i != 5; i++ {
 		event := <-watch
-		if _, ok := event.(state.EventCreateNode); !ok {
+		if _, ok := event.(api.EventCreateNode); !ok {
 			t.Fatalf("expected EventCreateNode; got %#v", event)
 		}
 	}
@@ -1135,7 +1135,7 @@ func TestBatchFailure(t *testing.T) {
 
 	for i := 0; i != MaxChangesPerTransaction; i++ {
 		event := <-watch
-		if _, ok := event.(state.EventCreateNode); !ok {
+		if _, ok := event.(api.EventCreateNode); !ok {
 			t.Fatalf("expected EventCreateNode; got %#v", event)
 		}
 	}

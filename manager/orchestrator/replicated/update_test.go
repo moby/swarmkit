@@ -37,21 +37,21 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 		failImage2 uint32
 	)
 
-	watchCreate, cancelCreate := state.Watch(s.WatchQueue(), state.EventCreateTask{})
+	watchCreate, cancelCreate := state.Watch(s.WatchQueue(), api.EventCreateTask{})
 	defer cancelCreate()
 
-	watchServiceUpdate, cancelServiceUpdate := state.Watch(s.WatchQueue(), state.EventUpdateService{})
+	watchServiceUpdate, cancelServiceUpdate := state.Watch(s.WatchQueue(), api.EventUpdateService{})
 	defer cancelServiceUpdate()
 
 	// Fail new tasks the updater tries to run
-	watchUpdate, cancelUpdate := state.Watch(s.WatchQueue(), state.EventUpdateTask{})
+	watchUpdate, cancelUpdate := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancelUpdate()
 	go func() {
 		failedLast := false
 		for {
 			select {
 			case e := <-watchUpdate:
-				task := e.(state.EventUpdateTask).Task
+				task := e.(api.EventUpdateTask).Task
 				if task.DesiredState == task.Status.State {
 					continue
 				}
@@ -184,10 +184,10 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	// Should get to the ROLLBACK_STARTED state
 	for {
 		e := <-watchServiceUpdate
-		if e.(state.EventUpdateService).Service.UpdateStatus == nil {
+		if e.(api.EventUpdateService).Service.UpdateStatus == nil {
 			continue
 		}
-		if e.(state.EventUpdateService).Service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_STARTED {
+		if e.(api.EventUpdateService).Service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_STARTED {
 			break
 		}
 	}
@@ -207,7 +207,7 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	// Should end up in ROLLBACK_COMPLETED state
 	for {
 		e := <-watchServiceUpdate
-		if e.(state.EventUpdateService).Service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_COMPLETED {
+		if e.(api.EventUpdateService).Service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_COMPLETED {
 			break
 		}
 	}
@@ -244,10 +244,10 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	// Should get to the ROLLBACK_STARTED state
 	for {
 		e := <-watchServiceUpdate
-		if e.(state.EventUpdateService).Service.UpdateStatus == nil {
+		if e.(api.EventUpdateService).Service.UpdateStatus == nil {
 			continue
 		}
-		if e.(state.EventUpdateService).Service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_STARTED {
+		if e.(api.EventUpdateService).Service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_STARTED {
 			break
 		}
 	}
@@ -269,7 +269,7 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 		// Should end up in ROLLBACK_PAUSED state
 		for {
 			e := <-watchServiceUpdate
-			if e.(state.EventUpdateService).Service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_PAUSED {
+			if e.(api.EventUpdateService).Service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_PAUSED {
 				return
 			}
 		}
@@ -277,7 +277,7 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 		// Should end up in ROLLBACK_COMPLETE state
 		for {
 			e := <-watchServiceUpdate
-			if e.(state.EventUpdateService).Service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_COMPLETED {
+			if e.(api.EventUpdateService).Service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_COMPLETED {
 				return
 			}
 		}
