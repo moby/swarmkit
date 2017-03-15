@@ -57,7 +57,7 @@ func init() {
 			}
 			return nil
 		},
-		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
+		ApplyStoreAction: func(tx Tx, sa api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Resource:
 				obj := v.Resource
@@ -71,29 +71,6 @@ func init() {
 				}
 			}
 			return errUnknownStoreAction
-		},
-		NewStoreAction: func(c api.Event) (api.StoreAction, error) {
-			var sa api.StoreAction
-			switch v := c.(type) {
-			case api.EventCreateResource:
-				sa.Action = api.StoreActionKindCreate
-				sa.Target = &api.StoreAction_Resource{
-					Resource: v.Resource,
-				}
-			case api.EventUpdateResource:
-				sa.Action = api.StoreActionKindUpdate
-				sa.Target = &api.StoreAction_Resource{
-					Resource: v.Resource,
-				}
-			case api.EventDeleteResource:
-				sa.Action = api.StoreActionKindRemove
-				sa.Target = &api.StoreAction_Resource{
-					Resource: v.Resource,
-				}
-			default:
-				return api.StoreAction{}, errUnknownStoreAction
-			}
-			return sa, nil
 		},
 	})
 }

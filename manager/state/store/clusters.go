@@ -60,7 +60,7 @@ func init() {
 			}
 			return nil
 		},
-		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
+		ApplyStoreAction: func(tx Tx, sa api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Cluster:
 				obj := v.Cluster
@@ -74,29 +74,6 @@ func init() {
 				}
 			}
 			return errUnknownStoreAction
-		},
-		NewStoreAction: func(c api.Event) (api.StoreAction, error) {
-			var sa api.StoreAction
-			switch v := c.(type) {
-			case api.EventCreateCluster:
-				sa.Action = api.StoreActionKindCreate
-				sa.Target = &api.StoreAction_Cluster{
-					Cluster: v.Cluster,
-				}
-			case api.EventUpdateCluster:
-				sa.Action = api.StoreActionKindUpdate
-				sa.Target = &api.StoreAction_Cluster{
-					Cluster: v.Cluster,
-				}
-			case api.EventDeleteCluster:
-				sa.Action = api.StoreActionKindRemove
-				sa.Target = &api.StoreAction_Cluster{
-					Cluster: v.Cluster,
-				}
-			default:
-				return api.StoreAction{}, errUnknownStoreAction
-			}
-			return sa, nil
 		},
 	})
 }

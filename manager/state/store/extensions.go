@@ -55,7 +55,7 @@ func init() {
 			}
 			return nil
 		},
-		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
+		ApplyStoreAction: func(tx Tx, sa api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Extension:
 				obj := v.Extension
@@ -69,29 +69,6 @@ func init() {
 				}
 			}
 			return errUnknownStoreAction
-		},
-		NewStoreAction: func(c api.Event) (api.StoreAction, error) {
-			var sa api.StoreAction
-			switch v := c.(type) {
-			case api.EventCreateExtension:
-				sa.Action = api.StoreActionKindCreate
-				sa.Target = &api.StoreAction_Extension{
-					Extension: v.Extension,
-				}
-			case api.EventUpdateExtension:
-				sa.Action = api.StoreActionKindUpdate
-				sa.Target = &api.StoreAction_Extension{
-					Extension: v.Extension,
-				}
-			case api.EventDeleteExtension:
-				sa.Action = api.StoreActionKindRemove
-				sa.Target = &api.StoreAction_Extension{
-					Extension: v.Extension,
-				}
-			default:
-				return api.StoreAction{}, errUnknownStoreAction
-			}
-			return sa, nil
 		},
 	})
 }
