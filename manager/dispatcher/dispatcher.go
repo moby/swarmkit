@@ -1171,7 +1171,16 @@ func (d *Dispatcher) moveTasksToOrphaned(nodeID string) error {
 		}
 
 		for _, task := range tasks {
-			if task.Status.State < api.TaskStateOrphaned {
+			// Tasks running on an unreachable node need to be marked as
+			// orphaned since we have no idea whether the task is still running
+			// or not.
+			//
+			// This only applies for tasks that could have made progress since
+			// the agent became unreachable (assigned<->running)
+			//
+			// Tasks in a final state (e.g. rejected) *cannot* have made
+			// progress, therefore there's no point in marking them as orphaned
+			if task.Status.State >= api.TaskStateAssigned && task.Status.State <= api.TaskStateRunning {
 				task.Status.State = api.TaskStateOrphaned
 			}
 
