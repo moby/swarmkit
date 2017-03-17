@@ -11,6 +11,7 @@ import (
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
 
@@ -801,6 +802,61 @@ func TestStoreSnapshot(t *testing.T) {
 
 	s2.View(func(tx2 ReadTx) {
 		assert.Nil(t, GetTask(tx2, "id1"))
+	})
+}
+
+func TestCustomIndex(t *testing.T) {
+	s := NewMemoryStore(nil)
+	assert.NotNil(t, s)
+
+	setupTestStore(t, s)
+
+	// Add a custom index entry to each node
+	err := s.Update(func(tx Tx) error {
+		allNodes, err := FindNodes(tx, All)
+		assert.NoError(t, err)
+		assert.Len(t, allNodes, len(nodeSet))
+
+		for _, n := range allNodes {
+			switch n.ID {
+			case "id2":
+				n.Spec.Annotations.Indices = []api.IndexEntry{
+					{Key: "nodesbefore", Val: "id1"},
+				}
+				assert.NoError(t, UpdateNode(tx, n))
+			case "id3":
+				n.Spec.Annotations.Indices = []api.IndexEntry{
+					{Key: "nodesbefore", Val: "id1"},
+					{Key: "nodesbefore", Val: "id2"},
+				}
+				assert.NoError(t, UpdateNode(tx, n))
+			}
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	s.View(func(readTx ReadTx) {
+		foundNodes, err := FindNodes(readTx, ByCustom("", "nodesbefore", "id2"))
+		require.NoError(t, err)
+		require.Len(t, foundNodes, 1)
+		assert.Equal(t, "id3", foundNodes[0].ID)
+
+		foundNodes, err = FindNodes(readTx, ByCustom("", "nodesbefore", "id1"))
+		require.NoError(t, err)
+		require.Len(t, foundNodes, 2)
+
+		foundNodes, err = FindNodes(readTx, ByCustom("", "nodesbefore", "id3"))
+		require.NoError(t, err)
+		require.Len(t, foundNodes, 0)
+
+		foundNodes, err = FindNodes(readTx, ByCustomPrefix("", "nodesbefore", "id"))
+		require.NoError(t, err)
+		require.Len(t, foundNodes, 2)
+
+		foundNodes, err = FindNodes(readTx, ByCustomPrefix("", "nodesbefore", "id6"))
+		require.NoError(t, err)
+		require.Len(t, foundNodes, 0)
 	})
 }
 

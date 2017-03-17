@@ -36,6 +36,11 @@ func init() {
 					AllowMissing: true,
 					Indexer:      serviceIndexerBySecret{},
 				},
+				indexCustom: {
+					Name:         indexCustom,
+					Indexer:      serviceCustomIndexer{},
+					AllowMissing: true,
+				},
 			},
 		},
 		Save: func(tx ReadTx, snapshot *api.StoreSnapshot) error {
@@ -177,7 +182,7 @@ func GetService(tx ReadTx, id string) *api.Service {
 func FindServices(tx ReadTx, by By) ([]*api.Service, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byNamePrefix, byIDPrefix, byReferencedNetworkID, byReferencedSecretID:
+		case byName, byNamePrefix, byIDPrefix, byReferencedNetworkID, byReferencedSecretID, byCustom, byCustomPrefix:
 			return nil
 		default:
 			return ErrInvalidFindBy
@@ -287,4 +292,23 @@ func (si serviceIndexerBySecret) FromObject(obj interface{}) (bool, [][]byte, er
 	}
 
 	return len(secretIDs) != 0, secretIDs, nil
+}
+
+type serviceCustomIndexer struct{}
+
+func (si serviceCustomIndexer) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (si serviceCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, error) {
+	s, ok := obj.(serviceEntry)
+	if !ok {
+		panic("unexpected type passed to FromObject")
+	}
+
+	return customIndexer("", &s.Spec.Annotations)
+}
+
+func (si serviceCustomIndexer) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
 }
