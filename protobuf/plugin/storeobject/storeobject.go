@@ -246,6 +246,44 @@ func (d *storeObjectGen) genNewStoreAction(topLevelObjs []string) {
 	d.P()
 }
 
+func (d *storeObjectGen) genWatchMessageEvent(topLevelObjs []string) {
+	if len(topLevelObjs) == 0 {
+		return
+	}
+
+	// Generate WatchMessageEvent
+	d.P("func WatchMessageEvent(c Event) *WatchMessage_Event {")
+	d.In()
+	d.P("switch v := c.(type) {")
+	for _, ccTypeName := range topLevelObjs {
+		d.P("case EventCreate", ccTypeName, ":")
+		d.In()
+		d.P("return &WatchMessage_Event{Action: WatchActionKindCreate, Object: &Object{Object: &Object_", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}}}")
+		d.Out()
+		d.P("case EventUpdate", ccTypeName, ":")
+		d.In()
+		d.P("if v.Old", ccTypeName, " != nil {")
+		d.In()
+		d.P("return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}}, OldObject: &Object{Object: &Object_", ccTypeName, "{", ccTypeName, ": v.Old", ccTypeName, "}}}")
+		d.Out()
+		d.P("} else {")
+		d.In()
+		d.P("return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}}}")
+		d.Out()
+		d.P("}")
+		d.Out()
+		d.P("case EventDelete", ccTypeName, ":")
+		d.In()
+		d.P("return &WatchMessage_Event{Action: WatchActionKindRemove, Object: &Object{Object: &Object_", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}}}")
+		d.Out()
+	}
+	d.P("}")
+	d.P("return nil")
+	d.Out()
+	d.P("}")
+	d.P()
+}
+
 func (d *storeObjectGen) genEventFromStoreAction(topLevelObjs []string) {
 	if len(topLevelObjs) == 0 {
 		return
@@ -321,4 +359,5 @@ func (d *storeObjectGen) Generate(file *generator.FileDescriptor) {
 
 	d.genNewStoreAction(topLevelObjs)
 	d.genEventFromStoreAction(topLevelObjs)
+	d.genWatchMessageEvent(topLevelObjs)
 }

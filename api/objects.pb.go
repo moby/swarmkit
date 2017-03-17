@@ -3075,6 +3075,92 @@ func EventFromStoreAction(sa StoreAction, oldObject StoreObject) (Event, error) 
 	return nil, errUnknownStoreAction
 }
 
+func WatchMessageEvent(c Event) *WatchMessage_Event {
+	switch v := c.(type) {
+	case EventCreateNode:
+		return &WatchMessage_Event{Action: WatchActionKindCreate, Object: &Object{Object: &Object_Node{Node: v.Node}}}
+	case EventUpdateNode:
+		if v.OldNode != nil {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Node{Node: v.Node}}, OldObject: &Object{Object: &Object_Node{Node: v.OldNode}}}
+		} else {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Node{Node: v.Node}}}
+		}
+	case EventDeleteNode:
+		return &WatchMessage_Event{Action: WatchActionKindRemove, Object: &Object{Object: &Object_Node{Node: v.Node}}}
+	case EventCreateService:
+		return &WatchMessage_Event{Action: WatchActionKindCreate, Object: &Object{Object: &Object_Service{Service: v.Service}}}
+	case EventUpdateService:
+		if v.OldService != nil {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Service{Service: v.Service}}, OldObject: &Object{Object: &Object_Service{Service: v.OldService}}}
+		} else {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Service{Service: v.Service}}}
+		}
+	case EventDeleteService:
+		return &WatchMessage_Event{Action: WatchActionKindRemove, Object: &Object{Object: &Object_Service{Service: v.Service}}}
+	case EventCreateTask:
+		return &WatchMessage_Event{Action: WatchActionKindCreate, Object: &Object{Object: &Object_Task{Task: v.Task}}}
+	case EventUpdateTask:
+		if v.OldTask != nil {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Task{Task: v.Task}}, OldObject: &Object{Object: &Object_Task{Task: v.OldTask}}}
+		} else {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Task{Task: v.Task}}}
+		}
+	case EventDeleteTask:
+		return &WatchMessage_Event{Action: WatchActionKindRemove, Object: &Object{Object: &Object_Task{Task: v.Task}}}
+	case EventCreateNetwork:
+		return &WatchMessage_Event{Action: WatchActionKindCreate, Object: &Object{Object: &Object_Network{Network: v.Network}}}
+	case EventUpdateNetwork:
+		if v.OldNetwork != nil {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Network{Network: v.Network}}, OldObject: &Object{Object: &Object_Network{Network: v.OldNetwork}}}
+		} else {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Network{Network: v.Network}}}
+		}
+	case EventDeleteNetwork:
+		return &WatchMessage_Event{Action: WatchActionKindRemove, Object: &Object{Object: &Object_Network{Network: v.Network}}}
+	case EventCreateCluster:
+		return &WatchMessage_Event{Action: WatchActionKindCreate, Object: &Object{Object: &Object_Cluster{Cluster: v.Cluster}}}
+	case EventUpdateCluster:
+		if v.OldCluster != nil {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Cluster{Cluster: v.Cluster}}, OldObject: &Object{Object: &Object_Cluster{Cluster: v.OldCluster}}}
+		} else {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Cluster{Cluster: v.Cluster}}}
+		}
+	case EventDeleteCluster:
+		return &WatchMessage_Event{Action: WatchActionKindRemove, Object: &Object{Object: &Object_Cluster{Cluster: v.Cluster}}}
+	case EventCreateSecret:
+		return &WatchMessage_Event{Action: WatchActionKindCreate, Object: &Object{Object: &Object_Secret{Secret: v.Secret}}}
+	case EventUpdateSecret:
+		if v.OldSecret != nil {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Secret{Secret: v.Secret}}, OldObject: &Object{Object: &Object_Secret{Secret: v.OldSecret}}}
+		} else {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Secret{Secret: v.Secret}}}
+		}
+	case EventDeleteSecret:
+		return &WatchMessage_Event{Action: WatchActionKindRemove, Object: &Object{Object: &Object_Secret{Secret: v.Secret}}}
+	case EventCreateResource:
+		return &WatchMessage_Event{Action: WatchActionKindCreate, Object: &Object{Object: &Object_Resource{Resource: v.Resource}}}
+	case EventUpdateResource:
+		if v.OldResource != nil {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Resource{Resource: v.Resource}}, OldObject: &Object{Object: &Object_Resource{Resource: v.OldResource}}}
+		} else {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Resource{Resource: v.Resource}}}
+		}
+	case EventDeleteResource:
+		return &WatchMessage_Event{Action: WatchActionKindRemove, Object: &Object{Object: &Object_Resource{Resource: v.Resource}}}
+	case EventCreateExtension:
+		return &WatchMessage_Event{Action: WatchActionKindCreate, Object: &Object{Object: &Object_Extension{Extension: v.Extension}}}
+	case EventUpdateExtension:
+		if v.OldExtension != nil {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Extension{Extension: v.Extension}}, OldObject: &Object{Object: &Object_Extension{Extension: v.OldExtension}}}
+		} else {
+			return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_Extension{Extension: v.Extension}}}
+		}
+	case EventDeleteExtension:
+		return &WatchMessage_Event{Action: WatchActionKindRemove, Object: &Object{Object: &Object_Extension{Extension: v.Extension}}}
+	}
+	return nil
+}
+
 func (this *Meta) String() string {
 	if this == nil {
 		return "nil"

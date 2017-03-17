@@ -619,60 +619,6 @@ func convertWatchArgs(entries []*api.WatchRequest_WatchEntry) ([]api.Event, erro
 	return events, nil
 }
 
-func watchMessageEvent(event api.Event) *api.WatchMessage_Event {
-	switch v := event.(type) {
-	case api.EventCreateTask:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Task{Task: v.Task}}}
-	case api.EventUpdateTask:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Task{Task: v.Task}}, OldObject: &api.Object{Object: &api.Object_Task{Task: v.OldTask}}}
-	case api.EventDeleteTask:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Task{Task: v.Task}}}
-	case api.EventCreateService:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Service{Service: v.Service}}}
-	case api.EventUpdateService:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Service{Service: v.Service}}, OldObject: &api.Object{Object: &api.Object_Service{Service: v.OldService}}}
-	case api.EventDeleteService:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Service{Service: v.Service}}}
-	case api.EventCreateNetwork:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Network{Network: v.Network}}}
-	case api.EventUpdateNetwork:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Network{Network: v.Network}}, OldObject: &api.Object{Object: &api.Object_Network{Network: v.OldNetwork}}}
-	case api.EventDeleteNetwork:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Network{Network: v.Network}}}
-	case api.EventCreateNode:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Node{Node: v.Node}}}
-	case api.EventUpdateNode:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Node{Node: v.Node}}, OldObject: &api.Object{Object: &api.Object_Node{Node: v.OldNode}}}
-	case api.EventDeleteNode:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Node{Node: v.Node}}}
-	case api.EventCreateCluster:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Cluster{Cluster: v.Cluster}}}
-	case api.EventUpdateCluster:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Cluster{Cluster: v.Cluster}}, OldObject: &api.Object{Object: &api.Object_Cluster{Cluster: v.OldCluster}}}
-	case api.EventDeleteCluster:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Cluster{Cluster: v.Cluster}}}
-	case api.EventCreateSecret:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Secret{Secret: v.Secret}}}
-	case api.EventUpdateSecret:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Secret{Secret: v.Secret}}, OldObject: &api.Object{Object: &api.Object_Secret{Secret: v.OldSecret}}}
-	case api.EventDeleteSecret:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Secret{Secret: v.Secret}}}
-	case api.EventCreateResource:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Resource{Resource: v.Resource}}}
-	case api.EventUpdateResource:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Resource{Resource: v.Resource}}, OldObject: &api.Object{Object: &api.Object_Resource{Resource: v.OldResource}}}
-	case api.EventDeleteResource:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Resource{Resource: v.Resource}}}
-	case api.EventCreateExtension:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Extension{Extension: v.Extension}}}
-	case api.EventUpdateExtension:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Extension{Extension: v.Extension}}, OldObject: &api.Object{Object: &api.Object_Extension{Extension: v.OldExtension}}}
-	case api.EventDeleteExtension:
-		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Extension{Extension: v.Extension}}}
-	}
-	return nil
-}
-
 // Watch starts a stream that returns any changes to objects that match
 // the specified selectors. When the stream begins, it immediately sends
 // an empty message back to the client. It is important to wait for
@@ -709,7 +655,7 @@ func (s *Server) Watch(request *api.WatchRequest, stream api.Store_WatchServer) 
 					return err
 				}
 				events = nil
-			} else if eventMessage := watchMessageEvent(event.(api.Event)); eventMessage != nil {
+			} else if eventMessage := api.WatchMessageEvent(event.(api.Event)); eventMessage != nil {
 				if !request.IncludeOldObject {
 					eventMessage.OldObject = nil
 				}
