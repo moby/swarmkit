@@ -173,7 +173,7 @@ func (s *Server) CreateSecret(ctx context.Context, request *api.CreateSecretRequ
 
 	switch err {
 	case store.ErrNameConflict:
-		return nil, grpc.Errorf(codes.AlreadyExists, "secret %s already exists", request.Spec.Annotations.Name)
+		return nil, grpc.Errorf(codes.AlreadyExists, "name %s conflicts with an existing secret", request.Spec.Annotations.Name)
 	case nil:
 		secret.Spec.Data = nil // clean the actual secret data so it's never returned
 		log.G(ctx).WithFields(logrus.Fields{
