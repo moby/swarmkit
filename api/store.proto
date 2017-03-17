@@ -4,7 +4,6 @@ package docker.swarmkit.v1;
 
 import "specs.proto";
 import "objects.proto";
-import "raft.proto";
 import "types.proto";
 import "gogoproto/gogo.proto";
 import "plugin/plugin.proto";
@@ -87,7 +86,8 @@ message WatchRequest {
 		string kind = 1;
 
 		// Action (create/update/delete)
-		StoreActionKind action = 2;
+		// This is a bitmask, so multiple actions may be OR'd together
+		WatchActionKind action = 2;
 
 		// Filters are combined using AND logic - an event must match
 		// all of them to pass the filter.
@@ -121,7 +121,7 @@ message WatchMessage {
 		// Action (create/update/delete)
 		// Note that WatchMessage does not expose "commit" events that
 		// mark transaction boundaries.
-		StoreActionKind action = 1;
+		WatchActionKind action = 1;
 
 		// Matched object
 		Object object = 2;
@@ -137,4 +137,16 @@ message WatchMessage {
 	// Index versions this change to the data store. It can be used to
 	// resume the watch from this point.
 	Version version = 2;
+}
+
+// WatchActionKind distinguishes between creations, updates, and removals. It
+// is structured as a bitmap so multiple kinds of events can be requested with
+// a mask.
+enum WatchActionKind {
+	option (gogoproto.goproto_enum_prefix) = false;
+	option (gogoproto.enum_customname) = "WatchActionKind";
+	WATCH_ACTION_UNKNOWN = 0 [(gogoproto.enumvalue_customname) = "WatchActionKindUnknown"]; // default value, invalid
+	WATCH_ACTION_CREATE = 1 [(gogoproto.enumvalue_customname) = "WatchActionKindCreate"];
+	WATCH_ACTION_UPDATE = 2 [(gogoproto.enumvalue_customname) = "WatchActionKindUpdate"];
+	WATCH_ACTION_REMOVE = 4 [(gogoproto.enumvalue_customname) = "WatchActionKindRemove"];
 }

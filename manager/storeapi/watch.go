@@ -11,7 +11,7 @@ import (
 
 var errConflictingFilters = grpc.Errorf(codes.InvalidArgument, "conflicting filters specified")
 
-func convertNodeWatch(action api.StoreActionKind, filters []*api.SelectBy) (api.Event, error) {
+func convertNodeWatch(action api.WatchActionKind, filters []*api.SelectBy) ([]api.Event, error) {
 	var (
 		node          api.Node
 		checkFuncs    []api.NodeCheckFunc
@@ -78,19 +78,23 @@ func convertNodeWatch(action api.StoreActionKind, filters []*api.SelectBy) (api.
 		}
 	}
 
-	switch action {
-	case api.StoreActionKindCreate:
-		return api.EventCreateNode{Node: &node, Checks: checkFuncs}, nil
-	case api.StoreActionKindUpdate:
-		return api.EventUpdateNode{Node: &node, Checks: checkFuncs}, nil
-	case api.StoreActionKindRemove:
-		return api.EventDeleteNode{Node: &node, Checks: checkFuncs}, nil
-	default:
-		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized store action %v", action)
+	var events []api.Event
+	if (action & api.WatchActionKindCreate) != 0 {
+		events = append(events, api.EventCreateNode{Node: &node, Checks: checkFuncs})
 	}
+	if (action & api.WatchActionKindUpdate) != 0 {
+		events = append(events, api.EventUpdateNode{Node: &node, Checks: checkFuncs})
+	}
+	if (action & api.WatchActionKindRemove) != 0 {
+		events = append(events, api.EventDeleteNode{Node: &node, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized watch action %v", action)
+	}
+	return events, nil
 }
 
-func convertServiceWatch(action api.StoreActionKind, filters []*api.SelectBy) (api.Event, error) {
+func convertServiceWatch(action api.WatchActionKind, filters []*api.SelectBy) ([]api.Event, error) {
 	var (
 		service    api.Service
 		checkFuncs []api.ServiceCheckFunc
@@ -147,19 +151,23 @@ func convertServiceWatch(action api.StoreActionKind, filters []*api.SelectBy) (a
 		}
 	}
 
-	switch action {
-	case api.StoreActionKindCreate:
-		return api.EventCreateService{Service: &service, Checks: checkFuncs}, nil
-	case api.StoreActionKindUpdate:
-		return api.EventUpdateService{Service: &service, Checks: checkFuncs}, nil
-	case api.StoreActionKindRemove:
-		return api.EventDeleteService{Service: &service, Checks: checkFuncs}, nil
-	default:
-		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized store action %v", action)
+	var events []api.Event
+	if (action & api.WatchActionKindCreate) != 0 {
+		events = append(events, api.EventCreateService{Service: &service, Checks: checkFuncs})
 	}
+	if (action & api.WatchActionKindUpdate) != 0 {
+		events = append(events, api.EventUpdateService{Service: &service, Checks: checkFuncs})
+	}
+	if (action & api.WatchActionKindRemove) != 0 {
+		events = append(events, api.EventDeleteService{Service: &service, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized watch action %v", action)
+	}
+	return events, nil
 }
 
-func convertNetworkWatch(action api.StoreActionKind, filters []*api.SelectBy) (api.Event, error) {
+func convertNetworkWatch(action api.WatchActionKind, filters []*api.SelectBy) ([]api.Event, error) {
 	var (
 		network    api.Network
 		checkFuncs []api.NetworkCheckFunc
@@ -210,19 +218,23 @@ func convertNetworkWatch(action api.StoreActionKind, filters []*api.SelectBy) (a
 		}
 	}
 
-	switch action {
-	case api.StoreActionKindCreate:
-		return api.EventCreateNetwork{Network: &network, Checks: checkFuncs}, nil
-	case api.StoreActionKindUpdate:
-		return api.EventUpdateNetwork{Network: &network, Checks: checkFuncs}, nil
-	case api.StoreActionKindRemove:
-		return api.EventDeleteNetwork{Network: &network, Checks: checkFuncs}, nil
-	default:
-		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized store action %v", action)
+	var events []api.Event
+	if (action & api.WatchActionKindCreate) != 0 {
+		events = append(events, api.EventCreateNetwork{Network: &network, Checks: checkFuncs})
 	}
+	if (action & api.WatchActionKindUpdate) != 0 {
+		events = append(events, api.EventUpdateNetwork{Network: &network, Checks: checkFuncs})
+	}
+	if (action & api.WatchActionKindRemove) != 0 {
+		events = append(events, api.EventDeleteNetwork{Network: &network, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized watch action %v", action)
+	}
+	return events, nil
 }
 
-func convertClusterWatch(action api.StoreActionKind, filters []*api.SelectBy) (api.Event, error) {
+func convertClusterWatch(action api.WatchActionKind, filters []*api.SelectBy) ([]api.Event, error) {
 	var (
 		cluster    api.Cluster
 		checkFuncs []api.ClusterCheckFunc
@@ -273,19 +285,23 @@ func convertClusterWatch(action api.StoreActionKind, filters []*api.SelectBy) (a
 		}
 	}
 
-	switch action {
-	case api.StoreActionKindCreate:
-		return api.EventCreateCluster{Cluster: &cluster, Checks: checkFuncs}, nil
-	case api.StoreActionKindUpdate:
-		return api.EventUpdateCluster{Cluster: &cluster, Checks: checkFuncs}, nil
-	case api.StoreActionKindRemove:
-		return api.EventDeleteCluster{Cluster: &cluster, Checks: checkFuncs}, nil
-	default:
-		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized store action %v", action)
+	var events []api.Event
+	if (action & api.WatchActionKindCreate) != 0 {
+		events = append(events, api.EventCreateCluster{Cluster: &cluster, Checks: checkFuncs})
 	}
+	if (action & api.WatchActionKindUpdate) != 0 {
+		events = append(events, api.EventUpdateCluster{Cluster: &cluster, Checks: checkFuncs})
+	}
+	if (action & api.WatchActionKindRemove) != 0 {
+		events = append(events, api.EventDeleteCluster{Cluster: &cluster, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized watch action %v", action)
+	}
+	return events, nil
 }
 
-func convertSecretWatch(action api.StoreActionKind, filters []*api.SelectBy) (api.Event, error) {
+func convertSecretWatch(action api.WatchActionKind, filters []*api.SelectBy) ([]api.Event, error) {
 	var (
 		secret     api.Secret
 		checkFuncs []api.SecretCheckFunc
@@ -336,19 +352,23 @@ func convertSecretWatch(action api.StoreActionKind, filters []*api.SelectBy) (ap
 		}
 	}
 
-	switch action {
-	case api.StoreActionKindCreate:
-		return api.EventCreateSecret{Secret: &secret, Checks: checkFuncs}, nil
-	case api.StoreActionKindUpdate:
-		return api.EventUpdateSecret{Secret: &secret, Checks: checkFuncs}, nil
-	case api.StoreActionKindRemove:
-		return api.EventDeleteSecret{Secret: &secret, Checks: checkFuncs}, nil
-	default:
-		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized store action %v", action)
+	var events []api.Event
+	if (action & api.WatchActionKindCreate) != 0 {
+		events = append(events, api.EventCreateSecret{Secret: &secret, Checks: checkFuncs})
 	}
+	if (action & api.WatchActionKindUpdate) != 0 {
+		events = append(events, api.EventUpdateSecret{Secret: &secret, Checks: checkFuncs})
+	}
+	if (action & api.WatchActionKindRemove) != 0 {
+		events = append(events, api.EventDeleteSecret{Secret: &secret, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized watch action %v", action)
+	}
+	return events, nil
 }
 
-func convertTaskWatch(action api.StoreActionKind, filters []*api.SelectBy) (api.Event, error) {
+func convertTaskWatch(action api.WatchActionKind, filters []*api.SelectBy) ([]api.Event, error) {
 	var (
 		task            api.Task
 		checkFuncs      []api.TaskCheckFunc
@@ -414,19 +434,23 @@ func convertTaskWatch(action api.StoreActionKind, filters []*api.SelectBy) (api.
 		}
 	}
 
-	switch action {
-	case api.StoreActionKindCreate:
-		return api.EventCreateTask{Task: &task, Checks: checkFuncs}, nil
-	case api.StoreActionKindUpdate:
-		return api.EventUpdateTask{Task: &task, Checks: checkFuncs}, nil
-	case api.StoreActionKindRemove:
-		return api.EventDeleteTask{Task: &task, Checks: checkFuncs}, nil
-	default:
-		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized store action %v", action)
+	var events []api.Event
+	if (action & api.WatchActionKindCreate) != 0 {
+		events = append(events, api.EventCreateTask{Task: &task, Checks: checkFuncs})
 	}
+	if (action & api.WatchActionKindUpdate) != 0 {
+		events = append(events, api.EventUpdateTask{Task: &task, Checks: checkFuncs})
+	}
+	if (action & api.WatchActionKindRemove) != 0 {
+		events = append(events, api.EventDeleteTask{Task: &task, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized watch action %v", action)
+	}
+	return events, nil
 }
 
-func convertExtensionWatch(action api.StoreActionKind, filters []*api.SelectBy) (api.Event, error) {
+func convertExtensionWatch(action api.WatchActionKind, filters []*api.SelectBy) ([]api.Event, error) {
 	var (
 		extension  api.Extension
 		checkFuncs []api.ExtensionCheckFunc
@@ -477,19 +501,23 @@ func convertExtensionWatch(action api.StoreActionKind, filters []*api.SelectBy) 
 		}
 	}
 
-	switch action {
-	case api.StoreActionKindCreate:
-		return api.EventCreateExtension{Extension: &extension, Checks: checkFuncs}, nil
-	case api.StoreActionKindUpdate:
-		return api.EventUpdateExtension{Extension: &extension, Checks: checkFuncs}, nil
-	case api.StoreActionKindRemove:
-		return api.EventDeleteExtension{Extension: &extension, Checks: checkFuncs}, nil
-	default:
-		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized store action %v", action)
+	var events []api.Event
+	if (action & api.WatchActionKindCreate) != 0 {
+		events = append(events, api.EventCreateExtension{Extension: &extension, Checks: checkFuncs})
 	}
+	if (action & api.WatchActionKindUpdate) != 0 {
+		events = append(events, api.EventUpdateExtension{Extension: &extension, Checks: checkFuncs})
+	}
+	if (action & api.WatchActionKindRemove) != 0 {
+		events = append(events, api.EventDeleteExtension{Extension: &extension, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized watch action %v", action)
+	}
+	return events, nil
 }
 
-func convertResourceWatch(action api.StoreActionKind, filters []*api.SelectBy, kind string) (api.Event, error) {
+func convertResourceWatch(action api.WatchActionKind, filters []*api.SelectBy, kind string) ([]api.Event, error) {
 	resource := api.Resource{Kind: kind}
 	checkFuncs := []api.ResourceCheckFunc{state.ResourceCheckKind}
 
@@ -538,16 +566,20 @@ func convertResourceWatch(action api.StoreActionKind, filters []*api.SelectBy, k
 		}
 	}
 
-	switch action {
-	case api.StoreActionKindCreate:
-		return api.EventCreateResource{Resource: &resource, Checks: checkFuncs}, nil
-	case api.StoreActionKindUpdate:
-		return api.EventUpdateResource{Resource: &resource, Checks: checkFuncs}, nil
-	case api.StoreActionKindRemove:
-		return api.EventDeleteResource{Resource: &resource, Checks: checkFuncs}, nil
-	default:
-		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized store action %v", action)
+	var events []api.Event
+	if (action & api.WatchActionKindCreate) != 0 {
+		events = append(events, api.EventCreateResource{Resource: &resource, Checks: checkFuncs})
 	}
+	if (action & api.WatchActionKindUpdate) != 0 {
+		events = append(events, api.EventUpdateResource{Resource: &resource, Checks: checkFuncs})
+	}
+	if (action & api.WatchActionKindRemove) != 0 {
+		events = append(events, api.EventDeleteResource{Resource: &resource, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, grpc.Errorf(codes.InvalidArgument, "unrecognized watch action %v", action)
+	}
+	return events, nil
 }
 
 func convertWatchArgs(entries []*api.WatchRequest_WatchEntry) ([]api.Event, error) {
@@ -555,33 +587,33 @@ func convertWatchArgs(entries []*api.WatchRequest_WatchEntry) ([]api.Event, erro
 
 	for _, entry := range entries {
 		var (
-			event api.Event
-			err   error
+			newEvents []api.Event
+			err       error
 		)
 		switch entry.Kind {
 		case "":
 			return nil, grpc.Errorf(codes.InvalidArgument, "no kind of object specified")
 		case "node":
-			event, err = convertNodeWatch(entry.Action, entry.Filters)
+			newEvents, err = convertNodeWatch(entry.Action, entry.Filters)
 		case "service":
-			event, err = convertServiceWatch(entry.Action, entry.Filters)
+			newEvents, err = convertServiceWatch(entry.Action, entry.Filters)
 		case "network":
-			event, err = convertNetworkWatch(entry.Action, entry.Filters)
+			newEvents, err = convertNetworkWatch(entry.Action, entry.Filters)
 		case "task":
-			event, err = convertTaskWatch(entry.Action, entry.Filters)
+			newEvents, err = convertTaskWatch(entry.Action, entry.Filters)
 		case "cluster":
-			event, err = convertClusterWatch(entry.Action, entry.Filters)
+			newEvents, err = convertClusterWatch(entry.Action, entry.Filters)
 		case "secret":
-			event, err = convertSecretWatch(entry.Action, entry.Filters)
+			newEvents, err = convertSecretWatch(entry.Action, entry.Filters)
 		case "extension":
-			event, err = convertExtensionWatch(entry.Action, entry.Filters)
+			newEvents, err = convertExtensionWatch(entry.Action, entry.Filters)
 		default:
-			event, err = convertResourceWatch(entry.Action, entry.Filters, entry.Kind)
+			newEvents, err = convertResourceWatch(entry.Action, entry.Filters, entry.Kind)
 		}
 		if err != nil {
 			return nil, err
 		}
-		events = append(events, event)
+		events = append(events, newEvents...)
 	}
 
 	return events, nil
@@ -590,53 +622,53 @@ func convertWatchArgs(entries []*api.WatchRequest_WatchEntry) ([]api.Event, erro
 func watchMessageEvent(event api.Event) *api.WatchMessage_Event {
 	switch v := event.(type) {
 	case api.EventCreateTask:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Task{Task: v.Task}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Task{Task: v.Task}}}
 	case api.EventUpdateTask:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Task{Task: v.Task}}, OldObject: &api.Object{Object: &api.Object_Task{Task: v.OldTask}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Task{Task: v.Task}}, OldObject: &api.Object{Object: &api.Object_Task{Task: v.OldTask}}}
 	case api.EventDeleteTask:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Task{Task: v.Task}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Task{Task: v.Task}}}
 	case api.EventCreateService:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Service{Service: v.Service}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Service{Service: v.Service}}}
 	case api.EventUpdateService:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Service{Service: v.Service}}, OldObject: &api.Object{Object: &api.Object_Service{Service: v.OldService}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Service{Service: v.Service}}, OldObject: &api.Object{Object: &api.Object_Service{Service: v.OldService}}}
 	case api.EventDeleteService:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Service{Service: v.Service}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Service{Service: v.Service}}}
 	case api.EventCreateNetwork:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Network{Network: v.Network}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Network{Network: v.Network}}}
 	case api.EventUpdateNetwork:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Network{Network: v.Network}}, OldObject: &api.Object{Object: &api.Object_Network{Network: v.OldNetwork}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Network{Network: v.Network}}, OldObject: &api.Object{Object: &api.Object_Network{Network: v.OldNetwork}}}
 	case api.EventDeleteNetwork:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Network{Network: v.Network}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Network{Network: v.Network}}}
 	case api.EventCreateNode:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Node{Node: v.Node}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Node{Node: v.Node}}}
 	case api.EventUpdateNode:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Node{Node: v.Node}}, OldObject: &api.Object{Object: &api.Object_Node{Node: v.OldNode}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Node{Node: v.Node}}, OldObject: &api.Object{Object: &api.Object_Node{Node: v.OldNode}}}
 	case api.EventDeleteNode:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Node{Node: v.Node}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Node{Node: v.Node}}}
 	case api.EventCreateCluster:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Cluster{Cluster: v.Cluster}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Cluster{Cluster: v.Cluster}}}
 	case api.EventUpdateCluster:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Cluster{Cluster: v.Cluster}}, OldObject: &api.Object{Object: &api.Object_Cluster{Cluster: v.OldCluster}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Cluster{Cluster: v.Cluster}}, OldObject: &api.Object{Object: &api.Object_Cluster{Cluster: v.OldCluster}}}
 	case api.EventDeleteCluster:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Cluster{Cluster: v.Cluster}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Cluster{Cluster: v.Cluster}}}
 	case api.EventCreateSecret:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Secret{Secret: v.Secret}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Secret{Secret: v.Secret}}}
 	case api.EventUpdateSecret:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Secret{Secret: v.Secret}}, OldObject: &api.Object{Object: &api.Object_Secret{Secret: v.OldSecret}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Secret{Secret: v.Secret}}, OldObject: &api.Object{Object: &api.Object_Secret{Secret: v.OldSecret}}}
 	case api.EventDeleteSecret:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Secret{Secret: v.Secret}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Secret{Secret: v.Secret}}}
 	case api.EventCreateResource:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Resource{Resource: v.Resource}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Resource{Resource: v.Resource}}}
 	case api.EventUpdateResource:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Resource{Resource: v.Resource}}, OldObject: &api.Object{Object: &api.Object_Resource{Resource: v.OldResource}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Resource{Resource: v.Resource}}, OldObject: &api.Object{Object: &api.Object_Resource{Resource: v.OldResource}}}
 	case api.EventDeleteResource:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Resource{Resource: v.Resource}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Resource{Resource: v.Resource}}}
 	case api.EventCreateExtension:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindCreate, Object: &api.Object{Object: &api.Object_Extension{Extension: v.Extension}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindCreate, Object: &api.Object{Object: &api.Object_Extension{Extension: v.Extension}}}
 	case api.EventUpdateExtension:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindUpdate, Object: &api.Object{Object: &api.Object_Extension{Extension: v.Extension}}, OldObject: &api.Object{Object: &api.Object_Extension{Extension: v.OldExtension}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindUpdate, Object: &api.Object{Object: &api.Object_Extension{Extension: v.Extension}}, OldObject: &api.Object{Object: &api.Object_Extension{Extension: v.OldExtension}}}
 	case api.EventDeleteExtension:
-		return &api.WatchMessage_Event{Action: api.StoreActionKindRemove, Object: &api.Object{Object: &api.Object_Extension{Extension: v.Extension}}}
+		return &api.WatchMessage_Event{Action: api.WatchActionKindRemove, Object: &api.Object{Object: &api.Object_Extension{Extension: v.Extension}}}
 	}
 	return nil
 }
