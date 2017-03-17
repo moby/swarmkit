@@ -6,7 +6,7 @@ import (
 	memdb "github.com/hashicorp/go-memdb"
 )
 
-// Object is a generic object that can be handled by the store.
+// Object is an abstract object that can be handled by the store.
 type Object interface {
 	ID() string               // Get ID
 	Meta() api.Meta           // Retrieve metadata
