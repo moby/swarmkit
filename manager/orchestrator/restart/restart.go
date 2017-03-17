@@ -329,15 +329,15 @@ func (r *Supervisor) DelayStart(ctx context.Context, _ store.Tx, oldTask *api.Ta
 			r.store.WatchQueue(),
 			api.EventUpdateTask{
 				Task:   &api.Task{ID: oldTask.ID, Status: api.TaskStatus{State: api.TaskStateRunning}},
-				Checks: []api.TaskCheckFunc{state.TaskCheckID, state.TaskCheckStateGreaterThan},
+				Checks: []api.TaskCheckFunc{api.TaskCheckID, state.TaskCheckStateGreaterThan},
 			},
 			api.EventUpdateNode{
 				Node:   &api.Node{ID: oldTask.NodeID, Status: api.NodeStatus{State: api.NodeStatus_DOWN}},
-				Checks: []api.NodeCheckFunc{state.NodeCheckID, state.NodeCheckState},
+				Checks: []api.NodeCheckFunc{api.NodeCheckID, state.NodeCheckState},
 			},
 			api.EventDeleteNode{
 				Node:   &api.Node{ID: oldTask.NodeID},
-				Checks: []api.NodeCheckFunc{state.NodeCheckID},
+				Checks: []api.NodeCheckFunc{api.NodeCheckID},
 			},
 		)
 	}

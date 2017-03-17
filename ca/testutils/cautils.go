@@ -21,7 +21,6 @@ import (
 	"github.com/docker/swarmkit/connectionbroker"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/ioutils"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/remotes"
 	"github.com/stretchr/testify/assert"
@@ -193,7 +192,7 @@ func NewTestCAFromRootCA(t *testing.T, tempBaseDir string, rootCA ca.RootCA, krw
 		},
 		api.EventUpdateCluster{
 			Cluster: &api.Cluster{ID: organization},
-			Checks:  []api.ClusterCheckFunc{state.ClusterCheckID},
+			Checks:  []api.ClusterCheckFunc{api.ClusterCheckID},
 		},
 	)
 	assert.NoError(t, err)

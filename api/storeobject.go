@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/docker/go-events"
 )
@@ -77,4 +78,26 @@ func prefixFromArgs(args ...interface{}) ([]byte, error) {
 		return val[:n-1], nil
 	}
 	return val, nil
+}
+
+func checkCustom(a1, a2 Annotations) bool {
+	if len(a1.Indices) == 1 {
+		for _, ind := range a2.Indices {
+			if ind.Key == a1.Indices[0].Key && ind.Val == a1.Indices[0].Val {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func checkCustomPrefix(a1, a2 Annotations) bool {
+	if len(a1.Indices) == 1 {
+		for _, ind := range a2.Indices {
+			if ind.Key == a1.Indices[0].Key && strings.HasPrefix(ind.Val, a1.Indices[0].Val) {
+				return true
+			}
+		}
+	}
+	return false
 }

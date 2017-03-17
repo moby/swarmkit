@@ -134,6 +134,159 @@ func (d *storeObjectGen) genMsgStoreObject(m *generator.Descriptor, storeObject 
 	d.P("}")
 	d.P()
 
+	// Generate event check functions
+
+	if storeObject.WatchSelectors.ID != nil && *storeObject.WatchSelectors.ID {
+		d.P("func ", ccTypeName, "CheckID(v1, v2 *", ccTypeName, ") bool {")
+		d.In()
+		d.P("return v1.ID == v2.ID")
+		d.Out()
+		d.P("}")
+		d.P()
+	}
+
+	if storeObject.WatchSelectors.IDPrefix != nil && *storeObject.WatchSelectors.IDPrefix {
+		d.P("func ", ccTypeName, "CheckIDPrefix(v1, v2 *", ccTypeName, ") bool {")
+		d.In()
+		d.P("return ", d.stringsPkg.Use(), ".HasPrefix(v2.ID, v1.ID)")
+		d.Out()
+		d.P("}")
+		d.P()
+	}
+
+	if storeObject.WatchSelectors.Name != nil && *storeObject.WatchSelectors.Name {
+		d.P("func ", ccTypeName, "CheckName(v1, v2 *", ccTypeName, ") bool {")
+		d.In()
+		// Node is a special case
+		if *m.Name == "Node" {
+			d.P("if v1.Description == nil || v2.Description == nil {")
+			d.In()
+			d.P("return false")
+			d.Out()
+			d.P("}")
+			d.P("return v1.Description.Hostname == v2.Description.Hostname")
+		} else if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
+			d.P("return v1.Annotations.Name == v2.Annotations.Name")
+		} else {
+			d.P("return v1.Spec.Annotations.Name == v2.Spec.Annotations.Name")
+		}
+		d.Out()
+		d.P("}")
+		d.P()
+	}
+
+	if storeObject.WatchSelectors.NamePrefix != nil && *storeObject.WatchSelectors.NamePrefix {
+		d.P("func ", ccTypeName, "CheckNamePrefix(v1, v2 *", ccTypeName, ") bool {")
+		d.In()
+		// Node is a special case
+		if *m.Name == "Node" {
+			d.P("if v1.Description == nil || v2.Description == nil {")
+			d.In()
+			d.P("return false")
+			d.Out()
+			d.P("}")
+			d.P("return ", d.stringsPkg.Use(), ".HasPrefix(v2.Description.Hostname, v1.Description.Hostname)")
+		} else if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
+			d.P("return ", d.stringsPkg.Use(), ".HasPrefix(v2.Annotations.Name, v1.Annotations.Name)")
+		} else {
+			d.P("return ", d.stringsPkg.Use(), ".HasPrefix(v2.Spec.Annotations.Name, v1.Spec.Annotations.Name)")
+		}
+		d.Out()
+		d.P("}")
+		d.P()
+	}
+
+	if storeObject.WatchSelectors.Custom != nil && *storeObject.WatchSelectors.Custom {
+		d.P("func ", ccTypeName, "CheckCustom(v1, v2 *", ccTypeName, ") bool {")
+		d.In()
+		// Node is a special case
+		if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
+			d.P("return checkCustom(v1.Annotations, v2.Annotations)")
+		} else {
+			d.P("return checkCustom(v1.Spec.Annotations, v2.Spec.Annotations)")
+		}
+		d.Out()
+		d.P("}")
+		d.P()
+	}
+
+	if storeObject.WatchSelectors.CustomPrefix != nil && *storeObject.WatchSelectors.CustomPrefix {
+		d.P("func ", ccTypeName, "CheckCustomPrefix(v1, v2 *", ccTypeName, ") bool {")
+		d.In()
+		// Node is a special case
+		if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
+			d.P("return checkCustomPrefix(v1.Annotations, v2.Annotations)")
+		} else {
+			d.P("return checkCustomPrefix(v1.Spec.Annotations, v2.Spec.Annotations)")
+		}
+		d.Out()
+		d.P("}")
+		d.P()
+	}
+
+	if storeObject.WatchSelectors.NodeID != nil && *storeObject.WatchSelectors.NodeID {
+		d.P("func ", ccTypeName, "CheckNodeID(v1, v2 *", ccTypeName, ") bool {")
+		d.In()
+		d.P("return v1.NodeID == v2.NodeID")
+		d.Out()
+		d.P("}")
+		d.P()
+	}
+
+	if storeObject.WatchSelectors.ServiceID != nil && *storeObject.WatchSelectors.ServiceID {
+		d.P("func ", ccTypeName, "CheckServiceID(v1, v2 *", ccTypeName, ") bool {")
+		d.In()
+		d.P("return v1.ServiceID == v2.ServiceID")
+		d.Out()
+		d.P("}")
+		d.P()
+	}
+
+	if storeObject.WatchSelectors.Slot != nil && *storeObject.WatchSelectors.Slot {
+		d.P("func ", ccTypeName, "CheckSlot(v1, v2 *", ccTypeName, ") bool {")
+		d.In()
+		d.P("return v1.Slot == v2.Slot")
+		d.Out()
+		d.P("}")
+		d.P()
+	}
+
+	if storeObject.WatchSelectors.DesiredState != nil && *storeObject.WatchSelectors.DesiredState {
+		d.P("func ", ccTypeName, "CheckDesiredState(v1, v2 *", ccTypeName, ") bool {")
+		d.In()
+		d.P("return v1.DesiredState == v2.DesiredState")
+		d.Out()
+		d.P("}")
+		d.P()
+	}
+
+	if storeObject.WatchSelectors.Role != nil && *storeObject.WatchSelectors.Role {
+		d.P("func ", ccTypeName, "CheckRole(v1, v2 *", ccTypeName, ") bool {")
+		d.In()
+		d.P("return v1.Role == v2.Role")
+		d.Out()
+		d.P("}")
+		d.P()
+	}
+
+	if storeObject.WatchSelectors.Membership != nil && *storeObject.WatchSelectors.Membership {
+		d.P("func ", ccTypeName, "CheckMembership(v1, v2 *", ccTypeName, ") bool {")
+		d.In()
+		d.P("return v1.Spec.Membership == v2.Spec.Membership")
+		d.Out()
+		d.P("}")
+		d.P()
+	}
+
+	if storeObject.WatchSelectors.Kind != nil && *storeObject.WatchSelectors.Kind {
+		d.P("func ", ccTypeName, "CheckKind(v1, v2 *", ccTypeName, ") bool {")
+		d.In()
+		d.P("return v1.Kind == v2.Kind")
+		d.Out()
+		d.P("}")
+		d.P()
+	}
+
 	// Generate indexer by ID
 
 	d.P("type ", ccTypeName, "IndexerByID struct{}")

@@ -33,7 +33,6 @@ import (
 	"github.com/docker/swarmkit/manager/orchestrator/taskreaper"
 	"github.com/docker/swarmkit/manager/resourceapi"
 	"github.com/docker/swarmkit/manager/scheduler"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/manager/storeapi"
@@ -701,7 +700,7 @@ func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 		},
 		api.EventUpdateCluster{
 			Cluster: &api.Cluster{ID: clusterID},
-			Checks:  []api.ClusterCheckFunc{state.ClusterCheckID},
+			Checks:  []api.ClusterCheckFunc{api.ClusterCheckID},
 		},
 	)
 	if err != nil {

@@ -26,52 +26,52 @@ func convertNodeWatch(action api.WatchActionKind, filters []*api.SelectBy) ([]ap
 				return nil, errConflictingFilters
 			}
 			node.ID = v.ID
-			checkFuncs = append(checkFuncs, state.NodeCheckID)
+			checkFuncs = append(checkFuncs, api.NodeCheckID)
 		case *api.SelectBy_IDPrefix:
 			if node.ID != "" {
 				return nil, errConflictingFilters
 			}
 			node.ID = v.IDPrefix
-			checkFuncs = append(checkFuncs, state.NodeCheckIDPrefix)
+			checkFuncs = append(checkFuncs, api.NodeCheckIDPrefix)
 		case *api.SelectBy_Name:
 			if node.Description != nil {
 				return nil, errConflictingFilters
 			}
 			node.Description = &api.NodeDescription{Hostname: v.Name}
-			checkFuncs = append(checkFuncs, state.NodeCheckName)
+			checkFuncs = append(checkFuncs, api.NodeCheckName)
 		case *api.SelectBy_NamePrefix:
 			if node.Description != nil {
 				return nil, errConflictingFilters
 			}
 			node.Description = &api.NodeDescription{Hostname: v.NamePrefix}
-			checkFuncs = append(checkFuncs, state.NodeCheckNamePrefix)
+			checkFuncs = append(checkFuncs, api.NodeCheckNamePrefix)
 		case *api.SelectBy_Custom:
 			// TODO(aaronl): Support multiple custom indices
 			if len(node.Spec.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			node.Spec.Annotations.Indices = []api.IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
-			checkFuncs = append(checkFuncs, state.NodeCheckCustom)
+			checkFuncs = append(checkFuncs, api.NodeCheckCustom)
 		case *api.SelectBy_CustomPrefix:
 			// TODO(aaronl): Support multiple custom indices
 			if len(node.Spec.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			node.Spec.Annotations.Indices = []api.IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
-			checkFuncs = append(checkFuncs, state.NodeCheckCustomPrefix)
+			checkFuncs = append(checkFuncs, api.NodeCheckCustomPrefix)
 		case *api.SelectBy_Role:
 			if hasRole {
 				return nil, errConflictingFilters
 			}
 			node.Role = v.Role
-			checkFuncs = append(checkFuncs, state.NodeCheckRole)
+			checkFuncs = append(checkFuncs, api.NodeCheckRole)
 			hasRole = true
 		case *api.SelectBy_Membership:
 			if hasMembership {
 				return nil, errConflictingFilters
 			}
 			node.Spec.Membership = v.Membership
-			checkFuncs = append(checkFuncs, state.NodeCheckMembership)
+			checkFuncs = append(checkFuncs, api.NodeCheckMembership)
 			hasMembership = true
 		default:
 			return nil, grpc.Errorf(codes.InvalidArgument, "selector type %T is unsupported for nodes", filter.By)
@@ -107,39 +107,39 @@ func convertServiceWatch(action api.WatchActionKind, filters []*api.SelectBy) ([
 				return nil, errConflictingFilters
 			}
 			service.ID = v.ID
-			checkFuncs = append(checkFuncs, state.ServiceCheckID)
+			checkFuncs = append(checkFuncs, api.ServiceCheckID)
 		case *api.SelectBy_IDPrefix:
 			if service.ID != "" {
 				return nil, errConflictingFilters
 			}
 			service.ID = v.IDPrefix
-			checkFuncs = append(checkFuncs, state.ServiceCheckIDPrefix)
+			checkFuncs = append(checkFuncs, api.ServiceCheckIDPrefix)
 		case *api.SelectBy_Name:
 			if service.Spec.Annotations.Name != "" {
 				return nil, errConflictingFilters
 			}
 			service.Spec.Annotations.Name = v.Name
-			checkFuncs = append(checkFuncs, state.ServiceCheckName)
+			checkFuncs = append(checkFuncs, api.ServiceCheckName)
 		case *api.SelectBy_NamePrefix:
 			if service.Spec.Annotations.Name != "" {
 				return nil, errConflictingFilters
 			}
 			service.Spec.Annotations.Name = v.NamePrefix
-			checkFuncs = append(checkFuncs, state.ServiceCheckNamePrefix)
+			checkFuncs = append(checkFuncs, api.ServiceCheckNamePrefix)
 		case *api.SelectBy_Custom:
 			// TODO(aaronl): Support multiple custom indices
 			if len(service.Spec.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			service.Spec.Annotations.Indices = []api.IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
-			checkFuncs = append(checkFuncs, state.ServiceCheckCustom)
+			checkFuncs = append(checkFuncs, api.ServiceCheckCustom)
 		case *api.SelectBy_CustomPrefix:
 			// TODO(aaronl): Support multiple custom indices
 			if len(service.Spec.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			service.Spec.Annotations.Indices = []api.IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
-			checkFuncs = append(checkFuncs, state.ServiceCheckCustomPrefix)
+			checkFuncs = append(checkFuncs, api.ServiceCheckCustomPrefix)
 		case *api.SelectBy_ReferencedNetworkID:
 			// TODO(aaronl): not supported for now
 			return nil, grpc.Errorf(codes.InvalidArgument, "selector type %T is unsupported for services", filter.By)
@@ -180,39 +180,39 @@ func convertNetworkWatch(action api.WatchActionKind, filters []*api.SelectBy) ([
 				return nil, errConflictingFilters
 			}
 			network.ID = v.ID
-			checkFuncs = append(checkFuncs, state.NetworkCheckID)
+			checkFuncs = append(checkFuncs, api.NetworkCheckID)
 		case *api.SelectBy_IDPrefix:
 			if network.ID != "" {
 				return nil, errConflictingFilters
 			}
 			network.ID = v.IDPrefix
-			checkFuncs = append(checkFuncs, state.NetworkCheckIDPrefix)
+			checkFuncs = append(checkFuncs, api.NetworkCheckIDPrefix)
 		case *api.SelectBy_Name:
 			if network.Spec.Annotations.Name != "" {
 				return nil, errConflictingFilters
 			}
 			network.Spec.Annotations.Name = v.Name
-			checkFuncs = append(checkFuncs, state.NetworkCheckName)
+			checkFuncs = append(checkFuncs, api.NetworkCheckName)
 		case *api.SelectBy_NamePrefix:
 			if network.Spec.Annotations.Name != "" {
 				return nil, errConflictingFilters
 			}
 			network.Spec.Annotations.Name = v.NamePrefix
-			checkFuncs = append(checkFuncs, state.NetworkCheckNamePrefix)
+			checkFuncs = append(checkFuncs, api.NetworkCheckNamePrefix)
 		case *api.SelectBy_Custom:
 			// TODO(aaronl): Support multiple custom indices
 			if len(network.Spec.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			network.Spec.Annotations.Indices = []api.IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
-			checkFuncs = append(checkFuncs, state.NetworkCheckCustom)
+			checkFuncs = append(checkFuncs, api.NetworkCheckCustom)
 		case *api.SelectBy_CustomPrefix:
 			// TODO(aaronl): Support multiple custom indices
 			if len(network.Spec.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			network.Spec.Annotations.Indices = []api.IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
-			checkFuncs = append(checkFuncs, state.NetworkCheckCustomPrefix)
+			checkFuncs = append(checkFuncs, api.NetworkCheckCustomPrefix)
 		default:
 			return nil, grpc.Errorf(codes.InvalidArgument, "selector type %T is unsupported for networks", filter.By)
 		}
@@ -247,39 +247,39 @@ func convertClusterWatch(action api.WatchActionKind, filters []*api.SelectBy) ([
 				return nil, errConflictingFilters
 			}
 			cluster.ID = v.ID
-			checkFuncs = append(checkFuncs, state.ClusterCheckID)
+			checkFuncs = append(checkFuncs, api.ClusterCheckID)
 		case *api.SelectBy_IDPrefix:
 			if cluster.ID != "" {
 				return nil, errConflictingFilters
 			}
 			cluster.ID = v.IDPrefix
-			checkFuncs = append(checkFuncs, state.ClusterCheckIDPrefix)
+			checkFuncs = append(checkFuncs, api.ClusterCheckIDPrefix)
 		case *api.SelectBy_Name:
 			if cluster.Spec.Annotations.Name != "" {
 				return nil, errConflictingFilters
 			}
 			cluster.Spec.Annotations.Name = v.Name
-			checkFuncs = append(checkFuncs, state.ClusterCheckName)
+			checkFuncs = append(checkFuncs, api.ClusterCheckName)
 		case *api.SelectBy_NamePrefix:
 			if cluster.Spec.Annotations.Name != "" {
 				return nil, errConflictingFilters
 			}
 			cluster.Spec.Annotations.Name = v.NamePrefix
-			checkFuncs = append(checkFuncs, state.ClusterCheckNamePrefix)
+			checkFuncs = append(checkFuncs, api.ClusterCheckNamePrefix)
 		case *api.SelectBy_Custom:
 			// TODO(aaronl): Support multiple custom indices
 			if len(cluster.Spec.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			cluster.Spec.Annotations.Indices = []api.IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
-			checkFuncs = append(checkFuncs, state.ClusterCheckCustom)
+			checkFuncs = append(checkFuncs, api.ClusterCheckCustom)
 		case *api.SelectBy_CustomPrefix:
 			// TODO(aaronl): Support multiple custom indices
 			if len(cluster.Spec.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			cluster.Spec.Annotations.Indices = []api.IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
-			checkFuncs = append(checkFuncs, state.ClusterCheckCustomPrefix)
+			checkFuncs = append(checkFuncs, api.ClusterCheckCustomPrefix)
 		default:
 			return nil, grpc.Errorf(codes.InvalidArgument, "selector type %T is unsupported for clusters", filter.By)
 		}
@@ -314,39 +314,39 @@ func convertSecretWatch(action api.WatchActionKind, filters []*api.SelectBy) ([]
 				return nil, errConflictingFilters
 			}
 			secret.ID = v.ID
-			checkFuncs = append(checkFuncs, state.SecretCheckID)
+			checkFuncs = append(checkFuncs, api.SecretCheckID)
 		case *api.SelectBy_IDPrefix:
 			if secret.ID != "" {
 				return nil, errConflictingFilters
 			}
 			secret.ID = v.IDPrefix
-			checkFuncs = append(checkFuncs, state.SecretCheckIDPrefix)
+			checkFuncs = append(checkFuncs, api.SecretCheckIDPrefix)
 		case *api.SelectBy_Name:
 			if secret.Spec.Annotations.Name != "" {
 				return nil, errConflictingFilters
 			}
 			secret.Spec.Annotations.Name = v.Name
-			checkFuncs = append(checkFuncs, state.SecretCheckName)
+			checkFuncs = append(checkFuncs, api.SecretCheckName)
 		case *api.SelectBy_NamePrefix:
 			if secret.Spec.Annotations.Name != "" {
 				return nil, errConflictingFilters
 			}
 			secret.Spec.Annotations.Name = v.NamePrefix
-			checkFuncs = append(checkFuncs, state.SecretCheckNamePrefix)
+			checkFuncs = append(checkFuncs, api.SecretCheckNamePrefix)
 		case *api.SelectBy_Custom:
 			// TODO(aaronl): Support multiple custom indices
 			if len(secret.Spec.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			secret.Spec.Annotations.Indices = []api.IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
-			checkFuncs = append(checkFuncs, state.SecretCheckCustom)
+			checkFuncs = append(checkFuncs, api.SecretCheckCustom)
 		case *api.SelectBy_CustomPrefix:
 			// TODO(aaronl): Support multiple custom indices
 			if len(secret.Spec.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			secret.Spec.Annotations.Indices = []api.IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
-			checkFuncs = append(checkFuncs, state.SecretCheckCustomPrefix)
+			checkFuncs = append(checkFuncs, api.SecretCheckCustomPrefix)
 		default:
 			return nil, grpc.Errorf(codes.InvalidArgument, "selector type %T is unsupported for secrets", filter.By)
 		}
@@ -382,52 +382,52 @@ func convertTaskWatch(action api.WatchActionKind, filters []*api.SelectBy) ([]ap
 				return nil, errConflictingFilters
 			}
 			task.ID = v.ID
-			checkFuncs = append(checkFuncs, state.TaskCheckID)
+			checkFuncs = append(checkFuncs, api.TaskCheckID)
 		case *api.SelectBy_IDPrefix:
 			if task.ID != "" {
 				return nil, errConflictingFilters
 			}
 			task.ID = v.IDPrefix
-			checkFuncs = append(checkFuncs, state.TaskCheckIDPrefix)
+			checkFuncs = append(checkFuncs, api.TaskCheckIDPrefix)
 		case *api.SelectBy_Custom:
 			// TODO(aaronl): Support multiple custom indices
 			if len(task.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			task.Annotations.Indices = []api.IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
-			checkFuncs = append(checkFuncs, state.TaskCheckCustom)
+			checkFuncs = append(checkFuncs, api.TaskCheckCustom)
 		case *api.SelectBy_CustomPrefix:
 			// TODO(aaronl): Support multiple custom indices
 			if len(task.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			task.Annotations.Indices = []api.IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
-			checkFuncs = append(checkFuncs, state.TaskCheckCustomPrefix)
+			checkFuncs = append(checkFuncs, api.TaskCheckCustomPrefix)
 		case *api.SelectBy_ServiceID:
 			if task.ServiceID != "" {
 				return nil, errConflictingFilters
 			}
 			task.ServiceID = v.ServiceID
-			checkFuncs = append(checkFuncs, state.TaskCheckServiceID)
+			checkFuncs = append(checkFuncs, api.TaskCheckServiceID)
 		case *api.SelectBy_NodeID:
 			if task.NodeID != "" {
 				return nil, errConflictingFilters
 			}
 			task.NodeID = v.NodeID
-			checkFuncs = append(checkFuncs, state.TaskCheckNodeID)
+			checkFuncs = append(checkFuncs, api.TaskCheckNodeID)
 		case *api.SelectBy_Slot:
 			if task.Slot != 0 || task.ServiceID != "" {
 				return nil, errConflictingFilters
 			}
 			task.ServiceID = v.Slot.ServiceID
 			task.Slot = v.Slot.Slot
-			checkFuncs = append(checkFuncs, state.TaskCheckSlot, state.TaskCheckServiceID)
+			checkFuncs = append(checkFuncs, api.TaskCheckSlot, api.TaskCheckServiceID)
 		case *api.SelectBy_DesiredState:
 			if hasDesiredState {
 				return nil, errConflictingFilters
 			}
 			task.DesiredState = v.DesiredState
-			checkFuncs = append(checkFuncs, state.TaskCheckDesiredState)
+			checkFuncs = append(checkFuncs, api.TaskCheckDesiredState)
 			hasDesiredState = true
 		default:
 			return nil, grpc.Errorf(codes.InvalidArgument, "selector type %T is unsupported for tasks", filter.By)
@@ -463,39 +463,39 @@ func convertExtensionWatch(action api.WatchActionKind, filters []*api.SelectBy) 
 				return nil, errConflictingFilters
 			}
 			extension.ID = v.ID
-			checkFuncs = append(checkFuncs, state.ExtensionCheckID)
+			checkFuncs = append(checkFuncs, api.ExtensionCheckID)
 		case *api.SelectBy_IDPrefix:
 			if extension.ID != "" {
 				return nil, errConflictingFilters
 			}
 			extension.ID = v.IDPrefix
-			checkFuncs = append(checkFuncs, state.ExtensionCheckIDPrefix)
+			checkFuncs = append(checkFuncs, api.ExtensionCheckIDPrefix)
 		case *api.SelectBy_Name:
 			if extension.Annotations.Name != "" {
 				return nil, errConflictingFilters
 			}
 			extension.Annotations.Name = v.Name
-			checkFuncs = append(checkFuncs, state.ExtensionCheckName)
+			checkFuncs = append(checkFuncs, api.ExtensionCheckName)
 		case *api.SelectBy_NamePrefix:
 			if extension.Annotations.Name != "" {
 				return nil, errConflictingFilters
 			}
 			extension.Annotations.Name = v.NamePrefix
-			checkFuncs = append(checkFuncs, state.ExtensionCheckNamePrefix)
+			checkFuncs = append(checkFuncs, api.ExtensionCheckNamePrefix)
 		case *api.SelectBy_Custom:
 			// TODO(aaronl): Support multiple custom indices
 			if len(extension.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			extension.Annotations.Indices = []api.IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
-			checkFuncs = append(checkFuncs, state.ExtensionCheckCustom)
+			checkFuncs = append(checkFuncs, api.ExtensionCheckCustom)
 		case *api.SelectBy_CustomPrefix:
 			// TODO(aaronl): Support multiple custom indices
 			if len(extension.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			extension.Annotations.Indices = []api.IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
-			checkFuncs = append(checkFuncs, state.ExtensionCheckCustomPrefix)
+			checkFuncs = append(checkFuncs, api.ExtensionCheckCustomPrefix)
 		default:
 			return nil, grpc.Errorf(codes.InvalidArgument, "selector type %T is unsupported for extensions", filter.By)
 		}
@@ -519,7 +519,7 @@ func convertExtensionWatch(action api.WatchActionKind, filters []*api.SelectBy) 
 
 func convertResourceWatch(action api.WatchActionKind, filters []*api.SelectBy, kind string) ([]api.Event, error) {
 	resource := api.Resource{Kind: kind}
-	checkFuncs := []api.ResourceCheckFunc{state.ResourceCheckKind}
+	checkFuncs := []api.ResourceCheckFunc{api.ResourceCheckKind}
 
 	for _, filter := range filters {
 		switch v := filter.By.(type) {
@@ -528,39 +528,39 @@ func convertResourceWatch(action api.WatchActionKind, filters []*api.SelectBy, k
 				return nil, errConflictingFilters
 			}
 			resource.ID = v.ID
-			checkFuncs = append(checkFuncs, state.ResourceCheckID)
+			checkFuncs = append(checkFuncs, api.ResourceCheckID)
 		case *api.SelectBy_IDPrefix:
 			if resource.ID != "" {
 				return nil, errConflictingFilters
 			}
 			resource.ID = v.IDPrefix
-			checkFuncs = append(checkFuncs, state.ResourceCheckIDPrefix)
+			checkFuncs = append(checkFuncs, api.ResourceCheckIDPrefix)
 		case *api.SelectBy_Name:
 			if resource.Annotations.Name != "" {
 				return nil, errConflictingFilters
 			}
 			resource.Annotations.Name = v.Name
-			checkFuncs = append(checkFuncs, state.ResourceCheckName)
+			checkFuncs = append(checkFuncs, api.ResourceCheckName)
 		case *api.SelectBy_NamePrefix:
 			if resource.Annotations.Name != "" {
 				return nil, errConflictingFilters
 			}
 			resource.Annotations.Name = v.NamePrefix
-			checkFuncs = append(checkFuncs, state.ResourceCheckNamePrefix)
+			checkFuncs = append(checkFuncs, api.ResourceCheckNamePrefix)
 		case *api.SelectBy_Custom:
 			// TODO(aaronl): Support multiple custom indices
 			if len(resource.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			resource.Annotations.Indices = []api.IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
-			checkFuncs = append(checkFuncs, state.ResourceCheckCustom)
+			checkFuncs = append(checkFuncs, api.ResourceCheckCustom)
 		case *api.SelectBy_CustomPrefix:
 			// TODO(aaronl): Support multiple custom indices
 			if len(resource.Annotations.Indices) != 0 {
 				return nil, errConflictingFilters
 			}
 			resource.Annotations.Indices = []api.IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
-			checkFuncs = append(checkFuncs, state.ResourceCheckCustomPrefix)
+			checkFuncs = append(checkFuncs, api.ResourceCheckCustomPrefix)
 		default:
 			return nil, grpc.Errorf(codes.InvalidArgument, "selector type %T is unsupported for resource objects", filter.By)
 		}
