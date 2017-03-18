@@ -36,6 +36,11 @@ func NewExternalSigningServer(rootCA ca.RootCA, basedir string) (*ExternalSignin
 	serverCN := "external-ca-example-server"
 	serverOU := "localhost" // Make a valid server cert for localhost.
 
+	s, err := rootCA.Signer()
+	if err != nil {
+		return nil, err
+	}
+
 	// Create TLS credentials for the external CA server which we will run.
 	serverPaths := ca.CertPaths{
 		Cert: filepath.Join(basedir, "server.crt"),
@@ -72,9 +77,9 @@ func NewExternalSigningServer(rootCA ca.RootCA, basedir string) (*ExternalSignin
 
 	mux := http.NewServeMux()
 	handler := &signHandler{
-		numIssued: &ess.NumIssued,
-		rootCA:    rootCA,
-		flaky:     &ess.flaky,
+		numIssued:  &ess.NumIssued,
+		leafSigner: s,
+		flaky:      &ess.flaky,
 	}
 	mux.Handle(signURL.Path, handler)
 	ess.handler = handler
@@ -118,13 +123,11 @@ func (ess *ExternalSigningServer) EnableCASigning() error {
 	ess.handler.mu.Lock()
 	defer ess.handler.mu.Unlock()
 
-	rca := ess.handler.rootCA
-
-	rootCert, err := helpers.ParseCertificatePEM(rca.Cert)
+	rootCert, err := helpers.ParseCertificatePEM(ess.handler.leafSigner.Cert)
 	if err != nil {
 		return errors.Wrap(err, "could not parse old CA certificate")
 	}
-	rootSigner, err := helpers.ParsePrivateKeyPEM(rca.Signer.Key)
+	rootSigner, err := helpers.ParsePrivateKeyPEM(ess.handler.leafSigner.Key)
 	if err != nil {
 		return errors.Wrap(err, "could not parse old CA key")
 	}
@@ -154,11 +157,11 @@ func (ess *ExternalSigningServer) DisableCASigning() {
 }
 
 type signHandler struct {
-	mu        sync.Mutex
-	numIssued *uint64
-	rootCA    ca.RootCA
-	flaky     *uint32
-	caSigner  signer.Signer
+	mu         sync.Mutex
+	numIssued  *uint64
+	flaky      *uint32
+	leafSigner *ca.LocalSigner
+	caSigner   signer.Signer
 }
 
 func (h *signHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -255,7 +258,7 @@ func (h *signHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Sign the requested leaf certificate.
-		certPEM, err = h.rootCA.Signer.Sign(signReq)
+		certPEM, err = h.leafSigner.Sign(signReq)
 	}
 	if err != nil {
 		cfsslErr := cfsslerrors.New(cfsslerrors.APIClientError, cfsslerrors.ServerRequestFailed)

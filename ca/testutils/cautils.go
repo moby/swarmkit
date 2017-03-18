@@ -15,9 +15,7 @@ import (
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/initca"
-	"github.com/cloudflare/cfssl/log"
 	cfsigner "github.com/cloudflare/cfssl/signer"
-	"github.com/cloudflare/cfssl/signer/local"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/connectionbroker"
@@ -26,8 +24,6 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/remotes"
-	"github.com/opencontainers/go-digest"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -292,7 +288,11 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 		hosts = append(hosts, ca.CARole)
 	}
 
-	cert, err := rootCA.Signer.Sign(cfsigner.SignRequest{
+	signer, err := rootCA.Signer()
+	if err != nil {
+		return nil, err
+	}
+	cert, err := signer.Sign(cfsigner.SignRequest{
 		Request: string(csr),
 		// OU is used for Authentication of the node type. The CN has the random
 		// node ID.
@@ -305,7 +305,7 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 	}
 
 	// Append the root CA Key to the certificate, to create a valid chain
-	certChain := append(cert, rootCA.Cert...)
+	certChain := append(cert, rootCA.Certs...)
 
 	// If we were instructed to persist the files
 	if tmpDir != "" {
@@ -341,7 +341,7 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 
 	if nonSigningRoot {
 		rootCA = ca.RootCA{
-			Cert:   rootCA.Cert,
+			Certs:  rootCA.Certs,
 			Digest: rootCA.Digest,
 			Pool:   rootCA.Pool,
 		}
@@ -395,23 +395,8 @@ func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duratio
 		return ca.RootCA{}, err
 	}
 
-	// Convert the key given by initca to an object to create a ca.RootCA
-	parsedKey, err := helpers.ParsePrivateKeyPEM(key)
+	rootCA, err := ca.NewRootCA(cert, cert, key, ca.DefaultNodeCertExpiration, nil)
 	if err != nil {
-		log.Errorf("failed to parse private key: %v", err)
-		return ca.RootCA{}, err
-	}
-
-	// Convert the certificate into an object to create a ca.RootCA
-	parsedCert, err := helpers.ParseCertificatePEM(cert)
-	if err != nil {
-		return ca.RootCA{}, err
-	}
-
-	// Create a Signer out of the private key
-	signer, err := local.NewSigner(parsedKey, parsedCert, cfsigner.DefaultSigAlgo(parsedKey), ca.SigningPolicy(expiry))
-	if err != nil {
-		log.Errorf("failed to create signer: %v", err)
 		return ca.RootCA{}, err
 	}
 
@@ -428,22 +413,7 @@ func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duratio
 	if err := ioutils.AtomicWriteFile(paths.Key, key, 0600); err != nil {
 		return ca.RootCA{}, err
 	}
-
-	// Create a Pool with our Root CA Certificate
-	pool := x509.NewCertPool()
-	if !pool.AppendCertsFromPEM(cert) {
-		return ca.RootCA{}, errors.New("failed to append certificate to cert pool")
-	}
-
-	return ca.RootCA{
-		Signer: &ca.LocalSigner{
-			Signer: signer,
-			Key:    key,
-		},
-		Cert:   cert,
-		Pool:   pool,
-		Digest: digest.FromBytes(cert),
-	}, nil
+	return rootCA, nil
 }
 
 // ReDateCert takes an existing cert and changes the not before and not after date, to make it easier

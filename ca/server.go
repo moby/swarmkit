@@ -361,7 +361,7 @@ func (s *Server) GetRootCACertificate(ctx context.Context, request *api.GetRootC
 	})
 
 	return &api.GetRootCACertificateResponse{
-		Certificate: s.securityConfig.RootCA().Cert,
+		Certificate: s.securityConfig.RootCA().Certs,
 	}, nil
 }
 
