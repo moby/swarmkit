@@ -8,7 +8,12 @@ import (
 	"github.com/docker/go-events"
 )
 
-var errUnknownStoreAction = errors.New("unrecognized action type")
+var (
+	errUnknownStoreAction = errors.New("unrecognized action type")
+	errConflictingFilters = errors.New("conflicting filters specified")
+	errNoKindSpecified    = errors.New("no kind of object specified")
+	errUnrecognizedAction = errors.New("unrecognized action")
+)
 
 // StoreObject is an abstract object that can be handled by the store.
 type StoreObject interface {

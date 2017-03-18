@@ -1966,6 +1966,84 @@ func NodeCheckMembership(v1, v2 *Node) bool {
 	return v1.Spec.Membership == v2.Spec.Membership
 }
 
+func ConvertNodeWatch(action WatchActionKind, filters []*SelectBy) ([]Event, error) {
+	var (
+		m             Node
+		checkFuncs    []NodeCheckFunc
+		hasRole       bool
+		hasMembership bool
+	)
+
+	for _, filter := range filters {
+		switch v := filter.By.(type) {
+		case *SelectBy_ID:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.ID
+			checkFuncs = append(checkFuncs, NodeCheckID)
+		case *SelectBy_IDPrefix:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.IDPrefix
+			checkFuncs = append(checkFuncs, NodeCheckIDPrefix)
+		case *SelectBy_Name:
+			if m.Description != nil {
+				return nil, errConflictingFilters
+			}
+			m.Description = &NodeDescription{Hostname: v.Name}
+			checkFuncs = append(checkFuncs, NodeCheckName)
+		case *SelectBy_NamePrefix:
+			if m.Description != nil {
+				return nil, errConflictingFilters
+			}
+			m.Description = &NodeDescription{Hostname: v.NamePrefix}
+			checkFuncs = append(checkFuncs, NodeCheckNamePrefix)
+		case *SelectBy_Custom:
+			if len(m.Spec.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Indices = []IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
+			checkFuncs = append(checkFuncs, NodeCheckCustom)
+		case *SelectBy_CustomPrefix:
+			if len(m.Spec.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Indices = []IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
+			checkFuncs = append(checkFuncs, NodeCheckCustomPrefix)
+		case *SelectBy_Role:
+			if hasRole {
+				return nil, errConflictingFilters
+			}
+			hasRole = true
+			m.Role = v.Role
+			checkFuncs = append(checkFuncs, NodeCheckRole)
+		case *SelectBy_Membership:
+			if hasMembership {
+				return nil, errConflictingFilters
+			}
+			hasMembership = true
+			m.Spec.Membership = v.Membership
+			checkFuncs = append(checkFuncs, NodeCheckMembership)
+		}
+	}
+	var events []Event
+	if (action & WatchActionKindCreate) != 0 {
+		events = append(events, EventCreateNode{Node: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindUpdate) != 0 {
+		events = append(events, EventUpdateNode{Node: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindRemove) != 0 {
+		events = append(events, EventDeleteNode{Node: &m, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, errUnrecognizedAction
+	}
+	return events, nil
+}
+
 type NodeIndexerByID struct{}
 
 func (indexer NodeIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
@@ -2119,6 +2197,68 @@ func ServiceCheckCustom(v1, v2 *Service) bool {
 
 func ServiceCheckCustomPrefix(v1, v2 *Service) bool {
 	return checkCustomPrefix(v1.Spec.Annotations, v2.Spec.Annotations)
+}
+
+func ConvertServiceWatch(action WatchActionKind, filters []*SelectBy) ([]Event, error) {
+	var (
+		m          Service
+		checkFuncs []ServiceCheckFunc
+	)
+
+	for _, filter := range filters {
+		switch v := filter.By.(type) {
+		case *SelectBy_ID:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.ID
+			checkFuncs = append(checkFuncs, ServiceCheckID)
+		case *SelectBy_IDPrefix:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.IDPrefix
+			checkFuncs = append(checkFuncs, ServiceCheckIDPrefix)
+		case *SelectBy_Name:
+			if m.Spec.Annotations.Name != "" {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Name = v.Name
+			checkFuncs = append(checkFuncs, ServiceCheckName)
+		case *SelectBy_NamePrefix:
+			if m.Spec.Annotations.Name != "" {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Name = v.NamePrefix
+			checkFuncs = append(checkFuncs, ServiceCheckNamePrefix)
+		case *SelectBy_Custom:
+			if len(m.Spec.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Indices = []IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
+			checkFuncs = append(checkFuncs, ServiceCheckCustom)
+		case *SelectBy_CustomPrefix:
+			if len(m.Spec.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Indices = []IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
+			checkFuncs = append(checkFuncs, ServiceCheckCustomPrefix)
+		}
+	}
+	var events []Event
+	if (action & WatchActionKindCreate) != 0 {
+		events = append(events, EventCreateService{Service: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindUpdate) != 0 {
+		events = append(events, EventUpdateService{Service: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindRemove) != 0 {
+		events = append(events, EventDeleteService{Service: &m, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, errUnrecognizedAction
+	}
+	return events, nil
 }
 
 type ServiceIndexerByID struct{}
@@ -2292,6 +2432,95 @@ func TaskCheckDesiredState(v1, v2 *Task) bool {
 	return v1.DesiredState == v2.DesiredState
 }
 
+func ConvertTaskWatch(action WatchActionKind, filters []*SelectBy) ([]Event, error) {
+	var (
+		m               Task
+		checkFuncs      []TaskCheckFunc
+		hasDesiredState bool
+	)
+
+	for _, filter := range filters {
+		switch v := filter.By.(type) {
+		case *SelectBy_ID:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.ID
+			checkFuncs = append(checkFuncs, TaskCheckID)
+		case *SelectBy_IDPrefix:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.IDPrefix
+			checkFuncs = append(checkFuncs, TaskCheckIDPrefix)
+		case *SelectBy_Name:
+			if m.Annotations.Name != "" {
+				return nil, errConflictingFilters
+			}
+			m.Annotations.Name = v.Name
+			checkFuncs = append(checkFuncs, TaskCheckName)
+		case *SelectBy_NamePrefix:
+			if m.Annotations.Name != "" {
+				return nil, errConflictingFilters
+			}
+			m.Annotations.Name = v.NamePrefix
+			checkFuncs = append(checkFuncs, TaskCheckNamePrefix)
+		case *SelectBy_Custom:
+			if len(m.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Annotations.Indices = []IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
+			checkFuncs = append(checkFuncs, TaskCheckCustom)
+		case *SelectBy_CustomPrefix:
+			if len(m.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Annotations.Indices = []IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
+			checkFuncs = append(checkFuncs, TaskCheckCustomPrefix)
+		case *SelectBy_ServiceID:
+			if m.ServiceID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ServiceID = v.ServiceID
+			checkFuncs = append(checkFuncs, TaskCheckServiceID)
+		case *SelectBy_NodeID:
+			if m.NodeID != "" {
+				return nil, errConflictingFilters
+			}
+			m.NodeID = v.NodeID
+			checkFuncs = append(checkFuncs, TaskCheckNodeID)
+		case *SelectBy_Slot:
+			if m.Slot != 0 || m.ServiceID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ServiceID = v.Slot.ServiceID
+			m.Slot = v.Slot.Slot
+			checkFuncs = append(checkFuncs, TaskCheckNodeID, TaskCheckSlot)
+		case *SelectBy_DesiredState:
+			if hasDesiredState {
+				return nil, errConflictingFilters
+			}
+			hasDesiredState = true
+			m.DesiredState = v.DesiredState
+			checkFuncs = append(checkFuncs, TaskCheckDesiredState)
+		}
+	}
+	var events []Event
+	if (action & WatchActionKindCreate) != 0 {
+		events = append(events, EventCreateTask{Task: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindUpdate) != 0 {
+		events = append(events, EventUpdateTask{Task: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindRemove) != 0 {
+		events = append(events, EventDeleteTask{Task: &m, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, errUnrecognizedAction
+	}
+	return events, nil
+}
+
 type TaskIndexerByID struct{}
 
 func (indexer TaskIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
@@ -2445,6 +2674,68 @@ func NetworkCheckCustom(v1, v2 *Network) bool {
 
 func NetworkCheckCustomPrefix(v1, v2 *Network) bool {
 	return checkCustomPrefix(v1.Spec.Annotations, v2.Spec.Annotations)
+}
+
+func ConvertNetworkWatch(action WatchActionKind, filters []*SelectBy) ([]Event, error) {
+	var (
+		m          Network
+		checkFuncs []NetworkCheckFunc
+	)
+
+	for _, filter := range filters {
+		switch v := filter.By.(type) {
+		case *SelectBy_ID:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.ID
+			checkFuncs = append(checkFuncs, NetworkCheckID)
+		case *SelectBy_IDPrefix:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.IDPrefix
+			checkFuncs = append(checkFuncs, NetworkCheckIDPrefix)
+		case *SelectBy_Name:
+			if m.Spec.Annotations.Name != "" {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Name = v.Name
+			checkFuncs = append(checkFuncs, NetworkCheckName)
+		case *SelectBy_NamePrefix:
+			if m.Spec.Annotations.Name != "" {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Name = v.NamePrefix
+			checkFuncs = append(checkFuncs, NetworkCheckNamePrefix)
+		case *SelectBy_Custom:
+			if len(m.Spec.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Indices = []IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
+			checkFuncs = append(checkFuncs, NetworkCheckCustom)
+		case *SelectBy_CustomPrefix:
+			if len(m.Spec.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Indices = []IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
+			checkFuncs = append(checkFuncs, NetworkCheckCustomPrefix)
+		}
+	}
+	var events []Event
+	if (action & WatchActionKindCreate) != 0 {
+		events = append(events, EventCreateNetwork{Network: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindUpdate) != 0 {
+		events = append(events, EventUpdateNetwork{Network: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindRemove) != 0 {
+		events = append(events, EventDeleteNetwork{Network: &m, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, errUnrecognizedAction
+	}
+	return events, nil
 }
 
 type NetworkIndexerByID struct{}
@@ -2602,6 +2893,68 @@ func ClusterCheckCustomPrefix(v1, v2 *Cluster) bool {
 	return checkCustomPrefix(v1.Spec.Annotations, v2.Spec.Annotations)
 }
 
+func ConvertClusterWatch(action WatchActionKind, filters []*SelectBy) ([]Event, error) {
+	var (
+		m          Cluster
+		checkFuncs []ClusterCheckFunc
+	)
+
+	for _, filter := range filters {
+		switch v := filter.By.(type) {
+		case *SelectBy_ID:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.ID
+			checkFuncs = append(checkFuncs, ClusterCheckID)
+		case *SelectBy_IDPrefix:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.IDPrefix
+			checkFuncs = append(checkFuncs, ClusterCheckIDPrefix)
+		case *SelectBy_Name:
+			if m.Spec.Annotations.Name != "" {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Name = v.Name
+			checkFuncs = append(checkFuncs, ClusterCheckName)
+		case *SelectBy_NamePrefix:
+			if m.Spec.Annotations.Name != "" {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Name = v.NamePrefix
+			checkFuncs = append(checkFuncs, ClusterCheckNamePrefix)
+		case *SelectBy_Custom:
+			if len(m.Spec.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Indices = []IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
+			checkFuncs = append(checkFuncs, ClusterCheckCustom)
+		case *SelectBy_CustomPrefix:
+			if len(m.Spec.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Indices = []IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
+			checkFuncs = append(checkFuncs, ClusterCheckCustomPrefix)
+		}
+	}
+	var events []Event
+	if (action & WatchActionKindCreate) != 0 {
+		events = append(events, EventCreateCluster{Cluster: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindUpdate) != 0 {
+		events = append(events, EventUpdateCluster{Cluster: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindRemove) != 0 {
+		events = append(events, EventDeleteCluster{Cluster: &m, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, errUnrecognizedAction
+	}
+	return events, nil
+}
+
 type ClusterIndexerByID struct{}
 
 func (indexer ClusterIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
@@ -2755,6 +3108,68 @@ func SecretCheckCustom(v1, v2 *Secret) bool {
 
 func SecretCheckCustomPrefix(v1, v2 *Secret) bool {
 	return checkCustomPrefix(v1.Spec.Annotations, v2.Spec.Annotations)
+}
+
+func ConvertSecretWatch(action WatchActionKind, filters []*SelectBy) ([]Event, error) {
+	var (
+		m          Secret
+		checkFuncs []SecretCheckFunc
+	)
+
+	for _, filter := range filters {
+		switch v := filter.By.(type) {
+		case *SelectBy_ID:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.ID
+			checkFuncs = append(checkFuncs, SecretCheckID)
+		case *SelectBy_IDPrefix:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.IDPrefix
+			checkFuncs = append(checkFuncs, SecretCheckIDPrefix)
+		case *SelectBy_Name:
+			if m.Spec.Annotations.Name != "" {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Name = v.Name
+			checkFuncs = append(checkFuncs, SecretCheckName)
+		case *SelectBy_NamePrefix:
+			if m.Spec.Annotations.Name != "" {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Name = v.NamePrefix
+			checkFuncs = append(checkFuncs, SecretCheckNamePrefix)
+		case *SelectBy_Custom:
+			if len(m.Spec.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Indices = []IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
+			checkFuncs = append(checkFuncs, SecretCheckCustom)
+		case *SelectBy_CustomPrefix:
+			if len(m.Spec.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Spec.Annotations.Indices = []IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
+			checkFuncs = append(checkFuncs, SecretCheckCustomPrefix)
+		}
+	}
+	var events []Event
+	if (action & WatchActionKindCreate) != 0 {
+		events = append(events, EventCreateSecret{Secret: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindUpdate) != 0 {
+		events = append(events, EventUpdateSecret{Secret: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindRemove) != 0 {
+		events = append(events, EventDeleteSecret{Secret: &m, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, errUnrecognizedAction
+	}
+	return events, nil
 }
 
 type SecretIndexerByID struct{}
@@ -2916,6 +3331,70 @@ func ResourceCheckKind(v1, v2 *Resource) bool {
 	return v1.Kind == v2.Kind
 }
 
+func ConvertResourceWatch(action WatchActionKind, filters []*SelectBy, kind string) ([]Event, error) {
+	var (
+		m          Resource
+		checkFuncs []ResourceCheckFunc
+	)
+	m.Kind = kind
+	checkFuncs = append(checkFuncs, ResourceCheckKind)
+
+	for _, filter := range filters {
+		switch v := filter.By.(type) {
+		case *SelectBy_ID:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.ID
+			checkFuncs = append(checkFuncs, ResourceCheckID)
+		case *SelectBy_IDPrefix:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.IDPrefix
+			checkFuncs = append(checkFuncs, ResourceCheckIDPrefix)
+		case *SelectBy_Name:
+			if m.Annotations.Name != "" {
+				return nil, errConflictingFilters
+			}
+			m.Annotations.Name = v.Name
+			checkFuncs = append(checkFuncs, ResourceCheckName)
+		case *SelectBy_NamePrefix:
+			if m.Annotations.Name != "" {
+				return nil, errConflictingFilters
+			}
+			m.Annotations.Name = v.NamePrefix
+			checkFuncs = append(checkFuncs, ResourceCheckNamePrefix)
+		case *SelectBy_Custom:
+			if len(m.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Annotations.Indices = []IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
+			checkFuncs = append(checkFuncs, ResourceCheckCustom)
+		case *SelectBy_CustomPrefix:
+			if len(m.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Annotations.Indices = []IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
+			checkFuncs = append(checkFuncs, ResourceCheckCustomPrefix)
+		}
+	}
+	var events []Event
+	if (action & WatchActionKindCreate) != 0 {
+		events = append(events, EventCreateResource{Resource: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindUpdate) != 0 {
+		events = append(events, EventUpdateResource{Resource: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindRemove) != 0 {
+		events = append(events, EventDeleteResource{Resource: &m, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, errUnrecognizedAction
+	}
+	return events, nil
+}
+
 type ResourceIndexerByID struct{}
 
 func (indexer ResourceIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
@@ -3069,6 +3548,68 @@ func ExtensionCheckCustom(v1, v2 *Extension) bool {
 
 func ExtensionCheckCustomPrefix(v1, v2 *Extension) bool {
 	return checkCustomPrefix(v1.Annotations, v2.Annotations)
+}
+
+func ConvertExtensionWatch(action WatchActionKind, filters []*SelectBy) ([]Event, error) {
+	var (
+		m          Extension
+		checkFuncs []ExtensionCheckFunc
+	)
+
+	for _, filter := range filters {
+		switch v := filter.By.(type) {
+		case *SelectBy_ID:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.ID
+			checkFuncs = append(checkFuncs, ExtensionCheckID)
+		case *SelectBy_IDPrefix:
+			if m.ID != "" {
+				return nil, errConflictingFilters
+			}
+			m.ID = v.IDPrefix
+			checkFuncs = append(checkFuncs, ExtensionCheckIDPrefix)
+		case *SelectBy_Name:
+			if m.Annotations.Name != "" {
+				return nil, errConflictingFilters
+			}
+			m.Annotations.Name = v.Name
+			checkFuncs = append(checkFuncs, ExtensionCheckName)
+		case *SelectBy_NamePrefix:
+			if m.Annotations.Name != "" {
+				return nil, errConflictingFilters
+			}
+			m.Annotations.Name = v.NamePrefix
+			checkFuncs = append(checkFuncs, ExtensionCheckNamePrefix)
+		case *SelectBy_Custom:
+			if len(m.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Annotations.Indices = []IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}
+			checkFuncs = append(checkFuncs, ExtensionCheckCustom)
+		case *SelectBy_CustomPrefix:
+			if len(m.Annotations.Indices) != 0 {
+				return nil, errConflictingFilters
+			}
+			m.Annotations.Indices = []IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}
+			checkFuncs = append(checkFuncs, ExtensionCheckCustomPrefix)
+		}
+	}
+	var events []Event
+	if (action & WatchActionKindCreate) != 0 {
+		events = append(events, EventCreateExtension{Extension: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindUpdate) != 0 {
+		events = append(events, EventUpdateExtension{Extension: &m, Checks: checkFuncs})
+	}
+	if (action & WatchActionKindRemove) != 0 {
+		events = append(events, EventDeleteExtension{Extension: &m, Checks: checkFuncs})
+	}
+	if len(events) == 0 {
+		return nil, errUnrecognizedAction
+	}
+	return events, nil
 }
 
 type ExtensionIndexerByID struct{}
@@ -3385,6 +3926,39 @@ func WatchMessageEvent(c Event) *WatchMessage_Event {
 		return &WatchMessage_Event{Action: WatchActionKindRemove, Object: &Object{Object: &Object_Extension{Extension: v.Extension}}}
 	}
 	return nil
+}
+
+func ConvertWatchArgs(entries []*WatchRequest_WatchEntry) ([]Event, error) {
+	var events []Event
+	for _, entry := range entries {
+		var newEvents []Event
+		var err error
+		switch entry.Kind {
+		case "":
+			return nil, errNoKindSpecified
+		case "node":
+			newEvents, err = ConvertNodeWatch(entry.Action, entry.Filters)
+		case "service":
+			newEvents, err = ConvertServiceWatch(entry.Action, entry.Filters)
+		case "task":
+			newEvents, err = ConvertTaskWatch(entry.Action, entry.Filters)
+		case "network":
+			newEvents, err = ConvertNetworkWatch(entry.Action, entry.Filters)
+		case "cluster":
+			newEvents, err = ConvertClusterWatch(entry.Action, entry.Filters)
+		case "secret":
+			newEvents, err = ConvertSecretWatch(entry.Action, entry.Filters)
+		default:
+			newEvents, err = ConvertResourceWatch(entry.Action, entry.Filters, entry.Kind)
+		case "extension":
+			newEvents, err = ConvertExtensionWatch(entry.Action, entry.Filters)
+		}
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, newEvents...)
+	}
+	return events, nil
 }
 
 func (this *Meta) String() string {
