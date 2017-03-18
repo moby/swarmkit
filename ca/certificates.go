@@ -124,8 +124,8 @@ type LocalSigner struct {
 //
 // RootCA.Cert:          [CA cert1][CA cert2]
 // RootCA.Intermediates: [intermediate CA1][intermediate CA2][intermediate CA3]
-// RootCA.Signer.Cert:   [signing CA cert]
-// RootCA.Signer.Key:    [signing CA key]
+// RootCA.signer.Cert:   [signing CA cert]
+// RootCA.signer.Key:    [signing CA key]
 //
 // Requirements:
 //
@@ -146,19 +146,19 @@ type LocalSigner struct {
 // - Initial state:
 // 	 - RootCA.Cert:          [Root CA1 self-signed]
 // 	 - RootCA.Intermediates: []
-// 	 - RootCA.Signer.Cert:   [Root CA1 self-signed]
+// 	 - RootCA.signer.Cert:   [Root CA1 self-signed]
 // 	 - Issued TLS cert:      [leaf signed by Root CA1]
 //
 // - Intermediate state (during root rotation):
 //   - RootCA.Cert:          [Root CA1 self-signed]
 //   - RootCA.Intermediates: [Root CA2 signed by Root CA1]
-//   - RootCA.Signer.Cert:   [Root CA2 signed by Root CA1]
+//   - RootCA.signer.Cert:   [Root CA2 signed by Root CA1]
 //   - Issued TLS cert:      [leaf signed by Root CA2][Root CA2 signed by Root CA1]
 //
 // - Final state:
 //   - RootCA.Cert:          [Root CA2 self-signed]
 //   - RootCA.Intermediates: []
-//   - RootCA.Signer.Cert:   [Root CA2 self-signed]
+//   - RootCA.signer.Cert:   [Root CA2 self-signed]
 //   - Issued TLS cert:      [leaf signed by Root CA2]
 //
 type RootCA struct {
@@ -179,25 +179,21 @@ type RootCA struct {
 	Digest digest.Digest
 
 	// This signer will be nil if the node doesn't have the appropriate key material
-	Signer *LocalSigner
+	signer *LocalSigner
 }
 
-// CanSign ensures that the signer has all the necessary elements needed to operate
-func (rca *RootCA) CanSign() bool {
-	if rca.Pool == nil || rca.Signer == nil || len(rca.Signer.Cert) == 0 || rca.Signer.Signer == nil {
-		return false
+// Signer is an accessor for the local signer that returns an error if this root cannot sign.
+func (rca *RootCA) Signer() (*LocalSigner, error) {
+	if rca.Pool == nil || rca.signer == nil || len(rca.signer.Cert) == 0 || rca.signer.Signer == nil {
+		return nil, ErrNoValidSigner
 	}
 
-	return true
+	return rca.signer, nil
 }
 
 // IssueAndSaveNewCertificates generates a new key-pair, signs it with the local root-ca, and returns a
 // tls certificate
 func (rca *RootCA) IssueAndSaveNewCertificates(kw KeyWriter, cn, ou, org string) (*tls.Certificate, error) {
-	if !rca.CanSign() {
-		return nil, ErrNoValidSigner
-	}
-
 	csr, key, err := GenerateNewCSR()
 	if err != nil {
 		return nil, errors.Wrap(err, "error when generating new node certs")
@@ -348,13 +344,12 @@ func PrepareCSR(csrBytes []byte, cn, ou, org string) cfsigner.SignRequest {
 
 // ParseValidateAndSignCSR returns a signed certificate from a particular rootCA and a CSR.
 func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, ou, org string) ([]byte, error) {
-	if !rca.CanSign() {
-		return nil, ErrNoValidSigner
-	}
-
 	signRequest := PrepareCSR(csrBytes, cn, ou, org)
-
-	cert, err := rca.Signer.Sign(signRequest)
+	signer, err := rca.Signer()
+	if err != nil {
+		return nil, err
+	}
+	cert, err := signer.Sign(signRequest)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to sign node certificate")
 	}
@@ -364,8 +359,9 @@ func (rca *RootCA) ParseValidateAndSignCSR(csrBytes []byte, cn, ou, org string) 
 
 // CrossSignCACertificate takes a CA root certificate and generates an intermediate CA from it signed with the current root signer
 func (rca *RootCA) CrossSignCACertificate(otherCAPEM []byte) ([]byte, error) {
-	if !rca.CanSign() {
-		return nil, ErrNoValidSigner
+	signer, err := rca.Signer()
+	if err != nil {
+		return nil, err
 	}
 
 	// create a new cert with exactly the same parameters, including the public key and exact NotBefore and NotAfter
@@ -378,7 +374,7 @@ func (rca *RootCA) CrossSignCACertificate(otherCAPEM []byte) ([]byte, error) {
 		return nil, errors.New("certificate not a CA")
 	}
 
-	derBytes, err := x509.CreateCertificate(cryptorand.Reader, newCert, rca.Signer.parsedCert, newCert.PublicKey, rca.Signer.cryptoSigner)
+	derBytes, err := x509.CreateCertificate(cryptorand.Reader, newCert, signer.parsedCert, newCert.PublicKey, signer.cryptoSigner)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not cross-sign new CA certificate using old CA material")
 	}
@@ -463,7 +459,7 @@ func NewRootCA(rootCertBytes, signCertBytes, signKeyBytes []byte, certExpiry tim
 		}
 	}
 
-	return RootCA{Signer: localSigner, Intermediates: intermediates, Digest: digest, Certs: rootCertBytes, Pool: pool}, nil
+	return RootCA{signer: localSigner, Intermediates: intermediates, Digest: digest, Certs: rootCertBytes, Pool: pool}, nil
 }
 
 // ValidateCertChain checks checks that the certificates provided chain up to the root pool provided.  In addition

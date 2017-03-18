@@ -47,19 +47,24 @@ func newTestNode(joinAddr, joinToken string, lateBind bool, rootCA *ca.RootCA) (
 		cfg.ListenRemoteAPI = "127.0.0.1:0"
 	}
 	if rootCA != nil {
+		signer, err := rootCA.Signer()
+		if err != nil {
+			return nil, err
+		}
 		certDir := filepath.Join(tmpDir, "certificates")
 		if err := os.MkdirAll(certDir, 0700); err != nil {
 			return nil, err
 		}
 		certPaths := ca.NewConfigPaths(certDir)
-		if err := ioutil.WriteFile(certPaths.RootCA.Cert, rootCA.Signer.Cert, 0644); err != nil {
+		if err := ioutil.WriteFile(certPaths.RootCA.Cert, signer.Cert, 0644); err != nil {
 			return nil, err
 		}
-		if err := ioutil.WriteFile(certPaths.RootCA.Key, rootCA.Signer.Key, 0600); err != nil {
+		if err := ioutil.WriteFile(certPaths.RootCA.Key, signer.Key, 0600); err != nil {
 			return nil, err
 		}
 		// generate TLS certs for this manager for bootstrapping, else the node will generate its own CA
-		_, err := rootCA.IssueAndSaveNewCertificates(ca.NewKeyReadWriter(certPaths.Node, nil, nil),
+		_, err = rootCA.IssueAndSaveNewCertificates(
+			ca.NewKeyReadWriter(certPaths.Node, nil, nil),
 			identity.NewID(), ca.ManagerRole, identity.NewID())
 		if err != nil {
 			return nil, err
