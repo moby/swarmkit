@@ -111,21 +111,24 @@ func TestGetLocalRootCA(t *testing.T) {
 
 	// Create the local Root CA to ensure that we can reload it correctly.
 	rootCA, err := ca.CreateRootCA("rootCN", paths.RootCA)
-	assert.True(t, rootCA.CanSign())
+	assert.NoError(t, err)
+	s, err := rootCA.Signer()
 	assert.NoError(t, err)
 
 	// No private key here
 	rootCA2, err := ca.GetLocalRootCA(paths.RootCA)
 	assert.NoError(t, err)
 	assert.Equal(t, rootCA.Certs, rootCA2.Certs)
-	assert.False(t, rootCA2.CanSign())
+	_, err = rootCA2.Signer()
+	assert.Equal(t, err, ca.ErrNoValidSigner)
 
 	// write private key and assert we can load it and sign
-	assert.NoError(t, ioutil.WriteFile(paths.RootCA.Key, rootCA.Signer.Key, os.FileMode(0600)))
+	assert.NoError(t, ioutil.WriteFile(paths.RootCA.Key, s.Key, os.FileMode(0600)))
 	rootCA3, err := ca.GetLocalRootCA(paths.RootCA)
 	assert.NoError(t, err)
 	assert.Equal(t, rootCA.Certs, rootCA3.Certs)
-	assert.True(t, rootCA3.CanSign())
+	_, err = rootCA3.Signer()
+	assert.NoError(t, err)
 
 	// Try with a private key that does not match the CA cert public key.
 	privKey, err := ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
@@ -273,10 +276,12 @@ func TestGetRemoteCA(t *testing.T) {
 	require.NoError(t, err)
 
 	comboCertBundle := append(tc.RootCA.Certs, otherRootCA.Certs...)
+	s, err := tc.RootCA.Signer()
+	require.NoError(t, err)
 	require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
 		cluster := store.GetCluster(tx, tc.Organization)
 		cluster.RootCA.CACert = comboCertBundle
-		cluster.RootCA.CAKey = tc.RootCA.Signer.Key
+		cluster.RootCA.CAKey = s.Key
 		return store.UpdateCluster(tx, cluster)
 	}))
 	require.NoError(t, raftutils.PollFunc(nil, func() error {
@@ -313,15 +318,6 @@ func TestGetRemoteCA(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, chains, 1)
 	}
-}
-
-func TestCanSign(t *testing.T) {
-	tc := testutils.NewTestCA(t)
-	defer tc.Stop()
-
-	assert.True(t, tc.RootCA.CanSign())
-	tc.RootCA.Signer = nil
-	assert.False(t, tc.RootCA.CanSign())
 }
 
 func TestGetRemoteCAInvalidHash(t *testing.T) {
@@ -543,8 +539,9 @@ func TestNewRootCA(t *testing.T) {
 		rootCA, err := ca.NewRootCA(pair.cert, pair.cert, pair.key, ca.DefaultNodeCertExpiration, nil)
 		require.NoError(t, err, string(pair.key))
 		require.Equal(t, pair.cert, rootCA.Certs)
-		require.Equal(t, pair.key, rootCA.Signer.Key)
-		require.NotNil(t, rootCA.Signer)
+		s, err := rootCA.Signer()
+		require.NoError(t, err)
+		require.Equal(t, pair.key, s.Key)
 		_, err = rootCA.Digest.Verifier().Write(pair.cert)
 		require.NoError(t, err)
 	}
@@ -564,13 +561,15 @@ func TestNewRootCABundle(t *testing.T) {
 	// make a second root CA
 	firstRootCA, err := ca.CreateRootCA("rootCN1", paths.RootCA)
 	assert.NoError(t, err)
+	s, err := firstRootCA.Signer()
+	require.NoError(t, err)
 
 	// Overwrite the bytes of the second Root CA with the bundle, creating a valid 2 cert bundle
 	bundle := append(firstRootCA.Certs, secondRootCA.Certs...)
 	err = ioutil.WriteFile(paths.RootCA.Cert, bundle, 0644)
 	assert.NoError(t, err)
 
-	newRootCA, err := ca.NewRootCA(bundle, firstRootCA.Certs, firstRootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
+	newRootCA, err := ca.NewRootCA(bundle, firstRootCA.Certs, s.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, bundle, newRootCA.Certs)
 	assert.Equal(t, 2, len(newRootCA.Pool.Subjects()))
@@ -594,8 +593,10 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 
 	rootCA, err := ca.CreateRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
+	s, err := rootCA.Signer()
+	require.NoError(t, err)
 
-	newRootCA, err := ca.NewRootCA(rootCA.Certs, rootCA.Certs, rootCA.Signer.Key, 1*time.Hour, nil)
+	newRootCA, err := ca.NewRootCA(rootCA.Certs, rootCA.Certs, s.Key, 1*time.Hour, nil)
 	assert.NoError(t, err)
 
 	// Create and sign a new CSR
@@ -612,7 +613,7 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 
 	// Sign the same CSR again, this time with a 59 Minute expiration RootCA (under the 60 minute minimum).
 	// This should use the default of 3 months
-	newRootCA, err = ca.NewRootCA(rootCA.Certs, rootCA.Certs, rootCA.Signer.Key, 59*time.Minute, nil)
+	newRootCA, err = ca.NewRootCA(rootCA.Certs, rootCA.Certs, s.Key, 59*time.Minute, nil)
 	assert.NoError(t, err)
 
 	cert, err = newRootCA.ParseValidateAndSignCSR(csr, "CN", ca.ManagerRole, "ORG")
@@ -896,45 +897,51 @@ func TestNewRootCAWithPassphrase(t *testing.T) {
 
 	rootCA, err := ca.CreateRootCA("rootCN", paths.RootCA)
 	assert.NoError(t, err)
+	rcaSigner, err := rootCA.Signer()
+	assert.NoError(t, err)
 
 	// Ensure that we're encrypting the Key bytes out of NewRoot if there
 	// is a passphrase set as an env Var
 	os.Setenv(ca.PassphraseENVVar, "password1")
-	newRootCA, err := ca.NewRootCA(rootCA.Certs, rootCA.Signer.Cert, rootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
+	newRootCA, err := ca.NewRootCA(rootCA.Certs, rcaSigner.Cert, rcaSigner.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.NoError(t, err)
-	assert.NotEqual(t, rootCA.Signer.Key, newRootCA.Signer.Key)
+	nrcaSigner, err := newRootCA.Signer()
+	assert.NoError(t, err)
+	assert.NotEqual(t, rcaSigner.Key, nrcaSigner.Key)
 	assert.Equal(t, rootCA.Certs, newRootCA.Certs)
-	assert.NotContains(t, string(rootCA.Signer.Key), string(newRootCA.Signer.Key))
-	assert.Contains(t, string(newRootCA.Signer.Key), "Proc-Type: 4,ENCRYPTED")
+	assert.NotContains(t, string(rcaSigner.Key), string(nrcaSigner.Key))
+	assert.Contains(t, string(nrcaSigner.Key), "Proc-Type: 4,ENCRYPTED")
 
 	// Ensure that we're decrypting the Key bytes out of NewRoot if there
 	// is a passphrase set as an env Var
-	anotherNewRootCA, err := ca.NewRootCA(newRootCA.Certs, newRootCA.Signer.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
+	anotherNewRootCA, err := ca.NewRootCA(newRootCA.Certs, nrcaSigner.Cert, nrcaSigner.Key, ca.DefaultNodeCertExpiration, nil)
+	assert.NoError(t, err)
+	anrcaSigner, err := anotherNewRootCA.Signer()
 	assert.NoError(t, err)
 	assert.Equal(t, newRootCA, anotherNewRootCA)
-	assert.NotContains(t, string(rootCA.Signer.Key), string(anotherNewRootCA.Signer.Key))
-	assert.Contains(t, string(anotherNewRootCA.Signer.Key), "Proc-Type: 4,ENCRYPTED")
+	assert.NotContains(t, string(rcaSigner.Key), string(anrcaSigner.Key))
+	assert.Contains(t, string(anrcaSigner.Key), "Proc-Type: 4,ENCRYPTED")
 
 	// Ensure that we cant decrypt the Key bytes out of NewRoot if there
 	// is a wrong passphrase set as an env Var
 	os.Setenv(ca.PassphraseENVVar, "password2")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Certs, newRootCA.Signer.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
+	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Certs, nrcaSigner.Cert, nrcaSigner.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.Error(t, err)
 
 	// Ensure that we cant decrypt the Key bytes out of NewRoot if there
 	// is a wrong passphrase set as an env Var
 	os.Setenv(ca.PassphraseENVVarPrev, "password2")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Certs, newRootCA.Signer.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
+	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Certs, nrcaSigner.Cert, nrcaSigner.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.Error(t, err)
 
 	// Ensure that we can decrypt the Key bytes out of NewRoot if there
 	// is a wrong passphrase set as an env Var, but a valid as Prev
 	os.Setenv(ca.PassphraseENVVarPrev, "password1")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Certs, newRootCA.Signer.Cert, newRootCA.Signer.Key, ca.DefaultNodeCertExpiration, nil)
+	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Certs, nrcaSigner.Cert, nrcaSigner.Key, ca.DefaultNodeCertExpiration, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, newRootCA, anotherNewRootCA)
-	assert.NotContains(t, string(rootCA.Signer.Key), string(anotherNewRootCA.Signer.Key))
-	assert.Contains(t, string(anotherNewRootCA.Signer.Key), "Proc-Type: 4,ENCRYPTED")
+	assert.NotContains(t, string(rcaSigner.Key), string(anrcaSigner.Key))
+	assert.Contains(t, string(anrcaSigner.Key), "Proc-Type: 4,ENCRYPTED")
 }
 
 type certTestCase struct {

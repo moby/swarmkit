@@ -365,31 +365,14 @@ type CertificateRequestConfig struct {
 func (rootCA RootCA) CreateSecurityConfig(ctx context.Context, krw *KeyReadWriter, config CertificateRequestConfig) (*SecurityConfig, error) {
 	ctx = log.WithModule(ctx, "tls")
 
-	var (
-		tlsKeyPair *tls.Certificate
-		err        error
-	)
+	// Create a new random ID for this certificate
+	cn := identity.NewID()
+	org := identity.NewID()
 
-	if rootCA.CanSign() {
-		// Create a new random ID for this certificate
-		cn := identity.NewID()
-		org := identity.NewID()
-
-		proposedRole := ManagerRole
-		tlsKeyPair, err = rootCA.IssueAndSaveNewCertificates(krw, cn, proposedRole, org)
-		if err != nil {
-			log.G(ctx).WithFields(logrus.Fields{
-				"node.id":   cn,
-				"node.role": proposedRole,
-			}).WithError(err).Errorf("failed to issue and save new certificate")
-			return nil, err
-		}
-
-		log.G(ctx).WithFields(logrus.Fields{
-			"node.id":   cn,
-			"node.role": proposedRole,
-		}).Debug("issued new TLS certificate")
-	} else {
+	proposedRole := ManagerRole
+	tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(krw, cn, proposedRole, org)
+	switch errors.Cause(err) {
+	case ErrNoValidSigner:
 		// Request certificate issuance from a remote CA.
 		// Last argument is nil because at this point we don't have any valid TLS creds
 		tlsKeyPair, err = rootCA.RequestAndSaveNewCertificates(ctx, krw, config)
@@ -397,7 +380,19 @@ func (rootCA RootCA) CreateSecurityConfig(ctx context.Context, krw *KeyReadWrite
 			log.G(ctx).WithError(err).Error("failed to request save new certificate")
 			return nil, err
 		}
+	case nil:
+		log.G(ctx).WithFields(logrus.Fields{
+			"node.id":   cn,
+			"node.role": proposedRole,
+		}).Debug("issued new TLS certificate")
+	default:
+		log.G(ctx).WithFields(logrus.Fields{
+			"node.id":   cn,
+			"node.role": proposedRole,
+		}).WithError(err).Errorf("failed to issue and save new certificate")
+		return nil, err
 	}
+
 	// Create the Server TLS Credentials for this node. These will not be used by workers.
 	serverTLSCreds, err := rootCA.NewServerTLSCredentials(tlsKeyPair)
 	if err != nil {
