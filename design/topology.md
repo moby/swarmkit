@@ -32,19 +32,19 @@ The initially supported preference would is "spread".
 
 ```
 message SpreadOver {
-	string spread_descriptor = 1; // label descriptor, such as engine.labels.az
-	// TODO: support node information beyond engine and node labels
+    string spread_descriptor = 1; // label descriptor, such as engine.labels.az
+    // TODO: support node information beyond engine and node labels
 
-	// TODO: in the future, add a map that provides weights for weighted
-	// spreading.
+    // TODO: in the future, add a map that provides weights for weighted
+    // spreading.
 }
 
 message PlacementPreference {
-	oneof Preference {
-		SpreadOver spread = 1;
-	}
+    oneof Preference {
+        SpreadOver spread = 1;
+    }
 
-	Preference pref = 1;
+    Preference pref = 1;
 }
 ```
 

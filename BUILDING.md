@@ -7,7 +7,7 @@ When setup correctly, you should have a GOROOT and GOPATH set in the environment
 After you set up the Go development environment, use `go get` to check out
 `swarmkit`:
 
-	go get -d github.com/docker/swarmkit
+    go get -d github.com/docker/swarmkit
 
 This command installs the source repository into the `GOPATH`.
 
@@ -26,50 +26,50 @@ Docker provides a `Makefile` as a convenience to support repeatable builds.
 `make setup` installs tools onto the `GOPATH` for use with developing
 `SwarmKit`:
 
-	make setup
+    make setup
 
 Once these commands are available in the `GOPATH`, run `make` to get a full
 build:
 
-	$ make
-	🐳 fmt
-	🐳 bin/swarmd
-	🐳 bin/swarmctl
-	🐳 bin/swarm-bench
-	🐳 bin/protoc-gen-gogoswarm
-	🐳 binaries
-	🐳 vet
-	🐳 lint
-	🐳 build
-	github.com/docker/swarmkit
-	github.com/docker/swarmkit/vendor/github.com/davecgh/go-spew/spew
-	github.com/docker/swarmkit/vendor/github.com/pmezard/go-difflib/difflib
-	github.com/docker/swarmkit/cmd/protoc-gen-gogoswarm
-	github.com/docker/swarmkit/cmd/swarm-bench
-	github.com/docker/swarmkit/cmd/swarmctl
-	github.com/docker/swarmkit/vendor/github.com/stretchr/testify/assert
-	github.com/docker/swarmkit/ca/testutils
-	github.com/docker/swarmkit/cmd/swarmd
-	github.com/docker/swarmkit/vendor/github.com/pivotal-golang/clock/fakeclock
-	github.com/docker/swarmkit/vendor/github.com/stretchr/testify/require
-	github.com/docker/swarmkit/manager/state/raft/testutils
-	github.com/docker/swarmkit/manager/testcluster
-	github.com/docker/swarmkit/protobuf/plugin/deepcopy/test
-	github.com/docker/swarmkit/protobuf/plugin/raftproxy/test
-	🐳 test
-	?       github.com/docker/swarmkit      [no test files]
-	?       github.com/docker/swarmkit      [no test files]
-	ok      github.com/docker/swarmkit/agent        2.264s
-	ok      github.com/docker/swarmkit/agent/exec   1.055s
-	ok      github.com/docker/swarmkit/agent/exec/container 1.094s
-	?       github.com/docker/swarmkit/api  [no test files]
-	?       github.com/docker/swarmkit/api/duration [no test files]
-	?       github.com/docker/swarmkit/api/timestamp        [no test files]
-	ok      github.com/docker/swarmkit/ca   15.634s
-	...
-	ok      github.com/docker/swarmkit/protobuf/plugin/raftproxy/test       1.084s
-	ok      github.com/docker/swarmkit/protobuf/ptypes      1.025s
-	?       github.com/docker/swarmkit/version      [no test files]
+    $ make
+    🐳 fmt
+    🐳 bin/swarmd
+    🐳 bin/swarmctl
+    🐳 bin/swarm-bench
+    🐳 bin/protoc-gen-gogoswarm
+    🐳 binaries
+    🐳 vet
+    🐳 lint
+    🐳 build
+    github.com/docker/swarmkit
+    github.com/docker/swarmkit/vendor/github.com/davecgh/go-spew/spew
+    github.com/docker/swarmkit/vendor/github.com/pmezard/go-difflib/difflib
+    github.com/docker/swarmkit/cmd/protoc-gen-gogoswarm
+    github.com/docker/swarmkit/cmd/swarm-bench
+    github.com/docker/swarmkit/cmd/swarmctl
+    github.com/docker/swarmkit/vendor/github.com/stretchr/testify/assert
+    github.com/docker/swarmkit/ca/testutils
+    github.com/docker/swarmkit/cmd/swarmd
+    github.com/docker/swarmkit/vendor/github.com/pivotal-golang/clock/fakeclock
+    github.com/docker/swarmkit/vendor/github.com/stretchr/testify/require
+    github.com/docker/swarmkit/manager/state/raft/testutils
+    github.com/docker/swarmkit/manager/testcluster
+    github.com/docker/swarmkit/protobuf/plugin/deepcopy/test
+    github.com/docker/swarmkit/protobuf/plugin/raftproxy/test
+    🐳 test
+    ?       github.com/docker/swarmkit      [no test files]
+    ?       github.com/docker/swarmkit      [no test files]
+    ok      github.com/docker/swarmkit/agent        2.264s
+    ok      github.com/docker/swarmkit/agent/exec   1.055s
+    ok      github.com/docker/swarmkit/agent/exec/container 1.094s
+    ?       github.com/docker/swarmkit/api  [no test files]
+    ?       github.com/docker/swarmkit/api/duration [no test files]
+    ?       github.com/docker/swarmkit/api/timestamp        [no test files]
+    ok      github.com/docker/swarmkit/ca   15.634s
+    ...
+    ok      github.com/docker/swarmkit/protobuf/plugin/raftproxy/test       1.084s
+    ok      github.com/docker/swarmkit/protobuf/ptypes      1.025s
+    ?       github.com/docker/swarmkit/version      [no test files]
 
 The above provides a repeatable build using the contents of the vendored
 `./vendor` directory. This includes formatting, vetting, linting, building,
