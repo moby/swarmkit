@@ -33,7 +33,7 @@ func TestExternalCACrossSign(t *testing.T) {
 	cert2, key2, err := testutils.CreateRootCertAndKey("rootCN2")
 	require.NoError(t, err)
 
-	rootCA2, err := ca.NewRootCA(cert2, key2, ca.DefaultNodeCertExpiration, nil)
+	rootCA2, err := ca.NewRootCA(cert2, cert2, key2, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
 	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
