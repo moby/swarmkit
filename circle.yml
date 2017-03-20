@@ -47,6 +47,10 @@ dependencies:
         - env
 
 test:
+    pre:
+        # Ensure validation of dependencies
+        - if test -n "`git diff --stat=1000 origin/master | grep -E \"^[[:space:]]*vendor\"`"; then make dep-validate; fi
+
     override:
         # Run all tests in a single pass to ensure we don't move to the next
         # step in case of failure.
