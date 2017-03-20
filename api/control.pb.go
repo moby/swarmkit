@@ -41,7 +41,9 @@ const (
 	// be honored.
 	UpdateServiceRequest_NONE UpdateServiceRequest_Rollback = 0
 	// Roll back the service - get spec from the service's
-	// previous_spec.
+	// previous_spec. If a spec is provided in this request, it
+	// will be used instead of previous_spec. This allows parameters
+	// to be changed during the rollback.
 	UpdateServiceRequest_PREVIOUS UpdateServiceRequest_Rollback = 1
 )
 

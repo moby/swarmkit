@@ -594,12 +594,18 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 		service.Meta.Version = *request.ServiceVersion
 
 		if request.Rollback == api.UpdateServiceRequest_PREVIOUS {
-			if service.PreviousSpec == nil {
-				return grpc.Errorf(codes.FailedPrecondition, "service %s does not have a previous spec", request.ServiceID)
+			curSpec := service.Spec.Copy()
+
+			if request.Spec != nil {
+				service.Spec = *request.Spec.Copy()
+			} else {
+				if service.PreviousSpec == nil {
+					return grpc.Errorf(codes.FailedPrecondition, "service %s does not have a previous spec", request.ServiceID)
+				}
+
+				service.Spec = *service.PreviousSpec.Copy()
 			}
 
-			curSpec := service.Spec.Copy()
-			service.Spec = *service.PreviousSpec.Copy()
 			service.PreviousSpec = curSpec
 
 			service.UpdateStatus = &api.UpdateStatus{
