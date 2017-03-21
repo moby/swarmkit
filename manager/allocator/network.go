@@ -308,7 +308,14 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 
 		delete(nc.unallocatedNetworks, n.ID)
 	case api.EventCreateService:
-		s := v.Service.Copy()
+		var s *api.Service
+		a.store.View(func(tx store.ReadTx) {
+			s = store.GetService(tx, v.Service.ID)
+		})
+
+		if s == nil {
+			break
+		}
 
 		if nc.nwkAllocator.IsServiceAllocated(s) {
 			break
@@ -325,7 +332,18 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			log.G(ctx).WithError(err).Errorf("Failed to commit allocation for service %s", s.ID)
 		}
 	case api.EventUpdateService:
-		s := v.Service.Copy()
+		// We may have already allocated this service. If a create or
+		// update event is older than the current version in the store,
+		// we run the risk of allocating the service a second time.
+		// Only operate on the latest version of the service.
+		var s *api.Service
+		a.store.View(func(tx store.ReadTx) {
+			s = store.GetService(tx, v.Service.ID)
+		})
+
+		if s == nil {
+			break
+		}
 
 		if nc.nwkAllocator.IsServiceAllocated(s) {
 			if nc.nwkAllocator.PortsAllocatedInHostPublishMode(s) {
@@ -385,14 +403,26 @@ func (a *Allocator) doNodeAlloc(ctx context.Context, ev events.Event) {
 		node     *api.Node
 	)
 
+	// We may have already allocated this node. If a create or update
+	// event is older than the current version in the store, we run the
+	// risk of allocating the node a second time. Only operate on the
+	// latest version of the node.
 	switch v := ev.(type) {
 	case api.EventCreateNode:
-		node = v.Node.Copy()
+		a.store.View(func(tx store.ReadTx) {
+			node = store.GetNode(tx, v.Node.ID)
+		})
 	case api.EventUpdateNode:
-		node = v.Node.Copy()
+		a.store.View(func(tx store.ReadTx) {
+			node = store.GetNode(tx, v.Node.ID)
+		})
 	case api.EventDeleteNode:
 		isDelete = true
 		node = v.Node.Copy()
+	}
+
+	if node == nil {
+		return
 	}
 
 	nc := a.netCtx
@@ -594,14 +624,26 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, ev events.Event) {
 		t        *api.Task
 	)
 
+	// We may have already allocated this task. If a create or update
+	// event is older than the current version in the store, we run the
+	// risk of allocating the task a second time. Only operate on the
+	// latest version of the task.
 	switch v := ev.(type) {
 	case api.EventCreateTask:
-		t = v.Task.Copy()
+		a.store.View(func(tx store.ReadTx) {
+			t = store.GetTask(tx, v.Task.ID)
+		})
 	case api.EventUpdateTask:
-		t = v.Task.Copy()
+		a.store.View(func(tx store.ReadTx) {
+			t = store.GetTask(tx, v.Task.ID)
+		})
 	case api.EventDeleteTask:
 		isDelete = true
 		t = v.Task.Copy()
+	}
+
+	if t == nil {
+		return
 	}
 
 	nc := a.netCtx
@@ -870,7 +912,7 @@ func (a *Allocator) allocateTask(ctx context.Context, t *api.Task) (err error) {
 			}
 
 			if err = nc.nwkAllocator.AllocateTask(t); err != nil {
-				err = errors.Wrapf(err, "failed during networktask allocation for task %s", t.ID)
+				err = errors.Wrapf(err, "failed during network allocation for task %s", t.ID)
 				return
 			}
 			if nc.nwkAllocator.IsTaskAllocated(t) {
