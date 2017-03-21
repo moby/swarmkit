@@ -36,10 +36,12 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.Uint64("update-parallelism", 0, "task update parallelism (0 = all at once)")
 	flags.String("update-delay", "0s", "delay between task updates (0s = none)")
 	flags.String("update-on-failure", "pause", "action on failure during update (pause|continue|rollback)")
+	flags.String("update-order", "stop-first", "order of shutting down old task and starting updated task (stop-first|start-first)")
 
 	flags.Uint64("rollback-parallelism", 0, "task update parallelism during rollback (0 = all at once)")
 	flags.String("rollback-delay", "0s", "delay between task updates during rollback (0s = none)")
 	flags.String("rollback-on-failure", "pause", "action on failure during rollback (pause|continue)")
+	flags.String("rollback-order", "stop-first", "order of shutting down old task and starting rolled-back task (stop-first|start-first)")
 
 	flags.String("restart-condition", "any", "condition to restart the task (any, failure, none)")
 	flags.String("restart-delay", "5s", "delay between task restarts")
