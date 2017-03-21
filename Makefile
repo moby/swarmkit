@@ -20,9 +20,11 @@ INTEGRATION_PACKAGE=${PROJECT_ROOT}/integration
 COMMANDS=swarmd swarmctl swarm-bench swarm-rafttool protoc-gen-gogoswarm
 BINARIES=$(addprefix bin/,$(COMMANDS))
 
+VNDR=$(shell which vndr || echo '')
+
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
-.PHONY: clean all AUTHORS fmt vet lint build binaries test integration setup generate checkprotos coverage ci check help install uninstall
+.PHONY: clean all AUTHORS fmt vet lint build binaries test integration setup generate checkprotos coverage ci check help install uninstall dep-validate
 .DEFAULT: default
 
 all: check binaries test integration ## run fmt, vet, lint, build the binaries and run the tests
@@ -46,6 +48,7 @@ setup: ## install dependencies
 	@go get -u github.com/golang/mock/mockgen
 	@go get -u github.com/gordonklaus/ineffassign
 	@go get -u github.com/client9/misspell/cmd/misspell
+	@go get -u github.com/lk4d4/vndr
 
 generate: bin/protoc-gen-gogoswarm ## generate protobuf
 	@echo "🐳 $@"
@@ -138,3 +141,15 @@ coverage-integration: ## generate coverprofiles from the integration tests
 
 help: ## this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
+
+dep-validate:
+	@echo "+ $@"
+	$(if $(VNDR), , \
+		$(error Please install vndr: go get github.com/lk4d4/vndr))
+	@rm -Rf .vendor.bak
+	@mv vendor .vendor.bak
+	@$(VNDR)
+	@test -z "$$(diff -r vendor .vendor.bak 2>&1 | tee /dev/stderr)" || \
+		(echo >&2 "+ inconsistent dependencies! what you have in vendor.conf does not match with what you have in vendor" && false)
+	@rm -Rf vendor
+	@mv .vendor.bak vendor
