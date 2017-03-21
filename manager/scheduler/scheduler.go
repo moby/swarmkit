@@ -142,19 +142,19 @@ func (s *Scheduler) Run(ctx context.Context) error {
 		select {
 		case event := <-updates:
 			switch v := event.(type) {
-			case state.EventCreateTask:
+			case api.EventCreateTask:
 				pendingChanges += s.createTask(ctx, v.Task)
-			case state.EventUpdateTask:
+			case api.EventUpdateTask:
 				pendingChanges += s.updateTask(ctx, v.Task)
-			case state.EventDeleteTask:
+			case api.EventDeleteTask:
 				s.deleteTask(ctx, v.Task)
-			case state.EventCreateNode:
+			case api.EventCreateNode:
 				s.createOrUpdateNode(v.Node)
 				pendingChanges++
-			case state.EventUpdateNode:
+			case api.EventUpdateNode:
 				s.createOrUpdateNode(v.Node)
 				pendingChanges++
-			case state.EventDeleteNode:
+			case api.EventDeleteNode:
 				s.nodeSet.remove(v.Node.ID)
 			case state.EventCommit:
 				if commitDebounceTimer != nil {
