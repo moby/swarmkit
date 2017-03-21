@@ -324,6 +324,17 @@ message UpdateConfig {
 	// roll back to the previous service spec. If the MaxFailureRatio
 	// threshold is hit during the rollback, the rollback will pause.
 	float max_failure_ratio = 5;
+
+	// UpdateOrder controls the order of operations when rolling out an
+	// updated task. Either the old task is shut down before the new task
+	// is started, or the new task is started before the old task is shut
+	// down.
+	enum UpdateOrder {
+		STOP_FIRST = 0;
+		START_FIRST = 1;
+	}
+
+	UpdateOrder order = 6;
 }
 
 // UpdateStatus is the status of an update in progress.
