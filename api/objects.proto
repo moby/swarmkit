@@ -7,6 +7,7 @@ import "specs.proto";
 import "google/protobuf/timestamp.proto";
 import "gogoproto/gogo.proto";
 import "google/protobuf/any.proto";
+import "plugin/plugin.proto";
 
 // This file contains definitions for all first-class objects in the cluster
 // API. Such types typically have a corresponding specification, with the
@@ -25,6 +26,8 @@ message Meta {
 
 // Node provides the internal node state as seen by the cluster.
 message Node {
+	option (docker.protobuf.plugin.store_object) = { };
+
 	// ID specifies the identity of the node.
 	string id = 1;
 
@@ -64,6 +67,8 @@ message Node {
 }
 
 message Service {
+	option (docker.protobuf.plugin.store_object) = { };
+
 	string id = 1;
 
 	Meta meta = 2 [(gogoproto.nullable) = false];
@@ -132,6 +137,8 @@ message Endpoint {
 // immutable and idempotent. Once it is dispatched to a node, it will not be
 // dispatched to another node.
 message Task {
+	option (docker.protobuf.plugin.store_object) = { };
+
 	string id = 1;
 
 	Meta meta = 2 [(gogoproto.nullable) = false];
@@ -218,6 +225,8 @@ message NetworkAttachment {
 }
 
 message Network {
+	option (docker.protobuf.plugin.store_object) = { };
+
 	string id = 1;
 
 	Meta meta = 2 [(gogoproto.nullable) = false];
@@ -234,6 +243,8 @@ message Network {
 
 // Cluster provides global cluster settings.
 message Cluster {
+	option (docker.protobuf.plugin.store_object) = { };
+
 	string id = 1;
 
 	Meta meta = 2 [(gogoproto.nullable) = false];
@@ -270,6 +281,8 @@ message Cluster {
 // information that is generated from the secret data in the `spec`, such as
 // the digest and size of the secret data.
 message Secret {
+	option (docker.protobuf.plugin.store_object) = { };
+
 	string id = 1;
 
 	Meta meta = 2 [(gogoproto.nullable) = false];
@@ -286,6 +299,8 @@ message Secret {
 // SwarmKit can serve as a store for these objects without understanding their
 // meanings.
 message Resource {
+	option (docker.protobuf.plugin.store_object) = { };
+
 	string id = 1 [(gogoproto.customname) = "ID"];
 
 	Meta meta = 2 [(gogoproto.nullable) = false];
@@ -305,6 +320,8 @@ message Resource {
 // Extension declares a type of "resource" object. This message provides some
 // metadata about the objects.
 message Extension {
+	option (docker.protobuf.plugin.store_object) = { };
+
 	string id = 1 [(gogoproto.customname) = "ID"];
 
 	Meta meta = 2 [(gogoproto.nullable) = false];

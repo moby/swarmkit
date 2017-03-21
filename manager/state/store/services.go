@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state"
 	memdb "github.com/hashicorp/go-memdb"
 )
 
@@ -12,19 +11,18 @@ const tableService = "service"
 
 func init() {
 	register(ObjectStoreConfig{
-		Name: tableService,
 		Table: &memdb.TableSchema{
 			Name: tableService,
 			Indexes: map[string]*memdb.IndexSchema{
 				indexID: {
 					Name:    indexID,
 					Unique:  true,
-					Indexer: serviceIndexerByID{},
+					Indexer: api.ServiceIndexerByID{},
 				},
 				indexName: {
 					Name:    indexName,
 					Unique:  true,
-					Indexer: serviceIndexerByName{},
+					Indexer: api.ServiceIndexerByName{},
 				},
 				indexNetwork: {
 					Name:         indexNetwork,
@@ -38,7 +36,7 @@ func init() {
 				},
 				indexCustom: {
 					Name:         indexCustom,
-					Indexer:      serviceCustomIndexer{},
+					Indexer:      api.ServiceCustomIndexer{},
 					AllowMissing: true,
 				},
 			},
@@ -65,7 +63,7 @@ func init() {
 			}
 			return nil
 		},
-		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
+		ApplyStoreAction: func(tx Tx, sa api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Service:
 				obj := v.Service
@@ -80,62 +78,7 @@ func init() {
 			}
 			return errUnknownStoreAction
 		},
-		NewStoreAction: func(c state.Event) (api.StoreAction, error) {
-			var sa api.StoreAction
-			switch v := c.(type) {
-			case state.EventCreateService:
-				sa.Action = api.StoreActionKindCreate
-				sa.Target = &api.StoreAction_Service{
-					Service: v.Service,
-				}
-			case state.EventUpdateService:
-				sa.Action = api.StoreActionKindUpdate
-				sa.Target = &api.StoreAction_Service{
-					Service: v.Service,
-				}
-			case state.EventDeleteService:
-				sa.Action = api.StoreActionKindRemove
-				sa.Target = &api.StoreAction_Service{
-					Service: v.Service,
-				}
-			default:
-				return api.StoreAction{}, errUnknownStoreAction
-			}
-			return sa, nil
-		},
 	})
-}
-
-type serviceEntry struct {
-	*api.Service
-}
-
-func (s serviceEntry) ID() string {
-	return s.Service.ID
-}
-
-func (s serviceEntry) Meta() api.Meta {
-	return s.Service.Meta
-}
-
-func (s serviceEntry) SetMeta(meta api.Meta) {
-	s.Service.Meta = meta
-}
-
-func (s serviceEntry) Copy() Object {
-	return serviceEntry{s.Service.Copy()}
-}
-
-func (s serviceEntry) EventCreate() state.Event {
-	return state.EventCreateService{Service: s.Service}
-}
-
-func (s serviceEntry) EventUpdate() state.Event {
-	return state.EventUpdateService{Service: s.Service}
-}
-
-func (s serviceEntry) EventDelete() state.Event {
-	return state.EventDeleteService{Service: s.Service}
 }
 
 // CreateService adds a new service to the store.
@@ -146,7 +89,7 @@ func CreateService(tx Tx, s *api.Service) error {
 		return ErrNameConflict
 	}
 
-	return tx.create(tableService, serviceEntry{s})
+	return tx.create(tableService, s)
 }
 
 // UpdateService updates an existing service in the store.
@@ -154,12 +97,12 @@ func CreateService(tx Tx, s *api.Service) error {
 func UpdateService(tx Tx, s *api.Service) error {
 	// Ensure the name is either not in use or already used by this same Service.
 	if existing := tx.lookup(tableService, indexName, strings.ToLower(s.Spec.Annotations.Name)); existing != nil {
-		if existing.ID() != s.ID {
+		if existing.GetID() != s.ID {
 			return ErrNameConflict
 		}
 	}
 
-	return tx.update(tableService, serviceEntry{s})
+	return tx.update(tableService, s)
 }
 
 // DeleteService removes a service from the store.
@@ -175,7 +118,7 @@ func GetService(tx ReadTx, id string) *api.Service {
 	if s == nil {
 		return nil
 	}
-	return s.(serviceEntry).Service
+	return s.(*api.Service)
 }
 
 // FindServices selects a set of services and returns them.
@@ -190,53 +133,12 @@ func FindServices(tx ReadTx, by By) ([]*api.Service, error) {
 	}
 
 	serviceList := []*api.Service{}
-	appendResult := func(o Object) {
-		serviceList = append(serviceList, o.(serviceEntry).Service)
+	appendResult := func(o api.StoreObject) {
+		serviceList = append(serviceList, o.(*api.Service))
 	}
 
 	err := tx.find(tableService, by, checkType, appendResult)
 	return serviceList, err
-}
-
-type serviceIndexerByID struct{}
-
-func (si serviceIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
-	return fromArgs(args...)
-}
-
-func (si serviceIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
-	s, ok := obj.(serviceEntry)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
-
-	// Add the null character as a terminator
-	val := s.Service.ID + "\x00"
-	return true, []byte(val), nil
-}
-
-func (si serviceIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
-	return prefixFromArgs(args...)
-}
-
-type serviceIndexerByName struct{}
-
-func (si serviceIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
-	return fromArgs(args...)
-}
-
-func (si serviceIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
-	s, ok := obj.(serviceEntry)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
-
-	// Add the null character as a terminator
-	return true, []byte(strings.ToLower(s.Spec.Annotations.Name) + "\x00"), nil
-}
-
-func (si serviceIndexerByName) PrefixFromArgs(args ...interface{}) ([]byte, error) {
-	return prefixFromArgs(args...)
 }
 
 type serviceIndexerByNetwork struct{}
@@ -246,7 +148,7 @@ func (si serviceIndexerByNetwork) FromArgs(args ...interface{}) ([]byte, error) 
 }
 
 func (si serviceIndexerByNetwork) FromObject(obj interface{}) (bool, [][]byte, error) {
-	s, ok := obj.(serviceEntry)
+	s, ok := obj.(*api.Service)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -274,7 +176,7 @@ func (si serviceIndexerBySecret) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (si serviceIndexerBySecret) FromObject(obj interface{}) (bool, [][]byte, error) {
-	s, ok := obj.(serviceEntry)
+	s, ok := obj.(*api.Service)
 	if !ok {
 		panic("unexpected type passed to FromObject")
 	}
@@ -292,23 +194,4 @@ func (si serviceIndexerBySecret) FromObject(obj interface{}) (bool, [][]byte, er
 	}
 
 	return len(secretIDs) != 0, secretIDs, nil
-}
-
-type serviceCustomIndexer struct{}
-
-func (si serviceCustomIndexer) FromArgs(args ...interface{}) ([]byte, error) {
-	return fromArgs(args...)
-}
-
-func (si serviceCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, error) {
-	s, ok := obj.(serviceEntry)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
-
-	return customIndexer("", &s.Spec.Annotations)
-}
-
-func (si serviceCustomIndexer) PrefixFromArgs(args ...interface{}) ([]byte, error) {
-	return prefixFromArgs(args...)
 }

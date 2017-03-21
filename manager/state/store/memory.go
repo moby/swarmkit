@@ -73,7 +73,7 @@ var (
 
 func register(os ObjectStoreConfig) {
 	objectStorers = append(objectStorers, os)
-	schema.Tables[os.Name] = os.Table
+	schema.Tables[os.Table.Name] = os.Table
 }
 
 // MemoryStore is a concurrency-safe, in-memory implementation of the Store
@@ -142,9 +142,9 @@ func prefixFromArgs(args ...interface{}) ([]byte, error) {
 // consistent view of the data that cannot be affected by other
 // transactions.
 type ReadTx interface {
-	lookup(table, index, id string) Object
-	get(table, id string) Object
-	find(table string, by By, checkType func(By) error, appendResult func(Object)) error
+	lookup(table, index, id string) api.StoreObject
+	get(table, id string) api.StoreObject
+	find(table string, by By, checkType func(By) error, appendResult func(api.StoreObject)) error
 }
 
 type readTx struct {
@@ -168,19 +168,19 @@ func (s *MemoryStore) View(cb func(ReadTx)) {
 // until the transaction is over.
 type Tx interface {
 	ReadTx
-	create(table string, o Object) error
-	update(table string, o Object) error
+	create(table string, o api.StoreObject) error
+	update(table string, o api.StoreObject) error
 	delete(table, id string) error
 }
 
 type tx struct {
 	readTx
 	curVersion *api.Version
-	changelist []state.Event
+	changelist []api.Event
 }
 
 // ApplyStoreActions updates a store based on StoreAction messages.
-func (s *MemoryStore) ApplyStoreActions(actions []*api.StoreAction) error {
+func (s *MemoryStore) ApplyStoreActions(actions []api.StoreAction) error {
 	s.updateLock.Lock()
 	memDBTx := s.memDB.Txn(true)
 
@@ -210,7 +210,7 @@ func (s *MemoryStore) ApplyStoreActions(actions []*api.StoreAction) error {
 	return nil
 }
 
-func applyStoreAction(tx Tx, sa *api.StoreAction) error {
+func applyStoreAction(tx Tx, sa api.StoreAction) error {
 	for _, os := range objectStorers {
 		err := os.ApplyStoreAction(tx, sa)
 		if err != errUnknownStoreAction {
@@ -240,7 +240,7 @@ func (s *MemoryStore) update(proposer state.Proposer, cb func(Tx) error) error {
 		if proposer == nil {
 			memDBTx.Commit()
 		} else {
-			var sa []*api.StoreAction
+			var sa []api.StoreAction
 			sa, err = tx.changelistStoreActions()
 
 			if err == nil {
@@ -312,7 +312,7 @@ func (batch *Batch) Update(cb func(Tx) error) error {
 	batch.applied++
 
 	for batch.changelistLen < len(batch.tx.changelist) {
-		sa, err := newStoreAction(batch.tx.changelist[batch.changelistLen])
+		sa, err := api.NewStoreAction(batch.tx.changelist[batch.changelistLen])
 		if err != nil {
 			return err
 		}
@@ -350,7 +350,7 @@ func (batch *Batch) newTx() {
 
 func (batch *Batch) commit() error {
 	if batch.store.proposer != nil {
-		var sa []*api.StoreAction
+		var sa []api.StoreAction
 		sa, batch.err = batch.tx.changelistStoreActions()
 
 		if batch.err == nil {
@@ -425,24 +425,11 @@ func (tx *tx) init(memDBTx *memdb.Txn, curVersion *api.Version) {
 	tx.changelist = nil
 }
 
-func newStoreAction(c state.Event) (*api.StoreAction, error) {
-	for _, os := range objectStorers {
-		sa, err := os.NewStoreAction(c)
-		if err == nil {
-			return &sa, nil
-		} else if err != errUnknownStoreAction {
-			return nil, err
-		}
-	}
-
-	return nil, errors.New("unrecognized event type")
-}
-
-func (tx tx) changelistStoreActions() ([]*api.StoreAction, error) {
-	var actions []*api.StoreAction
+func (tx tx) changelistStoreActions() ([]api.StoreAction, error) {
+	var actions []api.StoreAction
 
 	for _, c := range tx.changelist {
-		sa, err := newStoreAction(c)
+		sa, err := api.NewStoreAction(c)
 		if err != nil {
 			return nil, err
 		}
@@ -453,26 +440,26 @@ func (tx tx) changelistStoreActions() ([]*api.StoreAction, error) {
 }
 
 // lookup is an internal typed wrapper around memdb.
-func (tx readTx) lookup(table, index, id string) Object {
+func (tx readTx) lookup(table, index, id string) api.StoreObject {
 	j, err := tx.memDBTx.First(table, index, id)
 	if err != nil {
 		return nil
 	}
 	if j != nil {
-		return j.(Object)
+		return j.(api.StoreObject)
 	}
 	return nil
 }
 
 // create adds a new object to the store.
 // Returns ErrExist if the ID is already taken.
-func (tx *tx) create(table string, o Object) error {
-	if tx.lookup(table, indexID, o.ID()) != nil {
+func (tx *tx) create(table string, o api.StoreObject) error {
+	if tx.lookup(table, indexID, o.GetID()) != nil {
 		return ErrExist
 	}
 
-	copy := o.Copy()
-	meta := copy.Meta()
+	copy := o.CopyStoreObject()
+	meta := copy.GetMeta()
 	if err := touchMeta(&meta, tx.curVersion); err != nil {
 		return err
 	}
@@ -488,20 +475,21 @@ func (tx *tx) create(table string, o Object) error {
 
 // Update updates an existing object in the store.
 // Returns ErrNotExist if the object doesn't exist.
-func (tx *tx) update(table string, o Object) error {
-	oldN := tx.lookup(table, indexID, o.ID())
+func (tx *tx) update(table string, o api.StoreObject) error {
+	oldN := tx.lookup(table, indexID, o.GetID())
 	if oldN == nil {
 		return ErrNotExist
 	}
 
+	meta := o.GetMeta()
+
 	if tx.curVersion != nil {
-		if oldN.(Object).Meta().Version != o.Meta().Version {
+		if oldN.GetMeta().Version != meta.Version {
 			return ErrSequenceConflict
 		}
 	}
 
-	copy := o.Copy()
-	meta := copy.Meta()
+	copy := o.CopyStoreObject()
 	if err := touchMeta(&meta, tx.curVersion); err != nil {
 		return err
 	}
@@ -532,12 +520,12 @@ func (tx *tx) delete(table, id string) error {
 
 // Get looks up an object by ID.
 // Returns nil if the object doesn't exist.
-func (tx readTx) get(table, id string) Object {
+func (tx readTx) get(table, id string) api.StoreObject {
 	o := tx.lookup(table, indexID, id)
 	if o == nil {
 		return nil
 	}
-	return o.Copy()
+	return o.CopyStoreObject()
 }
 
 // findIterators returns a slice of iterators. The union of items from these
@@ -676,7 +664,7 @@ func (tx readTx) findIterators(table string, by By, checkType func(By) error) ([
 }
 
 // find selects a set of objects calls a callback for each matching object.
-func (tx readTx) find(table string, by By, checkType func(By) error, appendResult func(Object)) error {
+func (tx readTx) find(table string, by By, checkType func(By) error, appendResult func(api.StoreObject)) error {
 	fromResultIterators := func(its ...memdb.ResultIterator) {
 		ids := make(map[string]struct{})
 		for _, it := range its {
@@ -685,10 +673,10 @@ func (tx readTx) find(table string, by By, checkType func(By) error, appendResul
 				if obj == nil {
 					break
 				}
-				o := obj.(Object)
-				id := o.ID()
+				o := obj.(api.StoreObject)
+				id := o.GetID()
 				if _, exists := ids[id]; !exists {
-					appendResult(o.Copy())
+					appendResult(o.CopyStoreObject())
 					ids[id] = struct{}{}
 				}
 			}
@@ -741,7 +729,7 @@ func (s *MemoryStore) WatchQueue() *watch.Queue {
 // released with watch.StopWatch when it is no longer needed. The channel is
 // guaranteed to get all events after the moment of the snapshot, and only
 // those events.
-func ViewAndWatch(store *MemoryStore, cb func(ReadTx) error, specifiers ...state.Event) (watch chan events.Event, cancel func(), err error) {
+func ViewAndWatch(store *MemoryStore, cb func(ReadTx) error, specifiers ...api.Event) (watch chan events.Event, cancel func(), err error) {
 	// Using Update to lock the store and guarantee consistency between
 	// the watcher and the the state seen by the callback. snapshotReadTx
 	// exposes this Tx as a ReadTx so the callback can't modify it.
@@ -784,24 +772,4 @@ func touchMeta(meta *api.Meta, version *api.Version) error {
 	meta.UpdatedAt = now
 
 	return nil
-}
-
-func customIndexer(kind string, annotations *api.Annotations) (bool, [][]byte, error) {
-	var converted [][]byte
-
-	for _, entry := range annotations.Indices {
-		index := make([]byte, 0, len(kind)+1+len(entry.Key)+1+len(entry.Val)+1)
-		if kind != "" {
-			index = append(index, []byte(kind)...)
-			index = append(index, '|')
-		}
-		index = append(index, []byte(entry.Key)...)
-		index = append(index, '|')
-		index = append(index, []byte(entry.Val)...)
-		index = append(index, '\x00')
-		converted = append(converted, index)
-	}
-
-	// Add the null character as a terminator
-	return len(converted) != 0, converted, nil
 }

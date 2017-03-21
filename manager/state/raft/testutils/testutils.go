@@ -543,7 +543,7 @@ func ProposeValue(t *testing.T, raftNode *TestNode, time time.Duration, nodeID .
 		},
 	}
 
-	storeActions := []*api.StoreAction{
+	storeActions := []api.StoreAction{
 		{
 			Action: api.StoreActionKindCreate,
 			Target: &api.StoreAction_Node{

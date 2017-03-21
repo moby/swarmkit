@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state"
 	memdb "github.com/hashicorp/go-memdb"
 )
 
@@ -12,23 +11,22 @@ const tableSecret = "secret"
 
 func init() {
 	register(ObjectStoreConfig{
-		Name: tableSecret,
 		Table: &memdb.TableSchema{
 			Name: tableSecret,
 			Indexes: map[string]*memdb.IndexSchema{
 				indexID: {
 					Name:    indexID,
 					Unique:  true,
-					Indexer: secretIndexerByID{},
+					Indexer: api.SecretIndexerByID{},
 				},
 				indexName: {
 					Name:    indexName,
 					Unique:  true,
-					Indexer: secretIndexerByName{},
+					Indexer: api.SecretIndexerByName{},
 				},
 				indexCustom: {
 					Name:         indexCustom,
-					Indexer:      secretCustomIndexer{},
+					Indexer:      api.SecretCustomIndexer{},
 					AllowMissing: true,
 				},
 			},
@@ -55,7 +53,7 @@ func init() {
 			}
 			return nil
 		},
-		ApplyStoreAction: func(tx Tx, sa *api.StoreAction) error {
+		ApplyStoreAction: func(tx Tx, sa api.StoreAction) error {
 			switch v := sa.Target.(type) {
 			case *api.StoreAction_Secret:
 				obj := v.Secret
@@ -70,62 +68,7 @@ func init() {
 			}
 			return errUnknownStoreAction
 		},
-		NewStoreAction: func(c state.Event) (api.StoreAction, error) {
-			var sa api.StoreAction
-			switch v := c.(type) {
-			case state.EventCreateSecret:
-				sa.Action = api.StoreActionKindCreate
-				sa.Target = &api.StoreAction_Secret{
-					Secret: v.Secret,
-				}
-			case state.EventUpdateSecret:
-				sa.Action = api.StoreActionKindUpdate
-				sa.Target = &api.StoreAction_Secret{
-					Secret: v.Secret,
-				}
-			case state.EventDeleteSecret:
-				sa.Action = api.StoreActionKindRemove
-				sa.Target = &api.StoreAction_Secret{
-					Secret: v.Secret,
-				}
-			default:
-				return api.StoreAction{}, errUnknownStoreAction
-			}
-			return sa, nil
-		},
 	})
-}
-
-type secretEntry struct {
-	*api.Secret
-}
-
-func (s secretEntry) ID() string {
-	return s.Secret.ID
-}
-
-func (s secretEntry) Meta() api.Meta {
-	return s.Secret.Meta
-}
-
-func (s secretEntry) SetMeta(meta api.Meta) {
-	s.Secret.Meta = meta
-}
-
-func (s secretEntry) Copy() Object {
-	return secretEntry{s.Secret.Copy()}
-}
-
-func (s secretEntry) EventCreate() state.Event {
-	return state.EventCreateSecret{Secret: s.Secret}
-}
-
-func (s secretEntry) EventUpdate() state.Event {
-	return state.EventUpdateSecret{Secret: s.Secret}
-}
-
-func (s secretEntry) EventDelete() state.Event {
-	return state.EventDeleteSecret{Secret: s.Secret}
 }
 
 // CreateSecret adds a new secret to the store.
@@ -136,7 +79,7 @@ func CreateSecret(tx Tx, s *api.Secret) error {
 		return ErrNameConflict
 	}
 
-	return tx.create(tableSecret, secretEntry{s})
+	return tx.create(tableSecret, s)
 }
 
 // UpdateSecret updates an existing secret in the store.
@@ -144,12 +87,12 @@ func CreateSecret(tx Tx, s *api.Secret) error {
 func UpdateSecret(tx Tx, s *api.Secret) error {
 	// Ensure the name is either not in use or already used by this same Secret.
 	if existing := tx.lookup(tableSecret, indexName, strings.ToLower(s.Spec.Annotations.Name)); existing != nil {
-		if existing.ID() != s.ID {
+		if existing.GetID() != s.ID {
 			return ErrNameConflict
 		}
 	}
 
-	return tx.update(tableSecret, secretEntry{s})
+	return tx.update(tableSecret, s)
 }
 
 // DeleteSecret removes a secret from the store.
@@ -165,7 +108,7 @@ func GetSecret(tx ReadTx, id string) *api.Secret {
 	if n == nil {
 		return nil
 	}
-	return n.(secretEntry).Secret
+	return n.(*api.Secret)
 }
 
 // FindSecrets selects a set of secrets and returns them.
@@ -180,70 +123,10 @@ func FindSecrets(tx ReadTx, by By) ([]*api.Secret, error) {
 	}
 
 	secretList := []*api.Secret{}
-	appendResult := func(o Object) {
-		secretList = append(secretList, o.(secretEntry).Secret)
+	appendResult := func(o api.StoreObject) {
+		secretList = append(secretList, o.(*api.Secret))
 	}
 
 	err := tx.find(tableSecret, by, checkType, appendResult)
 	return secretList, err
-}
-
-type secretIndexerByID struct{}
-
-func (si secretIndexerByID) FromArgs(args ...interface{}) ([]byte, error) {
-	return fromArgs(args...)
-}
-
-func (si secretIndexerByID) FromObject(obj interface{}) (bool, []byte, error) {
-	s, ok := obj.(secretEntry)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
-
-	// Add the null character as a terminator
-	val := s.Secret.ID + "\x00"
-	return true, []byte(val), nil
-}
-
-func (si secretIndexerByID) PrefixFromArgs(args ...interface{}) ([]byte, error) {
-	return prefixFromArgs(args...)
-}
-
-type secretIndexerByName struct{}
-
-func (si secretIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
-	return fromArgs(args...)
-}
-
-func (si secretIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
-	s, ok := obj.(secretEntry)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
-
-	// Add the null character as a terminator
-	return true, []byte(strings.ToLower(s.Spec.Annotations.Name) + "\x00"), nil
-}
-
-func (si secretIndexerByName) PrefixFromArgs(args ...interface{}) ([]byte, error) {
-	return prefixFromArgs(args...)
-}
-
-type secretCustomIndexer struct{}
-
-func (si secretCustomIndexer) FromArgs(args ...interface{}) ([]byte, error) {
-	return fromArgs(args...)
-}
-
-func (si secretCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, error) {
-	s, ok := obj.(secretEntry)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
-
-	return customIndexer("", &s.Spec.Annotations)
-}
-
-func (si secretCustomIndexer) PrefixFromArgs(args ...interface{}) ([]byte, error) {
-	return prefixFromArgs(args...)
 }

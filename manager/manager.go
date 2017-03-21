@@ -691,9 +691,9 @@ func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 			m.caserver.UpdateRootCA(ctx, cluster)
 			return m.updateKEK(ctx, cluster)
 		},
-		state.EventUpdateCluster{
+		api.EventUpdateCluster{
 			Cluster: &api.Cluster{ID: clusterID},
-			Checks:  []state.ClusterCheckFunc{state.ClusterCheckID},
+			Checks:  []api.ClusterCheckFunc{state.ClusterCheckID},
 		},
 	)
 	if err != nil {
@@ -703,7 +703,7 @@ func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 		for {
 			select {
 			case event := <-clusterWatch:
-				clusterEvent := event.(state.EventUpdateCluster)
+				clusterEvent := event.(api.EventUpdateCluster)
 				m.caserver.UpdateRootCA(ctx, clusterEvent.Cluster)
 				m.updateKEK(ctx, clusterEvent.Cluster)
 			case <-ctx.Done():

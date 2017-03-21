@@ -258,7 +258,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 	nc := a.netCtx
 
 	switch v := ev.(type) {
-	case state.EventCreateNetwork:
+	case api.EventCreateNetwork:
 		n := v.Network.Copy()
 		if nc.nwkAllocator.IsAllocated(n) {
 			break
@@ -288,7 +288,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 				log.G(ctx).WithError(err).Error(err)
 			}
 		}
-	case state.EventDeleteNetwork:
+	case api.EventDeleteNetwork:
 		n := v.Network.Copy()
 
 		if IsIngressNetwork(n) && nc.ingressNetwork.ID == n.ID {
@@ -307,7 +307,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 		}
 
 		delete(nc.unallocatedNetworks, n.ID)
-	case state.EventCreateService:
+	case api.EventCreateService:
 		s := v.Service.Copy()
 
 		if nc.nwkAllocator.IsServiceAllocated(s) {
@@ -324,7 +324,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 		}); err != nil {
 			log.G(ctx).WithError(err).Errorf("Failed to commit allocation for service %s", s.ID)
 		}
-	case state.EventUpdateService:
+	case api.EventUpdateService:
 		s := v.Service.Copy()
 
 		if nc.nwkAllocator.IsServiceAllocated(s) {
@@ -347,7 +347,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 		} else {
 			delete(nc.unallocatedServices, s.ID)
 		}
-	case state.EventDeleteService:
+	case api.EventDeleteService:
 		s := v.Service.Copy()
 
 		if err := nc.nwkAllocator.ServiceDeallocate(s); err != nil {
@@ -357,9 +357,9 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 		// Remove it from unallocatedServices just in case
 		// it's still there.
 		delete(nc.unallocatedServices, s.ID)
-	case state.EventCreateNode, state.EventUpdateNode, state.EventDeleteNode:
+	case api.EventCreateNode, api.EventUpdateNode, api.EventDeleteNode:
 		a.doNodeAlloc(ctx, ev)
-	case state.EventCreateTask, state.EventUpdateTask, state.EventDeleteTask:
+	case api.EventCreateTask, api.EventUpdateTask, api.EventDeleteTask:
 		a.doTaskAlloc(ctx, ev)
 	case state.EventCommit:
 		a.procTasksNetwork(ctx, false)
@@ -386,11 +386,11 @@ func (a *Allocator) doNodeAlloc(ctx context.Context, ev events.Event) {
 	)
 
 	switch v := ev.(type) {
-	case state.EventCreateNode:
+	case api.EventCreateNode:
 		node = v.Node.Copy()
-	case state.EventUpdateNode:
+	case api.EventUpdateNode:
 		node = v.Node.Copy()
-	case state.EventDeleteNode:
+	case api.EventDeleteNode:
 		isDelete = true
 		node = v.Node.Copy()
 	}
@@ -595,11 +595,11 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, ev events.Event) {
 	)
 
 	switch v := ev.(type) {
-	case state.EventCreateTask:
+	case api.EventCreateTask:
 		t = v.Task.Copy()
-	case state.EventUpdateTask:
+	case api.EventUpdateTask:
 		t = v.Task.Copy()
-	case state.EventDeleteTask:
+	case api.EventDeleteTask:
 		isDelete = true
 		t = v.Task.Copy()
 	}

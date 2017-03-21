@@ -21,7 +21,7 @@ type mockProposer struct {
 	index uint64
 }
 
-func (mp *mockProposer) ProposeValue(ctx context.Context, storeAction []*api.StoreAction, cb func()) error {
+func (mp *mockProposer) ProposeValue(ctx context.Context, storeAction []api.StoreAction, cb func()) error {
 	if cb != nil {
 		cb()
 	}

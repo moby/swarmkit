@@ -16,10 +16,10 @@ func WatchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
 		case event := <-watch:
-			if task, ok := event.(state.EventCreateTask); ok {
+			if task, ok := event.(api.EventCreateTask); ok {
 				return task.Task
 			}
-			if _, ok := event.(state.EventUpdateTask); ok {
+			if _, ok := event.(api.EventUpdateTask); ok {
 				assert.FailNow(t, "got EventUpdateTask when expecting EventCreateTask", fmt.Sprint(event))
 			}
 		case <-time.After(time.Second):
@@ -33,10 +33,10 @@ func WatchTaskUpdate(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
 		case event := <-watch:
-			if task, ok := event.(state.EventUpdateTask); ok {
+			if task, ok := event.(api.EventUpdateTask); ok {
 				return task.Task
 			}
-			if _, ok := event.(state.EventCreateTask); ok {
+			if _, ok := event.(api.EventCreateTask); ok {
 				assert.FailNow(t, "got EventCreateTask when expecting EventUpdateTask", fmt.Sprint(event))
 			}
 		case <-time.After(time.Second):
@@ -50,7 +50,7 @@ func WatchTaskDelete(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
 		case event := <-watch:
-			if task, ok := event.(state.EventDeleteTask); ok {
+			if task, ok := event.(api.EventDeleteTask); ok {
 				return task.Task
 			}
 		case <-time.After(time.Second):
@@ -65,10 +65,10 @@ func WatchShutdownTask(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
 		case event := <-watch:
-			if task, ok := event.(state.EventUpdateTask); ok && task.Task.DesiredState == api.TaskStateShutdown {
+			if task, ok := event.(api.EventUpdateTask); ok && task.Task.DesiredState == api.TaskStateShutdown {
 				return task.Task
 			}
-			if _, ok := event.(state.EventCreateTask); ok {
+			if _, ok := event.(api.EventCreateTask); ok {
 				assert.FailNow(t, "got EventCreateTask when expecting EventUpdateTask", fmt.Sprint(event))
 			}
 		case <-time.After(time.Second):
@@ -78,7 +78,7 @@ func WatchShutdownTask(t *testing.T, watch chan events.Event) *api.Task {
 }
 
 // Expect fails the test if the next event is not one of the specified events.
-func Expect(t *testing.T, watch chan events.Event, specifiers ...state.Event) {
+func Expect(t *testing.T, watch chan events.Event, specifiers ...api.Event) {
 	matcher := state.Matcher(specifiers...)
 	for {
 		select {

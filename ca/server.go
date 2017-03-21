@@ -109,9 +109,9 @@ func (s *Server) NodeCertificateStatus(ctx context.Context, request *api.NodeCer
 
 	var node *api.Node
 
-	event := state.EventUpdateNode{
+	event := api.EventUpdateNode{
 		Node:   &api.Node{ID: request.NodeID},
-		Checks: []state.NodeCheckFunc{state.NodeCheckID},
+		Checks: []api.NodeCheckFunc{state.NodeCheckID},
 	}
 
 	// Retrieve the current value of the certificate with this token, and create a watcher
@@ -158,7 +158,7 @@ func (s *Server) NodeCertificateStatus(ctx context.Context, request *api.NodeCer
 		select {
 		case event := <-updates:
 			switch v := event.(type) {
-			case state.EventUpdateNode:
+			case api.EventUpdateNode:
 				// We got an update on the certificate record. If the status is a final state,
 				// return the certificate.
 				if isFinalState(v.Node.Certificate.Status) {
@@ -396,8 +396,8 @@ func (s *Server) Run(ctx context.Context) error {
 			nodes, err = store.FindNodes(readTx, store.All)
 			return err
 		},
-		state.EventCreateNode{},
-		state.EventUpdateNode{},
+		api.EventCreateNode{},
+		api.EventUpdateNode{},
 	)
 
 	// Do this after updateCluster has been called, so isRunning never
@@ -441,9 +441,9 @@ func (s *Server) Run(ctx context.Context) error {
 		select {
 		case event := <-updates:
 			switch v := event.(type) {
-			case state.EventCreateNode:
+			case api.EventCreateNode:
 				s.evaluateAndSignNodeCert(ctx, v.Node)
-			case state.EventUpdateNode:
+			case api.EventUpdateNode:
 				// If this certificate is already at a final state
 				// no need to evaluate and sign it.
 				if !isFinalState(v.Node.Certificate.Status) {

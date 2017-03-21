@@ -107,11 +107,11 @@ func TestAllocator(t *testing.T) {
 		return nil
 	}))
 
-	netWatch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateNetwork{}, state.EventDeleteNetwork{})
+	netWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
 	defer cancel()
-	taskWatch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{}, state.EventDeleteTask{})
+	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
 	defer cancel()
-	serviceWatch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateService{}, state.EventDeleteService{})
+	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
 	defer cancel()
 
 	// Start allocator
@@ -495,14 +495,14 @@ func watchNetwork(t *testing.T, watch chan events.Event, expectTimeout bool, fn 
 		var network *api.Network
 		select {
 		case event := <-watch:
-			if n, ok := event.(state.EventUpdateNetwork); ok {
+			if n, ok := event.(api.EventUpdateNetwork); ok {
 				network = n.Network.Copy()
 				if fn == nil || (fn != nil && fn(mockTester{}, network)) {
 					return
 				}
 			}
 
-			if n, ok := event.(state.EventDeleteNetwork); ok {
+			if n, ok := event.(api.EventDeleteNetwork); ok {
 				network = n.Network.Copy()
 				if fn == nil || (fn != nil && fn(mockTester{}, network)) {
 					return
@@ -528,14 +528,14 @@ func watchService(t *testing.T, watch chan events.Event, expectTimeout bool, fn 
 		var service *api.Service
 		select {
 		case event := <-watch:
-			if s, ok := event.(state.EventUpdateService); ok {
+			if s, ok := event.(api.EventUpdateService); ok {
 				service = s.Service.Copy()
 				if fn == nil || (fn != nil && fn(mockTester{}, service)) {
 					return
 				}
 			}
 
-			if s, ok := event.(state.EventDeleteService); ok {
+			if s, ok := event.(api.EventDeleteService); ok {
 				service = s.Service.Copy()
 				if fn == nil || (fn != nil && fn(mockTester{}, service)) {
 					return
@@ -561,14 +561,14 @@ func watchTask(t *testing.T, s *store.MemoryStore, watch chan events.Event, expe
 		var task *api.Task
 		select {
 		case event := <-watch:
-			if t, ok := event.(state.EventUpdateTask); ok {
+			if t, ok := event.(api.EventUpdateTask); ok {
 				task = t.Task.Copy()
 				if fn == nil || (fn != nil && fn(mockTester{}, s, task)) {
 					return
 				}
 			}
 
-			if t, ok := event.(state.EventDeleteTask); ok {
+			if t, ok := event.(api.EventDeleteTask); ok {
 				task = t.Task.Copy()
 				if fn == nil || (fn != nil && fn(mockTester{}, s, task)) {
 					return

@@ -190,9 +190,9 @@ func NewTestCAFromRootCA(t *testing.T, tempBaseDir string, rootCA ca.RootCA, krw
 			caServer.UpdateRootCA(ctx, cluster)
 			return nil
 		},
-		state.EventUpdateCluster{
+		api.EventUpdateCluster{
 			Cluster: &api.Cluster{ID: organization},
-			Checks:  []state.ClusterCheckFunc{state.ClusterCheckID},
+			Checks:  []api.ClusterCheckFunc{state.ClusterCheckID},
 		},
 	)
 	assert.NoError(t, err)
@@ -200,7 +200,7 @@ func NewTestCAFromRootCA(t *testing.T, tempBaseDir string, rootCA ca.RootCA, krw
 		for {
 			select {
 			case event := <-clusterWatch:
-				clusterEvent := event.(state.EventUpdateCluster)
+				clusterEvent := event.(api.EventUpdateCluster)
 				caServer.UpdateRootCA(ctx, clusterEvent.Cluster)
 			case <-ctx.Done():
 				clusterWatchCancel()
