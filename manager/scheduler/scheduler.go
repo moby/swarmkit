@@ -331,7 +331,12 @@ func (s *Scheduler) processPreassignedTasks(ctx context.Context) {
 
 // tick attempts to schedule the queue.
 func (s *Scheduler) tick(ctx context.Context) {
-	tasksByCommonSpec := make(map[string]map[string]*api.Task)
+	type commonSpecKey struct {
+		serviceID   string
+		specVersion api.Version
+	}
+	tasksByCommonSpec := make(map[commonSpecKey]map[string]*api.Task)
+	var oneOffTasks []*api.Task
 	schedulingDecisions := make(map[string]schedulingDecision, len(s.unassignedTasks))
 
 	for taskID, t := range s.unassignedTasks {
@@ -341,29 +346,30 @@ func (s *Scheduler) tick(ctx context.Context) {
 			continue
 		}
 
-		// Group common tasks with common specs by marshalling the spec
-		// into taskKey and using it as a map key.
-		// TODO(aaronl): Once specs are versioned, this will allow a
-		// much more efficient fast path.
-		fieldsToMarshal := api.Task{
-			ServiceID: t.ServiceID,
-			Spec:      t.Spec,
-		}
-		marshalled, err := fieldsToMarshal.Marshal()
-		if err != nil {
-			panic(err)
-		}
-		taskGroupKey := string(marshalled)
+		// Group tasks with common specs
+		if t.SpecVersion != nil {
+			taskGroupKey := commonSpecKey{
+				serviceID:   t.ServiceID,
+				specVersion: *t.SpecVersion,
+			}
 
-		if tasksByCommonSpec[taskGroupKey] == nil {
-			tasksByCommonSpec[taskGroupKey] = make(map[string]*api.Task)
+			if tasksByCommonSpec[taskGroupKey] == nil {
+				tasksByCommonSpec[taskGroupKey] = make(map[string]*api.Task)
+			}
+			tasksByCommonSpec[taskGroupKey][taskID] = t
+		} else {
+			// This task doesn't have a spec version. We have to
+			// schedule it as a one-off.
+			oneOffTasks = append(oneOffTasks, t)
 		}
-		tasksByCommonSpec[taskGroupKey][taskID] = t
 		delete(s.unassignedTasks, taskID)
 	}
 
 	for _, taskGroup := range tasksByCommonSpec {
 		s.scheduleTaskGroup(ctx, taskGroup, schedulingDecisions)
+	}
+	for _, t := range oneOffTasks {
+		s.scheduleTaskGroup(ctx, map[string]*api.Task{t.ID: t}, schedulingDecisions)
 	}
 
 	_, failed := s.applySchedulingDecisions(ctx, schedulingDecisions)
