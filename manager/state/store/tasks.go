@@ -26,6 +26,11 @@ func init() {
 					AllowMissing: true,
 					Indexer:      taskIndexerByName{},
 				},
+				indexRuntime: {
+					Name:         indexRuntime,
+					AllowMissing: true,
+					Indexer:      taskIndexerByRuntime{},
+				},
 				indexServiceID: {
 					Name:         indexServiceID,
 					AllowMissing: true,
@@ -138,7 +143,7 @@ func GetTask(tx ReadTx, id string) *api.Task {
 func FindTasks(tx ReadTx, by By) ([]*api.Task, error) {
 	checkType := func(by By) error {
 		switch by.(type) {
-		case byName, byNamePrefix, byIDPrefix, byDesiredState, byTaskState, byNode, byService, bySlot, byReferencedNetworkID, byReferencedSecretID, byCustom, byCustomPrefix:
+		case byName, byNamePrefix, byIDPrefix, byRuntime, byDesiredState, byTaskState, byNode, byService, bySlot, byReferencedNetworkID, byReferencedSecretID, byCustom, byCustomPrefix:
 			return nil
 		default:
 			return ErrInvalidFindBy
@@ -173,6 +178,25 @@ func (ti taskIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
 }
 
 func (ti taskIndexerByName) PrefixFromArgs(args ...interface{}) ([]byte, error) {
+	return prefixFromArgs(args...)
+}
+
+type taskIndexerByRuntime struct{}
+
+func (ti taskIndexerByRuntime) FromArgs(args ...interface{}) ([]byte, error) {
+	return fromArgs(args...)
+}
+
+func (ti taskIndexerByRuntime) FromObject(obj interface{}) (bool, []byte, error) {
+	t := obj.(*api.Task)
+	r, err := naming.Runtime(t.Spec)
+	if err != nil {
+		return false, nil, nil
+	}
+	return true, []byte(r + "\x00"), nil
+}
+
+func (ti taskIndexerByRuntime) PrefixFromArgs(args ...interface{}) ([]byte, error) {
 	return prefixFromArgs(args...)
 }
 

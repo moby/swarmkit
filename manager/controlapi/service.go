@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/distribution/reference"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/naming"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/allocator"
 	"github.com/docker/swarmkit/manager/constraint"
@@ -118,9 +119,27 @@ func validateUpdate(uc *api.UpdateConfig) error {
 	return nil
 }
 
-func validateContainerSpec(container *api.ContainerSpec) error {
-	if container == nil {
-		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: missing in service spec")
+func validateContainerSpec(taskSpec api.TaskSpec) error {
+	// Building a empty/dummy Task to validate the templating and
+	// the resulting container spec as well. This is a *best effort*
+	// validation.
+	container, err := template.ExpandContainerSpec(&api.Task{
+		Spec:      taskSpec,
+		ServiceID: "serviceid",
+		Slot:      1,
+		NodeID:    "nodeid",
+		Networks:  []*api.NetworkAttachment{},
+		Annotations: api.Annotations{
+			Name: "taskname",
+		},
+		ServiceAnnotations: api.Annotations{
+			Name: "servicename",
+		},
+		Endpoint:  &api.Endpoint{},
+		LogDriver: taskSpec.LogDriver,
+	})
+	if err != nil {
+		return grpc.Errorf(codes.InvalidArgument, err.Error())
 	}
 
 	if container.Image == "" {
@@ -137,6 +156,37 @@ func validateContainerSpec(container *api.ContainerSpec) error {
 			return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: duplicate mount point: %s", mount.Target)
 		}
 		mountMap[mount.Target] = true
+	}
+
+	return nil
+}
+
+func validateGenericRuntimeSpec(taskSpec api.TaskSpec) error {
+	generic := taskSpec.GetGeneric()
+
+	if len(generic.Kind) < 3 {
+		return grpc.Errorf(codes.InvalidArgument, "Generic runtime: Invalid name %q", generic.Kind)
+	}
+
+	reservedNames := []string{"container", "attachment"}
+	for _, n := range reservedNames {
+		if strings.ToLower(generic.Kind) == n {
+			return grpc.Errorf(codes.InvalidArgument, "Generic runtime: %q is a reserved name", generic.Kind)
+		}
+	}
+
+	payload := generic.Payload
+
+	if payload == nil {
+		return grpc.Errorf(codes.InvalidArgument, "Generic runtime is missing payload")
+	}
+
+	if payload.TypeUrl == "" {
+		return grpc.Errorf(codes.InvalidArgument, "Generic runtime is missing payload type")
+	}
+
+	if len(payload.Value) == 0 {
+		return grpc.Errorf(codes.InvalidArgument, "Generic runtime has an empty payload")
 	}
 
 	return nil
@@ -164,34 +214,17 @@ func validateTaskSpec(taskSpec api.TaskSpec) error {
 		return grpc.Errorf(codes.InvalidArgument, "TaskSpec: missing runtime")
 	}
 
-	_, ok := taskSpec.GetRuntime().(*api.TaskSpec_Container)
-	if !ok {
+	switch taskSpec.GetRuntime().(type) {
+	case *api.TaskSpec_Container:
+		if err := validateContainerSpec(taskSpec); err != nil {
+			return err
+		}
+	case *api.TaskSpec_Generic:
+		if err := validateGenericRuntimeSpec(taskSpec); err != nil {
+			return err
+		}
+	default:
 		return grpc.Errorf(codes.Unimplemented, "RuntimeSpec: unimplemented runtime in service spec")
-	}
-
-	// Building a empty/dummy Task to validate the templating and
-	// the resulting container spec as well. This is a *best effort*
-	// validation.
-	preparedSpec, err := template.ExpandContainerSpec(&api.Task{
-		Spec:      taskSpec,
-		ServiceID: "serviceid",
-		Slot:      1,
-		NodeID:    "nodeid",
-		Networks:  []*api.NetworkAttachment{},
-		Annotations: api.Annotations{
-			Name: "taskname",
-		},
-		ServiceAnnotations: api.Annotations{
-			Name: "servicename",
-		},
-		Endpoint:  &api.Endpoint{},
-		LogDriver: taskSpec.LogDriver,
-	})
-	if err != nil {
-		return grpc.Errorf(codes.InvalidArgument, err.Error())
-	}
-	if err := validateContainerSpec(preparedSpec); err != nil {
-		return err
 	}
 
 	return nil
@@ -697,6 +730,8 @@ func (s *Server) ListServices(ctx context.Context, request *api.ListServicesRequ
 			services, err = store.FindServices(tx, buildFilters(store.ByNamePrefix, request.Filters.NamePrefixes))
 		case request.Filters != nil && len(request.Filters.IDPrefixes) > 0:
 			services, err = store.FindServices(tx, buildFilters(store.ByIDPrefix, request.Filters.IDPrefixes))
+		case request.Filters != nil && len(request.Filters.Runtimes) > 0:
+			services, err = store.FindServices(tx, buildFilters(store.ByRuntime, request.Filters.Runtimes))
 		default:
 			services, err = store.FindServices(tx, store.All)
 		}
@@ -718,6 +753,16 @@ func (s *Server) ListServices(ctx context.Context, request *api.ListServicesRequ
 			},
 			func(e *api.Service) bool {
 				return filterMatchLabels(e.Spec.Annotations.Labels, request.Filters.Labels)
+			},
+			func(e *api.Service) bool {
+				if len(request.Filters.Runtimes) == 0 {
+					return true
+				}
+				r, err := naming.Runtime(e.Spec.Task)
+				if err != nil {
+					return false
+				}
+				return filterContains(r, request.Filters.Runtimes)
 			},
 		)
 	}
