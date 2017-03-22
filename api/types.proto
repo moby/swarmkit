@@ -892,6 +892,11 @@ message HealthConfig {
 	// Retries is the number of consecutive failures needed to consider a
 	// container as unhealthy. Zero means inherit.
 	int32 retries = 4;
+
+	// Start period is the period for container initialization during
+	// which health check failures will note count towards the maximum
+	// number of retries.
+	google.protobuf.Duration start_period = 5;
 }
 
 message MaybeEncryptedRecord {
