@@ -18,6 +18,11 @@ func createTask(t *testing.T, ts *testServer, desiredState api.TaskState) *api.T
 	task := &api.Task{
 		ID:           identity.NewID(),
 		DesiredState: desiredState,
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{},
+			},
+		},
 	}
 	err := ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateTask(tx, task)
