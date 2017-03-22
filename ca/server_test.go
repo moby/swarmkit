@@ -539,7 +539,7 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 			_, err = parsed.Verify(x509.VerifyOptions{Roots: rootPool})
 			require.NoError(t, err)
 		} else {
-			require.Equal(t, err, ca.ErrNoExternalCAURLs)
+			require.Equal(t, ca.ErrNoExternalCAURLs, err)
 		}
 	}
 }
