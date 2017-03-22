@@ -136,10 +136,7 @@ func (ni nodeIndexerByHostname) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ni nodeIndexerByHostname) FromObject(obj interface{}) (bool, []byte, error) {
-	n, ok := obj.(*api.Node)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
+	n := obj.(*api.Node)
 
 	if n.Description == nil {
 		return false, nil, nil
@@ -159,10 +156,7 @@ func (ni nodeIndexerByRole) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ni nodeIndexerByRole) FromObject(obj interface{}) (bool, []byte, error) {
-	n, ok := obj.(*api.Node)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
+	n := obj.(*api.Node)
 
 	// Add the null character as a terminator
 	return true, []byte(strconv.FormatInt(int64(n.Role), 10) + "\x00"), nil
@@ -175,10 +169,7 @@ func (ni nodeIndexerByMembership) FromArgs(args ...interface{}) ([]byte, error) 
 }
 
 func (ni nodeIndexerByMembership) FromObject(obj interface{}) (bool, []byte, error) {
-	n, ok := obj.(*api.Node)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
+	n := obj.(*api.Node)
 
 	// Add the null character as a terminator
 	return true, []byte(strconv.FormatInt(int64(n.Spec.Membership), 10) + "\x00"), nil

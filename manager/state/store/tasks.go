@@ -166,10 +166,7 @@ func (ti taskIndexerByName) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ti taskIndexerByName) FromObject(obj interface{}) (bool, []byte, error) {
-	t, ok := obj.(*api.Task)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
+	t := obj.(*api.Task)
 
 	name := naming.Task(t)
 
@@ -207,10 +204,7 @@ func (ti taskIndexerByServiceID) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ti taskIndexerByServiceID) FromObject(obj interface{}) (bool, []byte, error) {
-	t, ok := obj.(*api.Task)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
+	t := obj.(*api.Task)
 
 	// Add the null character as a terminator
 	val := t.ServiceID + "\x00"
@@ -224,10 +218,7 @@ func (ti taskIndexerByNodeID) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ti taskIndexerByNodeID) FromObject(obj interface{}) (bool, []byte, error) {
-	t, ok := obj.(*api.Task)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
+	t := obj.(*api.Task)
 
 	// Add the null character as a terminator
 	val := t.NodeID + "\x00"
@@ -241,10 +232,7 @@ func (ti taskIndexerBySlot) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ti taskIndexerBySlot) FromObject(obj interface{}) (bool, []byte, error) {
-	t, ok := obj.(*api.Task)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
+	t := obj.(*api.Task)
 
 	// Add the null character as a terminator
 	val := t.ServiceID + "\x00" + strconv.FormatUint(t.Slot, 10) + "\x00"
@@ -258,10 +246,7 @@ func (ti taskIndexerByDesiredState) FromArgs(args ...interface{}) ([]byte, error
 }
 
 func (ti taskIndexerByDesiredState) FromObject(obj interface{}) (bool, []byte, error) {
-	t, ok := obj.(*api.Task)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
+	t := obj.(*api.Task)
 
 	// Add the null character as a terminator
 	return true, []byte(strconv.FormatInt(int64(t.DesiredState), 10) + "\x00"), nil
@@ -274,10 +259,7 @@ func (ti taskIndexerByNetwork) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ti taskIndexerByNetwork) FromObject(obj interface{}) (bool, [][]byte, error) {
-	t, ok := obj.(*api.Task)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
+	t := obj.(*api.Task)
 
 	var networkIDs [][]byte
 
@@ -296,10 +278,7 @@ func (ti taskIndexerBySecret) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ti taskIndexerBySecret) FromObject(obj interface{}) (bool, [][]byte, error) {
-	t, ok := obj.(*api.Task)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
+	t := obj.(*api.Task)
 
 	container := t.Spec.GetContainer()
 	if container == nil {
@@ -323,10 +302,7 @@ func (ts taskIndexerByTaskState) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ts taskIndexerByTaskState) FromObject(obj interface{}) (bool, []byte, error) {
-	t, ok := obj.(*api.Task)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
+	t := obj.(*api.Task)
 
 	// Add the null character as a terminator
 	return true, []byte(strconv.FormatInt(int64(t.Status.State), 10) + "\x00"), nil
