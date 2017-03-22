@@ -151,10 +151,7 @@ func (ri resourceIndexerByKind) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (ri resourceIndexerByKind) FromObject(obj interface{}) (bool, []byte, error) {
-	r, ok := obj.(resourceEntry)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
+	r := obj.(resourceEntry)
 
 	// Add the null character as a terminator
 	val := r.Resource.Kind + "\x00"
