@@ -148,10 +148,7 @@ func (si serviceIndexerByNetwork) FromArgs(args ...interface{}) ([]byte, error) 
 }
 
 func (si serviceIndexerByNetwork) FromObject(obj interface{}) (bool, [][]byte, error) {
-	s, ok := obj.(*api.Service)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
+	s := obj.(*api.Service)
 
 	var networkIDs [][]byte
 
@@ -176,10 +173,7 @@ func (si serviceIndexerBySecret) FromArgs(args ...interface{}) ([]byte, error) {
 }
 
 func (si serviceIndexerBySecret) FromObject(obj interface{}) (bool, [][]byte, error) {
-	s, ok := obj.(*api.Service)
-	if !ok {
-		panic("unexpected type passed to FromObject")
-	}
+	s := obj.(*api.Service)
 
 	container := s.Spec.Task.GetContainer()
 	if container == nil {
