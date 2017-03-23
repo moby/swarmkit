@@ -509,3 +509,130 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 	// error.
 	<-done
 }
+
+// Tests manager rotates encryption of root key data in the raft store
+func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
+	ctx := context.Background()
+
+	tc := testutils.NewTestCA(t)
+	defer tc.Stop()
+
+	temp, err := ioutil.TempFile("", "test-socket")
+	require.NoError(t, err)
+	require.NoError(t, temp.Close())
+	require.NoError(t, os.Remove(temp.Name()))
+
+	defer os.RemoveAll(temp.Name())
+
+	stateDir, err := ioutil.TempDir("", "test-raft")
+	require.NoError(t, err)
+	defer os.RemoveAll(stateDir)
+
+	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
+	require.NoError(t, err)
+
+	_, _, err = managerSecurityConfig.KeyReader().Read()
+	require.NoError(t, err)
+
+	config := Config{
+		RemoteAPI:      &RemoteAddrs{ListenAddr: "127.0.0.1:0"},
+		ControlAPI:     temp.Name(),
+		StateDir:       stateDir,
+		SecurityConfig: managerSecurityConfig,
+	}
+	done := make(chan error)
+	defer close(done)
+
+	var m *Manager
+	startManager := func() {
+		m, err = New(&config)
+		require.NoError(t, err)
+		require.NotNil(t, m)
+
+		go func() {
+			done <- m.Run(ctx)
+		}()
+	}
+
+	startManager()
+
+	// wait for cluster data to be there
+	err = raftutils.PollFunc(nil, func() error {
+		// using store.Update just because it returns an error, as opposed to store.View
+		return m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
+			clusters, err := store.FindClusters(tx, store.All)
+			if err != nil {
+				return err
+			}
+			if len(clusters) != 1 {
+				return fmt.Errorf("expected 1 cluster, got %d", len(clusters))
+			}
+			return nil
+		})
+	})
+
+	os.Setenv(ca.PassphraseENVVar, "kek")
+	defer os.Unsetenv(ca.PassphraseENVVar)
+
+	// restart
+	m.Stop(ctx, false)
+	<-done
+	startManager()
+
+	// wait for the key to be encrypted in the raft store
+	err = raftutils.PollFunc(nil, func() error {
+		return m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
+			clusters, err := store.FindClusters(tx, store.All)
+			if err != nil {
+				return err
+			}
+			if len(clusters) != 1 {
+				return fmt.Errorf("expected 1 cluster, got %d", len(clusters))
+			}
+			keyBlock, _ := pem.Decode(clusters[0].RootCA.CAKey)
+			if keyBlock == nil {
+				return fmt.Errorf("could not pem decode root key")
+			}
+			if !x509.IsEncryptedPEMBlock(keyBlock) {
+				return fmt.Errorf("root key material not encrypted yet")
+			}
+			_, err = x509.DecryptPEMBlock(keyBlock, []byte("kek"))
+			return err
+		})
+	})
+	require.NoError(t, err)
+
+	os.Unsetenv(ca.PassphraseENVVar)
+	os.Setenv(ca.PassphraseENVVarPrev, "kek")
+	defer os.Unsetenv(ca.PassphraseENVVarPrev)
+
+	// restart
+	m.Stop(ctx, false)
+	<-done
+	startManager()
+
+	// wait for the key to be decrypted in the raft store
+	err = raftutils.PollFunc(nil, func() error {
+		return m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
+			clusters, err := store.FindClusters(tx, store.All)
+			if err != nil {
+				return err
+			}
+			if len(clusters) != 1 {
+				return fmt.Errorf("expected 1 cluster, got %d", len(clusters))
+			}
+			keyBlock, _ := pem.Decode(clusters[0].RootCA.CAKey)
+			if keyBlock == nil {
+				return fmt.Errorf("could not pem decode root key")
+			}
+			if x509.IsEncryptedPEMBlock(keyBlock) {
+				return fmt.Errorf("root key material not decrypted yet")
+			}
+			return nil
+		})
+	})
+	require.NoError(t, err)
+
+	m.Stop(ctx, false)
+	<-done
+}
