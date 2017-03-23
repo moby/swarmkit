@@ -17,7 +17,7 @@ func TestNewMutableTLS(t *testing.T) {
 	paths := NewConfigPaths(tempdir)
 	krw := NewKeyReadWriter(paths.Node, nil, nil)
 
-	rootCA, err := CreateRootCA("rootCN", paths.RootCA)
+	rootCA, err := CreateRootCA("rootCN")
 	require.NoError(t, err)
 
 	cert, err := rootCA.IssueAndSaveNewCertificates(krw, "CN", ManagerRole, "org")
@@ -38,7 +38,7 @@ func TestGetAndValidateCertificateSubject(t *testing.T) {
 	paths := NewConfigPaths(tempdir)
 	krw := NewKeyReadWriter(paths.Node, nil, nil)
 
-	rootCA, err := CreateRootCA("rootCN", paths.RootCA)
+	rootCA, err := CreateRootCA("rootCN")
 	require.NoError(t, err)
 
 	cert, err := rootCA.IssueAndSaveNewCertificates(krw, "CN", ManagerRole, "org")
@@ -58,7 +58,7 @@ func TestLoadNewTLSConfig(t *testing.T) {
 	paths := NewConfigPaths(tempdir)
 	krw := NewKeyReadWriter(paths.Node, nil, nil)
 
-	rootCA, err := CreateRootCA("rootCN", paths.RootCA)
+	rootCA, err := CreateRootCA("rootCN")
 	require.NoError(t, err)
 
 	// Create two different certs and two different TLS configs

@@ -21,9 +21,12 @@ func main() {
 	}
 
 	// Initialize the Root CA.
-	rootCA, err := ca.CreateRootCA("external-ca-example", rootPaths)
+	rootCA, err := ca.CreateRootCA("external-ca-example")
 	if err != nil {
-		logrus.Fatalf("unable to initialize Root CA: %s", err)
+		logrus.Fatalf("unable to initialize Root CA: %s", err.Error())
+	}
+	if err := ca.SaveRootCA(rootCA, rootPaths); err != nil {
+		logrus.Fatalf("unable to save Root CA: %s", err.Error())
 	}
 
 	// Create the initial manager node credentials.
