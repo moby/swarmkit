@@ -389,7 +389,7 @@ func (m *Manager) Run(parent context.Context) error {
 		return err
 	}
 
-	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode, m.config.SecurityConfig.RootCA(), m.config.PluginGetter)
+	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode, m.config.SecurityConfig, m.caserver, m.config.PluginGetter)
 	baseResourceAPI := resourceapi.New(m.raftNode.MemoryStore())
 	healthServer := health.NewHealthServer()
 	localHealthServer := health.NewHealthServer()
@@ -688,7 +688,9 @@ func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 			if cluster == nil {
 				return fmt.Errorf("unable to get current cluster")
 			}
-			m.caserver.UpdateRootCA(ctx, cluster)
+			if err := m.caserver.UpdateRootCA(ctx, cluster); err != nil {
+				log.G(ctx).WithError(err).Error("could not update security config")
+			}
 			return m.updateKEK(ctx, cluster)
 		},
 		api.EventUpdateCluster{
@@ -704,7 +706,9 @@ func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 			select {
 			case event := <-clusterWatch:
 				clusterEvent := event.(api.EventUpdateCluster)
-				m.caserver.UpdateRootCA(ctx, clusterEvent.Cluster)
+				if err := m.caserver.UpdateRootCA(ctx, clusterEvent.Cluster); err != nil {
+					log.G(ctx).WithError(err).Error("could not update security config")
+				}
 				m.updateKEK(ctx, clusterEvent.Cluster)
 			case <-ctx.Done():
 				clusterWatchCancel()

@@ -32,13 +32,18 @@ func createClusterObj(id, name string, policy api.AcceptancePolicy, rootCA *ca.R
 	spec := createClusterSpec(name)
 	spec.AcceptancePolicy = policy
 
+	var key []byte
+	if s, err := rootCA.Signer(); err == nil {
+		key = s.Key
+	}
+
 	return &api.Cluster{
 		ID:   id,
 		Spec: *spec,
 		RootCA: api.RootCA{
-			CACert:     []byte("-----BEGIN CERTIFICATE-----AwEHoUQDQgAEZ4vGYkSt/kjoHbUjDx9eyO1xBVJEH2F+AwM9lACIZ414cD1qYy8u-----BEGIN CERTIFICATE-----"),
-			CAKey:      []byte("-----BEGIN EC PRIVATE KEY-----AwEHoUQDQgAEZ4vGYkSt/kjoHbUjDx9eyO1xBVJEH2F+AwM9lACIZ414cD1qYy8u-----END EC PRIVATE KEY-----"),
-			CACertHash: "hash",
+			CACert:     rootCA.Certs,
+			CAKey:      key,
+			CACertHash: rootCA.Digest.String(),
 			JoinTokens: api.JoinTokens{
 				Worker:  ca.GenerateJoinToken(rootCA),
 				Manager: ca.GenerateJoinToken(rootCA),
@@ -113,7 +118,7 @@ func TestGetCluster(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpc.Code(err))
 
-	cluster := createCluster(t, ts, "name", "name", api.AcceptancePolicy{}, ts.Server.rootCA)
+	cluster := createCluster(t, ts, "name", "name", api.AcceptancePolicy{}, ts.Server.securityConfig.RootCA())
 	r, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: cluster.ID})
 	assert.NoError(t, err)
 	cluster.Meta.Version = r.Cluster.Meta.Version
@@ -140,7 +145,7 @@ func TestGetClusterWithSecret(t *testing.T) {
 	assert.Equal(t, codes.NotFound, grpc.Code(err))
 
 	policy := api.AcceptancePolicy{Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{{Secret: &api.AcceptancePolicy_RoleAdmissionPolicy_Secret{Data: []byte("secret")}}}}
-	cluster := createCluster(t, ts, "name", "name", policy, ts.Server.rootCA)
+	cluster := createCluster(t, ts, "name", "name", policy, ts.Server.securityConfig.RootCA())
 	r, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: cluster.ID})
 	assert.NoError(t, err)
 	cluster.Meta.Version = r.Cluster.Meta.Version
@@ -153,7 +158,7 @@ func TestGetClusterWithSecret(t *testing.T) {
 func TestUpdateCluster(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
-	cluster := createCluster(t, ts, "name", "name", api.AcceptancePolicy{}, ts.Server.rootCA)
+	cluster := createCluster(t, ts, "name", "name", api.AcceptancePolicy{}, ts.Server.securityConfig.RootCA())
 
 	_, err := ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{})
 	assert.Error(t, err)
@@ -233,7 +238,7 @@ func TestUpdateCluster(t *testing.T) {
 func TestUpdateClusterRotateToken(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
-	cluster := createCluster(t, ts, "name", "name", api.AcceptancePolicy{}, ts.Server.rootCA)
+	cluster := createCluster(t, ts, "name", "name", api.AcceptancePolicy{}, ts.Server.securityConfig.RootCA())
 
 	r, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{
 		Filters: &api.ListClustersRequest_Filters{
@@ -317,7 +322,7 @@ func TestUpdateClusterRotateUnlockKey(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 	// create a cluster with extra encryption keys, to make sure they exist
-	cluster := createClusterObj("id", "name", api.AcceptancePolicy{}, ts.Server.rootCA)
+	cluster := createClusterObj("id", "name", api.AcceptancePolicy{}, ts.Server.securityConfig.RootCA())
 	expected := make(map[string]*api.EncryptionKey)
 	for i := 1; i <= 2; i++ {
 		value := fmt.Sprintf("fake%d", i)
@@ -440,13 +445,13 @@ func TestListClusters(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, r.Clusters)
 
-	createCluster(t, ts, "id1", "name1", api.AcceptancePolicy{}, ts.Server.rootCA)
+	createCluster(t, ts, "id1", "name1", api.AcceptancePolicy{}, ts.Server.securityConfig.RootCA())
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Clusters))
 
-	createCluster(t, ts, "id2", "name2", api.AcceptancePolicy{}, ts.Server.rootCA)
-	createCluster(t, ts, "id3", "name3", api.AcceptancePolicy{}, ts.Server.rootCA)
+	createCluster(t, ts, "id2", "name2", api.AcceptancePolicy{}, ts.Server.securityConfig.RootCA())
+	createCluster(t, ts, "id3", "name3", api.AcceptancePolicy{}, ts.Server.securityConfig.RootCA())
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Clusters))
@@ -461,13 +466,13 @@ func TestListClustersWithSecrets(t *testing.T) {
 
 	policy := api.AcceptancePolicy{Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{{Secret: &api.AcceptancePolicy_RoleAdmissionPolicy_Secret{Alg: "bcrypt", Data: []byte("secret")}}}}
 
-	createCluster(t, ts, "id1", "name1", policy, ts.Server.rootCA)
+	createCluster(t, ts, "id1", "name1", policy, ts.Server.securityConfig.RootCA())
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Clusters))
 
-	createCluster(t, ts, "id2", "name2", policy, ts.Server.rootCA)
-	createCluster(t, ts, "id3", "name3", policy, ts.Server.rootCA)
+	createCluster(t, ts, "id2", "name2", policy, ts.Server.securityConfig.RootCA())
+	createCluster(t, ts, "id3", "name3", policy, ts.Server.securityConfig.RootCA())
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Clusters))
