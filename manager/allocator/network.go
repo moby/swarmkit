@@ -560,7 +560,8 @@ func taskUpdateEndpoint(t *api.Task, endpoint *api.Endpoint) {
 	t.Endpoint = endpoint.Copy()
 }
 
-func isIngressNetworkNeeded(s *api.Service) bool {
+// IsIngressNetworkNeeded checks whether the service requires the routing-mesh
+func IsIngressNetworkNeeded(s *api.Service) bool {
 	if s == nil {
 		return false
 	}
@@ -590,7 +591,7 @@ func (a *Allocator) taskCreateNetworkAttachments(t *api.Task, s *api.Service) {
 	}
 
 	var networks []*api.NetworkAttachment
-	if isIngressNetworkNeeded(s) {
+	if IsIngressNetworkNeeded(s) {
 		networks = append(networks, &api.NetworkAttachment{Network: a.netCtx.ingressNetwork})
 	}
 
@@ -770,7 +771,7 @@ func (a *Allocator) allocateService(ctx context.Context, s *api.Service) error {
 		// The service is trying to expose ports to the external
 		// world. Automatically attach the service to the ingress
 		// network only if it is not already done.
-		if isIngressNetworkNeeded(s) {
+		if IsIngressNetworkNeeded(s) {
 			if nc.ingressNetwork == nil {
 				return fmt.Errorf("ingress network is missing")
 			}
@@ -803,7 +804,7 @@ func (a *Allocator) allocateService(ctx context.Context, s *api.Service) error {
 	// If the service doesn't expose ports any more and if we have
 	// any lingering virtual IP references for ingress network
 	// clean them up here.
-	if !isIngressNetworkNeeded(s) {
+	if !IsIngressNetworkNeeded(s) {
 		if s.Endpoint != nil {
 			for i, vip := range s.Endpoint.VirtualIPs {
 				if vip.NetworkID == nc.ingressNetwork.ID {
