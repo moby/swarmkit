@@ -81,7 +81,7 @@ Some of *SwarmKit*'s main features are:
 
 Requirements:
 
--   Go 1.6 or higher
+-   Go 1.7 or higher
 -   A [working golang](https://golang.org/doc/code.html) environment
 -   [Protobuf 3.x or higher] (https://developers.google.com/protocol-buffers/docs/downloads) to regenerate protocol buffer files (e.g. using `make generate`)
 
