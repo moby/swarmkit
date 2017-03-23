@@ -489,10 +489,7 @@ func TestForceNewCluster(t *testing.T) {
 	t.Parallel()
 
 	// create an external CA so that we can use it to generate expired certificates
-	tempDir, err := ioutil.TempDir("", "external-ca")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
-	rootCA, err := ca.CreateRootCA("externalRoot", ca.NewConfigPaths(tempDir).RootCA)
+	rootCA, err := ca.CreateRootCA("externalRoot")
 	require.NoError(t, err)
 
 	// start a new cluster with the external CA bootstrapped

@@ -276,7 +276,7 @@ func DownloadRootCA(ctx context.Context, paths CertPaths, token string, connBrok
 	}
 
 	// Save root CA certificate to disk
-	if err = saveRootCA(rootCA, paths); err != nil {
+	if err = SaveRootCA(rootCA, paths); err != nil {
 		return RootCA{}, err
 	}
 

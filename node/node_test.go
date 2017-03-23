@@ -55,8 +55,9 @@ func TestLoadSecurityConfigPartialCertsOnDisk(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 
 	paths := ca.NewConfigPaths(filepath.Join(tempdir, "certificates"))
-	rootCA, err := ca.CreateRootCA(ca.DefaultRootCN, paths.RootCA)
+	rootCA, err := ca.CreateRootCA(ca.DefaultRootCN)
 	require.NoError(t, err)
+	require.NoError(t, ca.SaveRootCA(rootCA, paths.RootCA))
 
 	node, err := New(&Config{
 		StateDir: tempdir,
@@ -105,8 +106,10 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 	require.NoError(t, err)
 
 	// Load successfully with valid passphrase
-	rootCA, err := ca.CreateRootCA(ca.DefaultRootCN, paths.RootCA)
+	rootCA, err := ca.CreateRootCA(ca.DefaultRootCN)
 	require.NoError(t, err)
+	require.NoError(t, ca.SaveRootCA(rootCA, paths.RootCA))
+
 	krw := ca.NewKeyReadWriter(paths.Node, []byte("passphrase"), nil)
 	require.NoError(t, err)
 	_, err = rootCA.IssueAndSaveNewCertificates(krw, identity.NewID(), ca.WorkerRole, identity.NewID())
@@ -134,8 +137,9 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 	require.Equal(t, ErrInvalidUnlockKey, err)
 
 	// Invalid CA
-	rootCA, err = ca.CreateRootCA(ca.DefaultRootCN, paths.RootCA)
+	rootCA, err = ca.CreateRootCA(ca.DefaultRootCN)
 	require.NoError(t, err)
+	require.NoError(t, ca.SaveRootCA(rootCA, paths.RootCA))
 	node, err = New(&Config{
 		StateDir:  tempdir,
 		JoinAddr:  peer.Addr,
