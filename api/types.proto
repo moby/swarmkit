@@ -655,6 +655,9 @@ message ExternalCA {
 	// Options is a set of additional key/value pairs whose interpretation
 	// depends on the specified CA type.
 	map<string, string> options = 3;
+
+	// CACert specifies which root CA is used by this external CA
+	bytes ca_cert = 4 [(gogoproto.customname) = "CACert"];
 }
 
 message CAConfig {
@@ -764,6 +767,10 @@ message RootCA {
 
 	// JoinTokens contains the join tokens for workers and managers.
 	JoinTokens join_tokens = 4 [(gogoproto.nullable) = false];
+
+	// RootRotation contains the new root cert and key we want to rotate to - if this is nil, we are not in the
+	// middle of a root rotation
+	RootRotation root_rotation = 5;
 }
 
 
@@ -908,4 +915,12 @@ message MaybeEncryptedRecord {
 	Algorithm algorithm = 1;
 	bytes data = 2;
 	bytes nonce = 3;
+}
+
+
+message RootRotation {
+	bytes ca_cert = 1 [(gogoproto.customname) = "CACert"];
+	bytes ca_key = 2 [(gogoproto.customname) = "CAKey"];
+	// cross-signed CA cert is the CACert that has been cross-signed by the previous root
+	bytes cross_signed_ca_cert = 3 [(gogoproto.customname) = "CrossSignedCACert"];;
 }

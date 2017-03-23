@@ -39,6 +39,7 @@ type TestCA struct {
 	Addr, TempDir, Organization string
 	Paths                       *ca.SecurityConfigPaths
 	Server                      *grpc.Server
+	ServingSecurityConfig       *ca.SecurityConfig
 	CAServer                    *ca.Server
 	Context                     context.Context
 	NodeCAClients               []api.NodeCAClient
@@ -233,6 +234,7 @@ func NewTestCAFromRootCA(t *testing.T, tempBaseDir string, rootCA ca.RootCA, krw
 		Conns:                 conns,
 		Addr:                  l.Addr().String(),
 		Server:                grpcServer,
+		ServingSecurityConfig: managerConfig,
 		CAServer:              caServer,
 		WorkerToken:           workerToken,
 		ManagerToken:          managerToken,
