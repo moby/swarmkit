@@ -627,8 +627,6 @@ func TestUpdateService(t *testing.T) {
 
 }
 
-// TODO(dongluochen): Network update is not supported yet and it's blocked
-// from controlapi. This test should be removed once network update is supported.
 func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
@@ -655,7 +653,7 @@ func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 	assert.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), errNetworkUpdateNotSupported.Error()))
 
-	// Use TaskSpec.Networks
+	// Changes to TaskSpec.Networks are allowed
 	spec = createSpec("name2", "image", 1)
 	spec.Task.Networks = []*api.NetworkAttachmentConfig{
 		{
@@ -676,8 +674,7 @@ func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 		Spec:           &service.Spec,
 		ServiceVersion: &service.Meta.Version,
 	})
-	assert.Error(t, err)
-	assert.True(t, strings.Contains(err.Error(), errNetworkUpdateNotSupported.Error()))
+	assert.NoError(t, err)
 
 	// Migrate networks from ServiceSpec.Networks to TaskSpec.Networks
 	spec = createSpec("name3", "image", 1)
