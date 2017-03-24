@@ -753,6 +753,10 @@ func (a *mockIpam) DiscoverDelete(dType discoverapi.DiscoveryType, data interfac
 	return nil
 }
 
+func (a *mockIpam) IsBuiltIn() bool {
+	return true
+}
+
 func TestCorrectlyPassIPAMOptions(t *testing.T) {
 	var err error
 	expectedIpamOptions := map[string]string{"network-name": "freddie"}
