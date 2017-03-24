@@ -25,6 +25,13 @@ const (
 	defaultReconciliationRetryInterval = 10 * time.Second
 )
 
+// APISecurityConfigUpdater knows how to update a SecurityConfig from an api.Cluster object
+type APISecurityConfigUpdater interface {
+	UpdateRootCA(ctx context.Context, cluster *api.Cluster) error
+}
+
+var _ APISecurityConfigUpdater = &Server{}
+
 // Server is the CA and NodeCA API gRPC server.
 // TODO(aaronl): At some point we may want to have separate implementations of
 // CA, NodeCA, and other hypothetical future CA services. At the moment,
@@ -528,7 +535,7 @@ func (s *Server) isRunning() bool {
 // UpdateRootCA is called when there are cluster changes, and it ensures that the local RootCA is
 // always aware of changes in clusterExpiry and the Root CA key material - this can be called by
 // anything to update the root CA material
-func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) {
+func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) error {
 	s.mu.Lock()
 	s.joinTokens = cluster.RootCA.JoinTokens.Copy()
 	s.mu.Unlock()
@@ -575,7 +582,7 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) {
 
 		updatedRootCA, err := NewRootCA(rCA.CACert, signingCert, signingKey, expiry, intermediates)
 		if err != nil {
-			logger.WithError(err).Error("invalid Root CA object in cluster")
+			return errors.Wrap(err, "invalid Root CA object in cluster")
 		}
 
 		externalCARootPool := updatedRootCA.Pool
@@ -588,12 +595,11 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) {
 
 		// Attempt to update our local RootCA with the new parameters
 		if err := s.securityConfig.UpdateRootCA(&updatedRootCA, externalCARootPool); err != nil {
-			logger.WithError(err).Error("updating Root CA failed")
-		} else {
-			// only update the server cache if we've successfully updated the root CA
-			logger.Debug("Root CA updated successfully")
-			s.lastSeenClusterRootCA = cluster.RootCA.Copy()
+			return errors.Wrap(err, "updating Root CA failed")
 		}
+		// only update the server cache if we've successfully updated the root CA
+		logger.Debug("Root CA updated successfully")
+		s.lastSeenClusterRootCA = cluster.RootCA.Copy()
 	}
 
 	// we want to update if the external CA changed, or if the root CA changed because the root CA could affect what
@@ -633,6 +639,7 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) {
 		s.securityConfig.externalCA.UpdateURLs(cfsslURLs...)
 		s.lastSeenExternalCAs = cluster.Spec.CAConfig.Copy().ExternalCAs
 	}
+	return nil
 }
 
 // evaluateAndSignNodeCert implements the logic of which certificates to sign
