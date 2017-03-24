@@ -13,6 +13,7 @@ import (
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/swarmkit/agent/exec/dockerapi"
 	"github.com/docker/swarmkit/cli"
+	"github.com/docker/swarmkit/cmd/swarmd/defaults"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/docker/swarmkit/node"
@@ -228,12 +229,12 @@ var (
 func init() {
 	mainCmd.Flags().BoolP("version", "v", false, "Display the version and exit")
 	mainCmd.Flags().StringP("log-level", "l", "info", "Log level (options \"debug\", \"info\", \"warn\", \"error\", \"fatal\", \"panic\")")
-	mainCmd.Flags().StringP("state-dir", "d", "./swarmkitstate", "State directory")
+	mainCmd.Flags().StringP("state-dir", "d", defaults.StateDir, "State directory")
 	mainCmd.Flags().StringP("join-token", "", "", "Specifies the secret token required to join the cluster")
 	mainCmd.Flags().String("engine-addr", "unix:///var/run/docker.sock", "Address of engine instance of agent.")
 	mainCmd.Flags().String("hostname", "", "Override reported agent hostname")
 	mainCmd.Flags().String("listen-remote-api", "0.0.0.0:4242", "Listen address for remote API")
-	mainCmd.Flags().String("listen-control-api", "./swarmkitstate/swarmd.sock", "Listen socket for control API")
+	mainCmd.Flags().String("listen-control-api", defaults.ControlAPISocket, "Listen socket for control API")
 	mainCmd.Flags().String("listen-debug", "", "Bind the Go debug server on the provided address")
 	mainCmd.Flags().String("listen-metrics", "", "Listen address for metrics")
 	mainCmd.Flags().String("join-addr", "", "Join cluster with a node at this address")
