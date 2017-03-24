@@ -312,6 +312,7 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA,
 		if opts[0].Addr != "" {
 			newNodeOpts.Addr = opts[0].Addr
 		}
+		newNodeOpts.DisableStackDump = opts[0].DisableStackDump
 	}
 
 	n := raft.NewNode(newNodeOpts)

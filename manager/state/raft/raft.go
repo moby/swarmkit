@@ -9,17 +9,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/peer"
-
-	"golang.org/x/net/context"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/docker/docker/pkg/signal"
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
@@ -33,6 +27,12 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/pivotal-golang/clock"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
+	"golang.org/x/time/rate"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
 )
 
 var (
@@ -170,8 +170,10 @@ type NodeOptions struct {
 	// nodes. Leave this as 0 to get the default value.
 	SendTimeout    time.Duration
 	TLSCredentials credentials.TransportCredentials
-
-	KeyRotator EncryptionKeyRotator
+	KeyRotator     EncryptionKeyRotator
+	// DisableStackDump prevents Run from dumping goroutine stacks when the
+	// store becomes stuck.
+	DisableStackDump bool
 }
 
 func init() {
@@ -519,6 +521,7 @@ func (n *Node) Run(ctx context.Context) error {
 	}()
 
 	wasLeader := false
+	transferLeadershipLimit := rate.NewLimiter(rate.Every(time.Minute), 1)
 
 	for {
 		select {
@@ -530,6 +533,22 @@ func (n *Node) Run(ctx context.Context) error {
 			// Save entries to storage
 			if err := n.saveToStorage(ctx, &raftConfig, rd.HardState, rd.Entries, rd.Snapshot); err != nil {
 				return errors.Wrap(err, "failed to save entries to storage")
+			}
+
+			if wasLeader &&
+				(rd.SoftState == nil || rd.SoftState.RaftState == raft.StateLeader) &&
+				n.memoryStore.Wedged() &&
+				transferLeadershipLimit.Allow() {
+				if !n.opts.DisableStackDump {
+					signal.DumpStacks("")
+				}
+				transferee, err := n.transport.LongestActive()
+				if err != nil {
+					log.G(ctx).WithError(err).Error("failed to get longest-active member")
+				} else {
+					log.G(ctx).Error("data store lock held too long - transferring leadership")
+					n.raftNode.TransferLeadership(ctx, n.Config.ID, transferee)
+				}
 			}
 
 			for _, msg := range rd.Messages {
