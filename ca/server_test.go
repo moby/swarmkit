@@ -512,7 +512,7 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 			externalCertSignedBy: cert,
 		},
 	} {
-		tc.CAServer.UpdateRootCA(context.Background(), testCase.clusterObj)
+		require.NoError(t, tc.CAServer.UpdateRootCA(context.Background(), testCase.clusterObj))
 
 		rootCA := tc.ServingSecurityConfig.RootCA()
 		require.Equal(t, testCase.rootCARoots, rootCA.Certs)
