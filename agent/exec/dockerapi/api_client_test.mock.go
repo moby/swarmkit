@@ -630,27 +630,27 @@ func (_mr *_MockAPIClientRecorder) NetworkDisconnect(arg0, arg1, arg2, arg3 inte
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "NetworkDisconnect", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockAPIClient) NetworkInspect(_param0 context.Context, _param1 string) (types.NetworkResource, error) {
-	ret := _m.ctrl.Call(_m, "NetworkInspect", _param0, _param1)
+func (_m *MockAPIClient) NetworkInspect(_param0 context.Context, _param1 string, _param2 bool) (types.NetworkResource, error) {
+	ret := _m.ctrl.Call(_m, "NetworkInspect", _param0, _param1, _param2)
 	ret0, _ := ret[0].(types.NetworkResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockAPIClientRecorder) NetworkInspect(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "NetworkInspect", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) NetworkInspect(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "NetworkInspect", arg0, arg1, arg2)
 }
 
-func (_m *MockAPIClient) NetworkInspectWithRaw(_param0 context.Context, _param1 string) (types.NetworkResource, []byte, error) {
-	ret := _m.ctrl.Call(_m, "NetworkInspectWithRaw", _param0, _param1)
+func (_m *MockAPIClient) NetworkInspectWithRaw(_param0 context.Context, _param1 string, _param2 bool) (types.NetworkResource, []byte, error) {
+	ret := _m.ctrl.Call(_m, "NetworkInspectWithRaw", _param0, _param1, _param2)
 	ret0, _ := ret[0].(types.NetworkResource)
 	ret1, _ := ret[1].([]byte)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
 
-func (_mr *_MockAPIClientRecorder) NetworkInspectWithRaw(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "NetworkInspectWithRaw", arg0, arg1)
+func (_mr *_MockAPIClientRecorder) NetworkInspectWithRaw(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "NetworkInspectWithRaw", arg0, arg1, arg2)
 }
 
 func (_m *MockAPIClient) NetworkList(_param0 context.Context, _param1 types.NetworkListOptions) ([]types.NetworkResource, error) {
