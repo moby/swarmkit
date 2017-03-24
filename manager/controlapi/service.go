@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	errNetworkUpdateNotSupported = errors.New("changing network in service is not supported")
+	errNetworkUpdateNotSupported = errors.New("networks must be migrated to TaskSpec before being changed")
 	errRenameNotSupported        = errors.New("renaming services is not supported")
 	errModeChangeNotAllowed      = errors.New("service mode change is not allowed")
 )
@@ -562,18 +562,14 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 		if service == nil {
 			return grpc.Errorf(codes.NotFound, "service %s not found", request.ServiceID)
 		}
-		// temporary disable network update
-		requestSpecNetworks := request.Spec.Task.Networks
-		if len(requestSpecNetworks) == 0 {
-			requestSpecNetworks = request.Spec.Networks
-		}
 
-		specNetworks := service.Spec.Task.Networks
-		if len(specNetworks) == 0 {
-			specNetworks = service.Spec.Networks
-		}
-
-		if !reflect.DeepEqual(requestSpecNetworks, specNetworks) {
+		// It's not okay to update Service.Spec.Networks on its own.
+		// However, if Service.Spec.Task.Networks is also being
+		// updated, that's okay (for example when migrating from the
+		// deprecated Spec.Networks field to Spec.Task.Networks).
+		if (len(request.Spec.Networks) != 0 || len(service.Spec.Networks) != 0) &&
+			!reflect.DeepEqual(request.Spec.Networks, service.Spec.Networks) &&
+			reflect.DeepEqual(request.Spec.Task.Networks, service.Spec.Task.Networks) {
 			return grpc.Errorf(codes.Unimplemented, errNetworkUpdateNotSupported.Error())
 		}
 
