@@ -3,7 +3,6 @@ package node
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"golang.org/x/net/context"
@@ -198,7 +197,7 @@ func updateNode(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if reflect.DeepEqual(spec, &node.Spec) {
+	if spec.Equal(&node.Spec) {
 		return errNoChange
 	}
 

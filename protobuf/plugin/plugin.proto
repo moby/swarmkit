@@ -33,6 +33,8 @@ message StoreObject {
 
 extend google.protobuf.MessageOptions {
 	optional bool deepcopy = 70000 [default=true];
+	optional bool deepcompare = 70002 [default=true];
+
 	optional StoreObject store_object = 70001;
 }
 

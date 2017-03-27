@@ -13,6 +13,8 @@ import _ "github.com/gogo/protobuf/types"
 
 import time "time"
 
+import github_com_docker_swarmkit_api_deepcompare "github.com/docker/swarmkit/api/deepcompare"
+
 import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import (
@@ -459,6 +461,222 @@ func (p *authenticatedWrapperDispatcherServer) Assignments(r *AssignmentsRequest
 		return err
 	}
 	return p.local.Assignments(r, stream)
+}
+
+func (m *SessionRequest) Equal(other interface{}) bool {
+	o := other.(*SessionRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Description, o.Description) {
+		return false
+	}
+	if m.SessionID != o.SessionID {
+		return false
+	}
+	return true
+}
+
+func (m *SessionMessage) Equal(other interface{}) bool {
+	o := other.(*SessionMessage)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.SessionID != o.SessionID {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Node, o.Node) {
+		return false
+	}
+	if len(m.Managers) != len(o.Managers) {
+		return false
+	}
+	for i := range m.Managers {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Managers[i], o.Managers[i]) {
+			return false
+		}
+	}
+
+	if len(m.NetworkBootstrapKeys) != len(o.NetworkBootstrapKeys) {
+		return false
+	}
+	for i := range m.NetworkBootstrapKeys {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.NetworkBootstrapKeys[i], o.NetworkBootstrapKeys[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *HeartbeatRequest) Equal(other interface{}) bool {
+	o := other.(*HeartbeatRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.SessionID != o.SessionID {
+		return false
+	}
+	return true
+}
+
+func (m *HeartbeatResponse) Equal(other interface{}) bool {
+	o := other.(*HeartbeatResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(&m.Period, &o.Period) {
+		return false
+	}
+	return true
+}
+
+func (m *UpdateTaskStatusRequest) Equal(other interface{}) bool {
+	o := other.(*UpdateTaskStatusRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.SessionID != o.SessionID {
+		return false
+	}
+	if len(m.Updates) != len(o.Updates) {
+		return false
+	}
+	for i := range m.Updates {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Updates[i], o.Updates[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Equal(other interface{}) bool {
+	o := other.(*UpdateTaskStatusRequest_TaskStatusUpdate)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.TaskID != o.TaskID {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Status, o.Status) {
+		return false
+	}
+	return true
+}
+
+func (m *UpdateTaskStatusResponse) Equal(other interface{}) bool {
+	o := other.(*UpdateTaskStatusResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	return true
+}
+
+func (m *TasksRequest) Equal(other interface{}) bool {
+	o := other.(*TasksRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.SessionID != o.SessionID {
+		return false
+	}
+	return true
+}
+
+func (m *TasksMessage) Equal(other interface{}) bool {
+	o := other.(*TasksMessage)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Tasks) != len(o.Tasks) {
+		return false
+	}
+	for i := range m.Tasks {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Tasks[i], o.Tasks[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *AssignmentsRequest) Equal(other interface{}) bool {
+	o := other.(*AssignmentsRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.SessionID != o.SessionID {
+		return false
+	}
+	return true
+}
+
+func (m *Assignment) Equal(other interface{}) bool {
+	o := other.(*Assignment)
+	if m == nil || o == nil {
+		return m == o
+	}
+	switch x := o.Item.(type) {
+	case *Assignment_Task:
+		y, ok := m.Item.(*Assignment_Task)
+		if !ok {
+			return false
+		}
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(x.Task, y.Task) {
+			return false
+		}
+	case *Assignment_Secret:
+		y, ok := m.Item.(*Assignment_Secret)
+		if !ok {
+			return false
+		}
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(x.Secret, y.Secret) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *AssignmentChange) Equal(other interface{}) bool {
+	o := other.(*AssignmentChange)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Assignment, o.Assignment) {
+		return false
+	}
+	if m.Action != o.Action {
+		return false
+	}
+	return true
+}
+
+func (m *AssignmentsMessage) Equal(other interface{}) bool {
+	o := other.(*AssignmentsMessage)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.Type != o.Type {
+		return false
+	}
+	if m.AppliesTo != o.AppliesTo {
+		return false
+	}
+	if m.ResultsIn != o.ResultsIn {
+		return false
+	}
+	if len(m.Changes) != len(o.Changes) {
+		return false
+	}
+	for i := range m.Changes {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Changes[i], o.Changes[i]) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (m *SessionRequest) Copy() *SessionRequest {

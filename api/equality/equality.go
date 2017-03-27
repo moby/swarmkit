@@ -18,7 +18,7 @@ func TasksEqualStable(a, b *api.Task) bool {
 	copyA.Status, copyB.Status = api.TaskStatus{}, api.TaskStatus{}
 	copyA.Meta, copyB.Meta = api.Meta{}, api.Meta{}
 
-	return reflect.DeepEqual(&copyA, &copyB)
+	return copyA.Equal(&copyB)
 }
 
 // TaskStatusesEqualStable compares the task status excluding timestamp fields.
@@ -26,7 +26,7 @@ func TaskStatusesEqualStable(a, b *api.TaskStatus) bool {
 	copyA, copyB := *a, *b
 
 	copyA.Timestamp, copyB.Timestamp = nil, nil
-	return reflect.DeepEqual(&copyA, &copyB)
+	return copyA.Equal(&copyB)
 }
 
 // RootCAEqualStable compares RootCAs, excluding join tokens, which are randomly generated
@@ -51,7 +51,7 @@ func RootCAEqualStable(a, b *api.RootCA) bool {
 
 	copyA, copyB := *a, *b
 	copyA.JoinTokens, copyB.JoinTokens = api.JoinTokens{}, api.JoinTokens{}
-	return reflect.DeepEqual(copyA, copyB)
+	return copyA.Equal(&copyB)
 }
 
 // ExternalCAsEqualStable compares lists of external CAs and determines whether they are equal.

@@ -3,7 +3,6 @@ package update
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"sync"
 	"time"
 
@@ -54,7 +53,7 @@ func (u *Supervisor) Update(ctx context.Context, cluster *api.Cluster, service *
 	id := service.ID
 
 	if update, ok := u.updates[id]; ok {
-		if reflect.DeepEqual(service.Spec, update.newService.Spec) {
+		if service.Spec.Equal(&update.newService.Spec) {
 			// There's already an update working towards this goal.
 			return
 		}

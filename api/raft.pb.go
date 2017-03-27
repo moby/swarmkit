@@ -12,6 +12,8 @@ import raftpb "github.com/coreos/etcd/raft/raftpb"
 // skipping weak import gogoproto "github.com/gogo/protobuf/gogoproto"
 // skipping weak import docker_protobuf_plugin "github.com/docker/swarmkit/protobuf/plugin"
 
+import github_com_docker_swarmkit_api_deepcompare "github.com/docker/swarmkit/api/deepcompare"
+
 import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import (
@@ -542,6 +544,224 @@ func (p *authenticatedWrapperRaftMembershipServer) Leave(ctx context.Context, r 
 		return nil, err
 	}
 	return p.local.Leave(ctx, r)
+}
+
+func (m *RaftMember) Equal(other interface{}) bool {
+	o := other.(*RaftMember)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.RaftID != o.RaftID {
+		return false
+	}
+	if m.NodeID != o.NodeID {
+		return false
+	}
+	if m.Addr != o.Addr {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(&m.Status, &o.Status) {
+		return false
+	}
+	return true
+}
+
+func (m *JoinRequest) Equal(other interface{}) bool {
+	o := other.(*JoinRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.Addr != o.Addr {
+		return false
+	}
+	return true
+}
+
+func (m *JoinResponse) Equal(other interface{}) bool {
+	o := other.(*JoinResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.RaftID != o.RaftID {
+		return false
+	}
+	if len(m.Members) != len(o.Members) {
+		return false
+	}
+	for i := range m.Members {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Members[i], o.Members[i]) {
+			return false
+		}
+	}
+
+	if len(m.RemovedMembers) != len(o.RemovedMembers) {
+		return false
+	}
+	for i := range m.RemovedMembers {
+		if m.RemovedMembers[i] != o.RemovedMembers[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *LeaveRequest) Equal(other interface{}) bool {
+	o := other.(*LeaveRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Node, o.Node) {
+		return false
+	}
+	return true
+}
+
+func (m *LeaveResponse) Equal(other interface{}) bool {
+	o := other.(*LeaveResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	return true
+}
+
+func (m *ProcessRaftMessageRequest) Equal(other interface{}) bool {
+	o := other.(*ProcessRaftMessageRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Message, o.Message) {
+		return false
+	}
+	return true
+}
+
+func (m *ProcessRaftMessageResponse) Equal(other interface{}) bool {
+	o := other.(*ProcessRaftMessageResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	return true
+}
+
+func (m *ResolveAddressRequest) Equal(other interface{}) bool {
+	o := other.(*ResolveAddressRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.RaftID != o.RaftID {
+		return false
+	}
+	return true
+}
+
+func (m *ResolveAddressResponse) Equal(other interface{}) bool {
+	o := other.(*ResolveAddressResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.Addr != o.Addr {
+		return false
+	}
+	return true
+}
+
+func (m *InternalRaftRequest) Equal(other interface{}) bool {
+	o := other.(*InternalRaftRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.ID != o.ID {
+		return false
+	}
+	if len(m.Action) != len(o.Action) {
+		return false
+	}
+	for i := range m.Action {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(&m.Action[i], &o.Action[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *StoreAction) Equal(other interface{}) bool {
+	o := other.(*StoreAction)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.Action != o.Action {
+		return false
+	}
+	switch x := o.Target.(type) {
+	case *StoreAction_Node:
+		y, ok := m.Target.(*StoreAction_Node)
+		if !ok {
+			return false
+		}
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(x.Node, y.Node) {
+			return false
+		}
+	case *StoreAction_Service:
+		y, ok := m.Target.(*StoreAction_Service)
+		if !ok {
+			return false
+		}
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(x.Service, y.Service) {
+			return false
+		}
+	case *StoreAction_Task:
+		y, ok := m.Target.(*StoreAction_Task)
+		if !ok {
+			return false
+		}
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(x.Task, y.Task) {
+			return false
+		}
+	case *StoreAction_Network:
+		y, ok := m.Target.(*StoreAction_Network)
+		if !ok {
+			return false
+		}
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(x.Network, y.Network) {
+			return false
+		}
+	case *StoreAction_Cluster:
+		y, ok := m.Target.(*StoreAction_Cluster)
+		if !ok {
+			return false
+		}
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(x.Cluster, y.Cluster) {
+			return false
+		}
+	case *StoreAction_Secret:
+		y, ok := m.Target.(*StoreAction_Secret)
+		if !ok {
+			return false
+		}
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(x.Secret, y.Secret) {
+			return false
+		}
+	case *StoreAction_Resource:
+		y, ok := m.Target.(*StoreAction_Resource)
+		if !ok {
+			return false
+		}
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(x.Resource, y.Resource) {
+			return false
+		}
+	case *StoreAction_Extension:
+		y, ok := m.Target.(*StoreAction_Extension)
+		if !ok {
+			return false
+		}
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(x.Extension, y.Extension) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (m *RaftMember) Copy() *RaftMember {

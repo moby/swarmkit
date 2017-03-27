@@ -10,6 +10,8 @@ import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 
+import github_com_docker_swarmkit_api_deepcompare "github.com/docker/swarmkit/api/deepcompare"
+
 import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import (
@@ -858,6 +860,968 @@ func (p *authenticatedWrapperControlServer) RemoveSecret(ctx context.Context, r 
 		return nil, err
 	}
 	return p.local.RemoveSecret(ctx, r)
+}
+
+func (m *GetNodeRequest) Equal(other interface{}) bool {
+	o := other.(*GetNodeRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.NodeID != o.NodeID {
+		return false
+	}
+	return true
+}
+
+func (m *GetNodeResponse) Equal(other interface{}) bool {
+	o := other.(*GetNodeResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Node, o.Node) {
+		return false
+	}
+	return true
+}
+
+func (m *ListNodesRequest) Equal(other interface{}) bool {
+	o := other.(*ListNodesRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Filters, o.Filters) {
+		return false
+	}
+	return true
+}
+
+func (m *ListNodesRequest_Filters) Equal(other interface{}) bool {
+	o := other.(*ListNodesRequest_Filters)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Names) != len(o.Names) {
+		return false
+	}
+	for i := range m.Names {
+		if m.Names[i] != o.Names[i] {
+			return false
+		}
+	}
+
+	if len(m.IDPrefixes) != len(o.IDPrefixes) {
+		return false
+	}
+	for i := range m.IDPrefixes {
+		if m.IDPrefixes[i] != o.IDPrefixes[i] {
+			return false
+		}
+	}
+
+	if len(m.Labels) != len(o.Labels) {
+		return false
+	}
+	for k, vo := range o.Labels {
+		vm, ok := m.Labels[k]
+		if !ok {
+			return false
+		}
+		if vo != vm {
+			return false
+		}
+	}
+
+	if len(m.Memberships) != len(o.Memberships) {
+		return false
+	}
+	for i := range m.Memberships {
+		if m.Memberships[i] != o.Memberships[i] {
+			return false
+		}
+	}
+
+	if len(m.Roles) != len(o.Roles) {
+		return false
+	}
+	for i := range m.Roles {
+		if m.Roles[i] != o.Roles[i] {
+			return false
+		}
+	}
+
+	if len(m.NamePrefixes) != len(o.NamePrefixes) {
+		return false
+	}
+	for i := range m.NamePrefixes {
+		if m.NamePrefixes[i] != o.NamePrefixes[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *ListNodesResponse) Equal(other interface{}) bool {
+	o := other.(*ListNodesResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Nodes) != len(o.Nodes) {
+		return false
+	}
+	for i := range m.Nodes {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Nodes[i], o.Nodes[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *UpdateNodeRequest) Equal(other interface{}) bool {
+	o := other.(*UpdateNodeRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.NodeID != o.NodeID {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.NodeVersion, o.NodeVersion) {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Spec, o.Spec) {
+		return false
+	}
+	return true
+}
+
+func (m *UpdateNodeResponse) Equal(other interface{}) bool {
+	o := other.(*UpdateNodeResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Node, o.Node) {
+		return false
+	}
+	return true
+}
+
+func (m *RemoveNodeRequest) Equal(other interface{}) bool {
+	o := other.(*RemoveNodeRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.NodeID != o.NodeID {
+		return false
+	}
+	if m.Force != o.Force {
+		return false
+	}
+	return true
+}
+
+func (m *RemoveNodeResponse) Equal(other interface{}) bool {
+	o := other.(*RemoveNodeResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	return true
+}
+
+func (m *GetTaskRequest) Equal(other interface{}) bool {
+	o := other.(*GetTaskRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.TaskID != o.TaskID {
+		return false
+	}
+	return true
+}
+
+func (m *GetTaskResponse) Equal(other interface{}) bool {
+	o := other.(*GetTaskResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Task, o.Task) {
+		return false
+	}
+	return true
+}
+
+func (m *RemoveTaskRequest) Equal(other interface{}) bool {
+	o := other.(*RemoveTaskRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.TaskID != o.TaskID {
+		return false
+	}
+	return true
+}
+
+func (m *RemoveTaskResponse) Equal(other interface{}) bool {
+	o := other.(*RemoveTaskResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	return true
+}
+
+func (m *ListTasksRequest) Equal(other interface{}) bool {
+	o := other.(*ListTasksRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Filters, o.Filters) {
+		return false
+	}
+	return true
+}
+
+func (m *ListTasksRequest_Filters) Equal(other interface{}) bool {
+	o := other.(*ListTasksRequest_Filters)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Names) != len(o.Names) {
+		return false
+	}
+	for i := range m.Names {
+		if m.Names[i] != o.Names[i] {
+			return false
+		}
+	}
+
+	if len(m.IDPrefixes) != len(o.IDPrefixes) {
+		return false
+	}
+	for i := range m.IDPrefixes {
+		if m.IDPrefixes[i] != o.IDPrefixes[i] {
+			return false
+		}
+	}
+
+	if len(m.Labels) != len(o.Labels) {
+		return false
+	}
+	for k, vo := range o.Labels {
+		vm, ok := m.Labels[k]
+		if !ok {
+			return false
+		}
+		if vo != vm {
+			return false
+		}
+	}
+
+	if len(m.ServiceIDs) != len(o.ServiceIDs) {
+		return false
+	}
+	for i := range m.ServiceIDs {
+		if m.ServiceIDs[i] != o.ServiceIDs[i] {
+			return false
+		}
+	}
+
+	if len(m.NodeIDs) != len(o.NodeIDs) {
+		return false
+	}
+	for i := range m.NodeIDs {
+		if m.NodeIDs[i] != o.NodeIDs[i] {
+			return false
+		}
+	}
+
+	if len(m.DesiredStates) != len(o.DesiredStates) {
+		return false
+	}
+	for i := range m.DesiredStates {
+		if m.DesiredStates[i] != o.DesiredStates[i] {
+			return false
+		}
+	}
+
+	if len(m.NamePrefixes) != len(o.NamePrefixes) {
+		return false
+	}
+	for i := range m.NamePrefixes {
+		if m.NamePrefixes[i] != o.NamePrefixes[i] {
+			return false
+		}
+	}
+
+	if len(m.Runtimes) != len(o.Runtimes) {
+		return false
+	}
+	for i := range m.Runtimes {
+		if m.Runtimes[i] != o.Runtimes[i] {
+			return false
+		}
+	}
+
+	if m.UpToDate != o.UpToDate {
+		return false
+	}
+	return true
+}
+
+func (m *ListTasksResponse) Equal(other interface{}) bool {
+	o := other.(*ListTasksResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Tasks) != len(o.Tasks) {
+		return false
+	}
+	for i := range m.Tasks {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Tasks[i], o.Tasks[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *CreateServiceRequest) Equal(other interface{}) bool {
+	o := other.(*CreateServiceRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Spec, o.Spec) {
+		return false
+	}
+	return true
+}
+
+func (m *CreateServiceResponse) Equal(other interface{}) bool {
+	o := other.(*CreateServiceResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Service, o.Service) {
+		return false
+	}
+	return true
+}
+
+func (m *GetServiceRequest) Equal(other interface{}) bool {
+	o := other.(*GetServiceRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.ServiceID != o.ServiceID {
+		return false
+	}
+	if m.InsertDefaults != o.InsertDefaults {
+		return false
+	}
+	return true
+}
+
+func (m *GetServiceResponse) Equal(other interface{}) bool {
+	o := other.(*GetServiceResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Service, o.Service) {
+		return false
+	}
+	return true
+}
+
+func (m *UpdateServiceRequest) Equal(other interface{}) bool {
+	o := other.(*UpdateServiceRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.ServiceID != o.ServiceID {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.ServiceVersion, o.ServiceVersion) {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Spec, o.Spec) {
+		return false
+	}
+	if m.Rollback != o.Rollback {
+		return false
+	}
+	return true
+}
+
+func (m *UpdateServiceResponse) Equal(other interface{}) bool {
+	o := other.(*UpdateServiceResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Service, o.Service) {
+		return false
+	}
+	return true
+}
+
+func (m *RemoveServiceRequest) Equal(other interface{}) bool {
+	o := other.(*RemoveServiceRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.ServiceID != o.ServiceID {
+		return false
+	}
+	return true
+}
+
+func (m *RemoveServiceResponse) Equal(other interface{}) bool {
+	o := other.(*RemoveServiceResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	return true
+}
+
+func (m *ListServicesRequest) Equal(other interface{}) bool {
+	o := other.(*ListServicesRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Filters, o.Filters) {
+		return false
+	}
+	return true
+}
+
+func (m *ListServicesRequest_Filters) Equal(other interface{}) bool {
+	o := other.(*ListServicesRequest_Filters)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Names) != len(o.Names) {
+		return false
+	}
+	for i := range m.Names {
+		if m.Names[i] != o.Names[i] {
+			return false
+		}
+	}
+
+	if len(m.IDPrefixes) != len(o.IDPrefixes) {
+		return false
+	}
+	for i := range m.IDPrefixes {
+		if m.IDPrefixes[i] != o.IDPrefixes[i] {
+			return false
+		}
+	}
+
+	if len(m.Labels) != len(o.Labels) {
+		return false
+	}
+	for k, vo := range o.Labels {
+		vm, ok := m.Labels[k]
+		if !ok {
+			return false
+		}
+		if vo != vm {
+			return false
+		}
+	}
+
+	if len(m.NamePrefixes) != len(o.NamePrefixes) {
+		return false
+	}
+	for i := range m.NamePrefixes {
+		if m.NamePrefixes[i] != o.NamePrefixes[i] {
+			return false
+		}
+	}
+
+	if len(m.Runtimes) != len(o.Runtimes) {
+		return false
+	}
+	for i := range m.Runtimes {
+		if m.Runtimes[i] != o.Runtimes[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *ListServicesResponse) Equal(other interface{}) bool {
+	o := other.(*ListServicesResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Services) != len(o.Services) {
+		return false
+	}
+	for i := range m.Services {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Services[i], o.Services[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *CreateNetworkRequest) Equal(other interface{}) bool {
+	o := other.(*CreateNetworkRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Spec, o.Spec) {
+		return false
+	}
+	return true
+}
+
+func (m *CreateNetworkResponse) Equal(other interface{}) bool {
+	o := other.(*CreateNetworkResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Network, o.Network) {
+		return false
+	}
+	return true
+}
+
+func (m *GetNetworkRequest) Equal(other interface{}) bool {
+	o := other.(*GetNetworkRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.Name != o.Name {
+		return false
+	}
+	if m.NetworkID != o.NetworkID {
+		return false
+	}
+	return true
+}
+
+func (m *GetNetworkResponse) Equal(other interface{}) bool {
+	o := other.(*GetNetworkResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Network, o.Network) {
+		return false
+	}
+	return true
+}
+
+func (m *RemoveNetworkRequest) Equal(other interface{}) bool {
+	o := other.(*RemoveNetworkRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.Name != o.Name {
+		return false
+	}
+	if m.NetworkID != o.NetworkID {
+		return false
+	}
+	return true
+}
+
+func (m *RemoveNetworkResponse) Equal(other interface{}) bool {
+	o := other.(*RemoveNetworkResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	return true
+}
+
+func (m *ListNetworksRequest) Equal(other interface{}) bool {
+	o := other.(*ListNetworksRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Filters, o.Filters) {
+		return false
+	}
+	return true
+}
+
+func (m *ListNetworksRequest_Filters) Equal(other interface{}) bool {
+	o := other.(*ListNetworksRequest_Filters)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Names) != len(o.Names) {
+		return false
+	}
+	for i := range m.Names {
+		if m.Names[i] != o.Names[i] {
+			return false
+		}
+	}
+
+	if len(m.IDPrefixes) != len(o.IDPrefixes) {
+		return false
+	}
+	for i := range m.IDPrefixes {
+		if m.IDPrefixes[i] != o.IDPrefixes[i] {
+			return false
+		}
+	}
+
+	if len(m.Labels) != len(o.Labels) {
+		return false
+	}
+	for k, vo := range o.Labels {
+		vm, ok := m.Labels[k]
+		if !ok {
+			return false
+		}
+		if vo != vm {
+			return false
+		}
+	}
+
+	if len(m.NamePrefixes) != len(o.NamePrefixes) {
+		return false
+	}
+	for i := range m.NamePrefixes {
+		if m.NamePrefixes[i] != o.NamePrefixes[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *ListNetworksResponse) Equal(other interface{}) bool {
+	o := other.(*ListNetworksResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Networks) != len(o.Networks) {
+		return false
+	}
+	for i := range m.Networks {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Networks[i], o.Networks[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *GetClusterRequest) Equal(other interface{}) bool {
+	o := other.(*GetClusterRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.ClusterID != o.ClusterID {
+		return false
+	}
+	return true
+}
+
+func (m *GetClusterResponse) Equal(other interface{}) bool {
+	o := other.(*GetClusterResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Cluster, o.Cluster) {
+		return false
+	}
+	return true
+}
+
+func (m *ListClustersRequest) Equal(other interface{}) bool {
+	o := other.(*ListClustersRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Filters, o.Filters) {
+		return false
+	}
+	return true
+}
+
+func (m *ListClustersRequest_Filters) Equal(other interface{}) bool {
+	o := other.(*ListClustersRequest_Filters)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Names) != len(o.Names) {
+		return false
+	}
+	for i := range m.Names {
+		if m.Names[i] != o.Names[i] {
+			return false
+		}
+	}
+
+	if len(m.IDPrefixes) != len(o.IDPrefixes) {
+		return false
+	}
+	for i := range m.IDPrefixes {
+		if m.IDPrefixes[i] != o.IDPrefixes[i] {
+			return false
+		}
+	}
+
+	if len(m.Labels) != len(o.Labels) {
+		return false
+	}
+	for k, vo := range o.Labels {
+		vm, ok := m.Labels[k]
+		if !ok {
+			return false
+		}
+		if vo != vm {
+			return false
+		}
+	}
+
+	if len(m.NamePrefixes) != len(o.NamePrefixes) {
+		return false
+	}
+	for i := range m.NamePrefixes {
+		if m.NamePrefixes[i] != o.NamePrefixes[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *ListClustersResponse) Equal(other interface{}) bool {
+	o := other.(*ListClustersResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Clusters) != len(o.Clusters) {
+		return false
+	}
+	for i := range m.Clusters {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Clusters[i], o.Clusters[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *KeyRotation) Equal(other interface{}) bool {
+	o := other.(*KeyRotation)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.WorkerJoinToken != o.WorkerJoinToken {
+		return false
+	}
+	if m.ManagerJoinToken != o.ManagerJoinToken {
+		return false
+	}
+	if m.ManagerUnlockKey != o.ManagerUnlockKey {
+		return false
+	}
+	return true
+}
+
+func (m *UpdateClusterRequest) Equal(other interface{}) bool {
+	o := other.(*UpdateClusterRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.ClusterID != o.ClusterID {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.ClusterVersion, o.ClusterVersion) {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Spec, o.Spec) {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(&m.Rotation, &o.Rotation) {
+		return false
+	}
+	return true
+}
+
+func (m *UpdateClusterResponse) Equal(other interface{}) bool {
+	o := other.(*UpdateClusterResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Cluster, o.Cluster) {
+		return false
+	}
+	return true
+}
+
+func (m *GetSecretRequest) Equal(other interface{}) bool {
+	o := other.(*GetSecretRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.SecretID != o.SecretID {
+		return false
+	}
+	return true
+}
+
+func (m *GetSecretResponse) Equal(other interface{}) bool {
+	o := other.(*GetSecretResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Secret, o.Secret) {
+		return false
+	}
+	return true
+}
+
+func (m *UpdateSecretRequest) Equal(other interface{}) bool {
+	o := other.(*UpdateSecretRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.SecretID != o.SecretID {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.SecretVersion, o.SecretVersion) {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Spec, o.Spec) {
+		return false
+	}
+	return true
+}
+
+func (m *UpdateSecretResponse) Equal(other interface{}) bool {
+	o := other.(*UpdateSecretResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Secret, o.Secret) {
+		return false
+	}
+	return true
+}
+
+func (m *ListSecretsRequest) Equal(other interface{}) bool {
+	o := other.(*ListSecretsRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Filters, o.Filters) {
+		return false
+	}
+	return true
+}
+
+func (m *ListSecretsRequest_Filters) Equal(other interface{}) bool {
+	o := other.(*ListSecretsRequest_Filters)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Names) != len(o.Names) {
+		return false
+	}
+	for i := range m.Names {
+		if m.Names[i] != o.Names[i] {
+			return false
+		}
+	}
+
+	if len(m.IDPrefixes) != len(o.IDPrefixes) {
+		return false
+	}
+	for i := range m.IDPrefixes {
+		if m.IDPrefixes[i] != o.IDPrefixes[i] {
+			return false
+		}
+	}
+
+	if len(m.Labels) != len(o.Labels) {
+		return false
+	}
+	for k, vo := range o.Labels {
+		vm, ok := m.Labels[k]
+		if !ok {
+			return false
+		}
+		if vo != vm {
+			return false
+		}
+	}
+
+	if len(m.NamePrefixes) != len(o.NamePrefixes) {
+		return false
+	}
+	for i := range m.NamePrefixes {
+		if m.NamePrefixes[i] != o.NamePrefixes[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *ListSecretsResponse) Equal(other interface{}) bool {
+	o := other.(*ListSecretsResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Secrets) != len(o.Secrets) {
+		return false
+	}
+	for i := range m.Secrets {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Secrets[i], o.Secrets[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *CreateSecretRequest) Equal(other interface{}) bool {
+	o := other.(*CreateSecretRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Spec, o.Spec) {
+		return false
+	}
+	return true
+}
+
+func (m *CreateSecretResponse) Equal(other interface{}) bool {
+	o := other.(*CreateSecretResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Secret, o.Secret) {
+		return false
+	}
+	return true
+}
+
+func (m *RemoveSecretRequest) Equal(other interface{}) bool {
+	o := other.(*RemoveSecretRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.SecretID != o.SecretID {
+		return false
+	}
+	return true
+}
+
+func (m *RemoveSecretResponse) Equal(other interface{}) bool {
+	o := other.(*RemoveSecretResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	return true
 }
 
 func (m *GetNodeRequest) Copy() *GetNodeRequest {

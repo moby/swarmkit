@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "github.com/docker/swarmkit/protobuf/plugin/authenticatedwrapper"
+	_ "github.com/docker/swarmkit/protobuf/plugin/deepcompare"
 	_ "github.com/docker/swarmkit/protobuf/plugin/deepcopy"
 	_ "github.com/docker/swarmkit/protobuf/plugin/raftproxy"
 	_ "github.com/docker/swarmkit/protobuf/plugin/storeobject"

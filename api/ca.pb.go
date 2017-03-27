@@ -10,6 +10,9 @@ import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 
+import github_com_docker_swarmkit_api_deepcompare "github.com/docker/swarmkit/api/deepcompare"
+import bytes "bytes"
+
 import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import (
@@ -162,6 +165,106 @@ func (p *authenticatedWrapperNodeCAServer) IssueNodeCertificate(ctx context.Cont
 func (p *authenticatedWrapperNodeCAServer) NodeCertificateStatus(ctx context.Context, r *NodeCertificateStatusRequest) (*NodeCertificateStatusResponse, error) {
 
 	return p.local.NodeCertificateStatus(ctx, r)
+}
+
+func (m *NodeCertificateStatusRequest) Equal(other interface{}) bool {
+	o := other.(*NodeCertificateStatusRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.NodeID != o.NodeID {
+		return false
+	}
+	return true
+}
+
+func (m *NodeCertificateStatusResponse) Equal(other interface{}) bool {
+	o := other.(*NodeCertificateStatusResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Status, o.Status) {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Certificate, o.Certificate) {
+		return false
+	}
+	return true
+}
+
+func (m *IssueNodeCertificateRequest) Equal(other interface{}) bool {
+	o := other.(*IssueNodeCertificateRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.Role != o.Role {
+		return false
+	}
+	if !bytes.Equal(m.CSR, o.CSR) {
+		return false
+	}
+	if m.Token != o.Token {
+		return false
+	}
+	if m.Availability != o.Availability {
+		return false
+	}
+	return true
+}
+
+func (m *IssueNodeCertificateResponse) Equal(other interface{}) bool {
+	o := other.(*IssueNodeCertificateResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.NodeID != o.NodeID {
+		return false
+	}
+	if m.NodeMembership != o.NodeMembership {
+		return false
+	}
+	return true
+}
+
+func (m *GetRootCACertificateRequest) Equal(other interface{}) bool {
+	o := other.(*GetRootCACertificateRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	return true
+}
+
+func (m *GetRootCACertificateResponse) Equal(other interface{}) bool {
+	o := other.(*GetRootCACertificateResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !bytes.Equal(m.Certificate, o.Certificate) {
+		return false
+	}
+	return true
+}
+
+func (m *GetUnlockKeyRequest) Equal(other interface{}) bool {
+	o := other.(*GetUnlockKeyRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	return true
+}
+
+func (m *GetUnlockKeyResponse) Equal(other interface{}) bool {
+	o := other.(*GetUnlockKeyResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !bytes.Equal(m.UnlockKey, o.UnlockKey) {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(&m.Version, &o.Version) {
+		return false
+	}
+	return true
 }
 
 func (m *NodeCertificateStatusRequest) Copy() *NodeCertificateStatusRequest {

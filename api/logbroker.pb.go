@@ -11,6 +11,9 @@ import _ "github.com/gogo/protobuf/gogoproto"
 import google_protobuf "github.com/gogo/protobuf/types"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 
+import github_com_docker_swarmkit_api_deepcompare "github.com/docker/swarmkit/api/deepcompare"
+import bytes "bytes"
+
 import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import (
@@ -268,6 +271,194 @@ func (p *authenticatedWrapperLogBrokerServer) PublishLogs(stream LogBroker_Publi
 		return err
 	}
 	return p.local.PublishLogs(stream)
+}
+
+func (m *LogSubscriptionOptions) Equal(other interface{}) bool {
+	o := other.(*LogSubscriptionOptions)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Streams) != len(o.Streams) {
+		return false
+	}
+	for i := range m.Streams {
+		if m.Streams[i] != o.Streams[i] {
+			return false
+		}
+	}
+
+	if m.Follow != o.Follow {
+		return false
+	}
+	if m.Tail != o.Tail {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Since, o.Since) {
+		return false
+	}
+	return true
+}
+
+func (m *LogSelector) Equal(other interface{}) bool {
+	o := other.(*LogSelector)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.ServiceIDs) != len(o.ServiceIDs) {
+		return false
+	}
+	for i := range m.ServiceIDs {
+		if m.ServiceIDs[i] != o.ServiceIDs[i] {
+			return false
+		}
+	}
+
+	if len(m.NodeIDs) != len(o.NodeIDs) {
+		return false
+	}
+	for i := range m.NodeIDs {
+		if m.NodeIDs[i] != o.NodeIDs[i] {
+			return false
+		}
+	}
+
+	if len(m.TaskIDs) != len(o.TaskIDs) {
+		return false
+	}
+	for i := range m.TaskIDs {
+		if m.TaskIDs[i] != o.TaskIDs[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *LogContext) Equal(other interface{}) bool {
+	o := other.(*LogContext)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.ServiceID != o.ServiceID {
+		return false
+	}
+	if m.NodeID != o.NodeID {
+		return false
+	}
+	if m.TaskID != o.TaskID {
+		return false
+	}
+	return true
+}
+
+func (m *LogMessage) Equal(other interface{}) bool {
+	o := other.(*LogMessage)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(&m.Context, &o.Context) {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Timestamp, o.Timestamp) {
+		return false
+	}
+	if m.Stream != o.Stream {
+		return false
+	}
+	if !bytes.Equal(m.Data, o.Data) {
+		return false
+	}
+	return true
+}
+
+func (m *SubscribeLogsRequest) Equal(other interface{}) bool {
+	o := other.(*SubscribeLogsRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Selector, o.Selector) {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Options, o.Options) {
+		return false
+	}
+	return true
+}
+
+func (m *SubscribeLogsMessage) Equal(other interface{}) bool {
+	o := other.(*SubscribeLogsMessage)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Messages) != len(o.Messages) {
+		return false
+	}
+	for i := range m.Messages {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(&m.Messages[i], &o.Messages[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *ListenSubscriptionsRequest) Equal(other interface{}) bool {
+	o := other.(*ListenSubscriptionsRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	return true
+}
+
+func (m *SubscriptionMessage) Equal(other interface{}) bool {
+	o := other.(*SubscriptionMessage)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.ID != o.ID {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Selector, o.Selector) {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Options, o.Options) {
+		return false
+	}
+	if m.Close != o.Close {
+		return false
+	}
+	return true
+}
+
+func (m *PublishLogsMessage) Equal(other interface{}) bool {
+	o := other.(*PublishLogsMessage)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.SubscriptionID != o.SubscriptionID {
+		return false
+	}
+	if len(m.Messages) != len(o.Messages) {
+		return false
+	}
+	for i := range m.Messages {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(&m.Messages[i], &o.Messages[i]) {
+			return false
+		}
+	}
+
+	if m.Close != o.Close {
+		return false
+	}
+	return true
+}
+
+func (m *PublishLogsResponse) Equal(other interface{}) bool {
+	o := other.(*PublishLogsResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	return true
 }
 
 func (m *LogSubscriptionOptions) Copy() *LogSubscriptionOptions {

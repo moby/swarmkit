@@ -99,6 +99,28 @@ func (p *authenticatedWrapperHealthServer) Check(ctx context.Context, r *HealthC
 	return p.local.Check(ctx, r)
 }
 
+func (m *HealthCheckRequest) Equal(other interface{}) bool {
+	o := other.(*HealthCheckRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.Service != o.Service {
+		return false
+	}
+	return true
+}
+
+func (m *HealthCheckResponse) Equal(other interface{}) bool {
+	o := other.(*HealthCheckResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.Status != o.Status {
+		return false
+	}
+	return true
+}
+
 func (m *HealthCheckRequest) Copy() *HealthCheckRequest {
 	if m == nil {
 		return nil

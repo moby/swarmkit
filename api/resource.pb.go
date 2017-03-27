@@ -10,6 +10,8 @@ import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 
+import github_com_docker_swarmkit_api_deepcompare "github.com/docker/swarmkit/api/deepcompare"
+
 import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import (
@@ -98,6 +100,50 @@ func (p *authenticatedWrapperResourceAllocatorServer) DetachNetwork(ctx context.
 		return nil, err
 	}
 	return p.local.DetachNetwork(ctx, r)
+}
+
+func (m *AttachNetworkRequest) Equal(other interface{}) bool {
+	o := other.(*AttachNetworkRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Config, o.Config) {
+		return false
+	}
+	if m.ContainerID != o.ContainerID {
+		return false
+	}
+	return true
+}
+
+func (m *AttachNetworkResponse) Equal(other interface{}) bool {
+	o := other.(*AttachNetworkResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.AttachmentID != o.AttachmentID {
+		return false
+	}
+	return true
+}
+
+func (m *DetachNetworkRequest) Equal(other interface{}) bool {
+	o := other.(*DetachNetworkRequest)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.AttachmentID != o.AttachmentID {
+		return false
+	}
+	return true
+}
+
+func (m *DetachNetworkResponse) Equal(other interface{}) bool {
+	o := other.(*DetachNetworkResponse)
+	if m == nil || o == nil {
+		return m == o
+	}
+	return true
 }
 
 func (m *AttachNetworkRequest) Copy() *AttachNetworkRequest {
