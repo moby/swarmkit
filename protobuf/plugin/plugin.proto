@@ -38,6 +38,12 @@ extend google.protobuf.MessageOptions {
 	optional StoreObject store_object = 70001;
 }
 
+extend google.protobuf.FieldOptions {
+	// OrderInsensitive specifies that a repeated field should be
+	// compared without regard to ordering.
+	optional bool order_insensitive = 70003 [default=false];
+}
+
 message TLSAuthorization {
 	// Roles contains the acceptable TLS OU roles for the handler.
 	repeated string roles = 1;

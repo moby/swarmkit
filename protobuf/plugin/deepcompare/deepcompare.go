@@ -3,6 +3,7 @@ package deepcompare
 import (
 	"github.com/docker/swarmkit/protobuf/plugin"
 	"github.com/gogo/protobuf/gogoproto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
 )
@@ -172,21 +173,58 @@ func (d *deepCompareGen) genRepeated(m *generator.Descriptor, f *descriptor.Fiel
 
 	d.genScalarEqual("len(m."+fName+")", "len(o."+fName+")")
 
-	d.P("for i := range m.", fName, " {")
-	d.In()
-	if f.IsMessage() {
-		if !gogoproto.IsNullable(f) {
-			d.genEqualFunc("&m."+fName+"[i]", "&o."+fName+"[i]")
+	if proto.GetBoolExtension(f.Options, plugin.E_OrderInsensitive, false) {
+		// Order insensitive compare
+		d.P("remaining", fName, " := make(map[int]struct{})")
+		d.P("for i := range o.", fName, " {")
+		d.In()
+		d.P("remaining", fName, "[i] = struct{}{}")
+		d.Out()
+		d.P("}")
+		d.P("outer", fName, " :")
+		d.P("for i := range m.", fName, " {")
+		d.In()
+		d.P("for j := range remaining", fName, " {")
+		d.In()
+		if f.IsMessage() {
+			if !gogoproto.IsNullable(f) {
+				d.P("if ", d.deepcomparePkg.Use(), ".Equal(&m.", fName, "[i], &o.", fName, "[j]) {")
+			} else {
+				d.P("if ", d.deepcomparePkg.Use(), ".Equal(m.", fName, "[i], o.", fName, "[j]) {")
+			}
+		} else if f.IsBytes() {
+			d.P("if ", d.bytesPkg.Use(), ".Equal(m.", fName, "[i], o.", fName, "[j]) {")
 		} else {
-			d.genEqualFunc("m."+fName+"[i]", "o."+fName+"[i]")
+			d.P("if m.", fName, "[i] != o.", fName, "[j] {")
 		}
-	} else if f.IsBytes() {
-		d.genBytesEqual("m."+fName+"[i]", "o."+fName+"[i]")
+		d.In()
+		d.P("delete(remaining", fName, ", j)")
+		d.P("continue outer", fName)
+		d.Out()
+		d.P("}")
+		d.Out()
+		d.P("}")
+		d.P("return false")
+		d.Out()
+		d.P("}")
 	} else {
-		d.genScalarEqual("m."+fName+"[i]", "o."+fName+"[i]")
+
+		d.P("for i := range m.", fName, " {")
+		d.In()
+		if f.IsMessage() {
+			if !gogoproto.IsNullable(f) {
+				d.genEqualFunc("&m."+fName+"[i]", "&o."+fName+"[i]")
+			} else {
+				d.genEqualFunc("m."+fName+"[i]", "o."+fName+"[i]")
+			}
+		} else if f.IsBytes() {
+			d.genBytesEqual("m."+fName+"[i]", "o."+fName+"[i]")
+		} else {
+			d.genScalarEqual("m."+fName+"[i]", "o."+fName+"[i]")
+		}
+		d.Out()
+		d.P("}")
 	}
-	d.Out()
-	d.P("}")
 	d.P()
 }
 
