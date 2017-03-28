@@ -29,6 +29,17 @@ func (d *deepCopyGen) genCopyFunc(dst, src string) {
 	d.P(d.copyPkg.Use(), ".Copy(", dst, ", ", src, ")")
 }
 
+func (d *deepCopyGen) genCopyBytes(dst, src string) {
+	d.P("if ", src, " != nil {")
+	d.In()
+	// allocate dst object
+	d.P(dst, " = make([]byte, len(", src, "))")
+	// copy bytes from src to dst
+	d.P("copy(", dst, ", ", src, ")")
+	d.Out()
+	d.P("}")
+}
+
 func (d *deepCopyGen) genMsgDeepCopy(m *generator.Descriptor) {
 	ccTypeName := generator.CamelCaseSlice(m.TypeName())
 
@@ -109,6 +120,12 @@ func (d *deepCopyGen) genMsgDeepCopy(m *generator.Descriptor) {
 			continue
 		}
 
+		// Handle bytes
+		if f.IsBytes() {
+			d.genCopyBytes("m."+fName, "o."+fName)
+			continue
+		}
+
 		// skip: field was a scalar handled by shallow copy!
 	}
 
@@ -149,6 +166,9 @@ func (d *deepCopyGen) genMap(m *generator.Descriptor, f *descriptor.FieldDescrip
 			d.P("m.", fName, "[k] = &", d.TypeName(d.ObjectNamed(mt.ValueField.GetTypeName())), "{}")
 			d.genCopyFunc("m."+fName+"[k]", "v")
 		}
+	} else if mt.ValueField.IsBytes() {
+		d.P("m.", fName, "[k] = o.", fName, "[k]")
+		d.genCopyBytes("m."+fName+"[k]", "o."+fName+"[k]")
 	} else {
 		d.P("m.", fName, "[k] = v")
 	}
@@ -171,9 +191,8 @@ func (d *deepCopyGen) genRepeated(m *generator.Descriptor, f *descriptor.FieldDe
 
 	d.P("if o.", fName, " != nil {")
 	d.In()
+	d.P("m.", fName, " = make(", typename, ", len(o.", fName, "))")
 	if f.IsMessage() {
-		d.P("m.", fName, " = make(", typename, ", len(o.", fName, "))")
-
 		// TODO(stevvooe): Handle custom type here?
 		goType := d.TypeName(d.ObjectNamed(f.GetTypeName())) // elides [] or *
 
@@ -187,8 +206,13 @@ func (d *deepCopyGen) genRepeated(m *generator.Descriptor, f *descriptor.FieldDe
 		}
 		d.Out()
 		d.P("}")
+	} else if f.IsBytes() {
+		d.P("for i := range m.", fName, " {")
+		d.In()
+		d.genCopyBytes("m."+fName+"[i]", "o."+fName+"[i]")
+		d.Out()
+		d.P("}")
 	} else {
-		d.P("m.", fName, " = make(", typename, ", len(o.", fName, "))")
 		d.P("copy(m.", fName, ", ", "o.", fName, ")")
 	}
 	d.Out()
@@ -220,6 +244,8 @@ func (d *deepCopyGen) genOneOf(m *generator.Descriptor, oneof *descriptor.OneofD
 		if f.IsMessage() {
 			goType := d.TypeName(d.ObjectNamed(f.GetTypeName())) // elides [] or *
 			rhs = "&" + goType + "{}"
+		} else if f.IsBytes() {
+			rhs = "make([]byte, len(o.Get" + fName + "()))"
 		} else {
 			rhs = "o.Get" + fName + "()"
 		}
@@ -229,6 +255,8 @@ func (d *deepCopyGen) genOneOf(m *generator.Descriptor, oneof *descriptor.OneofD
 
 		if f.IsMessage() {
 			d.genCopyFunc("v."+fName, "o.Get"+fName+"()")
+		} else if f.IsBytes() {
+			d.genCopyBytes("v."+fName, "o.Get"+fName+"()")
 		}
 
 		d.P("m.", oneOfName, " = &v")
