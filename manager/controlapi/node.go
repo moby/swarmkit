@@ -133,13 +133,22 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 				return filterContainsPrefix(e.ID, request.Filters.IDPrefixes)
 			},
 			func(e *api.Node) bool {
-				if len(request.Filters.Labels) == 0 {
+				if len(request.Filters.NodeLabels) == 0 {
 					return true
 				}
+
+				return filterMatchLabels(e.Spec.Annotations.Labels, request.Filters.NodeLabels)
+			},
+			func(e *api.Node) bool {
+				if len(request.Filters.EngineLabels) == 0 {
+					return true
+				}
+
 				if e.Description == nil {
 					return false
 				}
-				return filterMatchLabels(e.Description.Engine.Labels, request.Filters.Labels)
+
+				return filterMatchLabels(e.Description.Engine.Labels, request.Filters.EngineLabels)
 			},
 			func(e *api.Node) bool {
 				if len(request.Filters.Roles) == 0 {

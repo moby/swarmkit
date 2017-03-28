@@ -175,11 +175,12 @@ message ListNodesRequest {
 	message Filters {
 		repeated string names = 1;
 		repeated string id_prefixes = 2;
-		map<string, string> labels = 3;
-		repeated NodeSpec.Membership memberships = 4;
-		repeated NodeRole roles = 5;
+		map<string, string> node_labels = 3;
+		map<string, string> engine_labels = 4;
+		repeated NodeSpec.Membership memberships = 5;
+		repeated NodeRole roles = 6;
 		// NamePrefixes matches all objects with the given prefixes
-		repeated string name_prefixes = 6;
+		repeated string name_prefixes = 7;
 	}
 
 	Filters filters = 1;

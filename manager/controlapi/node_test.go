@@ -21,7 +21,13 @@ import (
 	"google.golang.org/grpc/grpclog"
 )
 
-func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, membership api.NodeSpec_Membership, state api.NodeStatus_State) *api.Node {
+func createNode(t *testing.T, ts *testServer,
+	id string,
+	role api.NodeRole,
+	membership api.NodeSpec_Membership,
+	state api.NodeStatus_State,
+	nlabels map[string]string,
+	elabels map[string]string) *api.Node {
 	node := &api.Node{
 		ID: id,
 		Spec: api.NodeSpec{
@@ -32,6 +38,17 @@ func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, memb
 		},
 		Role: role,
 	}
+
+	// set node labels for node
+	node.Spec.Annotations.Labels = nlabels
+
+	// set engine labels for node
+	node.Description = &api.NodeDescription{
+		Engine: &api.EngineDescription{
+			Labels: elabels,
+		},
+	}
+
 	err := ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateNode(tx, node)
 	})
@@ -51,7 +68,7 @@ func TestGetNode(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpc.Code(err))
 
-	node := createNode(t, ts, "id", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	node := createNode(t, ts, "id", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY, map[string]string{}, map[string]string{})
 	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: node.ID})
 	assert.NoError(t, err)
 	assert.Equal(t, node.ID, r.Node.ID)
@@ -64,13 +81,13 @@ func TestListNodes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, r.Nodes)
 
-	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY, map[string]string{}, map[string]string{})
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Nodes))
 
-	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_READY)
-	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipPending, api.NodeStatus_READY)
+	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_READY, map[string]string{"test": "b"}, map[string]string{})
+	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipPending, api.NodeStatus_READY, map[string]string{"test": "b", "type": "nodelabel"}, map[string]string{"type": "enginelabel"})
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Nodes))
@@ -142,6 +159,37 @@ func TestListNodes(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Nodes))
+
+	// List by label, label filtering will take engine labels and node labels into consideration
+	r, err = ts.Client.ListNodes(context.Background(),
+		&api.ListNodesRequest{
+			Filters: &api.ListNodesRequest_Filters{
+				NodeLabels: map[string]string{"test": "b"},
+			},
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(r.Nodes))
+
+	r, err = ts.Client.ListNodes(context.Background(),
+		&api.ListNodesRequest{
+			Filters: &api.ListNodesRequest_Filters{
+				NodeLabels: map[string]string{"type": ""},
+			},
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(r.Nodes))
+
+	r, err = ts.Client.ListNodes(context.Background(),
+		&api.ListNodesRequest{
+			Filters: &api.ListNodesRequest_Filters{
+				EngineLabels: map[string]string{"type": "enginelabel"},
+			},
+		},
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(r.Nodes))
 }
 
 func TestRemoveNodes(t *testing.T) {
@@ -164,13 +212,13 @@ func TestRemoveNodes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, r.Nodes)
 
-	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY, map[string]string{}, map[string]string{})
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Len(t, r.Nodes, 1)
 
-	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_READY)
-	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipPending, api.NodeStatus_UNKNOWN)
+	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_READY, map[string]string{}, map[string]string{})
+	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipPending, api.NodeStatus_UNKNOWN, map[string]string{}, map[string]string{})
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Len(t, r.Nodes, 3)
