@@ -1129,16 +1129,20 @@ func newIngressNetwork() *api.Network {
 	return &api.Network{
 		ID: identity.NewID(),
 		Spec: api.NetworkSpec{
-			Ingress: true,
 			Annotations: api.Annotations{
 				Name: "ingress",
 			},
-			DriverConfig: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configs: []*api.IPAMConfig{
-					{
-						Subnet: "10.255.0.0/16",
+			Backend: &api.NetworkSpec_CNM{
+				CNM: &api.CNMNetworkSpec{
+					Ingress:      true,
+					DriverConfig: &api.Driver{},
+					IPAM: &api.IPAMOptions{
+						Driver: &api.Driver{},
+						Configs: []*api.IPAMConfig{
+							{
+								Subnet: "10.255.0.0/16",
+							},
+						},
 					},
 				},
 			},

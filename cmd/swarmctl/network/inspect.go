@@ -58,8 +58,10 @@ func printNetworkSummary(network *api.Network) {
 			fmt.Fprintf(w, "    %s = %s\n", k, v)
 		}
 	}
-	fmt.Fprintf(w, "  IPv6Enabled\t: %t\n", spec.Ipv6Enabled)
-	fmt.Fprintf(w, "  Internal\t: %t\n", spec.Internal)
+	if cnmSpec := spec.GetCNMCompat(); cnmSpec != nil {
+		fmt.Fprintf(w, "  IPv6Enabled\t: %t\n", cnmSpec.Ipv6Enabled)
+		fmt.Fprintf(w, "  Internal\t: %t\n", cnmSpec.Internal)
+	}
 
 	driver := network.DriverState
 	if driver != nil {

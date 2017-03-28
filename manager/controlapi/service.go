@@ -433,7 +433,7 @@ func (s *Server) validateNetworks(networks []*api.NetworkAttachmentConfig) error
 		if network == nil {
 			continue
 		}
-		if network.Spec.Internal {
+		if cnmSpec := network.Spec.GetCNMCompat(); cnmSpec != nil && cnmSpec.Internal {
 			return grpc.Errorf(codes.InvalidArgument,
 				"Service cannot be explicitly attached to %q network which is a swarm internal network",
 				network.Spec.Annotations.Name)

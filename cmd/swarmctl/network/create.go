@@ -66,8 +66,12 @@ var (
 				Annotations: api.Annotations{
 					Name: name,
 				},
-				DriverConfig: driver,
-				IPAM:         ipamOpts,
+				Backend: &api.NetworkSpec_CNM{
+					CNM: &api.CNMNetworkSpec{
+						DriverConfig: driver,
+						IPAM:         ipamOpts,
+					},
+				},
 			}
 
 			c, err := common.Dial(cmd)

@@ -22,7 +22,44 @@ func TestNew(t *testing.T) {
 	newNetworkAllocator(t)
 }
 
+func testAllocateInvalidIPAM(t *testing.T, compat bool) {
+	na := newNetworkAllocator(t)
+	n := &api.Network{
+		ID: "testID",
+		Spec: api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "test",
+			},
+		},
+	}
+	dc := &api.Driver{}
+	ipam := &api.IPAMOptions{
+		Driver: &api.Driver{
+			Name: "invalidipam,",
+		},
+	}
+	if compat {
+		n.Spec.CNMCompatDriverConfig = dc
+		n.Spec.CNMCompatIPAM = ipam
+	} else {
+		n.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{
+				DriverConfig: dc,
+				IPAM:         ipam,
+			},
+		}
+	}
+	err := na.Allocate(n)
+	assert.Error(t, err)
+}
 func TestAllocateInvalidIPAM(t *testing.T) {
+	testAllocateInvalidIPAM(t, false)
+}
+func TestAllocateInvalidIPAMCompat(t *testing.T) {
+	testAllocateInvalidIPAM(t, true)
+}
+
+func testAllocateInvalidDriver(t *testing.T, compat bool) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
@@ -30,45 +67,44 @@ func TestAllocateInvalidIPAM(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			DriverConfig: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{
-					Name: "invalidipam,",
-				},
-			},
 		},
+	}
+	dc := &api.Driver{
+		Name: "invaliddriver",
+	}
+	if compat {
+		n.Spec.CNMCompatDriverConfig = dc
+	} else {
+		n.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{
+				DriverConfig: dc,
+			},
+		}
 	}
 	err := na.Allocate(n)
 	assert.Error(t, err)
 }
-
 func TestAllocateInvalidDriver(t *testing.T) {
+	testAllocateInvalidDriver(t, false)
+}
+func TestAllocateInvalidDriverCompat(t *testing.T) {
+	testAllocateInvalidDriver(t, true)
+}
+
+func testNetworkDoubleAllocate(t *testing.T, compat bool) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
 		Spec: api.NetworkSpec{
 			Annotations: api.Annotations{
 				Name: "test",
-			},
-			DriverConfig: &api.Driver{
-				Name: "invaliddriver",
 			},
 		},
 	}
-
-	err := na.Allocate(n)
-	assert.Error(t, err)
-}
-
-func TestNetworkDoubleAllocate(t *testing.T) {
-	na := newNetworkAllocator(t)
-	n := &api.Network{
-		ID: "testID",
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
-				Name: "test",
-			},
-		},
+	if !compat {
+		n.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{},
+		}
 	}
 
 	err := na.Allocate(n)
@@ -77,8 +113,14 @@ func TestNetworkDoubleAllocate(t *testing.T) {
 	err = na.Allocate(n)
 	assert.Error(t, err)
 }
+func TestNetworkDoubleAllocate(t *testing.T) {
+	testNetworkDoubleAllocate(t, false)
+}
+func TestNetworkDoubleAllocateCompat(t *testing.T) {
+	testNetworkDoubleAllocate(t, true)
+}
 
-func TestAllocateEmptyConfig(t *testing.T) {
+func testAllocateEmptyConfig(t *testing.T, compat bool) {
 	na1 := newNetworkAllocator(t)
 	na2 := newNetworkAllocator(t)
 	n1 := &api.Network{
@@ -89,6 +131,11 @@ func TestAllocateEmptyConfig(t *testing.T) {
 			},
 		},
 	}
+	if !compat {
+		n1.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{},
+		}
+	}
 
 	n2 := &api.Network{
 		ID: "testID2",
@@ -97,6 +144,11 @@ func TestAllocateEmptyConfig(t *testing.T) {
 				Name: "test2",
 			},
 		},
+	}
+	if !compat {
+		n2.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{},
+		}
 	}
 
 	err := na1.Allocate(n1)
@@ -155,8 +207,14 @@ func TestAllocateEmptyConfig(t *testing.T) {
 	gwip12 := net.ParseIP(n1.IPAM.Configs[0].Gateway)
 	assert.Equal(t, gwip11, gwip12)
 }
+func TestAllocateEmptyConfig(t *testing.T) {
+	testAllocateEmptyConfig(t, false)
+}
+func TestAllocateEmptyConfigCompat(t *testing.T) {
+	testAllocateEmptyConfig(t, true)
+}
 
-func TestAllocateWithOneSubnet(t *testing.T) {
+func testAllocateWithOneSubnet(t *testing.T, compat bool) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
@@ -164,16 +222,27 @@ func TestAllocateWithOneSubnet(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			DriverConfig: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configs: []*api.IPAMConfig{
-					{
-						Subnet: "192.168.1.0/24",
-					},
-				},
+		},
+	}
+	dc := &api.Driver{}
+	ipam := &api.IPAMOptions{
+		Driver: &api.Driver{},
+		Configs: []*api.IPAMConfig{
+			{
+				Subnet: "192.168.1.0/24",
 			},
 		},
+	}
+	if compat {
+		n.Spec.CNMCompatDriverConfig = dc
+		n.Spec.CNMCompatIPAM = ipam
+	} else {
+		n.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{
+				DriverConfig: dc,
+				IPAM:         ipam,
+			},
+		}
 	}
 
 	err := na.Allocate(n)
@@ -186,8 +255,14 @@ func TestAllocateWithOneSubnet(t *testing.T) {
 	ip := net.ParseIP(n.IPAM.Configs[0].Gateway)
 	assert.NotEqual(t, ip, nil)
 }
+func TestAllocateWithOneSubnet(t *testing.T) {
+	testAllocateWithOneSubnet(t, false)
+}
+func TestAllocateWithOneSubnetCompat(t *testing.T) {
+	testAllocateWithOneSubnet(t, true)
+}
 
-func TestAllocateWithOneSubnetGateway(t *testing.T) {
+func testAllocateWithOneSubnetGateway(t *testing.T, compat bool) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
@@ -195,17 +270,28 @@ func TestAllocateWithOneSubnetGateway(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			DriverConfig: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configs: []*api.IPAMConfig{
-					{
-						Subnet:  "192.168.1.0/24",
-						Gateway: "192.168.1.1",
-					},
-				},
+		},
+	}
+	dc := &api.Driver{}
+	ipam := &api.IPAMOptions{
+		Driver: &api.Driver{},
+		Configs: []*api.IPAMConfig{
+			{
+				Subnet:  "192.168.1.0/24",
+				Gateway: "192.168.1.1",
 			},
 		},
+	}
+	if compat {
+		n.Spec.CNMCompatDriverConfig = dc
+		n.Spec.CNMCompatIPAM = ipam
+	} else {
+		n.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{
+				DriverConfig: dc,
+				IPAM:         ipam,
+			},
+		}
 	}
 
 	err := na.Allocate(n)
@@ -216,8 +302,55 @@ func TestAllocateWithOneSubnetGateway(t *testing.T) {
 	assert.Equal(t, n.IPAM.Configs[0].Subnet, "192.168.1.0/24")
 	assert.Equal(t, n.IPAM.Configs[0].Gateway, "192.168.1.1")
 }
+func TestAllocateWithOneSubnetGateway(t *testing.T) {
+	testAllocateWithOneSubnetGateway(t, false)
+}
+func TestAllocateWithOneSubnetGatewayCompat(t *testing.T) {
+	testAllocateWithOneSubnetGateway(t, true)
+}
 
+func testAllocateWithOneSubnetInvalidGateway(t *testing.T, compat bool) {
+	na := newNetworkAllocator(t)
+	n := &api.Network{
+		ID: "testID",
+		Spec: api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "test",
+			},
+		},
+	}
+	dc := &api.Driver{}
+	ipam := &api.IPAMOptions{
+		Driver: &api.Driver{},
+		Configs: []*api.IPAMConfig{
+			{
+				Subnet:  "192.168.1.0/24",
+				Gateway: "192.168.2.1",
+			},
+		},
+	}
+	if compat {
+		n.Spec.CNMCompatDriverConfig = dc
+		n.Spec.CNMCompatIPAM = ipam
+	} else {
+		n.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{
+				DriverConfig: dc,
+				IPAM:         ipam,
+			},
+		}
+	}
+	err := na.Allocate(n)
+	assert.Error(t, err)
+}
 func TestAllocateWithOneSubnetInvalidGateway(t *testing.T) {
+	testAllocateWithOneSubnetInvalidGateway(t, false)
+}
+func TestAllocateWithOneSubnetInvalidGatewayCompat(t *testing.T) {
+	testAllocateWithOneSubnetInvalidGateway(t, true)
+}
+
+func testAllocateWithInvalidSubnet(t *testing.T, compat bool) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
@@ -225,68 +358,71 @@ func TestAllocateWithOneSubnetInvalidGateway(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			DriverConfig: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configs: []*api.IPAMConfig{
-					{
-						Subnet:  "192.168.1.0/24",
-						Gateway: "192.168.2.1",
-					},
-				},
+		},
+	}
+	dc := &api.Driver{}
+	ipam := &api.IPAMOptions{
+		Driver: &api.Driver{},
+		Configs: []*api.IPAMConfig{
+			{
+				Subnet: "1.1.1.1/32",
 			},
 		},
+	}
+	if compat {
+		n.Spec.CNMCompatDriverConfig = dc
+		n.Spec.CNMCompatIPAM = ipam
+	} else {
+		n.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{
+				DriverConfig: dc,
+				IPAM:         ipam,
+			},
+		}
 	}
 
 	err := na.Allocate(n)
 	assert.Error(t, err)
 }
-
 func TestAllocateWithInvalidSubnet(t *testing.T) {
+	testAllocateWithInvalidSubnet(t, false)
+}
+func TestAllocateWithInvalidSubnetCompat(t *testing.T) {
+	testAllocateWithInvalidSubnet(t, true)
+}
+
+func testAllocateWithTwoSubnetsNoGateway(t *testing.T, compat bool) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
 		Spec: api.NetworkSpec{
 			Annotations: api.Annotations{
 				Name: "test",
-			},
-			DriverConfig: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configs: []*api.IPAMConfig{
-					{
-						Subnet: "1.1.1.1/32",
-					},
-				},
 			},
 		},
 	}
-
-	err := na.Allocate(n)
-	assert.Error(t, err)
-}
-
-func TestAllocateWithTwoSubnetsNoGateway(t *testing.T) {
-	na := newNetworkAllocator(t)
-	n := &api.Network{
-		ID: "testID",
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
-				Name: "test",
+	dc := &api.Driver{}
+	ipam := &api.IPAMOptions{
+		Driver: &api.Driver{},
+		Configs: []*api.IPAMConfig{
+			{
+				Subnet: "192.168.1.0/24",
 			},
-			DriverConfig: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configs: []*api.IPAMConfig{
-					{
-						Subnet: "192.168.1.0/24",
-					},
-					{
-						Subnet: "192.168.2.0/24",
-					},
-				},
+			{
+				Subnet: "192.168.2.0/24",
 			},
 		},
+	}
+	if compat {
+		n.Spec.CNMCompatDriverConfig = dc
+		n.Spec.CNMCompatIPAM = ipam
+	} else {
+		n.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{
+				DriverConfig: dc,
+				IPAM:         ipam,
+			},
+		}
 	}
 
 	err := na.Allocate(n)
@@ -304,8 +440,14 @@ func TestAllocateWithTwoSubnetsNoGateway(t *testing.T) {
 	ip = net.ParseIP(n.IPAM.Configs[1].Gateway)
 	assert.NotEqual(t, ip, nil)
 }
+func TestAllocateWithTwoSubnetsNoGateway(t *testing.T) {
+	testAllocateWithTwoSubnetsNoGateway(t, false)
+}
+func TestAllocateWithTwoSubnetsNoGatewayCompat(t *testing.T) {
+	testAllocateWithTwoSubnetsNoGateway(t, true)
+}
 
-func TestFree(t *testing.T) {
+func testFree(t *testing.T, compat bool) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
@@ -313,17 +455,28 @@ func TestFree(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			DriverConfig: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configs: []*api.IPAMConfig{
-					{
-						Subnet:  "192.168.1.0/24",
-						Gateway: "192.168.1.1",
-					},
-				},
+		},
+	}
+	dc := &api.Driver{}
+	ipam := &api.IPAMOptions{
+		Driver: &api.Driver{},
+		Configs: []*api.IPAMConfig{
+			{
+				Subnet:  "192.168.1.0/24",
+				Gateway: "192.168.1.1",
 			},
 		},
+	}
+	if compat {
+		n.Spec.CNMCompatDriverConfig = dc
+		n.Spec.CNMCompatIPAM = ipam
+	} else {
+		n.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{
+				DriverConfig: dc,
+				IPAM:         ipam,
+			},
+		}
 	}
 
 	err := na.Allocate(n)
@@ -336,8 +489,14 @@ func TestFree(t *testing.T) {
 	err = na.Allocate(n)
 	assert.NoError(t, err)
 }
+func TestFree(t *testing.T) {
+	testFree(t, false)
+}
+func TestFreeCompat(t *testing.T) {
+	testFree(t, true)
+}
 
-func TestAllocateTaskFree(t *testing.T) {
+func testAllocateTaskFree(t *testing.T, compat bool) {
 	na1 := newNetworkAllocator(t)
 	na2 := newNetworkAllocator(t)
 	n1 := &api.Network{
@@ -346,17 +505,28 @@ func TestAllocateTaskFree(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test1",
 			},
-			DriverConfig: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configs: []*api.IPAMConfig{
-					{
-						Subnet:  "192.168.1.0/24",
-						Gateway: "192.168.1.1",
-					},
-				},
+		},
+	}
+	dc1 := &api.Driver{}
+	ipam1 := &api.IPAMOptions{
+		Driver: &api.Driver{},
+		Configs: []*api.IPAMConfig{
+			{
+				Subnet:  "192.168.1.0/24",
+				Gateway: "192.168.1.1",
 			},
 		},
+	}
+	if compat {
+		n1.Spec.CNMCompatDriverConfig = dc1
+		n1.Spec.CNMCompatIPAM = ipam1
+	} else {
+		n1.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{
+				DriverConfig: dc1,
+				IPAM:         ipam1,
+			},
+		}
 	}
 
 	n2 := &api.Network{
@@ -365,17 +535,28 @@ func TestAllocateTaskFree(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test2",
 			},
-			DriverConfig: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{},
-				Configs: []*api.IPAMConfig{
-					{
-						Subnet:  "192.168.2.0/24",
-						Gateway: "192.168.2.1",
-					},
-				},
+		},
+	}
+	dc2 := &api.Driver{}
+	ipam2 := &api.IPAMOptions{
+		Driver: &api.Driver{},
+		Configs: []*api.IPAMConfig{
+			{
+				Subnet:  "192.168.2.0/24",
+				Gateway: "192.168.2.1",
 			},
 		},
+	}
+	if compat {
+		n2.Spec.CNMCompatDriverConfig = dc2
+		n2.Spec.CNMCompatIPAM = ipam2
+	} else {
+		n2.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{
+				DriverConfig: dc2,
+				IPAM:         ipam2,
+			},
+		}
 	}
 
 	task1 := &api.Task{
@@ -508,8 +689,14 @@ func TestAllocateTaskFree(t *testing.T) {
 	err = na1.DeallocateTask(task1)
 	assert.NoError(t, err)
 }
+func TestAllocateTaskFree(t *testing.T) {
+	testAllocateTaskFree(t, false)
+}
+func TestAllocateTaskFreeCompat(t *testing.T) {
+	testAllocateTaskFree(t, true)
+}
 
-func TestServiceAllocate(t *testing.T) {
+func testServiceAllocate(t *testing.T, compat bool) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
@@ -518,6 +705,11 @@ func TestServiceAllocate(t *testing.T) {
 				Name: "test",
 			},
 		},
+	}
+	if !compat {
+		n.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{},
+		}
 	}
 
 	s := &api.Service{
@@ -575,6 +767,12 @@ func TestServiceAllocate(t *testing.T) {
 
 	assert.Equal(t, true, subnet.Contains(ip))
 }
+func TestServiceAllocate(t *testing.T) {
+	testServiceAllocate(t, false)
+}
+func TestServiceAllocateCompat(t *testing.T) {
+	testServiceAllocate(t, true)
+}
 
 func TestServiceAllocateUserDefinedPorts(t *testing.T) {
 	na := newNetworkAllocator(t)
@@ -606,7 +804,7 @@ func TestServiceAllocateUserDefinedPorts(t *testing.T) {
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[1].PublishedPort)
 }
 
-func TestServiceAllocateConflictingUserDefinedPorts(t *testing.T) {
+func testServiceAllocateConflictingUserDefinedPorts(t *testing.T, compat bool) {
 	na := newNetworkAllocator(t)
 	s := &api.Service{
 		ID: "testID1",
@@ -630,6 +828,12 @@ func TestServiceAllocateConflictingUserDefinedPorts(t *testing.T) {
 
 	err := na.ServiceAllocate(s)
 	assert.Error(t, err)
+}
+func TestServiceAllocateConflictingUserDefinedPorts(t *testing.T) {
+	testServiceAllocateConflictingUserDefinedPorts(t, false)
+}
+func TestServiceAllocateConflictingUserDefinedPortsCompat(t *testing.T) {
+	testServiceAllocateConflictingUserDefinedPorts(t, true)
 }
 
 func TestServiceDeallocateAllocate(t *testing.T) {
@@ -664,7 +868,7 @@ func TestServiceDeallocateAllocate(t *testing.T) {
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 }
 
-func TestServiceDeallocateAllocateIngressMode(t *testing.T) {
+func testServiceDeallocateAllocateIngressMode(t *testing.T, compat bool) {
 	na := newNetworkAllocator(t)
 
 	n := &api.Network{
@@ -673,8 +877,16 @@ func TestServiceDeallocateAllocateIngressMode(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			Ingress: true,
 		},
+	}
+	if compat {
+		n.Spec.CNMCompatIngress = true
+	} else {
+		n.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{
+				Ingress: true,
+			},
+		}
 	}
 
 	err := na.Allocate(n)
@@ -720,8 +932,14 @@ func TestServiceDeallocateAllocateIngressMode(t *testing.T) {
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 	assert.Len(t, s.Endpoint.VirtualIPs, 1)
 }
+func TestServiceDeallocateAllocateIngressMode(t *testing.T) {
+	testServiceDeallocateAllocateIngressMode(t, false)
+}
+func TestServiceDeallocateAllocateIngressModeCompat(t *testing.T) {
+	testServiceDeallocateAllocateIngressMode(t, true)
+}
 
-func TestServiceAddRemovePortsIngressMode(t *testing.T) {
+func testServiceAddRemovePortsIngressMode(t *testing.T, compat bool) {
 	na := newNetworkAllocator(t)
 
 	n := &api.Network{
@@ -730,8 +948,16 @@ func TestServiceAddRemovePortsIngressMode(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			Ingress: true,
 		},
+	}
+	if compat {
+		n.Spec.CNMCompatIngress = true
+	} else {
+		n.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{
+				Ingress: true,
+			},
+		}
 	}
 
 	err := na.Allocate(n)
@@ -786,6 +1012,12 @@ func TestServiceAddRemovePortsIngressMode(t *testing.T) {
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 	assert.Len(t, s.Endpoint.VirtualIPs, 1)
 	assert.Equal(t, allocatedVIP, s.Endpoint.VirtualIPs[0].Addr)
+}
+func TestServiceAddRemovePortsIngressMode(t *testing.T) {
+	testServiceAddRemovePortsIngressMode(t, false)
+}
+func TestServiceAddRemovePortsIngressModeCompat(t *testing.T) {
+	testServiceAddRemovePortsIngressMode(t, true)
 }
 
 func TestServiceUpdate(t *testing.T) {
@@ -971,7 +1203,7 @@ func (a *mockIpam) IsBuiltIn() bool {
 	return true
 }
 
-func TestCorrectlyPassIPAMOptions(t *testing.T) {
+func testCorrectlyPassIPAMOptions(t *testing.T, compat bool) {
 	var err error
 	expectedIpamOptions := map[string]string{"network-name": "freddie"}
 
@@ -987,23 +1219,40 @@ func TestCorrectlyPassIPAMOptions(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test",
 			},
-			DriverConfig: &api.Driver{},
-			IPAM: &api.IPAMOptions{
-				Driver: &api.Driver{
-					Name:    "mockipam",
-					Options: expectedIpamOptions,
-				},
-				Configs: []*api.IPAMConfig{
-					{
-						Subnet:  "192.168.1.0/24",
-						Gateway: "192.168.1.1",
-					},
-				},
+		},
+	}
+	dc := &api.Driver{}
+	ipam := &api.IPAMOptions{
+		Driver: &api.Driver{
+			Name:    "mockipam",
+			Options: expectedIpamOptions,
+		},
+		Configs: []*api.IPAMConfig{
+			{
+				Subnet:  "192.168.1.0/24",
+				Gateway: "192.168.1.1",
 			},
 		},
+	}
+	if compat {
+		n.Spec.CNMCompatDriverConfig = dc
+		n.Spec.CNMCompatIPAM = ipam
+	} else {
+		n.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{
+				DriverConfig: dc,
+				IPAM:         ipam,
+			},
+		}
 	}
 	err = na.Allocate(n)
 
 	assert.Equal(t, expectedIpamOptions, ipamDriver.actualIpamOptions)
 	assert.NoError(t, err)
+}
+func TestCorrectlyPassIPAMOptions(t *testing.T) {
+	testCorrectlyPassIPAMOptions(t, false)
+}
+func TestCorrectlyPassIPAMOptionsCompat(t *testing.T) {
+	testCorrectlyPassIPAMOptions(t, true)
 }

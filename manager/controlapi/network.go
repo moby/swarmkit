@@ -75,23 +75,25 @@ func validateNetworkSpec(spec *api.NetworkSpec, pg plugingetter.PluginGetter) er
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
-	if spec.Ingress && spec.DriverConfig != nil && spec.DriverConfig.Name != "overlay" {
-		return grpc.Errorf(codes.Unimplemented, "only overlay driver is currently supported for ingress network")
-	}
+	if cnmSpec := spec.GetCNMCompat(); cnmSpec != nil {
+		if cnmSpec.Ingress && cnmSpec.DriverConfig != nil && cnmSpec.DriverConfig.Name != "overlay" {
+			return grpc.Errorf(codes.Unimplemented, "only overlay driver is currently supported for ingress network")
+		}
 
-	if spec.Attachable && spec.Ingress {
-		return grpc.Errorf(codes.InvalidArgument, "ingress network cannot be attachable")
+		if cnmSpec.Attachable && cnmSpec.Ingress {
+			return grpc.Errorf(codes.InvalidArgument, "ingress network cannot be attachable")
+		}
+
+		if err := validateDriver(cnmSpec.DriverConfig, pg, driverapi.NetworkPluginEndpointType); err != nil {
+			return err
+		}
+
+		if err := validateIPAM(cnmSpec.IPAM, pg); err != nil {
+			return err
+		}
 	}
 
 	if err := validateAnnotations(spec.Annotations); err != nil {
-		return err
-	}
-
-	if err := validateDriver(spec.DriverConfig, pg, driverapi.NetworkPluginEndpointType); err != nil {
-		return err
-	}
-
-	if err := validateIPAM(spec.IPAM, pg); err != nil {
 		return err
 	}
 
@@ -114,7 +116,7 @@ func (s *Server) CreateNetwork(ctx context.Context, request *api.CreateNetworkRe
 	}
 
 	err := s.store.Update(func(tx store.Tx) error {
-		if request.Spec.Ingress {
+		if cnmSpec := request.Spec.GetCNMCompat(); cnmSpec.Ingress {
 			if n, err := allocator.GetIngressNetwork(s.store); err == nil {
 				return grpc.Errorf(codes.AlreadyExists, "ingress network (%s) is already present", n.ID)
 			} else if err != allocator.ErrNoIngress {

@@ -53,7 +53,8 @@ func (ra *ResourceAllocator) AttachNetwork(ctx context.Context, request *api.Att
 		return nil, grpc.Errorf(codes.NotFound, "network %s not found", request.Config.Target)
 	}
 
-	if !network.Spec.Attachable {
+	cnmSpec := network.Spec.GetCNMCompat()
+	if cnmSpec != nil && !cnmSpec.Attachable {
 		return nil, grpc.Errorf(codes.PermissionDenied, "network %s not manually attachable", request.Config.Target)
 	}
 

@@ -81,6 +81,7 @@
 		NetworkAttachmentSpec
 		ContainerSpec
 		EndpointSpec
+		CNMNetworkSpec
 		NetworkSpec
 		ClusterSpec
 		SecretSpec

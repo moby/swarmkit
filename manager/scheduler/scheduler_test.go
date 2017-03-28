@@ -1830,7 +1830,7 @@ func watchAssignment(t *testing.T, watch chan events.Event) *api.Task {
 	}
 }
 
-func TestSchedulerPluginConstraint(t *testing.T) {
+func testSchedulerPluginConstraint(t *testing.T, networkCompat bool) {
 	ctx := context.Background()
 
 	// Node1: vol plugin1
@@ -1988,6 +1988,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 						Annotations: api.Annotations{
 							Name: "testVol1",
 						},
+						Backend: &api.NetworkSpec_CNM{CNM: &api.CNMNetworkSpec{}},
 					},
 					DriverState: &api.Driver{
 						Name: "plugin1",
@@ -2099,6 +2100,12 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	assert.Equal(t, assignment2.ID, "task3_ID")
 	assert.Equal(t, assignment2.NodeID, "node3_ID")
 }
+func TestSchedulerPluginConstraint(t *testing.T) {
+	testSchedulerPluginConstraint(t, false)
+}
+func TestSchedulerPluginConstraintCompat(t *testing.T) {
+	testSchedulerPluginConstraint(t, true)
+}
 
 func BenchmarkScheduler1kNodes1kTasks(b *testing.B) {
 	benchScheduler(b, 1e3, 1e3, false)
@@ -2141,6 +2148,7 @@ func BenchmarkSchedulerConstraints5kNodes100kTasks(b *testing.B) {
 }
 
 func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
+	// Only test non-compat networks in this, so no networkCompat argument.
 	ctx := context.Background()
 
 	for iters := 0; iters < b.N; iters++ {
@@ -2206,6 +2214,9 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 					t.Networks = []*api.NetworkAttachment{
 						{
 							Network: &api.Network{
+								Spec: api.NetworkSpec{
+									Backend: &api.NetworkSpec_CNM{CNM: &api.CNMNetworkSpec{}},
+								},
 								DriverState: &api.Driver{
 									Name: "network",
 								},

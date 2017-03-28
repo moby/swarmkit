@@ -311,21 +311,19 @@ message EndpointSpec {
 	repeated PortConfig ports = 2;
 }
 
-// NetworkSpec specifies user defined network parameters.
-message NetworkSpec {
-	Annotations annotations = 1 [(gogoproto.nullable) = false];
-
+// CNMNetworkSpec specifies user defined network parameters for CNM networks
+message CNMNetworkSpec {
 	// DriverConfig specific configuration consumed by the network driver.
-	Driver driver_config = 2;
+	Driver driver_config = 1;
 
 	// IPv6Enabled enables support for IPv6 on the network.
-	bool ipv6_enabled = 3;
+	bool ipv6_enabled = 2;
 
-	// internal restricts external access to the network. This may be
+	// Internal restricts external access to the network. This may be
 	// accomplished by disabling the default gateway or through other means.
-	bool internal = 4;
+	bool internal = 3;
 
-	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
+	IPAMOptions ipam = 4 [(gogoproto.customname) = "IPAM"];
 
 	// Attachable allows external(to swarm) entities to manually
 	// attach to this network. With this flag enabled, external
@@ -334,13 +332,55 @@ message NetworkSpec {
 	// the services attached to this network. If this flag is not
 	// enabled(default case) no manual attachment to this network
 	// can happen.
-	bool attachable = 6;
+	bool attachable = 5;
 
 	// Ingress indicates this network will provide the routing-mesh.
 	// In older versions, the network providing the routing mesh was
 	// swarm internally created only and it was identified by the name
 	// "ingress" and the label "com.docker.swarm.internal": "true".
-	bool ingress = 7;
+	bool ingress = 6;
+}
+
+// NetworkSpec specifies user defined network parameters.  All fields
+// with a cnm_compat_ (CNMCompat in go) prefix are deprecated and the
+// contents of the `backend` oneof will be preferred if present.
+message NetworkSpec {
+	Annotations annotations = 1 [(gogoproto.nullable) = false];
+
+	// CNMCompatDriverConfig (deprecated) specific configuration consumed by the network driver.
+	Driver cnm_compat_driver_config = 2 [(gogoproto.customname) = "CNMCompatDriverConfig"];
+
+	// CNMCompatIpv6Enabled (deprecated) enables support for IPv6 on the network.
+	bool cnm_compat_ipv6_enabled = 3 [(gogoproto.customname) = "CNMCompatIpv6Enabled"];
+
+	// CNMCompatInternal (deprecated) restricts external access to
+	// the network. This may be accomplished by disabling the
+	// default gateway or through other means.
+	bool cnm_compat_internal = 4 [(gogoproto.customname) = "CNMCompatInternal"];
+
+	// CNMCompatIPAM (deprecated)
+	IPAMOptions cnm_compat_ipam = 5 [(gogoproto.customname) = "CNMCompatIPAM"];
+
+	// CNMCompatAttachable (deprecated) allows external(to swarm)
+	// entities to manually attach to this network. With this flag
+	// enabled, external entities such as containers running in an
+	// worker node in the cluster can manually attach to this
+	// network and access the services attached to this
+	// network. If this flag is not enabled(default case) no
+	// manual attachment to this network can happen.
+	bool cnm_compat_attachable = 6 [(gogoproto.customname) = "CNMCompatAttachable"];
+
+	// CNMCompatIngress (deprecated) indicates this network will
+	// provide the routing-mesh.  In older versions, the network
+	// providing the routing mesh was swarm internally created
+	// only and it was identified by the name "ingress" and the
+	// label "com.docker.swarm.internal": "true".
+	bool cnm_compat_ingress = 7 [(gogoproto.customname) = "CNMCompatIngress"];
+
+	// Backend specific options
+	oneof backend {
+		CNMNetworkSpec cnm = 8 [(gogoproto.customname) = "CNM"];
+	}
 }
 
 // ClusterSpec specifies global cluster settings.
