@@ -9,12 +9,9 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	gogotypes "github.com/gogo/protobuf/types"
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
-
-//go:generate mockgen -package exec -destination controller_test.mock.go -source controller.go Controller StatusReporter
 
 func TestResolve(t *testing.T) {
 	var (
@@ -68,10 +65,14 @@ func TestAcceptPrepare(t *testing.T) {
 		task              = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
 		ctx, ctlr, finish = buildTestEnv(t, task)
 	)
-	defer finish()
-	gomock.InOrder(
-		ctlr.EXPECT().Prepare(gomock.Any()),
-	)
+	defer func() {
+		finish()
+		assert.Equal(t, 1, ctlr.calls["Prepare"])
+	}()
+
+	ctlr.PrepareFn = func(_ context.Context) error {
+		return nil
+	}
 
 	// Report acceptance.
 	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
@@ -100,10 +101,13 @@ func TestPrepareAlready(t *testing.T) {
 		task              = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
 		ctx, ctlr, finish = buildTestEnv(t, task)
 	)
-	defer finish()
-	gomock.InOrder(
-		ctlr.EXPECT().Prepare(gomock.Any()).Return(ErrTaskPrepared),
-	)
+	defer func() {
+		finish()
+		assert.Equal(t, 1, ctlr.calls["Prepare"])
+	}()
+	ctlr.PrepareFn = func(_ context.Context) error {
+		return ErrTaskPrepared
+	}
 
 	// Report acceptance.
 	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
@@ -132,10 +136,13 @@ func TestPrepareFailure(t *testing.T) {
 		task              = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
 		ctx, ctlr, finish = buildTestEnv(t, task)
 	)
-	defer finish()
-	gomock.InOrder(
-		ctlr.EXPECT().Prepare(gomock.Any()).Return(errors.New("test error")),
-	)
+	defer func() {
+		finish()
+		assert.Equal(t, ctlr.calls["Prepare"], 1)
+	}()
+	ctlr.PrepareFn = func(_ context.Context) error {
+		return errors.New("test error")
+	}
 
 	// Report acceptance.
 	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
@@ -165,19 +172,23 @@ func TestReadyRunning(t *testing.T) {
 		task              = newTestTask(t, api.TaskStateReady, api.TaskStateRunning)
 		ctx, ctlr, finish = buildTestEnv(t, task)
 	)
-	defer finish()
+	defer func() {
+		finish()
+		assert.Equal(t, 1, ctlr.calls["Start"])
+		assert.Equal(t, 2, ctlr.calls["Wait"])
+	}()
 
-	gomock.InOrder(
-		ctlr.EXPECT().Start(gomock.Any()),
-		ctlr.EXPECT().Wait(gomock.Any()).Return(context.Canceled),
-		ctlr.EXPECT().Wait(gomock.Any()),
-	)
-
-	dctlr := &decorateController{
-		MockController: ctlr,
-		cstatus: &api.ContainerStatus{
-			ExitCode: 0,
-		},
+	ctlr.StartFn = func(ctx context.Context) error {
+		return nil
+	}
+	ctlr.WaitFn = func(ctx context.Context) error {
+		if ctlr.calls["Wait"] == 1 {
+			return context.Canceled
+		} else if ctlr.calls["Wait"] == 2 {
+			return nil
+		} else {
+			panic("unexpected call!")
+		}
 	}
 
 	// Report starting
@@ -204,6 +215,12 @@ func TestReadyRunning(t *testing.T) {
 
 	task.Status = *status
 	// wait and cancel
+	dctlr := &StatuserController{
+		StubController: ctlr,
+		cstatus: &api.ContainerStatus{
+			ExitCode: 0,
+		},
+	}
 	checkDo(ctx, t, task, dctlr, &api.TaskStatus{
 		State:   api.TaskStateCompleted,
 		Message: "finished",
@@ -220,19 +237,18 @@ func TestReadyRunningExitFailure(t *testing.T) {
 		task              = newTestTask(t, api.TaskStateReady, api.TaskStateRunning)
 		ctx, ctlr, finish = buildTestEnv(t, task)
 	)
-	defer finish()
+	defer func() {
+		finish()
+		assert.Equal(t, 1, ctlr.calls["Start"])
+		assert.Equal(t, 1, ctlr.calls["Wait"])
+	}()
 
-	dctlr := &decorateController{
-		MockController: ctlr,
-		cstatus: &api.ContainerStatus{
-			ExitCode: 1,
-		},
+	ctlr.StartFn = func(ctx context.Context) error {
+		return nil
 	}
-
-	gomock.InOrder(
-		ctlr.EXPECT().Start(gomock.Any()),
-		ctlr.EXPECT().Wait(gomock.Any()).Return(newExitError(1)),
-	)
+	ctlr.WaitFn = func(ctx context.Context) error {
+		return newExitError(1)
+	}
 
 	// Report starting
 	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
@@ -249,6 +265,12 @@ func TestReadyRunningExitFailure(t *testing.T) {
 	})
 
 	task.Status = *status
+	dctlr := &StatuserController{
+		StubController: ctlr,
+		cstatus: &api.ContainerStatus{
+			ExitCode: 1,
+		},
+	}
 	checkDo(ctx, t, task, dctlr, &api.TaskStatus{
 		State: api.TaskStateFailed,
 		RuntimeStatus: &api.TaskStatus_Container{
@@ -266,20 +288,24 @@ func TestAlreadyStarted(t *testing.T) {
 		task              = newTestTask(t, api.TaskStateReady, api.TaskStateRunning)
 		ctx, ctlr, finish = buildTestEnv(t, task)
 	)
-	defer finish()
+	defer func() {
+		finish()
+		assert.Equal(t, 1, ctlr.calls["Start"])
+		assert.Equal(t, 2, ctlr.calls["Wait"])
+	}()
 
-	dctlr := &decorateController{
-		MockController: ctlr,
-		cstatus: &api.ContainerStatus{
-			ExitCode: 1,
-		},
+	ctlr.StartFn = func(ctx context.Context) error {
+		return ErrTaskStarted
 	}
-
-	gomock.InOrder(
-		ctlr.EXPECT().Start(gomock.Any()).Return(ErrTaskStarted),
-		ctlr.EXPECT().Wait(gomock.Any()).Return(context.Canceled),
-		ctlr.EXPECT().Wait(gomock.Any()).Return(newExitError(1)),
-	)
+	ctlr.WaitFn = func(ctx context.Context) error {
+		if ctlr.calls["Wait"] == 1 {
+			return context.Canceled
+		} else if ctlr.calls["Wait"] == 2 {
+			return newExitError(1)
+		} else {
+			panic("unexpected call!")
+		}
+	}
 
 	// Before we can move to running, we have to move to startin.
 	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
@@ -305,6 +331,12 @@ func TestAlreadyStarted(t *testing.T) {
 	task.Status = *status
 
 	// now take the real exit to test wait cancelling.
+	dctlr := &StatuserController{
+		StubController: ctlr,
+		cstatus: &api.ContainerStatus{
+			ExitCode: 1,
+		},
+	}
 	checkDo(ctx, t, task, dctlr, &api.TaskStatus{
 		State: api.TaskStateFailed,
 		RuntimeStatus: &api.TaskStatus_Container{
@@ -322,10 +354,13 @@ func TestShutdown(t *testing.T) {
 		task              = newTestTask(t, api.TaskStateNew, api.TaskStateShutdown)
 		ctx, ctlr, finish = buildTestEnv(t, task)
 	)
-	defer finish()
-	gomock.InOrder(
-		ctlr.EXPECT().Shutdown(gomock.Any()),
-	)
+	defer func() {
+		finish()
+		assert.Equal(t, 1, ctlr.calls["Shutdown"])
+	}()
+	ctlr.ShutdownFn = func(_ context.Context) error {
+		return nil
+	}
 
 	checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateShutdown,
@@ -333,18 +368,15 @@ func TestShutdown(t *testing.T) {
 	})
 }
 
-// decorateController let's us decorate the mock as a ContainerController.
-//
-// Sorry this is here but GoMock is pure garbage.
-type decorateController struct {
-	*MockController
+// StatuserController is used to create a new Controller, which is also a ContainerStatuser.
+// We cannot add ContainerStatus() to the Controller, due to the check in controller.go:242
+type StatuserController struct {
+	*StubController
 	cstatus *api.ContainerStatus
-
-	waitFn func(ctx context.Context) error
 }
 
-func (dc *decorateController) ContainerStatus(ctx context.Context) (*api.ContainerStatus, error) {
-	return dc.cstatus, nil
+func (mc *StatuserController) ContainerStatus(ctx context.Context) (*api.ContainerStatus, error) {
+	return mc.cstatus, nil
 }
 
 type exitCoder struct {
@@ -364,6 +396,7 @@ func checkDo(ctx context.Context, t *testing.T, task *api.Task, ctlr Controller,
 		assert.NoError(t, err)
 	}
 
+	// if the status and task.Status are different, make sure new timestamp is greater
 	if task.Status.Timestamp != nil {
 		// crazy timestamp validation follows
 		previous, err := gogotypes.TimestampFromProto(task.Status.Timestamp)
@@ -377,8 +410,6 @@ func checkDo(ctx context.Context, t *testing.T, task *api.Task, ctlr Controller,
 			t.Fatalf("timestamp must proceed forward: %v < %v", current, previous)
 		}
 	}
-
-	// if the status and task.Status are different, make sure new timestamp is greater
 
 	copy := status.Copy()
 	copy.Timestamp = nil // don't check against timestamp
@@ -397,11 +428,10 @@ func newTestTask(t *testing.T, state, desired api.TaskState) *api.Task {
 	}
 }
 
-func buildTestEnv(t *testing.T, task *api.Task) (context.Context, *MockController, func()) {
+func buildTestEnv(t *testing.T, task *api.Task) (context.Context, *StubController, func()) {
 	var (
 		ctx, cancel = context.WithCancel(context.Background())
-		mocks       = gomock.NewController(t)
-		ctlr        = NewMockController(mocks)
+		ctlr        = NewStubController()
 	)
 
 	// Put test name into log messages. Awesome!
@@ -411,10 +441,7 @@ func buildTestEnv(t *testing.T, task *api.Task) (context.Context, *MockControlle
 		ctx = log.WithLogger(ctx, log.L.WithField("test", fn.Name()))
 	}
 
-	return ctx, ctlr, func() {
-		cancel()
-		mocks.Finish()
-	}
+	return ctx, ctlr, cancel
 }
 
 type mockExecutor struct {
