@@ -47,10 +47,14 @@ var (
 				common.PrintHeader(w, "ID", "Name", "Driver")
 				output = func(n *api.Network) {
 					spec := n.Spec
+					driverName := "-"
+					if cnmState := n.GetCNMCompat(); cnmState != nil {
+						driverName = cnmState.DriverState.Name
+					}
 					fmt.Fprintf(w, "%s\t%s\t%s\n",
 						n.ID,
 						spec.Annotations.Name,
-						n.DriverState.Name,
+						driverName,
 					)
 				}
 

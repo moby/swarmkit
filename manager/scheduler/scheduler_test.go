@@ -1990,8 +1990,12 @@ func testSchedulerPluginConstraint(t *testing.T, networkCompat bool) {
 						},
 						Backend: &api.NetworkSpec_CNM{CNM: &api.CNMNetworkSpec{}},
 					},
-					DriverState: &api.Driver{
-						Name: "plugin1",
+					State: &api.Network_CNM{
+						CNM: &api.CNMState{
+							DriverState: &api.Driver{
+								Name: "plugin1",
+							},
+						},
 					},
 				},
 			},
@@ -2217,8 +2221,12 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 								Spec: api.NetworkSpec{
 									Backend: &api.NetworkSpec_CNM{CNM: &api.CNMNetworkSpec{}},
 								},
-								DriverState: &api.Driver{
-									Name: "network",
+								State: &api.Network_CNM{
+									CNM: &api.CNMState{
+										DriverState: &api.Driver{
+											Name: "network",
+										},
+									},
 								},
 							},
 						},

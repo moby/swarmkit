@@ -92,6 +92,7 @@
 		Endpoint
 		Task
 		NetworkAttachment
+		CNMState
 		Network
 		Cluster
 		Secret

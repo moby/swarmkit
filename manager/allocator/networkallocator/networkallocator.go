@@ -646,6 +646,12 @@ func (na *NetworkAllocator) freeDriverState(n *api.Network) error {
 }
 
 func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
+	cnmState := n.GetCNMCompat()
+	if cnmState == nil {
+		panic("CNM network without CNM state")
+	}
+	defer n.SetCNMCompat(cnmState)
+
 	d, dName, err := na.resolveDriver(n)
 	if err != nil {
 		return err
@@ -663,15 +669,16 @@ func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
 			options[k] = v
 		}
 	}
-	if n.DriverState != nil {
-		for k, v := range n.DriverState.Options {
+
+	if cnmState.DriverState != nil {
+		for k, v := range cnmState.DriverState.Options {
 			options[k] = v
 		}
 	}
 
 	// Construct IPAM data for driver consumption.
-	ipv4Data := make([]driverapi.IPAMData, 0, len(n.IPAM.Configs))
-	for _, ic := range n.IPAM.Configs {
+	ipv4Data := make([]driverapi.IPAMData, 0, len(cnmState.IPAM.Configs))
+	for _, ic := range cnmState.IPAM.Configs {
 		if ic.Family == api.IPAMConfig_IPV6 {
 			continue
 		}
@@ -701,7 +708,7 @@ func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
 	}
 
 	// Update network object with the obtained driver state.
-	n.DriverState = &api.Driver{
+	cnmState.DriverState = &api.Driver{
 		Name:    dName,
 		Options: ds,
 	}
@@ -782,7 +789,13 @@ func (na *NetworkAllocator) freePools(n *api.Network, pools map[string]string) e
 		return errors.Wrapf(err, "failed to resolve IPAM while freeing pools for network %s", n.ID)
 	}
 
-	releasePools(ipam, n.IPAM.Configs, pools)
+	cnmState := n.GetCNMCompat()
+	if cnmState == nil {
+		panic("CNM network without CNM state")
+	}
+	defer n.SetCNMCompat(cnmState)
+
+	releasePools(ipam, cnmState.IPAM.Configs, pools)
 	return nil
 }
 
@@ -818,14 +831,20 @@ func (na *NetworkAllocator) allocatePools(n *api.Network) (map[string]string, er
 		panic("allocatePools passed non-CNM network")
 	}
 
+	cnmState := n.GetCNMCompat()
+	if cnmState == nil {
+		panic("CNM network without CNM state")
+	}
+	defer n.SetCNMCompat(cnmState)
+
 	pools := make(map[string]string)
 
 	var ipamConfigs []*api.IPAMConfig
 
 	// If there is non-nil IPAM state always prefer those subnet
 	// configs over Spec configs.
-	if n.IPAM != nil {
-		ipamConfigs = n.IPAM.Configs
+	if cnmState.IPAM != nil {
+		ipamConfigs = cnmState.IPAM.Configs
 	} else if cnmSpec.IPAM != nil {
 		ipamConfigs = make([]*api.IPAMConfig, len(cnmSpec.IPAM.Configs))
 		copy(ipamConfigs, cnmSpec.IPAM.Configs)
@@ -838,7 +857,7 @@ func (na *NetworkAllocator) allocatePools(n *api.Network) (map[string]string, er
 	}
 
 	// Update the runtime IPAM configurations with initial state
-	n.IPAM = &api.IPAMOptions{
+	cnmState.IPAM = &api.IPAMOptions{
 		Driver:  &api.Driver{Name: dName, Options: dOptions},
 		Configs: ipamConfigs,
 	}

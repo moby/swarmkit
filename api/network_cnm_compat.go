@@ -38,3 +38,62 @@ func (ns *NetworkSpec) GetCNMCompat() *CNMNetworkSpec {
 		return nil
 	}
 }
+
+// GetCNMCompat is like GetCNM but if necessary falls back to legacy
+// fields in the Network object. Returns `nil` if the Network object
+// is not a CNM object.
+//
+// Callers which modify the returned state object and wish for those
+// modifications to persist _must_ call SetCNMCompat() after making
+// their changes. (perhaps by calling "defer n.SetCNMCompat(state)"?)
+//
+// Callers should not hold the returned CNMState over calls to the
+// allocator if they care about freshness, they should call
+// GetCNMCompat again to obtain a fresh copy.
+func (n *Network) GetCNMCompat() *CNMState {
+	// The location of the state (compat or not) always
+	// corresponds to the compat status of the spec. Hence we
+	// check n.Spec not n.State
+	switch n.Spec.Backend.(type) {
+	case *NetworkSpec_CNM:
+		if n.State == nil { // State not yet set?
+			return &CNMState{}
+		}
+		state, ok := n.State.(*Network_CNM)
+		if !ok {
+			panic("Unexpected non CNM state on CNM Network")
+		}
+		// This is a bit more expensive than simply returning
+		// state but avoids callers accidentally relying on
+		// being able to write this struct directly.
+		var copy CNMState
+		deepcopy.Copy(&copy, state.CNM)
+		return &copy
+	case nil:
+		return &CNMState{
+			DriverState: n.CNMCompatDriverState,
+			IPAM:        n.CNMCompatIPAM,
+		}
+	default:
+		return nil
+	}
+}
+
+// SetCNMCompat updates the CNMState of the Network. Callers who
+// modify the result of GetCNMCompat must call this afterwards.
+func (n *Network) SetCNMCompat(state *CNMState) {
+	// The location of the state (compat or not) always
+	// corresponds to the compat status of the spec. Hence we
+	// check n.Spec not n.State
+	switch n.Spec.Backend.(type) {
+	case *NetworkSpec_CNM:
+		n.State = &Network_CNM{
+			CNM: state,
+		}
+	case nil:
+		n.CNMCompatDriverState = state.DriverState
+		n.CNMCompatIPAM = state.IPAM
+	default:
+		panic("Attempt to set CNM State on a non-CNM network object")
+	}
+}

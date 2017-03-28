@@ -145,8 +145,15 @@ func (f *PluginFilter) Check(n *NodeInfo) bool {
 
 	// Check if all network plugins required by task are installed on node
 	for _, tn := range f.t.Networks {
-		if tn.Network != nil && tn.Network.DriverState != nil && tn.Network.DriverState.Name != "" {
-			if !f.pluginExistsOnNode("Network", tn.Network.DriverState.Name, nodePlugins) {
+		if tn.Network == nil {
+			continue
+		}
+		cnmState := tn.Network.GetCNMCompat()
+		if cnmState == nil {
+			panic("network with no CNM state")
+		}
+		if cnmState.DriverState != nil && cnmState.DriverState.Name != "" {
+			if !f.pluginExistsOnNode("Network", cnmState.DriverState.Name, nodePlugins) {
 				return false
 			}
 		}

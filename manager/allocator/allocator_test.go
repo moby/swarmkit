@@ -465,12 +465,14 @@ func TestAllocatorCompat(t *testing.T) {
 }
 
 func isValidNetwork(t assert.TestingT, n *api.Network) bool {
-	return assert.NotEqual(t, n.IPAM.Configs, nil) &&
-		assert.Equal(t, len(n.IPAM.Configs), 1) &&
-		assert.Equal(t, n.IPAM.Configs[0].Range, "") &&
-		assert.Equal(t, len(n.IPAM.Configs[0].Reserved), 0) &&
-		isValidSubnet(t, n.IPAM.Configs[0].Subnet) &&
-		assert.NotEqual(t, net.ParseIP(n.IPAM.Configs[0].Gateway), nil)
+	cnmState := n.GetCNMCompat()
+	return assert.NotNil(t, cnmState) &&
+		assert.NotEqual(t, cnmState.IPAM.Configs, nil) &&
+		assert.Equal(t, len(cnmState.IPAM.Configs), 1) &&
+		assert.Equal(t, cnmState.IPAM.Configs[0].Range, "") &&
+		assert.Equal(t, len(cnmState.IPAM.Configs[0].Reserved), 0) &&
+		isValidSubnet(t, cnmState.IPAM.Configs[0].Subnet) &&
+		assert.NotEqual(t, net.ParseIP(cnmState.IPAM.Configs[0].Gateway), nil)
 }
 
 func isValidTask(t assert.TestingT, s *store.MemoryStore, task *api.Task) bool {
