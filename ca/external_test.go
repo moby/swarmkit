@@ -126,3 +126,32 @@ func TestExternalCASignRequestTimesOut(t *testing.T) {
 		require.FailNow(t, "call to external CA signing should have timed out after 1 second - it's been 3")
 	}
 }
+
+func TestExternalCACopy(t *testing.T) {
+	t.Parallel()
+
+	if !testutils.External {
+		return // this is only tested using the external CA
+	}
+
+	tc := testutils.NewTestCA(t)
+	defer tc.Stop()
+
+	csr, _, err := ca.GenerateNewCSR()
+	require.NoError(t, err)
+	signReq := ca.PrepareCSR(csr, "cn", ca.ManagerRole, tc.Organization)
+
+	secConfig, err := tc.NewNodeConfig(ca.ManagerRole)
+	require.NoError(t, err)
+	externalCA1 := secConfig.ExternalCA()
+	externalCA2 := externalCA1.Copy()
+	externalCA2.UpdateURLs(tc.ExternalSigningServer.URL)
+
+	// externalCA1 can't sign, but externalCA2, which has been updated with URLS, can
+	_, err = externalCA1.Sign(context.Background(), signReq)
+	require.Equal(t, ca.ErrNoExternalCAURLs, err)
+
+	cert, err := externalCA2.Sign(context.Background(), signReq)
+	require.NoError(t, err)
+	require.NotNil(t, cert)
+}
