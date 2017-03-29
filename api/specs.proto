@@ -197,6 +197,24 @@ message ContainerSpec {
 	// Groups specifies supplementary groups available to the user.
 	repeated string groups = 11;
 
+	message CredentialSpec {
+		message FileCredentialSpec {
+			string path = 1;
+		}
+
+		message RegistryCredentialSpec {
+			string key = 1;
+		}
+
+		oneof source {
+			FileCredentialSpec file = 1;
+			RegistryCredentialSpec registry = 2;
+		}
+	}
+
+	// CredentialSpec for managed service account (Windows only).
+	CredentialSpec credential_spec = 21;
+
 	// TTY declares that a TTY should be attached to the standard streams,
 	// including stdin if it is still open.
 	bool tty = 13 [(gogoproto.customname) = "TTY"];
