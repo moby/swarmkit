@@ -15,7 +15,6 @@ import (
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/initca"
-	cfsigner "github.com/cloudflare/cfssl/signer"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/connectionbroker"
@@ -284,30 +283,11 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 
 	// Obtain a signed Certificate
 	nodeID := identity.NewID()
-	// All managers get added the subject-alt-name of CA, so they can be used for cert issuance
-	hosts := []string{role}
-	if role == ca.ManagerRole {
-		hosts = append(hosts, ca.CARole)
-	}
 
-	signer, err := rootCA.Signer()
+	certChain, err := rootCA.ParseValidateAndSignCSR(csr, nodeID, role, org)
 	if err != nil {
 		return nil, err
 	}
-	cert, err := signer.Sign(cfsigner.SignRequest{
-		Request: string(csr),
-		// OU is used for Authentication of the node type. The CN has the random
-		// node ID.
-		Subject: &cfsigner.Subject{CN: nodeID, Names: []cfcsr.Name{{OU: role, O: org}}},
-		// Adding ou as DNS alt name, so clients can connect to ManagerRole and CARole
-		Hosts: hosts,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// Append the root CA Key to the certificate, to create a valid chain
-	certChain := append(cert, rootCA.Certs...)
 
 	// If we were instructed to persist the files
 	if tmpDir != "" {
@@ -336,16 +316,17 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 		return nil, err
 	}
 
-	err = createNode(s, nodeID, role, csr, cert)
+	err = createNode(s, nodeID, role, csr, certChain)
 	if err != nil {
 		return nil, err
 	}
 
 	if nonSigningRoot {
 		rootCA = ca.RootCA{
-			Certs:  rootCA.Certs,
-			Digest: rootCA.Digest,
-			Pool:   rootCA.Pool,
+			Certs:         rootCA.Certs,
+			Digest:        rootCA.Digest,
+			Pool:          rootCA.Pool,
+			Intermediates: rootCA.Intermediates,
 		}
 	}
 
