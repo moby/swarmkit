@@ -41,7 +41,7 @@ func TestExternalCACrossSign(t *testing.T) {
 
 	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
 
-	_, err = rootCA2.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
+	_, _, err = rootCA2.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
 	require.NoError(t, err)
 	certBytes, _, err := krw.Read()
 	require.NoError(t, err)

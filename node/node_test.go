@@ -112,7 +112,7 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 
 	krw := ca.NewKeyReadWriter(paths.Node, []byte("passphrase"), nil)
 	require.NoError(t, err)
-	_, err = rootCA.IssueAndSaveNewCertificates(krw, identity.NewID(), ca.WorkerRole, identity.NewID())
+	_, _, err = rootCA.IssueAndSaveNewCertificates(krw, identity.NewID(), ca.WorkerRole, identity.NewID())
 	require.NoError(t, err)
 
 	node, err := New(&Config{

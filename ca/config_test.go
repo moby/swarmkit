@@ -146,7 +146,7 @@ func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 	now := time.Now()
 
-	_, err = tc.RootCA.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
+	_, _, err = tc.RootCA.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
 	require.NoError(t, err)
 	certBytes, _, err := krw.Read()
 	require.NoError(t, err)
@@ -232,7 +232,7 @@ func TestLoadSecurityConfigIncorrectPassphrase(t *testing.T) {
 	defer tc.Stop()
 
 	paths := ca.NewConfigPaths(tc.TempDir)
-	_, err := tc.RootCA.IssueAndSaveNewCertificates(ca.NewKeyReadWriter(paths.Node, []byte("kek"), nil),
+	_, _, err := tc.RootCA.IssueAndSaveNewCertificates(ca.NewKeyReadWriter(paths.Node, []byte("kek"), nil),
 		"nodeID", ca.WorkerRole, tc.Organization)
 	require.NoError(t, err)
 

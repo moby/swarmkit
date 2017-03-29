@@ -300,7 +300,7 @@ func LoadSecurityConfig(ctx context.Context, rootCA RootCA, krw *KeyReadWriter, 
 	}
 
 	// Check to see if this certificate was signed by our CA, and isn't expired
-	if _, err := ValidateCertChain(rootCA.Pool, cert, allowExpired); err != nil {
+	if _, _, err := ValidateCertChain(rootCA.Pool, cert, allowExpired); err != nil {
 		return nil, err
 	}
 
@@ -365,12 +365,12 @@ func (rootCA RootCA) CreateSecurityConfig(ctx context.Context, krw *KeyReadWrite
 	org := identity.NewID()
 
 	proposedRole := ManagerRole
-	tlsKeyPair, err := rootCA.IssueAndSaveNewCertificates(krw, cn, proposedRole, org)
+	tlsKeyPair, _, err := rootCA.IssueAndSaveNewCertificates(krw, cn, proposedRole, org)
 	switch errors.Cause(err) {
 	case ErrNoValidSigner:
 		// Request certificate issuance from a remote CA.
 		// Last argument is nil because at this point we don't have any valid TLS creds
-		tlsKeyPair, err = rootCA.RequestAndSaveNewCertificates(ctx, krw, config)
+		tlsKeyPair, _, err = rootCA.RequestAndSaveNewCertificates(ctx, krw, config)
 		if err != nil {
 			log.G(ctx).WithError(err).Error("failed to request save new certificate")
 			return nil, err
@@ -422,7 +422,7 @@ func RenewTLSConfigNow(ctx context.Context, s *SecurityConfig, connBroker *conne
 
 	// Let's request new certs. Renewals don't require a token.
 	rootCA := s.RootCA()
-	tlsKeyPair, err := rootCA.RequestAndSaveNewCertificates(ctx,
+	tlsKeyPair, _, err := rootCA.RequestAndSaveNewCertificates(ctx,
 		s.KeyWriter(),
 		CertificateRequestConfig{
 			ConnBroker:  connBroker,

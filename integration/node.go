@@ -63,7 +63,7 @@ func newTestNode(joinAddr, joinToken string, lateBind bool, rootCA *ca.RootCA) (
 			return nil, err
 		}
 		// generate TLS certs for this manager for bootstrapping, else the node will generate its own CA
-		_, err = rootCA.IssueAndSaveNewCertificates(
+		_, _, err = rootCA.IssueAndSaveNewCertificates(
 			ca.NewKeyReadWriter(certPaths.Node, nil, nil),
 			identity.NewID(), ca.ManagerRole, identity.NewID())
 		if err != nil {
