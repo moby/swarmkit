@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/docker/go-events"
@@ -70,6 +71,10 @@ var (
 		Tables: map[string]*memdb.TableSchema{},
 	}
 	errUnknownStoreAction = errors.New("unknown store action")
+
+	// WedgeTimeout is the maximum amount of time the store lock may be
+	// held before declaring a suspected deadlock.
+	WedgeTimeout = 30 * time.Second
 )
 
 func register(os ObjectStoreConfig) {
@@ -77,11 +82,36 @@ func register(os ObjectStoreConfig) {
 	schema.Tables[os.Table.Name] = os.Table
 }
 
+// timedMutex wraps a sync.Mutex, and keeps track of how long it has been
+// locked.
+type timedMutex struct {
+	sync.Mutex
+	lockedAt atomic.Value
+}
+
+func (m *timedMutex) Lock() {
+	m.Mutex.Lock()
+	m.lockedAt.Store(time.Now())
+}
+
+func (m *timedMutex) Unlock() {
+	m.Mutex.Unlock()
+	m.lockedAt.Store(time.Time{})
+}
+
+func (m *timedMutex) LockedAt() time.Time {
+	lockedTimestamp := m.lockedAt.Load()
+	if lockedTimestamp == nil {
+		return time.Time{}
+	}
+	return lockedTimestamp.(time.Time)
+}
+
 // MemoryStore is a concurrency-safe, in-memory implementation of the Store
 // interface.
 type MemoryStore struct {
 	// updateLock must be held during an update transaction.
-	updateLock sync.Mutex
+	updateLock timedMutex
 
 	memDB *memdb.MemDB
 	queue *watch.Queue
@@ -779,4 +809,15 @@ func touchMeta(meta *api.Meta, version *api.Version) error {
 	meta.UpdatedAt = now
 
 	return nil
+}
+
+// Wedged returns true if the store lock has been held for a long time,
+// possibly indicating a deadlock.
+func (s *MemoryStore) Wedged() bool {
+	lockedAt := s.updateLock.LockedAt()
+	if lockedAt.IsZero() {
+		return false
+	}
+
+	return time.Since(lockedAt) > WedgeTimeout
 }

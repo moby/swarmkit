@@ -35,6 +35,10 @@ const (
 	ShortProposalTime   = 1 * time.Second
 )
 
+func init() {
+	store.WedgeTimeout = 3 * time.Second
+}
+
 var tc *cautils.TestCA
 
 func TestMain(m *testing.M) {
@@ -205,6 +209,43 @@ func TestRaftLogReplication(t *testing.T) {
 	raftutils.CheckValue(t, clockSource, nodes[1], value)
 	raftutils.CheckValue(t, clockSource, nodes[2], value)
 	raftutils.CheckValue(t, clockSource, nodes[3], value)
+}
+
+func TestRaftWedgedManager(t *testing.T) {
+	t.Parallel()
+
+	nodeOpts := raft.NodeOptions{
+		DisableStackDump: true,
+	}
+
+	var clockSource *fakeclock.FakeClock
+	nodes := make(map[uint64]*raftutils.TestNode)
+	nodes[1], clockSource = raftutils.NewInitNode(t, tc, nil, nodeOpts)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc, nodeOpts)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc, nodeOpts)
+	defer raftutils.TeardownCluster(nodes)
+
+	// Propose a value
+	_, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
+	assert.NoError(t, err, "failed to propose value")
+
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+
+	go func() {
+		// Hold the store lock indefinitely
+		nodes[1].MemoryStore().Update(func(store.Tx) error {
+			<-doneCh
+			return nil
+		})
+	}()
+
+	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		if nodes[1].Config.ID == nodes[1].Leader() {
+			return errors.New("leader has not changed")
+		}
+		return nil
+	}))
 }
 
 func TestRaftLogReplicationWithoutLeader(t *testing.T) {
