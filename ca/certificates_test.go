@@ -619,6 +619,14 @@ func TestNewRootCAInvalidCertAndKeys(t *testing.T) {
 	notYetValidIntermediate := testutils.ReDateCert(t, testutils.ECDSACertChain[1],
 		testutils.ECDSACertChain[2], testutils.ECDSACertChainKeys[2], now.Add(time.Hour), now.Add(2*time.Hour))
 
+	certChainRootCA, err := ca.NewRootCA(testutils.ECDSACertChain[2], testutils.ECDSACertChain[2], testutils.ECDSACertChainKeys[2],
+		ca.DefaultNodeCertExpiration, nil)
+	require.NoError(t, err)
+
+	cert, _, _ := testutils.CreateRootCertAndKey("alternateIntermediate")
+	alternateIntermediate, err := certChainRootCA.CrossSignCACertificate(cert)
+	require.NoError(t, err)
+
 	invalids := []invalidNewRootCATestCase{
 		// invalid root or signer cert
 		{
@@ -771,6 +779,13 @@ func TestNewRootCAInvalidCertAndKeys(t *testing.T) {
 			key:           testutils.ECDSACertChainKeys[1],
 			intermediates: testutils.ECDSA256SHA256Cert,
 			errorStr:      "unknown authority", // intermediates don't chain up to root
+		},
+		{
+			roots:         testutils.ECDSACertChain[2],
+			cert:          testutils.ECDSACertChain[1],
+			key:           testutils.ECDSACertChainKeys[1],
+			intermediates: alternateIntermediate,
+			errorStr:      "the first intermediate must have the same subject and public key as the signing cert",
 		},
 	}
 
