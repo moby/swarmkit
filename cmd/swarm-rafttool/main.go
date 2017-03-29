@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/docker/swarmkit/cmd/swarmd/defaults"
 	"github.com/spf13/cobra"
 )
 
@@ -131,7 +132,7 @@ var (
 )
 
 func init() {
-	mainCmd.PersistentFlags().StringP("state-dir", "d", "./swarmkitstate", "State directory")
+	mainCmd.PersistentFlags().StringP("state-dir", "d", defaults.StateDir, "State directory")
 	mainCmd.PersistentFlags().String("unlock-key", "", "Unlock key, if raft logs are encrypted")
 	decryptCmd.Flags().StringP("output-dir", "o", "plaintext_raft", "Output directory for decrypted raft logs")
 	mainCmd.AddCommand(

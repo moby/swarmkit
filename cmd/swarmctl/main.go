@@ -9,6 +9,7 @@ import (
 	"github.com/docker/swarmkit/cmd/swarmctl/secret"
 	"github.com/docker/swarmkit/cmd/swarmctl/service"
 	"github.com/docker/swarmkit/cmd/swarmctl/task"
+	"github.com/docker/swarmkit/cmd/swarmd/defaults"
 	"github.com/docker/swarmkit/version"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -41,7 +42,7 @@ func defaultSocket() string {
 	if swarmSocket != "" {
 		return swarmSocket
 	}
-	return "./swarmkitstate/swarmd.sock"
+	return defaults.ControlAPISocket
 }
 
 func init() {
