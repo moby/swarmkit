@@ -284,9 +284,9 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 	return &tlsKeyPair, nil
 }
 
-func (rca *RootCA) getKEKUpdate(ctx context.Context, cert *x509.Certificate, keypair tls.Certificate, connBroker *connectionbroker.Broker) (*KEKData, error) {
+func (rca *RootCA) getKEKUpdate(ctx context.Context, leafCert *x509.Certificate, keypair tls.Certificate, connBroker *connectionbroker.Broker) (*KEKData, error) {
 	var managerRole bool
-	for _, ou := range cert.Subject.OrganizationalUnit {
+	for _, ou := range leafCert.Subject.OrganizationalUnit {
 		if ou == ManagerRole {
 			managerRole = true
 			break

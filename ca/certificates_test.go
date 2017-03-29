@@ -314,43 +314,83 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestRequestAndSaveNewCertificates(t *testing.T) {
+func testRequestAndSaveNewCertificates(t *testing.T, tc *testutils.TestCA, numIntermediates int) {
+	defer tc.Stop()
+
+	// Copy the current RootCA without the signer
+	rca := ca.RootCA{Certs: tc.RootCA.Certs, Pool: tc.RootCA.Pool}
+	tlsCert, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+		ca.CertificateRequestConfig{
+			Token:      tc.ManagerToken,
+			ConnBroker: tc.ConnBroker,
+		})
+	require.NoError(t, err)
+	require.NotNil(t, tlsCert)
+	perms, err := permbits.Stat(tc.Paths.Node.Cert)
+	require.NoError(t, err)
+	require.False(t, perms.GroupWrite())
+	require.False(t, perms.OtherWrite())
+
+	certs, err := ioutil.ReadFile(tc.Paths.Node.Cert)
+	require.NoError(t, err)
+
+	// ensure that the same number of certs was written
+	parsedCerts, err := helpers.ParseCertificatesPEM(certs)
+	require.NoError(t, err)
+	require.Len(t, parsedCerts, 1+numIntermediates)
+}
+
+func TestRequestAndSaveNewCertificatesNoIntermediate(t *testing.T) {
+	t.Parallel()
+
+	tc := testutils.NewTestCA(t)
+	testRequestAndSaveNewCertificates(t, tc, 0)
+}
+
+func TestRequestAndSaveNewCertificatesWithIntermediates(t *testing.T) {
+	t.Parallel()
+
+	// use a RootCA with an intermediate
+	rca, err := ca.NewRootCA(testutils.ECDSACertChain[2], testutils.ECDSACertChain[1], testutils.ECDSACertChainKeys[1],
+		ca.DefaultNodeCertExpiration, testutils.ECDSACertChain[1])
+	require.NoError(t, err)
+
+	tempdir, err := ioutil.TempDir("", "test-request-and-save-new-certificates")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+
+	tc := testutils.NewTestCAFromRootCA(t, tempdir, rca, nil)
+	testRequestAndSaveNewCertificates(t, tc, 1)
+}
+
+func TestRequestAndSaveNewCertificatesWithKEKUpdate(t *testing.T) {
+	t.Parallel()
+
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Copy the current RootCA without the signer
 	rca := ca.RootCA{Certs: tc.RootCA.Certs, Pool: tc.RootCA.Pool}
-	cert, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
-		ca.CertificateRequestConfig{
-			Token:      tc.ManagerToken,
-			ConnBroker: tc.ConnBroker,
-		})
-	assert.NoError(t, err)
-	assert.NotNil(t, cert)
-	perms, err := permbits.Stat(tc.Paths.Node.Cert)
-	assert.NoError(t, err)
-	assert.False(t, perms.GroupWrite())
-	assert.False(t, perms.OtherWrite())
 
-	// there was no encryption config in the remote, so the key should be unencrypted
 	unencryptedKeyReader := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
-	_, _, err = unencryptedKeyReader.Read()
-	require.NoError(t, err)
 
-	// the worker token is also unencrypted
-	cert, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
-		ca.CertificateRequestConfig{
-			Token:      tc.WorkerToken,
-			ConnBroker: tc.ConnBroker,
-		})
-	assert.NoError(t, err)
-	assert.NotNil(t, cert)
-	_, _, err = unencryptedKeyReader.Read()
-	require.NoError(t, err)
+	// key for the manager and worker are both unencrypted
+	for _, token := range []string{tc.ManagerToken, tc.WorkerToken} {
+		_, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+			ca.CertificateRequestConfig{
+				Token:      token,
+				ConnBroker: tc.ConnBroker,
+			})
+		require.NoError(t, err)
+
+		// there was no encryption config in the remote, so the key should be unencrypted
+		_, _, err = unencryptedKeyReader.Read()
+		require.NoError(t, err)
+	}
 
 	// If there is a different kek in the remote store, when TLS certs are renewed the new key will
 	// be encrypted with that kek
-	assert.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
+	require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
 		cluster := store.GetCluster(tx, tc.Organization)
 		cluster.Spec.EncryptionConfig.AutoLockManagers = true
 		cluster.UnlockKeys = []*api.EncryptionKey{{
@@ -359,36 +399,30 @@ func TestRequestAndSaveNewCertificates(t *testing.T) {
 		}}
 		return store.UpdateCluster(tx, cluster)
 	}))
-	assert.NoError(t, os.RemoveAll(tc.Paths.Node.Cert))
-	assert.NoError(t, os.RemoveAll(tc.Paths.Node.Key))
+	require.NoError(t, os.RemoveAll(tc.Paths.Node.Cert))
+	require.NoError(t, os.RemoveAll(tc.Paths.Node.Key))
 
-	_, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
-		ca.CertificateRequestConfig{
-			Token:      tc.ManagerToken,
-			ConnBroker: tc.ConnBroker,
-		})
-	assert.NoError(t, err)
+	// key for the manager will be encrypted, but certs for the worker will not be
+	for _, token := range []string{tc.ManagerToken, tc.WorkerToken} {
+		_, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+			ca.CertificateRequestConfig{
+				Token:      token,
+				ConnBroker: tc.ConnBroker,
+			})
+		require.NoError(t, err)
 
-	// key can no longer be read without a kek
-	_, _, err = unencryptedKeyReader.Read()
-	require.Error(t, err)
+		// there was no encryption config in the remote, so the key should be unencrypted
+		_, _, err = unencryptedKeyReader.Read()
 
-	_, _, err = ca.NewKeyReadWriter(tc.Paths.Node, []byte("kek!"), nil).Read()
-	require.NoError(t, err)
-
-	// if it's a worker though, the key is always unencrypted, even though the manager key is encrypted
-	_, err = rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
-		ca.CertificateRequestConfig{
-			Token:      tc.WorkerToken,
-			ConnBroker: tc.ConnBroker,
-		})
-	assert.NoError(t, err)
-	_, _, err = unencryptedKeyReader.Read()
-	require.NoError(t, err)
+		if token == tc.ManagerToken {
+			require.Error(t, err)
+			_, _, err = ca.NewKeyReadWriter(tc.Paths.Node, []byte("kek!"), nil).Read()
+			require.NoError(t, err)
+		} else {
+			require.NoError(t, err)
+		}
+	}
 }
-
-// TODO(cyli):  add test for RequestAndSaveNewCertificates but with intermediates - this involves adding
-// support for appending intermediates on the CA server first
 
 func TestIssueAndSaveNewCertificates(t *testing.T) {
 	tc := testutils.NewTestCA(t)
