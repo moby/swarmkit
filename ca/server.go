@@ -542,7 +542,6 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) error {
 
 	s.secConfigMu.Lock()
 	defer s.secConfigMu.Unlock()
-	var err error
 	rCA := cluster.RootCA
 	rootCAChanged := len(rCA.CACert) != 0 && !equality.RootCAEqualStable(s.lastSeenClusterRootCA, &cluster.RootCA)
 	externalCAChanged := !equality.ExternalCAsEqualStable(s.lastSeenExternalCAs, cluster.Spec.CAConfig.ExternalCAs)
@@ -565,7 +564,7 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) error {
 			}
 		} else {
 			// NodeCertExpiry seems to be nil
-			logger.WithError(err).Warn("failed to parse certificate expiration, using default")
+			logger.Warn("no certificate expiration specified, using default")
 		}
 		// Attempt to update our local RootCA with the new parameters
 		var intermediates []byte
