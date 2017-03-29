@@ -3,7 +3,10 @@ package ca_test
 import (
 	"context"
 	"crypto/x509"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarmkit/ca"
@@ -76,4 +79,50 @@ func TestExternalCACrossSign(t *testing.T) {
 	require.NoError(t, err)
 	_, err = leafCert.Verify(x509.VerifyOptions{Roots: rootCA2.Pool, Intermediates: intermediatePool})
 	require.NoError(t, err)
+}
+
+func TestExternalCASignRequestTimesOut(t *testing.T) {
+	t.Parallel()
+
+	if testutils.External {
+		return // this does not require the external CA in any way
+	}
+
+	rootCA, err := ca.CreateRootCA("rootCN")
+	require.NoError(t, err)
+
+	signDone, allDone := make(chan error), make(chan struct{})
+	defer close(signDone)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(http.ResponseWriter, *http.Request) {
+		// hang forever
+		select {
+		case <-allDone:
+		}
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+	defer server.CloseClientConnections()
+	defer close(allDone)
+
+	csr, _, err := ca.GenerateNewCSR()
+	require.NoError(t, err)
+
+	externalCA := ca.NewExternalCA(&rootCA, nil, server.URL)
+	externalCA.ExternalRequestTimeout = time.Second
+	go func() {
+		_, err := externalCA.Sign(context.Background(), ca.PrepareCSR(csr, "cn", "ou", "org"))
+		select {
+		case <-allDone:
+		case signDone <- err:
+		}
+	}()
+
+	select {
+	case err = <-signDone:
+		require.Contains(t, err.Error(), context.DeadlineExceeded.Error())
+	case <-time.After(3 * time.Second):
+		require.FailNow(t, "call to external CA signing should have timed out after 1 second - it's been 3")
+	}
 }
