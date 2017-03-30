@@ -2603,6 +2603,14 @@ func (m *CAConfig) CopyFrom(src interface{}) {
 		}
 	}
 
+	if o.SigningCACert != nil {
+		m.SigningCACert = make([]byte, len(o.SigningCACert))
+		copy(m.SigningCACert, o.SigningCACert)
+	}
+	if o.SigningCAKey != nil {
+		m.SigningCAKey = make([]byte, len(o.SigningCAKey))
+		copy(m.SigningCAKey, o.SigningCAKey)
+	}
 }
 
 func (m *OrchestrationConfig) Copy() *OrchestrationConfig {
