@@ -22,6 +22,7 @@ import (
 	"github.com/coreos/etcd/wal"
 	"github.com/docker/swarmkit/api"
 	cautils "github.com/docker/swarmkit/ca/testutils"
+	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/raft"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
@@ -457,6 +458,78 @@ func TestRaftNewNodeGetsData(t *testing.T) {
 		raftutils.CheckValue(t, clockSource, node, value)
 		assert.Len(t, node.GetMemberlist(), 4)
 	}
+}
+
+func TestChangesBetween(t *testing.T) {
+	t.Parallel()
+
+	node, _ := raftutils.NewInitNode(t, tc, nil)
+	defer raftutils.ShutdownNode(node)
+
+	startVersion := node.GetVersion()
+
+	// Propose 10 values
+	nodeIDs := []string{"id1", "id2", "id3", "id4", "id5", "id6", "id7", "id8", "id9", "id10"}
+	values := make([]*api.Node, 10)
+	for i, nodeID := range nodeIDs {
+		value, err := raftutils.ProposeValue(t, node, DefaultProposalTime, nodeID)
+		assert.NoError(t, err, "failed to propose value")
+		values[i] = value
+	}
+
+	versionAdd := func(version *api.Version, offset int64) api.Version {
+		return api.Version{Index: uint64(int64(version.Index) + offset)}
+	}
+
+	expectedChanges := func(startVersion api.Version, values []*api.Node) []state.Change {
+		var changes []state.Change
+
+		for i, value := range values {
+			changes = append(changes,
+				state.Change{
+					Version: versionAdd(&startVersion, int64(i+1)),
+					StoreActions: []api.StoreAction{
+						{
+							Action: api.StoreActionKindCreate,
+							Target: &api.StoreAction_Node{
+								Node: value,
+							},
+						},
+					},
+				},
+			)
+		}
+
+		return changes
+	}
+
+	// Satisfiable requests
+	changes, err := node.ChangesBetween(versionAdd(startVersion, -1), *startVersion)
+	assert.NoError(t, err)
+	assert.Len(t, changes, 0)
+
+	changes, err = node.ChangesBetween(*startVersion, versionAdd(startVersion, 1))
+	assert.NoError(t, err)
+	require.Len(t, changes, 1)
+	assert.Equal(t, expectedChanges(*startVersion, values[:1]), changes)
+
+	changes, err = node.ChangesBetween(*startVersion, versionAdd(startVersion, 10))
+	assert.NoError(t, err)
+	require.Len(t, changes, 10)
+	assert.Equal(t, expectedChanges(*startVersion, values), changes)
+
+	changes, err = node.ChangesBetween(versionAdd(startVersion, 2), versionAdd(startVersion, 6))
+	assert.NoError(t, err)
+	require.Len(t, changes, 4)
+	assert.Equal(t, expectedChanges(versionAdd(startVersion, 2), values[2:6]), changes)
+
+	// Unsatisfiable requests
+	_, err = node.ChangesBetween(versionAdd(startVersion, -1), versionAdd(startVersion, 11))
+	assert.Error(t, err)
+	_, err = node.ChangesBetween(versionAdd(startVersion, 11), versionAdd(startVersion, 11))
+	assert.Error(t, err)
+	_, err = node.ChangesBetween(versionAdd(startVersion, 11), versionAdd(startVersion, 15))
+	assert.Error(t, err)
 }
 
 func TestRaftRejoin(t *testing.T) {

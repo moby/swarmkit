@@ -1,26 +1,26 @@
-package controlapi
+package storeapi
 
 import (
 	"io/ioutil"
+	"log"
 	"net"
 	"os"
 	"testing"
 	"time"
 
-	"google.golang.org/grpc"
-
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
 	stateutils "github.com/docker/swarmkit/manager/state/testutils"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
 )
 
 type testServer struct {
 	Server *Server
-	Client api.ControlClient
+	Client api.StoreClient
 	Store  *store.MemoryStore
 
 	grpcServer *grpc.Server
@@ -41,14 +41,11 @@ func newTestServer(t *testing.T) *testServer {
 
 	// Create a testCA just to get a usable RootCA object
 	tc := cautils.NewTestCA(nil)
-	securityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
 	tc.Stop()
-	assert.NoError(t, err)
 
 	ts.Store = store.NewMemoryStore(&stateutils.MockProposer{})
 	assert.NotNil(t, ts.Store)
-
-	ts.Server = NewServer(ts.Store, nil, securityConfig, ca.NewServer(ts.Store, securityConfig), nil)
+	ts.Server = NewServer(ts.Store)
 	assert.NotNil(t, ts.Server)
 
 	temp, err := ioutil.TempFile("", "test-socket")
@@ -62,7 +59,7 @@ func newTestServer(t *testing.T) *testServer {
 	assert.NoError(t, err)
 
 	ts.grpcServer = grpc.NewServer()
-	api.RegisterControlServer(ts.grpcServer, ts.Server)
+	api.RegisterStoreServer(ts.grpcServer, ts.Server)
 	go func() {
 		// Serve will always return an error (even when properly stopped).
 		// Explicitly ignore it.
@@ -76,18 +73,30 @@ func newTestServer(t *testing.T) *testServer {
 	assert.NoError(t, err)
 	ts.clientConn = conn
 
-	ts.Client = api.NewControlClient(conn)
-
-	// Create ingress network
-	ts.Client.CreateNetwork(context.Background(),
-		&api.CreateNetworkRequest{
-			Spec: &api.NetworkSpec{
-				Ingress: true,
-				Annotations: api.Annotations{
-					Name: "test-ingress",
-				},
-			},
-		})
+	ts.Client = api.NewStoreClient(conn)
 
 	return ts
+}
+
+func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, membership api.NodeSpec_Membership, state api.NodeStatus_State) *api.Node {
+	node := &api.Node{
+		ID: id,
+		Spec: api.NodeSpec{
+			Membership: membership,
+		},
+		Status: api.NodeStatus{
+			State: state,
+		},
+		Role: role,
+	}
+	err := ts.Store.Update(func(tx store.Tx) error {
+		return store.CreateNode(tx, node)
+	})
+	assert.NoError(t, err)
+	return node
+}
+
+func init() {
+	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
+	logrus.SetOutput(ioutil.Discard)
 }

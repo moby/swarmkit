@@ -17,6 +17,7 @@
 		health.proto
 		resource.proto
 		logbroker.proto
+		store.proto
 
 	It has these top-level messages:
 		Version
@@ -189,6 +190,12 @@
 		SubscriptionMessage
 		PublishLogsMessage
 		PublishLogsResponse
+		Object
+		SelectBySlot
+		SelectByCustom
+		SelectBy
+		WatchRequest
+		WatchMessage
 */
 package api
 

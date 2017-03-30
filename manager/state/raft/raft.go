@@ -19,6 +19,7 @@ import (
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/raftselector"
+	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/raft/membership"
 	"github.com/docker/swarmkit/manager/state/raft/storage"
 	"github.com/docker/swarmkit/manager/state/raft/transport"
@@ -1451,6 +1452,52 @@ func (n *Node) GetVersion() *api.Version {
 
 	status := n.Status()
 	return &api.Version{Index: status.Commit}
+}
+
+// ChangesBetween returns the changes starting after "from", up to and
+// including "to". If these changes are not available because the log
+// has been compacted, an error will be returned.
+func (n *Node) ChangesBetween(from, to api.Version) ([]state.Change, error) {
+	n.stopMu.RLock()
+	defer n.stopMu.RUnlock()
+
+	if from.Index > to.Index {
+		return nil, errors.New("versions are out of order")
+	}
+
+	if !n.IsMember() {
+		return nil, ErrNoRaftMember
+	}
+
+	// never returns error
+	last, _ := n.raftStore.LastIndex()
+
+	if to.Index > last {
+		return nil, errors.New("last version is out of bounds")
+	}
+
+	pbs, err := n.raftStore.Entries(from.Index+1, to.Index+1, math.MaxUint64)
+	if err != nil {
+		return nil, err
+	}
+
+	var changes []state.Change
+	for _, pb := range pbs {
+		if pb.Type != raftpb.EntryNormal || pb.Data == nil {
+			continue
+		}
+		r := &api.InternalRaftRequest{}
+		err := proto.Unmarshal(pb.Data, r)
+		if err != nil {
+			return nil, errors.Wrap(err, "error umarshalling internal raft request")
+		}
+
+		if r.Action != nil {
+			changes = append(changes, state.Change{StoreActions: r.Action, Version: api.Version{Index: pb.Index}})
+		}
+	}
+
+	return changes, nil
 }
 
 // SubscribePeers subscribes to peer updates in cluster. It sends always full
