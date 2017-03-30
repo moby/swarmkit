@@ -847,10 +847,12 @@ func TestRepeatedScalarCopy(t *testing.T) {
 	if &in.Field15 == &out.Field15 {
 		t.Fatalf("Field15: %#v == %#v", &in.Field15, &out.Field15)
 	}
-	if len(in.Field15[0]) > 0 {
-		in.Field15[0][0]++
-		if in.Equal(out) {
-			t.Fatalf("%#v == %#v", in, out)
+	if len(in.Field15) > 0 {
+		if len(in.Field15[0]) > 0 {
+			in.Field15[0][0]++
+			if in.Equal(out) {
+				t.Fatalf("%#v == %#v", in, out)
+			}
 		}
 	}
 

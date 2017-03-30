@@ -69,6 +69,8 @@ func (p *test) Generate(imports generator.PluginImports, file *generator.FileDes
 
 			if f.IsBytes() {
 				if f.IsRepeated() {
+					p.P(`if len(in.`, fName, `) > 0 {`)
+					p.In()
 					fName += "[0]"
 				}
 				p.P(`if len(in.`, fName, `) > 0 {`)
@@ -81,6 +83,10 @@ func (p *test) Generate(imports generator.PluginImports, file *generator.FileDes
 				p.P(`}`)
 				p.Out()
 				p.P(`}`)
+				if f.IsRepeated() {
+					p.Out()
+					p.P(`}`)
+				}
 			}
 		}
 
