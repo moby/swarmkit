@@ -2546,6 +2546,10 @@ func (m *AcceptancePolicy_RoleAdmissionPolicy_Secret) CopyFrom(src interface{}) 
 
 	o := src.(*AcceptancePolicy_RoleAdmissionPolicy_Secret)
 	*m = *o
+	if o.Data != nil {
+		m.Data = make([]byte, len(o.Data))
+		copy(m.Data, o.Data)
+	}
 }
 
 func (m *ExternalCA) Copy() *ExternalCA {
@@ -2568,6 +2572,10 @@ func (m *ExternalCA) CopyFrom(src interface{}) {
 		}
 	}
 
+	if o.CACert != nil {
+		m.CACert = make([]byte, len(o.CACert))
+		copy(m.CACert, o.CACert)
+	}
 }
 
 func (m *CAConfig) Copy() *CAConfig {
@@ -2777,6 +2785,14 @@ func (m *RootCA) CopyFrom(src interface{}) {
 
 	o := src.(*RootCA)
 	*m = *o
+	if o.CAKey != nil {
+		m.CAKey = make([]byte, len(o.CAKey))
+		copy(m.CAKey, o.CAKey)
+	}
+	if o.CACert != nil {
+		m.CACert = make([]byte, len(o.CACert))
+		copy(m.CACert, o.CACert)
+	}
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.JoinTokens, &o.JoinTokens)
 	if o.RootRotation != nil {
 		m.RootRotation = &RootRotation{}
@@ -2797,7 +2813,15 @@ func (m *Certificate) CopyFrom(src interface{}) {
 
 	o := src.(*Certificate)
 	*m = *o
+	if o.CSR != nil {
+		m.CSR = make([]byte, len(o.CSR))
+		copy(m.CSR, o.CSR)
+	}
 	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Status, &o.Status)
+	if o.Certificate != nil {
+		m.Certificate = make([]byte, len(o.Certificate))
+		copy(m.Certificate, o.Certificate)
+	}
 }
 
 func (m *EncryptionKey) Copy() *EncryptionKey {
@@ -2813,6 +2837,10 @@ func (m *EncryptionKey) CopyFrom(src interface{}) {
 
 	o := src.(*EncryptionKey)
 	*m = *o
+	if o.Key != nil {
+		m.Key = make([]byte, len(o.Key))
+		copy(m.Key, o.Key)
+	}
 }
 
 func (m *ManagerStatus) Copy() *ManagerStatus {
@@ -2935,6 +2963,14 @@ func (m *MaybeEncryptedRecord) CopyFrom(src interface{}) {
 
 	o := src.(*MaybeEncryptedRecord)
 	*m = *o
+	if o.Data != nil {
+		m.Data = make([]byte, len(o.Data))
+		copy(m.Data, o.Data)
+	}
+	if o.Nonce != nil {
+		m.Nonce = make([]byte, len(o.Nonce))
+		copy(m.Nonce, o.Nonce)
+	}
 }
 
 func (m *RootRotation) Copy() *RootRotation {
@@ -2950,6 +2986,18 @@ func (m *RootRotation) CopyFrom(src interface{}) {
 
 	o := src.(*RootRotation)
 	*m = *o
+	if o.CACert != nil {
+		m.CACert = make([]byte, len(o.CACert))
+		copy(m.CACert, o.CACert)
+	}
+	if o.CAKey != nil {
+		m.CAKey = make([]byte, len(o.CAKey))
+		copy(m.CAKey, o.CAKey)
+	}
+	if o.CrossSignedCACert != nil {
+		m.CrossSignedCACert = make([]byte, len(o.CrossSignedCACert))
+		copy(m.CrossSignedCACert, o.CrossSignedCACert)
+	}
 }
 
 func (m *Version) Marshal() (dAtA []byte, err error) {

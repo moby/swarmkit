@@ -578,6 +578,10 @@ func (m *BasicScalar) CopyFrom(src interface{}) {
 
 	o := src.(*BasicScalar)
 	*m = *o
+	if o.Field15 != nil {
+		m.Field15 = make([]byte, len(o.Field15))
+		copy(m.Field15, o.Field15)
+	}
 }
 
 func (m *RepeatedScalar) Copy() *RepeatedScalar {
@@ -665,7 +669,12 @@ func (m *RepeatedScalar) CopyFrom(src interface{}) {
 
 	if o.Field15 != nil {
 		m.Field15 = make([][]byte, len(o.Field15))
-		copy(m.Field15, o.Field15)
+		for i := range m.Field15 {
+			if o.Field15[i] != nil {
+				m.Field15[i] = make([]byte, len(o.Field15[i]))
+				copy(m.Field15[i], o.Field15[i])
+			}
+		}
 	}
 
 }
@@ -949,7 +958,11 @@ func (m *OneOf) CopyFrom(src interface{}) {
 			m.Fields = &v
 		case *OneOf_Field7:
 			v := OneOf_Field7{
-				Field7: o.GetField7(),
+				Field7: make([]byte, len(o.GetField7())),
+			}
+			if o.GetField7() != nil {
+				v.Field7 = make([]byte, len(o.GetField7()))
+				copy(v.Field7, o.GetField7())
 			}
 			m.Fields = &v
 		case *OneOf_Field8:

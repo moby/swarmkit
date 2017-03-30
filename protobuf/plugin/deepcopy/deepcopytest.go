@@ -51,15 +51,37 @@ func (p *test) Generate(imports generator.PluginImports, file *generator.FileDes
 			}
 
 			if f.OneofIndex != nil {
-				odp := message.OneofDecl[int(*f.OneofIndex)]
-				fName = generator.CamelCase(odp.GetName())
+				fName = "Get" + fName + "()"
+				if f.IsMessage() {
+					p.P(`if in.`, fName, ` != nil && in.`, fName, ` == out.`, fName, ` {`)
+					p.In()
+					p.P(`t.Fatalf("`, fName, `: %#v == %#v", in.`, fName, `, out.`, fName, `)`)
+					p.Out()
+					p.P(`}`)
+				}
+			} else {
+				p.P(`if &in.`, fName, ` == &out.`, fName, ` {`)
+				p.In()
+				p.P(`t.Fatalf("`, fName, `: %#v == %#v", &in.`, fName, `, &out.`, fName, `)`)
+				p.Out()
+				p.P(`}`)
 			}
 
-			p.P(`if &in.`, fName, ` == &out.`, fName, ` {`)
-			p.In()
-			p.P(`t.Fatalf("`, fName, `: %#v == %#v", &in.`, fName, `, &out.`, fName, `)`)
-			p.Out()
-			p.P(`}`)
+			if f.IsBytes() {
+				if f.IsRepeated() {
+					fName += "[0]"
+				}
+				p.P(`if len(in.`, fName, `) > 0 {`)
+				p.In()
+				p.P(`in.`, fName, "[0]++")
+				p.P(`if in.Equal(out) {`)
+				p.In()
+				p.P(`t.Fatalf("%#v == %#v", in, out)`)
+				p.Out()
+				p.P(`}`)
+				p.Out()
+				p.P(`}`)
+			}
 		}
 
 		// copying from nil should result in nil

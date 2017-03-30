@@ -781,6 +781,12 @@ func TestBasicScalarCopy(t *testing.T) {
 	if &in.Field15 == &out.Field15 {
 		t.Fatalf("Field15: %#v == %#v", &in.Field15, &out.Field15)
 	}
+	if len(in.Field15) > 0 {
+		in.Field15[0]++
+		if in.Equal(out) {
+			t.Fatalf("%#v == %#v", in, out)
+		}
+	}
 
 	in = nil
 	out = in.Copy()
@@ -840,6 +846,12 @@ func TestRepeatedScalarCopy(t *testing.T) {
 	}
 	if &in.Field15 == &out.Field15 {
 		t.Fatalf("Field15: %#v == %#v", &in.Field15, &out.Field15)
+	}
+	if len(in.Field15[0]) > 0 {
+		in.Field15[0][0]++
+		if in.Equal(out) {
+			t.Fatalf("%#v == %#v", in, out)
+		}
 	}
 
 	in = nil
@@ -1027,38 +1039,23 @@ func TestOneOfCopy(t *testing.T) {
 	if !in.Equal(out) {
 		t.Fatalf("%#v != %#v", in, out)
 	}
-	if &in.Fields == &out.Fields {
-		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	if len(in.GetField7()) > 0 {
+		in.GetField7()[0]++
+		if in.Equal(out) {
+			t.Fatalf("%#v == %#v", in, out)
+		}
 	}
-	if &in.Fields == &out.Fields {
-		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	if in.GetField8() != nil && in.GetField8() == out.GetField8() {
+		t.Fatalf("GetField8(): %#v == %#v", in.GetField8(), out.GetField8())
 	}
-	if &in.Fields == &out.Fields {
-		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	if in.GetField9() != nil && in.GetField9() == out.GetField9() {
+		t.Fatalf("GetField9(): %#v == %#v", in.GetField9(), out.GetField9())
 	}
-	if &in.Fields == &out.Fields {
-		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
+	if in.GetField10() != nil && in.GetField10() == out.GetField10() {
+		t.Fatalf("GetField10(): %#v == %#v", in.GetField10(), out.GetField10())
 	}
-	if &in.Fields == &out.Fields {
-		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
-	}
-	if &in.Fields == &out.Fields {
-		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
-	}
-	if &in.Fields == &out.Fields {
-		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
-	}
-	if &in.Fields == &out.Fields {
-		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
-	}
-	if &in.Fields == &out.Fields {
-		t.Fatalf("Fields: %#v == %#v", &in.Fields, &out.Fields)
-	}
-	if &in.FieldsTwo == &out.FieldsTwo {
-		t.Fatalf("FieldsTwo: %#v == %#v", &in.FieldsTwo, &out.FieldsTwo)
-	}
-	if &in.FieldsTwo == &out.FieldsTwo {
-		t.Fatalf("FieldsTwo: %#v == %#v", &in.FieldsTwo, &out.FieldsTwo)
+	if in.GetField11() != nil && in.GetField11() == out.GetField11() {
+		t.Fatalf("GetField11(): %#v == %#v", in.GetField11(), out.GetField11())
 	}
 
 	in = nil
