@@ -11,6 +11,7 @@ import (
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/defaults"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/orchestrator/restart"
@@ -20,8 +21,6 @@ import (
 	"github.com/docker/swarmkit/watch"
 	gogotypes "github.com/gogo/protobuf/types"
 )
-
-const defaultMonitor = 5 * time.Second
 
 // Supervisor supervises a set of updates. It's responsible for keeping track of updates,
 // shutting them down and replacing them.
@@ -156,14 +155,12 @@ func (u *Updater) Run(ctx context.Context, slots []orchestrator.Slot) {
 		u.startUpdate(ctx, service.ID)
 	}
 
-	var (
-		parallelism            = 1
-		delay                  time.Duration
-		failureAction          = api.UpdateConfig_PAUSE
-		allowedFailureFraction = float32(0)
-		monitoringPeriod       = defaultMonitor
-		order                  = api.UpdateConfig_STOP_FIRST
-	)
+	delay := defaults.Service.Update.Delay
+	parallelism := int(defaults.Service.Update.Parallelism)
+	failureAction := defaults.Service.Update.FailureAction
+	allowedFailureFraction := defaults.Service.Update.MaxFailureRatio
+	monitoringPeriod, _ := gogotypes.DurationFromProto(defaults.Service.Update.Monitor)
+	order := defaults.Service.Update.Order
 
 	updateConfig := service.Spec.Update
 	if service.UpdateStatus != nil && service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_STARTED {
@@ -181,7 +178,7 @@ func (u *Updater) Run(ctx context.Context, slots []orchestrator.Slot) {
 		if updateConfig.Monitor != nil {
 			monitoringPeriod, err = gogotypes.DurationFromProto(updateConfig.Monitor)
 			if err != nil {
-				monitoringPeriod = defaultMonitor
+				monitoringPeriod, _ = gogotypes.DurationFromProto(defaults.Service.Update.Monitor)
 			}
 		}
 	}
