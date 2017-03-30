@@ -621,8 +621,7 @@ func (n *nonSigningCAServer) IssueNodeCertificate(ctx context.Context, request *
 func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	t.Parallel()
 	if testutils.External {
-		// we don't actually need an external signing server, since we're faking a CA TestCAServerUpdateRootCA which
-		// doesn't really sign
+		// we don't actually need an external signing server, since we're faking a CA server which doesn't really sign
 		return
 	}
 
@@ -766,8 +765,7 @@ var _ remotes.Remotes = &fakeRemotes{}
 func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 	t.Parallel()
 	if testutils.External {
-		// we don't actually need an external signing server, since we're faking a CA TestCAServerUpdateRootCA which
-		// doesn't really sign
+		// we don't actually need an external signing server, since we're faking a CA server which doesn't really sign
 		return
 	}
 
