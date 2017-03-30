@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"crypto"
 	cryptorand "crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
@@ -417,4 +418,15 @@ func ReDateCert(t *testing.T, cert, signerCert, signerKey []byte, notBefore, not
 		Type:  "CERTIFICATE",
 		Bytes: derBytes,
 	})
+}
+
+// CreateCertFromSigner creates a Certificate authority for a new Swarm Cluster given an existing key only.
+func CreateCertFromSigner(rootCN string, priv crypto.Signer) ([]byte, error) {
+	req := cfcsr.CertificateRequest{
+		CN:         rootCN,
+		KeyRequest: &cfcsr.BasicKeyRequest{A: ca.RootKeyAlgo, S: ca.RootKeySize},
+		CA:         &cfcsr.CAConfig{Expiry: ca.RootCAExpiration},
+	}
+	cert, _, err := initca.NewFromSigner(&req, priv)
+	return cert, err
 }

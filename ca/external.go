@@ -53,6 +53,19 @@ func NewExternalCA(rootCA *RootCA, tlsConfig *tls.Config, urls ...string) *Exter
 	}
 }
 
+// Copy returns a copy of the external CA that can be updated independently
+func (eca *ExternalCA) Copy() *ExternalCA {
+	eca.mu.Lock()
+	defer eca.mu.Unlock()
+
+	return &ExternalCA{
+		ExternalRequestTimeout: eca.ExternalRequestTimeout,
+		rootCA:                 eca.rootCA,
+		urls:                   eca.urls,
+		client:                 eca.client,
+	}
+}
+
 // UpdateTLSConfig updates the HTTP Client for this ExternalCA by creating
 // a new client which uses the given tlsConfig.
 func (eca *ExternalCA) UpdateTLSConfig(tlsConfig *tls.Config) {
