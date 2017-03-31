@@ -32,6 +32,12 @@ var Service = api.ServiceSpec{
 		Parallelism:   1,
 		Order:         api.UpdateConfig_STOP_FIRST,
 	},
+	Rollback: &api.UpdateConfig{
+		FailureAction: api.UpdateConfig_PAUSE,
+		Monitor:       gogotypes.DurationProto(5 * time.Second),
+		Parallelism:   1,
+		Order:         api.UpdateConfig_STOP_FIRST,
+	},
 }
 
 // InterpolateService returns a ServiceSpec based on the provided spec, which
@@ -77,6 +83,15 @@ func InterpolateService(origSpec *api.ServiceSpec) *api.ServiceSpec {
 		if spec.Update.Monitor == nil {
 			spec.Update.Monitor = &gogotypes.Duration{}
 			deepcopy.Copy(spec.Update.Monitor, Service.Update.Monitor)
+		}
+	}
+
+	if spec.Rollback == nil {
+		spec.Rollback = Service.Rollback.Copy()
+	} else {
+		if spec.Rollback.Monitor == nil {
+			spec.Rollback.Monitor = &gogotypes.Duration{}
+			deepcopy.Copy(spec.Rollback.Monitor, Service.Rollback.Monitor)
 		}
 	}
 
