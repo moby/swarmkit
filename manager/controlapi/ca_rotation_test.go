@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"encoding/pem"
+
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/initca"
 	"github.com/docker/swarmkit/api"
@@ -46,6 +48,15 @@ var initialLocalRootCA = api.RootCA{
 	},
 }
 var rotationCert, rotationKey = testutils.ECDSACertChain[2], testutils.ECDSACertChainKeys[2]
+
+func uglifyOnePEM(pemBytes []byte) []byte {
+	pemBlock, _ := pem.Decode(pemBytes)
+	pemBlock.Headers = map[string]string{
+		"this": "should",
+		"be":   "removed",
+	}
+	return append(append([]byte("\n\t   "), pem.EncodeToMemory(pemBlock)...), []byte("   \t")...)
+}
 
 func getSecurityConfig(t *testing.T, localRootCA *ca.RootCA, cluster *api.Cluster) *ca.SecurityConfig {
 	tempdir, err := ioutil.TempDir("", "test-validate-CA")
@@ -408,7 +419,7 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 			description: "same desired cert and key as current Root CA results in no root rotation",
 			rootCA:      initialLocalRootCA,
 			caConfig: api.CAConfig{
-				SigningCACert: initialLocalRootCA.CACert,
+				SigningCACert: uglifyOnePEM(initialLocalRootCA.CACert),
 				SigningCAKey:  initialLocalRootCA.CAKey,
 				ForceRotate:   5,
 			},
@@ -418,13 +429,13 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 			description: "same desired cert as current Root CA but external->internal results in no root rotation and no key -> key",
 			rootCA:      initialExternalRootCA,
 			caConfig: api.CAConfig{
-				SigningCACert: initialLocalRootCA.CACert,
+				SigningCACert: uglifyOnePEM(initialLocalRootCA.CACert),
 				SigningCAKey:  initialLocalRootCA.CAKey,
 				ForceRotate:   5,
 				ExternalCAs: []*api.ExternalCA{
 					{
 						URL:    initExtServer.URL,
-						CACert: initialLocalRootCA.CACert,
+						CACert: append(initialLocalRootCA.CACert, '\n'),
 					},
 				},
 			},
@@ -438,7 +449,7 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 				ExternalCAs: []*api.ExternalCA{
 					{
 						URL:    initExtServer.URL,
-						CACert: initialLocalRootCA.CACert,
+						CACert: uglifyOnePEM(initialLocalRootCA.CACert),
 					},
 				},
 				ForceRotate: 5,
@@ -491,7 +502,7 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 				ExternalCAs: []*api.ExternalCA{
 					{
 						URL:    rotateExtServer.URL,
-						CACert: testutils.ECDSACertChain[2],
+						CACert: append(testutils.ECDSACertChain[2], ' '),
 					},
 				},
 			},
@@ -524,7 +535,7 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 			description: "desired cert being a renewed current cert and key results in a root rotation because the cert has changed",
 			rootCA:      initialLocalRootCA,
 			caConfig: api.CAConfig{
-				SigningCACert: renewedInitialCert,
+				SigningCACert: uglifyOnePEM(renewedInitialCert),
 				SigningCAKey:  initialLocalRootCA.CAKey,
 				ForceRotate:   5,
 			},
@@ -535,13 +546,13 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 			description: "desired cert being a renewed current cert, external->internal results in a root rotation because the cert has changed",
 			rootCA:      initialExternalRootCA,
 			caConfig: api.CAConfig{
-				SigningCACert: renewedInitialCert,
+				SigningCACert: uglifyOnePEM(renewedInitialCert),
 				SigningCAKey:  initialLocalRootCA.CAKey,
 				ForceRotate:   5,
 				ExternalCAs: []*api.ExternalCA{
 					{
 						URL:    initExtServer.URL,
-						CACert: initialLocalRootCA.CACert,
+						CACert: append(initialLocalRootCA.CACert, '\t'),
 					},
 				},
 			},
@@ -549,15 +560,15 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 			expectGeneratedCross: true,
 		},
 		{
-			description: "desired cert eing a renewed current cert, internal->external results in a root rotation because the cert has changed",
+			description: "desired cert being a renewed current cert, internal->external results in a root rotation because the cert has changed",
 			rootCA:      initialLocalRootCA,
 			caConfig: api.CAConfig{
-				SigningCACert: renewedInitialCert,
+				SigningCACert: append([]byte("\n\n"), renewedInitialCert...),
 				ForceRotate:   5,
 				ExternalCAs: []*api.ExternalCA{
 					{
 						URL:    initExtServer.URL,
-						CACert: renewedInitialCert,
+						CACert: uglifyOnePEM(renewedInitialCert),
 					},
 				},
 			},
@@ -568,7 +579,7 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 			description: "desired cert being a renewed rotation RootCA cert + rotation key results in replaced root rotation because the cert has changed",
 			rootCA:      getRootCAWithRotation(initialLocalRootCA, rotationCert, rotationKey, crossSigned),
 			caConfig: api.CAConfig{
-				SigningCACert: renewedRotationCert,
+				SigningCACert: uglifyOnePEM(renewedRotationCert),
 				SigningCAKey:  rotationKey,
 				ForceRotate:   5,
 			},
@@ -579,7 +590,7 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 			description: "desired cert being a different rotation rootCA cert results in replaced root rotation (only new external CA required, not old rotation external CA)",
 			rootCA:      getRootCAWithRotation(initialLocalRootCA, rotationCert, nil, crossSigned),
 			caConfig: api.CAConfig{
-				SigningCACert: differentInitialCert,
+				SigningCACert: uglifyOnePEM(differentInitialCert),
 				ForceRotate:   5,
 				ExternalCAs: []*api.ExternalCA{
 					{
@@ -587,7 +598,7 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 						// (not signed by the right cert - note that there's a bug in go 1.7 where this is not needed, because the
 						// subject names of cert names aren't checked, but go 1.8 fixes this.)
 						URL:    differentExtServer.URL,
-						CACert: differentInitialCert,
+						CACert: append([]byte("\n\t"), differentInitialCert...),
 					},
 				},
 			},
@@ -614,7 +625,7 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 				ExternalCAs: []*api.ExternalCA{
 					{
 						URL:    initExtServer.URL,
-						CACert: initialExternalRootCA.CACert,
+						CACert: uglifyOnePEM(initialExternalRootCA.CACert),
 					},
 				},
 			},
@@ -652,7 +663,7 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 				ExternalCAs: []*api.ExternalCA{
 					{
 						URL:    initExtServer.URL,
-						CACert: initialExternalRootCA.CACert,
+						CACert: uglifyOnePEM(initialExternalRootCA.CACert),
 					},
 				},
 			},

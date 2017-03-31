@@ -504,7 +504,7 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 				{
 					Protocol: api.ExternalCA_CAProtocolCFSSL,
 					URL:      externalServer.URL,
-					CACert:   cert,
+					CACert:   append(cert, '\n'),
 				},
 			}),
 			rootCARoots:          tc.RootCA.Certs,
