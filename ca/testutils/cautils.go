@@ -306,17 +306,16 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 		return nil, err
 	}
 
-	nodeServerTLSCreds, err := rootCA.NewServerTLSCredentials(&nodeCert)
-	if err != nil {
-		return nil, err
-	}
-
-	nodeClientTLSCreds, err := rootCA.NewClientTLSCredentials(&nodeCert, ca.ManagerRole)
-	if err != nil {
-		return nil, err
-	}
-
 	err = createNode(s, nodeID, role, csr, certChain)
+	if err != nil {
+		return nil, err
+	}
+
+	signingCert := rootCA.Certs
+	if len(rootCA.Intermediates) > 0 {
+		signingCert = rootCA.Intermediates
+	}
+	parsedCert, err := helpers.ParseCertificatePEM(signingCert)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +329,10 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 		}
 	}
 
-	return ca.NewSecurityConfig(&rootCA, krw, nodeClientTLSCreds, nodeServerTLSCreds), nil
+	return ca.NewSecurityConfig(&rootCA, krw, &nodeCert, &ca.IssuerInfo{
+		PublicKey: parsedCert.RawSubjectPublicKeyInfo,
+		Subject:   parsedCert.RawSubject,
+	})
 }
 
 func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID, workerToken, managerToken string, externalCAs ...*api.ExternalCA) {

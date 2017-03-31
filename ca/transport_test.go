@@ -20,7 +20,7 @@ func TestNewMutableTLS(t *testing.T) {
 	rootCA, err := CreateRootCA("rootCN")
 	require.NoError(t, err)
 
-	cert, err := rootCA.IssueAndSaveNewCertificates(krw, "CN", ManagerRole, "org")
+	cert, _, err := rootCA.IssueAndSaveNewCertificates(krw, "CN", ManagerRole, "org")
 	assert.NoError(t, err)
 
 	tlsConfig, err := NewServerTLSConfig([]tls.Certificate{*cert}, rootCA.Pool)
@@ -41,7 +41,7 @@ func TestGetAndValidateCertificateSubject(t *testing.T) {
 	rootCA, err := CreateRootCA("rootCN")
 	require.NoError(t, err)
 
-	cert, err := rootCA.IssueAndSaveNewCertificates(krw, "CN", ManagerRole, "org")
+	cert, _, err := rootCA.IssueAndSaveNewCertificates(krw, "CN", ManagerRole, "org")
 	assert.NoError(t, err)
 
 	name, err := GetAndValidateCertificateSubject([]tls.Certificate{*cert})
@@ -62,9 +62,9 @@ func TestLoadNewTLSConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create two different certs and two different TLS configs
-	cert1, err := rootCA.IssueAndSaveNewCertificates(krw, "CN1", ManagerRole, "org")
+	cert1, _, err := rootCA.IssueAndSaveNewCertificates(krw, "CN1", ManagerRole, "org")
 	assert.NoError(t, err)
-	cert2, err := rootCA.IssueAndSaveNewCertificates(krw, "CN2", WorkerRole, "org")
+	cert2, _, err := rootCA.IssueAndSaveNewCertificates(krw, "CN2", WorkerRole, "org")
 	assert.NoError(t, err)
 	tlsConfig1, err := NewServerTLSConfig([]tls.Certificate{*cert1}, rootCA.Pool)
 	assert.NoError(t, err)

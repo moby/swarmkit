@@ -46,7 +46,7 @@ func NewExternalSigningServer(rootCA ca.RootCA, basedir string) (*ExternalSignin
 		Cert: filepath.Join(basedir, "server.crt"),
 		Key:  filepath.Join(basedir, "server.key"),
 	}
-	serverCert, err := rootCA.IssueAndSaveNewCertificates(ca.NewKeyReadWriter(serverPaths, nil, nil), serverCN, serverOU, "")
+	serverCert, _, err := rootCA.IssueAndSaveNewCertificates(ca.NewKeyReadWriter(serverPaths, nil, nil), serverCN, serverOU, "")
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to get TLS server certificate")
 	}

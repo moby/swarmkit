@@ -43,10 +43,10 @@ func init() {
 	os.Setenv(ca.PassphraseENVVarPrev, "")
 }
 
-func checkSingleCert(t *testing.T, certBytes []byte, issuerName, cn, ou, org string, additionalDNSNames ...string) {
+func checkLeafCert(t *testing.T, certBytes []byte, issuerName, cn, ou, org string, additionalDNSNames ...string) []*x509.Certificate {
 	certs, err := helpers.ParseCertificatesPEM(certBytes)
 	require.NoError(t, err)
-	require.Len(t, certs, 1)
+	require.NotEmpty(t, certs)
 	require.Equal(t, issuerName, certs[0].Issuer.CommonName)
 	require.Equal(t, cn, certs[0].Subject.CommonName)
 	require.Equal(t, []string{ou}, certs[0].Subject.OrganizationalUnit)
@@ -56,6 +56,7 @@ func checkSingleCert(t *testing.T, certBytes []byte, issuerName, cn, ou, org str
 	for _, dnsName := range append(additionalDNSNames, cn, ou) {
 		require.Contains(t, certs[0].DNSNames, dnsName)
 	}
+	return certs
 }
 
 // TestMain runs every test in this file twice - once with a local CA and
@@ -215,7 +216,7 @@ func TestParseValidateAndSignCSR(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, signedCert)
 
-	checkSingleCert(t, signedCert, "rootCN", "CN", "OU", "ORG")
+	assert.Len(t, checkLeafCert(t, signedCert, "rootCN", "CN", "OU", "ORG"), 1)
 }
 
 func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
@@ -242,7 +243,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, signedCert)
 
-	checkSingleCert(t, signedCert, "rootCN", "CN", "OU", "ORG")
+	assert.Len(t, checkLeafCert(t, signedCert, "rootCN", "CN", "OU", "ORG"), 1)
 }
 
 func TestGetRemoteCA(t *testing.T) {
@@ -298,7 +299,7 @@ func TestGetRemoteCA(t *testing.T) {
 
 	for _, rootCA := range []ca.RootCA{tc.RootCA, otherRootCA} {
 		krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
-		_, err := rootCA.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
+		_, _, err := rootCA.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
 		require.NoError(t, err)
 
 		certPEM, _, err := krw.Read()
@@ -323,18 +324,20 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func testRequestAndSaveNewCertificates(t *testing.T, tc *testutils.TestCA, numIntermediates int) {
+// returns the issuer as well as all the parsed certs returned from the request
+func testRequestAndSaveNewCertificates(t *testing.T, tc *testutils.TestCA) (*ca.IssuerInfo, []*x509.Certificate) {
 	defer tc.Stop()
 
 	// Copy the current RootCA without the signer
 	rca := ca.RootCA{Certs: tc.RootCA.Certs, Pool: tc.RootCA.Pool}
-	tlsCert, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+	tlsCert, issuerInfo, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
 		ca.CertificateRequestConfig{
 			Token:      tc.ManagerToken,
 			ConnBroker: tc.ConnBroker,
 		})
 	require.NoError(t, err)
 	require.NotNil(t, tlsCert)
+	require.NotNil(t, issuerInfo)
 	perms, err := permbits.Stat(tc.Paths.Node.Cert)
 	require.NoError(t, err)
 	require.False(t, perms.GroupWrite())
@@ -346,14 +349,19 @@ func testRequestAndSaveNewCertificates(t *testing.T, tc *testutils.TestCA, numIn
 	// ensure that the same number of certs was written
 	parsedCerts, err := helpers.ParseCertificatesPEM(certs)
 	require.NoError(t, err)
-	require.Len(t, parsedCerts, 1+numIntermediates)
+	return issuerInfo, parsedCerts
 }
 
 func TestRequestAndSaveNewCertificatesNoIntermediate(t *testing.T) {
 	t.Parallel()
 
 	tc := testutils.NewTestCA(t)
-	testRequestAndSaveNewCertificates(t, tc, 0)
+	issuerInfo, parsedCerts := testRequestAndSaveNewCertificates(t, tc)
+	require.Len(t, parsedCerts, 1)
+
+	root, err := helpers.ParseCertificatePEM(tc.RootCA.Certs)
+	require.NoError(t, err)
+	require.Equal(t, root.RawSubject, issuerInfo.Subject)
 }
 
 func TestRequestAndSaveNewCertificatesWithIntermediates(t *testing.T) {
@@ -369,7 +377,14 @@ func TestRequestAndSaveNewCertificatesWithIntermediates(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 
 	tc := testutils.NewTestCAFromRootCA(t, tempdir, rca, nil)
-	testRequestAndSaveNewCertificates(t, tc, 1)
+	issuerInfo, parsedCerts := testRequestAndSaveNewCertificates(t, tc)
+	require.Len(t, parsedCerts, 2)
+
+	intermediate, err := helpers.ParseCertificatePEM(tc.RootCA.Intermediates)
+	require.NoError(t, err)
+	require.Equal(t, intermediate, parsedCerts[1])
+	require.Equal(t, intermediate.RawSubject, issuerInfo.Subject)
+	require.Equal(t, intermediate.RawSubjectPublicKeyInfo, issuerInfo.PublicKey)
 }
 
 func TestRequestAndSaveNewCertificatesWithKEKUpdate(t *testing.T) {
@@ -385,7 +400,7 @@ func TestRequestAndSaveNewCertificatesWithKEKUpdate(t *testing.T) {
 
 	// key for the manager and worker are both unencrypted
 	for _, token := range []string{tc.ManagerToken, tc.WorkerToken} {
-		_, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+		_, _, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
 			ca.CertificateRequestConfig{
 				Token:      token,
 				ConnBroker: tc.ConnBroker,
@@ -413,7 +428,7 @@ func TestRequestAndSaveNewCertificatesWithKEKUpdate(t *testing.T) {
 
 	// key for the manager will be encrypted, but certs for the worker will not be
 	for _, token := range []string{tc.ManagerToken, tc.WorkerToken} {
-		_, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
+		_, _, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
 			ca.CertificateRequestConfig{
 				Token:      token,
 				ConnBroker: tc.ConnBroker,
@@ -433,36 +448,69 @@ func TestRequestAndSaveNewCertificatesWithKEKUpdate(t *testing.T) {
 	}
 }
 
-func TestIssueAndSaveNewCertificates(t *testing.T) {
-	tc := testutils.NewTestCA(t)
-	defer tc.Stop()
+// returns the issuer of the issued certificate and the parsed certs of the issued certificate
+func testIssueAndSaveNewCertificates(t *testing.T, rca *ca.RootCA) {
+	tempdir, err := ioutil.TempDir("", "test-issue-and-save-new-certificates")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+	paths := ca.NewConfigPaths(tempdir)
+	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
 
-	// Test the creation of a manager certificate
-	cert, err := tc.RootCA.IssueAndSaveNewCertificates(tc.KeyReadWriter, "CN", ca.ManagerRole, tc.Organization)
-	assert.NoError(t, err)
-	assert.NotNil(t, cert)
-	perms, err := permbits.Stat(tc.Paths.Node.Cert)
-	assert.NoError(t, err)
-	assert.False(t, perms.GroupWrite())
-	assert.False(t, perms.OtherWrite())
+	var issuer *x509.Certificate
+	if len(rca.Intermediates) > 0 {
+		issuer, err = helpers.ParseCertificatePEM(rca.Intermediates)
+		require.NoError(t, err)
+	} else {
+		issuer, err = helpers.ParseCertificatePEM(rca.Certs)
+		require.NoError(t, err)
+	}
 
-	certBytes, err := ioutil.ReadFile(tc.Paths.Node.Cert)
-	assert.NoError(t, err)
+	// Test the creation of a manager and worker certificate
+	for _, role := range []string{ca.ManagerRole, ca.WorkerRole} {
+		var additionalNames []string
+		if role == ca.ManagerRole {
+			additionalNames = []string{ca.CARole}
+		}
 
-	checkSingleCert(t, certBytes, "swarm-test-CA", "CN", ca.ManagerRole, tc.Organization, ca.CARole)
+		cert, issuerInfo, err := rca.IssueAndSaveNewCertificates(krw, "CN", role, "org")
+		require.NoError(t, err)
+		require.NotNil(t, cert)
+		require.Equal(t, issuer.RawSubjectPublicKeyInfo, issuerInfo.PublicKey)
+		require.Equal(t, issuer.RawSubject, issuerInfo.Subject)
+		perms, err := permbits.Stat(paths.Node.Cert)
+		require.NoError(t, err)
+		require.False(t, perms.GroupWrite())
+		require.False(t, perms.OtherWrite())
 
-	// Test the creation of a worker node cert
-	cert, err = tc.RootCA.IssueAndSaveNewCertificates(tc.KeyReadWriter, "CN", ca.WorkerRole, tc.Organization)
-	assert.NoError(t, err)
-	assert.NotNil(t, cert)
-	perms, err = permbits.Stat(tc.Paths.Node.Cert)
-	assert.NoError(t, err)
-	assert.False(t, perms.GroupWrite())
-	assert.False(t, perms.OtherWrite())
+		certBytes, err := ioutil.ReadFile(paths.Node.Cert)
+		require.NoError(t, err)
+		parsed := checkLeafCert(t, certBytes, issuer.Subject.CommonName, "CN", role, "org", additionalNames...)
+		if len(rca.Intermediates) > 0 {
+			require.Len(t, parsed, 2)
+			require.Equal(t, parsed[1], issuer)
+		} else {
+			require.Len(t, parsed, 1)
+		}
+	}
+}
 
-	certBytes, err = ioutil.ReadFile(tc.Paths.Node.Cert)
-	assert.NoError(t, err)
-	checkSingleCert(t, certBytes, "swarm-test-CA", "CN", ca.WorkerRole, tc.Organization)
+func TestIssueAndSaveNewCertificatesNoIntermediates(t *testing.T) {
+	if testutils.External {
+		return // this does not use the test CA at all
+	}
+	rca, err := ca.CreateRootCA("rootCN")
+	require.NoError(t, err)
+	testIssueAndSaveNewCertificates(t, &rca)
+}
+
+func TestIssueAndSaveNewCertificatesWithIntermediates(t *testing.T) {
+	if testutils.External {
+		return // this does not use the test CA at all
+	}
+	rca, err := ca.NewRootCA(testutils.ECDSACertChain[2], testutils.ECDSACertChain[1], testutils.ECDSACertChainKeys[1],
+		ca.DefaultNodeCertExpiration, testutils.ECDSACertChain[1])
+	require.NoError(t, err)
+	testIssueAndSaveNewCertificates(t, &rca)
 }
 
 func TestGetRemoteSignedCertificate(t *testing.T) {
@@ -902,12 +950,12 @@ func TestNewRootCABundle(t *testing.T) {
 
 	// If I use newRootCA's IssueAndSaveNewCertificates to sign certs, I'll get the correct CA in the chain
 	kw := ca.NewKeyReadWriter(paths.Node, nil, nil)
-	_, err = newRootCA.IssueAndSaveNewCertificates(kw, "CN", "OU", "ORG")
+	_, _, err = newRootCA.IssueAndSaveNewCertificates(kw, "CN", "OU", "ORG")
 	assert.NoError(t, err)
 
 	certBytes, err := ioutil.ReadFile(paths.Node.Cert)
 	assert.NoError(t, err)
-	checkSingleCert(t, certBytes, "rootCN1", "CN", "OU", "ORG")
+	assert.Len(t, checkLeafCert(t, certBytes, "rootCN1", "CN", "OU", "ORG"), 1)
 }
 
 func TestNewRootCANonDefaultExpiry(t *testing.T) {
@@ -1165,15 +1213,17 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 
 	paths := ca.NewConfigPaths(tempdir)
 	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
-	_, err = signWithIntermediate.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
+	_, _, err = signWithIntermediate.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
 	require.NoError(t, err)
 	tlsCert, _, err := krw.Read()
 	require.NoError(t, err)
 
-	parsedCerts, err := ca.ValidateCertChain(signWithIntermediate.Pool, tlsCert, false)
+	parsedCerts, chains, err := ca.ValidateCertChain(signWithIntermediate.Pool, tlsCert, false)
 	require.NoError(t, err)
 	require.Len(t, parsedCerts, 2)
+	require.Len(t, chains, 1)
 	require.Equal(t, parsedIntermediate.Raw, parsedCerts[1].Raw)
+	require.Equal(t, parsedCerts, chains[0][:len(chains[0])-1]) // the last one is the root
 
 	oldRoot, err := ca.NewRootCA(testutils.ECDSACertChain[2], testutils.ECDSACertChain[2], testutils.ECDSACertChainKeys[2], ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
@@ -1181,12 +1231,26 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 	newRoot, err := ca.NewRootCA(fauxRootCert, fauxRootCert, testutils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
-	for _, root := range []ca.RootCA{signWithIntermediate, oldRoot, newRoot} {
-		parsedCerts, err = ca.ValidateCertChain(root.Pool, tlsCert, false)
-		require.NoError(t, err)
-		require.Len(t, parsedCerts, 2)
-		require.Equal(t, parsedIntermediate.Raw, parsedCerts[1].Raw)
+	checkValidateAgainstAllRoots := func(cert []byte) {
+		for i, root := range []ca.RootCA{signWithIntermediate, oldRoot, newRoot} {
+			parsedCerts, chains, err := ca.ValidateCertChain(root.Pool, cert, false)
+			require.NoError(t, err)
+			require.Len(t, parsedCerts, 2)
+			require.Len(t, chains, 1)
+			require.True(t, len(chains[0]) >= 2) // there are always at least 2 certs at minimum: the leaf and the root
+			require.Equal(t, parsedCerts[0], chains[0][0])
+			require.Equal(t, parsedIntermediate.Raw, parsedCerts[1].Raw)
+
+			chainWithoutRoot := chains[0][:len(chains[0])-1]
+			if i == 2 {
+				// against the new root, the cert can chain directly up to the root without the intermediate
+				require.Equal(t, parsedCerts[0:1], chainWithoutRoot)
+			} else {
+				require.Equal(t, parsedCerts, chainWithoutRoot)
+			}
+		}
 	}
+	checkValidateAgainstAllRoots(tlsCert)
 
 	if !testutils.External {
 		return
@@ -1213,12 +1277,7 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 	tlsCert, err = externalCA.Sign(context.Background(), ca.PrepareCSR(newCSR, "cn", ca.ManagerRole, secConfig.ClientTLSCreds.Organization()))
 	require.NoError(t, err)
 
-	for _, root := range []ca.RootCA{signWithIntermediate, oldRoot, newRoot} {
-		parsedCerts, err = ca.ValidateCertChain(root.Pool, tlsCert, false)
-		require.NoError(t, err)
-		require.Len(t, parsedCerts, 2)
-		require.Equal(t, parsedIntermediate.Raw, parsedCerts[1].Raw)
-	}
+	checkValidateAgainstAllRoots(tlsCert)
 }
 
 func TestNewRootCAWithPassphrase(t *testing.T) {
@@ -1387,7 +1446,7 @@ func TestValidateCertificateChain(t *testing.T) {
 	for _, invalid := range invalids {
 		pool := x509.NewCertPool()
 		pool.AppendCertsFromPEM(invalid.root)
-		_, err := ca.ValidateCertChain(pool, invalid.cert, invalid.allowExpiry)
+		_, _, err := ca.ValidateCertChain(pool, invalid.cert, invalid.allowExpiry)
 		require.Error(t, err, invalid.errorStr)
 		require.Contains(t, err.Error(), invalid.errorStr)
 	}
@@ -1412,8 +1471,13 @@ func TestValidateCertificateChain(t *testing.T) {
 	}
 
 	for _, valid := range valids {
-		_, err := ca.ValidateCertChain(rootPool, valid.cert, valid.allowExpiry)
+		parsedCerts, chains, err := ca.ValidateCertChain(rootPool, valid.cert, valid.allowExpiry)
 		require.NoError(t, err)
+		require.NotEmpty(t, chain)
+		for _, chain := range chains {
+			require.Equal(t, parsedCerts[0], chain[0]) // the leaf certs are equal
+			require.True(t, len(chain) >= 2)
+		}
 	}
 }
 
@@ -1439,7 +1503,7 @@ func TestRootCACrossSignCACertificate(t *testing.T) {
 	paths := ca.NewConfigPaths(tempdir)
 	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
 
-	_, err = rootCA2.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
+	_, _, err = rootCA2.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
 	require.NoError(t, err)
 	certBytes, _, err := krw.Read()
 	require.NoError(t, err)
