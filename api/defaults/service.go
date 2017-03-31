@@ -21,7 +21,8 @@ var Service = api.ServiceSpec{
 		},
 		Resources: &api.ResourceRequirements{},
 		Restart: &api.RestartPolicy{
-			Delay: gogotypes.DurationProto(5 * time.Second),
+			Condition: api.RestartOnAny,
+			Delay:     gogotypes.DurationProto(5 * time.Second),
 		},
 		Placement: &api.Placement{},
 	},
