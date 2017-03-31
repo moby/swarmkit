@@ -621,7 +621,7 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 			service.Spec = *request.Spec.Copy()
 			// Set spec version. Note that this will not match the
 			// service's Meta.Version after the store update. The
-			// versionsfor the spec and the service itself are not
+			// versions for the spec and the service itself are not
 			// meant to be directly comparable.
 			service.SpecVersion = service.Meta.Version.Copy()
 
