@@ -173,10 +173,8 @@ func NewTestCAFromRootCA(t *testing.T, tempBaseDir string, rootCA ca.RootCA, krw
 	serverOpts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(serverOpts...)
 
-	managerToken := ca.GenerateJoinToken(&rootCA)
-	workerToken := ca.GenerateJoinToken(&rootCA)
+	clusterObj := createClusterObject(t, s, organization, &rootCA, externalCAs...)
 
-	createClusterObject(t, s, organization, workerToken, managerToken, externalCAs...)
 	caServer := ca.NewServer(s, managerConfig)
 	caServer.SetReconciliationRetryInterval(50 * time.Millisecond)
 	api.RegisterCAServer(grpcServer, caServer)
@@ -235,8 +233,8 @@ func NewTestCAFromRootCA(t *testing.T, tempBaseDir string, rootCA ca.RootCA, krw
 		Server:                grpcServer,
 		ServingSecurityConfig: managerConfig,
 		CAServer:              caServer,
-		WorkerToken:           workerToken,
-		ManagerToken:          managerToken,
+		WorkerToken:           clusterObj.RootCA.JoinTokens.Worker,
+		ManagerToken:          clusterObj.RootCA.JoinTokens.Manager,
 		ConnBroker:            connectionbroker.New(remotes),
 		KeyReadWriter:         krw,
 		watchCancel:           clusterWatchCancel,
@@ -335,27 +333,33 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 	})
 }
 
-func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID, workerToken, managerToken string, externalCAs ...*api.ExternalCA) {
+func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, rootCA *ca.RootCA, externalCAs ...*api.ExternalCA) *api.Cluster {
+	cluster := &api.Cluster{
+		ID: clusterID,
+		Spec: api.ClusterSpec{
+			Annotations: api.Annotations{
+				Name: store.DefaultClusterName,
+			},
+			CAConfig: api.CAConfig{
+				ExternalCAs: externalCAs,
+			},
+		},
+		RootCA: api.RootCA{
+			CACert: rootCA.Certs,
+			JoinTokens: api.JoinTokens{
+				Worker:  ca.GenerateJoinToken(rootCA),
+				Manager: ca.GenerateJoinToken(rootCA),
+			},
+		},
+	}
+	if s, err := rootCA.Signer(); err == nil && !External {
+		cluster.RootCA.CAKey = s.Key
+	}
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		store.CreateCluster(tx, &api.Cluster{
-			ID: clusterID,
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
-					Name: store.DefaultClusterName,
-				},
-				CAConfig: api.CAConfig{
-					ExternalCAs: externalCAs,
-				},
-			},
-			RootCA: api.RootCA{
-				JoinTokens: api.JoinTokens{
-					Worker:  workerToken,
-					Manager: managerToken,
-				},
-			},
-		})
+		store.CreateCluster(tx, cluster)
 		return nil
 	}))
+	return cluster
 }
 
 // CreateRootCertAndKey returns a generated certificate and key for a root CA

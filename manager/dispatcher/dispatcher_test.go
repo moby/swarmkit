@@ -2,8 +2,10 @@ package dispatcher
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,9 +19,12 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
+	"github.com/docker/swarmkit/identity"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
+	digest "github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type grpcDispatcher struct {
@@ -30,6 +35,7 @@ type grpcDispatcher struct {
 	dispatcherServer *Dispatcher
 	conns            []*grpc.ClientConn
 	testCA           *testutils.TestCA
+	testCluster      *testCluster
 }
 
 func (gd *grpcDispatcher) Close() {
@@ -43,29 +49,70 @@ func (gd *grpcDispatcher) Close() {
 }
 
 type testCluster struct {
-	addr  string
-	store *store.MemoryStore
+	mu            sync.Mutex
+	addr          string
+	store         *store.MemoryStore
+	subscriptions map[string]chan events.Event
+	peers         []*api.Peer
+	members       map[uint64]*api.RaftMember
+}
+
+func newTestCluster(addr string, s *store.MemoryStore) *testCluster {
+	return &testCluster{
+		addr:          addr,
+		store:         s,
+		subscriptions: make(map[string]chan events.Event),
+		peers: []*api.Peer{
+			{
+				Addr:   addr,
+				NodeID: "1",
+			},
+		},
+		members: map[uint64]*api.RaftMember{
+			1: {
+				NodeID: "1",
+				Addr:   addr,
+			},
+		},
+	}
 }
 
 func (t *testCluster) GetMemberlist() map[uint64]*api.RaftMember {
-	return map[uint64]*api.RaftMember{
-		1: {
-			NodeID: "1",
-			Addr:   t.addr,
-		},
-	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.members
 }
 
 func (t *testCluster) SubscribePeers() (chan events.Event, func()) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	ch := make(chan events.Event, 1)
-	ch <- []*api.Peer{
-		{
-			Addr:   t.addr,
-			NodeID: "1",
-		},
-	}
+	id := identity.NewID()
+	t.subscriptions[id] = ch
+	ch <- t.peers
 	return ch, func() {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+		delete(t.subscriptions, id)
 		close(ch)
+	}
+}
+
+func (t *testCluster) addMember(addr string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	id := uint64(len(t.members) + 1)
+	strID := fmt.Sprintf("%d", id)
+	t.members[id] = &api.RaftMember{
+		NodeID: strID,
+		Addr:   addr,
+	}
+	t.peers = append(t.peers, &api.Peer{
+		Addr:   addr,
+		NodeID: strID,
+	})
+	for _, ch := range t.subscriptions {
+		ch <- t.peers
 	}
 }
 
@@ -96,7 +143,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	serverOpts := []grpc.ServerOption{grpc.Creds(managerSecurityConfig.ServerTLSCreds)}
 
 	s := grpc.NewServer(serverOpts...)
-	tc := &testCluster{addr: l.Addr().String(), store: tca.MemoryStore}
+	tc := newTestCluster(l.Addr().String(), tca.MemoryStore)
 	d := New(tc, c)
 
 	authorize := func(ctx context.Context, roles []string) error {
@@ -154,6 +201,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 		conns:            conns,
 		grpcServer:       s,
 		testCA:           tca,
+		testCluster:      tc,
 	}, nil
 }
 
@@ -1338,4 +1386,78 @@ func TestOldTasksNoCert(t *testing.T) {
 	resp, err := stream.Recv()
 	assert.Nil(t, resp)
 	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
+}
+
+func TestClusterUpdatesSendMessages(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.RateLimitPeriod = 0
+	gd, err := startDispatcher(cfg)
+	require.NoError(t, err)
+	defer gd.Close()
+
+	stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
+	require.NoError(t, err)
+	defer stream.CloseSend()
+
+	var msg *api.SessionMessage
+	{
+		msg, err = stream.Recv()
+		require.NoError(t, err)
+		require.NotEmpty(t, msg.SessionID)
+		require.NotNil(t, msg.Node)
+		require.Len(t, msg.Managers, 1)
+		require.Empty(t, msg.NetworkBootstrapKeys)
+		require.Equal(t, gd.testCA.RootCA.Certs, msg.RootCA)
+	}
+
+	// changing the network bootstrap keys results in a new message with updated keys
+	expected := msg.Copy()
+	expected.NetworkBootstrapKeys = []*api.EncryptionKey{
+		{Key: []byte("network key1")},
+		{Key: []byte("network key2")},
+	}
+	require.NoError(t, gd.Store.Update(func(tx store.Tx) error {
+		cluster := store.GetCluster(tx, gd.testCA.Organization)
+		if cluster == nil {
+			return errors.New("no cluster")
+		}
+		cluster.NetworkBootstrapKeys = expected.NetworkBootstrapKeys
+		return store.UpdateCluster(tx, cluster)
+	}))
+	time.Sleep(100 * time.Millisecond)
+	{
+		msg, err = stream.Recv()
+		require.NoError(t, err)
+		require.Equal(t, expected, msg)
+	}
+
+	// changing the peers results in a new message with updated managers
+	gd.testCluster.addMember("1.1.1.1")
+	time.Sleep(100 * time.Millisecond)
+	{
+		msg, err = stream.Recv()
+		require.NoError(t, err)
+		require.Len(t, msg.Managers, 2)
+		expected.Managers = msg.Managers
+		require.Equal(t, expected, msg)
+	}
+
+	// changing the rootCA cert and has in the cluster results in a new message with an updated cert
+	expected = msg.Copy()
+	expected.RootCA = testutils.ECDSA256SHA256Cert
+	require.NoError(t, gd.Store.Update(func(tx store.Tx) error {
+		cluster := store.GetCluster(tx, gd.testCA.Organization)
+		if cluster == nil {
+			return errors.New("no cluster")
+		}
+		cluster.RootCA.CACert = testutils.ECDSA256SHA256Cert
+		cluster.RootCA.CACertHash = digest.FromBytes(testutils.ECDSA256SHA256Cert).String()
+		return store.UpdateCluster(tx, cluster)
+	}))
+	time.Sleep(100 * time.Millisecond)
+	{
+		msg, err = stream.Recv()
+		require.NoError(t, err)
+		require.Equal(t, expected, msg)
+	}
 }
