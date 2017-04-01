@@ -19,6 +19,7 @@ import (
 	"github.com/docker/swarmkit/connectionbroker"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/watch"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/credentials"
@@ -78,6 +79,9 @@ type SecurityConfig struct {
 
 	ServerTLSCreds *MutableTLSCreds
 	ClientTLSCreds *MutableTLSCreds
+
+	// An optional queue for anyone interested in subscribing to SecurityConfig updates
+	queue *watch.Queue
 }
 
 // CertificateUpdate represents a change in the underlying TLS configuration being returned by
@@ -158,6 +162,13 @@ func (s *SecurityConfig) UpdateRootCA(rootCA *RootCA, externalCARootPool *x509.C
 	return s.updateTLSCredentials(s.certificate, s.issuerInfo)
 }
 
+// SetWatch allows you to set a watch on the security config, in order to be notified of any changes
+func (s *SecurityConfig) SetWatch(q *watch.Queue) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.queue = q
+}
+
 // IssuerInfo returns the issuer subject and issuer public key
 func (s *SecurityConfig) IssuerInfo() *IssuerInfo {
 	s.mu.Lock()
@@ -165,8 +176,7 @@ func (s *SecurityConfig) IssuerInfo() *IssuerInfo {
 	return s.issuerInfo
 }
 
-// updateTLSCredentials updates the client, server, and TLS credentials on a security config.  This function expects
-// something else to have taken out a lock on the SecurityConfig.
+// This function expects something else to have taken out a lock on the SecurityConfig.
 func (s *SecurityConfig) updateTLSCredentials(certificate *tls.Certificate, issuerInfo *IssuerInfo) error {
 	certs := []tls.Certificate{*certificate}
 	clientConfig, err := NewClientTLSConfig(certs, s.rootCA.Pool, ManagerRole)
@@ -197,6 +207,13 @@ func (s *SecurityConfig) updateTLSCredentials(certificate *tls.Certificate, issu
 
 	s.certificate = certificate
 	s.issuerInfo = issuerInfo
+	if s.queue != nil {
+		s.queue.Publish(&api.NodeTLSInfo{
+			TrustRoot:           s.rootCA.Certs,
+			CertIssuerPublicKey: s.issuerInfo.PublicKey,
+			CertIssuerSubject:   s.issuerInfo.Subject,
+		})
+	}
 	return nil
 }
 
@@ -445,6 +462,7 @@ func RenewTLSConfigNow(ctx context.Context, s *SecurityConfig, connBroker *conne
 		log.WithError(err).Errorf("failed to renew the certificate")
 		return err
 	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.updateTLSCredentials(tlsKeyPair, issuerInfo)
