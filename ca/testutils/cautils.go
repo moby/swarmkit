@@ -175,7 +175,7 @@ func NewTestCAFromRootCA(t *testing.T, tempBaseDir string, rootCA ca.RootCA, krw
 
 	clusterObj := createClusterObject(t, s, organization, &rootCA, externalCAs...)
 
-	caServer := ca.NewServer(s, managerConfig)
+	caServer := ca.NewServer(s, managerConfig, paths.RootCA)
 	caServer.SetReconciliationRetryInterval(50 * time.Millisecond)
 	api.RegisterCAServer(grpcServer, caServer)
 	api.RegisterNodeCAServer(grpcServer, caServer)

@@ -45,6 +45,7 @@ func TestIsStateDirty(t *testing.T) {
 		SecurityConfig:   managerSecurityConfig,
 		AutoLockManagers: true,
 		UnlockKey:        []byte("kek"),
+		RootCAPaths:      tc.Paths.RootCA,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, m)

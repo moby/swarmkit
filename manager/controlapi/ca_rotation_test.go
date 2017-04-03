@@ -66,7 +66,7 @@ func getSecurityConfig(t *testing.T, localRootCA *ca.RootCA, cluster *api.Cluste
 	secConfig, err := localRootCA.CreateSecurityConfig(context.Background(), ca.NewKeyReadWriter(paths.Node, nil, nil), ca.CertificateRequestConfig{})
 	require.NoError(t, err)
 
-	require.NoError(t, ca.NewServer(store.NewMemoryStore(nil), secConfig).UpdateRootCA(context.Background(), cluster))
+	require.NoError(t, ca.NewServer(store.NewMemoryStore(nil), secConfig, paths.RootCA).UpdateRootCA(context.Background(), cluster))
 	return secConfig
 }
 

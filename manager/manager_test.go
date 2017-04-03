@@ -62,6 +62,7 @@ func TestManager(t *testing.T) {
 		SecurityConfig:   managerSecurityConfig,
 		AutoLockManagers: true,
 		UnlockKey:        []byte("kek"),
+		RootCAPaths:      tc.Paths.RootCA,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, m)
@@ -222,6 +223,7 @@ func TestManagerLockUnlock(t *testing.T) {
 		ControlAPI:     temp.Name(),
 		StateDir:       stateDir,
 		SecurityConfig: managerSecurityConfig,
+		RootCAPaths:    tc.Paths.RootCA,
 		// start off without any encryption
 	})
 	require.NoError(t, err)
@@ -431,6 +433,7 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 		ControlAPI:     temp.Name(),
 		StateDir:       stateDir,
 		SecurityConfig: managerSecurityConfig,
+		RootCAPaths:    tc.Paths.RootCA,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, m)
@@ -539,6 +542,7 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 		ControlAPI:     temp.Name(),
 		StateDir:       stateDir,
 		SecurityConfig: managerSecurityConfig,
+		RootCAPaths:    tc.Paths.RootCA,
 	}
 	done := make(chan error)
 	defer close(done)
