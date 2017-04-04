@@ -521,8 +521,14 @@ func (a *Agent) nodeDescriptionWithHostname(ctx context.Context) (*api.NodeDescr
 	desc, err := a.config.Executor.Describe(ctx)
 
 	// Override hostname
-	if a.config.Hostname != "" && desc != nil {
-		desc.Hostname = a.config.Hostname
+	if desc != nil {
+		if a.config.Hostname != "" {
+			desc.Hostname = a.config.Hostname
+		}
+
+		if desc.Resources != nil && a.config.ThirdPartyResources != nil {
+			desc.Resources.ThirdParty = a.config.ThirdPartyResources
+		}
 	}
 	return desc, err
 }

@@ -61,10 +61,31 @@ func (f *ResourceFilter) SetTask(t *api.Task) bool {
 	if r == nil || r.Reservations == nil {
 		return false
 	}
-	if r.Reservations.NanoCPUs == 0 && r.Reservations.MemoryBytes == 0 {
+
+	res := r.Reservations
+	if res.NanoCPUs == 0 && res.MemoryBytes == 0 && len(res.ThirdParty) == 0 {
 		return false
 	}
+
 	f.reservations = r.Reservations
+	return true
+}
+
+// HasEnoughThirdPartyResources returns true if node can satisfy task TPR's request
+func HasEnoughThirdPartyResources(nodeRes *api.ThirdPartyResource, taskRes *api.ThirdPartyResource) bool {
+	t := taskRes.Resource.(*api.ThirdPartyResource_Integer).Integer.Val
+
+	switch nr := nodeRes.Resource.(type) {
+	case *api.ThirdPartyResource_Integer:
+		if t > nr.Integer.Val {
+			return false
+		}
+	case *api.ThirdPartyResource_Set:
+		if t > uint64(len(nr.Set.Val)) {
+			return false
+		}
+	}
+
 	return true
 }
 
@@ -76,6 +97,14 @@ func (f *ResourceFilter) Check(n *NodeInfo) bool {
 
 	if f.reservations.MemoryBytes > n.AvailableResources.MemoryBytes {
 		return false
+	}
+
+	for k, v := range f.reservations.ThirdParty {
+		n, ok := n.AvailableResources.ThirdParty[k]
+
+		if !ok || !HasEnoughThirdPartyResources(n, v) {
+			return false
+		}
 	}
 
 	return true

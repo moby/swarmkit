@@ -286,6 +286,44 @@ func (s *Scheduler) deleteTask(ctx context.Context, t *api.Task) {
 	}
 }
 
+// U: unsigned
+// S: Set
+// TASK  NODE   ACTION
+//  U     U     Subtract TPR
+//  U     S     Remove node TPR wth nodeinfo's taken map
+//  S     U     ERROR
+//  S     S     ERROR
+func reconcileTPRs(nodeRes *api.Resources, taskRes *api.Resources, taken map[string]*api.Set) {
+	for taskRes, taskVal := range taskRes.ThirdParty {
+		nodeVal := nodeRes.ThirdParty[taskRes]
+		takenVal := taken[taskRes]
+
+		reconcileTPR(nodeVal, taskVal, takenVal)
+	}
+}
+
+func reconcileTPR(nodeVal *api.ThirdPartyResource, taskVal *api.ThirdPartyResource, taken *api.Set) {
+	t := taskVal.Resource.(*api.ThirdPartyResource_Integer).Integer.Val
+
+	switch nr := nodeVal.Resource.(type) {
+	case *api.ThirdPartyResource_Integer:
+		nr.Integer.Val -= t
+	case *api.ThirdPartyResource_Set:
+
+		if taken == nil {
+			return
+		}
+
+		for val := range taken.Val {
+			if _, ok := nr.Set.Val[val]; !ok {
+				return // Raise Error ?
+			}
+
+			delete(nr.Set.Val, val)
+		}
+	}
+}
+
 func (s *Scheduler) createOrUpdateNode(n *api.Node) {
 	nodeInfo, _ := s.nodeSet.nodeInfo(n.ID)
 	var resources api.Resources
@@ -296,6 +334,9 @@ func (s *Scheduler) createOrUpdateNode(n *api.Node) {
 			reservations := taskReservations(task.Spec)
 			resources.MemoryBytes -= reservations.MemoryBytes
 			resources.NanoCPUs -= reservations.NanoCPUs
+
+			taken := nodeInfo.ThirdPartyResourcesTaken[n.ID]
+			reconcileTPRs(&resources, &reservations, taken)
 		}
 	}
 	nodeInfo.Node = n
