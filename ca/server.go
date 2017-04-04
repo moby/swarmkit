@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"crypto/subtle"
 	"crypto/x509"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/equality"
 	"github.com/docker/swarmkit/identity"
@@ -22,6 +24,7 @@ import (
 
 const (
 	defaultReconciliationRetryInterval = 10 * time.Second
+	defaultRootReconciliationInterval  = 3 * time.Second
 )
 
 // APISecurityConfigUpdater knows how to update a SecurityConfig from an api.Cluster object
@@ -63,6 +66,11 @@ type Server struct {
 
 	// before we update the security config with the new root CA, we need to be able to save the root certs
 	rootPaths CertPaths
+
+	// lets us know if we're already doing a reconcile loop to tell nodes to rotate their
+	// TLS certificates and watching for root rotation completion
+	rootCAReconciliationInProgress  bool
+	rootReconciliationRetryInterval time.Duration
 }
 
 // DefaultCAConfig returns the default CA Config, with a default expiration.
@@ -75,12 +83,13 @@ func DefaultCAConfig() api.CAConfig {
 // NewServer creates a CA API server.
 func NewServer(store *store.MemoryStore, securityConfig *SecurityConfig, rootCAPaths CertPaths) *Server {
 	return &Server{
-		store:                       store,
-		securityConfig:              securityConfig,
-		pending:                     make(map[string]*api.Node),
-		started:                     make(chan struct{}),
-		reconciliationRetryInterval: defaultReconciliationRetryInterval,
-		rootPaths:                   rootCAPaths,
+		store:                           store,
+		securityConfig:                  securityConfig,
+		pending:                         make(map[string]*api.Node),
+		started:                         make(chan struct{}),
+		reconciliationRetryInterval:     defaultReconciliationRetryInterval,
+		rootReconciliationRetryInterval: defaultRootReconciliationInterval,
+		rootPaths:                       rootCAPaths,
 	}
 }
 
@@ -88,6 +97,12 @@ func NewServer(store *store.MemoryStore, securityConfig *SecurityConfig, rootCAP
 // reconciliation attempts. This function must be called before Run.
 func (s *Server) SetReconciliationRetryInterval(reconciliationRetryInterval time.Duration) {
 	s.reconciliationRetryInterval = reconciliationRetryInterval
+}
+
+// SetRootReconciliationInterval changes the time interval between root rotation
+// reconciliation attempts.  This function must be called before Run.
+func (s *Server) SetRootReconciliationInterval(interval time.Duration) {
+	s.rootReconciliationRetryInterval = interval
 }
 
 // GetUnlockKey is responsible for returning the current unlock key used for encrypting TLS private keys and
@@ -446,6 +461,7 @@ func (s *Server) Run(ctx context.Context) error {
 			"method": "(*Server).Run",
 		}).WithError(err).Errorf("error attempting to reconcile certificates")
 	}
+	s.reconcileNodeRootsAndCerts()
 
 	ticker := time.NewTicker(s.reconciliationRetryInterval)
 	defer ticker.Stop()
@@ -581,7 +597,6 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) error {
 		if signingKey == nil {
 			signingCert = nil
 		}
-
 		updatedRootCA, err := NewRootCA(rCA.CACert, signingCert, signingKey, expiry, intermediates)
 		if err != nil {
 			return errors.Wrap(err, "invalid Root CA object in cluster")
@@ -645,6 +660,9 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) error {
 
 		s.securityConfig.externalCA.UpdateURLs(cfsslURLs...)
 		s.lastSeenExternalCAs = cluster.Spec.CAConfig.Copy().ExternalCAs
+	}
+	if rootCAChanged && s.lastSeenClusterRootCA.RootRotation != nil {
+		s.reconcileNodeRootsAndCerts()
 	}
 	return nil
 }
@@ -807,4 +825,167 @@ func isFinalState(status api.IssuanceStatus) bool {
 	}
 
 	return false
+}
+
+// This function assumes that the expected root CA has root rotation.  This is intended to be used by
+// `reconcileNodeRootsAndCerts`, which uses the root CA from the `lastSeenClusterRootCA`, and checks
+// that it has a root rotation before calling this function.
+func (s *Server) finishRootRotation(tx store.Tx, expectedRootCA *api.RootCA) error {
+	clusterID := s.securityConfig.ClientTLSCreds.Organization()
+	cluster := store.GetCluster(tx, clusterID)
+	if cluster == nil {
+		return fmt.Errorf("unable to get cluster %s", clusterID)
+	}
+
+	// If the RootCA object has changed (because another root rotation was started or because some other node
+	// had finished the root rotation), we cannot finish the root rotation that we were working on.
+	if !equality.RootCAEqualStable(expectedRootCA, &cluster.RootCA) {
+		return errors.New("target root rotation has changed")
+	}
+
+	var signerCert []byte
+	if len(cluster.RootCA.RootRotation.CAKey) > 0 {
+		signerCert = cluster.RootCA.RootRotation.CACert
+	}
+	// we don't actually have to parse out the default node expiration from the cluster - we are just using
+	// the ca.RootCA object to generate new tokens and the digest
+	updatedRootCA, err := NewRootCA(cluster.RootCA.RootRotation.CACert, signerCert, cluster.RootCA.RootRotation.CAKey,
+		DefaultNodeCertExpiration, nil)
+	if err != nil {
+		return errors.Wrap(err, "invalid cluster root rotation object")
+	}
+	cluster.RootCA = api.RootCA{
+		CACert:     cluster.RootCA.RootRotation.CACert,
+		CAKey:      cluster.RootCA.RootRotation.CAKey,
+		CACertHash: updatedRootCA.Digest.String(),
+		JoinTokens: api.JoinTokens{
+			Worker:  GenerateJoinToken(&updatedRootCA),
+			Manager: GenerateJoinToken(&updatedRootCA),
+		},
+		LastForcedRotation: cluster.RootCA.LastForcedRotation,
+	}
+	return store.UpdateCluster(tx, cluster)
+}
+
+func (s *Server) reconcileNodeRootsAndCerts() {
+	s.mu.Lock()
+	if !s.isRunning() || s.rootCAReconciliationInProgress {
+		s.mu.Unlock()
+		return
+	}
+	ctx := s.ctx
+	s.rootCAReconciliationInProgress = true
+	s.mu.Unlock()
+
+	s.wg.Add(1)
+	logger := log.G(ctx).WithField("method", "(*Server).reconcileNodeRootsAndCerts")
+
+	go func(retryInterval time.Duration) {
+		defer func() {
+			s.wg.Done()
+			s.mu.Lock()
+			s.rootCAReconciliationInProgress = false
+			s.mu.Unlock()
+		}()
+
+		for {
+			s.secConfigMu.Lock()
+			rootCA := s.lastSeenClusterRootCA
+			s.secConfigMu.Unlock()
+			if rootCA == nil {
+				return
+			}
+
+			wantedIssuer := rootCA.CACert
+			if rootCA.RootRotation != nil {
+				wantedIssuer = rootCA.RootRotation.CACert
+			}
+			issuerCert, err := helpers.ParseCertificatePEM(wantedIssuer)
+			if err != nil {
+				logger.WithError(err).Error("invalid certificate in cluster root CA object")
+			}
+
+			// If the last seen root rotation is nil, then possibly during a leadership transfer a different manager's
+			// CA node started root rotation reconciliation and finished the root rotation, so we should also end the
+			// root reconciliation
+			if rootCA.RootRotation == nil {
+				return
+			}
+
+			var allNodes []*api.Node
+
+			s.store.View(func(tx store.ReadTx) {
+				allNodes, err = store.FindNodes(tx, store.ByMembership(api.NodeMembershipAccepted))
+			})
+			if err != nil {
+				logger.WithError(err).Error("could not find all nodes in the store")
+			}
+
+			var rootRotationDone bool
+			_, err = s.store.Batch(func(batch *store.Batch) error {
+				converged := true // this value is true if all the node certs are issued by the correct issuer
+				for _, node := range allNodes {
+					var needUpdate bool
+					err := batch.Update(func(tx store.Tx) error {
+						n := store.GetNode(tx, node.ID)
+						if n == nil || (n.Description != nil && n.Description.TLSInfo != nil &&
+							bytes.Equal(n.Description.TLSInfo.CertIssuerPublicKey, issuerCert.RawSubjectPublicKeyInfo) &&
+							bytes.Equal(n.Description.TLSInfo.CertIssuerSubject, issuerCert.RawSubject)) {
+							return nil
+						}
+						converged = false
+
+						// If we are already waiting for the node to rotate (or the node's about to get issued a new cert by us),
+						// so don't bother telling the node to rotate again.  If a cert is in renew or pending, the cert that
+						// the node will get should be issued by the correct issuer.  However, in all likelihood the node will
+						// not get a chance to report back its TLS before the reconciliation loop will mark it as rotate, and
+						// it will get a new certificate, which is fine, but results in an extra certificate renewal round.
+						issuanceState := n.Certificate.Status.State
+						if issuanceState == api.IssuanceStateRotate || issuanceState == api.IssuanceStateRenew || issuanceState == api.IssuanceStatePending {
+							return nil
+						}
+						n.Certificate.Status.State = api.IssuanceStateRotate
+						needUpdate = true
+						return store.UpdateNode(tx, n)
+					})
+					if err != nil {
+						logger.WithError(err).Debugf("could not update node %s to IssuanceStateRotate", node.ID)
+					} else if needUpdate {
+						logger.Debugf("updated node %s to IssuanceStateRotate", node.ID)
+					}
+				}
+				// It's possible that between getting all nodes and finishing root rotation, new nodes have joined.  by the time we
+				// fetch all nodes, the CA signer should have already been changed to be the desired issuer by the time we list all
+				// nodes, so any new nodes that appear after that will only get certificates signed by the correct issuer.
+				if converged {
+					// when the nodes are all converged on having TLS certificates issued by the correct entity, we can
+					// try to finish the root rotation
+					err := batch.Update(func(tx store.Tx) error {
+						return s.finishRootRotation(tx, rootCA)
+					})
+					if err != nil {
+						logger.WithError(err).Errorf("could not complete root rotation")
+					} else {
+						rootRotationDone = true
+					}
+				}
+
+				return nil
+			})
+			if err != nil {
+				logger.WithError(err).Errorf("failed to check nodes for desired certificate issuer")
+			}
+			if rootRotationDone {
+				logger.Infof("completed root rotation on cluster %s", s.securityConfig.ServerTLSCreds.Organization())
+				return
+			}
+
+			select {
+			case <-ctx.Done():
+				logger.Info("stopping incomplete root rotation reconciliation due to context being stopped")
+				return
+			case <-time.After(retryInterval):
+			}
+		}
+	}(s.rootReconciliationRetryInterval)
 }
