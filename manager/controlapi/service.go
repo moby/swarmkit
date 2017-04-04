@@ -2,7 +2,6 @@ package controlapi
 
 import (
 	"errors"
-	"net"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -122,7 +121,7 @@ func validateUpdate(uc *api.UpdateConfig) error {
 }
 
 func validateContainerSpec(taskSpec api.TaskSpec) error {
-	// Building an empty/dummy Task to validate the templating and
+	// Building a empty/dummy Task to validate the templating and
 	// the resulting container spec as well. This is a *best effort*
 	// validation.
 	container, err := template.ExpandContainerSpec(&api.Task{
@@ -152,10 +151,6 @@ func validateContainerSpec(taskSpec api.TaskSpec) error {
 		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: %q is not a valid repository/tag", container.Image)
 	}
 
-	if err := validateExtraHost(container.Hosts); err != nil {
-		return err
-	}
-
 	mountMap := make(map[string]bool)
 	for _, mount := range container.Mounts {
 		if _, exists := mountMap[mount.Target]; exists {
@@ -164,22 +159,6 @@ func validateContainerSpec(taskSpec api.TaskSpec) error {
 		mountMap[mount.Target] = true
 	}
 
-	return nil
-}
-
-// validateExtraHost validates that the specified string is a valid extrahost and returns it.
-// ExtraHost is in the form of name:ip where the ip has to be a valid ip (IPv4 or IPv6).
-func validateExtraHost(hosts []string) error {
-	for _, host := range hosts {
-		arr := strings.SplitN(host, ":", 2)
-		if len(arr) != 2 {
-			return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: bad format for host: %s", host)
-		}
-
-		if ip := net.ParseIP(strings.TrimSpace(arr[1])); ip == nil {
-			return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: invalid IP address in host: %q", arr[1])
-		}
-	}
 	return nil
 }
 
