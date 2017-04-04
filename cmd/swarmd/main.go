@@ -13,6 +13,7 @@ import (
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/swarmkit/agent/exec/dockerapi"
 	"github.com/docker/swarmkit/cli"
+	res "github.com/docker/swarmkit/cmd/swarmctl/service/flagparser"
 	"github.com/docker/swarmkit/cmd/swarmd/defaults"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/encryption"
@@ -143,6 +144,14 @@ var (
 				}
 			}
 
+			resources := res.NewResources()
+			if cmd.Flags().Changed(res.ThirdPartyResourceFlag) {
+				err := res.ParseThirdPartyResources(cmd.Flags(), resources, res.ThirdPartyResourceFlag)
+				if err != nil {
+					return err
+				}
+			}
+
 			// Create a cancellable context for our GRPC call
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
@@ -195,6 +204,7 @@ var (
 				ElectionTick:     election,
 				AutoLockManagers: autolockManagers,
 				UnlockKey:        unlockKey,
+				ThirdParty:       resources.ThirdParty,
 			})
 			if err != nil {
 				return err
@@ -238,6 +248,7 @@ func init() {
 	mainCmd.Flags().String("listen-debug", "", "Bind the Go debug server on the provided address")
 	mainCmd.Flags().String("listen-metrics", "", "Listen address for metrics")
 	mainCmd.Flags().String("join-addr", "", "Join cluster with a node at this address")
+	mainCmd.Flags().String(res.ThirdPartyResourceFlag, "", "user defined resources (e.g. fpga=2;gpu=UUID1,UUID2,UUID3)")
 	mainCmd.Flags().Bool("force-new-cluster", false, "Force the creation of a new cluster from data directory")
 	mainCmd.Flags().Uint32("heartbeat-tick", 1, "Defines the heartbeat interval (in seconds) for raft member health-check")
 	mainCmd.Flags().Uint32("election-tick", 3, "Defines the amount of ticks (in seconds) needed without a Leader to trigger a new election")

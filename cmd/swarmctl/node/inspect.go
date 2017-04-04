@@ -69,6 +69,19 @@ func printNodeSummary(node *api.Node) {
 		fmt.Fprintln(w, "Resources:\t")
 		fmt.Fprintf(w, "  CPUs\t: %d\n", desc.Resources.NanoCPUs/1e9)
 		fmt.Fprintf(w, "  Memory\t: %s\n", humanize.IBytes(uint64(desc.Resources.MemoryBytes)))
+		fmt.Fprintln(w, "  Third Party Resources:\t")
+		for k, v := range desc.Resources.ThirdParty {
+			fmt.Fprintf(w, "    %s\t: ", k)
+			switch res := v.Resource.(type) {
+			case *api.ThirdPartyResource_Integer:
+				fmt.Fprintf(w, "%d\n", res.Integer.Val)
+			case *api.ThirdPartyResource_Set:
+				for item := range res.Set.Val {
+					fmt.Fprintf(w, "%s, ", item)
+				}
+				fmt.Fprintf(w, "\n")
+			}
+		}
 	}
 
 	if desc.Engine != nil {

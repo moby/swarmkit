@@ -69,6 +69,22 @@ func printServiceSummary(service *api.Service, running int) {
 			if r.MemoryBytes != 0 {
 				fmt.Fprintf(w, "      Memory\t: %s\n", humanize.IBytes(uint64(r.MemoryBytes)))
 			}
+			if len(r.ThirdParty) != 0 {
+				fmt.Fprintln(w, "      Third Party Resources\t")
+			}
+			for k, v := range r.ThirdParty {
+				fmt.Fprintf(w, "        %s\t: ", k)
+				switch res := v.Resource.(type) {
+				case *api.ThirdPartyResource_Integer:
+					fmt.Fprintf(w, "%d\n", res.Integer.Val)
+				case *api.ThirdPartyResource_Set:
+					for item := range res.Set.Val {
+						fmt.Fprintf(w, "%s, ", item)
+					}
+					fmt.Fprintf(w, "\n")
+				}
+			}
+
 		}
 		if res.Reservations != nil {
 			fmt.Fprintln(w, "    Reservations:\t")
