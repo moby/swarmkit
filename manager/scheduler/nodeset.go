@@ -41,6 +41,9 @@ func (ns *nodeSet) addOrUpdateNode(n NodeInfo) {
 	if n.recentFailures == nil {
 		n.recentFailures = make(map[string][]time.Time)
 	}
+	if n.ThirdPartyResourcesTaken == nil {
+		n.ThirdPartyResourcesTaken = make(tprTaskStore)
+	}
 
 	ns.nodes[n.ID] = n
 }

@@ -106,6 +106,9 @@ type Config struct {
 
 	// PluginGetter provides access to docker's plugin inventory.
 	PluginGetter plugingetter.PluginGetter
+
+	// User defined Resources
+	ThirdParty map[string]*api.ThirdPartyResource
 }
 
 // Node implements the primary node functionality for a member of a swarm
@@ -429,12 +432,13 @@ waitPeer:
 	}
 
 	a, err := agent.New(&agent.Config{
-		Hostname:         n.config.Hostname,
-		ConnBroker:       n.connBroker,
-		Executor:         n.config.Executor,
-		DB:               db,
-		NotifyNodeChange: n.notifyNodeChange,
-		Credentials:      creds,
+		Hostname:            n.config.Hostname,
+		ThirdPartyResources: n.config.ThirdParty,
+		ConnBroker:          n.connBroker,
+		Executor:            n.config.Executor,
+		DB:                  db,
+		NotifyNodeChange:    n.notifyNodeChange,
+		Credentials:         creds,
 	})
 	if err != nil {
 		return err

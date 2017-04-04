@@ -14,6 +14,8 @@ type Config struct {
 	// Hostname the name of host for agent instance.
 	Hostname string
 
+	ThirdPartyResources map[string]*api.ThirdPartyResource
+
 	// ConnBroker provides a connection broker for retrieving gRPC
 	// connections to managers.
 	ConnBroker *connectionbroker.Broker

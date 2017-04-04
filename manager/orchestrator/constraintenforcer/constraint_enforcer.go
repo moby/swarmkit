@@ -6,6 +6,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/constraint"
+	"github.com/docker/swarmkit/manager/scheduler"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
@@ -83,10 +84,11 @@ func (ce *ConstraintEnforcer) rejectNoncompliantTasks(node *api.Node) {
 		log.L.WithError(err).Errorf("failed to list tasks for node ID %s", node.ID)
 	}
 
-	var availableMemoryBytes, availableNanoCPUs int64
+	available := &api.Resources{}
+	available.ThirdParty = make(map[string]*api.ThirdPartyResource)
+
 	if node.Description != nil && node.Description.Resources != nil {
-		availableMemoryBytes = node.Description.Resources.MemoryBytes
-		availableNanoCPUs = node.Description.Resources.NanoCPUs
+		available = node.Description.Resources.Copy()
 	}
 
 	removeTasks := make(map[string]*api.Task)
@@ -115,16 +117,35 @@ func (ce *ConstraintEnforcer) rejectNoncompliantTasks(node *api.Node) {
 		// Ensure that the task assigned to the node
 		// still satisfies the resource limits.
 		if t.Spec.Resources != nil && t.Spec.Resources.Reservations != nil {
-			if t.Spec.Resources.Reservations.MemoryBytes > availableMemoryBytes {
+			if t.Spec.Resources.Reservations.MemoryBytes > available.MemoryBytes {
 				removeTasks[t.ID] = t
 				continue
 			}
-			if t.Spec.Resources.Reservations.NanoCPUs > availableNanoCPUs {
+			if t.Spec.Resources.Reservations.NanoCPUs > available.NanoCPUs {
 				removeTasks[t.ID] = t
 				continue
 			}
-			availableMemoryBytes -= t.Spec.Resources.Reservations.MemoryBytes
-			availableNanoCPUs -= t.Spec.Resources.Reservations.NanoCPUs
+			for k, v := range t.Spec.Resources.Reservations.ThirdParty {
+				n, ok := available.ThirdParty[k]
+
+				if !ok || !scheduler.HasEnoughThirdPartyResources(n, v) {
+					removeTasks[t.ID] = t
+					break
+				}
+			}
+
+			if _, ok := removeTasks[t.ID]; ok {
+				continue
+			}
+
+			available.MemoryBytes -= t.Spec.Resources.Reservations.MemoryBytes
+			available.NanoCPUs -= t.Spec.Resources.Reservations.NanoCPUs
+
+			fakeStore := &api.Set{Val: make(map[string]*api.Set_Void)}
+			for k, v := range t.Spec.Resources.Reservations.ThirdParty {
+				scheduler.ClaimThirdPartyResource(available.ThirdParty[k], v, fakeStore)
+			}
+
 		}
 	}
 
