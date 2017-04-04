@@ -33,7 +33,15 @@ message StoreObject {
 
 extend google.protobuf.MessageOptions {
 	optional bool deepcopy = 70000 [default=true];
+	optional bool deepcompare = 70002 [default=true];
+
 	optional StoreObject store_object = 70001;
+}
+
+extend google.protobuf.FieldOptions {
+	// OrderInsensitive specifies that a repeated field should be
+	// compared without regard to ordering.
+	optional bool order_insensitive = 70003 [default=false];
 }
 
 message TLSAuthorization {

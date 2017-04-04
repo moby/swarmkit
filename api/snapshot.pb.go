@@ -10,6 +10,8 @@ import math "math"
 
 // skipping weak import gogoproto "github.com/gogo/protobuf/gogoproto"
 
+import github_com_docker_swarmkit_api_deepcompare "github.com/docker/swarmkit/api/deepcompare"
+
 import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import strings "strings"
@@ -82,6 +84,129 @@ func init() {
 	proto.RegisterType((*ClusterSnapshot)(nil), "docker.swarmkit.v1.ClusterSnapshot")
 	proto.RegisterType((*Snapshot)(nil), "docker.swarmkit.v1.Snapshot")
 	proto.RegisterEnum("docker.swarmkit.v1.Snapshot_Version", Snapshot_Version_name, Snapshot_Version_value)
+}
+
+func (m *StoreSnapshot) Equal(other interface{}) bool {
+	o := other.(*StoreSnapshot)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Nodes) != len(o.Nodes) {
+		return false
+	}
+	for i := range m.Nodes {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Nodes[i], o.Nodes[i]) {
+			return false
+		}
+	}
+
+	if len(m.Services) != len(o.Services) {
+		return false
+	}
+	for i := range m.Services {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Services[i], o.Services[i]) {
+			return false
+		}
+	}
+
+	if len(m.Networks) != len(o.Networks) {
+		return false
+	}
+	for i := range m.Networks {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Networks[i], o.Networks[i]) {
+			return false
+		}
+	}
+
+	if len(m.Tasks) != len(o.Tasks) {
+		return false
+	}
+	for i := range m.Tasks {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Tasks[i], o.Tasks[i]) {
+			return false
+		}
+	}
+
+	if len(m.Clusters) != len(o.Clusters) {
+		return false
+	}
+	for i := range m.Clusters {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Clusters[i], o.Clusters[i]) {
+			return false
+		}
+	}
+
+	if len(m.Secrets) != len(o.Secrets) {
+		return false
+	}
+	for i := range m.Secrets {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Secrets[i], o.Secrets[i]) {
+			return false
+		}
+	}
+
+	if len(m.Resources) != len(o.Resources) {
+		return false
+	}
+	for i := range m.Resources {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Resources[i], o.Resources[i]) {
+			return false
+		}
+	}
+
+	if len(m.Extensions) != len(o.Extensions) {
+		return false
+	}
+	for i := range m.Extensions {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Extensions[i], o.Extensions[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *ClusterSnapshot) Equal(other interface{}) bool {
+	o := other.(*ClusterSnapshot)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if len(m.Members) != len(o.Members) {
+		return false
+	}
+	for i := range m.Members {
+		if !github_com_docker_swarmkit_api_deepcompare.Equal(m.Members[i], o.Members[i]) {
+			return false
+		}
+	}
+
+	if len(m.Removed) != len(o.Removed) {
+		return false
+	}
+	for i := range m.Removed {
+		if m.Removed[i] != o.Removed[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (m *Snapshot) Equal(other interface{}) bool {
+	o := other.(*Snapshot)
+	if m == nil || o == nil {
+		return m == o
+	}
+	if m.Version != o.Version {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(&m.Membership, &o.Membership) {
+		return false
+	}
+	if !github_com_docker_swarmkit_api_deepcompare.Equal(&m.Store, &o.Store) {
+		return false
+	}
+	return true
 }
 
 func (m *StoreSnapshot) Copy() *StoreSnapshot {

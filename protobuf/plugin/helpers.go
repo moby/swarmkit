@@ -9,3 +9,8 @@ import (
 func DeepcopyEnabled(options *google_protobuf.MessageOptions) bool {
 	return proto.GetBoolExtension(options, E_Deepcopy, true)
 }
+
+// DeepcompareEnabled returns true if deepcompare is enabled for the descriptor.
+func DeepcompareEnabled(options *google_protobuf.MessageOptions) bool {
+	return proto.GetBoolExtension(options, E_Deepcompare, true)
+}

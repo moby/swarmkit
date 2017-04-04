@@ -1,7 +1,6 @@
 package orchestrator
 
 import (
-	"reflect"
 	"time"
 
 	"github.com/docker/swarmkit/api"
@@ -67,8 +66,8 @@ func IsTaskDirty(s *api.Service, t *api.Task) bool {
 		return false
 	}
 
-	return !reflect.DeepEqual(s.Spec.Task, t.Spec) ||
-		(t.Endpoint != nil && !reflect.DeepEqual(s.Spec.Endpoint, t.Endpoint.Spec))
+	return !s.Spec.Task.Equal(&t.Spec) ||
+		(t.Endpoint != nil && !s.Spec.Endpoint.Equal(t.Endpoint.Spec))
 }
 
 // InvalidNode is true if the node is nil, down, or drained

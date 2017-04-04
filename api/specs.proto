@@ -6,6 +6,7 @@ import "types.proto";
 import "gogoproto/gogo.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/any.proto";
+import "plugin/plugin.proto";
 
 // Specs are container objects for user provided input. All creations and
 // updates are done through spec types. As a convention, user input from a spec
@@ -121,7 +122,7 @@ message TaskSpec {
 	// Networks specifies the list of network attachment
 	// configurations (which specify the network and per-network
 	// aliases) that this task spec is bound to.
-	repeated NetworkAttachmentConfig networks = 7;
+	repeated NetworkAttachmentConfig networks = 7 [(docker.protobuf.plugin.order_insensitive) = true];
 
 	// ForceUpdate is a counter that triggers an update even if no relevant
 	// parameters have been changed. We do this to allow forced restarts
@@ -195,7 +196,7 @@ message ContainerSpec {
 	string user = 7;
 
 	// Groups specifies supplementary groups available to the user.
-	repeated string groups = 11;
+	repeated string groups = 11 [(docker.protobuf.plugin.order_insensitive) = true];
 
 	// TTY declares that a TTY should be attached to the standard streams,
 	// including stdin if it is still open.
@@ -213,7 +214,7 @@ message ContainerSpec {
 	// StopSignal defines the signal to stop the container.
 	string stop_signal = 20;
 
-	repeated Mount mounts = 8 [(gogoproto.nullable) = false];
+	repeated Mount mounts = 8 [(gogoproto.nullable) = false, (docker.protobuf.plugin.order_insensitive) = true];
 
 	// StopGracePeriod the grace period for stopping the container before
 	// forcefully killing the container.
@@ -234,7 +235,7 @@ message ContainerSpec {
 
 	// SecretReference contains references to zero or more secrets that
 	// will be exposed to the container.
-	repeated SecretReference secrets = 12;
+	repeated SecretReference secrets = 12 [(docker.protobuf.plugin.order_insensitive) = true];
 
 	// Hosts allow additional entries to be specified in /etc/hosts
 	// that associates IP addresses with hostnames.
@@ -246,7 +247,7 @@ message ContainerSpec {
 	// above.
 	// This is different from `docker run --add-host <hostname>:<ip>`
 	// where format is `<hostname>:<ip>`
-	repeated string hosts = 17;
+	repeated string hosts = 17 [(docker.protobuf.plugin.order_insensitive) = true];
 
 	// DNSConfig specifies DNS related configurations in resolver configuration file (resolv.conf)
 	// Detailed documentation is available in:
@@ -301,7 +302,7 @@ message EndpointSpec {
 
 	// List of exposed ports that this service is accessible from
 	// external to the cluster.
-	repeated PortConfig ports = 2;
+	repeated PortConfig ports = 2 [(docker.protobuf.plugin.order_insensitive) = true];
 }
 
 // NetworkSpec specifies user defined network parameters.

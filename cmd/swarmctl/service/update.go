@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
@@ -47,7 +46,7 @@ var (
 				return err
 			}
 
-			if reflect.DeepEqual(spec, &service.Spec) {
+			if spec.Equal(&service.Spec) {
 				return errors.New("no changes detected")
 			}
 

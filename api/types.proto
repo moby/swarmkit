@@ -5,6 +5,7 @@ package docker.swarmkit.v1;
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
 import "gogoproto/gogo.proto";
+import "plugin/plugin.proto";
 
 // This file contains types that are common to objects and spec or that are not
 // considered first-class within the cluster object-model.
@@ -27,7 +28,7 @@ message Annotations {
 
 	// Indices provides keys and values for indexing this object.
 	// A single key may have multiple values.
-	repeated IndexEntry indices = 4 [(gogoproto.nullable) = false];
+	repeated IndexEntry indices = 4 [(gogoproto.nullable) = false, (docker.protobuf.plugin.order_insensitive) = true];
 }
 
 message Resources {
@@ -70,7 +71,7 @@ message EngineDescription {
 	map<string, string> labels = 2;
 
 	// Volume, Network, and Auth plugins
-	repeated PluginDescription plugins = 3 [(gogoproto.nullable) = false];
+	repeated PluginDescription plugins = 3 [(gogoproto.nullable) = false, (docker.protobuf.plugin.order_insensitive) = true];
 }
 
 message NodeDescription {
@@ -753,7 +754,7 @@ message PlacementPreference {
 // Placement specifies task distribution constraints.
 message Placement {
 	// Constraints specifies a set of requirements a node should meet for a task.
-	repeated string constraints = 1;
+	repeated string constraints = 1 [(docker.protobuf.plugin.order_insensitive) = true];
 
 	// Preferences provide a way to make the scheduler aware of factors
 	// such as topology. They are provided in order from highest to lowest
