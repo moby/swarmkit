@@ -221,7 +221,7 @@ func (rca *RootCA) IssueAndSaveNewCertificates(kw KeyWriter, cn, ou, org string)
 		return nil, nil, err
 	}
 
-	if err := kw.Write(certChain, key, nil); err != nil {
+	if err := kw.Write(NormalizePEMs(certChain), key, nil); err != nil {
 		return nil, nil, err
 	}
 
@@ -295,7 +295,7 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 		return nil, nil, err
 	}
 
-	if err := kw.Write(signedCert, key, kekUpdate); err != nil {
+	if err := kw.Write(NormalizePEMs(signedCert), key, kekUpdate); err != nil {
 		return nil, nil, err
 	}
 
@@ -953,4 +953,23 @@ func EncryptECPrivateKey(key []byte, passphraseStr string) ([]byte, error) {
 	}
 
 	return pem.EncodeToMemory(encryptedPEMBlock), nil
+}
+
+// NormalizePEMs takes a bundle of PEM-encoded certificates in a certificate bundle,
+// decodes them, removes headers, and re-encodes them to make sure that they have
+// consistent whitespace.  Note that this is intended to normalize x509 certificates
+// in PEM format, hence the stripping out of headers.
+func NormalizePEMs(certs []byte) []byte {
+	var (
+		results  []byte
+		pemBlock *pem.Block
+	)
+	for {
+		pemBlock, certs = pem.Decode(bytes.TrimSpace(certs))
+		if pemBlock == nil {
+			return results
+		}
+		pemBlock.Headers = nil
+		results = append(results, pem.EncodeToMemory(pemBlock)...)
+	}
 }

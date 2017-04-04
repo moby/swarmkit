@@ -609,6 +609,7 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) error {
 			// we're rotating to a new root, so we only want external CAs with the new root cert
 			wantedExternalCACert = rCA.RootRotation.CACert
 		}
+		wantedExternalCACert = NormalizePEMs(wantedExternalCACert)
 		// Update our security config with the list of External CA URLs
 		// from the new cluster state.
 
@@ -623,6 +624,7 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) error {
 			if len(certForExtCA) == 0 {
 				certForExtCA = rCA.CACert
 			}
+			certForExtCA = NormalizePEMs(certForExtCA)
 			if extCA.Protocol != api.ExternalCA_CAProtocolCFSSL {
 				logger.Debugf("skipping external CA %d (url: %s) due to unknown protocol type", i, extCA.URL)
 				continue

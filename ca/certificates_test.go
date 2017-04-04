@@ -90,6 +90,11 @@ func TestCreateRootCASaveRootCA(t *testing.T) {
 
 	_, err = permbits.Stat(paths.RootCA.Key)
 	assert.True(t, os.IsNotExist(err))
+
+	// ensure that the cert that was written is already normalized
+	written, err := ioutil.ReadFile(paths.RootCA.Cert)
+	assert.NoError(t, err)
+	assert.Equal(t, written, ca.NormalizePEMs(written))
 }
 
 func TestCreateRootCAExpiry(t *testing.T) {
@@ -345,6 +350,7 @@ func testRequestAndSaveNewCertificates(t *testing.T, tc *testutils.TestCA) (*ca.
 
 	certs, err := ioutil.ReadFile(tc.Paths.Node.Cert)
 	require.NoError(t, err)
+	require.Equal(t, certs, ca.NormalizePEMs(certs))
 
 	// ensure that the same number of certs was written
 	parsedCerts, err := helpers.ParseCertificatesPEM(certs)
@@ -369,7 +375,7 @@ func TestRequestAndSaveNewCertificatesWithIntermediates(t *testing.T) {
 
 	// use a RootCA with an intermediate
 	rca, err := ca.NewRootCA(testutils.ECDSACertChain[2], testutils.ECDSACertChain[1], testutils.ECDSACertChainKeys[1],
-		ca.DefaultNodeCertExpiration, testutils.ECDSACertChain[1])
+		ca.DefaultNodeCertExpiration, append([]byte("   "), testutils.ECDSACertChain[1]...))
 	require.NoError(t, err)
 
 	tempdir, err := ioutil.TempDir("", "test-request-and-save-new-certificates")
@@ -1542,4 +1548,40 @@ func TestRootCACrossSignCACertificate(t *testing.T) {
 	require.NoError(t, err)
 	_, err = leafCert.Verify(x509.VerifyOptions{Roots: rootCA2.Pool, Intermediates: intermediatePool})
 	require.NoError(t, err)
+}
+
+func concat(byteSlices ...[]byte) []byte {
+	var results []byte
+	for _, slice := range byteSlices {
+		results = append(results, slice...)
+	}
+	return results
+}
+
+func TestNormalizePEMs(t *testing.T) {
+	pemBlock, _ := pem.Decode(testutils.ECDSA256SHA256Cert)
+	pemBlock.Headers = map[string]string{
+		"hello": "world",
+	}
+	withHeaders := pem.EncodeToMemory(pemBlock)
+	for _, testcase := range []struct{ input, expect []byte }{
+		{
+			input:  nil,
+			expect: nil,
+		},
+		{
+			input:  []byte("garbage"),
+			expect: nil,
+		},
+		{
+			input:  concat([]byte("garbage\n\t\n\n"), testutils.ECDSA256SHA256Cert, []byte("   \n")),
+			expect: ca.NormalizePEMs(testutils.ECDSA256SHA256Cert),
+		},
+		{
+			input:  concat([]byte("\n\t\n     "), withHeaders, []byte("\t\n\n"), testutils.ECDSACertChain[0]),
+			expect: ca.NormalizePEMs(append(testutils.ECDSA256SHA256Cert, testutils.ECDSACertChain[0]...)),
+		},
+	} {
+		require.Equal(t, testcase.expect, ca.NormalizePEMs(testcase.input))
+	}
 }
