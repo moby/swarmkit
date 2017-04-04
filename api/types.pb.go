@@ -199,6 +199,7 @@
 		LogSubscriptionOptions
 		LogSelector
 		LogContext
+		LogAttr
 		LogMessage
 		SubscribeLogsRequest
 		SubscribeLogsMessage
