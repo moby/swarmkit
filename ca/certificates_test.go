@@ -24,13 +24,13 @@ import (
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/testutils"
+	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/connectionbroker"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/state"
-	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/remotes"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/opencontainers/go-digest"
 	"github.com/phayes/permbits"
 	"github.com/stretchr/testify/assert"
@@ -66,7 +66,7 @@ func TestMain(m *testing.M) {
 		os.Exit(status)
 	}
 
-	testutils.External = true
+	cautils.External = true
 	os.Exit(m.Run())
 }
 
@@ -252,7 +252,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 }
 
 func TestGetRemoteCA(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	shaHash := sha256.New()
@@ -285,7 +285,7 @@ func TestGetRemoteCA(t *testing.T) {
 		cluster.RootCA.CAKey = s.Key
 		return store.UpdateCluster(tx, cluster)
 	}))
-	require.NoError(t, raftutils.PollFunc(nil, func() error {
+	require.NoError(t, testutils.PollFunc(nil, func() error {
 		_, err := ca.GetRemoteCA(tc.Context, d, tc.ConnBroker)
 		if err == nil {
 			return fmt.Errorf("testca's rootca hasn't updated yet")
@@ -322,7 +322,7 @@ func TestGetRemoteCA(t *testing.T) {
 }
 
 func TestGetRemoteCAInvalidHash(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	_, err := ca.GetRemoteCA(tc.Context, "sha256:2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b", tc.ConnBroker)
@@ -330,7 +330,7 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 }
 
 // returns the issuer as well as all the parsed certs returned from the request
-func testRequestAndSaveNewCertificates(t *testing.T, tc *testutils.TestCA) (*ca.IssuerInfo, []*x509.Certificate) {
+func testRequestAndSaveNewCertificates(t *testing.T, tc *cautils.TestCA) (*ca.IssuerInfo, []*x509.Certificate) {
 	defer tc.Stop()
 
 	// Copy the current RootCA without the signer
@@ -361,7 +361,7 @@ func testRequestAndSaveNewCertificates(t *testing.T, tc *testutils.TestCA) (*ca.
 func TestRequestAndSaveNewCertificatesNoIntermediate(t *testing.T) {
 	t.Parallel()
 
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	issuerInfo, parsedCerts := testRequestAndSaveNewCertificates(t, tc)
 	require.Len(t, parsedCerts, 1)
 
@@ -374,15 +374,15 @@ func TestRequestAndSaveNewCertificatesWithIntermediates(t *testing.T) {
 	t.Parallel()
 
 	// use a RootCA with an intermediate
-	rca, err := ca.NewRootCA(testutils.ECDSACertChain[2], testutils.ECDSACertChain[1], testutils.ECDSACertChainKeys[1],
-		ca.DefaultNodeCertExpiration, append([]byte("   "), testutils.ECDSACertChain[1]...))
+	rca, err := ca.NewRootCA(cautils.ECDSACertChain[2], cautils.ECDSACertChain[1], cautils.ECDSACertChainKeys[1],
+		ca.DefaultNodeCertExpiration, append([]byte("   "), cautils.ECDSACertChain[1]...))
 	require.NoError(t, err)
 
 	tempdir, err := ioutil.TempDir("", "test-request-and-save-new-certificates")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
-	tc := testutils.NewTestCAFromRootCA(t, tempdir, rca, nil)
+	tc := cautils.NewTestCAFromRootCA(t, tempdir, rca, nil)
 	issuerInfo, parsedCerts := testRequestAndSaveNewCertificates(t, tc)
 	require.Len(t, parsedCerts, 2)
 
@@ -396,7 +396,7 @@ func TestRequestAndSaveNewCertificatesWithIntermediates(t *testing.T) {
 func TestRequestAndSaveNewCertificatesWithKEKUpdate(t *testing.T) {
 	t.Parallel()
 
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Copy the current RootCA without the signer
@@ -501,7 +501,7 @@ func testIssueAndSaveNewCertificates(t *testing.T, rca *ca.RootCA) {
 }
 
 func TestIssueAndSaveNewCertificatesNoIntermediates(t *testing.T) {
-	if testutils.External {
+	if cautils.External {
 		return // this does not use the test CA at all
 	}
 	rca, err := ca.CreateRootCA("rootCN")
@@ -510,17 +510,17 @@ func TestIssueAndSaveNewCertificatesNoIntermediates(t *testing.T) {
 }
 
 func TestIssueAndSaveNewCertificatesWithIntermediates(t *testing.T) {
-	if testutils.External {
+	if cautils.External {
 		return // this does not use the test CA at all
 	}
-	rca, err := ca.NewRootCA(testutils.ECDSACertChain[2], testutils.ECDSACertChain[1], testutils.ECDSACertChainKeys[1],
-		ca.DefaultNodeCertExpiration, testutils.ECDSACertChain[1])
+	rca, err := ca.NewRootCA(cautils.ECDSACertChain[2], cautils.ECDSACertChain[1], cautils.ECDSACertChainKeys[1],
+		ca.DefaultNodeCertExpiration, cautils.ECDSACertChain[1])
 	require.NoError(t, err)
 	testIssueAndSaveNewCertificates(t, &rca)
 }
 
 func TestGetRemoteSignedCertificate(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Create a new CSR to be signed
@@ -560,7 +560,7 @@ func TestGetRemoteSignedCertificate(t *testing.T) {
 }
 
 func TestGetRemoteSignedCertificateNodeInfo(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Create a new CSR to be signed
@@ -579,13 +579,13 @@ func TestGetRemoteSignedCertificateNodeInfo(t *testing.T) {
 // A CA Server implementation that doesn't actually sign anything - something else
 // will have to update the memory store to have a valid value for a node
 type nonSigningCAServer struct {
-	tc               *testutils.TestCA
+	tc               *cautils.TestCA
 	server           *grpc.Server
 	addr             string
 	nodeStatusCalled int64
 }
 
-func newNonSigningCAServer(t *testing.T, tc *testutils.TestCA) *nonSigningCAServer {
+func newNonSigningCAServer(t *testing.T, tc *cautils.TestCA) *nonSigningCAServer {
 	secConfig, err := tc.NewNodeConfig(ca.ManagerRole)
 	require.NoError(t, err)
 	serverOpts := []grpc.ServerOption{grpc.Creds(secConfig.ServerTLSCreds)}
@@ -674,12 +674,12 @@ func (n *nonSigningCAServer) IssueNodeCertificate(ctx context.Context, request *
 
 func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	t.Parallel()
-	if testutils.External {
+	if cautils.External {
 		// we don't actually need an external signing server, since we're faking a CA server which doesn't really sign
 		return
 	}
 
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 	require.NoError(t, tc.CAServer.Stop())
 
@@ -718,7 +718,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	}
 
 	// wait for the calls to NodeCertificateStatus to begin on the first signing server before we start timing
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		if atomic.LoadInt64(&fakeCAServer.nodeStatusCalled) == 0 {
 			return fmt.Errorf("waiting for NodeCertificateStatus to be called")
 		}
@@ -818,12 +818,12 @@ var _ remotes.Remotes = &fakeRemotes{}
 // then fail.
 func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 	t.Parallel()
-	if testutils.External {
+	if cautils.External {
 		// we don't actually need an external signing server, since we're faking a CA server which doesn't really sign
 		return
 	}
 
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 	require.NoError(t, tc.CAServer.Stop())
 
@@ -858,7 +858,7 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 	}()
 
 	// wait for the calls to NodeCertificateStatus to begin on the first signing server
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		if atomic.LoadInt64(&fakeSigningServers[0].nodeStatusCalled) == 0 {
 			return fmt.Errorf("waiting for NodeCertificateStatus to be called")
 		}
@@ -876,7 +876,7 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 	}
 
 	// wait for the calls to NodeCertificateStatus to begin on the second signing server
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		if atomic.LoadInt64(&fakeSigningServers[1].nodeStatusCalled) == 0 {
 			return fmt.Errorf("waiting for NodeCertificateStatus to be called")
 		}
@@ -913,8 +913,8 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 
 func TestNewRootCA(t *testing.T) {
 	for _, pair := range []struct{ cert, key []byte }{
-		{cert: testutils.ECDSA256SHA256Cert, key: testutils.ECDSA256Key},
-		{cert: testutils.RSA2048SHA256Cert, key: testutils.RSA2048Key},
+		{cert: cautils.ECDSA256SHA256Cert, key: cautils.ECDSA256Key},
+		{cert: cautils.RSA2048SHA256Cert, key: cautils.RSA2048Key},
 	} {
 		rootCA, err := ca.NewRootCA(pair.cert, pair.cert, pair.key, ca.DefaultNodeCertExpiration, nil)
 		require.NoError(t, err, string(pair.key))
@@ -1008,16 +1008,16 @@ type invalidNewRootCATestCase struct {
 func TestNewRootCAInvalidCertAndKeys(t *testing.T) {
 	now := time.Now()
 
-	expiredIntermediate := testutils.ReDateCert(t, testutils.ECDSACertChain[1],
-		testutils.ECDSACertChain[2], testutils.ECDSACertChainKeys[2], now.Add(-10*time.Hour), now.Add(-1*time.Minute))
-	notYetValidIntermediate := testutils.ReDateCert(t, testutils.ECDSACertChain[1],
-		testutils.ECDSACertChain[2], testutils.ECDSACertChainKeys[2], now.Add(time.Hour), now.Add(2*time.Hour))
+	expiredIntermediate := cautils.ReDateCert(t, cautils.ECDSACertChain[1],
+		cautils.ECDSACertChain[2], cautils.ECDSACertChainKeys[2], now.Add(-10*time.Hour), now.Add(-1*time.Minute))
+	notYetValidIntermediate := cautils.ReDateCert(t, cautils.ECDSACertChain[1],
+		cautils.ECDSACertChain[2], cautils.ECDSACertChainKeys[2], now.Add(time.Hour), now.Add(2*time.Hour))
 
-	certChainRootCA, err := ca.NewRootCA(testutils.ECDSACertChain[2], testutils.ECDSACertChain[2], testutils.ECDSACertChainKeys[2],
+	certChainRootCA, err := ca.NewRootCA(cautils.ECDSACertChain[2], cautils.ECDSACertChain[2], cautils.ECDSACertChainKeys[2],
 		ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
-	cert, _, _ := testutils.CreateRootCertAndKey("alternateIntermediate")
+	cert, _, _ := cautils.CreateRootCertAndKey("alternateIntermediate")
 	alternateIntermediate, err := certChainRootCA.CrossSignCACertificate(cert)
 	require.NoError(t, err)
 
@@ -1025,159 +1025,159 @@ func TestNewRootCAInvalidCertAndKeys(t *testing.T) {
 		// invalid root or signer cert
 		{
 			roots:    []byte("malformed"),
-			cert:     testutils.ECDSA256SHA256Cert,
-			key:      testutils.ECDSA256Key,
+			cert:     cautils.ECDSA256SHA256Cert,
+			key:      cautils.ECDSA256Key,
 			errorStr: "Failed to decode certificate",
 		},
 		{
-			roots:    testutils.ECDSA256SHA256Cert,
+			roots:    cautils.ECDSA256SHA256Cert,
 			cert:     []byte("malformed"),
-			key:      testutils.ECDSA256Key,
+			key:      cautils.ECDSA256Key,
 			errorStr: "Failed to decode certificate",
 		},
 		{
 			roots:    []byte("  "),
-			cert:     testutils.ECDSA256SHA256Cert,
-			key:      testutils.ECDSA256Key,
+			cert:     cautils.ECDSA256SHA256Cert,
+			key:      cautils.ECDSA256Key,
 			errorStr: "no valid root CA certificates found",
 		},
 		{
-			roots:    testutils.ECDSA256SHA256Cert,
+			roots:    cautils.ECDSA256SHA256Cert,
 			cert:     []byte("  "),
-			key:      testutils.ECDSA256Key,
+			key:      cautils.ECDSA256Key,
 			errorStr: "no valid signing CA certificates found",
 		},
 		{
-			roots:    testutils.NotYetValidCert,
-			cert:     testutils.ECDSA256SHA256Cert,
-			key:      testutils.ECDSA256Key,
+			roots:    cautils.NotYetValidCert,
+			cert:     cautils.ECDSA256SHA256Cert,
+			key:      cautils.ECDSA256Key,
 			errorStr: "not yet valid",
 		},
 		{
-			roots:    testutils.ECDSA256SHA256Cert,
-			cert:     testutils.NotYetValidCert,
-			key:      testutils.NotYetValidKey,
+			roots:    cautils.ECDSA256SHA256Cert,
+			cert:     cautils.NotYetValidCert,
+			key:      cautils.NotYetValidKey,
 			errorStr: "not yet valid",
 		},
 		{
-			roots:    testutils.ExpiredCert,
-			cert:     testutils.ECDSA256SHA256Cert,
-			key:      testutils.ECDSA256Key,
+			roots:    cautils.ExpiredCert,
+			cert:     cautils.ECDSA256SHA256Cert,
+			key:      cautils.ECDSA256Key,
 			errorStr: "expired",
 		},
 		{
-			roots:    testutils.ExpiredCert,
-			cert:     testutils.ECDSA256SHA256Cert,
-			key:      testutils.ECDSA256Key,
+			roots:    cautils.ExpiredCert,
+			cert:     cautils.ECDSA256SHA256Cert,
+			key:      cautils.ECDSA256Key,
 			errorStr: "expired",
 		},
 		{
-			roots:    testutils.RSA2048SHA1Cert,
-			cert:     testutils.ECDSA256SHA256Cert,
-			key:      testutils.ECDSA256Key,
+			roots:    cautils.RSA2048SHA1Cert,
+			cert:     cautils.ECDSA256SHA256Cert,
+			key:      cautils.ECDSA256Key,
 			errorStr: "unsupported signature algorithm",
 		},
 		{
-			roots:    testutils.ECDSA256SHA256Cert,
-			cert:     testutils.RSA2048SHA1Cert,
-			key:      testutils.RSA2048Key,
+			roots:    cautils.ECDSA256SHA256Cert,
+			cert:     cautils.RSA2048SHA1Cert,
+			key:      cautils.RSA2048Key,
 			errorStr: "unsupported signature algorithm",
 		},
 		{
-			roots:    testutils.ECDSA256SHA256Cert,
-			cert:     testutils.ECDSA256SHA1Cert,
-			key:      testutils.ECDSA256Key,
+			roots:    cautils.ECDSA256SHA256Cert,
+			cert:     cautils.ECDSA256SHA1Cert,
+			key:      cautils.ECDSA256Key,
 			errorStr: "unsupported signature algorithm",
 		},
 		{
-			roots:    testutils.ECDSA256SHA1Cert,
-			cert:     testutils.ECDSA256SHA256Cert,
-			key:      testutils.ECDSA256Key,
+			roots:    cautils.ECDSA256SHA1Cert,
+			cert:     cautils.ECDSA256SHA256Cert,
+			key:      cautils.ECDSA256Key,
 			errorStr: "unsupported signature algorithm",
 		},
 		{
-			roots:    testutils.ECDSA256SHA256Cert,
-			cert:     testutils.DSA2048Cert,
-			key:      testutils.DSA2048Key,
+			roots:    cautils.ECDSA256SHA256Cert,
+			cert:     cautils.DSA2048Cert,
+			key:      cautils.DSA2048Key,
 			errorStr: "unsupported signature algorithm",
 		},
 		{
-			roots:    testutils.DSA2048Cert,
-			cert:     testutils.ECDSA256SHA256Cert,
-			key:      testutils.ECDSA256Key,
+			roots:    cautils.DSA2048Cert,
+			cert:     cautils.ECDSA256SHA256Cert,
+			key:      cautils.ECDSA256Key,
 			errorStr: "unsupported signature algorithm",
 		},
 		// invalid signer
 		{
-			roots:    testutils.ECDSA256SHA256Cert,
-			cert:     testutils.ECDSA256SHA256Cert,
+			roots:    cautils.ECDSA256SHA256Cert,
+			cert:     cautils.ECDSA256SHA256Cert,
 			key:      []byte("malformed"),
 			errorStr: "malformed private key",
 		},
 		{
-			roots:    testutils.RSA1024Cert,
-			cert:     testutils.RSA1024Cert,
-			key:      testutils.RSA1024Key,
+			roots:    cautils.RSA1024Cert,
+			cert:     cautils.RSA1024Cert,
+			key:      cautils.RSA1024Key,
 			errorStr: "unsupported RSA key parameters",
 		},
 		{
-			roots:    testutils.ECDSA224Cert,
-			cert:     testutils.ECDSA224Cert,
-			key:      testutils.ECDSA224Key,
+			roots:    cautils.ECDSA224Cert,
+			cert:     cautils.ECDSA224Cert,
+			key:      cautils.ECDSA224Key,
 			errorStr: "unsupported ECDSA key parameters",
 		},
 		{
-			roots:    testutils.ECDSA256SHA256Cert,
-			cert:     testutils.ECDSA256SHA256Cert,
-			key:      testutils.ECDSA224Key,
+			roots:    cautils.ECDSA256SHA256Cert,
+			cert:     cautils.ECDSA256SHA256Cert,
+			key:      cautils.ECDSA224Key,
 			errorStr: "certificate key mismatch",
 		},
 		{
-			roots:    testutils.ECDSA256SHA256Cert,
-			cert:     testutils.ECDSACertChain[1],
-			key:      testutils.ECDSACertChainKeys[1],
+			roots:    cautils.ECDSA256SHA256Cert,
+			cert:     cautils.ECDSACertChain[1],
+			key:      cautils.ECDSACertChainKeys[1],
 			errorStr: "unknown authority", // signer cert doesn't chain up to the root
 		},
 		// invalid intermediates
 		{
-			roots:         testutils.ECDSACertChain[2],
-			cert:          testutils.ECDSACertChain[1],
-			key:           testutils.ECDSACertChainKeys[1],
+			roots:         cautils.ECDSACertChain[2],
+			cert:          cautils.ECDSACertChain[1],
+			key:           cautils.ECDSACertChainKeys[1],
 			intermediates: []byte("malformed"),
 			errorStr:      "Failed to decode certificate",
 		},
 		{
-			roots:         testutils.ECDSACertChain[2],
-			cert:          testutils.ECDSACertChain[1],
-			key:           testutils.ECDSACertChainKeys[1],
+			roots:         cautils.ECDSACertChain[2],
+			cert:          cautils.ECDSACertChain[1],
+			key:           cautils.ECDSACertChainKeys[1],
 			intermediates: expiredIntermediate,
 			errorStr:      "expired",
 		},
 		{
-			roots:         testutils.ECDSACertChain[2],
-			cert:          testutils.ECDSACertChain[1],
-			key:           testutils.ECDSACertChainKeys[1],
+			roots:         cautils.ECDSACertChain[2],
+			cert:          cautils.ECDSACertChain[1],
+			key:           cautils.ECDSACertChainKeys[1],
 			intermediates: notYetValidIntermediate,
 			errorStr:      "expired",
 		},
 		{
-			roots:         testutils.ECDSACertChain[2],
-			cert:          testutils.ECDSACertChain[1],
-			key:           testutils.ECDSACertChainKeys[1],
-			intermediates: append(testutils.ECDSACertChain[1], testutils.ECDSA256SHA256Cert...),
+			roots:         cautils.ECDSACertChain[2],
+			cert:          cautils.ECDSACertChain[1],
+			key:           cautils.ECDSACertChainKeys[1],
+			intermediates: append(cautils.ECDSACertChain[1], cautils.ECDSA256SHA256Cert...),
 			errorStr:      "do not form a chain",
 		},
 		{
-			roots:         testutils.ECDSACertChain[2],
-			cert:          testutils.ECDSACertChain[1],
-			key:           testutils.ECDSACertChainKeys[1],
-			intermediates: testutils.ECDSA256SHA256Cert,
+			roots:         cautils.ECDSACertChain[2],
+			cert:          cautils.ECDSACertChain[1],
+			key:           cautils.ECDSACertChainKeys[1],
+			intermediates: cautils.ECDSA256SHA256Cert,
 			errorStr:      "unknown authority", // intermediates don't chain up to root
 		},
 		{
-			roots:         testutils.ECDSACertChain[2],
-			cert:          testutils.ECDSACertChain[1],
-			key:           testutils.ECDSACertChainKeys[1],
+			roots:         cautils.ECDSACertChain[2],
+			cert:          cautils.ECDSACertChain[1],
+			key:           cautils.ECDSACertChainKeys[1],
 			intermediates: alternateIntermediate,
 			errorStr:      "the first intermediate must have the same subject and public key as the signing cert",
 		},
@@ -1196,9 +1196,9 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 
 	// re-generate the intermediate to be a self-signed root, and use that as the second root
-	parsedKey, err := helpers.ParsePrivateKeyPEM(testutils.ECDSACertChainKeys[1])
+	parsedKey, err := helpers.ParsePrivateKeyPEM(cautils.ECDSACertChainKeys[1])
 	require.NoError(t, err)
-	parsedIntermediate, err := helpers.ParseCertificatePEM(testutils.ECDSACertChain[1])
+	parsedIntermediate, err := helpers.ParseCertificatePEM(cautils.ECDSACertChain[1])
 	require.NoError(t, err)
 	fauxRootDER, err := x509.CreateCertificate(cryptorand.Reader, parsedIntermediate, parsedIntermediate, parsedKey.Public(), parsedKey)
 	require.NoError(t, err)
@@ -1208,13 +1208,13 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 	})
 
 	// It is not required, but not wrong, for the intermediate chain to terminate with a self-signed root
-	signWithIntermediate, err := ca.NewRootCA(testutils.ECDSACertChain[2], testutils.ECDSACertChain[1], testutils.ECDSACertChainKeys[1],
-		ca.DefaultNodeCertExpiration, append(testutils.ECDSACertChain[1], testutils.ECDSACertChain[2]...))
+	signWithIntermediate, err := ca.NewRootCA(cautils.ECDSACertChain[2], cautils.ECDSACertChain[1], cautils.ECDSACertChainKeys[1],
+		ca.DefaultNodeCertExpiration, append(cautils.ECDSACertChain[1], cautils.ECDSACertChain[2]...))
 	require.NoError(t, err)
 
 	// just the intermediate, without a terminating self-signed root, is also ok
-	signWithIntermediate, err = ca.NewRootCA(testutils.ECDSACertChain[2], testutils.ECDSACertChain[1], testutils.ECDSACertChainKeys[1],
-		ca.DefaultNodeCertExpiration, testutils.ECDSACertChain[1])
+	signWithIntermediate, err = ca.NewRootCA(cautils.ECDSACertChain[2], cautils.ECDSACertChain[1], cautils.ECDSACertChainKeys[1],
+		ca.DefaultNodeCertExpiration, cautils.ECDSACertChain[1])
 	require.NoError(t, err)
 
 	paths := ca.NewConfigPaths(tempdir)
@@ -1231,10 +1231,10 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 	require.Equal(t, parsedIntermediate.Raw, parsedCerts[1].Raw)
 	require.Equal(t, parsedCerts, chains[0][:len(chains[0])-1]) // the last one is the root
 
-	oldRoot, err := ca.NewRootCA(testutils.ECDSACertChain[2], testutils.ECDSACertChain[2], testutils.ECDSACertChainKeys[2], ca.DefaultNodeCertExpiration, nil)
+	oldRoot, err := ca.NewRootCA(cautils.ECDSACertChain[2], cautils.ECDSACertChain[2], cautils.ECDSACertChainKeys[2], ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
-	newRoot, err := ca.NewRootCA(fauxRootCert, fauxRootCert, testutils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration, nil)
+	newRoot, err := ca.NewRootCA(fauxRootCert, fauxRootCert, cautils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
 	checkValidateAgainstAllRoots := func(cert []byte) {
@@ -1258,18 +1258,18 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 	}
 	checkValidateAgainstAllRoots(tlsCert)
 
-	if !testutils.External {
+	if !cautils.External {
 		return
 	}
 
 	// create an external signing server that generates leaf certs with the new root (but does not append the intermediate)
-	tc := testutils.NewTestCAFromRootCA(t, tempdir, newRoot, nil)
+	tc := cautils.NewTestCAFromRootCA(t, tempdir, newRoot, nil)
 	defer tc.Stop()
 
 	// we need creds that trust both the old and new root in order to connect to the test CA, and we want this root CA to
 	// append certificates
-	connectToExternalRootCA, err := ca.NewRootCA(append(testutils.ECDSACertChain[2], fauxRootCert...), testutils.ECDSACertChain[1],
-		testutils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration, testutils.ECDSACertChain[1])
+	connectToExternalRootCA, err := ca.NewRootCA(append(cautils.ECDSACertChain[2], fauxRootCert...), cautils.ECDSACertChain[1],
+		cautils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration, cautils.ECDSACertChain[1])
 	require.NoError(t, err)
 	secConfig, err := connectToExternalRootCA.CreateSecurityConfig(context.Background(), krw, ca.CertificateRequestConfig{})
 	require.NoError(t, err)
@@ -1347,8 +1347,8 @@ type certTestCase struct {
 }
 
 func TestValidateCertificateChain(t *testing.T) {
-	leaf, intermediate, root := testutils.ECDSACertChain[0], testutils.ECDSACertChain[1], testutils.ECDSACertChain[2]
-	intermediateKey, rootKey := testutils.ECDSACertChainKeys[1], testutils.ECDSACertChainKeys[2] // we don't care about the leaf key
+	leaf, intermediate, root := cautils.ECDSACertChain[0], cautils.ECDSACertChain[1], cautils.ECDSACertChain[2]
+	intermediateKey, rootKey := cautils.ECDSACertChainKeys[1], cautils.ECDSACertChainKeys[2] // we don't care about the leaf key
 
 	chain := func(certs ...[]byte) []byte {
 		var all []byte
@@ -1359,10 +1359,10 @@ func TestValidateCertificateChain(t *testing.T) {
 	}
 
 	now := time.Now()
-	expiredLeaf := testutils.ReDateCert(t, leaf, intermediate, intermediateKey, now.Add(-10*time.Hour), now.Add(-1*time.Minute))
-	expiredIntermediate := testutils.ReDateCert(t, intermediate, root, rootKey, now.Add(-10*time.Hour), now.Add(-1*time.Minute))
-	notYetValidLeaf := testutils.ReDateCert(t, leaf, intermediate, intermediateKey, now.Add(time.Hour), now.Add(2*time.Hour))
-	notYetValidIntermediate := testutils.ReDateCert(t, intermediate, root, rootKey, now.Add(time.Hour), now.Add(2*time.Hour))
+	expiredLeaf := cautils.ReDateCert(t, leaf, intermediate, intermediateKey, now.Add(-10*time.Hour), now.Add(-1*time.Minute))
+	expiredIntermediate := cautils.ReDateCert(t, intermediate, root, rootKey, now.Add(-10*time.Hour), now.Add(-1*time.Minute))
+	notYetValidLeaf := cautils.ReDateCert(t, leaf, intermediate, intermediateKey, now.Add(time.Hour), now.Add(2*time.Hour))
+	notYetValidIntermediate := cautils.ReDateCert(t, intermediate, root, rootKey, now.Add(time.Hour), now.Add(2*time.Hour))
 
 	rootPool := x509.NewCertPool()
 	rootPool.AppendCertsFromPEM(root)
@@ -1385,7 +1385,7 @@ func TestValidateCertificateChain(t *testing.T) {
 		},
 		{
 			cert:     chain(leaf, intermediate),
-			root:     testutils.ECDSA256SHA256Cert,
+			root:     cautils.ECDSA256SHA256Cert,
 			errorStr: "unknown authority",
 		},
 		{
@@ -1424,7 +1424,7 @@ func TestValidateCertificateChain(t *testing.T) {
 		},
 		{
 			cert:        chain(expiredLeaf, intermediate),
-			root:        testutils.ECDSA256SHA256Cert,
+			root:        cautils.ECDSA256SHA256Cert,
 			allowExpiry: true,
 			errorStr:    "unknown authority",
 		},
@@ -1434,8 +1434,8 @@ func TestValidateCertificateChain(t *testing.T) {
 		// be either not yet valid or already expired)
 		{
 			cert: chain(
-				testutils.ReDateCert(t, leaf, intermediate, intermediateKey, now.Add(-3*helpers.OneDay), now.Add(-2*helpers.OneDay)),
-				testutils.ReDateCert(t, intermediate, root, rootKey, now.Add(-1*helpers.OneDay), now.Add(helpers.OneDay))),
+				cautils.ReDateCert(t, leaf, intermediate, intermediateKey, now.Add(-3*helpers.OneDay), now.Add(-2*helpers.OneDay)),
+				cautils.ReDateCert(t, intermediate, root, rootKey, now.Add(-1*helpers.OneDay), now.Add(helpers.OneDay))),
 			root:        root,
 			allowExpiry: true,
 			errorStr:    "there is no time span",
@@ -1443,7 +1443,7 @@ func TestValidateCertificateChain(t *testing.T) {
 		// similarly, but for root pool
 		{
 			cert:        chain(expiredLeaf, expiredIntermediate),
-			root:        testutils.ReDateCert(t, root, root, rootKey, now.Add(-3*helpers.OneYear), now.Add(-2*helpers.OneYear)),
+			root:        cautils.ReDateCert(t, root, root, rootKey, now.Add(-3*helpers.OneYear), now.Add(-2*helpers.OneYear)),
 			allowExpiry: true,
 			errorStr:    "there is no time span",
 		},
@@ -1491,13 +1491,13 @@ func TestValidateCertificateChain(t *testing.T) {
 func TestRootCACrossSignCACertificate(t *testing.T) {
 	t.Parallel()
 
-	cert1, key1, err := testutils.CreateRootCertAndKey("rootCN")
+	cert1, key1, err := cautils.CreateRootCertAndKey("rootCN")
 	require.NoError(t, err)
 
 	rootCA1, err := ca.NewRootCA(cert1, cert1, key1, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
-	cert2, key2, err := testutils.CreateRootCertAndKey("rootCN2")
+	cert2, key2, err := cautils.CreateRootCertAndKey("rootCN2")
 	require.NoError(t, err)
 
 	rootCA2, err := ca.NewRootCA(cert2, cert2, key2, ca.DefaultNodeCertExpiration, nil)
@@ -1559,7 +1559,7 @@ func concat(byteSlices ...[]byte) []byte {
 }
 
 func TestNormalizePEMs(t *testing.T) {
-	pemBlock, _ := pem.Decode(testutils.ECDSA256SHA256Cert)
+	pemBlock, _ := pem.Decode(cautils.ECDSA256SHA256Cert)
 	pemBlock.Headers = map[string]string{
 		"hello": "world",
 	}
@@ -1574,12 +1574,12 @@ func TestNormalizePEMs(t *testing.T) {
 			expect: nil,
 		},
 		{
-			input:  concat([]byte("garbage\n\t\n\n"), testutils.ECDSA256SHA256Cert, []byte("   \n")),
-			expect: ca.NormalizePEMs(testutils.ECDSA256SHA256Cert),
+			input:  concat([]byte("garbage\n\t\n\n"), cautils.ECDSA256SHA256Cert, []byte("   \n")),
+			expect: ca.NormalizePEMs(cautils.ECDSA256SHA256Cert),
 		},
 		{
-			input:  concat([]byte("\n\t\n     "), withHeaders, []byte("\t\n\n"), testutils.ECDSACertChain[0]),
-			expect: ca.NormalizePEMs(append(testutils.ECDSA256SHA256Cert, testutils.ECDSACertChain[0]...)),
+			input:  concat([]byte("\n\t\n     "), withHeaders, []byte("\t\n\n"), cautils.ECDSACertChain[0]),
+			expect: ca.NormalizePEMs(append(cautils.ECDSA256SHA256Cert, cautils.ECDSACertChain[0]...)),
 		},
 	} {
 		require.Equal(t, testcase.expect, ca.NormalizePEMs(testcase.input))

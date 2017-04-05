@@ -18,10 +18,10 @@ import (
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/testutils"
+	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/identity"
-	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/testutils"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,7 +34,7 @@ type grpcDispatcher struct {
 	grpcServer       *grpc.Server
 	dispatcherServer *Dispatcher
 	conns            []*grpc.ClientConn
-	testCA           *testutils.TestCA
+	testCA           *cautils.TestCA
 	testCluster      *testCluster
 }
 
@@ -126,7 +126,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 		return nil, err
 	}
 
-	tca := testutils.NewTestCA(nil)
+	tca := cautils.NewTestCA(nil)
 	agentSecurityConfig1, err := tca.NewNodeConfig(ca.WorkerRole)
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 		_ = s.Serve(l)
 	}()
 	go d.Run(context.Background())
-	if err := raftutils.PollFuncWithTimeout(nil, func() error {
+	if err := testutils.PollFuncWithTimeout(nil, func() error {
 		d.mu.Lock()
 		defer d.mu.Unlock()
 		if !d.isRunning() {
@@ -1444,14 +1444,14 @@ func TestClusterUpdatesSendMessages(t *testing.T) {
 
 	// changing the rootCA cert and has in the cluster results in a new message with an updated cert
 	expected = msg.Copy()
-	expected.RootCA = testutils.ECDSA256SHA256Cert
+	expected.RootCA = cautils.ECDSA256SHA256Cert
 	require.NoError(t, gd.Store.Update(func(tx store.Tx) error {
 		cluster := store.GetCluster(tx, gd.testCA.Organization)
 		if cluster == nil {
 			return errors.New("no cluster")
 		}
-		cluster.RootCA.CACert = testutils.ECDSA256SHA256Cert
-		cluster.RootCA.CACertHash = digest.FromBytes(testutils.ECDSA256SHA256Cert).String()
+		cluster.RootCA.CACert = cautils.ECDSA256SHA256Cert
+		cluster.RootCA.CACertHash = digest.FromBytes(cautils.ECDSA256SHA256Cert).String()
 		return store.UpdateCluster(tx, cluster)
 	}))
 	time.Sleep(100 * time.Millisecond)

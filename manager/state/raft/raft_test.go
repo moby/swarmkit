@@ -26,6 +26,7 @@ import (
 	"github.com/docker/swarmkit/manager/state/raft"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -241,7 +242,7 @@ func TestRaftWedgedManager(t *testing.T) {
 		})
 	}()
 
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		if nodes[1].Config.ID == nodes[1].Leader() {
 			return errors.New("leader has not changed")
 		}
@@ -603,7 +604,7 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 	assert.NoError(t, err, "failed to propose value")
 
 	for _, node := range nodes {
-		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 			var err error
 			node.MemoryStore().View(func(tx store.ReadTx) {
 				var allNodes []*api.Node
@@ -664,7 +665,7 @@ func TestRaftWipedState(t *testing.T) {
 	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
 
 	// Make sure this doesn't panic.
-	raftutils.PollFuncWithTimeout(clockSource, func() error { return errors.New("keep the poll going") }, time.Second)
+	testutils.PollFuncWithTimeout(clockSource, func() error { return errors.New("keep the poll going") }, time.Second)
 }
 
 func TestRaftForceNewCluster(t *testing.T) {
@@ -731,7 +732,7 @@ func TestRaftForceNewCluster(t *testing.T) {
 	assert.NoError(t, err, "failed to propose value")
 
 	for _, node := range nodes {
-		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 			var err error
 			node.MemoryStore().View(func(tx store.ReadTx) {
 				var allNodes []*api.Node

@@ -19,6 +19,7 @@ import (
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/raft/membership"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -261,7 +262,7 @@ func TestCanRemoveMember(t *testing.T) {
 	nodes[3].ShutdownRaft()
 
 	// Node 2 and Node 3 should be listed as Unreachable
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		members := nodes[1].GetMemberlist()
 		if len(members) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(members))
@@ -291,7 +292,7 @@ func TestCanRemoveMember(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Node 2 and Node 3 should be listed as Reachable
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		members := nodes[1].GetMemberlist()
 		if len(members) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(members))
@@ -310,7 +311,7 @@ func TestCanRemoveMember(t *testing.T) {
 	nodes[3].ShutdownRaft()
 
 	// Node 3 should be listed as Unreachable
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		members := nodes[1].GetMemberlist()
 		if len(members) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(members))
@@ -343,7 +344,7 @@ func TestCanRemoveMember(t *testing.T) {
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 
 	// Node 2 and Node 3 should be listed as Reachable
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		members := nodes[1].GetMemberlist()
 		if len(members) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(members))

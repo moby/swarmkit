@@ -21,6 +21,7 @@ import (
 	"github.com/docker/swarmkit/manager/health"
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -55,38 +56,9 @@ func AdvanceTicks(clockSource *fakeclock.FakeClock, ticks int) {
 	}
 }
 
-// PollFuncWithTimeout is used to periodically execute a check function, it
-// returns error after timeout.
-func PollFuncWithTimeout(clockSource *fakeclock.FakeClock, f func() error, timeout time.Duration) error {
-	if f() == nil {
-		return nil
-	}
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-	for i := 0; ; i++ {
-		if i%5 == 0 && clockSource != nil {
-			clockSource.Increment(time.Second)
-		}
-		err := f()
-		if err == nil {
-			return nil
-		}
-		select {
-		case <-timer.C:
-			return errors.Wrap(err, "polling failed")
-		case <-time.After(50 * time.Millisecond):
-		}
-	}
-}
-
-// PollFunc is like PollFuncWithTimeout with timeout=10s.
-func PollFunc(clockSource *fakeclock.FakeClock, f func() error) error {
-	return PollFuncWithTimeout(clockSource, f, 10*time.Second)
-}
-
 // WaitForCluster waits until leader will be one of specified nodes
 func WaitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint64]*TestNode) {
-	err := PollFunc(clockSource, func() error {
+	err := testutils.PollFunc(clockSource, func() error {
 		var prev *etcdraft.Status
 	nodeLoop:
 		for _, n := range nodes {
@@ -119,7 +91,7 @@ func WaitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[ui
 
 // WaitForPeerNumber waits until peers in cluster converge to specified number
 func WaitForPeerNumber(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint64]*TestNode, count int) {
-	assert.NoError(t, PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		for _, n := range nodes {
 			if len(n.GetMemberlist()) != count {
 				return errors.New("unexpected number of members")
@@ -568,7 +540,7 @@ func ProposeValue(t *testing.T, raftNode *TestNode, time time.Duration, nodeID .
 
 // CheckValue checks that the value has been propagated between raft members
 func CheckValue(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *TestNode, createdNode *api.Node) {
-	assert.NoError(t, PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		var err error
 		raftNode.MemoryStore().View(func(tx store.ReadTx) {
 			var allNodes []*api.Node
@@ -591,7 +563,7 @@ func CheckValue(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *TestNo
 // CheckNoValue checks that there is no value replicated on nodes, generally
 // used to test the absence of a leader
 func CheckNoValue(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *TestNode) {
-	assert.NoError(t, PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		var err error
 		raftNode.MemoryStore().View(func(tx store.ReadTx) {
 			var allNodes []*api.Node
@@ -613,7 +585,7 @@ func CheckNoValue(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *Test
 func CheckValuesOnNodes(t *testing.T, clockSource *fakeclock.FakeClock, checkNodes map[uint64]*TestNode, ids []string, values []*api.Node) {
 	iteration := 0
 	for checkNodeID, node := range checkNodes {
-		assert.NoError(t, PollFunc(clockSource, func() error {
+		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 			var err error
 			node.MemoryStore().View(func(tx store.ReadTx) {
 				var allNodes []*api.Node
@@ -647,7 +619,7 @@ func CheckValuesOnNodes(t *testing.T, clockSource *fakeclock.FakeClock, checkNod
 func GetAllValuesOnNode(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *TestNode) ([]string, []*api.Node) {
 	ids := []string{}
 	values := []*api.Node{}
-	assert.NoError(t, PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		var err error
 		raftNode.MemoryStore().View(func(tx store.ReadTx) {
 			var allNodes []*api.Node

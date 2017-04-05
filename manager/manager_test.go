@@ -19,12 +19,12 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/testutils"
+	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/dispatcher"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/docker/swarmkit/manager/state/raft/storage"
-	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -43,7 +43,7 @@ func TestManager(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(stateDir)
 
-	tc := testutils.NewTestCA(t, func(p ca.CertPaths) *ca.KeyReadWriter {
+	tc := cautils.NewTestCA(t, func(p ca.CertPaths) *ca.KeyReadWriter {
 		return ca.NewKeyReadWriter(p, []byte("kek"), nil)
 	})
 	defer tc.Stop()
@@ -209,7 +209,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(stateDir)
 
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
@@ -251,7 +251,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	var cluster *api.Cluster
 	client := api.NewControlClient(conn)
 
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		resp, err := client.ListClusters(ctx, &api.ListClustersRequest{})
 		if err != nil {
 			return err
@@ -306,7 +306,7 @@ func TestManagerLockUnlock(t *testing.T) {
 
 	// this should update the TLS key, rotate the DEK, and finish snapshotting
 	var updatedKey []byte
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		updatedKey, err = ioutil.ReadFile(tc.Paths.Node.Key)
 		require.NoError(t, err) // this should never error due to atomic writes
 
@@ -371,7 +371,7 @@ func TestManagerLockUnlock(t *testing.T) {
 
 	// this should update the TLS key
 	var unlockedKey []byte
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		unlockedKey, err = ioutil.ReadFile(tc.Paths.Node.Key)
 		if err != nil {
 			return err
@@ -419,7 +419,7 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(stateDir)
 
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
@@ -458,7 +458,7 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 
 	client := api.NewCAClient(conn)
 
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		ctx, _ := context.WithTimeout(context.Background(), 500*time.Millisecond)
 		_, err := client.GetRootCACertificate(ctx, &api.GetRootCACertificateRequest{})
 		return err
@@ -467,7 +467,7 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 	// wait until the cluster is up
 	var clusters []*api.Cluster
 
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		var err error
 		m.raftNode.MemoryStore().View(func(tx store.ReadTx) {
 			clusters, err = store.FindClusters(tx, store.ByName(store.DefaultClusterName))
@@ -486,7 +486,7 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 	m.becomeFollower()
 	m.mu.Unlock()
 
-	newRootCert, _, err := testutils.CreateRootCertAndKey("rootOther")
+	newRootCert, _, err := cautils.CreateRootCertAndKey("rootOther")
 	require.NoError(t, err)
 	updatedCA := append(tc.RootCA.Certs, newRootCert...)
 
@@ -498,7 +498,7 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 	}))
 
 	// wait for the manager's security config to be updated
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		if !bytes.Equal(managerSecurityConfig.RootCA().Certs, updatedCA) {
 			return fmt.Errorf("root CA not updated yet")
 		}
@@ -517,7 +517,7 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 	ctx := context.Background()
 
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	temp, err := ioutil.TempFile("", "test-socket")
@@ -561,7 +561,7 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 	startManager()
 
 	// wait for cluster data to be there
-	err = raftutils.PollFunc(nil, func() error {
+	err = testutils.PollFunc(nil, func() error {
 		// using store.Update just because it returns an error, as opposed to store.View
 		return m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
 			clusters, err := store.FindClusters(tx, store.All)
@@ -584,7 +584,7 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 	startManager()
 
 	// wait for the key to be encrypted in the raft store
-	err = raftutils.PollFunc(nil, func() error {
+	err = testutils.PollFunc(nil, func() error {
 		return m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
 			clusters, err := store.FindClusters(tx, store.All)
 			if err != nil {
@@ -616,7 +616,7 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 	startManager()
 
 	// wait for the key to be decrypted in the raft store
-	err = raftutils.PollFunc(nil, func() error {
+	err = testutils.PollFunc(nil, func() error {
 		return m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
 			clusters, err := store.FindClusters(tx, store.All)
 			if err != nil {

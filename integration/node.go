@@ -13,8 +13,8 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/identity"
-	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/node"
+	"github.com/docker/swarmkit/testutils"
 	"golang.org/x/net/context"
 )
 
@@ -152,7 +152,7 @@ func (n *testNode) ControlClient(ctx context.Context) (api.ControlClient, error)
 	defer cancel()
 	connChan := n.node.ListenControlSocket(ctx)
 	var controlConn *grpc.ClientConn
-	if err := raftutils.PollFuncWithTimeout(nil, func() error {
+	if err := testutils.PollFuncWithTimeout(nil, func() error {
 		select {
 		case controlConn = <-connChan:
 		default:

@@ -12,8 +12,8 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/log"
-	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/node"
+	"github.com/docker/swarmkit/testutils"
 	"golang.org/x/net/context"
 )
 
@@ -262,7 +262,7 @@ func (c *testCluster) RemoveNode(id string, graceful bool) error {
 	}
 	delete(c.nodes, id)
 	if graceful {
-		if err := raftutils.PollFuncWithTimeout(nil, func() error {
+		if err := testutils.PollFuncWithTimeout(nil, func() error {
 			resp, err := c.api.GetNode(context.Background(), &api.GetNodeRequest{NodeID: id})
 			if err != nil {
 				return fmt.Errorf("get node: %v", err)
@@ -319,7 +319,7 @@ func (c *testCluster) SetNodeRole(id string, role api.NodeRole) error {
 		}
 		if role == api.NodeRoleManager {
 			// wait to become manager
-			return raftutils.PollFuncWithTimeout(nil, func() error {
+			return testutils.PollFuncWithTimeout(nil, func() error {
 				if !node.IsManager() {
 					return fmt.Errorf("node is still not a manager")
 				}
@@ -327,7 +327,7 @@ func (c *testCluster) SetNodeRole(id string, role api.NodeRole) error {
 			}, opsTimeout)
 		}
 		// wait to become worker
-		return raftutils.PollFuncWithTimeout(nil, func() error {
+		return testutils.PollFuncWithTimeout(nil, func() error {
 			if node.IsManager() {
 				return fmt.Errorf("node is still not a worker")
 			}
