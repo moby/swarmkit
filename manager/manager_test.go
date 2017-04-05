@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -147,12 +148,24 @@ func TestManager(t *testing.T) {
 
 	// check that the kek is added to the config
 	var cluster api.Cluster
-	m.raftNode.MemoryStore().View(func(tx store.ReadTx) {
-		clusters, err := store.FindClusters(tx, store.All)
-		require.NoError(t, err)
-		require.Len(t, clusters, 1)
+	require.NoError(t, testutils.PollFunc(nil, func() error {
+		var (
+			err      error
+			clusters []*api.Cluster
+		)
+		m.raftNode.MemoryStore().View(func(tx store.ReadTx) {
+			clusters, err = store.FindClusters(tx, store.All)
+		})
+		if err != nil {
+			return err
+		}
+		if len(clusters) != 1 {
+			return errors.New("wrong number of clusters")
+		}
 		cluster = *clusters[0]
-	})
+		return nil
+
+	}))
 	require.NotNil(t, cluster)
 	require.Len(t, cluster.UnlockKeys, 1)
 	require.Equal(t, &api.EncryptionKey{
