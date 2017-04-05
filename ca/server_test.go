@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"crypto/x509"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -542,4 +544,10 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 			require.Equal(t, ca.ErrNoExternalCAURLs, err)
 		}
 	}
+
+	// If we can't save the root cert, we can't update the root CA even if it's completely valid
+	require.NoError(t, os.RemoveAll(tc.TempDir))
+	require.NoError(t, ioutil.WriteFile(tc.TempDir, []byte("cant create directory if this is file"), 0700))
+	tc.CAServer.UpdateRootCA(context.Background(), fakeClusterSpec(testutils.ECDSA256SHA256Cert, testutils.ECDSA256Key, nil, nil))
+	require.Equal(t, tc.RootCA.Certs, tc.ServingSecurityConfig.RootCA().Certs)
 }

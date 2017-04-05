@@ -17,9 +17,11 @@ import (
 
 	cfconfig "github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/helpers"
+	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/watch"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -394,6 +396,57 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 		_, err := secConfig.ExternalCA().Sign(context.Background(), req)
 		require.NoError(t, err)
 	}
+}
+
+func TestSecurityConfigSetWatch(t *testing.T) {
+	tc := testutils.NewTestCA(t)
+	defer tc.Stop()
+
+	secConfig, err := tc.NewNodeConfig(ca.ManagerRole)
+	require.NoError(t, err)
+	issuer := secConfig.IssuerInfo()
+
+	w := watch.NewQueue()
+	defer w.Close()
+	secConfig.SetWatch(w)
+
+	configWatch, configCancel := w.Watch()
+	defer configCancel()
+
+	require.NoError(t, ca.RenewTLSConfigNow(context.Background(), secConfig, tc.ConnBroker))
+	select {
+	case ev := <-configWatch:
+		nodeTLSInfo, ok := ev.(*api.NodeTLSInfo)
+		require.True(t, ok)
+		require.Equal(t, &api.NodeTLSInfo{
+			TrustRoot:           tc.RootCA.Certs,
+			CertIssuerPublicKey: issuer.PublicKey,
+			CertIssuerSubject:   issuer.Subject,
+		}, nodeTLSInfo)
+	case <-time.After(time.Second):
+		require.FailNow(t, "on TLS certificate update, we should have gotten a security config update")
+	}
+
+	require.NoError(t, secConfig.UpdateRootCA(&tc.RootCA, tc.RootCA.Pool))
+	select {
+	case ev := <-configWatch:
+		nodeTLSInfo, ok := ev.(*api.NodeTLSInfo)
+		require.True(t, ok)
+		require.Equal(t, &api.NodeTLSInfo{
+			TrustRoot:           tc.RootCA.Certs,
+			CertIssuerPublicKey: issuer.PublicKey,
+			CertIssuerSubject:   issuer.Subject,
+		}, nodeTLSInfo)
+	case <-time.After(time.Second):
+		require.FailNow(t, "on TLS certificate update, we should have gotten a security config update")
+	}
+
+	configCancel()
+	w.Close()
+
+	// ensure that we can still update tls certs and roots without error even though the watch is closed
+	require.NoError(t, secConfig.UpdateRootCA(&tc.RootCA, tc.RootCA.Pool))
+	require.NoError(t, ca.RenewTLSConfigNow(context.Background(), secConfig, tc.ConnBroker))
 }
 
 // enforce that no matter what order updating the root CA and updating TLS credential happens, we

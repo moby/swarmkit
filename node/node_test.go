@@ -1,17 +1,25 @@
 package node
 
 import (
+	"bytes"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/cloudflare/cfssl/helpers"
+	"github.com/docker/swarmkit/agent"
+	agentutils "github.com/docker/swarmkit/agent/testutils"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/identity"
+	"github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -33,7 +41,7 @@ func TestLoadSecurityConfigNewNode(t *testing.T) {
 			AutoLockManagers: autoLockManagers,
 		})
 		require.NoError(t, err)
-		securityConfig, err := node.loadSecurityConfig(context.Background())
+		securityConfig, err := node.loadSecurityConfig(context.Background(), paths)
 		require.NoError(t, err)
 		require.NotNil(t, securityConfig)
 
@@ -63,7 +71,7 @@ func TestLoadSecurityConfigPartialCertsOnDisk(t *testing.T) {
 		StateDir: tempdir,
 	})
 	require.NoError(t, err)
-	securityConfig, err := node.loadSecurityConfig(context.Background())
+	securityConfig, err := node.loadSecurityConfig(context.Background(), paths)
 	require.NoError(t, err)
 	require.NotNil(t, securityConfig)
 
@@ -81,7 +89,7 @@ func TestLoadSecurityConfigPartialCertsOnDisk(t *testing.T) {
 		StateDir: tempdir,
 	})
 	require.NoError(t, err)
-	securityConfig, err = node.loadSecurityConfig(context.Background())
+	securityConfig, err = node.loadSecurityConfig(context.Background(), paths)
 	require.NoError(t, err)
 	require.NotNil(t, securityConfig)
 
@@ -122,7 +130,7 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 		UnlockKey: []byte("passphrase"),
 	})
 	require.NoError(t, err)
-	securityConfig, err := node.loadSecurityConfig(context.Background())
+	securityConfig, err := node.loadSecurityConfig(context.Background(), paths)
 	require.NoError(t, err)
 	require.NotNil(t, securityConfig)
 
@@ -133,7 +141,7 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 		JoinToken: tc.ManagerToken,
 	})
 	require.NoError(t, err)
-	_, err = node.loadSecurityConfig(context.Background())
+	_, err = node.loadSecurityConfig(context.Background(), paths)
 	require.Equal(t, ErrInvalidUnlockKey, err)
 
 	// Invalid CA
@@ -147,7 +155,7 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 		UnlockKey: []byte("passphrase"),
 	})
 	require.NoError(t, err)
-	_, err = node.loadSecurityConfig(context.Background())
+	_, err = node.loadSecurityConfig(context.Background(), paths)
 	require.IsType(t, x509.UnknownAuthorityError{}, errors.Cause(err))
 }
 
@@ -167,7 +175,7 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 		JoinAddr: "127.0.0.1:12",
 	})
 	require.NoError(t, err)
-	_, err = node.loadSecurityConfig(context.Background())
+	_, err = node.loadSecurityConfig(context.Background(), paths)
 	require.Error(t, err)
 
 	tc := cautils.NewTestCA(t)
@@ -182,7 +190,7 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 		JoinToken: tc.ManagerToken,
 	})
 	require.NoError(t, err)
-	_, err = node.loadSecurityConfig(context.Background())
+	_, err = node.loadSecurityConfig(context.Background(), paths)
 	require.NoError(t, err)
 
 	// the TLS key and cert were written to disk unencrypted
@@ -226,7 +234,7 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 		JoinToken: tc.ManagerToken,
 	})
 	require.NoError(t, err)
-	_, err = node.loadSecurityConfig(context.Background())
+	_, err = node.loadSecurityConfig(context.Background(), paths)
 	require.NoError(t, err)
 
 	// make sure the CA cert has not been replaced
@@ -239,4 +247,130 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 	require.Error(t, err)
 	_, _, err = ca.NewKeyReadWriter(paths.Node, []byte("passphrase"), nil).Read()
 	require.NoError(t, err)
+}
+
+func TestManagerIgnoresDispatcherRootCAUpdate(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "manager-root-ca-update")
+	require.NoError(t, err)
+
+	// don't bother with a listening socket
+	cAddr := filepath.Join(tmpDir, "control.sock")
+	cfg := &Config{
+		ListenControlAPI: cAddr,
+		StateDir:         tmpDir,
+		Executor:         &agentutils.TestExecutor{},
+	}
+
+	node, err := New(cfg)
+	require.NoError(t, err)
+
+	var nodeErr error
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		nodeErr = node.Start(context.Background())
+		wg.Done()
+	}()
+
+	select {
+	case <-node.Ready():
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "node did not ready in time")
+	}
+
+	certPath := filepath.Join(tmpDir, certDirectory, "swarm-root-ca.crt")
+	currentCACerts, err := ioutil.ReadFile(certPath)
+	require.NoError(t, err)
+	parsedCerts, err := helpers.ParseCertificatesPEM(currentCACerts)
+	require.NoError(t, err)
+	require.Len(t, parsedCerts, 1)
+
+	// fake an update from the dispatcher, because the dispatcher is actually the local manager
+	node.notifyNodeChange <- &agent.NodeChanges{
+		RootCert: append(currentCACerts, cautils.ECDSA256SHA256Cert...),
+	}
+
+	// the node root CA certificates do not change
+	time.Sleep(250 * time.Millisecond)
+	caCerts, err := ioutil.ReadFile(certPath)
+	require.NoError(t, err)
+	require.Equal(t, currentCACerts, caCerts)
+
+	require.NoError(t, node.Stop(context.Background()))
+	wg.Wait()
+	require.NoError(t, nodeErr)
+}
+
+func TestAgentRespectsDispatcherRootCAUpdate(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "manager-root-ca-update")
+	require.NoError(t, err)
+
+	// bootstrap worker TLS certificates
+	paths := ca.NewConfigPaths(filepath.Join(tmpDir, certDirectory))
+	rootCA, err := ca.CreateRootCA("rootCN")
+	require.NoError(t, err)
+	require.NoError(t, ca.SaveRootCA(rootCA, paths.RootCA))
+	managerSecConfig, err := rootCA.CreateSecurityConfig(context.Background(),
+		ca.NewKeyReadWriter(paths.Node, nil, nil), ca.CertificateRequestConfig{})
+	require.NoError(t, err)
+
+	_, _, err = rootCA.IssueAndSaveNewCertificates(ca.NewKeyReadWriter(paths.Node, nil, nil), "workerNode",
+		ca.WorkerRole, managerSecConfig.ServerTLSCreds.Organization())
+	require.NoError(t, err)
+
+	mockDispatcher, cleanup := agentutils.NewMockDispatcher(t, managerSecConfig)
+	defer cleanup()
+
+	cfg := &Config{
+		StateDir: tmpDir,
+		Executor: &agentutils.TestExecutor{},
+		JoinAddr: mockDispatcher.Addr,
+	}
+	node, err := New(cfg)
+	require.NoError(t, err)
+
+	var nodeErr error
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		nodeErr = node.Start(context.Background())
+		wg.Done()
+	}()
+
+	select {
+	case <-node.Ready():
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "node did not ready in time")
+	}
+
+	currentCACerts, err := ioutil.ReadFile(paths.RootCA.Cert)
+	require.NoError(t, err)
+	parsedCerts, err := helpers.ParseCertificatesPEM(currentCACerts)
+	require.NoError(t, err)
+	require.Len(t, parsedCerts, 1)
+
+	// fake an update from the dispatcher
+	node.notifyNodeChange <- &agent.NodeChanges{
+		RootCert: append(currentCACerts, cautils.ECDSA256SHA256Cert...),
+	}
+
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
+		caCerts, err := ioutil.ReadFile(paths.RootCA.Cert)
+		require.NoError(t, err)
+		if bytes.Equal(currentCACerts, caCerts) {
+			return errors.New("new certificates have not been replaced yet")
+		}
+		parsedCerts, err := helpers.ParseCertificatesPEM(caCerts)
+		if err != nil {
+			return err
+		}
+		if len(parsedCerts) != 2 {
+			return fmt.Errorf("expecting 2 new certificates, got %d", len(parsedCerts))
+		}
+		return nil
+	}, time.Second))
+
+	require.NoError(t, node.Stop(context.Background()))
+	wg.Wait()
+	require.NoError(t, nodeErr)
 }

@@ -8,3 +8,5 @@ coverage:
         enabled: yes
         target: 0
     changes: false
+ignore:
+  -**/testutils

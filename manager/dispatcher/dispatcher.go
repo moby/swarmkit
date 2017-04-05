@@ -102,20 +102,29 @@ type nodeUpdate struct {
 	description *api.NodeDescription
 }
 
+// clusterUpdate is an object that stores an update to the cluster that should trigger
+// a new session message.  These are pointers to indicate the difference between
+// "there is no update" and "update this to nil"
+type clusterUpdate struct {
+	managerUpdate      *[]*api.WeightedPeer
+	bootstrapKeyUpdate *[]*api.EncryptionKey
+	rootCAUpdate       *[]byte
+}
+
 // Dispatcher is responsible for dispatching tasks and tracking agent health.
 type Dispatcher struct {
 	mu                   sync.Mutex
 	wg                   sync.WaitGroup
 	nodes                *nodeStore
 	store                *store.MemoryStore
-	mgrQueue             *watch.Queue
 	lastSeenManagers     []*api.WeightedPeer
 	networkBootstrapKeys []*api.EncryptionKey
-	keyMgrQueue          *watch.Queue
+	lastSeenRootCert     []byte
 	config               *Config
 	cluster              Cluster
 	ctx                  context.Context
 	cancel               context.CancelFunc
+	clusterUpdateQueue   *watch.Queue
 
 	taskUpdates     map[string]*api.TaskStatus // indexed by task ID
 	taskUpdatesLock sync.Mutex
@@ -196,6 +205,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 				if clusters[0].NetworkBootstrapKeys != nil {
 					d.networkBootstrapKeys = clusters[0].NetworkBootstrapKeys
 				}
+				d.lastSeenRootCert = clusters[0].RootCA.CACert
 			}
 			return nil
 		},
@@ -205,9 +215,8 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 		d.mu.Unlock()
 		return err
 	}
-	// set queues here to guarantee that Close will close them
-	d.mgrQueue = watch.NewQueue()
-	d.keyMgrQueue = watch.NewQueue()
+	// set queue here to guarantee that Close will close it
+	d.clusterUpdateQueue = watch.NewQueue()
 
 	peerWatcher, peerCancel := d.cluster.SubscribePeers()
 	defer peerCancel()
@@ -231,7 +240,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 		d.mu.Lock()
 		d.lastSeenManagers = mgrs
 		d.mu.Unlock()
-		d.mgrQueue.Publish(mgrs)
+		d.clusterUpdateQueue.Publish(clusterUpdate{managerUpdate: &mgrs})
 	}
 
 	batchTimer := time.NewTimer(maxBatchInterval)
@@ -259,9 +268,13 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 					d.nodes.updatePeriod(d.config.HeartbeatPeriod, d.config.HeartbeatEpsilon, d.config.GracePeriodMultiplier)
 				}
 			}
+			d.lastSeenRootCert = cluster.Cluster.RootCA.CACert
 			d.networkBootstrapKeys = cluster.Cluster.NetworkBootstrapKeys
 			d.mu.Unlock()
-			d.keyMgrQueue.Publish(cluster.Cluster.NetworkBootstrapKeys)
+			d.clusterUpdateQueue.Publish(clusterUpdate{
+				bootstrapKeyUpdate: &cluster.Cluster.NetworkBootstrapKeys,
+				rootCAUpdate:       &cluster.Cluster.RootCA.CACert,
+			})
 		case <-ctx.Done():
 			return nil
 		}
@@ -286,8 +299,7 @@ func (d *Dispatcher) Stop() error {
 	d.processUpdatesCond.Broadcast()
 	d.processUpdatesLock.Unlock()
 
-	d.mgrQueue.Close()
-	d.keyMgrQueue.Close()
+	d.clusterUpdateQueue.Close()
 
 	d.wg.Wait()
 
@@ -1284,6 +1296,12 @@ func (d *Dispatcher) getNetworkBootstrapKeys() []*api.EncryptionKey {
 	return d.networkBootstrapKeys
 }
 
+func (d *Dispatcher) getRootCACert() []byte {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.lastSeenRootCert
+}
+
 // Session is a stream which controls agent connection.
 // Each message contains list of backup Managers with weights. Also there is
 // a special boolean field Disconnect which if true indicates that node should
@@ -1355,14 +1373,13 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		Node:                 nodeObj,
 		Managers:             d.getManagers(),
 		NetworkBootstrapKeys: d.getNetworkBootstrapKeys(),
+		RootCA:               d.getRootCACert(),
 	}); err != nil {
 		return err
 	}
 
-	managerUpdates, mgrCancel := d.mgrQueue.Watch()
-	defer mgrCancel()
-	keyMgrUpdates, keyMgrCancel := d.keyMgrQueue.Watch()
-	defer keyMgrCancel()
+	clusterUpdatesCh, clusterCancel := d.clusterUpdateQueue.Watch()
+	defer clusterCancel()
 
 	// disconnectNode is a helper forcibly shutdown connection
 	disconnectNode := func() error {
@@ -1396,11 +1413,21 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			disconnect bool
 			mgrs       []*api.WeightedPeer
 			netKeys    []*api.EncryptionKey
+			rootCert   []byte
 		)
 
 		select {
-		case ev := <-managerUpdates:
-			mgrs = ev.([]*api.WeightedPeer)
+		case ev := <-clusterUpdatesCh:
+			update := ev.(clusterUpdate)
+			if update.managerUpdate != nil {
+				mgrs = *update.managerUpdate
+			}
+			if update.bootstrapKeyUpdate != nil {
+				netKeys = *update.bootstrapKeyUpdate
+			}
+			if update.rootCAUpdate != nil {
+				rootCert = *update.rootCAUpdate
+			}
 		case ev := <-nodeUpdates:
 			nodeObj = ev.(api.EventUpdateNode).Node
 		case <-stream.Context().Done():
@@ -1409,8 +1436,6 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			disconnect = true
 		case <-dctx.Done():
 			disconnect = true
-		case ev := <-keyMgrUpdates:
-			netKeys = ev.([]*api.EncryptionKey)
 		}
 		if mgrs == nil {
 			mgrs = d.getManagers()
@@ -1418,12 +1443,16 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		if netKeys == nil {
 			netKeys = d.getNetworkBootstrapKeys()
 		}
+		if rootCert == nil {
+			rootCert = d.getRootCACert()
+		}
 
 		if err := stream.Send(&api.SessionMessage{
 			SessionID:            sessionID,
 			Node:                 nodeObj,
 			Managers:             mgrs,
 			NetworkBootstrapKeys: netKeys,
+			RootCA:               rootCert,
 		}); err != nil {
 			return err
 		}

@@ -9,6 +9,7 @@ import (
 
 	"google.golang.org/grpc"
 
+	agentutils "github.com/docker/swarmkit/agent/testutils"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/identity"
@@ -40,7 +41,7 @@ func newTestNode(joinAddr, joinToken string, lateBind bool, rootCA *ca.RootCA) (
 		ListenControlAPI: cAddr,
 		JoinAddr:         joinAddr,
 		StateDir:         tmpDir,
-		Executor:         &TestExecutor{},
+		Executor:         &agentutils.TestExecutor{},
 		JoinToken:        joinToken,
 	}
 	if !lateBind {
