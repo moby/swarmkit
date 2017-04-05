@@ -353,14 +353,20 @@ func TestHeartbeatTimeout(t *testing.T) {
 		expectedSessionID = resp.SessionID
 
 	}
-	time.Sleep(500 * time.Millisecond)
 
-	gd.Store.View(func(readTx store.ReadTx) {
-		storeNodes, err := store.FindNodes(readTx, store.ByIDPrefix(gd.SecurityConfigs[0].ClientTLSCreds.NodeID()))
-		assert.NoError(t, err)
-		assert.NotEmpty(t, storeNodes)
-		assert.Equal(t, api.NodeStatus_DOWN, storeNodes[0].Status.State)
-	})
+	assert.NoError(t, testutils.PollFunc(nil, func() error {
+		var storeNode *api.Node
+		gd.Store.View(func(readTx store.ReadTx) {
+			storeNode = store.GetNode(readTx, gd.SecurityConfigs[0].ClientTLSCreds.NodeID())
+		})
+		if storeNode == nil {
+			return errors.New("node not found")
+		}
+		if storeNode.Status.State != api.NodeStatus_DOWN {
+			return errors.New("node is not down")
+		}
+		return nil
+	}))
 
 	// check that node is deregistered
 	resp, err := gd.Clients[0].Heartbeat(context.Background(), &api.HeartbeatRequest{SessionID: expectedSessionID})
