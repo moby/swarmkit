@@ -1145,6 +1145,9 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		return err
 	}
 
+	clusterUpdatesCh, clusterCancel := d.clusterUpdateQueue.Watch()
+	defer clusterCancel()
+
 	if err := stream.Send(&api.SessionMessage{
 		SessionID:            sessionID,
 		Node:                 nodeObj,
@@ -1154,9 +1157,6 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 	}); err != nil {
 		return err
 	}
-
-	clusterUpdatesCh, clusterCancel := d.clusterUpdateQueue.Watch()
-	defer clusterCancel()
 
 	// disconnectNode is a helper forcibly shutdown connection
 	disconnectNode := func() error {
