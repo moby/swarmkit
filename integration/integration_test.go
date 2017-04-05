@@ -18,8 +18,8 @@ import (
 	events "github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/testutils"
-	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
+	cautils "github.com/docker/swarmkit/ca/testutils"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
@@ -112,7 +112,7 @@ func pollClusterReady(t *testing.T, c *testCluster, numWorker, numManager int) {
 		}
 		return nil
 	}
-	err := raftutils.PollFuncWithTimeout(nil, pollFunc, opsTimeout)
+	err := testutils.PollFuncWithTimeout(nil, pollFunc, opsTimeout)
 	require.NoError(t, err)
 }
 
@@ -141,7 +141,7 @@ func pollServiceReady(t *testing.T, c *testCluster, sid string, replicas int) {
 
 		return nil
 	}
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, pollFunc, opsTimeout))
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, pollFunc, opsTimeout))
 }
 
 func newCluster(t *testing.T, numWorker, numManager int) *testCluster {
@@ -422,7 +422,7 @@ func TestDemoteDownedManager(t *testing.T) {
 
 	// demote node, but don't use SetNodeRole, which waits until it successfully becomes a worker, since
 	// the node is currently down
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		_, err := cl.api.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 			NodeID:      nodeID,
 			Spec:        spec,
@@ -435,7 +435,7 @@ func TestDemoteDownedManager(t *testing.T) {
 	require.NoError(t, cl.StartNode(nodeID))
 
 	// wait to become worker
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		if demotee.IsManager() {
 			return fmt.Errorf("node is still not a worker")
 		}
@@ -463,7 +463,7 @@ func TestRestartLeader(t *testing.T) {
 
 	require.NoError(t, leader.Pause(false))
 
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		resp, err := cl.api.ListNodes(context.Background(), &api.ListNodesRequest{})
 		if err != nil {
 			return err
@@ -516,7 +516,7 @@ func TestForceNewCluster(t *testing.T) {
 	// we don't want it too expired, because it can't have expired before the root CA cert is valid
 	rootSigner, err := rootCA.Signer()
 	require.NoError(t, err)
-	expiredCertPEM := testutils.ReDateCert(t, certBytes, rootSigner.Cert, rootSigner.Key, now.Add(-1*time.Hour), now.Add(-1*time.Second))
+	expiredCertPEM := cautils.ReDateCert(t, certBytes, rootSigner.Cert, rootSigner.Key, now.Add(-1*time.Hour), now.Add(-1*time.Second))
 
 	// restart node with an expired certificate while forcing a new cluster - it should start without error and the certificate should be renewed
 	nodeID := leader.node.NodeID()
@@ -526,7 +526,7 @@ func TestForceNewCluster(t *testing.T) {
 	pollClusterReady(t, cl, numWorker, numManager)
 	pollServiceReady(t, cl, sid, 2)
 
-	err = raftutils.PollFuncWithTimeout(nil, func() error {
+	err = testutils.PollFuncWithTimeout(nil, func() error {
 		certBytes, err := ioutil.ReadFile(managerCertFile)
 		if err != nil {
 			return err

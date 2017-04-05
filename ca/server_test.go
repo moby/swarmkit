@@ -14,9 +14,9 @@ import (
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/testutils"
-	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
+	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -27,7 +27,7 @@ var _ api.CAServer = &ca.Server{}
 var _ api.NodeCAServer = &ca.Server{}
 
 func TestGetRootCACertificate(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	resp, err := tc.CAClients[0].GetRootCACertificate(context.Background(), &api.GetRootCACertificateRequest{})
@@ -36,7 +36,7 @@ func TestGetRootCACertificate(t *testing.T) {
 }
 
 func TestRestartRootCA(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	_, err := tc.NodeCAClients[0].NodeCertificateStatus(context.Background(), &api.NodeCertificateStatusRequest{NodeID: "foo"})
@@ -54,7 +54,7 @@ func TestRestartRootCA(t *testing.T) {
 }
 
 func TestIssueNodeCertificate(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
@@ -75,7 +75,7 @@ func TestIssueNodeCertificate(t *testing.T) {
 }
 
 func TestForceRotationIsNoop(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Get a new Certificate issued
@@ -118,11 +118,11 @@ func TestForceRotationIsNoop(t *testing.T) {
 }
 
 func TestIssueNodeCertificateBrokenCA(t *testing.T) {
-	if !testutils.External {
+	if !cautils.External {
 		t.Skip("test only applicable for external CA configuration")
 	}
 
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
@@ -150,7 +150,7 @@ func TestIssueNodeCertificateBrokenCA(t *testing.T) {
 }
 
 func TestIssueNodeCertificateWithInvalidCSR(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: []byte("random garbage"), Token: tc.WorkerToken}
@@ -168,7 +168,7 @@ func TestIssueNodeCertificateWithInvalidCSR(t *testing.T) {
 }
 
 func TestIssueNodeCertificateWorkerRenewal(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
@@ -190,7 +190,7 @@ func TestIssueNodeCertificateWorkerRenewal(t *testing.T) {
 }
 
 func TestIssueNodeCertificateManagerRenewal(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
@@ -213,7 +213,7 @@ func TestIssueNodeCertificateManagerRenewal(t *testing.T) {
 }
 
 func TestIssueNodeCertificateWorkerFromDifferentOrgRenewal(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
@@ -227,7 +227,7 @@ func TestIssueNodeCertificateWorkerFromDifferentOrgRenewal(t *testing.T) {
 }
 
 func TestNodeCertificateRenewalsDoNotRequireToken(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
@@ -265,7 +265,7 @@ func TestNodeCertificateRenewalsDoNotRequireToken(t *testing.T) {
 func TestNewNodeCertificateRequiresToken(t *testing.T) {
 	t.Parallel()
 
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
@@ -319,7 +319,7 @@ func TestNewNodeCertificateRequiresToken(t *testing.T) {
 	}))
 
 	// updating the join token may take a little bit in order to register on the CA server, so poll
-	assert.NoError(t, raftutils.PollFunc(nil, func() error {
+	assert.NoError(t, testutils.PollFunc(nil, func() error {
 		// Old token should fail
 		role = api.NodeRoleManager
 		issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: tc.ManagerToken}
@@ -351,7 +351,7 @@ func TestNewNodeCertificateRequiresToken(t *testing.T) {
 }
 
 func TestNewNodeCertificateBadToken(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
@@ -372,7 +372,7 @@ func TestNewNodeCertificateBadToken(t *testing.T) {
 func TestGetUnlockKey(t *testing.T) {
 	t.Parallel()
 
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	var cluster *api.Cluster
@@ -402,7 +402,7 @@ func TestGetUnlockKey(t *testing.T) {
 		cluster = store.GetCluster(tx, cluster.ID)
 	})
 
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		resp, err = tc.CAClients[0].GetUnlockKey(context.Background(), &api.GetUnlockKeyRequest{})
 		if err != nil {
 			return fmt.Errorf("get unlock key: %v", err)
@@ -428,7 +428,7 @@ type clusterObjToUpdate struct {
 
 func TestCAServerUpdateRootCA(t *testing.T) {
 	// this one needs both external CA servers for testing
-	if !testutils.External {
+	if !cautils.External {
 		return
 	}
 
@@ -452,15 +452,15 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 		}
 	}
 
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	require.NoError(t, tc.CAServer.Stop())
 	defer tc.Stop()
 
-	cert, key, err := testutils.CreateRootCertAndKey("new root to rotate to")
+	cert, key, err := cautils.CreateRootCertAndKey("new root to rotate to")
 	require.NoError(t, err)
 	newRootCA, err := ca.NewRootCA(append(tc.RootCA.Certs, cert...), cert, key, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
-	externalServer, err := testutils.NewExternalSigningServer(newRootCA, tc.TempDir)
+	externalServer, err := cautils.NewExternalSigningServer(newRootCA, tc.TempDir)
 	require.NoError(t, err)
 	defer externalServer.Stop()
 	crossSigned, err := tc.RootCA.CrossSignCACertificate(cert)
@@ -548,6 +548,6 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 	// If we can't save the root cert, we can't update the root CA even if it's completely valid
 	require.NoError(t, os.RemoveAll(tc.TempDir))
 	require.NoError(t, ioutil.WriteFile(tc.TempDir, []byte("cant create directory if this is file"), 0700))
-	tc.CAServer.UpdateRootCA(context.Background(), fakeClusterSpec(testutils.ECDSA256SHA256Cert, testutils.ECDSA256Key, nil, nil))
+	tc.CAServer.UpdateRootCA(context.Background(), fakeClusterSpec(cautils.ECDSA256SHA256Cert, cautils.ECDSA256Key, nil, nil))
 	require.Equal(t, tc.RootCA.Certs, tc.ServingSecurityConfig.RootCA().Certs)
 }

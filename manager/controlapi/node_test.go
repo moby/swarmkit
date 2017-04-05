@@ -12,6 +12,7 @@ import (
 	"github.com/docker/swarmkit/identity"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -329,7 +330,7 @@ func TestListManagerNodes(t *testing.T) {
 	nodes[5].ShutdownRaft()
 
 	// Node 4 and Node 5 should be listed as Unreachable
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 		if err != nil {
 			return err
@@ -359,7 +360,7 @@ func TestListManagerNodes(t *testing.T) {
 
 	assert.Len(t, ts.Server.raft.GetMemberlist(), 5)
 	// All the nodes should be reachable again
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 		if err != nil {
 			return err
@@ -398,7 +399,7 @@ func TestListManagerNodes(t *testing.T) {
 	ts.Server.raft = leaderNode.Node
 
 	// Node 1 should not be the leader anymore
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 		if err != nil {
 			return err
@@ -579,7 +580,7 @@ func testUpdateNodeDemote(t *testing.T) {
 	nodes[3].ShutdownRaft()
 
 	// Node 3 should be listed as Unreachable
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		members := nodes[1].GetMemberlist()
 		if len(members) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(members))
@@ -609,7 +610,7 @@ func testUpdateNodeDemote(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Node 3 should be listed as Reachable
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		members := nodes[1].GetMemberlist()
 		if len(members) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(members))
@@ -646,7 +647,7 @@ func testUpdateNodeDemote(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, newCluster)
 
 	// Server should list 2 members
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		members := nodes[1].GetMemberlist()
 		if len(members) != 2 {
 			return fmt.Errorf("expected 2 nodes, got %d", len(members))
@@ -685,7 +686,7 @@ func testUpdateNodeDemote(t *testing.T) {
 
 	raftutils.WaitForCluster(t, clockSource, newCluster)
 
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		members := lastNode.GetMemberlist()
 		if len(members) != 1 {
 			return fmt.Errorf("expected 1 node, got %d", len(members))

@@ -9,10 +9,10 @@ import (
 	agentutils "github.com/docker/swarmkit/agent/testutils"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/testutils"
+	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/connectionbroker"
-	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/remotes"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -43,7 +43,7 @@ func TestAgent(t *testing.T) {
 }
 
 func TestAgentStartStop(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	agentSecurityConfig, err := tc.NewNodeConfig(ca.WorkerRole)
@@ -221,7 +221,7 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 		Hostname: "testAgent",
 	})
 	var gotSession *api.SessionRequest
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		gotSession, closedSessions = tester.dispatcher.GetSessions()
 		if gotSession == nil || len(closedSessions) != 1 {
 			return errors.New("session has not been restarted yet")
@@ -234,12 +234,12 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 	currSession = gotSession
 
 	newTLSInfo := &api.NodeTLSInfo{
-		TrustRoot:           testutils.ECDSA256SHA256Cert,
+		TrustRoot:           cautils.ECDSA256SHA256Cert,
 		CertIssuerPublicKey: []byte("public key"),
 		CertIssuerSubject:   []byte("subject"),
 	}
 	tlsCh <- newTLSInfo
-	require.NoError(t, raftutils.PollFuncWithTimeout(nil, func() error {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		gotSession, closedSessions = tester.dispatcher.GetSessions()
 		if gotSession == nil || len(closedSessions) != 2 {
 			return errors.New("session has not been restarted yet")
@@ -257,12 +257,12 @@ type agentTester struct {
 	dispatcher *agentutils.MockDispatcher
 	executor   *agentutils.TestExecutor
 	cleanup    func()
-	testCA     *testutils.TestCA
+	testCA     *cautils.TestCA
 }
 
 func agentTestEnv(t *testing.T, nodeChangeCh chan *NodeChanges, tlsChangeCh chan events.Event) *agentTester {
 	var cleanup []func()
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	cleanup = append(cleanup, tc.Stop)
 
 	agentSecurityConfig, err := tc.NewNodeConfig(ca.WorkerRole)

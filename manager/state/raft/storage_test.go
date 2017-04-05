@@ -14,6 +14,7 @@ import (
 	"github.com/docker/swarmkit/manager/state/raft/storage"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,7 +59,7 @@ func TestRaftSnapshot(t *testing.T) {
 
 	// All nodes should now have a snapshot file
 	for nodeID, node := range nodes {
-		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
 			if err != nil {
 				return err
@@ -75,7 +76,7 @@ func TestRaftSnapshot(t *testing.T) {
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 
 	// It should get a copy of the snapshot
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		dirents, err := ioutil.ReadDir(filepath.Join(nodes[4].StateDir, "snap-v3-encrypted"))
 		if err != nil {
 			return err
@@ -111,7 +112,7 @@ func TestRaftSnapshot(t *testing.T) {
 
 	// All nodes should have a snapshot under a *different* name
 	for nodeID, node := range nodes {
-		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
 			if err != nil {
 				return err
@@ -169,7 +170,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Remaining nodes should now have a snapshot file
 	for nodeIdx, node := range []*raftutils.TestNode{nodes[1], nodes[2]} {
-		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
 			if err != nil {
 				return err
@@ -191,7 +192,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2], 4: nodes[4], 5: nodes[5]})
 
 	// New node should get a copy of the snapshot
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		dirents, err := ioutil.ReadDir(filepath.Join(nodes[5].StateDir, "snap-v3-encrypted"))
 		if err != nil {
 			return err
@@ -296,7 +297,7 @@ func TestRaftSnapshotForceNewCluster(t *testing.T) {
 
 	// Nodes should now have a snapshot file
 	for nodeIdx, node := range nodes {
-		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 			dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
 			if err != nil {
 				return err
@@ -349,7 +350,7 @@ func TestGCWAL(t *testing.T) {
 
 	// Snapshot should have been triggered just as the WAL rotated, so
 	// both WAL files should be preserved
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		dirents, err := ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "snap-v3-encrypted"))
 		if err != nil {
 			return err
@@ -389,7 +390,7 @@ func TestGCWAL(t *testing.T) {
 	time.Sleep(250 * time.Millisecond)
 
 	// This time only one WAL file should be saved.
-	assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 		dirents, err := ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "snap-v3-encrypted"))
 		if err != nil {
 			return err
@@ -432,7 +433,7 @@ func TestGCWAL(t *testing.T) {
 
 	// Is the data intact after restart?
 	for _, node := range nodes {
-		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 			var err error
 			node.MemoryStore().View(func(tx store.ReadTx) {
 				var allNodes []*api.Node
@@ -454,7 +455,7 @@ func TestGCWAL(t *testing.T) {
 	assert.NoError(t, err, "failed to propose value")
 
 	for _, node := range nodes {
-		assert.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
 			var err error
 			node.MemoryStore().View(func(tx store.ReadTx) {
 				var allNodes []*api.Node
@@ -545,7 +546,7 @@ func TestRaftEncryptionKeyRotationWait(t *testing.T) {
 	nodes[1].KeyRotator.RotationNotify() <- struct{}{}
 
 	// the rotation should trigger a snapshot, which should notify the rotator when it's done
-	require.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		snapshots, err := storage.ListSnapshots(snapDir)
 		if err != nil {
 			return err
@@ -642,7 +643,7 @@ func TestRaftEncryptionKeyRotationWait(t *testing.T) {
 	go nodes[1].Node.Run(ctx)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
-	require.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		snapshots, err := storage.ListSnapshots(snapDir)
 		if err != nil {
 			return err
@@ -666,7 +667,7 @@ func TestRaftEncryptionKeyRotationWait(t *testing.T) {
 	nodes[1].KeyRotator.QueuePendingKey([]byte("key4"))
 	nodes[1].KeyRotator.RotationNotify() <- struct{}{}
 
-	require.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		snapshots, err := storage.ListSnapshots(snapDir)
 		if err != nil {
 			return err
@@ -691,7 +692,7 @@ func TestRaftEncryptionKeyRotationWait(t *testing.T) {
 	values = append(values, v)
 	raftutils.CheckValuesOnNodes(t, clockSource, nodes, nodeIDs, values)
 
-	require.NoError(t, raftutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		if nodes[1].KeyRotator.NeedsRotation() {
 			return fmt.Errorf("rotation never finished")
 		}
@@ -773,7 +774,7 @@ func TestRaftEncryptionKeyRotationStress(t *testing.T) {
 		nodes[3].KeyRotator.QueuePendingKey([]byte(fmt.Sprintf("newKey%d", i)))
 		nodes[3].KeyRotator.RotationNotify() <- struct{}{}
 
-		require.NoError(t, raftutils.PollFunc(clockSource, func() error {
+		require.NoError(t, testutils.PollFunc(clockSource, func() error {
 			if nodes[3].KeyRotator.GetKeys().PendingDEK == nil {
 				return nil
 			}
