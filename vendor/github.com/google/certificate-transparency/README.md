@@ -1,253 +1,264 @@
-certificate-transparency
-========================
-
-#Auditing for TLS certificates#
+certificate-transparency: Auditing for TLS certificates
+=======================================================
 
 [![Build Status](https://travis-ci.org/google/certificate-transparency.svg?branch=master)](https://travis-ci.org/google/certificate-transparency)
 
+ - [Introduction](#introduction)
+ - [Build Quick Start](#build-quick-start)
+ - [Code Layout](#code-layout)
+ - [Building the code](#building-the-code)
+    - [Build Dependencies](#build-dependencies)
+    - [Software Dependencies](#software-dependencies)
+ - [Build Troubleshooting](#build-troubleshooting)
+    - [Compiler Warnings/Errors](#compiler-warnings-errors)
+    - [Working on a Branch](#working-on-a-branch)
+    - [Using BoringSSL](#using-boringssl)
+ - [Testing the code](#testing-the-code)
+    - [Unit Tests](#unit-tests)
+    - [Testing and Logging Options](#testing-and-logging-options)
+ - [Deploying a Log](#deploying-a-log)
+ - [Operating a Log](#operating-a-log)
 
-## Build With GClient ##
+Introduction
+------------
 
-This is now the recommended method for all supported platforms. It gives you 
-a reproducible build and avoids the need to build some dependencies manually.
+This repository holds open-source code for functionality related
+to [certificate transparency](https://www.certificate-transparency.org/) (CT).
+The main areas covered are:
 
-Known to work on FreeBSD 10, OS X (10.10) [tested with XCode + brew installation
-of deps listed below], and Ubuntu 14.04. Tested on Fedora 22 but may require
-manual override of compiler options as documented below. Tested on CentOS 7
-with similar caveats.
+ - An open-source, distributed, implementation of a CT Log server, also including:
+    - An implementation of a read-only ["mirror" server](docs/MirrorLog.md)
+      that mimics a remote Log.
+    - Ancillary tools needed for managing and maintaining the Log.
+ - A collection of client tools and libraries for interacting with a CT Log, in
+   various programming languages.
+ - An **experimental** implementation of a [DNS server](docs/DnsServer.md) that
+   returns CT proofs in the form of DNS records.
+ - An **experimental** implementation of a [general Log](docs/XjsonServer.md)
+   that allows arbitrary data (not just TLS certificates) to be logged.
 
-### Install Dependencies ###
+The supported platforms are:
 
-Depending on which platform you have the exact packages required will vary.
-The following tools must be available for the GClient build to succeed:
+ - **Linux**: tested on Ubuntu 14.04; other variants (Fedora 22, CentOS 7) may
+   require tweaking of [compiler options](#build-troubleshooting).
+ - **OS X**: version 10.10
+ - **FreeBSD**: version 10.*
 
- - autoconf/automake etc.
- - clang++ (>=3.4)
- - cmake (>=v3.1.2)
- - git
- - GNU make
- - libtool
- - shtool
- - Tcl
- - pkgconf
- - python27
- - [depot_tools](https://www.chromium.org/developers/how-tos/install-depot-tools)
 
-### Building with gclient ###
+Build Quick Start
+-----------------
+
+First, ensure that the build machine has all of the required [build dependencies](#build-dependencies).
+Then use
+[gclient](https://www.chromium.org/developers/how-tos/depottools#TOC-gclient) to
+retrieve and build the [other software](#software-dependencies) needed by the Log,
+and then use (GNU) `make` to build and test the CT code:
 
 ```bash
 export CXX=clang++ CC=clang
 mkdir ct  # or whatever directory you prefer
 cd ct
 gclient config --name="certificate-transparency" https://github.com/google/certificate-transparency.git
-gclient sync
+gclient sync  # retrieve and build dependencies
 # substitute gmake or gnumake below if that's what your platform calls it:
-make -C certificate-transparency check
+make -C certificate-transparency check  # build the CT software & self-test
 ```
 
-If you're trying to clone from a branch on the CT repo then you'll need to
-substitute the following command for the `gclient config` command above,
-replacing `branch` as appropriate
+Code Layout
+-----------
 
-```bash
-gclient config --name="certificate-transparency" https://github.com/google/certificate-transparency.git@branch
-```
+The source code is generally arranged according to implementation language, in
+the `cpp`, `go`, `java` and `python` subdirectories.  The key subdirectories
+are:
 
-### Platform Specific Notes ###
+ - For the main distributed CT Log itself:
+   - `cpp/log`: Main distributed CT Log implementation.
+   - `cpp/merkletree`: Merkle tree implementation.
+   - `cpp/server`: Top-level code for server implementations.
+   - `cpp/monitoring`: Code to export operation statistics from CT Log.
+ - The [CT mirror Log](docs/MirrorLog.md) implementation also uses:
+   - `cpp/fetcher`: Code to fetch entries from another Log
+ - Client code for accessing a CT Log instance:
+   - `cpp/client`: CT Log client code in C++
+   - `go/client`: CT Log client code in Go
+   - `python/ct`: CT Log client code in Python
+   - `java/src/org/certificatetransparency/ctlog`: CT Log client code in Java
+ - Other tools:
+   - `go/fixchain`: Tool to fix up certificate chains
+   - `go/gossip`: Code to allow gossip-based synchronization of cert info
+   - `go/scanner`: CT Log scanner tool
+   - `go/merkletree`: Merkle tree implementation in Go.
 
-#### Fedora / CentOS ####
+Building the Code
+-----------------
 
-When you issue the `gclient sync` command you may need to set compiler options
-in order to build successfully. If the build fails to work try using:
+The CT software in this repository relies on a number of other
+[open-source projects](#software-dependencies), and we recommend that:
+
+ - The CT software should be built using local copies of these dependencies
+   rather than installed packages, to prevent version incompatibilities.
+ - The dependent libraries should be statically linked into the CT binaries,
+   rather than relying on dynamically linked libraries that may be different in
+   the deployed environment.
+
+The supported build system uses the
+[gclient](https://www.chromium.org/developers/how-tos/depottools#TOC-gclient)
+tool from the Chromium project to handle these requirements and to ensure a
+reliable, reproducible build.  Older build instructions for using
+[Ubuntu](docs/archive/BuildUbuntu.md) or
+[Fedora](docs/archive/BuildFedora.md) packages and for
+[manually building dependencies from source](docs/archive/BuildSrc.md) are no
+longer supported.
+
+Within a main top-level directory, gclient handles the process of:
+
+ - generating subdirectories for each dependency
+ - generating a subdirectory for for the CT Log code itself
+ - building all of the dependencies
+ - installing the built dependencies into an `install/` subdirectory
+ - configuring the CT build to reference the built dependencies.
+
+Under the covers, this gclient build process is controlled by:
+
+ - The master [DEPS](DEPS) file, which configures the locations and versions
+   of the source code needed for the dependencies, and which hooks onto ...
+ - The makefiles in the [build/](build) subdirectory, which govern the build
+   process for each dependency, ensuring that:
+     - Static libraries are built.
+     - Built code is installed into the local `install/` directory, where it
+       is available for the build of the CT code itself.
+
+
+### Build Dependencies
+
+The following tools are needed to build the CT software and its dependencies.
+
+ - [depot_tools](https://www.chromium.org/developers/how-tos/install-depot-tools)
+ - autoconf/automake etc.
+ - libtool
+ - shtool
+ - clang++ (>=3.4)
+ - cmake (>=v3.1.2)
+ - git
+ - GNU make
+ - Tcl
+ - pkg-config
+ - Python 2.7
+
+The exact packages required to install these tools depends on the platform.
+For a Debian-based system, the relevant packages are:
+`autoconf automake libtool shtool cmake clang git make tcl pkg-config python2.7`
+
+### Software Dependencies
+
+The following collections of additional software are used by the main CT
+Log codebase.
+
+ - Google utility libraries:
+    - [gflags](https://github.com/gflags/gflags): command-line flag handling
+    - [glog](https://github.com/google/glog): logging infrastructure, which
+      also requires libunwind.
+    - [Google Mock](https://github.com/google/googlemock.git): C++ test framework
+    - [Google Test](https://github.com/google/googletest.git): C++ mocking
+      framework
+    - [Protocol Buffers](https://developers.google.com/protocol-buffers/):
+      language-neutral data serialization library
+    - [tcmalloc](http://goog-perftools.sourceforge.net/doc/tcmalloc.html):
+      efficient `malloc` replacement optimized for multi-threaded use
+ - Other utility libraries:
+    - [libevent](http://libevent.org/): event-processing library
+    - [libevhtp](https://github.com/ellzey/libevhtp): HTTP server
+      plug-in/replacement for libevent
+    - [json-c](https://github.com/json-c/json-c): JSON processing library
+    - [libunwind](http://www.nongnu.org/libunwind/): library for generating
+      stack traces
+ - Cryptographic library: one of the following, selected via the `SSL` build
+   variable.
+    - [OpenSSL](https://github.com/google/googletest.git): default
+      cryptography library.
+    - [BoringSSL](https://boringssl.googlesource.com/boringssl/): Google's
+      fork of OpenSSL
+ - Data storage functionality: one of the following, defaulting (and highly
+   recommended to stick with) LevelDB.
+    - [LevelDB](https://github.com/google/leveldb): fast key-value store,
+      which uses:
+       - [Snappy](http://google.github.io/snappy/): compression library
+    - [SQLite](https://www.sqlite.org/): file-based SQL library
+
+The extra (experimental) CT projects in this repo involve additional
+dependencies:
+
+ - The experimental CT [DNS server](docs/DnsServer.md) uses:
+    - [ldnbs](http://www.nlnetlabs.nl/projects/ldns/): DNS library, including
+      DNSSEC function (which relies on OpenSSL for crypto functionality)
+ - The experimental [general Log](docs/XjsonServer.md) uses:
+    - [objecthash](https://github.com/benlaurie/objecthash): tools for
+      hashing objects in a language/encoding-agnostic manner
+    - [ICU](http://site.icu-project.org/): Unicode libraries (needed to
+      normalize international text in objects)
+
+
+
+Build Troubleshooting
+---------------------
+
+### Compiler Warnings/Errors
+
+The CT C++ codebase is built with the Clang `-Werror` flag so that the
+codebase stays warning-free.  However, this can cause build errors when
+newer/different versions of the C++ compiler are used, as any newly created
+warnings are treated as errors.  To fix this, add the appropriate
+`-Wno-error=<warning-name>` option to `CXXFLAGS`.
+
+For example, on errors involving unused variables try using:
 
 ```bash
 CXXFLAGS="-O2 -Wno-error=unused-variable" gclient sync
 ```
 
-If this gives an error about an unused typedef in a `glog` header file try this:
+If an error about an unused typedef in a `glog` header file occurs, try this:
 
 ```bash
 CXXFLAGS="-O2 -Wno-error=unused-variable -Wno-error=unused-local-typedefs" gclient sync
 ```
 
 When changing `CXXFLAGS` it's safer to remove the existing build directories
-in case not all dependencies are properly accounted for and rebuilt. If 
-problems persist check that the Makefile in `certificate-transparency` 
+in case not all dependencies are properly accounted for and rebuilt. If
+problems persist, check that the Makefile in `certificate-transparency`
 contains the options that were passed in `CXXFLAGS`.
 
-If there are still problems using GClient then an older style build can be
-attempted. The process should be similar to the one documented for Ubuntu
-below or in the [Fedora README](README.Fedora) depending on platform.
+### Working on a Branch
 
-## Deprecated: Quickstart on Ubuntu ##
+If you're trying to clone from a branch on the CT repository then you'll need
+to substitute the following command for the `gclient config` command
+[above](#build-quick-start), replacing `branch` as appropriate
 
-This should no longer be needed as the instructions above should work. But in
-case of difficulties the dependencies can be built manually. The following 
-steps will checkout the code and build it on a clean Ubuntu 14.04 LTS 
-installation.  It has also been tested on an Ubuntu 15.04 installation.
+```bash
+gclient config --name="certificate-transparency" https://github.com/google/certificate-transparency.git@branch
+```
 
-First, install packaged dependencies:
+### Using BoringSSL
 
-    sudo apt-get update -qq
-    sudo apt-get install -qq unzip cmake g++ libevent-dev golang-go autoconf pkg-config \
-        libjson-c-dev libgflags-dev libgoogle-glog-dev libprotobuf-dev libleveldb-dev \
-        libssl-dev libgoogle-perftools-dev protobuf-compiler libsqlite3-dev ant openjdk-7-jdk \
-        libprotobuf-java python-gflags python-protobuf python-ecdsa python-mock \
-        python-httplib2 git libldns-dev
+The BoringSSL fork of OpenSSL can be used in place of OpenSSL (but note that
+the experimental [CT DNS server](docs/DnsServer.md) does not support this
+configuration).  To enable this, after the first step (`gclient config ...`)
+in the gclient [build process](#build-quick-start), modify the top-level
+`.gclient` to add:
 
-Next, we need `libevhtp` version `1.2.10` which is not packaged in Ubuntu yet, so we build from source:
+```python
+      "custom_vars": { "ssl_impl": "boringssl" } },
+```
 
-    wget https://github.com/ellzey/libevhtp/archive/1.2.10.zip
-    unzip 1.2.10.zip
-    cd libevhtp-1.2.10/
-    cmake -DEVHTP_DISABLE_REGEX:STRING=ON -DCMAKE_C_FLAGS:STRING=-fPIC .
-    make
-    cd ..
-
-And let's get our own Google Test / Google Mock as these vary in incompatible ways between packaged releases:
-
-    wget https://googlemock.googlecode.com/files/gmock-1.7.0.zip
-    unzip gmock-1.7.0.zip
-
-Now, clone the CT repo:
-
-    git clone https://github.com/google/certificate-transparency.git
-    cd certificate-transparency/
-
-One-time setup for Go:
-
-    export GOPATH=$PWD/go
-    mkdir -p $GOPATH/src/github.com/google
-    ln -s $PWD $GOPATH/src/github.com/google
-    go get -v -d ./...
-
-Build CT server C++ code:
-
-    ./autogen.sh
-    ./configure GTEST_DIR=../gmock-1.7.0/gtest GMOCK_DIR=../gmock-1.7.0 \
-        CPPFLAGS="-I../libevhtp-1.2.10 -I../libevhtp-1.2.10/evthr \
-        -I../libevhtp-1.2.10/htparse" LDFLAGS=-L../libevhtp-1.2.10
-    make check
-
-Build and test Java code:
-
-    ant build test
-
-Build and test Python code:
-
-    make -C python test
-
-Best and test Go code:
-
-    go test -v ./go/...
+Then continue the [build process](#build-quick-start) with the `gclient sync` step.
 
 
-## Deprecated: Older Build Method ##
+Testing the Code
+----------------
 
- - [OpenSSL](https://www.openssl.org/source/), at least 1.0.0q,
-   preferably 1.0.1l or 1.0.2 (and up)
+### Unit Tests
 
-The checking of SCTs included in the
-[RFC 6962](http://tools.ietf.org/html/rfc6962) TLS extension is only
-included in OpenSSL 1.0.2. As of this writing, this version is not yet
-released, so this means hand building the `OpenSSL_1_0_2-stable`
-branch from the
-[OpenSSL git repository](https://www.openssl.org/source/repos.html).
-
- - [googlemock](https://github.com/google/googlemock) (tested with 1.7.0)
-
-Gmock provides a bundled version of gtest, which will also be used.
-
-Unpack googlemock, but do not build it. Upstream recommends to build a
-new copy from source for each package to be tested. We follow this
-advice in our `Makefile`, which builds gmock/gtest automatically.
-
-Some systems make the googlemock source available as a package; on
-Debian, this is in the google-mock package, which puts it in
-`/usr/src/gmock`. Our `Makefile` looks in that location by default,
-but if your googlemock sources are in a different location, set the
-`GMOCK_DIR` environment variable to point at them.
-
-If you are on FreeBSD, you may need to apply the patch in gtest.patch
-to the gtest subdirectory of gmock.
-
- - [protobuf](https://github.com/google/protobuf) (tested with 2.5.0)
- - [gflags](https://github.com/gflags/gflags) (tested with 1.6
-   and 2.0)
- - [glog](https://github.com/google/glog) (tested with 0.3.1)
-
-Make sure to install glog **after** gflags, to avoid linking errors.
-
- - [sqlite3](http://www.sqlite.org/)
- - [leveldb](https://github.com/google/leveldb)
- - [JSON-C](https://github.com/json-c/json-c/), at least 0.11
-
-You can specify a JSON-C library in a non-standard location using the
-`JSONCLIBDIR` environment variable. Version 0.10 would work as well,
-except the `json_object_iterator.h` header is not properly copied when
-installing. If you can install the missing header manually, it should
-work.
-
- - [libevent](http://libevent.org/) (tested with 2.0.21-stable)
- - [libevhtp](https://github.com/ellzey/libevhtp) (tested with 1.2.10)
- If building libevhtp from source, you may need to disable the regex support
- with the following cmake flag: `-DEVHTP_DISABLE_REGEX:STRING=ON`
-
-You can specify a non-installed locally built library using the
-`LIBEVENTDIR` environment variable to point to the local build. Note
-that the FreeBSD port version 2.0.21_2 does not appear to work
-correctly (it only listens on IPv6 for the HTTP server) - for that
-platform we had to build from the source, specifically commit
-6dba1694c89119c44cef03528945e5a5978ab43a.
-
- - [ldns](http://www.nlnetlabs.nl/projects/ldns/)
- - [ant](http://ant.apache.org/)
- - Python libraries:
-  - pyasn1 and pyasn1-modules (optional, needed for `upload_server_cert.sh`)
-  - [dnspython](http://www.dnspython.org/)
-
-### Building ###
-
-You can build the log server with the following commands:
-
-    $ ./autogen.sh  # only necessary if you're building from git
-    $ ./configure
-    $ make
-
-You can give the `configure` script extra parameters, to set
-compilation flags, or point to custom versions of some dependencies
-(notably, googlemock often needs this). For example, to compile with
-Clang, using googlemock in `$HOME/gmock`, and a custom libevent in
-`$HOME/libevent`:
-
-    $ ./configure CXX=clang++ GMOCK_DIR=$HOME CPPFLAGS="-I$HOME/libevent/include" LDFLAGS="-L$HOME/libevent/.libs"
-
-Running `./configure --help` provides more information about various
-variables that can be set.
-
-## Running Unit Tests ##
-
-Run unit tests with this command
-
-    $ make check
-
-If the build still fails because of missing libraries, you may need to
-set the environment variable `LD_LIBRARY_PATH`. On Linux, if you did
-not change the default installation path (such as `/usr/local/lib`),
-running
-
-    $ ldconfig
-
-or, if needed,
-
-    $ sudo ldconfig
-
-should resolve the problem.
-
-## End-To-End Tests ##
-
-For end-to-end server-client tests, you will need to install Apache
-and point the tests to it. See `test/README` for how to do so.
+The unit tests for the CT code can be run with the `make check` target of
+`certificate-transparency/Makefile`.
 
 ## Testing and Logging Options ##
 
@@ -259,11 +270,34 @@ End-to-end tests also create temporary certificate and server files in
 `test/tmp`. All these files are cleaned up after a successful test
 run.
 
-For logging options, see
-http://google-glog.googlecode.com/svn/trunk/doc/glog.html
+For logging options, see the
+[glog documentation](http://htmlpreview.github.io/?https://github.com/google/glog/blob/master/doc/glog.html).
 
-By default, unit tests log to stderr, and log only messages with a FATAL level
-(i.e., those that result in abnormal program termination).
-You can override the defaults with command-line flags.
+By default, unit tests log to `stderr`, and log only messages with a FATAL
+level (i.e., those that result in abnormal program termination).  You can
+override the defaults with command-line flags.
 
-End-to-end tests log everything at INFO level and above.
+
+Deploying a Log
+---------------
+
+The build process described so far generates a set of executables; however,
+other components and configuration is needed to set up a running CT Log.
+In particular, as shown in the following diagram:
+ - A set of web servers that act as HTTPS terminators and load
+   balancers is needed in front of the CT Log instances.
+ - A cluster of [etcd](https://github.com/coreos/etcd) instances is needed to
+   provide replication and synchronization services for the CT Log instances.
+
+<img src="docs/images/SystemDiagram.png" width="650">
+
+Configuring and setting up a distributed production Log is covered in a
+[separate document](docs/Deployment.md).
+
+
+Operating a Log
+---------------
+
+Running a successful, trusted, certificate transparency Log involves more than
+just deploying a set of binaries.  Information and advice on operating a
+running CT Log is covered in a [separate document](docs/Operation.md)
