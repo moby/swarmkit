@@ -47,6 +47,13 @@ var (
 				return err
 			}
 
+			if err := flagparser.ParseAddConfig(cmd, spec, "add-config"); err != nil {
+				return err
+			}
+			if err := flagparser.ParseRemoveConfig(cmd, spec, "rm-config"); err != nil {
+				return err
+			}
+
 			if reflect.DeepEqual(spec, &service.Spec) {
 				return errors.New("no changes detected")
 			}
@@ -66,8 +73,10 @@ var (
 )
 
 func init() {
-	updateCmd.Flags().StringSlice("add-secret", nil, "add a new secret from swarm")
-	updateCmd.Flags().StringSlice("rm-secret", nil, "removes a secret from the service")
+	updateCmd.Flags().StringSlice("add-secret", nil, "add a new secret to the service")
+	updateCmd.Flags().StringSlice("rm-secret", nil, "remove a secret from the service")
+	updateCmd.Flags().StringSlice("add-config", nil, "add a new config to the service")
+	updateCmd.Flags().StringSlice("rm-config", nil, "remove a config from the service")
 	updateCmd.Flags().Bool("force", false, "force tasks to restart even if nothing has changed")
 	flagparser.AddServiceFlags(updateCmd.Flags())
 }

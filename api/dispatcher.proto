@@ -177,6 +177,7 @@ message Assignment {
 	oneof item {
 		Task task = 1;
 		Secret secret = 2;
+		Config config = 3;
 	}
 }
 

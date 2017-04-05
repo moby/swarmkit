@@ -290,7 +290,7 @@ func TestRemoveUsedSecret(t *testing.T) {
 			SecretName: resp.Secret.Spec.Annotations.Name,
 			SecretID:   resp.Secret.ID,
 			Target: &api.SecretReference_File{
-				File: &api.SecretReference_FileTarget{
+				File: &api.FileTarget{
 					Name: "target.txt",
 				},
 			},

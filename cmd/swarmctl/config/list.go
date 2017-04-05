@@ -1,4 +1,4 @@
-package secret
+package config
 
 import (
 	"errors"
@@ -14,11 +14,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type secretSorter []*api.Secret
+type configSorter []*api.Config
 
-func (k secretSorter) Len() int      { return len(k) }
-func (k secretSorter) Swap(i, j int) { k[i], k[j] = k[j], k[i] }
-func (k secretSorter) Less(i, j int) bool {
+func (k configSorter) Len() int      { return len(k) }
+func (k configSorter) Swap(i, j int) { k[i], k[j] = k[j], k[i] }
+func (k configSorter) Less(i, j int) bool {
 	iTime, err := gogotypes.TimestampFromProto(k[i].Meta.CreatedAt)
 	if err != nil {
 		panic(err)
@@ -33,7 +33,7 @@ func (k secretSorter) Less(i, j int) bool {
 var (
 	listCmd = &cobra.Command{
 		Use:   "ls",
-		Short: "List secrets",
+		Short: "List configs",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 0 {
 				return errors.New("ls command takes no arguments")
@@ -50,12 +50,12 @@ var (
 				return err
 			}
 
-			resp, err := client.ListSecrets(common.Context(cmd), &api.ListSecretsRequest{})
+			resp, err := client.ListConfigs(common.Context(cmd), &api.ListConfigsRequest{})
 			if err != nil {
 				return err
 			}
 
-			var output func(*api.Secret)
+			var output func(*api.Config)
 
 			if !quiet {
 				w := tabwriter.NewWriter(os.Stdout, 0, 4, 4, ' ', 0)
@@ -64,7 +64,7 @@ var (
 					_ = w.Flush()
 				}()
 				common.PrintHeader(w, "ID", "Name", "Created")
-				output = func(s *api.Secret) {
+				output = func(s *api.Config) {
 					created, err := gogotypes.TimestampFromProto(s.Meta.CreatedAt)
 					if err != nil {
 						panic(err)
@@ -75,12 +75,11 @@ var (
 						humanize.Time(created),
 					)
 				}
-
 			} else {
-				output = func(s *api.Secret) { fmt.Println(s.ID) }
+				output = func(s *api.Config) { fmt.Println(s.ID) }
 			}
 
-			sorted := secretSorter(resp.Secrets)
+			sorted := configSorter(resp.Configs)
 			sort.Sort(sorted)
 			for _, s := range sorted {
 				output(s)
@@ -91,5 +90,5 @@ var (
 )
 
 func init() {
-	listCmd.Flags().BoolP("quiet", "q", false, "Only display secret IDs")
+	listCmd.Flags().BoolP("quiet", "q", false, "Only display config IDs")
 }

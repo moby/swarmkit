@@ -314,6 +314,22 @@ func dumpObject(swarmdir, unlockKey, objType string, selector objSelector) error
 			for _, o := range results {
 				objects = append(objects, o)
 			}
+		case "config":
+			if selector.id != "" {
+				object := store.GetConfig(tx, selector.id)
+				if object != nil {
+					objects = append(objects, object)
+				}
+			}
+
+			var results []*api.Config
+			results, err = store.FindConfigs(tx, bySelection(selector))
+			if err != nil {
+				return
+			}
+			for _, o := range results {
+				objects = append(objects, o)
+			}
 		case "resource":
 			if selector.id != "" {
 				object := store.GetResource(tx, selector.id)

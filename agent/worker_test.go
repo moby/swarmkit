@@ -6,7 +6,6 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/boltdb/bolt"
 	"github.com/docker/swarmkit/agent/exec"
-	"github.com/docker/swarmkit/agent/secrets"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/stretchr/testify/assert"
@@ -34,7 +33,7 @@ func TestWorkerAssign(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	executor := &mockExecutor{t: t, secrets: secrets.NewManager()}
+	executor := &mockExecutor{t: t, dependencies: NewDependencyManager()}
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
@@ -47,6 +46,7 @@ func TestWorkerAssign(t *testing.T) {
 		changeSet        []*api.AssignmentChange
 		expectedTasks    []*api.Task
 		expectedSecrets  []*api.Secret
+		expectedConfigs  []*api.Config
 		expectedAssigned []*api.Task
 	}{
 		{}, // handle nil case.
@@ -68,6 +68,14 @@ func TestWorkerAssign(t *testing.T) {
 					},
 					Action: api.AssignmentChange_AssignmentActionUpdate,
 				},
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Config{
+							Config: &api.Config{ID: "config-1"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionUpdate,
+				},
 				// these should be ignored
 				{
 					Assignment: &api.Assignment{
@@ -85,12 +93,23 @@ func TestWorkerAssign(t *testing.T) {
 					},
 					Action: api.AssignmentChange_AssignmentActionRemove,
 				},
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Config{
+							Config: &api.Config{ID: "config-2"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionRemove,
+				},
 			},
 			expectedTasks: []*api.Task{
 				{ID: "task-1"},
 			},
 			expectedSecrets: []*api.Secret{
 				{ID: "secret-1"},
+			},
+			expectedConfigs: []*api.Config{
+				{ID: "config-1"},
 			},
 			expectedAssigned: []*api.Task{
 				{ID: "task-1"},
@@ -114,6 +133,14 @@ func TestWorkerAssign(t *testing.T) {
 					},
 					Action: api.AssignmentChange_AssignmentActionUpdate,
 				},
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Config{
+							Config: &api.Config{ID: "config-2"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionUpdate,
+				},
 			},
 			expectedTasks: []*api.Task{
 				{ID: "task-1"},
@@ -122,12 +149,15 @@ func TestWorkerAssign(t *testing.T) {
 			expectedSecrets: []*api.Secret{
 				{ID: "secret-2"},
 			},
+			expectedConfigs: []*api.Config{
+				{ID: "config-2"},
+			},
 			expectedAssigned: []*api.Task{
 				{ID: "task-2"},
 			},
 		},
 		{
-			// remove assigned tasks, secret no longer present
+			// remove assigned tasks, secret and config no longer present
 			expectedTasks: []*api.Task{
 				{ID: "task-1"},
 				{ID: "task-2"},
@@ -156,7 +186,10 @@ func TestWorkerAssign(t *testing.T) {
 		assert.Equal(t, testcase.expectedTasks, tasks)
 		assert.Equal(t, testcase.expectedAssigned, assigned)
 		for _, secret := range testcase.expectedSecrets {
-			assert.NotNil(t, executor.secrets.Get(secret.ID))
+			assert.NotNil(t, executor.Secrets().Get(secret.ID))
+		}
+		for _, config := range testcase.expectedConfigs {
+			assert.NotNil(t, executor.Configs().Get(config.ID))
 		}
 	}
 }
@@ -166,7 +199,7 @@ func TestWorkerWait(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	executor := &mockExecutor{t: t, secrets: secrets.NewManager()}
+	executor := &mockExecutor{t: t, dependencies: NewDependencyManager()}
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
@@ -200,6 +233,14 @@ func TestWorkerWait(t *testing.T) {
 			},
 			Action: api.AssignmentChange_AssignmentActionUpdate,
 		},
+		{
+			Assignment: &api.Assignment{
+				Item: &api.Assignment_Config{
+					Config: &api.Config{ID: "config-1"},
+				},
+			},
+			Action: api.AssignmentChange_AssignmentActionUpdate,
+		},
 	}
 
 	expectedTasks := []*api.Task{
@@ -209,6 +250,10 @@ func TestWorkerWait(t *testing.T) {
 
 	expectedSecrets := []*api.Secret{
 		{ID: "secret-1"},
+	}
+
+	expectedConfigs := []*api.Config{
+		{ID: "config-1"},
 	}
 
 	expectedAssigned := []*api.Task{
@@ -235,7 +280,10 @@ func TestWorkerWait(t *testing.T) {
 	assert.Equal(t, expectedTasks, tasks)
 	assert.Equal(t, expectedAssigned, assigned)
 	for _, secret := range expectedSecrets {
-		assert.NotNil(t, executor.secrets.Get(secret.ID))
+		assert.NotNil(t, executor.Secrets().Get(secret.ID))
+	}
+	for _, config := range expectedConfigs {
+		assert.NotNil(t, executor.Configs().Get(config.ID))
 	}
 
 	err := worker.Assign(ctx, nil)
@@ -262,7 +310,7 @@ func TestWorkerUpdate(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	executor := &mockExecutor{t: t, secrets: secrets.NewManager()}
+	executor := &mockExecutor{t: t, dependencies: NewDependencyManager()}
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
@@ -271,7 +319,7 @@ func TestWorkerUpdate(t *testing.T) {
 
 	worker.Listen(ctx, reporter)
 
-	// create an existing task and secret
+	// create existing task/secret/config
 	assert.NoError(t, worker.Assign(ctx, []*api.AssignmentChange{
 		{
 			Assignment: &api.Assignment{
@@ -289,12 +337,21 @@ func TestWorkerUpdate(t *testing.T) {
 			},
 			Action: api.AssignmentChange_AssignmentActionUpdate,
 		},
+		{
+			Assignment: &api.Assignment{
+				Item: &api.Assignment_Config{
+					Config: &api.Config{ID: "config-1"},
+				},
+			},
+			Action: api.AssignmentChange_AssignmentActionUpdate,
+		},
 	}))
 
 	for _, testcase := range []struct {
 		changeSet        []*api.AssignmentChange
 		expectedTasks    []*api.Task
 		expectedSecrets  []*api.Secret
+		expectedConfigs  []*api.Config
 		expectedAssigned []*api.Task
 	}{
 		{ // handle nil changeSet case.
@@ -303,6 +360,9 @@ func TestWorkerUpdate(t *testing.T) {
 			},
 			expectedSecrets: []*api.Secret{
 				{ID: "secret-1"},
+			},
+			expectedConfigs: []*api.Config{
+				{ID: "config-1"},
 			},
 			expectedAssigned: []*api.Task{
 				{ID: "task-1"},
@@ -325,6 +385,9 @@ func TestWorkerUpdate(t *testing.T) {
 			},
 			expectedSecrets: []*api.Secret{
 				{ID: "secret-1"},
+			},
+			expectedConfigs: []*api.Config{
+				{ID: "config-1"},
 			},
 			expectedAssigned: []*api.Task{
 				{ID: "task-1"},
@@ -349,6 +412,14 @@ func TestWorkerUpdate(t *testing.T) {
 					},
 					Action: api.AssignmentChange_AssignmentActionUpdate,
 				},
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Config{
+							Config: &api.Config{ID: "config-2"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionUpdate,
+				},
 			},
 			expectedTasks: []*api.Task{
 				{ID: "task-1"},
@@ -357,6 +428,10 @@ func TestWorkerUpdate(t *testing.T) {
 			expectedSecrets: []*api.Secret{
 				{ID: "secret-1"},
 				{ID: "secret-2"},
+			},
+			expectedConfigs: []*api.Config{
+				{ID: "config-1"},
+				{ID: "config-2"},
 			},
 			expectedAssigned: []*api.Task{
 				{ID: "task-1"},
@@ -390,6 +465,22 @@ func TestWorkerUpdate(t *testing.T) {
 					},
 					Action: api.AssignmentChange_AssignmentActionUpdate,
 				},
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Config{
+							Config: &api.Config{ID: "config-1"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionRemove,
+				},
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Config{
+							Config: &api.Config{ID: "config-2"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionUpdate,
+				},
 			},
 			expectedTasks: []*api.Task{
 				{ID: "task-1"},
@@ -397,6 +488,9 @@ func TestWorkerUpdate(t *testing.T) {
 			},
 			expectedSecrets: []*api.Secret{
 				{ID: "secret-2"},
+			},
+			expectedConfigs: []*api.Config{
+				{ID: "config-2"},
 			},
 			expectedAssigned: []*api.Task{
 				{ID: "task-2"},
@@ -437,6 +531,22 @@ func TestWorkerUpdate(t *testing.T) {
 					},
 					Action: api.AssignmentChange_AssignmentActionRemove,
 				},
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Config{
+							Config: &api.Config{ID: "config-1"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionRemove,
+				},
+				{
+					Assignment: &api.Assignment{
+						Item: &api.Assignment_Config{
+							Config: &api.Config{ID: "config-2"},
+						},
+					},
+					Action: api.AssignmentChange_AssignmentActionRemove,
+				},
 			},
 			expectedTasks: []*api.Task{
 				{ID: "task-1"},
@@ -463,7 +573,10 @@ func TestWorkerUpdate(t *testing.T) {
 		assert.Equal(t, testcase.expectedTasks, tasks)
 		assert.Equal(t, testcase.expectedAssigned, assigned)
 		for _, secret := range testcase.expectedSecrets {
-			assert.NotNil(t, executor.secrets.Get(secret.ID))
+			assert.NotNil(t, executor.Secrets().Get(secret.ID))
+		}
+		for _, config := range testcase.expectedConfigs {
+			assert.NotNil(t, executor.Configs().Get(config.ID))
 		}
 	}
 }
@@ -471,7 +584,8 @@ func TestWorkerUpdate(t *testing.T) {
 type mockTaskController struct {
 	t *testing.T
 	exec.Controller
-	task *api.Task
+	task         *api.Task
+	dependencies exec.DependencyGetter
 }
 
 func (mtc *mockTaskController) Remove(ctx context.Context) error {
@@ -487,13 +601,17 @@ func (mtc *mockTaskController) Close() error {
 type mockExecutor struct {
 	t *testing.T
 	exec.Executor
-	secrets exec.SecretsManager
+	dependencies exec.DependencyManager
 }
 
 func (m *mockExecutor) Controller(task *api.Task) (exec.Controller, error) {
-	return &mockTaskController{t: m.t, task: task}, nil
+	return &mockTaskController{t: m.t, task: task, dependencies: Restrict(m.dependencies, task)}, nil
 }
 
 func (m *mockExecutor) Secrets() exec.SecretsManager {
-	return m.secrets
+	return m.dependencies.Secrets()
+}
+
+func (m *mockExecutor) Configs() exec.ConfigsManager {
+	return m.dependencies.Configs()
 }

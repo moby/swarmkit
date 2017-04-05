@@ -824,12 +824,10 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 	}
 
 	var (
-		sequence  int64
-		appliesTo string
-		initial   api.AssignmentsMessage
+		sequence    int64
+		appliesTo   string
+		assignments = newAssignmentSet(log)
 	)
-	tasksMap := make(map[string]*api.Task)
-	tasksUsingSecret := make(map[string]map[string]struct{})
 
 	sendMessage := func(msg api.AssignmentsMessage, assignmentType api.AssignmentsMessage_Type) error {
 		sequence++
@@ -844,39 +842,6 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 		return nil
 	}
 
-	// returns a slice of new secrets to send down
-	addSecretsForTask := func(readTx store.ReadTx, t *api.Task) []*api.Secret {
-		container := t.Spec.GetContainer()
-		if container == nil {
-			return nil
-		}
-		var newSecrets []*api.Secret
-		for _, secretRef := range container.Secrets {
-			secretID := secretRef.SecretID
-			log := log.WithFields(logrus.Fields{
-				"secret.id":   secretID,
-				"secret.name": secretRef.SecretName,
-			})
-
-			if len(tasksUsingSecret[secretID]) == 0 {
-				tasksUsingSecret[secretID] = make(map[string]struct{})
-
-				secret := store.GetSecret(readTx, secretID)
-				if secret == nil {
-					log.Debug("secret not found")
-					continue
-				}
-
-				// If the secret was found, add this secret to
-				// our set that we send down.
-				newSecrets = append(newSecrets, secret)
-			}
-			tasksUsingSecret[secretID][t.ID] = struct{}{}
-		}
-
-		return newSecrets
-	}
-
 	// TODO(aaronl): Also send node secrets that should be exposed to
 	// this node.
 	nodeTasks, cancel, err := store.ViewAndWatch(
@@ -888,57 +853,22 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 			}
 
 			for _, t := range tasks {
-				// We only care about tasks that are ASSIGNED or
-				// higher. If the state is below ASSIGNED, the
-				// task may not meet the constraints for this
-				// node, so we have to be careful about sending
-				// secrets associated with it.
-				if t.Status.State < api.TaskStateAssigned {
-					continue
-				}
-
-				tasksMap[t.ID] = t
-				taskChange := &api.AssignmentChange{
-					Assignment: &api.Assignment{
-						Item: &api.Assignment_Task{
-							Task: t,
-						},
-					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
-				}
-				initial.Changes = append(initial.Changes, taskChange)
-				// Only send secrets down if these tasks are in < RUNNING
-				if t.Status.State <= api.TaskStateRunning {
-					newSecrets := addSecretsForTask(readTx, t)
-					for _, secret := range newSecrets {
-						secretChange := &api.AssignmentChange{
-							Assignment: &api.Assignment{
-								Item: &api.Assignment_Secret{
-									Secret: secret,
-								},
-							},
-							Action: api.AssignmentChange_AssignmentActionUpdate,
-						}
-
-						initial.Changes = append(initial.Changes, secretChange)
-					}
-				}
+				assignments.addOrUpdateTask(readTx, t)
 			}
+
 			return nil
 		},
 		api.EventUpdateTask{Task: &api.Task{NodeID: nodeID},
 			Checks: []api.TaskCheckFunc{api.TaskCheckNodeID}},
 		api.EventDeleteTask{Task: &api.Task{NodeID: nodeID},
 			Checks: []api.TaskCheckFunc{api.TaskCheckNodeID}},
-		api.EventUpdateSecret{},
-		api.EventDeleteSecret{},
 	)
 	if err != nil {
 		return err
 	}
 	defer cancel()
 
-	if err := sendMessage(initial, api.AssignmentsMessage_COMPLETE); err != nil {
+	if err := sendMessage(assignments.message(), api.AssignmentsMessage_COMPLETE); err != nil {
 		return err
 	}
 
@@ -950,14 +880,9 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 
 		// bursty events should be processed in batches and sent out together
 		var (
-			update          api.AssignmentsMessage
 			modificationCnt int
 			batchingTimer   *time.Timer
 			batchingTimeout <-chan time.Time
-			updateTasks     = make(map[string]*api.Task)
-			updateSecrets   = make(map[string]*api.Secret)
-			removeTasks     = make(map[string]struct{})
-			removeSecrets   = make(map[string]struct{})
 		)
 
 		oneModification := func() {
@@ -969,28 +894,6 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 				batchingTimer = time.NewTimer(batchingWaitTime)
 				batchingTimeout = batchingTimer.C
 			}
-		}
-
-		// Release the secrets references from this task
-		releaseSecretsForTask := func(t *api.Task) bool {
-			var modified bool
-			container := t.Spec.GetContainer()
-			if container == nil {
-				return modified
-			}
-
-			for _, secretRef := range container.Secrets {
-				secretID := secretRef.SecretID
-				delete(tasksUsingSecret[secretID], t.ID)
-				if len(tasksUsingSecret[secretID]) == 0 {
-					// No tasks are using the secret anymore
-					delete(tasksUsingSecret, secretID)
-					removeSecrets[secretID] = struct{}{}
-					modified = true
-				}
-			}
-
-			return modified
 		}
 
 		// The batching loop waits for 50 ms after the most recent
@@ -1008,78 +911,17 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 				// them to ASSIGNED. If this ever changes, we will need
 				// to monitor task creations as well.
 				case api.EventUpdateTask:
-					// We only care about tasks that are ASSIGNED or
-					// higher.
-					if v.Task.Status.State < api.TaskStateAssigned {
-						continue
-					}
-
-					if oldTask, exists := tasksMap[v.Task.ID]; exists {
-						// States ASSIGNED and below are set by the orchestrator/scheduler,
-						// not the agent, so tasks in these states need to be sent to the
-						// agent even if nothing else has changed.
-						if equality.TasksEqualStable(oldTask, v.Task) && v.Task.Status.State > api.TaskStateAssigned {
-							// this update should not trigger a task change for the agent
-							tasksMap[v.Task.ID] = v.Task
-							// If this task got updated to a final state, let's release
-							// the secrets that are being used by the task
-							if v.Task.Status.State > api.TaskStateRunning {
-								// If releasing the secrets caused a secret to be
-								// removed from an agent, mark one modification
-								if releaseSecretsForTask(v.Task) {
-									oneModification()
-								}
-							}
-							continue
+					d.store.View(func(readTx store.ReadTx) {
+						if assignments.addOrUpdateTask(readTx, v.Task) {
+							oneModification()
 						}
-					} else if v.Task.Status.State <= api.TaskStateRunning {
-						// If this task wasn't part of the assignment set before, and it's <= RUNNING
-						// add the secrets it references to the secrets assignment.
-						// Task states > RUNNING are worker reported only, are never created in
-						// a > RUNNING state.
-						var newSecrets []*api.Secret
-						d.store.View(func(readTx store.ReadTx) {
-							newSecrets = addSecretsForTask(readTx, v.Task)
-						})
-						for _, secret := range newSecrets {
-							updateSecrets[secret.ID] = secret
-						}
-					}
-					tasksMap[v.Task.ID] = v.Task
-					updateTasks[v.Task.ID] = v.Task
-
-					oneModification()
+					})
 				case api.EventDeleteTask:
-					if _, exists := tasksMap[v.Task.ID]; !exists {
-						continue
+					if assignments.removeTask(v.Task) {
+						oneModification()
 					}
-
-					removeTasks[v.Task.ID] = struct{}{}
-
-					delete(tasksMap, v.Task.ID)
-
-					// Release the secrets being used by this task
-					// Ignoring the return here. We will always mark
-					// this as a modification, since a task is being
-					// removed.
-					releaseSecretsForTask(v.Task)
-
-					oneModification()
-				// TODO(aaronl): For node secrets, we'll need to handle
-				// EventCreateSecret.
-				case api.EventUpdateSecret:
-					if _, exists := tasksUsingSecret[v.Secret.ID]; !exists {
-						continue
-					}
-					log.Debugf("Secret %s (ID: %d) was updated though it was still referenced by one or more tasks",
-						v.Secret.Spec.Annotations.Name, v.Secret.ID)
-
-				case api.EventDeleteSecret:
-					if _, exists := tasksUsingSecret[v.Secret.ID]; !exists {
-						continue
-					}
-					log.Debugf("Secret %s (ID: %d) was deleted though it was still referenced by one or more tasks",
-						v.Secret.Spec.Annotations.Name, v.Secret.ID)
+					// TODO(aaronl): For node secrets, we'll need to handle
+					// EventCreateSecret.
 				}
 			case <-batchingTimeout:
 				break batchingLoop
@@ -1095,72 +937,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 		}
 
 		if modificationCnt > 0 {
-			for id, task := range updateTasks {
-				if _, ok := removeTasks[id]; !ok {
-					taskChange := &api.AssignmentChange{
-						Assignment: &api.Assignment{
-							Item: &api.Assignment_Task{
-								Task: task,
-							},
-						},
-						Action: api.AssignmentChange_AssignmentActionUpdate,
-					}
-
-					update.Changes = append(update.Changes, taskChange)
-				}
-			}
-			for id, secret := range updateSecrets {
-				// If, due to multiple updates, this secret is no longer in use,
-				// don't send it down.
-				if len(tasksUsingSecret[id]) == 0 {
-					// delete this secret for the secrets to be updated
-					// so that deleteSecrets knows the current list
-					delete(updateSecrets, id)
-					continue
-				}
-				secretChange := &api.AssignmentChange{
-					Assignment: &api.Assignment{
-						Item: &api.Assignment_Secret{
-							Secret: secret,
-						},
-					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
-				}
-
-				update.Changes = append(update.Changes, secretChange)
-			}
-			for id := range removeTasks {
-				taskChange := &api.AssignmentChange{
-					Assignment: &api.Assignment{
-						Item: &api.Assignment_Task{
-							Task: &api.Task{ID: id},
-						},
-					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
-				}
-
-				update.Changes = append(update.Changes, taskChange)
-			}
-			for id := range removeSecrets {
-				// If this secret is also being sent on the updated set
-				// don't also add it to the removed set
-				if _, ok := updateSecrets[id]; ok {
-					continue
-				}
-
-				secretChange := &api.AssignmentChange{
-					Assignment: &api.Assignment{
-						Item: &api.Assignment_Secret{
-							Secret: &api.Secret{ID: id},
-						},
-					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
-				}
-
-				update.Changes = append(update.Changes, secretChange)
-			}
-
-			if err := sendMessage(update, api.AssignmentsMessage_INCREMENTAL); err != nil {
+			if err := sendMessage(assignments.message(), api.AssignmentsMessage_INCREMENTAL); err != nil {
 				return err
 			}
 		}

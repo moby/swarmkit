@@ -92,7 +92,7 @@ func createSecret(t *testing.T, ts *testServer, secretName, target string) *api.
 		SecretName: secret.Spec.Annotations.Name,
 		SecretID:   secret.ID,
 		Target: &api.SecretReference_File{
-			File: &api.SecretReference_FileTarget{
+			File: &api.FileTarget{
 				Name: target,
 				UID:  "0",
 				GID:  "0",
@@ -105,6 +105,38 @@ func createSecret(t *testing.T, ts *testServer, secretName, target string) *api.
 func createServiceSpecWithSecrets(serviceName string, secretRefs ...*api.SecretReference) *api.ServiceSpec {
 	service := createSpec(serviceName, fmt.Sprintf("image%v", serviceName), 1)
 	service.Task.GetContainer().Secrets = secretRefs
+
+	return service
+}
+
+func createConfig(t *testing.T, ts *testServer, configName, target string) *api.ConfigReference {
+	configSpec := createConfigSpec(configName, []byte(configName), nil)
+	config := &api.Config{
+		ID:   fmt.Sprintf("ID%v", configName),
+		Spec: *configSpec,
+	}
+	err := ts.Store.Update(func(tx store.Tx) error {
+		return store.CreateConfig(tx, config)
+	})
+	assert.NoError(t, err)
+
+	return &api.ConfigReference{
+		ConfigName: config.Spec.Annotations.Name,
+		ConfigID:   config.ID,
+		Target: &api.ConfigReference_File{
+			File: &api.FileTarget{
+				Name: target,
+				UID:  "0",
+				GID:  "0",
+				Mode: 0666,
+			},
+		},
+	}
+}
+
+func createServiceSpecWithConfigs(serviceName string, configRefs ...*api.ConfigReference) *api.ServiceSpec {
+	service := createSpec(serviceName, fmt.Sprintf("image%v", serviceName), 1)
+	service.Task.GetContainer().Configs = configRefs
 
 	return service
 }
@@ -452,7 +484,7 @@ func TestSecretValidation(t *testing.T) {
 	// test two different secretReferences with using the same secret
 	secretRef5 := secretRef2.Copy()
 	secretRef5.Target = &api.SecretReference_File{
-		File: &api.SecretReference_FileTarget{
+		File: &api.FileTarget{
 			Name: "different-target",
 		},
 	}
@@ -486,6 +518,81 @@ func TestSecretValidation(t *testing.T) {
 	// Copy this service, but delete the secrets for creation
 	serviceSpec2 := serviceSpec1.Copy()
 	serviceSpec2.Task.GetContainer().Secrets = nil
+	rs, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec2})
+	assert.NoError(t, err)
+
+	// Attempt to update to the originally intended (conflicting) spec
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+		ServiceID:      rs.Service.ID,
+		Spec:           serviceSpec1,
+		ServiceVersion: &rs.Service.Meta.Version,
+	})
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+}
+
+func TestConfigValidation(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+
+	// test creating service with a config that doesn't exist fails
+	configRef := createConfig(t, ts, "config", "config.txt")
+	configRef.ConfigID = "404"
+	configRef.ConfigName = "404"
+	serviceSpec := createServiceSpecWithConfigs("service", configRef)
+	_, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	// test creating service with a configRef that has an existing config
+	// but mismatched ConfigName fails.
+	configRef1 := createConfig(t, ts, "config1", "config1.txt")
+	configRef1.ConfigName = "config2"
+	serviceSpec = createServiceSpecWithConfigs("service1", configRef1)
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	// test config target conflicts
+	configRef2 := createConfig(t, ts, "config2", "config2.txt")
+	configRef3 := createConfig(t, ts, "config3", "config2.txt")
+	serviceSpec = createServiceSpecWithConfigs("service2", configRef2, configRef3)
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	// test config target conflicts with same config and two references
+	configRef3.ConfigID = configRef2.ConfigID
+	configRef3.ConfigName = configRef2.ConfigName
+	serviceSpec = createServiceSpecWithConfigs("service3", configRef2, configRef3)
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	// test two different configReferences with using the same config
+	configRef5 := configRef2.Copy()
+	configRef5.Target = &api.ConfigReference_File{
+		File: &api.FileTarget{
+			Name: "different-target",
+		},
+	}
+
+	serviceSpec = createServiceSpecWithConfigs("service4", configRef2, configRef5)
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
+	assert.NoError(t, err)
+
+	// Test config References with valid filenames
+	// TODO(aaronl): Should some of these be disallowed? How can we deal
+	// with Windows-style paths on a Linux manager or vice versa?
+	validFileNames := []string{"../configfile.txt", "../../configfile.txt", "file../.txt", "subdir/file.txt", "file.txt", ".file.txt", "_file-txt_.txt"}
+	for i, validName := range validFileNames {
+		configRef := createConfig(t, ts, validName, validName)
+
+		serviceSpec = createServiceSpecWithConfigs(fmt.Sprintf("valid%v", i), configRef)
+		_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
+		assert.NoError(t, err)
+	}
+
+	// test config target conflicts on update
+	serviceSpec1 := createServiceSpecWithConfigs("service5", configRef2, configRef3)
+	// Copy this service, but delete the configs for creation
+	serviceSpec2 := serviceSpec1.Copy()
+	serviceSpec2.Task.GetContainer().Configs = nil
 	rs, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec2})
 	assert.NoError(t, err)
 
