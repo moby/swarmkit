@@ -970,3 +970,26 @@ message RootRotation {
 	// cross-signed CA cert is the CACert that has been cross-signed by the previous root
 	bytes cross_signed_ca_cert = 3 [(gogoproto.customname) = "CrossSignedCACert"];
 }
+
+// Privileges specifies security configuration/permissions.
+message Privileges {
+	// CredentialSpec for managed service account (Windows only).
+	message CredentialSpec {
+		oneof source {
+			string file = 1;
+			string registry = 2;
+		}
+	}
+	CredentialSpec credential_spec = 1;
+
+	// SELinuxContext contains the SELinux labels for the container.
+	message SELinuxContext {
+		bool disable = 1;
+
+		string user = 2;
+		string role = 3;
+		string type = 4;
+		string level = 5;
+	}
+	SELinuxContext selinux_context = 2 [(gogoproto.customname) = "SELinuxContext"];
+}

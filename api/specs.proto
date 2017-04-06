@@ -197,6 +197,9 @@ message ContainerSpec {
 	// Groups specifies supplementary groups available to the user.
 	repeated string groups = 11;
 
+	// Privileges specifies security configuration/permissions.
+	Privileges privileges = 22;
+
 	// TTY declares that a TTY should be attached to the standard streams,
 	// including stdin if it is still open.
 	bool tty = 13 [(gogoproto.customname) = "TTY"];
