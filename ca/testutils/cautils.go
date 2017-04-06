@@ -22,6 +22,7 @@ import (
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/ioutils"
 	"github.com/docker/swarmkit/manager/state/store"
+	stateutils "github.com/docker/swarmkit/manager/state/testutils"
 	"github.com/docker/swarmkit/remotes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -112,7 +113,7 @@ func NewTestCA(t *testing.T, krwGenerators ...func(ca.CertPaths) *ca.KeyReadWrit
 // NewTestCAFromRootCA is a helper method that creates a TestCA and a bunch of default
 // connections and security configs, given a temp directory and a RootCA to use for signing.
 func NewTestCAFromRootCA(t *testing.T, tempBaseDir string, rootCA ca.RootCA, krwGenerators []func(ca.CertPaths) *ca.KeyReadWriter) *TestCA {
-	s := store.NewMemoryStore(nil)
+	s := store.NewMemoryStore(&stateutils.MockProposer{})
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 	organization := identity.NewID()
