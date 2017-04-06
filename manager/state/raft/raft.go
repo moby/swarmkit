@@ -698,9 +698,7 @@ func (n *Node) restoreFromSnapshot(ctx context.Context, data []byte) error {
 
 	for _, removedMember := range snapCluster.Removed {
 		n.cluster.RemoveMember(removedMember)
-		if err := n.transport.RemovePeer(removedMember); err != nil {
-			log.G(ctx).WithError(err).Errorf("failed to remove peer %x from transport", removedMember)
-		}
+		n.transport.RemovePeer(removedMember)
 		delete(oldMembers, removedMember)
 	}
 
