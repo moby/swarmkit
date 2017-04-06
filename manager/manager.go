@@ -449,7 +449,6 @@ func (m *Manager) Run(parent context.Context) error {
 		return context.WithValue(ctx, ca.LocalRequestKey, nodeInfo), nil
 	}
 	localProxyControlAPI := api.NewRaftProxyControlServer(baseControlAPI, m.raftNode, handleRequestLocally, forwardAsOwnRequest)
-	localProxyStoreAPI := api.NewRaftProxyStoreServer(baseStoreAPI, m.raftNode, handleRequestLocally, forwardAsOwnRequest)
 	localProxyLogsAPI := api.NewRaftProxyLogsServer(m.logbroker, m.raftNode, handleRequestLocally, forwardAsOwnRequest)
 	localProxyDispatcherAPI := api.NewRaftProxyDispatcherServer(m.dispatcher, m.raftNode, handleRequestLocally, forwardAsOwnRequest)
 	localProxyCAAPI := api.NewRaftProxyCAServer(m.caserver, m.raftNode, handleRequestLocally, forwardAsOwnRequest)
@@ -473,7 +472,7 @@ func (m *Manager) Run(parent context.Context) error {
 	grpc_prometheus.Register(m.server)
 
 	api.RegisterControlServer(m.localserver, localProxyControlAPI)
-	api.RegisterStoreServer(m.localserver, localProxyStoreAPI)
+	api.RegisterStoreServer(m.localserver, baseStoreAPI)
 	api.RegisterLogsServer(m.localserver, localProxyLogsAPI)
 	api.RegisterHealthServer(m.localserver, localHealthServer)
 	api.RegisterDispatcherServer(m.localserver, localProxyDispatcherAPI)
