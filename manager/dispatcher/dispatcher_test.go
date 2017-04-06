@@ -40,10 +40,10 @@ type grpcDispatcher struct {
 
 func (gd *grpcDispatcher) Close() {
 	// Close the client connection.
-	gd.dispatcherServer.Stop()
 	for _, conn := range gd.conns {
 		conn.Close()
 	}
+	gd.dispatcherServer.Stop()
 	gd.grpcServer.Stop()
 	gd.testCA.Stop()
 }
@@ -127,6 +127,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	}
 
 	tca := cautils.NewTestCA(nil)
+	tca.CAServer.Stop() // there is no need for the CA server to be running
 	agentSecurityConfig1, err := tca.NewNodeConfig(ca.WorkerRole)
 	if err != nil {
 		return nil, err
@@ -678,14 +679,19 @@ func TestAssignmentsSecretUpdateAndDeletion(t *testing.T) {
 	}
 
 	// updating secrets, used by tasks or not, do not cause any changes
-	err = gd.Store.Update(func(tx store.Tx) error {
+	assert.NoError(t, gd.Store.Update(func(tx store.Tx) error {
 		for _, secret := range secrets[:len(secrets)-2] {
-			secret.Spec.Data = []byte("new secret data")
-			assert.NoError(t, store.UpdateSecret(tx, secret))
+			s := store.GetSecret(tx, secret.ID)
+			if s == nil {
+				return errors.New("no secret")
+			}
+			s.Spec.Data = []byte("new secret data")
+			if err := store.UpdateSecret(tx, s); err != nil {
+				return err
+			}
 		}
 		return nil
-	})
-	assert.NoError(t, err)
+	}))
 
 	recvChan := make(chan struct{})
 	go func() {
@@ -782,17 +788,17 @@ func TestTasksStatusChange(t *testing.T) {
 	assert.NotNil(t, tasks[idAndAction{id: "testTask1", action: api.AssignmentChange_AssignmentActionUpdate}])
 	assert.NotNil(t, tasks[idAndAction{id: "testTask2", action: api.AssignmentChange_AssignmentActionUpdate}])
 
-	err = gd.Store.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateTask(tx, &api.Task{
-			ID:     testTask1.ID,
-			NodeID: nodeID,
-			// only Status is changed for task1
-			Status:       api.TaskStatus{State: api.TaskStateFailed, Err: "1234"},
-			DesiredState: api.TaskStateReady,
-		}))
-		return nil
-	})
-	assert.NoError(t, err)
+	assert.NoError(t, gd.Store.Update(func(tx store.Tx) error {
+		task := store.GetTask(tx, testTask1.ID)
+		if task == nil {
+			return errors.New("no task")
+		}
+		task.NodeID = nodeID
+		// only Status is changed for task1
+		task.Status = api.TaskStatus{State: api.TaskStateFailed, Err: "1234"}
+		task.DesiredState = api.TaskStateReady
+		return store.UpdateTask(tx, task)
+	}))
 
 	// dispatcher shouldn't send snapshot for this update
 	recvChan := make(chan struct{})
@@ -1277,16 +1283,16 @@ func TestOldTasks(t *testing.T) {
 	assert.Equal(t, len(resp.Tasks), 2)
 	assert.True(t, resp.Tasks[0].ID == "testTask1" && resp.Tasks[1].ID == "testTask2" || resp.Tasks[0].ID == "testTask2" && resp.Tasks[1].ID == "testTask1")
 
-	err = gd.Store.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateTask(tx, &api.Task{
-			ID:           testTask1.ID,
-			NodeID:       nodeID,
-			Status:       api.TaskStatus{State: api.TaskStateAssigned},
-			DesiredState: api.TaskStateRunning,
-		}))
-		return nil
-	})
-	assert.NoError(t, err)
+	assert.NoError(t, gd.Store.Update(func(tx store.Tx) error {
+		task := store.GetTask(tx, testTask1.ID)
+		if task == nil {
+			return errors.New("no task")
+		}
+		task.NodeID = nodeID
+		task.Status = api.TaskStatus{State: api.TaskStateAssigned}
+		task.DesiredState = api.TaskStateRunning
+		return store.UpdateTask(tx, task)
+	}))
 
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
@@ -1375,17 +1381,17 @@ func TestOldTasksStatusChange(t *testing.T) {
 	assert.Equal(t, len(resp.Tasks), 2)
 	assert.True(t, resp.Tasks[0].ID == "testTask1" && resp.Tasks[1].ID == "testTask2" || resp.Tasks[0].ID == "testTask2" && resp.Tasks[1].ID == "testTask1")
 
-	err = gd.Store.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateTask(tx, &api.Task{
-			ID:     testTask1.ID,
-			NodeID: nodeID,
-			// only Status is changed for task1
-			Status:       api.TaskStatus{State: api.TaskStateFailed, Err: "1234"},
-			DesiredState: api.TaskStateReady,
-		}))
-		return nil
-	})
-	assert.NoError(t, err)
+	assert.NoError(t, gd.Store.Update(func(tx store.Tx) error {
+		task := store.GetTask(tx, testTask1.ID)
+		if task == nil {
+			return errors.New("no task")
+		}
+		task.NodeID = nodeID
+		// only Status is changed for task1
+		task.Status = api.TaskStatus{State: api.TaskStateFailed, Err: "1234"}
+		task.DesiredState = api.TaskStateReady
+		return store.UpdateTask(tx, task)
+	}))
 
 	// dispatcher shouldn't send snapshot for this update
 	recvChan := make(chan struct{})
