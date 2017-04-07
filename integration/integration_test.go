@@ -627,26 +627,16 @@ func TestSuccessfulRootRotation(t *testing.T) {
 		return nil
 	}, opsTimeout))
 
-	// Kill the leader, and bring the other manager back to show that a new
-	// leader can pick up the reconciliation loop and complete the root rotation.
-	// Bring one worker back, kill the other worker, and add a new worker - show
-	// that we can converge on a root rotation.
-	downLeader, err := cl.Leader()
-	require.NoError(t, err)
-	leaderID := downLeader.node.NodeID()
-
+	// Bring the other manager back.  Also bring one worker back, kill the other worker,
+	// and add a new worker - show that we can converge on a root rotation.
 	require.NoError(t, cl.StartNode(downManagerID))
 	require.NoError(t, cl.StartNode(downWorkerIDs[0]))
 	require.NoError(t, cl.RemoveNode(downWorkerIDs[1], false))
 	require.NoError(t, cl.AddAgent())
-	require.NoError(t, downLeader.Pause(false))
 
 	// we can finish root rotation even though the previous leader was down because it had
 	// already rotated its cert
 	pollRootRotationDone(t, cl)
-
-	// bring the previous leader back up so it can get the new root
-	require.NoError(t, cl.StartNode(leaderID))
 
 	// wait until all the nodes have gotten their new certs and trust roots
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
