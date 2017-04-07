@@ -169,18 +169,16 @@ func (na *NetworkAllocator) ServiceAllocate(s *api.Service) (err error) {
 	// If ResolutionMode is DNSRR do not try allocating VIPs, but
 	// free any VIP from previous state.
 	if s.Spec.Endpoint != nil && s.Spec.Endpoint.Mode == api.ResolutionModeDNSRoundRobin {
-		if s.Endpoint != nil {
-			for _, vip := range s.Endpoint.VirtualIPs {
-				if err := na.deallocateVIP(vip); err != nil {
-					// don't bail here, deallocate as many as possible.
-					log.L.WithError(err).
-						WithField("vip.network", vip.NetworkID).
-						WithField("vip.addr", vip.Addr).Error("error deallocating vip")
-				}
+		for _, vip := range s.Endpoint.VirtualIPs {
+			if err := na.deallocateVIP(vip); err != nil {
+				// don't bail here, deallocate as many as possible.
+				log.L.WithError(err).
+					WithField("vip.network", vip.NetworkID).
+					WithField("vip.addr", vip.Addr).Error("error deallocating vip")
 			}
-
-			s.Endpoint.VirtualIPs = nil
 		}
+
+		s.Endpoint.VirtualIPs = nil
 
 		delete(na.services, s.ID)
 		return
