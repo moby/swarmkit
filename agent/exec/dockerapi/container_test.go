@@ -73,10 +73,11 @@ func TestHealthcheck(t *testing.T) {
 			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Healthcheck: &api.HealthConfig{
-						Test:     []string{"a", "b", "c"},
-						Interval: gogotypes.DurationProto(time.Second),
-						Timeout:  gogotypes.DurationProto(time.Minute),
-						Retries:  10,
+						Test:        []string{"a", "b", "c"},
+						Interval:    gogotypes.DurationProto(time.Second),
+						Timeout:     gogotypes.DurationProto(time.Minute),
+						Retries:     10,
+						StartPeriod: gogotypes.DurationProto(time.Minute),
 					},
 				},
 			}},
@@ -84,10 +85,11 @@ func TestHealthcheck(t *testing.T) {
 	}
 	config := c.config()
 	expected := &enginecontainer.HealthConfig{
-		Test:     []string{"a", "b", "c"},
-		Interval: time.Second,
-		Timeout:  time.Minute,
-		Retries:  10,
+		Test:        []string{"a", "b", "c"},
+		Interval:    time.Second,
+		Timeout:     time.Minute,
+		Retries:     10,
+		StartPeriod: time.Minute,
 	}
 	if !reflect.DeepEqual(config.Healthcheck, expected) {
 		t.Fatalf("expected %#v, got %#v", expected, config.Healthcheck)
