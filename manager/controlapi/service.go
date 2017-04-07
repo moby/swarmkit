@@ -30,6 +30,8 @@ var (
 	errModeChangeNotAllowed      = errors.New("service mode change is not allowed")
 )
 
+const minimumDuration = 1 * time.Millisecond
+
 func validateResources(r *api.Resources) error {
 	if r == nil {
 		return nil
@@ -143,20 +145,84 @@ func validateContainerSpec(taskSpec api.TaskSpec) error {
 		return grpc.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	if container.Image == "" {
+	if err := validateImage(container.Image); err != nil {
+		return err
+	}
+
+	if err := validateMounts(container.Mounts); err != nil {
+		return err
+	}
+
+	if err := validateHealthCheck(container.Healthcheck); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validateImage validates image name in containerSpec
+func validateImage(image string) error {
+	if image == "" {
 		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: image reference must be provided")
 	}
 
-	if _, err := reference.ParseNormalizedNamed(container.Image); err != nil {
-		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: %q is not a valid repository/tag", container.Image)
+	if _, err := reference.ParseNormalizedNamed(image); err != nil {
+		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: %q is not a valid repository/tag", image)
 	}
+	return nil
+}
 
+// validateMounts validates if there are duplicate mounts in containerSpec
+func validateMounts(mounts []api.Mount) error {
 	mountMap := make(map[string]bool)
-	for _, mount := range container.Mounts {
+	for _, mount := range mounts {
 		if _, exists := mountMap[mount.Target]; exists {
 			return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: duplicate mount point: %s", mount.Target)
 		}
 		mountMap[mount.Target] = true
+	}
+
+	return nil
+}
+
+// validateHealthCheck validates configs about container's health check
+func validateHealthCheck(hc *api.HealthConfig) error {
+	if hc == nil {
+		return nil
+	}
+
+	if hc.Interval != nil {
+		interval, err := gogotypes.DurationFromProto(hc.Interval)
+		if err != nil {
+			return err
+		}
+		if interval != 0 && interval < time.Duration(minimumDuration) {
+			return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: Interval in HealthConfig cannot be less than %s", minimumDuration)
+		}
+	}
+
+	if hc.Timeout != nil {
+		timeout, err := gogotypes.DurationFromProto(hc.Timeout)
+		if err != nil {
+			return err
+		}
+		if timeout != 0 && timeout < time.Duration(minimumDuration) {
+			return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: Timeout in HealthConfig cannot be less than %s", minimumDuration)
+		}
+	}
+
+	if hc.StartPeriod != nil {
+		sp, err := gogotypes.DurationFromProto(hc.StartPeriod)
+		if err != nil {
+			return err
+		}
+		if sp != 0 && sp < time.Duration(minimumDuration) {
+			return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: StartPeriod in HealthConfig cannot be less than %s", minimumDuration)
+		}
+	}
+
+	if hc.Retries < 0 {
+		return grpc.Errorf(codes.InvalidArgument, "ContainerSpec: Retries in HealthConfig cannot be negative")
 	}
 
 	return nil
