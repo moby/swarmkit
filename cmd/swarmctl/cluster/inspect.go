@@ -10,6 +10,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
 	gogotypes "github.com/gogo/protobuf/types"
+	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"
 )
 
@@ -37,6 +38,11 @@ func printClusterSummary(cluster *api.Cluster) {
 			fmt.Fprintf(w, "  Certificate Validity Duration: %s\n", clusterDuration.String())
 		}
 	}
+
+	if len(cluster.Spec.CAConfig.SigningCACert) > 0 {
+		fmt.Fprintf(w, "  Desired CA Cert Digest: %s\n", digest.FromBytes(cluster.Spec.CAConfig.SigningCACert).String())
+	}
+	fmt.Fprintf(w, "  ForceRotate number: %d\n", cluster.Spec.CAConfig.ForceRotate)
 	if len(cluster.Spec.CAConfig.ExternalCAs) > 0 {
 		fmt.Fprintln(w, "  External CAs:")
 		for _, ca := range cluster.Spec.CAConfig.ExternalCAs {
