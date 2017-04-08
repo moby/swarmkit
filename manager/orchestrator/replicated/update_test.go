@@ -16,14 +16,18 @@ import (
 )
 
 func TestUpdaterRollbackAndPause(t *testing.T) {
-	testUpdaterRollback(t, api.UpdateConfig_PAUSE)
+	testUpdaterRollback(t, api.UpdateConfig_PAUSE, true)
+}
+
+func TestUpdaterRollbackAndPauseNoMonitor(t *testing.T) {
+	testUpdaterRollback(t, api.UpdateConfig_PAUSE, false)
 }
 
 func TestUpdaterRollbackAndContinue(t *testing.T) {
-	testUpdaterRollback(t, api.UpdateConfig_CONTINUE)
+	testUpdaterRollback(t, api.UpdateConfig_CONTINUE, true)
 }
 
-func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_FailureAction) {
+func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_FailureAction, setMonitor bool) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
@@ -114,17 +118,20 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 					FailureAction:   api.UpdateConfig_ROLLBACK,
 					Parallelism:     1,
 					Delay:           10 * time.Millisecond,
-					Monitor:         gogotypes.DurationProto(500 * time.Millisecond),
 					MaxFailureRatio: 0.4,
 				},
 				Rollback: &api.UpdateConfig{
 					FailureAction:   rollbackFailureAction,
 					Parallelism:     1,
 					Delay:           10 * time.Millisecond,
-					Monitor:         gogotypes.DurationProto(500 * time.Millisecond),
 					MaxFailureRatio: 0.4,
 				},
 			},
+		}
+
+		if setMonitor {
+			s1.Spec.Update.Monitor = gogotypes.DurationProto(500 * time.Millisecond)
+			s1.Spec.Rollback.Monitor = gogotypes.DurationProto(500 * time.Millisecond)
 		}
 
 		assert.NoError(t, store.CreateService(tx, s1))
@@ -203,6 +210,12 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
 	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image1")
+
+	if !setMonitor {
+		// Exit early in this case, since it would take a long time for
+		// the service to reach the "*_COMPLETED" states.
+		return
+	}
 
 	// Should end up in ROLLBACK_COMPLETED state
 	for {

@@ -340,7 +340,6 @@ func TestUpdaterFailureAction(t *testing.T) {
 
 	assert.Equal(t, 0, v2Counter)
 	assert.Equal(t, instances, v3Counter)
-
 }
 
 func TestUpdaterTaskTimeout(t *testing.T) {
