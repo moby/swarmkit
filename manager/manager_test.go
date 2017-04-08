@@ -573,6 +573,7 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 
 	startManager()
 
+	var clusterID string
 	// wait for cluster data to be there
 	err = testutils.PollFunc(nil, func() error {
 		// using store.Update just because it returns an error, as opposed to store.View
@@ -584,6 +585,7 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 			if len(clusters) != 1 {
 				return fmt.Errorf("expected 1 cluster, got %d", len(clusters))
 			}
+			clusterID = clusters[0].ID
 			return nil
 		})
 	})
@@ -599,14 +601,11 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 	// wait for the key to be encrypted in the raft store
 	err = testutils.PollFunc(nil, func() error {
 		return m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
-			clusters, err := store.FindClusters(tx, store.All)
-			if err != nil {
-				return err
+			cluster := store.GetCluster(tx, clusterID)
+			if cluster == nil {
+				return fmt.Errorf("cluster gone")
 			}
-			if len(clusters) != 1 {
-				return fmt.Errorf("expected 1 cluster, got %d", len(clusters))
-			}
-			keyBlock, _ := pem.Decode(clusters[0].RootCA.CAKey)
+			keyBlock, _ := pem.Decode(cluster.RootCA.CAKey)
 			if keyBlock == nil {
 				return fmt.Errorf("could not pem decode root key")
 			}
@@ -629,26 +628,50 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 	startManager()
 
 	// wait for the key to be decrypted in the raft store
-	err = testutils.PollFunc(nil, func() error {
-		return m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
-			clusters, err := store.FindClusters(tx, store.All)
-			if err != nil {
-				return err
-			}
-			if len(clusters) != 1 {
-				return fmt.Errorf("expected 1 cluster, got %d", len(clusters))
-			}
-			keyBlock, _ := pem.Decode(clusters[0].RootCA.CAKey)
-			if keyBlock == nil {
-				return fmt.Errorf("could not pem decode root key")
-			}
-			if x509.IsEncryptedPEMBlock(keyBlock) {
-				return fmt.Errorf("root key material not decrypted yet")
-			}
-			return nil
+	pollDecrypted := func() error {
+		return testutils.PollFunc(nil, func() error {
+			return m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
+				cluster := store.GetCluster(tx, clusterID)
+				if cluster == nil {
+					return fmt.Errorf("cluster gone")
+				}
+				keyBlock, _ := pem.Decode(cluster.RootCA.CAKey)
+				if keyBlock == nil {
+					return fmt.Errorf("could not pem decode root key")
+				}
+				if x509.IsEncryptedPEMBlock(keyBlock) {
+					return fmt.Errorf("root key material not decrypted yet")
+				}
+				return nil
+			})
 		})
-	})
-	require.NoError(t, err)
+	}
+	require.NoError(t, pollDecrypted())
+
+	// update the key to that can be "decrypted" with both "" and "kek" as the password
+	require.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
+		cluster := store.GetCluster(tx, clusterID)
+		if cluster == nil {
+			return fmt.Errorf("cluster gone")
+		}
+		cluster.RootCA.CAKey = []byte(`
+-----BEGIN EC PRIVATE KEY-----
+Proc-Type: 4,ENCRYPTED
+DEK-Info: AES-256-CBC,fcc97c79c251d2fedeab96a19f3b826e
+
+8IHMsMKfCMWXDpBNLp7tyuwUQ1FmisiPyDZg9UvoX4RvIDUxj7sIiw4lsP+EgnKG
+09oKeXHSYRpawB58dvLqxPtjnrEj1jLqoMydTrhRDJ+zBMxPxpTJh/BASADhMOmf
+G80TfNRRr/qdB9hLwfyOyk2tBipkAgs6cl+CZAaqx3k=
+-----END EC PRIVATE KEY-----
+`)
+		return store.UpdateCluster(tx, cluster)
+	}))
+
+	// restart
+	m.Stop(ctx, false)
+	<-done
+	startManager()
+	require.NoError(t, pollDecrypted())
 
 	m.Stop(ctx, false)
 	<-done
