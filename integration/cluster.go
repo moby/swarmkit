@@ -98,14 +98,11 @@ func (c *testCluster) AddManager(lateBind bool, rootCA *ca.RootCA) error {
 		if err != nil {
 			return err
 		}
-		clusterInfo, err := c.api.ListClusters(context.Background(), &api.ListClustersRequest{})
+		clusterInfo, err := c.GetClusterInfo()
 		if err != nil {
 			return err
 		}
-		if len(clusterInfo.Clusters) == 0 {
-			return fmt.Errorf("joining manager: there is no cluster created in storage")
-		}
-		node, err := newTestNode(joinAddr, clusterInfo.Clusters[0].RootCA.JoinTokens.Manager, false, nil)
+		node, err := newTestNode(joinAddr, clusterInfo.RootCA.JoinTokens.Manager, false, nil)
 		if err != nil {
 			return err
 		}
@@ -137,14 +134,9 @@ func (c *testCluster) AddManager(lateBind bool, rootCA *ca.RootCA) error {
 
 	if lateBind {
 		// Verify that the control API works
-		clusterInfo, err := c.api.ListClusters(context.Background(), &api.ListClustersRequest{})
-		if err != nil {
+		if _, err := c.GetClusterInfo(); err != nil {
 			return err
 		}
-		if len(clusterInfo.Clusters) == 0 {
-			return fmt.Errorf("joining manager: there is no cluster created in storage")
-		}
-
 		return n.node.BindRemote(context.Background(), "127.0.0.1:0", "")
 	}
 
@@ -162,14 +154,11 @@ func (c *testCluster) AddAgent() error {
 	if err != nil {
 		return err
 	}
-	clusterInfo, err := c.api.ListClusters(context.Background(), &api.ListClustersRequest{})
+	clusterInfo, err := c.GetClusterInfo()
 	if err != nil {
 		return err
 	}
-	if len(clusterInfo.Clusters) == 0 {
-		return fmt.Errorf("joining agent: there is no cluster created in storage")
-	}
-	node, err := newTestNode(joinAddr, clusterInfo.Clusters[0].RootCA.JoinTokens.Worker, false, nil)
+	node, err := newTestNode(joinAddr, clusterInfo.RootCA.JoinTokens.Worker, false, nil)
 	if err != nil {
 		return err
 	}
@@ -382,4 +371,34 @@ func (c *testCluster) StartNode(id string) error {
 		return fmt.Errorf("restarted node does not have have the same ID")
 	}
 	return nil
+}
+
+func (c *testCluster) GetClusterInfo() (*api.Cluster, error) {
+	clusterInfo, err := c.api.ListClusters(context.Background(), &api.ListClustersRequest{})
+	if err != nil {
+		return nil, err
+	}
+	if len(clusterInfo.Clusters) != 1 {
+		return nil, fmt.Errorf("number of clusters in storage: %d; expected 1", len(clusterInfo.Clusters))
+	}
+	return clusterInfo.Clusters[0], nil
+}
+
+func (c *testCluster) RotateRootCA(cert, key []byte) error {
+	// poll in case something else changes the cluster before we can update it
+	return testutils.PollFuncWithTimeout(nil, func() error {
+		clusterInfo, err := c.GetClusterInfo()
+		if err != nil {
+			return err
+		}
+		newSpec := clusterInfo.Spec.Copy()
+		newSpec.CAConfig.SigningCACert = cert
+		newSpec.CAConfig.SigningCAKey = key
+		_, err = c.api.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
+			ClusterID:      clusterInfo.ID,
+			Spec:           newSpec,
+			ClusterVersion: &clusterInfo.Meta.Version,
+		})
+		return err
+	}, opsTimeout)
 }

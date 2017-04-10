@@ -1,6 +1,7 @@
 package node
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -8,13 +9,14 @@ import (
 	"text/tabwriter"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
 	"github.com/docker/swarmkit/cmd/swarmctl/task"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
 
-func printNodeSummary(node *api.Node) {
+func printNodeSummary(node *api.Node, clusterIssuer *ca.IssuerInfo, clusterCACert []byte) {
 	w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
 	defer func() {
 		// Ignore flushing errors - there's nothing we can do.
@@ -105,6 +107,20 @@ func printNodeSummary(node *api.Node) {
 			fmt.Fprintln(w)
 		}
 	}
+
+	if desc.TLSInfo != nil {
+		fmt.Fprintln(w, "TLS status\t:")
+		if bytes.Equal(clusterCACert, desc.TLSInfo.TrustRoot) {
+			fmt.Fprintln(w, " Trusts current cluster root CA")
+		} else {
+			fmt.Fprintln(w, " Does not trust current cluster root CA")
+		}
+		if bytes.Equal(clusterIssuer.Subject, desc.TLSInfo.CertIssuerSubject) && bytes.Equal(clusterIssuer.PublicKey, desc.TLSInfo.CertIssuerPublicKey) {
+			fmt.Fprintln(w, " Certificate issued by desired root CA")
+		} else {
+			fmt.Fprintln(w, " Certificate not issued by desired root CA")
+		}
+	}
 }
 
 var (
@@ -137,6 +153,15 @@ var (
 				return err
 			}
 
+			cluster, err := getCluster(common.Context(cmd), c)
+			if err != nil {
+				return err
+			}
+			clusterIssuer, err := ca.IssuerFromAPIRootCA(&cluster.RootCA)
+			if err != nil {
+				return err
+			}
+
 			r, err := c.ListTasks(common.Context(cmd),
 				&api.ListTasksRequest{
 					Filters: &api.ListTasksRequest_Filters{
@@ -147,7 +172,7 @@ var (
 				return err
 			}
 
-			printNodeSummary(node)
+			printNodeSummary(node, clusterIssuer, cluster.RootCA.CACert)
 			if len(r.Tasks) > 0 {
 				fmt.Println()
 				task.Print(r.Tasks, all, common.NewResolver(cmd, c))

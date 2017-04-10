@@ -131,6 +131,12 @@ func (a *dummyAPI) ListClusters(ctx context.Context, r *api.ListClustersRequest)
 	return cli.ListClusters(ctx, r)
 }
 
-func (a *dummyAPI) UpdateCluster(context.Context, *api.UpdateClusterRequest) (*api.UpdateClusterResponse, error) {
-	panic("not implemented")
+func (a *dummyAPI) UpdateCluster(ctx context.Context, r *api.UpdateClusterRequest) (*api.UpdateClusterResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, opsTimeout)
+	defer cancel()
+	cli, err := a.c.RandomManager().ControlClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return cli.UpdateCluster(ctx, r)
 }

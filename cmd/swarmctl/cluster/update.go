@@ -101,6 +101,10 @@ var (
 			}
 			spec.TaskDefaults.LogDriver = driver
 
+			if flags.Changed("rotate-ca") {
+				spec.CAConfig.ForceRotate++
+			}
+
 			r, err := c.UpdateCluster(common.Context(cmd), &api.UpdateClusterRequest{
 				ClusterID:      cluster.ID,
 				ClusterVersion: &cluster.Meta.Version,
@@ -114,6 +118,10 @@ var (
 
 			if rotation.ManagerUnlockKey {
 				return displayUnlockKey(cmd)
+			}
+
+			if flags.Changed("rotate-ca") {
+				WaitOnRootRotation(common.Context(cmd), c, cluster.ID)
 			}
 			return nil
 		},
@@ -131,4 +139,5 @@ func init() {
 	updateCmd.Flags().String("rotate-join-token", "", "Rotate join token for worker or manager")
 	updateCmd.Flags().Bool("rotate-unlock-key", false, "Rotate manager unlock key")
 	updateCmd.Flags().Bool("autolock", false, "Enable or disable manager autolocking (requiring an unlock key to start a stopped manager)")
+	updateCmd.Flags().Bool("rotate-ca", false, "Rotate the root CA certificate and key for the cluster")
 }

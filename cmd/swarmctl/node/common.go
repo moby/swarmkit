@@ -214,3 +214,16 @@ func updateNode(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
+
+func getCluster(ctx context.Context, c api.ControlClient) (*api.Cluster, error) {
+	rl, err := c.ListClusters(ctx, &api.ListClustersRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rl.Clusters) == 0 {
+		return nil, fmt.Errorf("no clusters found")
+	}
+
+	return rl.Clusters[0], nil
+}
