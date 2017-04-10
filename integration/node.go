@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"google.golang.org/grpc"
 
@@ -115,6 +116,10 @@ func (n *testNode) stop() error {
 	defer cancel()
 	isManager := n.IsManager()
 	if err := n.node.Stop(ctx); err != nil {
+		// if the error is from trying to stop an already stopped stopped node, ignore the error
+		if strings.Contains(err.Error(), "node: not started") {
+			return nil
+		}
 		// TODO(aaronl): This stack dumping may be removed in the
 		// future once context deadline issues while shutting down
 		// nodes are resolved.

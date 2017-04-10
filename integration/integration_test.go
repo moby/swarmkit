@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -12,6 +13,8 @@ import (
 	"time"
 
 	"golang.org/x/net/context"
+
+	"reflect"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/cloudflare/cfssl/helpers"
@@ -98,6 +101,9 @@ func pollClusterReady(t *testing.T, c *testCluster, numWorker, numManager int) {
 				if n.ManagerStatus != nil {
 					return fmt.Errorf("worker node %s should not have manager status, returned %s", n.ID, n.ManagerStatus)
 				}
+			}
+			if n.Description.TLSInfo == nil {
+				return fmt.Errorf("node %s has not reported its TLS info yet", n.ID)
 			}
 		}
 		if !leaderFound {
@@ -546,4 +552,169 @@ func TestForceNewCluster(t *testing.T) {
 	require.NoError(t, leader.Pause(true))
 	require.NoError(t, ioutil.WriteFile(managerCertFile, expiredCertPEM, 0644))
 	require.Error(t, cl.StartNode(nodeID))
+}
+
+func pollRootRotationDone(t *testing.T, cl *testCluster) {
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
+		clusterInfo, err := cl.GetClusterInfo()
+		if err != nil {
+			return err
+		}
+		if clusterInfo.RootCA.RootRotation != nil {
+			return errors.New("root rotation not done")
+		}
+		return nil
+	}, opsTimeout))
+}
+
+func TestSuccessfulRootRotation(t *testing.T) {
+	t.Parallel()
+	numWorker, numManager := 2, 3
+	cl := newCluster(t, numWorker, numManager)
+	defer func() {
+		require.NoError(t, cl.Stop())
+	}()
+	pollClusterReady(t, cl, numWorker, numManager)
+
+	// Take down one of managers and both workers, so we can't actually ever finish root rotation.
+	resp, err := cl.api.ListNodes(context.Background(), &api.ListNodesRequest{})
+	require.NoError(t, err)
+	var (
+		downManagerID string
+		downWorkerIDs []string
+		oldTLSInfo    *api.NodeTLSInfo
+	)
+	for _, n := range resp.Nodes {
+		if oldTLSInfo != nil {
+			require.Equal(t, oldTLSInfo, n.Description.TLSInfo)
+		} else {
+			oldTLSInfo = n.Description.TLSInfo
+		}
+		if n.Role == api.NodeRoleManager {
+			if !n.ManagerStatus.Leader && downManagerID == "" {
+				downManagerID = n.ID
+				require.NoError(t, cl.nodes[n.ID].Pause(false))
+			}
+			continue
+		}
+		downWorkerIDs = append(downWorkerIDs, n.ID)
+		require.NoError(t, cl.nodes[n.ID].Pause(false))
+	}
+
+	// perform a root rotation, and wait until all the nodes that are up have newly issued certs
+	newRootCert, newRootKey, err := cautils.CreateRootCertAndKey("newRootCN")
+	require.NoError(t, err)
+	require.NoError(t, cl.RotateRootCA(newRootCert, newRootKey))
+
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
+		resp, err := cl.api.ListNodes(context.Background(), &api.ListNodesRequest{})
+		if err != nil {
+			return err
+		}
+		for _, n := range resp.Nodes {
+			isDown := n.ID == downManagerID || n.ID == downWorkerIDs[0] || n.ID == downWorkerIDs[1]
+			if reflect.DeepEqual(n.Description.TLSInfo, oldTLSInfo) != isDown {
+				return fmt.Errorf("expected TLS info to have changed: %v", !isDown)
+			}
+		}
+
+		// root rotation isn't done
+		clusterInfo, err := cl.GetClusterInfo()
+		if err != nil {
+			return err
+		}
+		require.NotNil(t, clusterInfo.RootCA.RootRotation) // if root rotation is already done, fail and finish the test here
+		return nil
+	}, opsTimeout))
+
+	// Bring the other manager back.  Also bring one worker back, kill the other worker,
+	// and add a new worker - show that we can converge on a root rotation.
+	require.NoError(t, cl.StartNode(downManagerID))
+	require.NoError(t, cl.StartNode(downWorkerIDs[0]))
+	require.NoError(t, cl.RemoveNode(downWorkerIDs[1], false))
+	require.NoError(t, cl.AddAgent())
+
+	// we can finish root rotation even though the previous leader was down because it had
+	// already rotated its cert
+	pollRootRotationDone(t, cl)
+
+	// wait until all the nodes have gotten their new certs and trust roots
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
+		resp, err = cl.api.ListNodes(context.Background(), &api.ListNodesRequest{})
+		if err != nil {
+			return err
+		}
+		var newTLSInfo *api.NodeTLSInfo
+		for _, n := range resp.Nodes {
+			if newTLSInfo == nil {
+				newTLSInfo = n.Description.TLSInfo
+				if bytes.Equal(newTLSInfo.CertIssuerPublicKey, oldTLSInfo.CertIssuerPublicKey) ||
+					bytes.Equal(newTLSInfo.CertIssuerSubject, oldTLSInfo.CertIssuerSubject) {
+					return errors.New("expecting the issuer to have changed")
+				}
+				if !bytes.Equal(newTLSInfo.TrustRoot, newRootCert) {
+					return errors.New("expecting the the root certificate to have changed")
+				}
+			} else if !reflect.DeepEqual(newTLSInfo, n.Description.TLSInfo) {
+				return fmt.Errorf("the nodes have not converged yet, particularly %s", n.ID)
+			}
+
+			if n.Certificate.Status.State != api.IssuanceStateIssued {
+				return errors.New("nodes have yet to finish renewing their TLS certificates")
+			}
+		}
+		return nil
+	}, opsTimeout))
+}
+
+func TestRepeatedRootRotation(t *testing.T) {
+	t.Parallel()
+	numWorker, numManager := 3, 1
+	cl := newCluster(t, numWorker, numManager)
+	defer func() {
+		require.NoError(t, cl.Stop())
+	}()
+	pollClusterReady(t, cl, numWorker, numManager)
+
+	resp, err := cl.api.ListNodes(context.Background(), &api.ListNodesRequest{})
+	require.NoError(t, err)
+	var oldTLSInfo *api.NodeTLSInfo
+	for _, n := range resp.Nodes {
+		if oldTLSInfo != nil {
+			require.Equal(t, oldTLSInfo, n.Description.TLSInfo)
+		} else {
+			oldTLSInfo = n.Description.TLSInfo
+		}
+	}
+
+	// perform multiple root rotations, wait a second between each
+	var newRootCert, newRootKey []byte
+	for i := 0; i < 3; i++ {
+		newRootCert, newRootKey, err = cautils.CreateRootCertAndKey("newRootCN")
+		require.NoError(t, err)
+		require.NoError(t, cl.RotateRootCA(newRootCert, newRootKey))
+		time.Sleep(time.Second)
+	}
+
+	pollRootRotationDone(t, cl)
+
+	// wait until all the nodes are stabilized back to the latest issuer
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
+		resp, err = cl.api.ListNodes(context.Background(), &api.ListNodesRequest{})
+		if err != nil {
+			return nil
+		}
+		for _, n := range resp.Nodes {
+			if reflect.DeepEqual(n.Description.TLSInfo, oldTLSInfo) {
+				return errors.New("nodes have not changed TLS info")
+			}
+			if n.Certificate.Status.State != api.IssuanceStateIssued {
+				return errors.New("nodes have yet to finish renewing their TLS certificates")
+			}
+			if !bytes.Equal(n.Description.TLSInfo.TrustRoot, newRootCert) {
+				return errors.New("nodes do not all trust the new root yet")
+			}
+		}
+		return nil
+	}, opsTimeout))
 }

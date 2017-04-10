@@ -21,6 +21,7 @@ import (
 	"github.com/docker/swarmkit/connectionbroker"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/ioutils"
+	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state/store"
 	stateutils "github.com/docker/swarmkit/manager/state/testutils"
 	"github.com/docker/swarmkit/remotes"
@@ -178,6 +179,7 @@ func NewTestCAFromRootCA(t *testing.T, tempBaseDir string, rootCA ca.RootCA, krw
 
 	caServer := ca.NewServer(s, managerConfig, paths.RootCA)
 	caServer.SetReconciliationRetryInterval(50 * time.Millisecond)
+	caServer.SetRootReconciliationInterval(50 * time.Millisecond)
 	api.RegisterCAServer(grpcServer, caServer)
 	api.RegisterNodeCAServer(grpcServer, caServer)
 
@@ -200,7 +202,9 @@ func NewTestCAFromRootCA(t *testing.T, tempBaseDir string, rootCA ca.RootCA, krw
 			select {
 			case event := <-clusterWatch:
 				clusterEvent := event.(api.EventUpdateCluster)
-				caServer.UpdateRootCA(ctx, clusterEvent.Cluster)
+				if err := caServer.UpdateRootCA(ctx, clusterEvent.Cluster); err != nil {
+					log.G(ctx).WithError(err).Error("ca utils CA server could not update root CA")
+				}
 			case <-ctx.Done():
 				clusterWatchCancel()
 				return
