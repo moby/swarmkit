@@ -112,7 +112,7 @@ This is usually difficult for several reasons:
     of them handle it differently.
 
 
-Docker solves the problem of dependency hell by giving the developer a simple
+Docker solves the problem of dependency hell by giving developers a simple
 way to express *all* their application's dependencies in one place, while
 streamlining the process of assembling them. If this makes you think of
 [XKCD 927](https://xkcd.com/927/), don't worry. Docker doesn't
@@ -252,7 +252,7 @@ We are always open to suggestions on process improvements, and are always lookin
   <tr>
     <td>Stack Overflow</td>
     <td>
-      Stack Overflow has over 7000 Docker questions listed. We regularly
+      Stack Overflow has thousands of Docker questions listed. We regularly
       monitor <a href="https://stackoverflow.com/search?tab=newest&q=docker" target="_blank">Docker questions</a>
       and so do many other knowledgeable Docker users.
     </td>
