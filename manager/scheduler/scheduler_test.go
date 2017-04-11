@@ -2178,6 +2178,10 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 						Type: "Volume",
 						Name: "plugin1",
 					},
+					{
+						Type: "Log",
+						Name: "default",
+					},
 				},
 			},
 		},
@@ -2205,6 +2209,10 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 						Type: "Volume",
 						Name: "plugin2",
 					},
+					{
+						Type: "Log",
+						Name: "default",
+					},
 				},
 			},
 		},
@@ -2230,6 +2238,33 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 					},
 					{
 						Type: "Network",
+						Name: "plugin1",
+					},
+					{
+						Type: "Log",
+						Name: "default",
+					},
+				},
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+	}
+
+	// Node4: log plugin1
+	n4 := &api.Node{
+		ID: "node4_ID",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node4",
+			},
+		},
+		Description: &api.NodeDescription{
+			Engine: &api.EngineDescription{
+				Plugins: []api.PluginDescription{
+					{
+						Type: "Log",
 						Name: "plugin1",
 					},
 				},
@@ -2346,6 +2381,40 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 			State: api.TaskStatePending,
 		},
 	}
+	// Task4: log plugin1
+	t4 := &api.Task{
+		ID:           "task4_ID",
+		DesiredState: api.TaskStateRunning,
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{},
+			},
+			LogDriver: &api.Driver{Name: "plugin1"},
+		},
+		ServiceAnnotations: api.Annotations{
+			Name: "task4",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+	}
+	// Task5: log plugin1
+	t5 := &api.Task{
+		ID:           "task5_ID",
+		DesiredState: api.TaskStateRunning,
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{},
+			},
+			LogDriver: &api.Driver{Name: "plugin1"},
+		},
+		ServiceAnnotations: api.Annotations{
+			Name: "task5",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+	}
 
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
@@ -2418,6 +2487,38 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	assignment2 := watchAssignment(t, watch)
 	assert.Equal(t, assignment2.ID, "task3_ID")
 	assert.Equal(t, assignment2.NodeID, "node3_ID")
+
+	// Create t4; it should stay in the pending state because there is
+	// no node that with log plugin `plugin1`
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, t4))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// check that t4 has been assigned
+	failure2 := watchAssignmentFailure(t, watch)
+	assert.Equal(t, "no suitable node (missing plugin on 3 nodes)", failure2.Status.Message)
+
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateNode(tx, n4))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Check that t4 has been assigned
+	assignment3 := watchAssignment(t, watch)
+	assert.Equal(t, assignment3.ID, "task4_ID")
+	assert.Equal(t, assignment3.NodeID, "node4_ID")
+
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, t5))
+		return nil
+	})
+	assert.NoError(t, err)
+	assignment4 := watchAssignment(t, watch)
+	assert.Equal(t, assignment4.ID, "task5_ID")
+	assert.Equal(t, assignment4.NodeID, "node4_ID")
 }
 
 func BenchmarkScheduler1kNodes1kTasks(b *testing.B) {
