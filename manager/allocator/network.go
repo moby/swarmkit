@@ -977,12 +977,15 @@ func (a *Allocator) procUnallocatedNetworks(ctx context.Context) {
 		return
 	}
 
+	committedNetworks := make([]*api.Network, 0, len(allocatedNetworks))
+
 	committed, err := a.store.Batch(func(batch *store.Batch) error {
 		for _, n := range allocatedNetworks {
 			if err := a.commitAllocatedNetwork(ctx, batch, n); err != nil {
 				log.G(ctx).WithError(err).Debugf("Failed to commit allocation of unallocated network %s", n.ID)
 				continue
 			}
+			committedNetworks = append(committedNetworks, n)
 		}
 		return nil
 	})
@@ -991,7 +994,7 @@ func (a *Allocator) procUnallocatedNetworks(ctx context.Context) {
 		log.G(ctx).WithError(err).Error("Failed to commit allocation of unallocated networks")
 	}
 
-	for _, n := range allocatedNetworks[:committed] {
+	for _, n := range committedNetworks[:committed] {
 		delete(nc.unallocatedNetworks, n.ID)
 	}
 }
@@ -1013,12 +1016,15 @@ func (a *Allocator) procUnallocatedServices(ctx context.Context) {
 		return
 	}
 
+	committedServices := make([]*api.Service, 0, len(allocatedServices))
+
 	committed, err := a.store.Batch(func(batch *store.Batch) error {
 		for _, s := range allocatedServices {
 			if err := a.commitAllocatedService(ctx, batch, s); err != nil {
 				log.G(ctx).WithError(err).Debugf("Failed to commit allocation of unallocated service %s", s.ID)
 				continue
 			}
+			committedServices = append(committedServices, s)
 		}
 		return nil
 	})
@@ -1027,7 +1033,7 @@ func (a *Allocator) procUnallocatedServices(ctx context.Context) {
 		log.G(ctx).WithError(err).Error("Failed to commit allocation of unallocated services")
 	}
 
-	for _, s := range allocatedServices[:committed] {
+	for _, s := range committedServices[:committed] {
 		delete(nc.unallocatedServices, s.ID)
 	}
 }
@@ -1058,14 +1064,16 @@ func (a *Allocator) procTasksNetwork(ctx context.Context, onRetry bool) {
 		return
 	}
 
+	committedTasks := make([]*api.Task, 0, len(allocatedTasks))
+
 	committed, err := a.store.Batch(func(batch *store.Batch) error {
 		for _, t := range allocatedTasks {
 			err := a.commitAllocatedTask(ctx, batch, t)
-
 			if err != nil {
 				log.G(ctx).WithError(err).Error("task allocation commit failure")
 				continue
 			}
+			committedTasks = append(committedTasks, t)
 		}
 
 		return nil
@@ -1075,7 +1083,7 @@ func (a *Allocator) procTasksNetwork(ctx context.Context, onRetry bool) {
 		log.G(ctx).WithError(err).Error("failed a store batch operation while processing tasks")
 	}
 
-	for _, t := range allocatedTasks[:committed] {
+	for _, t := range committedTasks[:committed] {
 		delete(toAllocate, t.ID)
 	}
 }
