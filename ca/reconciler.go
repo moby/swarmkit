@@ -85,6 +85,7 @@ func (r *rootRotationReconciler) UpdateRootCA(newRootCA *api.RootCA) {
 			if waitForPrevLoop {
 				r.wg.Wait()
 			}
+			r.wg.Add(1)
 			go r.runReconcilerLoop(loopCtx, newRootCA)
 		}
 	}()
@@ -151,7 +152,6 @@ func (r *rootRotationReconciler) DeleteNode(node *api.Node) {
 }
 
 func (r *rootRotationReconciler) runReconcilerLoop(ctx context.Context, loopRootCA *api.RootCA) {
-	r.wg.Add(1)
 	defer r.wg.Done()
 	for {
 		r.mu.Lock()
