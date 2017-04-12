@@ -121,17 +121,6 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 			expectErrorString: "the signing CA cert must also be provided",
 		},
 		{
-			rootCA: initialLocalRootCA,
-			caConfig: api.CAConfig{
-				ExternalCAs: []*api.ExternalCA{
-					{
-						URL: initExtServer.URL,
-					},
-				},
-			},
-			expectErrorString: "must specify CA certificate for each external CA",
-		},
-		{
 			rootCA: initExternalRootCAWithRotation, // even if a root rotation is already in progress, the current CA external URL must be present
 			caConfig: api.CAConfig{
 				ExternalCAs: []*api.ExternalCA{
@@ -180,8 +169,8 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 						Protocol: 3, // wrong protocol
 					},
 					{
-						URL:    rotateExtServer.URL,
-						CACert: initialLocalRootCA.CACert, // wrong cert
+						URL: rotateExtServer.URL,
+						// wrong cert because no cert is assumed to be the current root CA cert
 					},
 				},
 			},
@@ -251,6 +240,23 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 					{
 						URL:    initExtServer.URL,
 						CACert: initialLocalRootCA.CACert, // current cert
+					},
+					{
+						URL:    rotateExtServer.URL,
+						CACert: rotationCert, //new cert
+					},
+				},
+			},
+			expectErrorString: "rotating from one external CA to a different external CA is not supported",
+		},
+		{
+			rootCA: initialExternalRootCA,
+			caConfig: api.CAConfig{
+				SigningCACert: rotationCert,
+				ExternalCAs: []*api.ExternalCA{
+					{
+						URL: initExtServer.URL,
+						// no cert means the current cert
 					},
 					{
 						URL:    rotateExtServer.URL,
@@ -434,8 +440,7 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 				ForceRotate:   5,
 				ExternalCAs: []*api.ExternalCA{
 					{
-						URL:    initExtServer.URL,
-						CACert: append(initialLocalRootCA.CACert, '\n'),
+						URL: initExtServer.URL,
 					},
 				},
 			},
@@ -551,8 +556,7 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 				ForceRotate:   5,
 				ExternalCAs: []*api.ExternalCA{
 					{
-						URL:    initExtServer.URL,
-						CACert: append(initialLocalRootCA.CACert, '\t'),
+						URL: initExtServer.URL,
 					},
 				},
 			},
