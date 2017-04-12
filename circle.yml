@@ -49,6 +49,7 @@ dependencies:
 test:
     pre:
         # Ensure validation of dependencies
+        - cd "$WORKDIR" && git fetch origin
         - cd "$WORKDIR" && if test -n "`git diff --stat=1000 origin/master | grep -E \"^[[:space:]]*vendor\"`"; then make dep-validate; fi
 
     override:
