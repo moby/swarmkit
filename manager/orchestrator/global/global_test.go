@@ -2,13 +2,16 @@ package global
 
 import (
 	"testing"
+	"time"
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/orchestrator/testutils"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
 
@@ -266,4 +269,128 @@ func deleteTask(t *testing.T, s *store.MemoryStore, task *api.Task) {
 		assert.NoError(t, store.DeleteTask(tx, task.ID))
 		return nil
 	})
+}
+
+func TestInitializationMultipleServices(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	// create nodes, services and tasks in store directly
+	// where orchestrator runs, it should fix tasks to declarative state
+	addNode(t, s, node1)
+	addService(t, s, service1)
+	addService(t, s, service2)
+	tasks := []*api.Task{
+		// node id1 has 1 task for service id1 and 1 task for service id2
+		{
+			ID:           "task1",
+			DesiredState: api.TaskStateRunning,
+			Status: api.TaskStatus{
+				State: api.TaskStateRunning,
+			},
+			Spec: service1.Spec.Task,
+			ServiceAnnotations: api.Annotations{
+				Name: "task1",
+			},
+			ServiceID: "id1",
+			NodeID:    "id1",
+		},
+		{
+			ID:           "task2",
+			DesiredState: api.TaskStateRunning,
+			Status: api.TaskStatus{
+				State: api.TaskStateRunning,
+			},
+			Spec: service2.Spec.Task,
+			ServiceAnnotations: api.Annotations{
+				Name: "task2",
+			},
+			ServiceID: "id2",
+			NodeID:    "id1",
+		},
+	}
+	for _, task := range tasks {
+		addTask(t, s, task)
+	}
+
+	// watch orchestration events
+	watch, cancel := state.Watch(s.WatchQueue(), state.EventCreateTask{}, state.EventUpdateTask{}, state.EventDeleteTask{})
+	defer cancel()
+
+	orchestrator := NewGlobalOrchestrator(s)
+	defer orchestrator.Stop()
+
+	go func() {
+		assert.NoError(t, orchestrator.Run(ctx))
+	}()
+
+	// Nothing should happen because both tasks are up to date.
+	select {
+	case e := <-watch:
+		t.Fatalf("Received unexpected event (type: %T) %+v", e, e)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	// Update service 1. Make sure only service 1's task is restarted.
+
+	s.Update(func(tx store.Tx) error {
+		s1 := store.GetService(tx, "id1")
+		require.NotNil(t, s1)
+
+		s1.Spec.Task.Restart = &api.RestartPolicy{Delay: ptypes.DurationProto(70 * time.Millisecond)}
+
+		assert.NoError(t, store.UpdateService(tx, s1))
+		return nil
+	})
+
+	observedUpdate1 := testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, "id1", observedUpdate1.ServiceID)
+	assert.Equal(t, "id1", observedUpdate1.NodeID)
+	assert.Equal(t, api.TaskStateShutdown, observedUpdate1.DesiredState)
+
+	observedCreation1 := testutils.WatchTaskCreate(t, watch)
+	assert.Equal(t, "id1", observedCreation1.ServiceID)
+	assert.Equal(t, "id1", observedCreation1.NodeID)
+	assert.Equal(t, api.TaskStateReady, observedCreation1.DesiredState)
+
+	// Nothing else should happen
+	select {
+	case e := <-watch:
+		t.Fatalf("Received unexpected event (type: %T) %+v", e, e)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	// Fail a task from service 2. Make sure only service 2's task is restarted.
+
+	s.Update(func(tx store.Tx) error {
+		t2 := store.GetTask(tx, "task2")
+		require.NotNil(t, t2)
+
+		t2.Status.State = api.TaskStateFailed
+
+		assert.NoError(t, store.UpdateTask(tx, t2))
+		return nil
+	})
+
+	// Consume our own task update event
+	<-watch
+
+	observedUpdate2 := testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, "id2", observedUpdate2.ServiceID)
+	assert.Equal(t, "id1", observedUpdate2.NodeID)
+	assert.Equal(t, api.TaskStateShutdown, observedUpdate2.DesiredState)
+
+	observedCreation2 := testutils.WatchTaskCreate(t, watch)
+	assert.Equal(t, "id2", observedCreation2.ServiceID)
+	assert.Equal(t, "id1", observedCreation2.NodeID)
+	assert.Equal(t, api.TaskStateReady, observedCreation2.DesiredState)
+
+	// Nothing else should happen
+	select {
+	case e := <-watch:
+		t.Fatalf("Received unexpected event (type: %T) %+v", e, e)
+	case <-time.After(100 * time.Millisecond):
+	}
 }
