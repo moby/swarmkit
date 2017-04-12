@@ -204,6 +204,10 @@ func (tm *taskManager) run(ctx context.Context) {
 			task = task.Copy()
 			task.Status = tm.task.Status // overwrite our status, as it is canonical.
 			tm.task = task
+			// update the Controller's view of the task
+			if err := tm.ctlr.Update(ctx, task); err != nil {
+				log.G(ctx).WithError(err).Error("Controller task update failed")
+			}
 			updated = true
 
 			// we have accepted the task update

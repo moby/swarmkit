@@ -90,7 +90,7 @@ func TestTaskManager(t *testing.T) {
 				"start":   1,
 				"wait":    1,
 				"prepare": 1,
-				"update":  2}, ctlr.calls)
+				"update":  4}, ctlr.calls)
 			return
 		case <-ctx.Done():
 			t.Fatal(ctx.Err())
