@@ -2,6 +2,7 @@ package agent
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -223,11 +224,14 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 	var gotSession *api.SessionRequest
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		gotSession, closedSessions = tester.dispatcher.GetSessions()
-		if gotSession == nil || len(closedSessions) != 1 {
-			return errors.New("session has not been restarted yet")
+		if gotSession == nil {
+			return errors.New("no current session")
+		}
+		if len(closedSessions) != 1 {
+			return fmt.Errorf("expecting 1 closed sessions, got %d", len(closedSessions))
 		}
 		return nil
-	}, 1*time.Second))
+	}, 2*time.Second))
 	require.NotEqual(t, currSession, gotSession)
 	require.NotNil(t, gotSession.Description)
 	require.Equal(t, "testAgent", gotSession.Description.Hostname)
@@ -241,11 +245,14 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 	tlsCh <- newTLSInfo
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		gotSession, closedSessions = tester.dispatcher.GetSessions()
-		if gotSession == nil || len(closedSessions) != 2 {
-			return errors.New("session has not been restarted yet")
+		if gotSession == nil {
+			return errors.New("no current session")
+		}
+		if len(closedSessions) != 2 {
+			return fmt.Errorf("expecting 2 closed sessions, got %d", len(closedSessions))
 		}
 		return nil
-	}, 1*time.Second))
+	}, 2*time.Second))
 	require.NotEqual(t, currSession, gotSession)
 	require.NotNil(t, gotSession.Description)
 	require.Equal(t, "testAgent", gotSession.Description.Hostname)
