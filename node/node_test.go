@@ -374,3 +374,81 @@ func TestAgentRespectsDispatcherRootCAUpdate(t *testing.T) {
 	wg.Wait()
 	require.NoError(t, nodeErr)
 }
+
+func TestCertRenewals(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "no-top-level-role")
+	require.NoError(t, err)
+
+	paths := ca.NewConfigPaths(filepath.Join(tmpDir, "certificates"))
+
+	// don't bother with a listening socket
+	cAddr := filepath.Join(tmpDir, "control.sock")
+	cfg := &Config{
+		ListenControlAPI: cAddr,
+		StateDir:         tmpDir,
+		Executor:         &agentutils.TestExecutor{},
+	}
+	node, err := New(cfg)
+	require.NoError(t, err)
+
+	var nodeErr error
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		nodeErr = node.Start(context.Background())
+		wg.Done()
+	}()
+
+	select {
+	case <-node.Ready():
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "node did not ready in time")
+	}
+
+	currentNodeCert, err := ioutil.ReadFile(paths.Node.Cert)
+	require.NoError(t, err)
+
+	// Fake an update from the dispatcher. Make sure the Role field is
+	// ignored when DesiredRole has not changed.
+	node.notifyNodeChange <- &agent.NodeChanges{
+		Node: &api.Node{
+			Spec: api.NodeSpec{
+				DesiredRole: api.NodeRoleManager,
+			},
+			Role: api.NodeRoleWorker,
+		},
+	}
+
+	time.Sleep(500 * time.Millisecond)
+
+	nodeCert, err := ioutil.ReadFile(paths.Node.Cert)
+	require.NoError(t, err)
+	if !bytes.Equal(currentNodeCert, nodeCert) {
+		t.Fatal("Certificate should not have been renewed")
+	}
+
+	// Fake an update from the dispatcher. When DesiredRole doesn't match
+	// the current role, a cert renewal should be triggered.
+	node.notifyNodeChange <- &agent.NodeChanges{
+		Node: &api.Node{
+			Spec: api.NodeSpec{
+				DesiredRole: api.NodeRoleWorker,
+			},
+			Role: api.NodeRoleWorker,
+		},
+	}
+
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
+		nodeCert, err := ioutil.ReadFile(paths.Node.Cert)
+		require.NoError(t, err)
+		if bytes.Equal(currentNodeCert, nodeCert) {
+			return errors.New("certificate has not been replaced yet")
+		}
+		currentNodeCert = nodeCert
+		return nil
+	}, 5*time.Second))
+
+	require.NoError(t, node.Stop(context.Background()))
+	wg.Wait()
+	require.NoError(t, nodeErr)
+}
