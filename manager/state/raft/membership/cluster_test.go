@@ -1,6 +1,7 @@
 package membership_test
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -268,20 +269,19 @@ func TestCanRemoveMember(t *testing.T) {
 			return fmt.Errorf("expected 3 nodes, got %d", len(members))
 		}
 		if members[nodes[2].Config.ID].Status.Reachability == api.RaftMemberStatus_REACHABLE {
-			return fmt.Errorf("expected node 2 to be unreachable")
+			return errors.New("expected node 2 to be unreachable")
 		}
 		if members[nodes[3].Config.ID].Status.Reachability == api.RaftMemberStatus_REACHABLE {
-			return fmt.Errorf("expected node 3 to be unreachable")
+			return errors.New("expected node 3 to be unreachable")
 		}
 		return nil
 	}))
 
-	// Removing all nodes should fail
+	// Removing nodes at this point fails because we lost quorum
 	for i := 1; i <= 3; i++ {
 		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		err := nodes[1].RemoveMember(ctx, uint64(i))
 		assert.Error(t, err)
-		assert.Equal(t, err, raft.ErrCannotRemoveMember)
 		members := nodes[1].GetMemberlist()
 		assert.Equal(t, len(members), 3)
 	}
@@ -291,17 +291,31 @@ func TestCanRemoveMember(t *testing.T) {
 	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
+	var leader uint64
+	leaderIndex := func() uint64 {
+		for i, n := range nodes {
+			if n.Config.ID == n.Leader() {
+				return i
+			}
+		}
+		return 0
+	}
+
 	// Node 2 and Node 3 should be listed as Reachable
 	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
-		members := nodes[1].GetMemberlist()
+		leader = leaderIndex()
+		if leader == 0 {
+			return errors.New("no leader")
+		}
+		members := nodes[leader].GetMemberlist()
 		if len(members) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(members))
 		}
 		if members[nodes[2].Config.ID].Status.Reachability == api.RaftMemberStatus_UNREACHABLE {
-			return fmt.Errorf("expected node 2 to be reachable")
+			return errors.New("expected node 2 to be reachable")
 		}
 		if members[nodes[3].Config.ID].Status.Reachability == api.RaftMemberStatus_UNREACHABLE {
-			return fmt.Errorf("expected node 3 to be reachable")
+			return errors.New("expected node 3 to be reachable")
 		}
 		return nil
 	}))
@@ -312,65 +326,73 @@ func TestCanRemoveMember(t *testing.T) {
 
 	// Node 3 should be listed as Unreachable
 	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
-		members := nodes[1].GetMemberlist()
+		leader = leaderIndex()
+		if leader == 0 {
+			return errors.New("no leader")
+		}
+		members := nodes[leader].GetMemberlist()
 		if len(members) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(members))
 		}
 		if members[nodes[3].Config.ID].Status.Reachability == api.RaftMemberStatus_REACHABLE {
-			return fmt.Errorf("expected node 3 to be unreachable")
+			return errors.New("expected node 3 to be unreachable")
 		}
 		return nil
 	}))
 
 	// Removing node 2 should fail (this would break the quorum)
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	err := nodes[1].RemoveMember(ctx, nodes[2].Config.ID)
-	assert.Error(t, err)
-	assert.Equal(t, err, raft.ErrCannotRemoveMember)
-	members := nodes[1].GetMemberlist()
+	err := nodes[leader].RemoveMember(ctx, nodes[2].Config.ID)
+	assert.EqualError(t, err, raft.ErrCannotRemoveMember.Error())
+	members := nodes[leader].GetMemberlist()
 	assert.Equal(t, len(members), 3)
 
 	// Removing node 3 works fine because it is already unreachable
 	ctx, _ = context.WithTimeout(context.Background(), 10*time.Second)
-	err = nodes[1].RemoveMember(ctx, nodes[3].Config.ID)
+	err = nodes[leader].RemoveMember(ctx, nodes[3].Config.ID)
 	assert.NoError(t, err)
-	members = nodes[1].GetMemberlist()
+	members = nodes[leader].GetMemberlist()
 	assert.Nil(t, members[nodes[3].Config.ID])
 	assert.Equal(t, len(members), 2)
 
 	// Add back node 3
 	raftutils.ShutdownNode(nodes[3])
 	delete(nodes, 3)
-	raftutils.AddRaftNode(t, clockSource, nodes, tc)
+	nodes[3] = raftutils.NewJoinNode(t, clockSource, nodes[leader].Address, tc)
+	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Node 2 and Node 3 should be listed as Reachable
 	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
-		members := nodes[1].GetMemberlist()
+		leader = leaderIndex()
+		if leader == 0 {
+			return errors.New("no leader")
+		}
+		members := nodes[leader].GetMemberlist()
 		if len(members) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(members))
 		}
 		if members[nodes[2].Config.ID].Status.Reachability != api.RaftMemberStatus_REACHABLE {
-			return fmt.Errorf("expected node 2 to be reachable")
+			return errors.New("expected node 2 to be reachable")
 		}
 		if members[nodes[3].Config.ID].Status.Reachability != api.RaftMemberStatus_REACHABLE {
-			return fmt.Errorf("expected node 3 to be reachable")
+			return errors.New("expected node 3 to be reachable")
 		}
 		return nil
 	}))
 
 	// Removing node 3 should succeed
 	ctx, _ = context.WithTimeout(context.Background(), 10*time.Second)
-	err = nodes[1].RemoveMember(ctx, nodes[3].Config.ID)
+	err = nodes[leader].RemoveMember(ctx, nodes[3].Config.ID)
 	assert.NoError(t, err)
-	members = nodes[1].GetMemberlist()
+	members = nodes[leader].GetMemberlist()
 	assert.Nil(t, members[nodes[3].Config.ID])
 	assert.Equal(t, len(members), 2)
 
 	// Removing node 2 should succeed
 	ctx, _ = context.WithTimeout(context.Background(), 10*time.Second)
-	err = nodes[1].RemoveMember(ctx, nodes[2].Config.ID)
+	err = nodes[leader].RemoveMember(ctx, nodes[2].Config.ID)
 	assert.NoError(t, err)
-	members = nodes[1].GetMemberlist()
+	members = nodes[leader].GetMemberlist()
 	assert.Nil(t, members[nodes[2].Config.ID])
 	assert.Equal(t, len(members), 1)
 }

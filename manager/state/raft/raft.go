@@ -207,6 +207,7 @@ func NewNode(opts NodeOptions) *Node {
 			MaxSizePerMsg:   cfg.MaxSizePerMsg,
 			MaxInflightMsgs: cfg.MaxInflightMsgs,
 			Logger:          cfg.Logger,
+			CheckQuorum:     cfg.CheckQuorum,
 		},
 		doneCh:              make(chan struct{}),
 		RemovedFromRaft:     make(chan struct{}),
