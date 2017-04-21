@@ -380,12 +380,23 @@ message ClusterSpec {
 	EncryptionConfig encryption_config = 8 [(gogoproto.nullable) = false];
 }
 
+// Templating controls whether the payload of a config or secret is evaluated
+// as a template.
+enum Templating {
+	NONE = 0;
+	GO_TEMPLATE = 1;
+}
+
 // SecretSpec specifies a user-provided secret.
 message SecretSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
 	// Data is the secret payload - the maximum size is 500KB (that is, 500*1024 bytes)
 	bytes data = 2;
+
+	// Templating controls whether and how to evaluate the secret payload as
+	// a template.
+	Templating templating = 3;
 }
 
 // ConfigSpec specifies user-provided configuration files.
@@ -396,4 +407,8 @@ message ConfigSpec {
 	// TODO(aaronl): Do we want to revise this to include multiple payloads in a single
 	// ConfigSpec? Define this to be a tar? etc...
 	bytes data = 2;
+
+	// Templating controls whether and how to evaluate the config payload as
+	// a template.
+	Templating templating = 3;
 }
