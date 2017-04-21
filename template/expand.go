@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/pkg/errors"
 )
@@ -115,4 +116,48 @@ func expandEnv(ctx Context, values []string) ([]string, error) {
 	}
 
 	return result, nil
+}
+
+func expandPayload(ctx PayloadContext, payload []byte) ([]byte, error) {
+	result, err := ctx.Expand(string(payload))
+	if err != nil {
+		return payload, err
+	}
+	return []byte(result), nil
+}
+
+// ExpandSecretSpec expands the template inside the secret payload, if any.
+// Templating is evaluated on the agent-side.
+func ExpandSecretSpec(s *api.Secret, t *api.Task, dependencies exec.DependencyGetter) (*api.SecretSpec, error) {
+	switch s.Spec.Templating {
+	case api.Templating_NONE:
+		return &s.Spec, nil
+	case api.Templating_GO_TEMPLATE:
+		ctx := NewPayloadContextFromTask(t, dependencies)
+		secretSpec := s.Spec.Copy()
+
+		var err error
+		secretSpec.Data, err = expandPayload(ctx, secretSpec.Data)
+		return secretSpec, err
+	default:
+		return &s.Spec, errors.New("unrecognized template type")
+	}
+}
+
+// ExpandConfigSpec expands the template inside the config payload, if any.
+// Templating is evaluated on the agent-side.
+func ExpandConfigSpec(c *api.Config, t *api.Task, dependencies exec.DependencyGetter) (*api.ConfigSpec, error) {
+	switch c.Spec.Templating {
+	case api.Templating_NONE:
+		return &c.Spec, nil
+	case api.Templating_GO_TEMPLATE:
+		ctx := NewPayloadContextFromTask(t, dependencies)
+		configSpec := c.Spec.Copy()
+
+		var err error
+		configSpec.Data, err = expandPayload(ctx, configSpec.Data)
+		return configSpec, err
+	default:
+		return &c.Spec, errors.New("unrecognized template type")
+	}
 }
