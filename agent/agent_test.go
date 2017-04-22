@@ -1,10 +1,17 @@
 package agent
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
+	"os"
+	"sync"
 	"testing"
 	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	events "github.com/docker/go-events"
 	agentutils "github.com/docker/swarmkit/agent/testutils"
@@ -14,10 +21,26 @@ import (
 	"github.com/docker/swarmkit/connectionbroker"
 	"github.com/docker/swarmkit/remotes"
 	"github.com/docker/swarmkit/testutils"
+	"github.com/docker/swarmkit/xnet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
+
+var localDispatcher = false
+
+// TestMain runs every test in this file twice - once with a local dispatcher, and
+// once again with a remote dispatcher
+func TestMain(m *testing.M) {
+	localDispatcher = false
+	dispatcherRPCTimeout = 500 * time.Millisecond
+	if status := m.Run(); status != 0 {
+		os.Exit(status)
+	}
+
+	localDispatcher = true
+	os.Exit(m.Run())
+}
 
 func TestAgent(t *testing.T) {
 	// TODO(stevvooe): The current agent is fairly monolithic, making it hard
@@ -237,6 +260,13 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 	require.Equal(t, "testAgent", gotSession.Description.Hostname)
 	currSession = gotSession
 
+	// If nothing changes, the session is not re-established
+	tlsCh <- gotSession.Description.TLSInfo
+	time.Sleep(1 * time.Second)
+	gotSession, closedSessions = tester.dispatcher.GetSessions()
+	require.Equal(t, currSession, gotSession)
+	require.Len(t, closedSessions, 1)
+
 	newTLSInfo := &api.NodeTLSInfo{
 		TrustRoot:           cautils.ECDSA256SHA256Cert,
 		CertIssuerPublicKey: []byte("public key"),
@@ -259,12 +289,71 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 	require.Equal(t, newTLSInfo, gotSession.Description.TLSInfo)
 }
 
+// If the dispatcher returns an error, if it times out, or if it's unreachable, no matter
+// what the agent attempts to reconnect and rebuild a new session.
+func TestSessionReconnectsIfDispatcherErrors(t *testing.T) {
+	tlsCh := make(chan events.Event, 1)
+	defer close(tlsCh)
+
+	tester := agentTestEnv(t, nil, tlsCh)
+	defer tester.cleanup()
+
+	// create a second dispatcher we can fall back on
+	anotherConfig, err := tester.testCA.NewNodeConfig(ca.ManagerRole)
+	require.NoError(t, err)
+	anotherDispatcher, stop := agentutils.NewMockDispatcher(t, anotherConfig, false) // this one is not local, because the other one may be
+	defer stop()
+
+	var counter int
+	anotherDispatcher.SetSessionHandler(func(r *api.SessionRequest, stream api.Dispatcher_SessionServer) error {
+		if counter == 0 {
+			counter++
+			return errors.New("terminate immediately")
+		}
+		// hang forever until the other side cancels, and then set the session to nil so we use the default one
+		defer anotherDispatcher.SetSessionHandler(nil)
+		<-stream.Context().Done()
+		return stream.Context().Err()
+	})
+
+	// ok, agent should have connect to the first dispatcher by now - if it has, kill the first dispatcher and ensure
+	// the agent connects to the second one
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
+		gotSession, closedSessions := tester.dispatcher.GetSessions()
+		if gotSession == nil {
+			return errors.New("no current session")
+		}
+		if len(closedSessions) != 0 {
+			return fmt.Errorf("expecting 0 closed sessions, got %d", len(closedSessions))
+		}
+		return nil
+	}, 2*time.Second))
+	tester.stopDispatcher()
+	tester.remotes.setPeer(api.Peer{Addr: anotherDispatcher.Addr})
+	tester.agent.config.ConnBroker.SetLocalConn(nil)
+
+	// It should have connected with the second dispatcher 3 times - first because the first dispatcher died,
+	// second because the dispatcher returned an error, third time because the session timed out.  So there should
+	// be 2 closed sessions.
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
+		gotSession, closedSessions := anotherDispatcher.GetSessions()
+		if gotSession == nil {
+			return errors.New("no current session")
+		}
+		if len(closedSessions) != 2 {
+			return fmt.Errorf("expecting 2 closed sessions, got %d", len(closedSessions))
+		}
+		return nil
+	}, 5*time.Second))
+}
+
 type agentTester struct {
-	agent      *Agent
-	dispatcher *agentutils.MockDispatcher
-	executor   *agentutils.TestExecutor
-	cleanup    func()
-	testCA     *cautils.TestCA
+	agent                   *Agent
+	dispatcher              *agentutils.MockDispatcher
+	executor                *agentutils.TestExecutor
+	stopDispatcher, cleanup func()
+	testCA                  *cautils.TestCA
+	remotes                 *fakeRemotes
 }
 
 func agentTestEnv(t *testing.T, nodeChangeCh chan *NodeChanges, tlsChangeCh chan events.Event) *agentTester {
@@ -277,10 +366,28 @@ func agentTestEnv(t *testing.T, nodeChangeCh chan *NodeChanges, tlsChangeCh chan
 	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
 	require.NoError(t, err)
 
-	mockDispatcher, mockDispatcherStop := agentutils.NewMockDispatcher(t, managerSecurityConfig)
+	mockDispatcher, mockDispatcherStop := agentutils.NewMockDispatcher(t, managerSecurityConfig, localDispatcher)
 	cleanup = append(cleanup, mockDispatcherStop)
 
-	remotes := remotes.NewRemotes(api.Peer{Addr: mockDispatcher.Addr})
+	fr := &fakeRemotes{}
+	broker := connectionbroker.New(fr)
+	if localDispatcher {
+		insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
+		conn, err := grpc.Dial(
+			mockDispatcher.Addr,
+			grpc.WithTransportCredentials(insecureCreds),
+			grpc.WithDialer(
+				func(addr string, timeout time.Duration) (net.Conn, error) {
+					return xnet.DialTimeoutLocal(addr, timeout)
+				}),
+		)
+		require.NoError(t, err)
+		cleanup = append(cleanup, func() { conn.Close() })
+
+		broker.SetLocalConn(conn)
+	} else {
+		fr.setPeer(api.Peer{Addr: mockDispatcher.Addr})
+	}
 
 	db, cleanupStorage := storageTestEnv(t)
 	cleanup = append(cleanup, func() { cleanupStorage() })
@@ -289,7 +396,7 @@ func agentTestEnv(t *testing.T, nodeChangeCh chan *NodeChanges, tlsChangeCh chan
 
 	agent, err := New(&Config{
 		Executor:         executor,
-		ConnBroker:       connectionbroker.New(remotes),
+		ConnBroker:       broker,
 		Credentials:      agentSecurityConfig.ClientTLSCreds,
 		DB:               db,
 		NotifyNodeChange: nodeChangeCh,
@@ -321,15 +428,49 @@ func agentTestEnv(t *testing.T, nodeChangeCh chan *NodeChanges, tlsChangeCh chan
 	}
 
 	return &agentTester{
-		agent:      agent,
-		dispatcher: mockDispatcher,
-		executor:   executor,
-		testCA:     tc,
+		agent:          agent,
+		dispatcher:     mockDispatcher,
+		stopDispatcher: mockDispatcherStop,
+		executor:       executor,
+		testCA:         tc,
 		cleanup: func() {
 			// go in reverse order
 			for i := len(cleanup) - 1; i >= 0; i-- {
 				cleanup[i]()
 			}
 		},
+		remotes: fr,
 	}
 }
+
+// fakeRemotes is a Remotes interface that just always selects the current remote until
+// it is switched out
+type fakeRemotes struct {
+	mu   sync.Mutex
+	peer api.Peer
+}
+
+func (f *fakeRemotes) Weights() map[api.Peer]int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return map[api.Peer]int{f.peer: 1}
+}
+
+func (f *fakeRemotes) Select(...string) (api.Peer, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.peer, nil
+}
+
+// do nothing
+func (f *fakeRemotes) Observe(peer api.Peer, weight int)         {}
+func (f *fakeRemotes) ObserveIfExists(peer api.Peer, weight int) {}
+func (f *fakeRemotes) Remove(addrs ...api.Peer)                  {}
+
+func (f *fakeRemotes) setPeer(p api.Peer) {
+	f.mu.Lock()
+	f.peer = p
+	f.mu.Unlock()
+}
+
+var _ remotes.Remotes = &fakeRemotes{}
