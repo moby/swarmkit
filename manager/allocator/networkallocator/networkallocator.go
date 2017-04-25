@@ -361,7 +361,7 @@ func (na *NetworkAllocator) ServiceNeedsAllocation(s *api.Service, flags ...func
 	}
 
 	//If the spec no longer has networks attached and has a vip allocated
-	//previous spec the service needs to updated
+	//from previous spec the service needs to updated
 	if s.Endpoint != nil {
 		for _, vip := range s.Endpoint.VirtualIPs {
 			match := false
