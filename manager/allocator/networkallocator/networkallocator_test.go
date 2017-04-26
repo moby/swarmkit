@@ -690,7 +690,7 @@ func TestServiceUpdate(t *testing.T) {
 
 	err := na1.ServiceAllocate(s)
 	assert.NoError(t, err)
-	assert.Equal(t, true, na1.IsServiceAllocated(s))
+	assert.False(t, na1.ServiceNeedsAllocation(s))
 	assert.Equal(t, 2, len(s.Endpoint.Ports))
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 	assert.NotEqual(t, 0, s.Endpoint.Ports[1].PublishedPort)
@@ -701,21 +701,112 @@ func TestServiceUpdate(t *testing.T) {
 	// Now allocate the same service in another allocator instance
 	err = na2.ServiceAllocate(s)
 	assert.NoError(t, err)
-	assert.Equal(t, true, na2.IsServiceAllocated(s))
+	assert.False(t, na2.ServiceNeedsAllocation(s))
 	assert.Equal(t, 2, len(s.Endpoint.Ports))
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 	// Make sure we got the same port
 	assert.Equal(t, allocatedPort, s.Endpoint.Ports[1].PublishedPort)
 
 	s.Spec.Endpoint.Ports[1].PublishedPort = 1235
-	assert.Equal(t, false, na1.IsServiceAllocated(s))
+	assert.True(t, na1.ServiceNeedsAllocation(s))
 
 	err = na1.ServiceAllocate(s)
 	assert.NoError(t, err)
-	assert.Equal(t, true, na1.IsServiceAllocated(s))
+	assert.False(t, na1.ServiceNeedsAllocation(s))
 	assert.Equal(t, 2, len(s.Endpoint.Ports))
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 	assert.Equal(t, uint32(1235), s.Endpoint.Ports[1].PublishedPort)
+}
+
+func TestServiceNetworkUpdate(t *testing.T) {
+	na := newNetworkAllocator(t)
+
+	n1 := &api.Network{
+		ID: "testID1",
+		Spec: api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "test",
+			},
+		},
+	}
+
+	n2 := &api.Network{
+		ID: "testID2",
+		Spec: api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "test2",
+			},
+		},
+	}
+
+	//Allocate both networks
+	err := na.Allocate(n1)
+	assert.NoError(t, err)
+
+	err = na.Allocate(n2)
+	assert.NoError(t, err)
+
+	//Attach a network to a service spec nd allocate a service
+	s := &api.Service{
+		ID: "testID1",
+		Spec: api.ServiceSpec{
+			Task: api.TaskSpec{
+				Networks: []*api.NetworkAttachmentConfig{
+					{
+						Target: "testID1",
+					},
+				},
+			},
+			Endpoint: &api.EndpointSpec{
+				Mode: api.ResolutionModeVirtualIP,
+			},
+		},
+	}
+
+	err = na.ServiceAllocate(s)
+	assert.NoError(t, err)
+	assert.False(t, na.ServiceNeedsAllocation(s))
+	assert.Len(t, s.Endpoint.VirtualIPs, 1)
+
+	// Now update the same service with another network
+	s.Spec.Task.Networks = append(s.Spec.Task.Networks, &api.NetworkAttachmentConfig{Target: "testID2"})
+
+	assert.True(t, na.ServiceNeedsAllocation(s))
+	err = na.ServiceAllocate(s)
+	assert.NoError(t, err)
+
+	assert.False(t, na.ServiceNeedsAllocation(s))
+	assert.Len(t, s.Endpoint.VirtualIPs, 2)
+
+	s.Spec.Task.Networks = s.Spec.Task.Networks[:1]
+
+	//Check if service needs update and allocate with updated service spec
+	assert.True(t, na.ServiceNeedsAllocation(s))
+
+	err = na.ServiceAllocate(s)
+	assert.NoError(t, err)
+	assert.False(t, na.ServiceNeedsAllocation(s))
+	assert.Len(t, s.Endpoint.VirtualIPs, 1)
+
+	s.Spec.Task.Networks = s.Spec.Task.Networks[:0]
+	//Check if service needs update with all the networks removed and allocate with updated service spec
+	assert.True(t, na.ServiceNeedsAllocation(s))
+
+	err = na.ServiceAllocate(s)
+	assert.NoError(t, err)
+	assert.False(t, na.ServiceNeedsAllocation(s))
+	assert.Len(t, s.Endpoint.VirtualIPs, 0)
+
+	//Attach a network and allocate service
+	s.Spec.Task.Networks = append(s.Spec.Task.Networks, &api.NetworkAttachmentConfig{Target: "testID2"})
+	assert.True(t, na.ServiceNeedsAllocation(s))
+
+	err = na.ServiceAllocate(s)
+	assert.NoError(t, err)
+
+	assert.False(t, na.ServiceNeedsAllocation(s))
+	assert.Len(t, s.Endpoint.VirtualIPs, 1)
+
 }
 
 type mockIpam struct {
