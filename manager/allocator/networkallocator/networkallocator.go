@@ -153,7 +153,7 @@ func (na *NetworkAllocator) Deallocate(n *api.Network) error {
 // IP and ports needed by the service.
 func (na *NetworkAllocator) ServiceAllocate(s *api.Service) (err error) {
 	if err = na.portAllocator.serviceAllocatePorts(s); err != nil {
-		return
+		return err
 	}
 	defer func() {
 		if err != nil {
@@ -183,7 +183,7 @@ func (na *NetworkAllocator) ServiceAllocate(s *api.Service) (err error) {
 		}
 
 		delete(na.services, s.ID)
-		return
+		return nil
 	}
 
 	// Always prefer NetworkAttachmentConfig in the TaskSpec
@@ -194,48 +194,47 @@ func (na *NetworkAllocator) ServiceAllocate(s *api.Service) (err error) {
 
 	// Allocate VIPs for all the pre-populated endpoint attachments
 	eVIPs := s.Endpoint.VirtualIPs[:0]
+
+vipLoop:
 	for _, eAttach := range s.Endpoint.VirtualIPs {
-		match := false
 		for _, nAttach := range specNetworks {
 			if nAttach.Target == eAttach.NetworkID {
-				match = true
 				if err = na.allocateVIP(eAttach); err != nil {
-					return
+					return err
 				}
 				eVIPs = append(eVIPs, eAttach)
-				break
+				continue vipLoop
 			}
 		}
-		//If the network of the VIP is not part of the service spec,
-		//deallocate the vip
-		if !match {
-			na.deallocateVIP(eAttach)
-		}
+		// If the network of the VIP is not part of the service spec,
+		// deallocate the vip
+		na.deallocateVIP(eAttach)
 	}
-	s.Endpoint.VirtualIPs = eVIPs
 
-outer:
+networkLoop:
 	for _, nAttach := range specNetworks {
 		for _, vip := range s.Endpoint.VirtualIPs {
 			if vip.NetworkID == nAttach.Target {
-				continue outer
+				continue networkLoop
 			}
 		}
 
 		vip := &api.Endpoint_VirtualIP{NetworkID: nAttach.Target}
 		if err = na.allocateVIP(vip); err != nil {
-			return
+			return err
 		}
 
-		s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs, vip)
+		eVIPs = append(eVIPs, vip)
 	}
 
-	if len(s.Endpoint.VirtualIPs) > 0 {
+	if len(eVIPs) > 0 {
 		na.services[s.ID] = struct{}{}
 	} else {
 		delete(na.services, s.ID)
 	}
-	return
+
+	s.Endpoint.VirtualIPs = eVIPs
+	return nil
 }
 
 // ServiceDeallocate de-allocates all the network resources such as
@@ -346,34 +345,30 @@ func (na *NetworkAllocator) ServiceNeedsAllocation(s *api.Service, flags ...func
 			return true
 		}
 
+		// If the spec has networks which don't have a corresponding VIP,
+		// the service needs to be allocated.
+	networkLoop:
 		for _, net := range specNetworks {
-			match := false
 			for _, vip := range s.Endpoint.VirtualIPs {
 				if vip.NetworkID == net.Target {
-					match = true
-					break
+					continue networkLoop
 				}
 			}
-			if !match {
-				return true
-			}
+			return true
 		}
 	}
 
-	//If the spec no longer has networks attached and has a vip allocated
-	//from previous spec the service needs to updated
+	// If the spec no longer has networks attached and has a vip allocated
+	// from previous spec the service needs to allocated.
 	if s.Endpoint != nil {
+	vipLoop:
 		for _, vip := range s.Endpoint.VirtualIPs {
-			match := false
 			for _, net := range specNetworks {
 				if vip.NetworkID == net.Target {
-					match = true
-					break
+					continue vipLoop
 				}
 			}
-			if !match {
-				return true
-			}
+			return true
 		}
 	}
 
