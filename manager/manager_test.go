@@ -630,6 +630,11 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 	// wait for the key to be decrypted in the raft store
 	pollDecrypted := func() error {
 		return testutils.PollFunc(nil, func() error {
+			// wait until we are leader first, because otherwise the raft node could still be catching
+			// up on all the logs on disk and hence not have processed the "encrypt CA key" log yet
+			if !m.raftNode.IsLeader() {
+				return fmt.Errorf("node is not leader yet")
+			}
 			return m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
 				cluster := store.GetCluster(tx, clusterID)
 				if cluster == nil {
@@ -648,7 +653,9 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 	}
 	require.NoError(t, pollDecrypted())
 
-	// update the key to that can be "decrypted" with both "" and "kek" as the password
+	// update the key to that can be "decrypted" with both "" and "kek" as the password.  This
+	// doesn't actually match the root CA certificate, and hence the security config can't be
+	// updated, but we're just checking that the CA key is decrypted.
 	require.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
 		cluster := store.GetCluster(tx, clusterID)
 		if cluster == nil {
