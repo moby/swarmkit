@@ -732,28 +732,29 @@ func (a *Allocator) commitAllocatedNode(ctx context.Context, batch *store.Batch,
 // so that the service allocation invoked on this new service object will trigger the deallocation
 // of any old publish mode port and allocation of any new one.
 func updatePortsInHostPublishMode(s *api.Service) {
+	// First, remove all host-mode ports from s.Endpoint.Ports
 	if s.Endpoint != nil {
 		var portConfigs []*api.PortConfig
 		for _, portConfig := range s.Endpoint.Ports {
-			if portConfig.PublishMode == api.PublishModeIngress {
+			if portConfig.PublishMode != api.PublishModeHost {
 				portConfigs = append(portConfigs, portConfig)
 			}
 		}
 		s.Endpoint.Ports = portConfigs
 	}
 
+	// Add back all host-mode ports
 	if s.Spec.Endpoint != nil {
 		if s.Endpoint == nil {
 			s.Endpoint = &api.Endpoint{}
 		}
 		for _, portConfig := range s.Spec.Endpoint.Ports {
-			if portConfig.PublishMode == api.PublishModeIngress {
-				continue
+			if portConfig.PublishMode == api.PublishModeHost {
+				s.Endpoint.Ports = append(s.Endpoint.Ports, portConfig.Copy())
 			}
-			s.Endpoint.Ports = append(s.Endpoint.Ports, portConfig.Copy())
 		}
-		s.Endpoint.Spec = s.Spec.Endpoint.Copy()
 	}
+	s.Endpoint.Spec = s.Spec.Endpoint.Copy()
 }
 
 func (a *Allocator) allocateService(ctx context.Context, s *api.Service) error {
