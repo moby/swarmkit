@@ -1028,7 +1028,7 @@ func TestBatch(t *testing.T) {
 	defer cancel()
 
 	// Create 405 nodes. Should get split across 3 transactions.
-	committed, err := s.Batch(func(batch *Batch) error {
+	err := s.Batch(func(batch *Batch) error {
 		for i := 0; i != 2*MaxChangesPerTransaction+5; i++ {
 			n := &api.Node{
 				ID: "id" + strconv.Itoa(i),
@@ -1048,7 +1048,6 @@ func TestBatch(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, 2*MaxChangesPerTransaction+5, committed)
 
 	for i := 0; i != MaxChangesPerTransaction; i++ {
 		event := <-watch
@@ -1090,7 +1089,7 @@ func TestBatchFailure(t *testing.T) {
 	defer cancel()
 
 	// Return an error partway through a transaction.
-	committed, err := s.Batch(func(batch *Batch) error {
+	err := s.Batch(func(batch *Batch) error {
 		for i := 0; ; i++ {
 			n := &api.Node{
 				ID: "id" + strconv.Itoa(i),
@@ -1111,7 +1110,6 @@ func TestBatchFailure(t *testing.T) {
 		}
 	})
 	assert.Error(t, err)
-	assert.Equal(t, MaxChangesPerTransaction, committed)
 
 	for i := 0; i != MaxChangesPerTransaction; i++ {
 		event := <-watch
@@ -1188,7 +1186,7 @@ func TestWatchFrom(t *testing.T) {
 
 	// Create a few nodes, 2 per transaction
 	for i := 0; i != 5; i++ {
-		committed, err := s.Batch(func(batch *Batch) error {
+		err := s.Batch(func(batch *Batch) error {
 			node := &api.Node{
 				ID: "id" + strconv.Itoa(i),
 				Spec: api.NodeSpec{
@@ -1218,7 +1216,6 @@ func TestWatchFrom(t *testing.T) {
 			return nil
 		})
 		assert.NoError(t, err)
-		assert.Equal(t, 2, committed)
 	}
 
 	// Try to watch from an invalid index

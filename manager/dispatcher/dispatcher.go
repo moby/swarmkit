@@ -333,7 +333,7 @@ func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get list of nodes")
 	}
-	_, err = d.store.Batch(func(batch *store.Batch) error {
+	err = d.store.Batch(func(batch *store.Batch) error {
 		for _, n := range nodes {
 			err := batch.Update(func(tx store.Tx) error {
 				// check if node is still here
@@ -600,7 +600,7 @@ func (d *Dispatcher) processUpdates(ctx context.Context) {
 		"method": "(*Dispatcher).processUpdates",
 	})
 
-	_, err := d.store.Batch(func(batch *store.Batch) error {
+	err := d.store.Batch(func(batch *store.Batch) error {
 		for taskID, status := range taskUpdates {
 			err := batch.Update(func(tx store.Tx) error {
 				logger := log.WithField("task.id", taskID)
@@ -951,7 +951,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 }
 
 func (d *Dispatcher) moveTasksToOrphaned(nodeID string) error {
-	_, err := d.store.Batch(func(batch *store.Batch) error {
+	err := d.store.Batch(func(batch *store.Batch) error {
 		var (
 			tasks []*api.Task
 			err   error

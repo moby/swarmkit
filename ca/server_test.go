@@ -1305,7 +1305,7 @@ func TestRootRotationReconciliationThrottled(t *testing.T) {
 	}()
 
 	// create twice the batch size of nodes
-	_, err = tc.MemoryStore.Batch(func(batch *store.Batch) error {
+	err = tc.MemoryStore.Batch(func(batch *store.Batch) error {
 		for i := len(nodes); i < ca.IssuanceStateRotateMaxBatchSize*2; i++ {
 			nodeID := fmt.Sprintf("%d", i)
 			err := batch.Update(func(tx store.Tx) error {
