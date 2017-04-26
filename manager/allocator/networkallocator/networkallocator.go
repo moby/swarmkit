@@ -186,11 +186,7 @@ func (na *NetworkAllocator) ServiceAllocate(s *api.Service) (err error) {
 		return
 	}
 
-	// Always prefer NetworkAttachmentConfig in the TaskSpec
-	specNetworks := s.Spec.Task.Networks
-	if len(specNetworks) == 0 && s != nil && len(s.Spec.Networks) != 0 {
-		specNetworks = s.Spec.Networks
-	}
+	specNetworks := serviceNetworks(s)
 
 	// Allocate VIPs for all the pre-populated endpoint attachments
 	eVIPs := s.Endpoint.VirtualIPs[:0]
@@ -326,11 +322,7 @@ func (na *NetworkAllocator) ServiceNeedsAllocation(s *api.Service, flags ...func
 		flag(&options)
 	}
 
-	// Always prefer NetworkAttachmentConfig in the TaskSpec
-	specNetworks := s.Spec.Task.Networks
-	if len(specNetworks) == 0 && len(s.Spec.Networks) != 0 {
-		specNetworks = s.Spec.Networks
-	}
+	specNetworks := serviceNetworks(s)
 
 	// If endpoint mode is VIP and allocator does not have the
 	// service in VIP allocated set then it needs to be allocated.
@@ -884,4 +876,12 @@ func initializeDrivers(reg *drvregistry.DrvRegistry) error {
 		}
 	}
 	return nil
+}
+
+func serviceNetworks(s *api.Service) []*api.NetworkAttachmentConfig {
+	// Always prefer NetworkAttachmentConfig in the TaskSpec
+	if len(s.Spec.Task.Networks) == 0 && len(s.Spec.Networks) != 0 {
+		return s.Spec.Networks
+	}
+	return s.Spec.Task.Networks
 }
