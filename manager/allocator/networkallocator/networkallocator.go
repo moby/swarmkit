@@ -303,10 +303,10 @@ func (na *NetworkAllocator) IsTaskAllocated(t *api.Task) bool {
 	return true
 }
 
-// PortsAllocatedInHostPublishMode returns if the passed service has its published ports in
-// host (non ingress) mode allocated
-func (na *NetworkAllocator) PortsAllocatedInHostPublishMode(s *api.Service) bool {
-	return na.portAllocator.portsAllocatedInHostPublishMode(s)
+// HostPublishPortsNeedUpdate returns true if the passed service needs
+// allocations for its published ports in host (non ingress) mode
+func (na *NetworkAllocator) HostPublishPortsNeedUpdate(s *api.Service) bool {
+	return na.portAllocator.hostPublishPortsNeedUpdate(s)
 }
 
 // ServiceAllocationOpts is struct used for functional options in IsServiceAllocated

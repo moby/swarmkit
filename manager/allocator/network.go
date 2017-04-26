@@ -346,7 +346,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 		}
 
 		if !nc.nwkAllocator.ServiceNeedsAllocation(s) {
-			if nc.nwkAllocator.PortsAllocatedInHostPublishMode(s) {
+			if !nc.nwkAllocator.HostPublishPortsNeedUpdate(s) {
 				break
 			}
 			updatePortsInHostPublishMode(s)
