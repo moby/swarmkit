@@ -542,7 +542,7 @@ func RenewTLSConfig(ctx context.Context, s *SecurityConfig, connBroker *connecti
 				expBackoff.Failure(nil, nil)
 			} else {
 				certUpdate.Role = s.ClientTLSCreds.Role()
-				expBackoff = events.NewExponentialBackoff(RenewTLSExponentialBackoff)
+				expBackoff.Success(nil)
 				forceRetry = false
 			}
 
