@@ -563,8 +563,8 @@ func TestRenewTLSConfigWorker(t *testing.T) {
 	c := nodeConfig.ClientTLSCreds
 	writeAlmostExpiringCertToDisk(t, tc, c.NodeID(), c.Role(), c.Organization())
 
-	renew := make(chan struct{})
-	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.ConnBroker, renew)
+	renewer := ca.NewTLSRenewer(nodeConfig, tc.ConnBroker)
+	updates := renewer.Start(ctx)
 	select {
 	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestRenewTLSConfig timed-out")
@@ -599,8 +599,8 @@ func TestRenewTLSConfigManager(t *testing.T) {
 	c := nodeConfig.ClientTLSCreds
 	writeAlmostExpiringCertToDisk(t, tc, c.NodeID(), c.Role(), c.Organization())
 
-	renew := make(chan struct{})
-	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.ConnBroker, renew)
+	renewer := ca.NewTLSRenewer(nodeConfig, tc.ConnBroker)
+	updates := renewer.Start(ctx)
 	select {
 	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestRenewTLSConfig timed-out")
@@ -643,39 +643,13 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	renew := make(chan struct{})
-	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.ConnBroker, renew)
+	renewer := ca.NewTLSRenewer(nodeConfig, tc.ConnBroker)
+	updates := renewer.Start(ctx)
 	select {
 	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestRenewTLSConfig timed-out")
 	case certUpdate := <-updates:
 		assert.Error(t, certUpdate.Err)
 		assert.Contains(t, certUpdate.Err.Error(), "not found when attempting to renew certificate")
-	}
-}
-
-func TestForceRenewTLSConfig(t *testing.T) {
-	t.Parallel()
-
-	tc := testutils.NewTestCA(t)
-	defer tc.Stop()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Get a new managerConfig with a TLS cert that has 15 minutes to live
-	nodeConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
-	assert.NoError(t, err)
-
-	renew := make(chan struct{}, 1)
-	updates := ca.RenewTLSConfig(ctx, nodeConfig, tc.ConnBroker, renew)
-	renew <- struct{}{}
-	select {
-	case <-time.After(10 * time.Second):
-		assert.Fail(t, "TestForceRenewTLSConfig timed-out")
-	case certUpdate := <-updates:
-		assert.NoError(t, certUpdate.Err)
-		assert.NotNil(t, certUpdate)
-		assert.Equal(t, certUpdate.Role, ca.ManagerRole)
 	}
 }
