@@ -1,6 +1,6 @@
-// Package identity provides functionality for generating and manager
-// identifiers within swarm. This includes entity identification, such as that
-// of Service, Task and Network but also cryptographically-secure Node identity.
+// Package identity provides functionality for generating and managing
+// identifiers within a swarm. This includes entity identification, such as for
+// Services, Tasks and Networks but also cryptographically-secure Node identities.
 //
 // Random Identifiers
 //
