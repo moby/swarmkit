@@ -264,7 +264,7 @@ func TestServiceAllocatePorts(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestPortsAllocatedInHostPublishMode(t *testing.T) {
+func TestHostPublishPortsNeedUpdate(t *testing.T) {
 	pa, err := newPortAllocator()
 	assert.NoError(t, err)
 
@@ -282,7 +282,7 @@ func TestPortsAllocatedInHostPublishMode(t *testing.T) {
 				},
 				Endpoint: nil,
 			},
-			expect: true,
+			expect: false,
 		},
 		{
 			// non host mode does not impact
@@ -301,7 +301,7 @@ func TestPortsAllocatedInHostPublishMode(t *testing.T) {
 				},
 				Endpoint: nil,
 			},
-			expect: true,
+			expect: false,
 		},
 		{
 			// publish mode is different
@@ -330,7 +330,7 @@ func TestPortsAllocatedInHostPublishMode(t *testing.T) {
 					},
 				},
 			},
-			expect: false,
+			expect: true,
 		},
 		{
 			input: &api.Service{
@@ -359,7 +359,7 @@ func TestPortsAllocatedInHostPublishMode(t *testing.T) {
 					},
 				},
 			},
-			expect: true,
+			expect: false,
 		},
 		{
 			// published port not specified
@@ -389,7 +389,7 @@ func TestPortsAllocatedInHostPublishMode(t *testing.T) {
 					},
 				},
 			},
-			expect: true,
+			expect: false,
 		},
 		{
 			// one published port not specified, the other specified
@@ -431,7 +431,7 @@ func TestPortsAllocatedInHostPublishMode(t *testing.T) {
 					},
 				},
 			},
-			expect: false,
+			expect: true,
 		},
 		{
 			// one published port not specified, the other specified
@@ -474,12 +474,12 @@ func TestPortsAllocatedInHostPublishMode(t *testing.T) {
 					},
 				},
 			},
-			expect: true,
+			expect: false,
 		},
 	}
 	for _, singleTest := range testCases {
-		expect := pa.portsAllocatedInHostPublishMode(singleTest.input)
-		assert.Equal(t, expect, singleTest.expect)
+		actual := pa.hostPublishPortsNeedUpdate(singleTest.input)
+		assert.Equal(t, singleTest.expect, actual)
 	}
 }
 
