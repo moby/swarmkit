@@ -595,17 +595,17 @@ func TestSecretValidation(t *testing.T) {
 	assert.NoError(t, err)
 
 	// test secret References with invalid filenames
-	invalidFileNames := []string{"../secretfile.txt", "../../secretfile.txt", "file../.txt", "subdir/file.txt"}
-	for i, invalidName := range invalidFileNames {
-		secretRef := createSecret(t, ts, invalidName, invalidName)
+	secretRefBlank := createSecret(t, ts, "", "")
 
-		serviceSpec = createServiceSpecWithSecrets(fmt.Sprintf("invalid%v", i), secretRef)
-		_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
-		assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-	}
+	serviceSpec = createServiceSpecWithSecrets("invalid-blank", secretRefBlank)
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 
 	// Test secret References with valid filenames
-	validFileNames := []string{"file.txt", ".file.txt", "_file-txt_.txt"}
+	// Note: "../secretfile.txt", "../../secretfile.txt" will be rejected
+	// by the executor, but controlapi presently doesn't reject those names.
+	// Such validation would be platform-specific.
+	validFileNames := []string{"file.txt", ".file.txt", "_file-txt_.txt", "../secretfile.txt", "../../secretfile.txt", "file../.txt", "subdir/file.txt", "/file.txt"}
 	for i, validName := range validFileNames {
 		secretRef := createSecret(t, ts, validName, validName)
 
