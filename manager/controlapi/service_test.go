@@ -284,6 +284,107 @@ func TestValidateTaskSpec(t *testing.T) {
 	}
 }
 
+func TestValidateContainerSpec(t *testing.T) {
+	type BadSpec struct {
+		spec api.TaskSpec
+		c    codes.Code
+	}
+
+	bad1 := api.TaskSpec{
+		Runtime: &api.TaskSpec_Container{
+			Container: &api.ContainerSpec{
+				Image: "", // image name should not be empty
+			},
+		},
+	}
+
+	bad2 := api.TaskSpec{
+		Runtime: &api.TaskSpec_Container{
+			Container: &api.ContainerSpec{
+				Image: "image",
+				Mounts: []api.Mount{
+					{
+						Type:   api.Mount_MountType(0),
+						Source: "/data",
+						Target: "/data",
+					},
+					{
+						Type:   api.Mount_MountType(0),
+						Source: "/data2",
+						Target: "/data", // duplicate mount point
+					},
+				},
+			},
+		},
+	}
+
+	bad3 := api.TaskSpec{
+		Runtime: &api.TaskSpec_Container{
+			Container: &api.ContainerSpec{
+				Image: "image",
+				Healthcheck: &api.HealthConfig{
+					Test:        []string{"curl 127.0.0.1:3000"},
+					Interval:    gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
+					Timeout:     gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
+					Retries:     -1,                                                       // invalid negative integer
+					StartPeriod: gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
+				},
+			},
+		},
+	}
+
+	for _, bad := range []BadSpec{
+		{
+			spec: bad1,
+			c:    codes.InvalidArgument,
+		},
+		{
+			spec: bad2,
+			c:    codes.InvalidArgument,
+		},
+		{
+			spec: bad3,
+			c:    codes.InvalidArgument,
+		},
+	} {
+		err := validateContainerSpec(bad.spec)
+		assert.Error(t, err)
+		assert.Equal(t, bad.c, grpc.Code(err), grpc.ErrorDesc(err))
+	}
+
+	good1 := api.TaskSpec{
+		Runtime: &api.TaskSpec_Container{
+			Container: &api.ContainerSpec{
+				Image: "image",
+				Mounts: []api.Mount{
+					{
+						Type:   api.Mount_MountType(0),
+						Source: "/data",
+						Target: "/data",
+					},
+					{
+						Type:   api.Mount_MountType(0),
+						Source: "/data2",
+						Target: "/data2",
+					},
+				},
+				Healthcheck: &api.HealthConfig{
+					Test:        []string{"curl 127.0.0.1:3000"},
+					Interval:    gogotypes.DurationProto(time.Duration(1 * time.Second)),
+					Timeout:     gogotypes.DurationProto(time.Duration(3 * time.Second)),
+					Retries:     5,
+					StartPeriod: gogotypes.DurationProto(time.Duration(1 * time.Second)),
+				},
+			},
+		},
+	}
+
+	for _, good := range []api.TaskSpec{good1} {
+		err := validateContainerSpec(good)
+		assert.NoError(t, err)
+	}
+}
+
 func TestValidateServiceSpec(t *testing.T) {
 	type BadServiceSpec struct {
 		spec *api.ServiceSpec
