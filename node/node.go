@@ -269,7 +269,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 
 	ctx = log.WithLogger(ctx, log.G(ctx).WithField("node.id", n.NodeID()))
 
-	taskDBPath := filepath.Join(n.config.StateDir, "worker/tasks.db")
+	taskDBPath := filepath.Join(n.config.StateDir, "worker", "tasks.db")
 	if err := os.MkdirAll(filepath.Dir(taskDBPath), 0777); err != nil {
 		return err
 	}
