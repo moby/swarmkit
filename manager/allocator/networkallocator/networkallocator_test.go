@@ -657,12 +657,68 @@ func TestServiceDeallocateAllocate(t *testing.T) {
 	err = na.ServiceDeallocate(s)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(s.Endpoint.Ports))
-
 	// Allocate again.
 	err = na.ServiceAllocate(s)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(s.Endpoint.Ports))
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
+}
+
+func TestServiceDeallocateAllocateIngressMode(t *testing.T) {
+	na := newNetworkAllocator(t)
+
+	n := &api.Network{
+		ID: "testNetID1",
+		Spec: api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "test",
+			},
+			Ingress: true,
+		},
+	}
+
+	err := na.Allocate(n)
+	assert.NoError(t, err)
+
+	s := &api.Service{
+		ID: "testID1",
+		Spec: api.ServiceSpec{
+			Endpoint: &api.EndpointSpec{
+				Ports: []*api.PortConfig{
+					{
+						Name:          "some_tcp",
+						TargetPort:    1234,
+						PublishedPort: 1234,
+						PublishMode:   api.PublishModeIngress,
+					},
+				},
+			},
+		},
+		Endpoint: &api.Endpoint{},
+	}
+
+	s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs,
+		&api.Endpoint_VirtualIP{NetworkID: n.ID})
+
+	err = na.ServiceAllocate(s)
+	assert.NoError(t, err)
+	assert.Len(t, s.Endpoint.Ports, 1)
+	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
+	assert.Len(t, s.Endpoint.VirtualIPs, 1)
+
+	err = na.ServiceDeallocate(s)
+	assert.NoError(t, err)
+	assert.Len(t, s.Endpoint.Ports, 0)
+	assert.Len(t, s.Endpoint.VirtualIPs, 0)
+	// Allocate again.
+	s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs,
+		&api.Endpoint_VirtualIP{NetworkID: n.ID})
+
+	err = na.ServiceAllocate(s)
+	assert.NoError(t, err)
+	assert.Len(t, s.Endpoint.Ports, 1)
+	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
+	assert.Len(t, s.Endpoint.VirtualIPs, 1)
 }
 
 func TestServiceUpdate(t *testing.T) {

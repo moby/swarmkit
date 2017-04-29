@@ -191,6 +191,14 @@ func (na *NetworkAllocator) ServiceAllocate(s *api.Service) (err error) {
 
 vipLoop:
 	for _, eAttach := range s.Endpoint.VirtualIPs {
+		if na.IsVIPOnIngressNetwork(eAttach) {
+			if err = na.allocateVIP(eAttach); err != nil {
+				return err
+			}
+			eVIPs = append(eVIPs, eAttach)
+			continue vipLoop
+
+		}
 		for _, nAttach := range specNetworks {
 			if nAttach.Target == eAttach.NetworkID {
 				if err = na.allocateVIP(eAttach); err != nil {
@@ -246,6 +254,7 @@ func (na *NetworkAllocator) ServiceDeallocate(s *api.Service) error {
 				WithField("vip.addr", vip.Addr).Error("error deallocating vip")
 		}
 	}
+	s.Endpoint.VirtualIPs = nil
 
 	na.portAllocator.serviceDeallocatePorts(s)
 	delete(na.services, s.ID)
@@ -353,6 +362,9 @@ func (na *NetworkAllocator) ServiceNeedsAllocation(s *api.Service, flags ...func
 	if s.Endpoint != nil {
 	vipLoop:
 		for _, vip := range s.Endpoint.VirtualIPs {
+			if na.IsVIPOnIngressNetwork(vip) {
+				continue vipLoop
+			}
 			for _, net := range specNetworks {
 				if vip.NetworkID == net.Target {
 					continue vipLoop
@@ -877,4 +889,27 @@ func serviceNetworks(s *api.Service) []*api.NetworkAttachmentConfig {
 		return s.Spec.Networks
 	}
 	return s.Spec.Task.Networks
+}
+
+// IsVIPOnIngressNetwork check if the vip is in ingress network
+func (na *NetworkAllocator) IsVIPOnIngressNetwork(vip *api.Endpoint_VirtualIP) bool {
+	if vip == nil {
+		return false
+	}
+
+	localNet := na.getNetwork(vip.NetworkID)
+	if localNet != nil && localNet.nw != nil {
+		return IsIngressNetwork(localNet.nw)
+	}
+	return false
+}
+
+// IsIngressNetwork check if the network is an ingress network
+func IsIngressNetwork(nw *api.Network) bool {
+	if nw.Spec.Ingress {
+		return true
+	}
+	// Check if legacy defined ingress network
+	_, ok := nw.Spec.Annotations.Labels["com.docker.swarm.internal"]
+	return ok && nw.Spec.Annotations.Name == "ingress"
 }
