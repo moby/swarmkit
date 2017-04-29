@@ -22,6 +22,7 @@ import (
 
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
+	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
@@ -41,6 +42,12 @@ import (
 func init() {
 	os.Setenv(ca.PassphraseENVVar, "")
 	os.Setenv(ca.PassphraseENVVarPrev, "")
+
+	ca.RenewTLSExponentialBackoff = events.ExponentialBackoffConfig{
+		Base:   250 * time.Millisecond,
+		Factor: 250 * time.Millisecond,
+		Max:    1 * time.Hour,
+	}
 }
 
 func checkLeafCert(t *testing.T, certBytes []byte, issuerName, cn, ou, org string, additionalDNSNames ...string) []*x509.Certificate {
