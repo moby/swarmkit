@@ -142,6 +142,10 @@ type Node struct {
 	// This exists in addition to lastNodeRole to support older CAs that
 	// only fill in the DesiredRole field.
 	lastNodeDesiredRole lastSeenRole
+	// expectingRoleChange is set if DesiredRole and Role do not match,
+	// meaning the Role update may come later (if the CA is recent enough
+	// to use Role).
+	expectingRoleChange bool
 }
 
 type lastSeenRole struct {
@@ -267,6 +271,13 @@ func (n *Node) run(ctx context.Context) (err error) {
 		return err
 	}
 
+	initialRole := api.NodeRoleWorker
+	if n.role == ca.ManagerRole {
+		initialRole = api.NodeRoleManager
+	}
+	n.lastNodeRole.observe(initialRole)
+	n.lastNodeDesiredRole.observe(initialRole)
+
 	ctx = log.WithLogger(ctx, log.G(ctx).WithField("node.id", n.NodeID()))
 
 	taskDBPath := filepath.Join(n.config.StateDir, "worker", "tasks.db")
@@ -313,13 +324,12 @@ func (n *Node) run(ctx context.Context) (err error) {
 					// This is a bit complex to be backward compatible with older CAs that
 					// don't support the Node.Role field. They only use what's presently
 					// called DesiredRole.
-					// 1) If we haven't seen the node object before, and the desired role
-					//    is different from our current role, renew the cert. This covers
-					//    the case of starting up after a role change.
-					// 2) If we have seen the node before, the desired role is
-					//    different from our current role, and either the actual role or
-					//    desired role has changed relative to the last values we saw in
-					//    those fields, renew the cert. This covers the case of the role
+					// 1) If the desired role changes relative to what we started out with
+					//    or what we last saw, renew the cert. This provides backward
+					//    compatibility with older CAs.
+					// 2) If the actual role changes relative to what we started out with
+					//    or what we last saw, and the desired role previously didn't match
+					//    the actual role, renew the cert. This covers the case of the role
 					//    changing while this node is running, but prevents getting into a
 					//    rotation loop if Node.Role isn't what we expect (because it's
 					//    unset). We may renew the certificate an extra time (first when
@@ -328,12 +338,12 @@ func (n *Node) run(ctx context.Context) (err error) {
 					//    requested by the CA.
 					roleChanged := n.lastNodeRole.observe(nodeChanges.Node.Role)
 					desiredRoleChanged := n.lastNodeDesiredRole.observe(nodeChanges.Node.Spec.DesiredRole)
-					if (currentRole != nodeChanges.Node.Spec.DesiredRole &&
-						((roleChanged && currentRole != nodeChanges.Node.Role) ||
-							desiredRoleChanged)) ||
+					if desiredRoleChanged ||
+						(n.expectingRoleChange && roleChanged) ||
 						nodeChanges.Node.Certificate.Status.State == api.IssuanceStateRotate {
 						renewCert()
 					}
+					n.expectingRoleChange = (nodeChanges.Node.Role != nodeChanges.Node.Spec.DesiredRole)
 				}
 
 				if nodeChanges.RootCert != nil {
