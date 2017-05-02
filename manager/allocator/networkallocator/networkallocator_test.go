@@ -721,6 +721,73 @@ func TestServiceDeallocateAllocateIngressMode(t *testing.T) {
 	assert.Len(t, s.Endpoint.VirtualIPs, 1)
 }
 
+func TestServiceAddRemovePortsIngressMode(t *testing.T) {
+	na := newNetworkAllocator(t)
+
+	n := &api.Network{
+		ID: "testNetID1",
+		Spec: api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "test",
+			},
+			Ingress: true,
+		},
+	}
+
+	err := na.Allocate(n)
+	assert.NoError(t, err)
+
+	s := &api.Service{
+		ID: "testID1",
+		Spec: api.ServiceSpec{
+			Endpoint: &api.EndpointSpec{
+				Ports: []*api.PortConfig{
+					{
+						Name:          "some_tcp",
+						TargetPort:    1234,
+						PublishedPort: 1234,
+						PublishMode:   api.PublishModeIngress,
+					},
+				},
+			},
+		},
+		Endpoint: &api.Endpoint{},
+	}
+
+	s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs,
+		&api.Endpoint_VirtualIP{NetworkID: n.ID})
+
+	err = na.ServiceAllocate(s)
+	assert.NoError(t, err)
+	assert.Len(t, s.Endpoint.Ports, 1)
+	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
+	assert.Len(t, s.Endpoint.VirtualIPs, 1)
+	allocatedVIP := s.Endpoint.VirtualIPs[0].Addr
+
+	//Unpublish port
+	s.Spec.Endpoint.Ports = s.Spec.Endpoint.Ports[:0]
+	err = na.ServiceAllocate(s)
+	assert.NoError(t, err)
+	assert.Len(t, s.Endpoint.Ports, 0)
+	assert.Len(t, s.Endpoint.VirtualIPs, 0)
+
+	// Publish port again and ensure VIP is the same that was deallocated
+	// and there is  no leak.
+	s.Spec.Endpoint.Ports = append(s.Spec.Endpoint.Ports, &api.PortConfig{Name: "some_tcp",
+		TargetPort:    1234,
+		PublishedPort: 1234,
+		PublishMode:   api.PublishModeIngress,
+	})
+	s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs,
+		&api.Endpoint_VirtualIP{NetworkID: n.ID})
+	err = na.ServiceAllocate(s)
+	assert.NoError(t, err)
+	assert.Len(t, s.Endpoint.Ports, 1)
+	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
+	assert.Len(t, s.Endpoint.VirtualIPs, 1)
+	assert.Equal(t, allocatedVIP, s.Endpoint.VirtualIPs[0].Addr)
+}
+
 func TestServiceUpdate(t *testing.T) {
 	na1 := newNetworkAllocator(t)
 	na2 := newNetworkAllocator(t)
