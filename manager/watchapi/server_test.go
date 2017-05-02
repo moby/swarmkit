@@ -1,4 +1,4 @@
-package storeapi
+package watchapi
 
 import (
 	"io/ioutil"
@@ -20,7 +20,7 @@ import (
 
 type testServer struct {
 	Server *Server
-	Client api.StoreClient
+	Client api.WatchClient
 	Store  *store.MemoryStore
 
 	grpcServer *grpc.Server
@@ -59,7 +59,7 @@ func newTestServer(t *testing.T) *testServer {
 	assert.NoError(t, err)
 
 	ts.grpcServer = grpc.NewServer()
-	api.RegisterStoreServer(ts.grpcServer, ts.Server)
+	api.RegisterWatchServer(ts.grpcServer, ts.Server)
 	go func() {
 		// Serve will always return an error (even when properly stopped).
 		// Explicitly ignore it.
@@ -73,7 +73,7 @@ func newTestServer(t *testing.T) *testServer {
 	assert.NoError(t, err)
 	ts.clientConn = conn
 
-	ts.Client = api.NewStoreClient(conn)
+	ts.Client = api.NewWatchClient(conn)
 
 	return ts
 }

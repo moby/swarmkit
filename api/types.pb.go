@@ -17,7 +17,7 @@
 		health.proto
 		resource.proto
 		logbroker.proto
-		store.proto
+		watch.proto
 
 	It has these top-level messages:
 		Version
