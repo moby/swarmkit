@@ -8,10 +8,9 @@
 // 128 bit numbers encoded in Base36. This method is preferred over UUID4 since
 // it requires less storage and leverages the full 128 bits of entropy.
 //
-// Generating an identifier is simple. Simply call the `NewID` function, check
-// the error and proceed:
+// Generating an identifier is simple. Simply call the `NewID` function:
 //
-// 	id, err := NewID()
-// 	if err != nil { /* ... handle it, please ... */ }
+// 	id := NewID()
 //
+// If an error occurs while generating the ID, it will panic.
 package identity
