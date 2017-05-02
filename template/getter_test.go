@@ -28,10 +28,11 @@ func TestTemplatedSecret(t *testing.T) {
 	}
 
 	type testCase struct {
-		desc       string
-		secretSpec api.SecretSpec
-		task       *api.Task
-		expected   string
+		desc        string
+		secretSpec  api.SecretSpec
+		task        *api.Task
+		expected    string
+		expectedErr string
 	}
 
 	testCases := []testCase{
@@ -195,7 +196,7 @@ func TestTemplatedSecret(t *testing.T) {
 				Data:       []byte("SECRET_VAL={{SecretBySource \"referencedsecretname\"}}\n"),
 				Templating: api.Templating_GO_TEMPLATE,
 			},
-			expected: "SECRET_VAL={{SecretBySource \"referencedsecretname\"}}\n",
+			expectedErr: `failed to expand templated secret templatedsecret: template: expansion:1:13: executing "expansion" at <SecretBySource "refe...>: error calling SecretBySource: secret source referencedsecretname not found`,
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -217,7 +218,7 @@ func TestTemplatedSecret(t *testing.T) {
 				Data:       []byte("CONFIG_VAL={{ConfigBySource \"referencedconfigname\"}}\n"),
 				Templating: api.Templating_GO_TEMPLATE,
 			},
-			expected: "CONFIG_VAL={{ConfigBySource \"referencedconfigname\"}}\n",
+			expectedErr: `failed to expand templated secret templatedsecret: template: expansion:1:13: executing "expansion" at <ConfigBySource "refe...>: error calling ConfigBySource: config source referencedconfigname not found`,
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -290,10 +291,15 @@ func TestTemplatedSecret(t *testing.T) {
 		dependencyManager.Configs().Add(*referencedConfig)
 
 		templatedDependencies := NewTemplatedDependencyGetter(agent.Restrict(dependencyManager, testCase.task), testCase.task)
-		expandedSecret := templatedDependencies.Secrets().Get("templatedsecret")
+		expandedSecret, err := templatedDependencies.Secrets().Get("templatedsecret")
 
-		require.NotNil(t, expandedSecret)
-		assert.Equal(t, testCase.expected, string(expandedSecret.Spec.Data), testCase.desc)
+		if testCase.expectedErr != "" {
+			assert.EqualError(t, err, testCase.expectedErr)
+		} else {
+			assert.NoError(t, err)
+			require.NotNil(t, expandedSecret)
+			assert.Equal(t, testCase.expected, string(expandedSecret.Spec.Data), testCase.desc)
+		}
 	}
 }
 
@@ -316,10 +322,11 @@ func TestTemplatedConfig(t *testing.T) {
 	}
 
 	type testCase struct {
-		desc       string
-		configSpec api.ConfigSpec
-		task       *api.Task
-		expected   string
+		desc        string
+		configSpec  api.ConfigSpec
+		task        *api.Task
+		expected    string
+		expectedErr string
 	}
 
 	testCases := []testCase{
@@ -483,7 +490,7 @@ func TestTemplatedConfig(t *testing.T) {
 				Data:       []byte("SECRET_VAL={{SecretBySource \"referencedsecretname\"}}\n"),
 				Templating: api.Templating_GO_TEMPLATE,
 			},
-			expected: "SECRET_VAL={{SecretBySource \"referencedsecretname\"}}\n",
+			expectedErr: `failed to expand templated config templatedconfig: template: expansion:1:13: executing "expansion" at <SecretBySource "refe...>: error calling SecretBySource: secret source referencedsecretname not found`,
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -505,7 +512,7 @@ func TestTemplatedConfig(t *testing.T) {
 				Data:       []byte("CONFIG_VAL={{ConfigBySource \"referencedconfigname\"}}\n"),
 				Templating: api.Templating_GO_TEMPLATE,
 			},
-			expected: "CONFIG_VAL={{ConfigBySource \"referencedconfigname\"}}\n",
+			expectedErr: `failed to expand templated config templatedconfig: template: expansion:1:13: executing "expansion" at <ConfigBySource "refe...>: error calling ConfigBySource: config source referencedconfigname not found`,
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -578,9 +585,14 @@ func TestTemplatedConfig(t *testing.T) {
 		dependencyManager.Secrets().Add(*referencedSecret)
 
 		templatedDependencies := NewTemplatedDependencyGetter(agent.Restrict(dependencyManager, testCase.task), testCase.task)
-		expandedConfig := templatedDependencies.Configs().Get("templatedconfig")
+		expandedConfig, err := templatedDependencies.Configs().Get("templatedconfig")
 
-		require.NotNil(t, expandedConfig)
-		assert.Equal(t, testCase.expected, string(expandedConfig.Spec.Data), testCase.desc)
+		if testCase.expectedErr != "" {
+			assert.EqualError(t, err, testCase.expectedErr)
+		} else {
+			assert.NoError(t, err)
+			require.NotNil(t, expandedConfig)
+			assert.Equal(t, testCase.expected, string(expandedConfig.Spec.Data), testCase.desc)
+		}
 	}
 }
