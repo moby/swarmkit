@@ -3,7 +3,7 @@ package template
 import (
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/log"
+	"github.com/pkg/errors"
 )
 
 type templatedSecretGetter struct {
@@ -16,30 +16,29 @@ func NewTemplatedSecretGetter(dependencies exec.DependencyGetter, t *api.Task) e
 	return templatedSecretGetter{dependencies: dependencies, t: t}
 }
 
-func (t templatedSecretGetter) Get(secretID string) *api.Secret {
+func (t templatedSecretGetter) Get(secretID string) (*api.Secret, error) {
 	if t.dependencies == nil {
-		return nil
+		return nil, errors.New("no secret provider available")
 	}
 
 	secrets := t.dependencies.Secrets()
 	if secrets == nil {
-		return nil
+		return nil, errors.New("no secret provider available")
 	}
 
-	secret := secrets.Get(secretID)
-	if secret == nil {
-		return nil
+	secret, err := secrets.Get(secretID)
+	if err != nil {
+		return secret, err
 	}
 
 	newSpec, err := ExpandSecretSpec(secret, t.t, t.dependencies)
 	if err != nil {
-		log.L.WithError(err).Error("failed to expand templated secret")
-		return secret
+		return secret, errors.Wrapf(err, "failed to expand templated secret %s", secretID)
 	}
 
 	secretCopy := *secret
 	secretCopy.Spec = *newSpec
-	return &secretCopy
+	return &secretCopy, nil
 }
 
 type templatedConfigGetter struct {
@@ -52,30 +51,29 @@ func NewTemplatedConfigGetter(dependencies exec.DependencyGetter, t *api.Task) e
 	return templatedConfigGetter{dependencies: dependencies, t: t}
 }
 
-func (t templatedConfigGetter) Get(configID string) *api.Config {
+func (t templatedConfigGetter) Get(configID string) (*api.Config, error) {
 	if t.dependencies == nil {
-		return nil
+		return nil, errors.New("no config provider available")
 	}
 
 	configs := t.dependencies.Configs()
 	if configs == nil {
-		return nil
+		return nil, errors.New("no config provider available")
 	}
 
-	config := configs.Get(configID)
-	if config == nil {
-		return nil
+	config, err := configs.Get(configID)
+	if err != nil {
+		return config, err
 	}
 
 	newSpec, err := ExpandConfigSpec(config, t.t, t.dependencies)
 	if err != nil {
-		log.L.WithError(err).Error("failed to expand templated config")
-		return config
+		return config, errors.Wrapf(err, "failed to expand templated config %s", configID)
 	}
 
 	configCopy := *config
 	configCopy.Spec = *newSpec
-	return &configCopy
+	return &configCopy, nil
 }
 
 type templatedDependencyGetter struct {

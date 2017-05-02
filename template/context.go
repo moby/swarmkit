@@ -104,11 +104,11 @@ func (ctx PayloadContext) secretGetterBySource(source string) (string, error) {
 
 	for _, secretRef := range container.Secrets {
 		if secretRef.SecretName == source {
-			secret := ctx.restrictedSecrets.Get(secretRef.SecretID)
-			if secret != nil {
-				return string(secret.Spec.Data), nil
+			secret, err := ctx.restrictedSecrets.Get(secretRef.SecretID)
+			if err != nil {
+				return "", err
 			}
-			break
+			return string(secret.Spec.Data), nil
 		}
 	}
 
@@ -128,11 +128,11 @@ func (ctx PayloadContext) secretGetterByTarget(target string) (string, error) {
 	for _, secretRef := range container.Secrets {
 		file := secretRef.GetFile()
 		if file != nil && file.Name == target {
-			secret := ctx.restrictedSecrets.Get(secretRef.SecretID)
-			if secret != nil {
-				return string(secret.Spec.Data), nil
+			secret, err := ctx.restrictedSecrets.Get(secretRef.SecretID)
+			if err != nil {
+				return "", err
 			}
-			break
+			return string(secret.Spec.Data), nil
 		}
 	}
 
@@ -151,11 +151,11 @@ func (ctx PayloadContext) configGetterBySource(source string) (string, error) {
 
 	for _, configRef := range container.Configs {
 		if configRef.ConfigName == source {
-			config := ctx.restrictedConfigs.Get(configRef.ConfigID)
-			if config != nil {
-				return string(config.Spec.Data), nil
+			config, err := ctx.restrictedConfigs.Get(configRef.ConfigID)
+			if err != nil {
+				return "", err
 			}
-			break
+			return string(config.Spec.Data), nil
 		}
 	}
 
@@ -175,11 +175,11 @@ func (ctx PayloadContext) configGetterByTarget(target string) (string, error) {
 	for _, configRef := range container.Configs {
 		file := configRef.GetFile()
 		if file != nil && file.Name == target {
-			config := ctx.restrictedConfigs.Get(configRef.ConfigID)
-			if config != nil {
-				return string(config.Spec.Data), nil
+			config, err := ctx.restrictedConfigs.Get(configRef.ConfigID)
+			if err != nil {
+				return "", err
 			}
-			break
+			return string(config.Spec.Data), nil
 		}
 	}
 
