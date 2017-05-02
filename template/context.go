@@ -92,7 +92,7 @@ type PayloadContext struct {
 	restrictedConfigs exec.ConfigGetter
 }
 
-func (ctx PayloadContext) secretGetterBySource(source string) (string, error) {
+func (ctx PayloadContext) secretGetter(sourceOrTarget string, opts ...string) (string, error) {
 	if ctx.restrictedSecrets == nil {
 		return "", errors.New("secrets unavailable")
 	}
@@ -102,32 +102,39 @@ func (ctx PayloadContext) secretGetterBySource(source string) (string, error) {
 		return "", errors.New("task is not a container")
 	}
 
-	for _, secretRef := range container.Secrets {
-		if secretRef.SecretName == source {
-			secret, err := ctx.restrictedSecrets.Get(secretRef.SecretID)
-			if err != nil {
-				return "", err
-			}
-			return string(secret.Spec.Data), nil
+	if len(opts) > 1 {
+		return "", errors.New("too many arguments to secret")
+	}
+
+	bySource := false
+
+	if len(opts) == 1 {
+		switch opts[0] {
+		case "bysource=true":
+			bySource = true
+		case "bytarget=true":
+		default:
+			return "", errors.Errorf("unrecognized secret argument %q", opts[0])
 		}
 	}
 
-	return "", errors.Errorf("secret source %s not found", source)
-}
+	if bySource {
+		for _, secretRef := range container.Secrets {
+			if secretRef.SecretName == sourceOrTarget {
+				secret, err := ctx.restrictedSecrets.Get(secretRef.SecretID)
+				if err != nil {
+					return "", err
+				}
+				return string(secret.Spec.Data), nil
+			}
+		}
 
-func (ctx PayloadContext) secretGetterByTarget(target string) (string, error) {
-	if ctx.restrictedSecrets == nil {
-		return "", errors.New("secrets unavailable")
-	}
-
-	container := ctx.t.Spec.GetContainer()
-	if container == nil {
-		return "", errors.New("task is not a container")
+		return "", errors.Errorf("secret source %s not found", sourceOrTarget)
 	}
 
 	for _, secretRef := range container.Secrets {
 		file := secretRef.GetFile()
-		if file != nil && file.Name == target {
+		if file != nil && file.Name == sourceOrTarget {
 			secret, err := ctx.restrictedSecrets.Get(secretRef.SecretID)
 			if err != nil {
 				return "", err
@@ -136,10 +143,10 @@ func (ctx PayloadContext) secretGetterByTarget(target string) (string, error) {
 		}
 	}
 
-	return "", errors.Errorf("secret target %s not found", target)
+	return "", errors.Errorf("secret target %s not found", sourceOrTarget)
 }
 
-func (ctx PayloadContext) configGetterBySource(source string) (string, error) {
+func (ctx PayloadContext) configGetter(sourceOrTarget string, opts ...string) (string, error) {
 	if ctx.restrictedConfigs == nil {
 		return "", errors.New("configs unavailable")
 	}
@@ -149,32 +156,39 @@ func (ctx PayloadContext) configGetterBySource(source string) (string, error) {
 		return "", errors.New("task is not a container")
 	}
 
-	for _, configRef := range container.Configs {
-		if configRef.ConfigName == source {
-			config, err := ctx.restrictedConfigs.Get(configRef.ConfigID)
-			if err != nil {
-				return "", err
-			}
-			return string(config.Spec.Data), nil
+	if len(opts) > 1 {
+		return "", errors.New("too many arguments to secret")
+	}
+
+	bySource := false
+
+	if len(opts) == 1 {
+		switch opts[0] {
+		case "bysource=true":
+			bySource = true
+		case "bytarget=true":
+		default:
+			return "", errors.Errorf("unrecognized secret argument %q", opts[0])
 		}
 	}
 
-	return "", errors.Errorf("config source %s not found", source)
-}
+	if bySource {
+		for _, configRef := range container.Configs {
+			if configRef.ConfigName == sourceOrTarget {
+				config, err := ctx.restrictedConfigs.Get(configRef.ConfigID)
+				if err != nil {
+					return "", err
+				}
+				return string(config.Spec.Data), nil
+			}
+		}
 
-func (ctx PayloadContext) configGetterByTarget(target string) (string, error) {
-	if ctx.restrictedConfigs == nil {
-		return "", errors.New("configs unvailable")
-	}
-
-	container := ctx.t.Spec.GetContainer()
-	if container == nil {
-		return "", errors.New("task is not a container")
+		return "", errors.Errorf("config source %s not found", sourceOrTarget)
 	}
 
 	for _, configRef := range container.Configs {
 		file := configRef.GetFile()
-		if file != nil && file.Name == target {
+		if file != nil && file.Name == sourceOrTarget {
 			config, err := ctx.restrictedConfigs.Get(configRef.ConfigID)
 			if err != nil {
 				return "", err
@@ -183,7 +197,7 @@ func (ctx PayloadContext) configGetterByTarget(target string) (string, error) {
 		}
 	}
 
-	return "", errors.Errorf("config target %s not found", target)
+	return "", errors.Errorf("config target %s not found", sourceOrTarget)
 }
 
 func (ctx PayloadContext) envGetter(variable string) (string, error) {
@@ -219,11 +233,9 @@ func NewPayloadContextFromTask(t *api.Task, dependencies exec.DependencyGetter) 
 // the context.
 func (ctx *PayloadContext) Expand(s string) (string, error) {
 	funcMap := template.FuncMap{
-		"SecretBySource": ctx.secretGetterBySource,
-		"Secret":         ctx.secretGetterByTarget,
-		"ConfigBySource": ctx.configGetterBySource,
-		"Config":         ctx.configGetterByTarget,
-		"Env":            ctx.envGetter,
+		"secret": ctx.secretGetter,
+		"config": ctx.configGetter,
+		"env":    ctx.envGetter,
 	}
 
 	tmpl, err := newTemplate(s, funcMap)
