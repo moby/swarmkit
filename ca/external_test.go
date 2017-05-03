@@ -33,52 +33,61 @@ func TestExternalCACrossSign(t *testing.T) {
 	externalCA := secConfig.ExternalCA()
 	externalCA.UpdateURLs(tc.ExternalSigningServer.URL)
 
-	cert2, key2, err := testutils.CreateRootCertAndKey("rootCN2")
-	require.NoError(t, err)
+	for _, testcase := range []struct{ cert, key []byte }{
+		{
+			cert: testutils.ECDSA256SHA256Cert,
+			key:  testutils.ECDSA256Key,
+		},
+		{
+			cert: testutils.RSA2048SHA256Cert,
+			key:  testutils.RSA2048Key,
+		},
+	} {
+		rootCA2, err := ca.NewRootCA(testcase.cert, testcase.cert, testcase.key, ca.DefaultNodeCertExpiration, nil)
+		require.NoError(t, err)
 
-	rootCA2, err := ca.NewRootCA(cert2, cert2, key2, ca.DefaultNodeCertExpiration, nil)
-	require.NoError(t, err)
+		krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
 
-	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
+		_, _, err = rootCA2.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
+		require.NoError(t, err)
+		certBytes, _, err := krw.Read()
+		require.NoError(t, err)
+		leafCert, err := helpers.ParseCertificatePEM(certBytes)
+		require.NoError(t, err)
 
-	_, _, err = rootCA2.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
-	require.NoError(t, err)
-	certBytes, _, err := krw.Read()
-	require.NoError(t, err)
-	leafCert, err := helpers.ParseCertificatePEM(certBytes)
-	require.NoError(t, err)
+		// we have not enabled CA signing on the external server
+		tc.ExternalSigningServer.DisableCASigning()
+		_, err = externalCA.CrossSignRootCA(context.Background(), rootCA2)
+		require.Error(t, err)
 
-	// we have not enabled CA signing on the external server
-	_, err = externalCA.CrossSignRootCA(context.Background(), rootCA2)
-	require.Error(t, err)
+		require.NoError(t, tc.ExternalSigningServer.EnableCASigning())
 
-	require.NoError(t, tc.ExternalSigningServer.EnableCASigning())
+		intermediate, err := externalCA.CrossSignRootCA(context.Background(), rootCA2)
+		require.NoError(t, err)
 
-	intermediate, err := externalCA.CrossSignRootCA(context.Background(), rootCA2)
-	require.NoError(t, err)
+		parsedIntermediate, err := helpers.ParseCertificatePEM(intermediate)
+		require.NoError(t, err)
+		parsedRoot2, err := helpers.ParseCertificatePEM(testcase.cert)
+		require.NoError(t, err)
+		require.Equal(t, parsedRoot2.RawSubject, parsedIntermediate.RawSubject)
+		require.Equal(t, parsedRoot2.RawSubjectPublicKeyInfo, parsedIntermediate.RawSubjectPublicKeyInfo)
+		require.True(t, parsedIntermediate.IsCA)
 
-	parsedIntermediate, err := helpers.ParseCertificatePEM(intermediate)
-	require.NoError(t, err)
-	parsedRoot2, err := helpers.ParseCertificatePEM(cert2)
-	require.NoError(t, err)
-	require.Equal(t, parsedRoot2.RawSubject, parsedIntermediate.RawSubject)
-	require.Equal(t, parsedRoot2.RawSubjectPublicKeyInfo, parsedIntermediate.RawSubjectPublicKeyInfo)
-	require.True(t, parsedIntermediate.IsCA)
+		intermediatePool := x509.NewCertPool()
+		intermediatePool.AddCert(parsedIntermediate)
 
-	intermediatePool := x509.NewCertPool()
-	intermediatePool.AddCert(parsedIntermediate)
+		// we can validate a chain from the leaf to the first root through the intermediate,
+		// or from the leaf cert to the second root with or without the intermediate
+		_, err = leafCert.Verify(x509.VerifyOptions{Roots: tc.RootCA.Pool})
+		require.Error(t, err)
+		_, err = leafCert.Verify(x509.VerifyOptions{Roots: tc.RootCA.Pool, Intermediates: intermediatePool})
+		require.NoError(t, err)
 
-	// we can validate a chain from the leaf to the first root through the intermediate,
-	// or from the leaf cert to the second root with or without the intermediate
-	_, err = leafCert.Verify(x509.VerifyOptions{Roots: tc.RootCA.Pool})
-	require.Error(t, err)
-	_, err = leafCert.Verify(x509.VerifyOptions{Roots: tc.RootCA.Pool, Intermediates: intermediatePool})
-	require.NoError(t, err)
-
-	_, err = leafCert.Verify(x509.VerifyOptions{Roots: rootCA2.Pool})
-	require.NoError(t, err)
-	_, err = leafCert.Verify(x509.VerifyOptions{Roots: rootCA2.Pool, Intermediates: intermediatePool})
-	require.NoError(t, err)
+		_, err = leafCert.Verify(x509.VerifyOptions{Roots: rootCA2.Pool})
+		require.NoError(t, err)
+		_, err = leafCert.Verify(x509.VerifyOptions{Roots: rootCA2.Pool, Intermediates: intermediatePool})
+		require.NoError(t, err)
+	}
 }
 
 func TestExternalCASignRequestTimesOut(t *testing.T) {
