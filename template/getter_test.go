@@ -67,32 +67,6 @@ func TestTemplatedSecret(t *testing.T) {
 			}),
 		},
 		{
-			desc: "Test expansion of secret, by source",
-			secretSpec: api.SecretSpec{
-				Data:       []byte("SECRET_VAL={{secret \"referencedsecretname\" \"bysource=true\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
-			},
-			expected: "SECRET_VAL=mysecret\n",
-			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
-					Runtime: &api.TaskSpec_Container{
-						Container: &api.ContainerSpec{
-							Secrets: []*api.SecretReference{
-								{
-									SecretID:   "templatedsecret",
-									SecretName: "templatedsecretname",
-								},
-								{
-									SecretID:   "referencedsecret",
-									SecretName: "referencedsecretname",
-								},
-							},
-						},
-					},
-				}
-			}),
-		},
-		{
 			desc: "Test expansion of secret, by target",
 			secretSpec: api.SecretSpec{
 				Data:       []byte("SECRET_VAL={{secret \"referencedsecrettarget\"}}\n"),
@@ -119,34 +93,6 @@ func TestTemplatedSecret(t *testing.T) {
 											Mode: 0666,
 										},
 									},
-								},
-							},
-						},
-					},
-				}
-			}),
-		},
-		{
-			desc: "Test expansion of config, by source",
-			secretSpec: api.SecretSpec{
-				Data:       []byte("CONFIG_VAL={{config \"referencedconfigname\" \"bysource=true\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
-			},
-			expected: "CONFIG_VAL=myconfig\n",
-			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
-					Runtime: &api.TaskSpec_Container{
-						Container: &api.ContainerSpec{
-							Secrets: []*api.SecretReference{
-								{
-									SecretID:   "templatedsecret",
-									SecretName: "templatedsecretname",
-								},
-							},
-							Configs: []*api.ConfigReference{
-								{
-									ConfigID:   "referencedconfig",
-									ConfigName: "referencedconfigname",
 								},
 							},
 						},
@@ -193,10 +139,10 @@ func TestTemplatedSecret(t *testing.T) {
 		{
 			desc: "Test expansion of secret not available to task",
 			secretSpec: api.SecretSpec{
-				Data:       []byte("SECRET_VAL={{secret \"referencedsecretname\" \"bysource=true\"}}\n"),
+				Data:       []byte("SECRET_VAL={{secret \"unknowntarget\"}}\n"),
 				Templating: api.Templating_GO_TEMPLATE,
 			},
-			expectedErr: `failed to expand templated secret templatedsecret: template: expansion:1:13: executing "expansion" at <secret "referencedse...>: error calling secret: secret source referencedsecretname not found`,
+			expectedErr: `failed to expand templated secret templatedsecret: template: expansion:1:13: executing "expansion" at <secret "unknowntarge...>: error calling secret: secret target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -215,10 +161,10 @@ func TestTemplatedSecret(t *testing.T) {
 		{
 			desc: "Test expansion of config not available to task",
 			secretSpec: api.SecretSpec{
-				Data:       []byte("CONFIG_VAL={{config \"referencedconfigname\" \"bysource=true\"}}\n"),
+				Data:       []byte("CONFIG_VAL={{config \"unknowntarget\"}}\n"),
 				Templating: api.Templating_GO_TEMPLATE,
 			},
-			expectedErr: `failed to expand templated secret templatedsecret: template: expansion:1:13: executing "expansion" at <config "referencedco...>: error calling config: config source referencedconfigname not found`,
+			expectedErr: `failed to expand templated secret templatedsecret: template: expansion:1:13: executing "expansion" at <config "unknowntarge...>: error calling config: config target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -237,10 +183,10 @@ func TestTemplatedSecret(t *testing.T) {
 		{
 			desc: "Test that expansion of the same secret avoids recursion",
 			secretSpec: api.SecretSpec{
-				Data:       []byte("SECRET_VAL={{secret \"templatedsecretname\" \"bysource=true\"}}\n"),
+				Data:       []byte("SECRET_VAL={{secret \"templatedsecrettarget\"}}\n"),
 				Templating: api.Templating_GO_TEMPLATE,
 			},
-			expected: "SECRET_VAL=SECRET_VAL={{secret \"templatedsecretname\" \"bysource=true\"}}\n\n",
+			expected: "SECRET_VAL=SECRET_VAL={{secret \"templatedsecrettarget\"}}\n\n",
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -249,6 +195,14 @@ func TestTemplatedSecret(t *testing.T) {
 								{
 									SecretID:   "templatedsecret",
 									SecretName: "templatedsecretname",
+									Target: &api.SecretReference_File{
+										File: &api.FileTarget{
+											Name: "templatedsecrettarget",
+											UID:  "0",
+											GID:  "0",
+											Mode: 0666,
+										},
+									},
 								},
 							},
 						},
@@ -361,34 +315,6 @@ func TestTemplatedConfig(t *testing.T) {
 			}),
 		},
 		{
-			desc: "Test expansion of secret, by source",
-			configSpec: api.ConfigSpec{
-				Data:       []byte("SECRET_VAL={{secret \"referencedsecretname\" \"bysource=true\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
-			},
-			expected: "SECRET_VAL=mysecret\n",
-			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
-					Runtime: &api.TaskSpec_Container{
-						Container: &api.ContainerSpec{
-							Secrets: []*api.SecretReference{
-								{
-									SecretID:   "referencedsecret",
-									SecretName: "referencedsecretname",
-								},
-							},
-							Configs: []*api.ConfigReference{
-								{
-									ConfigID:   "templatedconfig",
-									ConfigName: "templatedconfigname",
-								},
-							},
-						},
-					},
-				}
-			}),
-		},
-		{
 			desc: "Test expansion of secret, by target",
 			configSpec: api.ConfigSpec{
 				Data:       []byte("SECRET_VAL={{secret \"referencedsecrettarget\"}}\n"),
@@ -417,32 +343,6 @@ func TestTemplatedConfig(t *testing.T) {
 								{
 									ConfigID:   "templatedconfig",
 									ConfigName: "templatedconfigname",
-								},
-							},
-						},
-					},
-				}
-			}),
-		},
-		{
-			desc: "Test expansion of config, by source",
-			configSpec: api.ConfigSpec{
-				Data:       []byte("CONFIG_VAL={{config \"referencedconfigname\" \"bysource=true\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
-			},
-			expected: "CONFIG_VAL=myconfig\n",
-			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
-					Runtime: &api.TaskSpec_Container{
-						Container: &api.ContainerSpec{
-							Configs: []*api.ConfigReference{
-								{
-									ConfigID:   "templatedconfig",
-									ConfigName: "templatedconfigname",
-								},
-								{
-									ConfigID:   "referencedconfig",
-									ConfigName: "referencedconfigname",
 								},
 							},
 						},
@@ -487,10 +387,10 @@ func TestTemplatedConfig(t *testing.T) {
 		{
 			desc: "Test expansion of secret not available to task",
 			configSpec: api.ConfigSpec{
-				Data:       []byte("SECRET_VAL={{secret \"referencedsecretname\" \"bysource=true\"}}\n"),
+				Data:       []byte("SECRET_VAL={{secret \"unknowntarget\"}}\n"),
 				Templating: api.Templating_GO_TEMPLATE,
 			},
-			expectedErr: `failed to expand templated config templatedconfig: template: expansion:1:13: executing "expansion" at <secret "referencedse...>: error calling secret: secret source referencedsecretname not found`,
+			expectedErr: `failed to expand templated config templatedconfig: template: expansion:1:13: executing "expansion" at <secret "unknowntarge...>: error calling secret: secret target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -509,10 +409,10 @@ func TestTemplatedConfig(t *testing.T) {
 		{
 			desc: "Test expansion of config not available to task",
 			configSpec: api.ConfigSpec{
-				Data:       []byte("CONFIG_VAL={{config \"referencedconfigname\" \"bysource=true\"}}\n"),
+				Data:       []byte("CONFIG_VAL={{config \"unknowntarget\"}}\n"),
 				Templating: api.Templating_GO_TEMPLATE,
 			},
-			expectedErr: `failed to expand templated config templatedconfig: template: expansion:1:13: executing "expansion" at <config "referencedco...>: error calling config: config source referencedconfigname not found`,
+			expectedErr: `failed to expand templated config templatedconfig: template: expansion:1:13: executing "expansion" at <config "unknowntarge...>: error calling config: config target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -531,10 +431,10 @@ func TestTemplatedConfig(t *testing.T) {
 		{
 			desc: "Test that expansion of the same config avoids recursion",
 			configSpec: api.ConfigSpec{
-				Data:       []byte("CONFIG_VAL={{config \"templatedconfigname\" \"bysource=true\"}}\n"),
+				Data:       []byte("CONFIG_VAL={{config \"templatedconfigtarget\"}}\n"),
 				Templating: api.Templating_GO_TEMPLATE,
 			},
-			expected: "CONFIG_VAL=CONFIG_VAL={{config \"templatedconfigname\" \"bysource=true\"}}\n\n",
+			expected: "CONFIG_VAL=CONFIG_VAL={{config \"templatedconfigtarget\"}}\n\n",
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -543,6 +443,14 @@ func TestTemplatedConfig(t *testing.T) {
 								{
 									ConfigID:   "templatedconfig",
 									ConfigName: "templatedconfigname",
+									Target: &api.ConfigReference_File{
+										File: &api.FileTarget{
+											Name: "templatedconfigtarget",
+											UID:  "0",
+											GID:  "0",
+											Mode: 0666,
+										},
+									},
 								},
 							},
 						},
