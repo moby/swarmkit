@@ -802,17 +802,15 @@ func (na *NetworkAllocator) allocatePools(n *api.Network) (map[string]string, er
 
 	pools := make(map[string]string)
 
-	if n.Spec.IPAM == nil {
-		n.Spec.IPAM = &api.IPAMOptions{}
-	}
-
-	ipamConfigs := make([]*api.IPAMConfig, len(n.Spec.IPAM.Configs))
-	copy(ipamConfigs, n.Spec.IPAM.Configs)
+	var ipamConfigs []*api.IPAMConfig
 
 	// If there is non-nil IPAM state always prefer those subnet
 	// configs over Spec configs.
 	if n.IPAM != nil {
 		ipamConfigs = n.IPAM.Configs
+	} else if n.Spec.IPAM != nil {
+		ipamConfigs = make([]*api.IPAMConfig, len(n.Spec.IPAM.Configs))
+		copy(ipamConfigs, n.Spec.IPAM.Configs)
 	}
 
 	// Append an empty slot for subnet allocation if there are no
