@@ -662,7 +662,7 @@ func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
 	// and from the operational state retrieved from the store
 	cnmSpec := n.Spec.GetCNMCompat()
 	if cnmSpec == nil {
-		return errors.New("Could not get CNM Spec")
+		return errors.New("could not get CNM Spec")
 	}
 	if cnmSpec.DriverConfig != nil {
 		for k, v := range cnmSpec.DriverConfig.Options {
@@ -720,7 +720,7 @@ func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
 func (na *NetworkAllocator) resolveDriver(n *api.Network) (driverapi.Driver, string, error) {
 	cnmSpec := n.Spec.GetCNMCompat()
 	if cnmSpec == nil {
-		return nil, "", errors.New("Could not get CNM Spec")
+		return nil, "", errors.New("could not get CNM Spec")
 	}
 
 	dName := DefaultDriver
@@ -763,7 +763,7 @@ func (na *NetworkAllocator) loadDriver(name string) error {
 func (na *NetworkAllocator) resolveIPAM(n *api.Network) (ipamapi.Ipam, string, map[string]string, error) {
 	cnmSpec := n.Spec.GetCNMCompat()
 	if cnmSpec == nil {
-		return nil, "", nil, errors.New("Could not get CNM Spec")
+		return nil, "", nil, errors.New("could not get CNM Spec")
 	}
 	dName := ipamapi.DefaultIPAM
 	if cnmSpec.IPAM != nil && cnmSpec.IPAM.Driver != nil && cnmSpec.IPAM.Driver.Name != "" {
