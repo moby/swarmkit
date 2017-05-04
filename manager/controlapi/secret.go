@@ -101,12 +101,13 @@ func (s *Server) UpdateSecret(ctx context.Context, request *api.UpdateSecretRequ
 // - Returns an error if listing fails.
 func (s *Server) ListSecrets(ctx context.Context, request *api.ListSecretsRequest) (*api.ListSecretsResponse, error) {
 	var (
-		secrets     []*api.Secret
-		respSecrets []*api.Secret
-		err         error
-		byFilters   []store.By
-		by          store.By
-		labels      map[string]string
+		secrets        []*api.Secret
+		respSecrets    []*api.Secret
+		err            error
+		byFilters      []store.By
+		by             store.By
+		labels         map[string]string
+		serviceFilters []store.By
 	)
 
 	// return all secrets that match either any of the names or any of the name prefixes (why would you give both?)
@@ -121,6 +122,10 @@ func (s *Server) ListSecrets(ctx context.Context, request *api.ListSecretsReques
 			byFilters = append(byFilters, store.ByIDPrefix(prefix))
 		}
 		labels = request.Filters.Labels
+
+		for _, serviceID := range request.Filters.ServiceReferrers {
+			serviceFilters = append(serviceFilters, store.ByIDPrefix(serviceID))
+		}
 	}
 
 	switch len(byFilters) {
@@ -132,11 +137,25 @@ func (s *Server) ListSecrets(ctx context.Context, request *api.ListSecretsReques
 		by = store.Or(byFilters...)
 	}
 
+	var services []*api.Service
 	s.store.View(func(tx store.ReadTx) {
 		secrets, err = store.FindSecrets(tx, by)
+		if len(serviceFilters) > 0 {
+			services, _ = store.FindServices(tx, store.Or(serviceFilters...))
+		}
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	referencedByServices := make(map[string]struct{})
+	for _, s := range services {
+		ctr := s.Spec.Task.GetContainer()
+		if ctr != nil {
+			for _, secretRef := range ctr.Secrets {
+				referencedByServices[secretRef.SecretID] = struct{}{}
+			}
+		}
 	}
 
 	// strip secret data from the secret, filter by label, and filter out all internal secrets
@@ -144,6 +163,11 @@ func (s *Server) ListSecrets(ctx context.Context, request *api.ListSecretsReques
 		if secret.Internal || !filterMatchLabels(secret.Spec.Annotations.Labels, labels) {
 			continue
 		}
+		// skip any that aren't referenced by any service IDs, if there were any service/task IDs specified in the filter at all
+		if _, ok := referencedByServices[secret.ID]; !ok && len(serviceFilters) > 0 {
+			continue
+		}
+
 		secret.Spec.Data = nil // clean the actual secret data so it's never returned
 		respSecrets = append(respSecrets, secret)
 	}

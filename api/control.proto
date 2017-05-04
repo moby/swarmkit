@@ -442,13 +442,16 @@ message UpdateSecretResponse {
 }
 
 // ListSecretRequest is the request to list all non-internal secrets in the secret store,
-// or all secrets filtered by (name or name prefix or id prefix) and labels.
+// or all secrets filtered by (name or name prefix or id prefix), labels, and IDs of
+// other resources which may reference one or more secrets.
 message ListSecretsRequest {
 	message Filters {
 		repeated string names = 1;
 		repeated string id_prefixes = 2;
 		map<string, string> labels = 3;
 		repeated string name_prefixes = 4;
+		repeated string task_referrers = 5;
+		repeated string service_referrers = 6;
 	}
 
 	Filters filters = 1;

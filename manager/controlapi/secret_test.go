@@ -365,6 +365,42 @@ func TestListSecrets(t *testing.T) {
 	assert.NoError(t, err)
 	secretNamesToID["internal"] = internalSecret.ID
 
+	// create some services with secrets so we can filter secrets by service IDs too
+	createService := func(id string, secretRefs []*api.SecretReference) {
+		assert.NoError(t, s.Store.Update(func(tx store.Tx) error {
+			return store.CreateService(tx, &api.Service{
+				ID: id,
+				Spec: api.ServiceSpec{
+					Annotations: api.Annotations{
+						Name: id,
+					},
+					Task: api.TaskSpec{
+						Runtime: &api.TaskSpec_Container{
+							Container: &api.ContainerSpec{
+								Secrets: secretRefs,
+							},
+						},
+					},
+				},
+			})
+		}))
+	}
+	createService("aa-service", []*api.SecretReference{
+		{
+			SecretID:   secretNamesToID["aaa"],
+			SecretName: "aaa",
+		},
+		{
+			SecretID:   secretNamesToID["aab"],
+			SecretName: "aab",
+		},
+	})
+	createService("bbb-service", []*api.SecretReference{{
+		SecretID:   secretNamesToID["bbb"],
+		SecretName: "bbb",
+	}})
+	createService("no-secret-service", nil)
+
 	// ---- build up our list of expectations for what secrets get filtered ----
 
 	type listTestCase struct {
@@ -432,6 +468,32 @@ func TestListSecrets(t *testing.T) {
 				Labels: map[string]string{
 					"mod2": "0",
 				},
+			},
+		},
+		{
+			desc:     "no other filter other than multiple service referrer IDs",
+			expected: []string{"aaa", "aab", "bbb"},
+			filter: &api.ListSecretsRequest_Filters{
+				ServiceReferrers: []string{
+					"aa-service",
+					"bbb-service",
+					"no-secret-service",
+				},
+			},
+		},
+		{
+			desc:     "name filter with one service ID in filter",
+			expected: []string{"bbb"},
+			filter: &api.ListSecretsRequest_Filters{
+				Names:            []string{"aaa", "aab", "bbb", "ccc", "ddd"},
+				ServiceReferrers: []string{"bbb-service"},
+			},
+		},
+		{
+			desc:     "one non-existent service ID in filter",
+			expected: []string{},
+			filter: &api.ListSecretsRequest_Filters{
+				ServiceReferrers: []string{"nonexistent"},
 			},
 		},
 	}
