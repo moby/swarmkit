@@ -125,15 +125,15 @@ func (s *Scheduler) Run(ctx context.Context) error {
 		commitDebounceTimeout <-chan time.Time
 	)
 
-	pendingChanges := 0
+	tickRequired := false
 
 	schedule := func() {
 		if len(s.preassignedTasks) > 0 {
 			s.processPreassignedTasks(ctx)
 		}
-		if pendingChanges > 0 {
+		if tickRequired {
 			s.tick(ctx)
-			pendingChanges = 0
+			tickRequired = false
 		}
 	}
 
@@ -143,17 +143,21 @@ func (s *Scheduler) Run(ctx context.Context) error {
 		case event := <-updates:
 			switch v := event.(type) {
 			case api.EventCreateTask:
-				pendingChanges += s.createTask(ctx, v.Task)
+				s.createTask(ctx, v.Task)
+				tickRequired = true
 			case api.EventUpdateTask:
-				pendingChanges += s.updateTask(ctx, v.Task)
+				s.updateTask(ctx, v.Task)
+				tickRequired = true
 			case api.EventDeleteTask:
 				s.deleteTask(ctx, v.Task)
+				// deleting tasks may free up node resource, pending tasks should be re-evaluated.
+				tickRequired = true
 			case api.EventCreateNode:
 				s.createOrUpdateNode(v.Node)
-				pendingChanges++
+				tickRequired = true
 			case api.EventUpdateNode:
 				s.createOrUpdateNode(v.Node)
-				pendingChanges++
+				tickRequired = true
 			case api.EventDeleteNode:
 				s.nodeSet.remove(v.Node.ID)
 			case state.EventCommit:
