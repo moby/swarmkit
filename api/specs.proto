@@ -348,18 +348,18 @@ message NetworkSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
 	// CNMCompatDriverConfig (deprecated) specific configuration consumed by the network driver.
-	Driver cnm_compat_driver_config = 2 [(gogoproto.customname) = "CNMCompatDriverConfig"];
+	Driver cnm_compat_driver_config = 2 [deprecated=true, (gogoproto.customname) = "CNMCompatDriverConfig"];
 
 	// CNMCompatIpv6Enabled (deprecated) enables support for IPv6 on the network.
-	bool cnm_compat_ipv6_enabled = 3 [(gogoproto.customname) = "CNMCompatIpv6Enabled"];
+	bool cnm_compat_ipv6_enabled = 3 [deprecated=true, (gogoproto.customname) = "CNMCompatIpv6Enabled"];
 
 	// CNMCompatInternal (deprecated) restricts external access to
 	// the network. This may be accomplished by disabling the
 	// default gateway or through other means.
-	bool cnm_compat_internal = 4 [(gogoproto.customname) = "CNMCompatInternal"];
+	bool cnm_compat_internal = 4 [deprecated=true, (gogoproto.customname) = "CNMCompatInternal"];
 
 	// CNMCompatIPAM (deprecated)
-	IPAMOptions cnm_compat_ipam = 5 [(gogoproto.customname) = "CNMCompatIPAM"];
+	IPAMOptions cnm_compat_ipam = 5 [deprecated=true, (gogoproto.customname) = "CNMCompatIPAM"];
 
 	// CNMCompatAttachable (deprecated) allows external(to swarm)
 	// entities to manually attach to this network. With this flag
@@ -368,14 +368,14 @@ message NetworkSpec {
 	// network and access the services attached to this
 	// network. If this flag is not enabled(default case) no
 	// manual attachment to this network can happen.
-	bool cnm_compat_attachable = 6 [(gogoproto.customname) = "CNMCompatAttachable"];
+	bool cnm_compat_attachable = 6 [deprecated=true, (gogoproto.customname) = "CNMCompatAttachable"];
 
 	// CNMCompatIngress (deprecated) indicates this network will
 	// provide the routing-mesh.  In older versions, the network
 	// providing the routing mesh was swarm internally created
 	// only and it was identified by the name "ingress" and the
 	// label "com.docker.swarm.internal": "true".
-	bool cnm_compat_ingress = 7 [(gogoproto.customname) = "CNMCompatIngress"];
+	bool cnm_compat_ingress = 7 [deprecated=true, (gogoproto.customname) = "CNMCompatIngress"];
 
 	// Backend specific options
 	oneof backend {

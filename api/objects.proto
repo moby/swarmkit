@@ -290,11 +290,11 @@ message Network {
 
 	// CNMCompatDriverState (deprecated) specific operational
 	// state provided by the network driver.
-	Driver cnm_compat_driver_state = 4 [(gogoproto.customname) = "CNMCompatDriverState"];
+	Driver cnm_compat_driver_state = 4 [deprecated=true, (gogoproto.customname) = "CNMCompatDriverState"];
 
 	// CNMCompatIPAM (deprecated) state of IPAM options. This may
 	// not reflect the ipam options from NetworkSpec.
-	IPAMOptions cnm_compat_ipam = 5 [(gogoproto.customname) = "CNMCompatIPAM"];
+	IPAMOptions cnm_compat_ipam = 5 [deprecated=true, (gogoproto.customname) = "CNMCompatIPAM"];
 
 	// State which is specific to the Network.Spec.Backend.
 	oneof state {
