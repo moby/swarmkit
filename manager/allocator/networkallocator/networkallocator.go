@@ -833,7 +833,7 @@ func (na *NetworkAllocator) allocatePools(n *api.Network) (map[string]string, er
 
 	cnmState := n.GetCNMCompat()
 	if cnmState == nil {
-		errors.New("CNM network without CNM state")
+		return nil, errors.New("CNM network without CNM state")
 	}
 	defer n.SetCNMCompat(cnmState)
 
