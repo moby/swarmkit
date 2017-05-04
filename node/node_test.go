@@ -318,7 +318,7 @@ func TestAgentRespectsDispatcherRootCAUpdate(t *testing.T) {
 		ca.WorkerRole, managerSecConfig.ServerTLSCreds.Organization())
 	require.NoError(t, err)
 
-	mockDispatcher, cleanup := agentutils.NewMockDispatcher(t, managerSecConfig)
+	mockDispatcher, cleanup := agentutils.NewMockDispatcher(t, managerSecConfig, false)
 	defer cleanup()
 
 	cfg := &Config{
