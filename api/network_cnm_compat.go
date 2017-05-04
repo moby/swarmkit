@@ -3,10 +3,6 @@ package api
 // Convenience functions for dealing with NetworkSpec and Network
 // objects with compat CNM fields.
 
-import (
-	"github.com/docker/swarmkit/api/deepcopy"
-)
-
 // GetCNMCompat is like GetCNM but if necessary falls back to legacy
 // fields in the NetworkSpec. Returns `nil` if the Network object is
 // not a CNM object.
@@ -22,9 +18,7 @@ func (ns *NetworkSpec) GetCNMCompat() *CNMNetworkSpec {
 		// This is a bit more expensive than simply returning
 		// t.CNM but avoids callers accidentally relying on
 		// being able to write this struct.
-		var spec CNMNetworkSpec
-		deepcopy.Copy(&spec, t.CNM)
-		return &spec
+		return t.CNM.Copy()
 	case nil:
 		return &CNMNetworkSpec{
 			DriverConfig: ns.CNMCompatDriverConfig,
@@ -66,9 +60,7 @@ func (n *Network) GetCNMCompat() *CNMState {
 		// This is a bit more expensive than simply returning
 		// state but avoids callers accidentally relying on
 		// being able to write this struct directly.
-		var copy CNMState
-		deepcopy.Copy(&copy, state.CNM)
-		return &copy
+		return state.CNM.Copy()
 	case nil:
 		return &CNMState{
 			DriverState: n.CNMCompatDriverState,
