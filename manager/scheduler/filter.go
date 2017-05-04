@@ -150,7 +150,7 @@ func (f *PluginFilter) Check(n *NodeInfo) bool {
 		}
 		cnmState := tn.Network.GetCNMCompat()
 		if cnmState == nil {
-			panic("network with no CNM state")
+			continue
 		}
 		if cnmState.DriverState != nil && cnmState.DriverState.Name != "" {
 			if !f.pluginExistsOnNode("Network", cnmState.DriverState.Name, nodePlugins) {

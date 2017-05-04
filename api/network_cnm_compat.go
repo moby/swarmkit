@@ -55,7 +55,8 @@ func (n *Network) GetCNMCompat() *CNMState {
 		}
 		state, ok := n.State.(*Network_CNM)
 		if !ok {
-			panic("Unexpected non CNM state on CNM Network")
+			// Unexpected non CNM state on CNM Network
+			return nil
 		}
 		// This is a bit more expensive than simply returning
 		// state but avoids callers accidentally relying on
