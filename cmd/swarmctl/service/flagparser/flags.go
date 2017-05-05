@@ -32,6 +32,7 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.String("memory-limit", "", "memory limit (e.g. 512m)")
 	flags.String("cpu-reservation", "", "number of CPU cores reserved (e.g. 0.5)")
 	flags.String("cpu-limit", "", "CPU cores limit (e.g. 0.5)")
+	flags.String("generic-resources", "", "user defined resources request (e.g. gpu=3;fpga=1)")
 
 	flags.Uint64("update-parallelism", 0, "task update parallelism (0 = all at once)")
 	flags.String("update-delay", "0s", "delay between task updates (0s = none)")
