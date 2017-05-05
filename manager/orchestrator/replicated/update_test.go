@@ -1,6 +1,7 @@
 package replicated
 
 import (
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -184,7 +185,32 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image2")
 
-	observedTask = testutils.WatchTaskCreate(t, watchCreate)
+	// FIXME(aaronl): Once intermittent failure is resolved, replace the
+	// following loop with:
+	//observedTask = testutils.WatchTaskCreate(t, watchCreate)
+loop:
+	for {
+		select {
+		case event := <-watchCreate:
+			if task, ok := event.(api.EventCreateTask); ok {
+				observedTask = task.Task
+				break loop
+			}
+			if _, ok := event.(api.EventUpdateTask); ok {
+				assert.FailNow(t, "got EventUpdateTask when expecting EventCreateTask", fmt.Sprint(event))
+			}
+		case <-time.After(time.Second):
+			s.View(func(tx store.ReadTx) {
+				service := store.GetService(tx, "id1")
+				fmt.Printf("service: %+v\n", service)
+				tasks, _ := store.FindTasks(tx, store.All)
+				for i, task := range tasks {
+					fmt.Printf("task %d: %+v\n", i, task)
+				}
+			})
+			assert.FailNow(t, "no task creation")
+		}
+	}
 	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image2")
 
