@@ -257,6 +257,19 @@ message NetworkAttachment {
 	repeated string aliases = 3;
 }
 
+message CNMState {
+	// Driver specific operational state provided by the network driver.
+	Driver driver_state = 1;
+
+	// Runtime state of IPAM options. This may not reflect the
+	// ipam options from NetworkSpec.
+	IPAMOptions ipam = 2 [(gogoproto.customname) = "IPAM"];
+}
+
+// All fields with a cnm_compat_ (CNMCompat in go) prefix are
+// deprecated and the contents of the `state` oneof will be preferred
+// if present.  Network.state and Network.spec.Backend must be
+// consistent WRT the use of their respective compat fields.
 message Network {
 	option (docker.protobuf.plugin.store_object) = {
 		watch_selectors: {
@@ -275,12 +288,18 @@ message Network {
 
 	NetworkSpec spec = 3 [(gogoproto.nullable) = false];
 
-	// Driver specific operational state provided by the network driver.
-	Driver driver_state = 4;
+	// CNMCompatDriverState (deprecated) specific operational
+	// state provided by the network driver.
+	Driver cnm_compat_driver_state = 4 [deprecated=true, (gogoproto.customname) = "CNMCompatDriverState"];
 
-	// Runtime state of IPAM options. This may not reflect the
-	// ipam options from NetworkSpec.
-	IPAMOptions ipam = 5 [(gogoproto.customname) = "IPAM"];
+	// CNMCompatIPAM (deprecated) state of IPAM options. This may
+	// not reflect the ipam options from NetworkSpec.
+	IPAMOptions cnm_compat_ipam = 5 [deprecated=true, (gogoproto.customname) = "CNMCompatIPAM"];
+
+	// State which is specific to the Network.Spec.Backend.
+	oneof state {
+		CNMState cnm = 6 [(gogoproto.customname) = "CNM"];
+	}
 }
 
 // Cluster provides global cluster settings.

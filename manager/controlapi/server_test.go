@@ -82,9 +82,13 @@ func newTestServer(t *testing.T) *testServer {
 	ts.Client.CreateNetwork(context.Background(),
 		&api.CreateNetworkRequest{
 			Spec: &api.NetworkSpec{
-				Ingress: true,
 				Annotations: api.Annotations{
 					Name: "test-ingress",
+				},
+				Backend: &api.NetworkSpec_CNM{
+					CNM: &api.CNMNetworkSpec{
+						Ingress: true,
+					},
 				},
 			},
 		})

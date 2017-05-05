@@ -81,6 +81,7 @@
 		NetworkAttachmentSpec
 		ContainerSpec
 		EndpointSpec
+		CNMNetworkSpec
 		NetworkSpec
 		ClusterSpec
 		SecretSpec
@@ -91,6 +92,7 @@
 		Endpoint
 		Task
 		NetworkAttachment
+		CNMState
 		Network
 		Cluster
 		Secret

@@ -21,7 +21,7 @@ func init() {
 	retryInterval = 5 * time.Millisecond
 }
 
-func TestAllocator(t *testing.T) {
+func testAllocator(t *testing.T, compat bool) {
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
 	defer s.Close()
@@ -39,8 +39,16 @@ func TestAllocator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "default-ingress",
 				},
-				Ingress: true,
 			},
+		}
+		if compat {
+			in.Spec.CNMCompatIngress = true
+		} else {
+			in.Spec.Backend = &api.NetworkSpec_CNM{
+				CNM: &api.CNMNetworkSpec{
+					Ingress: true,
+				},
+			}
 		}
 		assert.NoError(t, store.CreateNetwork(tx, in))
 
@@ -52,6 +60,12 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
+		if !compat {
+			n1.Spec.Backend = &api.NetworkSpec_CNM{
+				CNM: &api.CNMNetworkSpec{},
+			}
+		}
+
 		assert.NoError(t, store.CreateNetwork(tx, n1))
 
 		s1 := &api.Service{
@@ -135,6 +149,11 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
+		if !compat {
+			n2.Spec.Backend = &api.NetworkSpec_CNM{
+				CNM: &api.CNMNetworkSpec{},
+			}
+		}
 		assert.NoError(t, store.CreateNetwork(tx, n2))
 		return nil
 	}))
@@ -185,6 +204,11 @@ func TestAllocator(t *testing.T) {
 				Name: "test3",
 			},
 		},
+	}
+	if !compat {
+		n3.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{},
+		}
 	}
 
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
@@ -309,13 +333,22 @@ func TestAllocator(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "test4",
 			},
-			DriverConfig: &api.Driver{
-				Name: "overlay",
-				Options: map[string]string{
-					"com.docker.network.driver.overlay.vxlanid_list": "328",
-				},
-			},
 		},
+	}
+	n4DriverConfig := api.Driver{
+		Name: "overlay",
+		Options: map[string]string{
+			"com.docker.network.driver.overlay.vxlanid_list": "328",
+		},
+	}
+	if compat {
+		n4.Spec.CNMCompatDriverConfig = &n4DriverConfig
+	} else {
+		n4.Spec.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{
+				DriverConfig: &n4DriverConfig,
+			},
+		}
 	}
 
 	n5 := n4.Copy()
@@ -424,14 +457,22 @@ func TestAllocator(t *testing.T) {
 
 	a.Stop()
 }
+func TestAllocator(t *testing.T) {
+	testAllocator(t, false)
+}
+func TestAllocatorCompat(t *testing.T) {
+	testAllocator(t, true)
+}
 
 func isValidNetwork(t assert.TestingT, n *api.Network) bool {
-	return assert.NotEqual(t, n.IPAM.Configs, nil) &&
-		assert.Equal(t, len(n.IPAM.Configs), 1) &&
-		assert.Equal(t, n.IPAM.Configs[0].Range, "") &&
-		assert.Equal(t, len(n.IPAM.Configs[0].Reserved), 0) &&
-		isValidSubnet(t, n.IPAM.Configs[0].Subnet) &&
-		assert.NotEqual(t, net.ParseIP(n.IPAM.Configs[0].Gateway), nil)
+	cnmState := n.GetCNMCompat()
+	return assert.NotNil(t, cnmState) &&
+		assert.NotEqual(t, cnmState.IPAM.Configs, nil) &&
+		assert.Equal(t, len(cnmState.IPAM.Configs), 1) &&
+		assert.Equal(t, cnmState.IPAM.Configs[0].Range, "") &&
+		assert.Equal(t, len(cnmState.IPAM.Configs[0].Reserved), 0) &&
+		isValidSubnet(t, cnmState.IPAM.Configs[0].Subnet) &&
+		assert.NotEqual(t, net.ParseIP(cnmState.IPAM.Configs[0].Gateway), nil)
 }
 
 func isValidTask(t assert.TestingT, s *store.MemoryStore, task *api.Task) bool {

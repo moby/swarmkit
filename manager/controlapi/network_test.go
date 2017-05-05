@@ -14,12 +14,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func createNetworkSpec(name string) *api.NetworkSpec {
-	return &api.NetworkSpec{
+func createNetworkSpec(name string, compat bool) *api.NetworkSpec {
+	ns := &api.NetworkSpec{
 		Annotations: api.Annotations{
 			Name: name,
 		},
 	}
+	if !compat {
+		ns.Backend = &api.NetworkSpec_CNM{
+			CNM: &api.CNMNetworkSpec{},
+		}
+	}
+	return ns
 }
 
 // createInternalNetwork creates an internal network for testing. it is the same
@@ -143,22 +149,28 @@ func TestValidateIPAMConfiguration(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestCreateNetwork(t *testing.T) {
+func testCreateNetwork(t *testing.T, compat bool) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 	nr, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
-		Spec: createNetworkSpec("testnet1"),
+		Spec: createNetworkSpec("testnet1", compat),
 	})
 	assert.NoError(t, err)
 	assert.NotEqual(t, nr.Network, nil)
 	assert.NotEqual(t, nr.Network.ID, "")
 }
+func TestCreateNetwork(t *testing.T) {
+	testCreateNetwork(t, false)
+}
+func TestCreateNetworkCompat(t *testing.T) {
+	testCreateNetwork(t, true)
+}
 
-func TestGetNetwork(t *testing.T) {
+func testGetNetwork(t *testing.T, compat bool) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 	nr, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
-		Spec: createNetworkSpec("testnet2"),
+		Spec: createNetworkSpec("testnet2", compat),
 	})
 	assert.NoError(t, err)
 	assert.NotEqual(t, nr.Network, nil)
@@ -167,12 +179,18 @@ func TestGetNetwork(t *testing.T) {
 	_, err = ts.Client.GetNetwork(context.Background(), &api.GetNetworkRequest{NetworkID: nr.Network.ID})
 	assert.NoError(t, err)
 }
+func TestGetNetwork(t *testing.T) {
+	testGetNetwork(t, false)
+}
+func TestGetNetworkCompat(t *testing.T) {
+	testGetNetwork(t, true)
+}
 
-func TestRemoveNetwork(t *testing.T) {
+func testRemoveNetwork(t *testing.T, compat bool) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 	nr, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
-		Spec: createNetworkSpec("testnet2"),
+		Spec: createNetworkSpec("testnet2", compat),
 	})
 	assert.NoError(t, err)
 	assert.NotEqual(t, nr.Network, nil)
@@ -181,12 +199,18 @@ func TestRemoveNetwork(t *testing.T) {
 	_, err = ts.Client.RemoveNetwork(context.Background(), &api.RemoveNetworkRequest{NetworkID: nr.Network.ID})
 	assert.NoError(t, err)
 }
+func TestRemoveNetwork(t *testing.T) {
+	testRemoveNetwork(t, false)
+}
+func TestRemoveNetworkCompat(t *testing.T) {
+	testRemoveNetwork(t, true)
+}
 
-func TestRemoveNetworkWithAttachedService(t *testing.T) {
+func testRemoveNetworkWithAttachedService(t *testing.T, compat bool) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 	nr, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
-		Spec: createNetworkSpec("testnet4"),
+		Spec: createNetworkSpec("testnet4", compat),
 	})
 	assert.NoError(t, err)
 	assert.NotEqual(t, nr.Network, nil)
@@ -195,20 +219,26 @@ func TestRemoveNetworkWithAttachedService(t *testing.T) {
 	_, err = ts.Client.RemoveNetwork(context.Background(), &api.RemoveNetworkRequest{NetworkID: nr.Network.ID})
 	assert.Error(t, err)
 }
+func TestRemoveNetworkWithAttachedService(t *testing.T) {
+	testRemoveNetworkWithAttachedService(t, false)
+}
+func TestRemoveNetworkWithAttachedServiceCompat(t *testing.T) {
+	testRemoveNetworkWithAttachedService(t, true)
+}
 
-func TestListNetworks(t *testing.T) {
+func testListNetworks(t *testing.T, compat bool) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 
 	nr1, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
-		Spec: createNetworkSpec("listtestnet1"),
+		Spec: createNetworkSpec("listtestnet1", compat),
 	})
 	assert.NoError(t, err)
 	assert.NotEqual(t, nr1.Network, nil)
 	assert.NotEqual(t, nr1.Network.ID, "")
 
 	nr2, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
-		Spec: createNetworkSpec("listtestnet2"),
+		Spec: createNetworkSpec("listtestnet2", compat),
 	})
 	assert.NoError(t, err)
 	assert.NotEqual(t, nr2.Network, nil)
@@ -218,9 +248,17 @@ func TestListNetworks(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Networks)) // Account ingress network
 	for _, nw := range r.Networks {
-		if nw.Spec.Ingress {
+		cnmSpec := nw.Spec.GetCNMCompat()
+		assert.NotNil(t, cnmSpec)
+		if cnmSpec.Ingress {
 			continue
 		}
 		assert.True(t, nw.ID == nr1.Network.ID || nw.ID == nr2.Network.ID)
 	}
+}
+func TestListNetworks(t *testing.T) {
+	testListNetworks(t, false)
+}
+func TestListNetworksCompat(t *testing.T) {
+	testListNetworks(t, true)
 }

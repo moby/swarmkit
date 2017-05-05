@@ -646,6 +646,12 @@ func (na *NetworkAllocator) freeDriverState(n *api.Network) error {
 }
 
 func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
+	cnmState := n.GetCNMCompat()
+	if cnmState == nil {
+		return errors.New("CNM network without CNM state")
+	}
+	defer n.SetCNMCompat(cnmState)
+
 	d, dName, err := na.resolveDriver(n)
 	if err != nil {
 		return err
@@ -654,20 +660,25 @@ func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
 	options := make(map[string]string)
 	// reconcile the driver specific options from the network spec
 	// and from the operational state retrieved from the store
-	if n.Spec.DriverConfig != nil {
-		for k, v := range n.Spec.DriverConfig.Options {
+	cnmSpec := n.Spec.GetCNMCompat()
+	if cnmSpec == nil {
+		return errors.New("could not get CNM Spec")
+	}
+	if cnmSpec.DriverConfig != nil {
+		for k, v := range cnmSpec.DriverConfig.Options {
 			options[k] = v
 		}
 	}
-	if n.DriverState != nil {
-		for k, v := range n.DriverState.Options {
+
+	if cnmState.DriverState != nil {
+		for k, v := range cnmState.DriverState.Options {
 			options[k] = v
 		}
 	}
 
 	// Construct IPAM data for driver consumption.
-	ipv4Data := make([]driverapi.IPAMData, 0, len(n.IPAM.Configs))
-	for _, ic := range n.IPAM.Configs {
+	ipv4Data := make([]driverapi.IPAMData, 0, len(cnmState.IPAM.Configs))
+	for _, ic := range cnmState.IPAM.Configs {
 		if ic.Family == api.IPAMConfig_IPV6 {
 			continue
 		}
@@ -697,7 +708,7 @@ func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
 	}
 
 	// Update network object with the obtained driver state.
-	n.DriverState = &api.Driver{
+	cnmState.DriverState = &api.Driver{
 		Name:    dName,
 		Options: ds,
 	}
@@ -707,9 +718,14 @@ func (na *NetworkAllocator) allocateDriverState(n *api.Network) error {
 
 // Resolve network driver
 func (na *NetworkAllocator) resolveDriver(n *api.Network) (driverapi.Driver, string, error) {
+	cnmSpec := n.Spec.GetCNMCompat()
+	if cnmSpec == nil {
+		return nil, "", errors.New("could not get CNM Spec")
+	}
+
 	dName := DefaultDriver
-	if n.Spec.DriverConfig != nil && n.Spec.DriverConfig.Name != "" {
-		dName = n.Spec.DriverConfig.Name
+	if cnmSpec.DriverConfig != nil && cnmSpec.DriverConfig.Name != "" {
+		dName = cnmSpec.DriverConfig.Name
 	}
 
 	d, drvcap := na.drvRegistry.Driver(dName)
@@ -745,14 +761,18 @@ func (na *NetworkAllocator) loadDriver(name string) error {
 
 // Resolve the IPAM driver
 func (na *NetworkAllocator) resolveIPAM(n *api.Network) (ipamapi.Ipam, string, map[string]string, error) {
+	cnmSpec := n.Spec.GetCNMCompat()
+	if cnmSpec == nil {
+		return nil, "", nil, errors.New("could not get CNM Spec")
+	}
 	dName := ipamapi.DefaultIPAM
-	if n.Spec.IPAM != nil && n.Spec.IPAM.Driver != nil && n.Spec.IPAM.Driver.Name != "" {
-		dName = n.Spec.IPAM.Driver.Name
+	if cnmSpec.IPAM != nil && cnmSpec.IPAM.Driver != nil && cnmSpec.IPAM.Driver.Name != "" {
+		dName = cnmSpec.IPAM.Driver.Name
 	}
 
 	var dOptions map[string]string
-	if n.Spec.IPAM != nil && n.Spec.IPAM.Driver != nil && len(n.Spec.IPAM.Driver.Options) != 0 {
-		dOptions = n.Spec.IPAM.Driver.Options
+	if cnmSpec.IPAM != nil && cnmSpec.IPAM.Driver != nil && len(cnmSpec.IPAM.Driver.Options) != 0 {
+		dOptions = cnmSpec.IPAM.Driver.Options
 	}
 
 	ipam, _ := na.drvRegistry.IPAM(dName)
@@ -769,7 +789,13 @@ func (na *NetworkAllocator) freePools(n *api.Network, pools map[string]string) e
 		return errors.Wrapf(err, "failed to resolve IPAM while freeing pools for network %s", n.ID)
 	}
 
-	releasePools(ipam, n.IPAM.Configs, pools)
+	cnmState := n.GetCNMCompat()
+	if cnmState == nil {
+		return errors.New("CNM network without CNM state")
+	}
+	defer n.SetCNMCompat(cnmState)
+
+	releasePools(ipam, cnmState.IPAM.Configs, pools)
 	return nil
 }
 
@@ -800,17 +826,28 @@ func (na *NetworkAllocator) allocatePools(n *api.Network) (map[string]string, er
 		return nil, err
 	}
 
+	cnmSpec := n.Spec.GetCNMCompat()
+	if cnmSpec == nil {
+		return nil, errors.New("allocatePools passed non-CNM network")
+	}
+
+	cnmState := n.GetCNMCompat()
+	if cnmState == nil {
+		return nil, errors.New("CNM network without CNM state")
+	}
+	defer n.SetCNMCompat(cnmState)
+
 	pools := make(map[string]string)
 
 	var ipamConfigs []*api.IPAMConfig
 
 	// If there is non-nil IPAM state always prefer those subnet
 	// configs over Spec configs.
-	if n.IPAM != nil {
-		ipamConfigs = n.IPAM.Configs
-	} else if n.Spec.IPAM != nil {
-		ipamConfigs = make([]*api.IPAMConfig, len(n.Spec.IPAM.Configs))
-		copy(ipamConfigs, n.Spec.IPAM.Configs)
+	if cnmState.IPAM != nil {
+		ipamConfigs = cnmState.IPAM.Configs
+	} else if cnmSpec.IPAM != nil {
+		ipamConfigs = make([]*api.IPAMConfig, len(cnmSpec.IPAM.Configs))
+		copy(ipamConfigs, cnmSpec.IPAM.Configs)
 	}
 
 	// Append an empty slot for subnet allocation if there are no
@@ -820,7 +857,7 @@ func (na *NetworkAllocator) allocatePools(n *api.Network) (map[string]string, er
 	}
 
 	// Update the runtime IPAM configurations with initial state
-	n.IPAM = &api.IPAMOptions{
+	cnmState.IPAM = &api.IPAMOptions{
 		Driver:  &api.Driver{Name: dName, Options: dOptions},
 		Configs: ipamConfigs,
 	}
@@ -904,7 +941,11 @@ func (na *NetworkAllocator) IsVIPOnIngressNetwork(vip *api.Endpoint_VirtualIP) b
 
 // IsIngressNetwork check if the network is an ingress network
 func IsIngressNetwork(nw *api.Network) bool {
-	if nw.Spec.Ingress {
+	cnmSpec := nw.Spec.GetCNMCompat()
+	if cnmSpec == nil {
+		return false
+	}
+	if cnmSpec.Ingress {
 		return true
 	}
 	// Check if legacy defined ingress network

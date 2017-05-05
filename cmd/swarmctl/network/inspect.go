@@ -58,47 +58,55 @@ func printNetworkSummary(network *api.Network) {
 			fmt.Fprintf(w, "    %s = %s\n", k, v)
 		}
 	}
-	fmt.Fprintf(w, "  IPv6Enabled\t: %t\n", spec.Ipv6Enabled)
-	fmt.Fprintf(w, "  Internal\t: %t\n", spec.Internal)
+	if cnmSpec := spec.GetCNMCompat(); cnmSpec != nil {
+		fmt.Fprintf(w, "  IPv6Enabled\t: %t\n", cnmSpec.Ipv6Enabled)
+		fmt.Fprintf(w, "  Internal\t: %t\n", cnmSpec.Internal)
 
-	driver := network.DriverState
-	if driver != nil {
-		fmt.Fprintln(w, "Driver:\t")
-		common.FprintfIfNotEmpty(w, "  Name\t: %s\n", driver.Name)
-		if len(driver.Options) > 0 {
-			fmt.Fprintln(w, "  Options:\t")
-			for k, v := range driver.Options {
-				fmt.Fprintf(w, "    %s = %s\n", k, v)
-			}
+		cnmState := network.GetCNMCompat()
+		if cnmState == nil {
+			fmt.Fprintf(w, "Error\t:No CNM State\n")
+			return
 		}
-	}
 
-	ipam := network.IPAM
-	if ipam != nil {
-		fmt.Fprintln(w, "IPAM:\t")
-		if ipam.Driver != nil {
-			fmt.Fprintln(w, "  Driver:\t")
-			common.FprintfIfNotEmpty(w, "    Name\t: %s\n", ipam.Driver.Name)
-			if len(ipam.Driver.Options) > 0 {
-				fmt.Fprintln(w, "    Options:\t")
-				for k, v := range ipam.Driver.Options {
-					fmt.Fprintf(w, "      %s = %s\n", k, v)
+		driver := cnmState.DriverState
+		if driver != nil {
+			fmt.Fprintln(w, "Driver:\t")
+			common.FprintfIfNotEmpty(w, "  Name\t: %s\n", driver.Name)
+			if len(driver.Options) > 0 {
+				fmt.Fprintln(w, "  Options:\t")
+				for k, v := range driver.Options {
+					fmt.Fprintf(w, "    %s = %s\n", k, v)
 				}
 			}
 		}
 
-		if len(ipam.Configs) > 0 {
-			for _, config := range ipam.Configs {
-				fmt.Fprintln(w, "  IPAM Config:\t")
-				common.FprintfIfNotEmpty(w, "    Family\t: %s\n", config.Family.String())
-				common.FprintfIfNotEmpty(w, "    Subnet\t: %s\n", config.Subnet)
-				common.FprintfIfNotEmpty(w, "    Range\t: %s\n", config.Range)
-				common.FprintfIfNotEmpty(w, "    Range\t: %s\n", config.Range)
-				common.FprintfIfNotEmpty(w, "    Gateway\t: %s\n", config.Gateway)
-				if len(config.Reserved) > 0 {
-					fmt.Fprintln(w, "    Reserved:\t")
-					for k, v := range config.Reserved {
+		ipam := cnmState.IPAM
+		if ipam != nil {
+			fmt.Fprintln(w, "IPAM:\t")
+			if ipam.Driver != nil {
+				fmt.Fprintln(w, "  Driver:\t")
+				common.FprintfIfNotEmpty(w, "    Name\t: %s\n", ipam.Driver.Name)
+				if len(ipam.Driver.Options) > 0 {
+					fmt.Fprintln(w, "    Options:\t")
+					for k, v := range ipam.Driver.Options {
 						fmt.Fprintf(w, "      %s = %s\n", k, v)
+					}
+				}
+			}
+
+			if len(ipam.Configs) > 0 {
+				for _, config := range ipam.Configs {
+					fmt.Fprintln(w, "  IPAM Config:\t")
+					common.FprintfIfNotEmpty(w, "    Family\t: %s\n", config.Family.String())
+					common.FprintfIfNotEmpty(w, "    Subnet\t: %s\n", config.Subnet)
+					common.FprintfIfNotEmpty(w, "    Range\t: %s\n", config.Range)
+					common.FprintfIfNotEmpty(w, "    Range\t: %s\n", config.Range)
+					common.FprintfIfNotEmpty(w, "    Gateway\t: %s\n", config.Gateway)
+					if len(config.Reserved) > 0 {
+						fmt.Fprintln(w, "    Reserved:\t")
+						for k, v := range config.Reserved {
+							fmt.Fprintf(w, "      %s = %s\n", k, v)
+						}
 					}
 				}
 			}

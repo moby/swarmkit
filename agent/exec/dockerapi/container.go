@@ -499,16 +499,21 @@ func (c *containerConfig) networkCreateOptions(name string) (types.NetworkCreate
 		return types.NetworkCreate{}, errors.New("container: unknown network referenced")
 	}
 
+	cnmState := na.Network.GetCNMCompat()
+	if cnmState == nil {
+		return types.NetworkCreate{}, errors.New("container: network with no CNM state")
+	}
+
 	options := types.NetworkCreate{
-		Driver: na.Network.DriverState.Name,
+		Driver: cnmState.DriverState.Name,
 		IPAM: &network.IPAM{
-			Driver: na.Network.IPAM.Driver.Name,
+			Driver: cnmState.IPAM.Driver.Name,
 		},
-		Options:        na.Network.DriverState.Options,
+		Options:        cnmState.DriverState.Options,
 		CheckDuplicate: true,
 	}
 
-	for _, ic := range na.Network.IPAM.Configs {
+	for _, ic := range cnmState.IPAM.Configs {
 		c := network.IPAMConfig{
 			Subnet:  ic.Subnet,
 			IPRange: ic.Range,
