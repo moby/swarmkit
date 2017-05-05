@@ -14,6 +14,8 @@ import (
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/identity"
+	"github.com/docker/swarmkit/log"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
@@ -163,11 +165,16 @@ func (m *MockDispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Se
 	handler := m.sessionHandler
 	m.openSession = r
 	m.mu.Unlock()
+	sessionID := identity.NewID()
+
 	defer func() {
 		m.mu.Lock()
 		defer m.mu.Unlock()
-		m.closedSessions = append(m.closedSessions, m.openSession)
-		m.openSession = nil
+		log.G(stream.Context()).Debugf("non-dispatcher side closed session: %s", sessionID)
+		m.closedSessions = append(m.closedSessions, r)
+		if m.openSession == r { // only overwrite session if it hasn't changed
+			m.openSession = nil
+		}
 	}()
 
 	if handler != nil {
@@ -176,7 +183,7 @@ func (m *MockDispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Se
 
 	// send the initial message first
 	if err := stream.Send(&api.SessionMessage{
-		SessionID: r.SessionID,
+		SessionID: sessionID,
 		Managers: []*api.WeightedPeer{
 			{
 				Peer: &api.Peer{Addr: m.Addr},
@@ -190,7 +197,7 @@ func (m *MockDispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Se
 	for {
 		select {
 		case msg := <-m.sessionCh:
-			msg.SessionID = r.SessionID
+			msg.SessionID = sessionID
 			if err := stream.Send(msg); err != nil {
 				return err
 			}
