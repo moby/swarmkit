@@ -258,6 +258,13 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 		// the local connection will not be returned by the connection
 		// broker anymore.
 		config.ForceRemote = true
+
+		// Wait a moment, in case a leader election was taking place.
+		select {
+		case <-time.After(config.RetryInterval):
+		case <-ctx.Done():
+			return nil, nil, ctx.Err()
+		}
 	}
 	if err != nil {
 		return nil, nil, err
@@ -286,9 +293,18 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 	var kekUpdate *KEKData
 	for i := 0; i < 5; i++ {
 		// ValidateCertChain will always return at least 1 cert, so indexing at 0 is safe
-		kekUpdate, err = rca.getKEKUpdate(ctx, leafCert, tlsKeyPair, config.ConnBroker)
+		kekUpdate, err = rca.getKEKUpdate(ctx, leafCert, tlsKeyPair, config)
 		if err == nil {
 			break
+		}
+
+		config.ForceRemote = true
+
+		// Wait a moment, in case a leader election was taking place.
+		select {
+		case <-time.After(config.RetryInterval):
+		case <-ctx.Done():
+			return nil, nil, ctx.Err()
 		}
 	}
 	if err != nil {
@@ -305,7 +321,7 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 	}, nil
 }
 
-func (rca *RootCA) getKEKUpdate(ctx context.Context, leafCert *x509.Certificate, keypair tls.Certificate, connBroker *connectionbroker.Broker) (*KEKData, error) {
+func (rca *RootCA) getKEKUpdate(ctx context.Context, leafCert *x509.Certificate, keypair tls.Certificate, config CertificateRequestConfig) (*KEKData, error) {
 	var managerRole bool
 	for _, ou := range leafCert.Subject.OrganizationalUnit {
 		if ou == ManagerRole {
@@ -316,7 +332,7 @@ func (rca *RootCA) getKEKUpdate(ctx context.Context, leafCert *x509.Certificate,
 
 	if managerRole {
 		mtlsCreds := credentials.NewTLS(&tls.Config{ServerName: CARole, RootCAs: rca.Pool, Certificates: []tls.Certificate{keypair}})
-		conn, err := getGRPCConnection(mtlsCreds, connBroker, false)
+		conn, err := getGRPCConnection(mtlsCreds, config.ConnBroker, config.ForceRemote)
 		if err != nil {
 			return nil, err
 		}

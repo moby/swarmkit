@@ -48,6 +48,7 @@ func init() {
 		Factor: 250 * time.Millisecond,
 		Max:    1 * time.Hour,
 	}
+	ca.GetCertRetryInterval = 50 * time.Millisecond
 }
 
 func checkLeafCert(t *testing.T, certBytes []byte, issuerName, cn, ou, org string, additionalDNSNames ...string) []*x509.Certificate {
