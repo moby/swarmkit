@@ -402,16 +402,17 @@ func (rca *RootCA) CrossSignCACertificate(otherCAPEM []byte) ([]byte, error) {
 	}
 
 	// create a new cert with exactly the same parameters, including the public key and exact NotBefore and NotAfter
-	newCert, err := helpers.ParseCertificatePEM(otherCAPEM)
+	template, err := helpers.ParseCertificatePEM(otherCAPEM)
 	if err != nil {
 		return nil, errors.New("could not parse new CA certificate")
 	}
 
-	if !newCert.IsCA {
+	if !template.IsCA {
 		return nil, errors.New("certificate not a CA")
 	}
 
-	derBytes, err := x509.CreateCertificate(cryptorand.Reader, newCert, signer.parsedCert, newCert.PublicKey, signer.cryptoSigner)
+	template.SignatureAlgorithm = signer.parsedCert.SignatureAlgorithm // make sure we can sign with the signer key
+	derBytes, err := x509.CreateCertificate(cryptorand.Reader, template, signer.parsedCert, template.PublicKey, signer.cryptoSigner)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not cross-sign new CA certificate using old CA material")
 	}
