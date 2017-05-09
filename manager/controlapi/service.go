@@ -433,10 +433,9 @@ func (s *Server) validateNetworks(networks []*api.NetworkAttachmentConfig) error
 		if network == nil {
 			continue
 		}
-		if network.Spec.Internal {
+		if allocator.IsIngressNetwork(network) {
 			return grpc.Errorf(codes.InvalidArgument,
-				"Service cannot be explicitly attached to %q network which is a swarm internal network",
-				network.Spec.Annotations.Name)
+				"Service cannot be explicitly attached to the ingress network %q", network.Spec.Annotations.Name)
 		}
 	}
 	return nil
