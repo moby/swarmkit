@@ -356,6 +356,56 @@ func TestCreateService(t *testing.T) {
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
 	assert.NoError(t, err)
+
+	// ensure no port conflict when host ports overlap
+	spec = createSpec("name8", "image", 1)
+	spec.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9101), TargetPort: uint32(9101), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+	}}
+	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	assert.NoError(t, err)
+	assert.NotEmpty(t, r.Service.ID)
+
+	spec2 = createSpec("name9", "image", 1)
+	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9101), TargetPort: uint32(9101), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+	}}
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
+	assert.NoError(t, err)
+
+	// ensure port conflict when host ports overlaps with ingress port (host port first)
+	spec = createSpec("name10", "image", 1)
+	spec.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9102), TargetPort: uint32(9102), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+	}}
+	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	assert.NoError(t, err)
+	assert.NotEmpty(t, r.Service.ID)
+
+	spec2 = createSpec("name11", "image", 1)
+	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+		{PublishMode: api.PublishModeIngress, PublishedPort: uint32(9102), TargetPort: uint32(9102), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+	}}
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	// ensure port conflict when host ports overlaps with ingress port (ingress port first)
+	spec = createSpec("name12", "image", 1)
+	spec.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+		{PublishMode: api.PublishModeIngress, PublishedPort: uint32(9103), TargetPort: uint32(9103), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+	}}
+	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	assert.NoError(t, err)
+	assert.NotEmpty(t, r.Service.ID)
+
+	spec2 = createSpec("name13", "image", 1)
+	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9103), TargetPort: uint32(9103), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+	}}
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 }
 
 func TestSecretValidation(t *testing.T) {
