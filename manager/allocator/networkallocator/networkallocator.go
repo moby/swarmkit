@@ -22,6 +22,10 @@ const (
 	// default if a network without any driver name specified is
 	// created.
 	DefaultDriver = "overlay"
+
+	// PredefinedLabel identifies internally allocated swarm networks
+	// corresponding to the node-local predefined networks on the host.
+	PredefinedLabel = "com.docker.swarm.predefined"
 )
 
 // NetworkAllocator acts as the controller for all network related operations
@@ -80,6 +84,13 @@ type networkDriver struct {
 type initializer struct {
 	fn    drvregistry.InitFunc
 	ntype string
+}
+
+// PredefinedNetworkData contains the minimum set of data needed
+// to create the correspondent predefined network object in the store.
+type PredefinedNetworkData struct {
+	Name   string
+	Driver string
 }
 
 // New returns a new NetworkAllocator handle
@@ -525,7 +536,7 @@ func (na *NetworkAllocator) releaseEndpoints(networks []*api.NetworkAttachment) 
 
 		ipam, _, _, err := na.resolveIPAM(nAttach.Network)
 		if err != nil {
-			return errors.Wrapf(err, "failed to resolve IPAM while releasing")
+			return errors.Wrap(err, "failed to resolve IPAM while releasing")
 		}
 
 		// Do not fail and bail out if we fail to release IP
@@ -925,7 +936,7 @@ func (na *NetworkAllocator) allocatePools(n *api.Network) (map[string]string, er
 }
 
 func initializeDrivers(reg *drvregistry.DrvRegistry) error {
-	for _, i := range getInitializers() {
+	for _, i := range initializers {
 		if err := reg.AddDriver(i.ntype, i.fn, nil); err != nil {
 			return err
 		}
@@ -990,7 +1001,7 @@ func IsIngressNetworkNeeded(s *api.Service) bool {
 // IsBuiltInDriver returns whether the passed driver is an internal network driver
 func IsBuiltInDriver(name string) bool {
 	n := strings.ToLower(name)
-	for _, d := range getInitializers() {
+	for _, d := range initializers {
 		if n == d.ntype {
 			return true
 		}
