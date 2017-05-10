@@ -2438,3 +2438,146 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 		s.Close()
 	}
 }
+
+func TestSchedulerHostPort(t *testing.T) {
+	ctx := context.Background()
+	node1 := &api.Node{
+		ID: "nodeid1",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node1",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+	}
+	node2 := &api.Node{
+		ID: "nodeid2",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node2",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+	}
+
+	task1 := &api.Task{
+		ID:           "id1",
+		DesiredState: api.TaskStateRunning,
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{},
+			},
+		},
+		ServiceAnnotations: api.Annotations{
+			Name: "name1",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+		Endpoint: &api.Endpoint{
+			Ports: []*api.PortConfig{
+				{
+					PublishMode:   api.PublishModeHost,
+					PublishedPort: 58,
+					Protocol:      api.ProtocolTCP,
+				},
+			},
+		},
+	}
+	task2 := &api.Task{
+		ID:           "id2",
+		DesiredState: api.TaskStateRunning,
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{},
+			},
+		},
+		ServiceAnnotations: api.Annotations{
+			Name: "name2",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+		Endpoint: &api.Endpoint{
+			Ports: []*api.PortConfig{
+				{
+					PublishMode:   api.PublishModeHost,
+					PublishedPort: 58,
+					Protocol:      api.ProtocolUDP,
+				},
+			},
+		},
+	}
+	task3 := &api.Task{
+		ID:           "id3",
+		DesiredState: api.TaskStateRunning,
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{},
+			},
+		},
+		ServiceAnnotations: api.Annotations{
+			Name: "name3",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+		Endpoint: &api.Endpoint{
+			Ports: []*api.PortConfig{
+				{
+					PublishMode:   api.PublishModeHost,
+					PublishedPort: 58,
+					Protocol:      api.ProtocolUDP,
+				},
+				{
+					PublishMode:   api.PublishModeHost,
+					PublishedPort: 58,
+					Protocol:      api.ProtocolTCP,
+				},
+			},
+		},
+	}
+
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	err := s.Update(func(tx store.Tx) error {
+		// Add initial node and task
+		assert.NoError(t, store.CreateTask(tx, task1))
+		assert.NoError(t, store.CreateTask(tx, task2))
+		assert.NoError(t, store.CreateNode(tx, node1))
+		assert.NoError(t, store.CreateNode(tx, node2))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(s)
+
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run(ctx))
+	}()
+	defer scheduler.Stop()
+
+	// Tasks 1 and 2 should be assigned to different nodes.
+	assignment1 := watchAssignment(t, watch)
+	assignment2 := watchAssignment(t, watch)
+	assert.True(t, assignment1 != assignment2)
+
+	// Task 3 should not be schedulable.
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, task3))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	failure := watchAssignmentFailure(t, watch)
+	assert.Equal(t, "no suitable node (host-mode port already in use on 2 nodes)", failure.Status.Message)
+}
