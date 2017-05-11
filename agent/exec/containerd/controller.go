@@ -38,6 +38,34 @@ func newController(conn *grpc.ClientConn, containerDir string, task *api.Task, s
 	}, nil
 }
 
+// ContainerStatus returns the container-specific status for the task.
+func (r *controller) ContainerStatus(ctx context.Context) (*api.ContainerStatus, error) {
+	ctnr, err := r.adapter.inspect(ctx)
+	if err != nil {
+		if isUnknownContainer(err) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	status := &api.ContainerStatus{
+		ContainerID: ctnr.ID,
+		PID:         int32(ctnr.Pid),
+	}
+
+	switch ctnr.Status {
+	case task.StatusStopped:
+		exitStatus, err := r.adapter.shutdown(ctx)
+		if err != nil {
+			return nil, err
+		}
+		status.ExitCode = int32(exitStatus)
+	}
+
+	return status, err
+}
+
 // Update takes a recent task update and applies it to the container.
 func (r *controller) Update(ctx context.Context, t *api.Task) error {
 	log.G(ctx).Warnf("task updates not yet supported")
