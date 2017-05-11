@@ -380,13 +380,6 @@ message ClusterSpec {
 	EncryptionConfig encryption_config = 8 [(gogoproto.nullable) = false];
 }
 
-// Templating controls whether the payload of a config or secret is evaluated
-// as a template.
-enum Templating {
-	NONE = 0;
-	GO_TEMPLATE = 1;
-}
-
 // SecretSpec specifies a user-provided secret.
 message SecretSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
@@ -395,8 +388,11 @@ message SecretSpec {
 	bytes data = 2;
 
 	// Templating controls whether and how to evaluate the secret payload as
-	// a template.
-	Templating templating = 3;
+	// a template. If it is not set, no templating is used.
+	//
+	// The currently recognized values are:
+	// - golang: Go templating
+	Driver templating = 3;
 }
 
 // ConfigSpec specifies user-provided configuration files.
@@ -408,7 +404,10 @@ message ConfigSpec {
 	// ConfigSpec? Define this to be a tar? etc...
 	bytes data = 2;
 
-	// Templating controls whether and how to evaluate the config payload as
-	// a template.
-	Templating templating = 3;
+	// Templating controls whether and how to evaluate the secret payload as
+	// a template. If it is not set, no templating is used.
+	//
+	// The currently recognized values are:
+	// - golang: Go templating
+	Driver templating = 3;
 }

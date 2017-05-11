@@ -44,7 +44,7 @@ func TestTemplatedSecret(t *testing.T) {
 					"TASK_ID={{.Task.ID}}\n" +
 					"TASK_NAME={{.Task.Name}}\n" +
 					"NODE_ID={{.Node.ID}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
+				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "SERVICE_ID=serviceID\n" +
 				"SERVICE_NAME=serviceName\n" +
@@ -70,7 +70,7 @@ func TestTemplatedSecret(t *testing.T) {
 			desc: "Test expansion of secret, by target",
 			secretSpec: api.SecretSpec{
 				Data:       []byte("SECRET_VAL={{secret \"referencedsecrettarget\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
+				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "SECRET_VAL=mysecret\n",
 			task: modifyTask(func(t *api.Task) {
@@ -104,7 +104,7 @@ func TestTemplatedSecret(t *testing.T) {
 			desc: "Test expansion of config, by target",
 			secretSpec: api.SecretSpec{
 				Data:       []byte("CONFIG_VAL={{config \"referencedconfigtarget\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
+				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "CONFIG_VAL=myconfig\n",
 			task: modifyTask(func(t *api.Task) {
@@ -140,7 +140,7 @@ func TestTemplatedSecret(t *testing.T) {
 			desc: "Test expansion of secret not available to task",
 			secretSpec: api.SecretSpec{
 				Data:       []byte("SECRET_VAL={{secret \"unknowntarget\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
+				Templating: &api.Driver{Name: "golang"},
 			},
 			expectedErr: `failed to expand templated secret templatedsecret: template: expansion:1:13: executing "expansion" at <secret "unknowntarge...>: error calling secret: secret target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
@@ -162,7 +162,7 @@ func TestTemplatedSecret(t *testing.T) {
 			desc: "Test expansion of config not available to task",
 			secretSpec: api.SecretSpec{
 				Data:       []byte("CONFIG_VAL={{config \"unknowntarget\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
+				Templating: &api.Driver{Name: "golang"},
 			},
 			expectedErr: `failed to expand templated secret templatedsecret: template: expansion:1:13: executing "expansion" at <config "unknowntarge...>: error calling config: config target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
@@ -184,7 +184,7 @@ func TestTemplatedSecret(t *testing.T) {
 			desc: "Test that expansion of the same secret avoids recursion",
 			secretSpec: api.SecretSpec{
 				Data:       []byte("SECRET_VAL={{secret \"templatedsecrettarget\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
+				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "SECRET_VAL=SECRET_VAL={{secret \"templatedsecrettarget\"}}\n\n",
 			task: modifyTask(func(t *api.Task) {
@@ -215,7 +215,7 @@ func TestTemplatedSecret(t *testing.T) {
 			secretSpec: api.SecretSpec{
 				Data: []byte("ENV VALUE={{env \"foo\"}}\n" +
 					"DOES NOT EXIST={{env \"badname\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
+				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "ENV VALUE=bar\n" +
 				"DOES NOT EXIST=\n",
@@ -292,7 +292,7 @@ func TestTemplatedConfig(t *testing.T) {
 					"TASK_ID={{.Task.ID}}\n" +
 					"TASK_NAME={{.Task.Name}}\n" +
 					"NODE_ID={{.Node.ID}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
+				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "SERVICE_ID=serviceID\n" +
 				"SERVICE_NAME=serviceName\n" +
@@ -318,7 +318,7 @@ func TestTemplatedConfig(t *testing.T) {
 			desc: "Test expansion of secret, by target",
 			configSpec: api.ConfigSpec{
 				Data:       []byte("SECRET_VAL={{secret \"referencedsecrettarget\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
+				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "SECRET_VAL=mysecret\n",
 			task: modifyTask(func(t *api.Task) {
@@ -354,7 +354,7 @@ func TestTemplatedConfig(t *testing.T) {
 			desc: "Test expansion of config, by target",
 			configSpec: api.ConfigSpec{
 				Data:       []byte("CONFIG_VAL={{config \"referencedconfigtarget\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
+				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "CONFIG_VAL=myconfig\n",
 			task: modifyTask(func(t *api.Task) {
@@ -388,7 +388,7 @@ func TestTemplatedConfig(t *testing.T) {
 			desc: "Test expansion of secret not available to task",
 			configSpec: api.ConfigSpec{
 				Data:       []byte("SECRET_VAL={{secret \"unknowntarget\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
+				Templating: &api.Driver{Name: "golang"},
 			},
 			expectedErr: `failed to expand templated config templatedconfig: template: expansion:1:13: executing "expansion" at <secret "unknowntarge...>: error calling secret: secret target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
@@ -410,7 +410,7 @@ func TestTemplatedConfig(t *testing.T) {
 			desc: "Test expansion of config not available to task",
 			configSpec: api.ConfigSpec{
 				Data:       []byte("CONFIG_VAL={{config \"unknowntarget\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
+				Templating: &api.Driver{Name: "golang"},
 			},
 			expectedErr: `failed to expand templated config templatedconfig: template: expansion:1:13: executing "expansion" at <config "unknowntarge...>: error calling config: config target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
@@ -432,7 +432,7 @@ func TestTemplatedConfig(t *testing.T) {
 			desc: "Test that expansion of the same config avoids recursion",
 			configSpec: api.ConfigSpec{
 				Data:       []byte("CONFIG_VAL={{config \"templatedconfigtarget\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
+				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "CONFIG_VAL=CONFIG_VAL={{config \"templatedconfigtarget\"}}\n\n",
 			task: modifyTask(func(t *api.Task) {
@@ -463,7 +463,7 @@ func TestTemplatedConfig(t *testing.T) {
 			configSpec: api.ConfigSpec{
 				Data: []byte("ENV VALUE={{env \"foo\"}}\n" +
 					"DOES NOT EXIST={{env \"badname\"}}\n"),
-				Templating: api.Templating_GO_TEMPLATE,
+				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "ENV VALUE=bar\n" +
 				"DOES NOT EXIST=\n",

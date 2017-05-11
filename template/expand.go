@@ -129,35 +129,33 @@ func expandPayload(ctx PayloadContext, payload []byte) ([]byte, error) {
 // ExpandSecretSpec expands the template inside the secret payload, if any.
 // Templating is evaluated on the agent-side.
 func ExpandSecretSpec(s *api.Secret, t *api.Task, dependencies exec.DependencyGetter) (*api.SecretSpec, error) {
-	switch s.Spec.Templating {
-	case api.Templating_NONE:
+	if s.Spec.Templating == nil {
 		return &s.Spec, nil
-	case api.Templating_GO_TEMPLATE:
+	}
+	if s.Spec.Templating.Name == "golang" {
 		ctx := NewPayloadContextFromTask(t, dependencies)
 		secretSpec := s.Spec.Copy()
 
 		var err error
 		secretSpec.Data, err = expandPayload(ctx, secretSpec.Data)
 		return secretSpec, err
-	default:
-		return &s.Spec, errors.New("unrecognized template type")
 	}
+	return &s.Spec, errors.New("unrecognized template type")
 }
 
 // ExpandConfigSpec expands the template inside the config payload, if any.
 // Templating is evaluated on the agent-side.
 func ExpandConfigSpec(c *api.Config, t *api.Task, dependencies exec.DependencyGetter) (*api.ConfigSpec, error) {
-	switch c.Spec.Templating {
-	case api.Templating_NONE:
+	if c.Spec.Templating == nil {
 		return &c.Spec, nil
-	case api.Templating_GO_TEMPLATE:
+	}
+	if c.Spec.Templating.Name == "golang" {
 		ctx := NewPayloadContextFromTask(t, dependencies)
 		configSpec := c.Spec.Copy()
 
 		var err error
 		configSpec.Data, err = expandPayload(ctx, configSpec.Data)
 		return configSpec, err
-	default:
-		return &c.Spec, errors.New("unrecognized template type")
 	}
+	return &c.Spec, errors.New("unrecognized template type")
 }
