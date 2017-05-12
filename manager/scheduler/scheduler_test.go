@@ -1728,7 +1728,7 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 			Placement: &api.Placement{
 				Platforms: []*api.Platform{
 					{
-						Architecture: "intel",
+						Architecture: "arm",
 						OS:           "linux",
 					},
 				},
@@ -1788,7 +1788,7 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 						OS:           "linux",
 					},
 					{
-						Architecture: "amd64",
+						Architecture: "x86_64",
 						OS:           "windows",
 					},
 				},
@@ -1808,7 +1808,7 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 		},
 		Description: &api.NodeDescription{
 			Platform: &api.Platform{
-				Architecture: "amd64",
+				Architecture: "x86_64",
 				OS:           "linux",
 			},
 		},
@@ -1832,6 +1832,20 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 		},
 	}
 
+	// node with nil platform description, cannot schedule anything
+	node3 := &api.Node{
+		ID: "node3",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node3",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+		Description: &api.NodeDescription{},
+	}
+
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
 	defer s.Close()
@@ -1841,6 +1855,7 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 		assert.NoError(t, store.CreateTask(tx, task1))
 		assert.NoError(t, store.CreateNode(tx, node1))
 		assert.NoError(t, store.CreateNode(tx, node2))
+		assert.NoError(t, store.CreateNode(tx, node3))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -1866,7 +1881,7 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	failure := watchAssignmentFailure(t, watch)
-	assert.Equal(t, "no suitable node (unsupported platform on 2 nodes)", failure.Status.Message)
+	assert.Equal(t, "no suitable node (unsupported platform on 3 nodes)", failure.Status.Message)
 
 	// add task3
 	err = s.Update(func(tx store.Tx) error {
