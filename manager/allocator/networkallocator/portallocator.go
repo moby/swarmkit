@@ -364,18 +364,19 @@ func (pa *portAllocator) isPortsAllocatedOnInit(s *api.Service, onInit bool) boo
 
 func (ps *portSpace) allocate(p *api.PortConfig) (err error) {
 	if p.PublishedPort != 0 {
+
+		defer func() {
+			if err != nil {
+				ps.dynamicPortSpace.Release(uint64(p.PublishedPort))
+			}
+		}()
+
 		// If it falls in the dynamic port range check out
 		// from dynamic port space first.
 		if p.PublishedPort >= dynamicPortStart && p.PublishedPort <= dynamicPortEnd {
 			if err = ps.dynamicPortSpace.GetSpecificID(uint64(p.PublishedPort)); err != nil {
 				return err
 			}
-
-			defer func() {
-				if err != nil {
-					ps.dynamicPortSpace.Release(uint64(p.PublishedPort))
-				}
-			}()
 		}
 
 		return ps.masterPortSpace.GetSpecificID(uint64(p.PublishedPort))
@@ -386,6 +387,7 @@ func (ps *portSpace) allocate(p *api.PortConfig) (err error) {
 	if err != nil {
 		return
 	}
+
 	defer func() {
 		if err != nil {
 			ps.dynamicPortSpace.Release(uint64(swarmPort))
