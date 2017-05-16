@@ -735,8 +735,12 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 
 			// if the map type is an alias and key or values are aliases (type Foo map[Bar]Baz),
 			// we need to explicitly record their use here.
-			p.RecordTypeUse(m.KeyAliasField.GetTypeName())
-			p.RecordTypeUse(m.ValueAliasField.GetTypeName())
+			if gogoproto.IsCastKey(field) {
+				p.RecordTypeUse(m.KeyAliasField.GetTypeName())
+			}
+			if gogoproto.IsCastValue(field) {
+				p.RecordTypeUse(m.ValueAliasField.GetTypeName())
+			}
 
 			nullable, valuegoTyp, valuegoAliasTyp = generator.GoMapValueTypes(field, m.ValueField, valuegoTyp, valuegoAliasTyp)
 			if gogoproto.IsStdTime(field) || gogoproto.IsStdDuration(field) {
@@ -806,10 +810,13 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 				} else {
 					p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, time.Duration(0))`)
 				}
-			} else if nullable {
+			} else if nullable && !gogoproto.IsCustomType(field) {
 				p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, &`, msgname, `{})`)
 			} else {
-				p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, `, msgname, `{})`)
+				goType, _ := p.GoType(nil, field)
+				// remove the slice from the type, i.e. []*T -> *T
+				goType = goType[2:]
+				p.P(`m.`, fieldname, ` = append(m.`, fieldname, `, `, goType, `{})`)
 			}
 			varName := `m.` + fieldname + `[len(m.` + fieldname + `)-1]`
 			buf := `dAtA[iNdEx:postIndex]`
@@ -840,7 +847,9 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 			} else if gogoproto.IsStdDuration(field) {
 				p.P(`m.`, fieldname, ` = new(time.Duration)`)
 			} else {
-				p.P(`m.`, fieldname, ` = &`, msgname, `{}`)
+				goType, _ := p.GoType(nil, field)
+				// remove the star from the type
+				p.P(`m.`, fieldname, ` = &`, goType[1:], `{}`)
 			}
 			p.Out()
 			p.P(`}`)
@@ -869,6 +878,7 @@ func (p *unmarshal) field(file *generator.FileDescriptor, msg *generator.Descrip
 			p.P(`}`)
 		}
 		p.P(`iNdEx = postIndex`)
+
 	case descriptor.FieldDescriptorProto_TYPE_BYTES:
 		p.P(`var byteLen int`)
 		p.decodeVarint("byteLen", "int")
@@ -1164,12 +1174,16 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 			if field.OneofIndex != nil {
 				errFieldname = p.GetOneOfFieldName(message, field)
 			}
-			packed := field.IsPacked() || (proto3 && field.IsRepeated() && generator.IsScalar(field))
+			possiblyPacked := field.IsScalar() && field.IsRepeated()
 			p.P(`case `, strconv.Itoa(int(field.GetNumber())), `:`)
 			p.In()
 			wireType := field.WireType()
-			if packed {
-				p.P(`if wireType == `, strconv.Itoa(proto.WireBytes), `{`)
+			if possiblyPacked {
+				p.P(`if wireType == `, strconv.Itoa(wireType), `{`)
+				p.In()
+				p.field(file, message, field, fieldname, false)
+				p.Out()
+				p.P(`} else if wireType == `, strconv.Itoa(proto.WireBytes), `{`)
 				p.In()
 				p.P(`var packedLen int`)
 				p.decodeVarint("packedLen", "int")
@@ -1189,10 +1203,6 @@ func (p *unmarshal) Generate(file *generator.FileDescriptor) {
 				p.field(file, message, field, fieldname, false)
 				p.Out()
 				p.P(`}`)
-				p.Out()
-				p.P(`} else if wireType == `, strconv.Itoa(wireType), `{`)
-				p.In()
-				p.field(file, message, field, fieldname, false)
 				p.Out()
 				p.P(`} else {`)
 				p.In()
