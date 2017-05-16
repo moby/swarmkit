@@ -952,7 +952,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		// doesn't exist already.
 		freshCluster := nil == store.CreateNode(tx, managerNode(nodeID, m.config.Availability))
 
-		if freshCluster {
+		if freshCluster && m.config.NetworkModel.SupportsIngressNetwork() {
 			// This is a fresh swarm cluster. Add to store now any initial
 			// cluster resource, like the default ingress network which
 			// provides the routing mesh for this cluster.

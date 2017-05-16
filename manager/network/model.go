@@ -10,6 +10,7 @@ type Model interface {
 	NewAllocator() (networkallocator.NetworkAllocator, error)
 	ValidateDriver(driver *api.Driver, pluginType string) error
 	PredefinedNetworks() []PredefinedNetworkData
+	SupportsIngressNetwork() bool
 }
 
 // PredefinedNetworkData contains the minimum set of data needed

@@ -29,6 +29,10 @@ func (nm *cnm) NewAllocator() (networkallocator.NetworkAllocator, error) {
 	return cnmallocator.New(nm.pg)
 }
 
+func (nm *cnm) SupportsIngressNetwork() bool {
+	return true
+}
+
 func (nm *cnm) ValidateDriver(driver *api.Driver, pluginType string) error {
 	if driver == nil {
 		// It is ok to not specify the driver. We will choose
