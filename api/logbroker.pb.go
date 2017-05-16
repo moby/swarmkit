@@ -1935,7 +1935,24 @@ func (m *LogSubscriptionOptions) Unmarshal(dAtA []byte) error {
 		}
 		switch fieldNum {
 		case 1:
-			if wireType == 2 {
+			if wireType == 0 {
+				var v LogStream
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowLogbroker
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= (LogStream(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.Streams = append(m.Streams, v)
+			} else if wireType == 2 {
 				var packedLen int
 				for shift := uint(0); ; shift += 7 {
 					if shift >= 64 {
@@ -1976,23 +1993,6 @@ func (m *LogSubscriptionOptions) Unmarshal(dAtA []byte) error {
 					}
 					m.Streams = append(m.Streams, v)
 				}
-			} else if wireType == 0 {
-				var v LogStream
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowLogbroker
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					v |= (LogStream(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				m.Streams = append(m.Streams, v)
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field Streams", wireType)
 			}

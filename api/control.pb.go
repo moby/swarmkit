@@ -9123,7 +9123,24 @@ func (m *ListNodesRequest_Filters) Unmarshal(dAtA []byte) error {
 			}
 			iNdEx = postIndex
 		case 4:
-			if wireType == 2 {
+			if wireType == 0 {
+				var v NodeSpec_Membership
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowControl
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= (NodeSpec_Membership(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.Memberships = append(m.Memberships, v)
+			} else if wireType == 2 {
 				var packedLen int
 				for shift := uint(0); ; shift += 7 {
 					if shift >= 64 {
@@ -9164,8 +9181,12 @@ func (m *ListNodesRequest_Filters) Unmarshal(dAtA []byte) error {
 					}
 					m.Memberships = append(m.Memberships, v)
 				}
-			} else if wireType == 0 {
-				var v NodeSpec_Membership
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field Memberships", wireType)
+			}
+		case 5:
+			if wireType == 0 {
+				var v NodeRole
 				for shift := uint(0); ; shift += 7 {
 					if shift >= 64 {
 						return ErrIntOverflowControl
@@ -9175,17 +9196,13 @@ func (m *ListNodesRequest_Filters) Unmarshal(dAtA []byte) error {
 					}
 					b := dAtA[iNdEx]
 					iNdEx++
-					v |= (NodeSpec_Membership(b) & 0x7F) << shift
+					v |= (NodeRole(b) & 0x7F) << shift
 					if b < 0x80 {
 						break
 					}
 				}
-				m.Memberships = append(m.Memberships, v)
-			} else {
-				return fmt.Errorf("proto: wrong wireType = %d for field Memberships", wireType)
-			}
-		case 5:
-			if wireType == 2 {
+				m.Roles = append(m.Roles, v)
+			} else if wireType == 2 {
 				var packedLen int
 				for shift := uint(0); ; shift += 7 {
 					if shift >= 64 {
@@ -9226,23 +9243,6 @@ func (m *ListNodesRequest_Filters) Unmarshal(dAtA []byte) error {
 					}
 					m.Roles = append(m.Roles, v)
 				}
-			} else if wireType == 0 {
-				var v NodeRole
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowControl
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					v |= (NodeRole(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				m.Roles = append(m.Roles, v)
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field Roles", wireType)
 			}
@@ -10390,7 +10390,24 @@ func (m *ListTasksRequest_Filters) Unmarshal(dAtA []byte) error {
 			m.NodeIDs = append(m.NodeIDs, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 6:
-			if wireType == 2 {
+			if wireType == 0 {
+				var v TaskState
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowControl
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= (TaskState(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.DesiredStates = append(m.DesiredStates, v)
+			} else if wireType == 2 {
 				var packedLen int
 				for shift := uint(0); ; shift += 7 {
 					if shift >= 64 {
@@ -10431,23 +10448,6 @@ func (m *ListTasksRequest_Filters) Unmarshal(dAtA []byte) error {
 					}
 					m.DesiredStates = append(m.DesiredStates, v)
 				}
-			} else if wireType == 0 {
-				var v TaskState
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflowControl
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					v |= (TaskState(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				m.DesiredStates = append(m.DesiredStates, v)
 			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field DesiredStates", wireType)
 			}

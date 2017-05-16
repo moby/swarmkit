@@ -121,6 +121,7 @@ package size
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -230,7 +231,7 @@ func (p *size) generateField(proto3 bool, file *generator.FileDescriptor, messag
 		p.P(`if m.`, fieldname, ` != nil {`)
 		p.In()
 	}
-	packed := field.IsPacked() || (proto3 && field.IsRepeated() && generator.IsScalar(field))
+	packed := field.IsPacked() || (proto3 && field.IsPacked3())
 	_, wire := p.GoType(message, field)
 	wireType := wireToType(wire)
 	fieldNumber := field.GetNumber()
@@ -576,6 +577,10 @@ func (p *size) Generate(file *generator.FileDescriptor) {
 	}
 	for _, message := range file.Messages() {
 		sizeName := ""
+		if gogoproto.IsSizer(file.FileDescriptorProto, message.DescriptorProto) && gogoproto.IsProtoSizer(file.FileDescriptorProto, message.DescriptorProto) {
+			fmt.Fprintf(os.Stderr, "ERROR: message %v cannot support both sizer and protosizer plugins\n", generator.CamelCase(*message.Name))
+			os.Exit(1)
+		}
 		if gogoproto.IsSizer(file.FileDescriptorProto, message.DescriptorProto) {
 			sizeName = "Size"
 		} else if gogoproto.IsProtoSizer(file.FileDescriptorProto, message.DescriptorProto) {
