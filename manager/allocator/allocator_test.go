@@ -30,6 +30,31 @@ func TestAllocator(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, a)
 
+	// Predefined node-local network
+	p := &api.Network{
+		ID: "one_unIque_id",
+		Spec: api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "pred_bridge_network",
+				Labels: map[string]string{
+					"com.docker.swarm.predefined": "true",
+				},
+			},
+			DriverConfig: &api.Driver{Name: "bridge"},
+		},
+	}
+
+	// Node-local swarm scope network
+	nln := &api.Network{
+		ID: "another_unIque_id",
+		Spec: api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "swarm-macvlan",
+			},
+			DriverConfig: &api.Driver{Name: "mac-vlan"},
+		},
+	}
+
 	// Try adding some objects to store before allocator is started
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		// populate ingress network
@@ -104,6 +129,75 @@ func TestAllocator(t *testing.T) {
 			DesiredState: api.TaskStateRunning,
 		}
 		assert.NoError(t, store.CreateTask(tx, t2))
+
+		// Create the predefined node-local network with one service
+		assert.NoError(t, store.CreateNetwork(tx, p))
+
+		sp1 := &api.Service{
+			ID: "predServiceID1",
+			Spec: api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "predService1",
+				},
+				Task: api.TaskSpec{
+					Networks: []*api.NetworkAttachmentConfig{
+						{
+							Target: p.ID,
+						},
+					},
+				},
+				Endpoint: &api.EndpointSpec{Mode: api.ResolutionModeDNSRoundRobin},
+			},
+		}
+		assert.NoError(t, store.CreateService(tx, sp1))
+
+		tp1 := &api.Task{
+			ID: "predTaskID1",
+			Status: api.TaskStatus{
+				State: api.TaskStateNew,
+			},
+			Networks: []*api.NetworkAttachment{
+				{
+					Network: p,
+				},
+			},
+		}
+		assert.NoError(t, store.CreateTask(tx, tp1))
+
+		// Create the the swarm level node-local network with one service
+		assert.NoError(t, store.CreateNetwork(tx, nln))
+
+		sp2 := &api.Service{
+			ID: "predServiceID2",
+			Spec: api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "predService2",
+				},
+				Task: api.TaskSpec{
+					Networks: []*api.NetworkAttachmentConfig{
+						{
+							Target: nln.ID,
+						},
+					},
+				},
+				Endpoint: &api.EndpointSpec{Mode: api.ResolutionModeDNSRoundRobin},
+			},
+		}
+		assert.NoError(t, store.CreateService(tx, sp2))
+
+		tp2 := &api.Task{
+			ID: "predTaskID2",
+			Status: api.TaskStatus{
+				State: api.TaskStateNew,
+			},
+			Networks: []*api.NetworkAttachment{
+				{
+					Network: nln,
+				},
+			},
+		}
+		assert.NoError(t, store.CreateTask(tx, tp2))
+
 		return nil
 	}))
 
@@ -124,6 +218,37 @@ func TestAllocator(t *testing.T) {
 	watchTask(t, s, taskWatch, false, isValidTask) // t1
 	watchTask(t, s, taskWatch, false, isValidTask) // t2
 	watchService(t, serviceWatch, false, nil)
+
+	// Verify no allocation was done for the node-local networks
+	var (
+		ps *api.Network
+		sn *api.Network
+	)
+	s.View(func(tx store.ReadTx) {
+		ps = store.GetNetwork(tx, p.ID)
+		sn = store.GetNetwork(tx, nln.ID)
+
+	})
+	assert.NotNil(t, ps)
+	assert.NotNil(t, sn)
+	assert.Nil(t, ps.IPAM, "Non nil IPAMOptions for predefined network")
+	assert.Nil(t, sn.IPAM, "Non nil IPAMOptions for predefined network")
+
+	// Verify no allocation was done for tasks on node-local networks
+	var (
+		tp1 *api.Task
+		tp2 *api.Task
+	)
+	s.View(func(tx store.ReadTx) {
+		tp1 = store.GetTask(tx, "predTaskID1")
+		tp2 = store.GetTask(tx, "predTaskID2")
+	})
+	assert.NotNil(t, tp1)
+	assert.NotNil(t, tp2)
+	assert.Equal(t, tp1.Networks[0].Network.ID, p.ID)
+	assert.Equal(t, tp2.Networks[0].Network.ID, nln.ID)
+	assert.Nil(t, tp1.Networks[0].Addresses, "Non nil addresses for task on node-local network")
+	assert.Nil(t, tp2.Networks[0].Addresses, "Non nil addresses for task on node-local network")
 
 	// Add new networks/tasks/services after allocator is started.
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
@@ -426,6 +551,9 @@ func TestAllocator(t *testing.T) {
 }
 
 func isValidNetwork(t assert.TestingT, n *api.Network) bool {
+	if _, ok := n.Spec.Annotations.Labels["com.docker.swarm.predefined"]; ok {
+		return true
+	}
 	return assert.NotEqual(t, n.IPAM.Configs, nil) &&
 		assert.Equal(t, len(n.IPAM.Configs), 1) &&
 		assert.Equal(t, n.IPAM.Configs[0].Range, "") &&
