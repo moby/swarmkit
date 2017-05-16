@@ -3,6 +3,7 @@ package controlapi
 import (
 	"net"
 
+	"github.com/containernetworking/cni/libcni"
 	"github.com/docker/libnetwork/driverapi"
 	"github.com/docker/libnetwork/ipamapi"
 	"github.com/docker/swarmkit/api"
@@ -78,6 +79,32 @@ func validateNetworkSpec(spec *api.NetworkSpec, nm network.Model) error {
 
 	if spec.Ingress && spec.DriverConfig != nil && spec.DriverConfig.Name != "overlay" {
 		return grpc.Errorf(codes.Unimplemented, "only overlay driver is currently supported for ingress network")
+	}
+
+	if spec.DriverConfig != nil && spec.DriverConfig.Name == "cni" {
+		if spec.IPAM != nil {
+			return grpc.Errorf(codes.InvalidArgument, "CNI networks cannot have IPAM")
+		}
+
+		// This is rather similar to cniConfig in the containerd executor...
+		cniConfig, ok := spec.DriverConfig.Options["config"]
+		if !ok {
+			return grpc.Errorf(codes.InvalidArgument, "CNI network has no config")
+		}
+
+		cni, err := libcni.ConfFromBytes([]byte(cniConfig))
+		if err != nil {
+			return grpc.Errorf(codes.InvalidArgument, "Failed to parse CNI config: %s", err)
+		}
+
+		if spec.Annotations.Name != "" && spec.Annotations.Name != cni.Network.Name {
+			return grpc.Errorf(codes.InvalidArgument,
+				"CNI Network name (%q) must match Spec annotations name (%q)",
+				cni.Network.Name, spec.Annotations.Name)
+		}
+
+		// XXX updating in a function called validate..., pretty bad form?
+		spec.Annotations.Name = cni.Network.Name
 	}
 
 	if spec.Attachable && spec.Ingress {
