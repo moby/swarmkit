@@ -18,7 +18,9 @@ import (
 
 // CommonAPIClient is the common methods between stable and experimental versions of APIClient.
 type CommonAPIClient interface {
+	ConfigAPIClient
 	ContainerAPIClient
+	DistributionAPIClient
 	ImageAPIClient
 	NodeAPIClient
 	NetworkAPIClient
@@ -62,10 +64,15 @@ type ContainerAPIClient interface {
 	ContainerTop(ctx context.Context, container string, arguments []string) (container.ContainerTopOKBody, error)
 	ContainerUnpause(ctx context.Context, container string) error
 	ContainerUpdate(ctx context.Context, container string, updateConfig container.UpdateConfig) (container.ContainerUpdateOKBody, error)
-	ContainerWait(ctx context.Context, container string) (int64, error)
+	ContainerWait(ctx context.Context, container string, condition container.WaitCondition) (<-chan container.ContainerWaitOKBody, <-chan error)
 	CopyFromContainer(ctx context.Context, container, srcPath string) (io.ReadCloser, types.ContainerPathStat, error)
 	CopyToContainer(ctx context.Context, container, path string, content io.Reader, options types.CopyToContainerOptions) error
 	ContainersPrune(ctx context.Context, pruneFilters filters.Args) (types.ContainersPruneReport, error)
+}
+
+// DistributionAPIClient defines API client methods for the registry
+type DistributionAPIClient interface {
+	DistributionInspect(ctx context.Context, image, encodedRegistryAuth string) (registry.DistributionInspect, error)
 }
 
 // ImageAPIClient defines API client methods for the images
@@ -123,7 +130,7 @@ type PluginAPIClient interface {
 // ServiceAPIClient defines API client methods for the services
 type ServiceAPIClient interface {
 	ServiceCreate(ctx context.Context, service swarm.ServiceSpec, options types.ServiceCreateOptions) (types.ServiceCreateResponse, error)
-	ServiceInspectWithRaw(ctx context.Context, serviceID string) (swarm.Service, []byte, error)
+	ServiceInspectWithRaw(ctx context.Context, serviceID string, options types.ServiceInspectOptions) (swarm.Service, []byte, error)
 	ServiceList(ctx context.Context, options types.ServiceListOptions) ([]swarm.Service, error)
 	ServiceRemove(ctx context.Context, serviceID string) error
 	ServiceUpdate(ctx context.Context, serviceID string, version swarm.Version, service swarm.ServiceSpec, options types.ServiceUpdateOptions) (types.ServiceUpdateResponse, error)
@@ -170,4 +177,13 @@ type SecretAPIClient interface {
 	SecretRemove(ctx context.Context, id string) error
 	SecretInspectWithRaw(ctx context.Context, name string) (swarm.Secret, []byte, error)
 	SecretUpdate(ctx context.Context, id string, version swarm.Version, secret swarm.SecretSpec) error
+}
+
+// ConfigAPIClient defines API client methods for configs
+type ConfigAPIClient interface {
+	ConfigList(ctx context.Context, options types.ConfigListOptions) ([]swarm.Config, error)
+	ConfigCreate(ctx context.Context, config swarm.ConfigSpec) (types.ConfigCreateResponse, error)
+	ConfigRemove(ctx context.Context, id string) error
+	ConfigInspectWithRaw(ctx context.Context, name string) (swarm.Config, []byte, error)
+	ConfigUpdate(ctx context.Context, id string, version swarm.Version, config swarm.ConfigSpec) error
 }

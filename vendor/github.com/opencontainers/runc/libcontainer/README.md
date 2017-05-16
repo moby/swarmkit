@@ -1,3 +1,7 @@
+# libcontainer
+
+[![GoDoc](https://godoc.org/github.com/opencontainers/runc/libcontainer?status.svg)](https://godoc.org/github.com/opencontainers/runc/libcontainer)
+
 Libcontainer provides a native Go implementation for creating containers
 with namespaces, cgroups, capabilities, and filesystem access controls.
 It allows you to manage the lifecycle of the container performing additional operations
@@ -16,7 +20,14 @@ the current binary (/proc/self/exe) to be executed as the init process, and use
 arg "init", we call the first step process "bootstrap", so you always need a "init"
 function as the entry of "bootstrap".
 
+In addition to the go init function the early stage bootstrap is handled by importing
+[nsenter](https://github.com/opencontainers/runc/blob/master/libcontainer/nsenter/README.md).
+
 ```go
+import (
+	_ "github.com/opencontainers/runc/libcontainer/nsenter"
+)
+
 func init() {
 	if len(os.Args) > 1 && os.Args[1] == "init" {
 		runtime.GOMAXPROCS(1)
@@ -76,13 +87,14 @@ config := &configs.Config{
 		Name:   "test-container",
 		Parent: "system",
 		Resources: &configs.Resources{
-			MemorySwappiness: -1,
-			AllowAllDevices:  false,
+			MemorySwappiness: nil,
+			AllowAllDevices:  nil,
 			AllowedDevices:   configs.DefaultAllowedDevices,
 		},
 	},
 	MaskPaths: []string{
 		"/proc/kcore",
+		"/sys/firmware",
 	},
 	ReadonlyPaths: []string{
 		"/proc/sys", "/proc/sysrq-trigger", "/proc/irq", "/proc/bus",
@@ -133,15 +145,15 @@ config := &configs.Config{
 	UidMappings: []configs.IDMap{
 		{
 			ContainerID: 0,
-			Host: 1000,
-			size: 65536,
+			HostID: 1000,
+			Size: 65536,
 		},
 	},
 	GidMappings: []configs.IDMap{
 		{
 			ContainerID: 0,
-			Host: 1000,
-			size: 65536,
+			HostID: 1000,
+			Size: 65536,
 		},
 	},
 	Networks: []*configs.Network{
@@ -184,10 +196,10 @@ process := &libcontainer.Process{
 	Stderr: os.Stderr,
 }
 
-err := container.Start(process)
+err := container.Run(process)
 if err != nil {
-	logrus.Fatal(err)
 	container.Destroy()
+	logrus.Fatal(err)
 	return
 }
 
@@ -216,6 +228,18 @@ container.Pause()
 
 // resume all paused processes.
 container.Resume()
+
+// send signal to container's init process.
+container.Signal(signal)
+
+// update container resource constraints.
+container.Set(config)
+
+// get current status of the container.
+status, err := container.Status()
+
+// get current container's state information.
+state, err := container.State()
 ```
 
 
