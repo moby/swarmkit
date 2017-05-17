@@ -2,11 +2,17 @@ package metadata
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/containerd/containerd/containers"
+	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/filters"
+	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 )
 
@@ -28,27 +34,33 @@ func (s *containerStore) Get(ctx context.Context, id string) (containers.Contain
 
 	bkt := getContainerBucket(s.tx, namespace, id)
 	if bkt == nil {
-		return containers.Container{}, ErrNotFound("bucket does not exist")
+		return containers.Container{}, errors.Wrapf(errdefs.ErrNotFound, "bucket name %q")
 	}
 
 	container := containers.Container{ID: id}
 	if err := readContainer(&container, bkt); err != nil {
-		return containers.Container{}, errors.Wrap(err, "failed to read container")
+		return containers.Container{}, errors.Wrapf(err, "failed to read container %v", id)
 	}
 
 	return container, nil
 }
 
-func (s *containerStore) List(ctx context.Context, filter string) ([]containers.Container, error) {
+func (s *containerStore) List(ctx context.Context, fs ...filters.Filter) ([]containers.Container, error) {
 	namespace, err := namespaces.NamespaceRequired(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	var (
-		m   []containers.Container
-		bkt = getContainersBucket(s.tx, namespace)
+		m      []containers.Container
+		filter = filters.Filter(filters.Any(fs))
+		bkt    = getContainersBucket(s.tx, namespace)
 	)
+
+	if len(fs) == 0 {
+		filter = filters.Always
+	}
+
 	if bkt == nil {
 		return m, nil
 	}
@@ -62,7 +74,10 @@ func (s *containerStore) List(ctx context.Context, filter string) ([]containers.
 		if err := readContainer(&container, cbkt); err != nil {
 			return errors.Wrap(err, "failed to read container")
 		}
-		m = append(m, container)
+
+		if filter.Match(adaptContainer(container)) {
+			m = append(m, container)
+		}
 		return nil
 	}); err != nil {
 		return nil, err
@@ -71,9 +86,53 @@ func (s *containerStore) List(ctx context.Context, filter string) ([]containers.
 	return m, nil
 }
 
+func adaptContainer(o interface{}) filters.Adaptor {
+	obj := o.(containers.Container)
+	return filters.AdapterFunc(func(fieldpath []string) (string, bool) {
+		if len(fieldpath) == 0 {
+			return "", false
+		}
+
+		switch fieldpath[0] {
+		case "id":
+			return obj.ID, len(obj.ID) > 0
+		case "runtime":
+			if len(fieldpath) <= 1 {
+				return "", false
+			}
+
+			switch fieldpath[1] {
+			case "name":
+				return obj.Runtime.Name, len(obj.Runtime.Name) > 0
+			default:
+				return "", false
+			}
+		case "image":
+			return obj.Image, len(obj.Image) > 0
+		case "labels":
+			return checkMap(fieldpath[1:], obj.Labels)
+		}
+
+		return "", false
+	})
+}
+
+func checkMap(fieldpath []string, m map[string]string) (string, bool) {
+	if len(m) == 0 {
+		return "", false
+	}
+
+	value, ok := m[strings.Join(fieldpath, ".")]
+	return value, ok
+}
+
 func (s *containerStore) Create(ctx context.Context, container containers.Container) (containers.Container, error) {
 	namespace, err := namespaces.NamespaceRequired(ctx)
 	if err != nil {
+		return containers.Container{}, err
+	}
+
+	if err := identifiers.Validate(container.ID); err != nil {
 		return containers.Container{}, err
 	}
 
@@ -85,7 +144,7 @@ func (s *containerStore) Create(ctx context.Context, container containers.Contai
 	cbkt, err := bkt.CreateBucket([]byte(container.ID))
 	if err != nil {
 		if err == bolt.ErrBucketExists {
-			err = ErrExists("content for id already exists")
+			err = errors.Wrapf(errdefs.ErrAlreadyExists, "content %q")
 		}
 		return containers.Container{}, err
 	}
@@ -105,14 +164,18 @@ func (s *containerStore) Update(ctx context.Context, container containers.Contai
 		return containers.Container{}, err
 	}
 
+	if container.ID == "" {
+		return containers.Container{}, errors.Wrapf(errdefs.ErrInvalidArgument, "must specify a container id")
+	}
+
 	bkt := getContainersBucket(s.tx, namespace)
 	if bkt == nil {
-		return containers.Container{}, ErrNotFound("no containers")
+		return containers.Container{}, errors.Wrapf(errdefs.ErrNotFound, "container %q", container.ID)
 	}
 
 	cbkt := bkt.Bucket([]byte(container.ID))
 	if cbkt == nil {
-		return containers.Container{}, ErrNotFound("no content for id")
+		return containers.Container{}, errors.Wrapf(errdefs.ErrNotFound, "container %q", container.ID)
 	}
 
 	container.UpdatedAt = time.Now()
@@ -131,11 +194,11 @@ func (s *containerStore) Delete(ctx context.Context, id string) error {
 
 	bkt := getContainersBucket(s.tx, namespace)
 	if bkt == nil {
-		return ErrNotFound("no containers")
+		return errors.Wrapf(errdefs.ErrNotFound, "cannot delete container %v, bucket not present", id)
 	}
 
 	if err := bkt.DeleteBucket([]byte(id)); err == bolt.ErrBucketNotFound {
-		return ErrNotFound("no content for id")
+		return errors.Wrapf(errdefs.ErrNotFound, "container %v", id)
 	}
 	return err
 }
@@ -156,16 +219,16 @@ func readContainer(container *containers.Container, bkt *bolt.Bucket) error {
 				container.Runtime.Name = string(n)
 			}
 
-			obkt := rbkt.Bucket(bucketKeyOptions)
+			obkt := rbkt.Get(bucketKeyOptions)
 			if obkt == nil {
 				return nil
 			}
 
-			container.Runtime.Options = map[string]string{}
-			return obkt.ForEach(func(k, v []byte) error {
-				container.Runtime.Options[string(k)] = string(v)
-				return nil
-			})
+			var any types.Any
+			if err := proto.Unmarshal(obkt, &any); err != nil {
+				return err
+			}
+			container.Runtime.Options = &any
 		case string(bucketKeySpec):
 			container.Spec = make([]byte, len(v))
 			copy(container.Spec, v)
@@ -239,8 +302,13 @@ func writeContainer(container *containers.Container, bkt *bolt.Bucket) error {
 		return err
 	}
 
-	for k, v := range container.Runtime.Options {
-		if err := obkt.Put([]byte(k), []byte(v)); err != nil {
+	if container.Runtime.Options != nil {
+		data, err := proto.Marshal(container.Runtime.Options)
+		if err != nil {
+			return err
+		}
+
+		if err := obkt.Put(bucketKeyOptions, data); err != nil {
 			return err
 		}
 	}
@@ -251,14 +319,22 @@ func writeContainer(container *containers.Container, bkt *bolt.Bucket) error {
 			return err
 		}
 	}
+
 	lbkt, err := bkt.CreateBucket(bucketKeyLabels)
 	if err != nil {
 		return err
 	}
+
 	for k, v := range container.Labels {
+		if v == "" {
+			delete(container.Labels, k) // remove since we don't actually set it
+			continue
+		}
+
 		if err := lbkt.Put([]byte(k), []byte(v)); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }

@@ -4,14 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	"github.com/containerd/containerd/api/services/containers"
-	"github.com/containerd/containerd/api/services/tasks"
-	"github.com/containerd/containerd/api/types/mount"
+	"github.com/containerd/containerd/api/services/containers/v1"
+	"github.com/containerd/containerd/api/services/tasks/v1"
+	"github.com/containerd/containerd/api/types"
+	ptypes "github.com/gogo/protobuf/types"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 )
@@ -20,16 +22,21 @@ var (
 	ErrNoImage           = errors.New("container does not have an image")
 	ErrNoRunningTask     = errors.New("no running task")
 	ErrDeleteRunningTask = errors.New("cannot delete container with running task")
+	ErrProcessExited     = errors.New("process already exited")
 )
+
+type DeleteOpts func(context.Context, *Client, containers.Container) error
 
 type Container interface {
 	ID() string
 	Proto() containers.Container
-	Delete(context.Context) error
+	Delete(context.Context, ...DeleteOpts) error
 	NewTask(context.Context, IOCreation, ...NewTaskOpts) (Task, error)
 	Spec() (*specs.Spec, error)
 	Task(context.Context, IOAttach) (Task, error)
 	Image(context.Context) (Image, error)
+	Labels(context.Context) (map[string]string, error)
+	SetLabels(context.Context, map[string]string) (map[string]string, error)
 }
 
 func containerFromProto(client *Client, c containers.Container) *container {
@@ -57,6 +64,53 @@ func (c *container) Proto() containers.Container {
 	return c.c
 }
 
+func (c *container) Labels(ctx context.Context) (map[string]string, error) {
+	resp, err := c.client.ContainerService().Get(ctx, &containers.GetContainerRequest{
+		ID: c.ID(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	c.c = resp.Container
+
+	m := make(map[string]string, len(resp.Container.Labels))
+	for k, v := range c.c.Labels {
+		m[k] = v
+	}
+
+	return m, nil
+}
+
+func (c *container) SetLabels(ctx context.Context, labels map[string]string) (map[string]string, error) {
+	var req containers.UpdateContainerRequest
+
+	req.Container.ID = c.ID()
+	req.Container.Labels = labels
+
+	req.UpdateMask = &ptypes.FieldMask{
+		Paths: make([]string, 0, len(labels)),
+	}
+	// mask off paths so we only muck with the labels encountered in labels.
+	// Labels not in the passed in argument will be left alone.
+	for k := range labels {
+		req.UpdateMask.Paths = append(req.UpdateMask.Paths, strings.Join([]string{"labels", k}, "."))
+	}
+
+	resp, err := c.client.ContainerService().Update(ctx, &req)
+	if err != nil {
+		return nil, err
+	}
+
+	c.c = resp.Container // update our local container
+
+	m := make(map[string]string, len(resp.Container.Labels))
+	for k, v := range c.c.Labels {
+		m[k] = v
+	}
+	return m, nil
+}
+
 // Spec returns the current OCI specification for the container
 func (c *container) Spec() (*specs.Spec, error) {
 	var s specs.Spec
@@ -66,16 +120,24 @@ func (c *container) Spec() (*specs.Spec, error) {
 	return &s, nil
 }
 
+// WithRootFSDeletion deletes the rootfs allocated for the container
+func WithRootFSDeletion(ctx context.Context, client *Client, c containers.Container) error {
+	if c.RootFS != "" {
+		return client.SnapshotService().Remove(ctx, c.RootFS)
+	}
+	return nil
+}
+
 // Delete deletes an existing container
 // an error is returned if the container has running tasks
-func (c *container) Delete(ctx context.Context) (err error) {
+func (c *container) Delete(ctx context.Context, opts ...DeleteOpts) (err error) {
 	if _, err := c.Task(ctx, nil); err == nil {
 		return ErrDeleteRunningTask
 	}
-	// TODO: should the client be the one removing resources attached
-	// to the container at the moment before we have GC?
-	if c.c.RootFS != "" {
-		err = c.client.SnapshotService().Remove(ctx, c.c.RootFS)
+	for _, o := range opts {
+		if err := o(ctx, c.client, c.c); err != nil {
+			return err
+		}
 	}
 	if _, cerr := c.client.ContainerService().Delete(ctx, &containers.DeleteContainerRequest{
 		ID: c.c.ID,
@@ -127,7 +189,7 @@ func (c *container) NewTask(ctx context.Context, ioCreate IOCreation, opts ...Ne
 			return nil, err
 		}
 		for _, m := range mounts {
-			request.Rootfs = append(request.Rootfs, &mount.Mount{
+			request.Rootfs = append(request.Rootfs, &types.Mount{
 				Type:    m.Type,
 				Source:  m.Source,
 				Options: m.Options,
@@ -173,7 +235,7 @@ func (c *container) loadTask(ctx context.Context, ioAttach IOAttach) (Task, erro
 	var i *IO
 	if ioAttach != nil {
 		// get the existing fifo paths from the task information stored by the daemon
-		paths := &FifoSet{
+		paths := &FIFOSet{
 			Dir: getFifoDir([]string{
 				response.Task.Stdin,
 				response.Task.Stdout,

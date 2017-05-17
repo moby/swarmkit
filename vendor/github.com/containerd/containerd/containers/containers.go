@@ -3,6 +3,9 @@ package containers
 import (
 	"context"
 	"time"
+
+	"github.com/containerd/containerd/filters"
+	"github.com/gogo/protobuf/types"
 )
 
 // Container represents the set of data pinned by a container. Unless otherwise
@@ -22,12 +25,15 @@ type Container struct {
 
 type RuntimeInfo struct {
 	Name    string
-	Options map[string]string
+	Options *types.Any
 }
 
 type Store interface {
 	Get(ctx context.Context, id string) (Container, error)
-	List(ctx context.Context, filter string) ([]Container, error)
+
+	// List returns containers that match one or more of the provided filters.
+	List(ctx context.Context, filters ...filters.Filter) ([]Container, error)
+
 	Create(ctx context.Context, container Container) (Container, error)
 	Update(ctx context.Context, container Container) (Container, error)
 	Delete(ctx context.Context, id string) error
