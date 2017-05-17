@@ -11,6 +11,8 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/containerd/containerd"
+	"github.com/containernetworking/cni/libcni"
+	cnicurr "github.com/containernetworking/cni/pkg/types/current"
 	"github.com/docker/docker/pkg/signal"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
@@ -35,7 +37,16 @@ var (
 		api.MountPropagationRSlave:   "slave",
 		api.MountPropagationSlave:    "rslave",
 	}
+
+	cniPath = []string{"/opt/cni/bin"}
 )
+
+type networkStatus struct {
+	attachment *api.NetworkAttachment
+	iface      string
+	cniErr     error
+	cni        *cnicurr.Result
+}
 
 // containerAdapter conducts remote operations for a container. All calls
 // are mostly naked calls to the client API, seeded with information from
@@ -49,6 +60,7 @@ type containerAdapter struct {
 	container  containerd.Container
 	task       containerd.Task
 	exitStatus error
+	networks   []*networkStatus
 }
 
 func newContainerAdapter(client *containerd.Client, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
@@ -62,6 +74,16 @@ func newContainerAdapter(client *containerd.Client, task *api.Task, secrets exec
 		spec:    spec,
 		secrets: secrets,
 		name:    naming.Task(task),
+	}
+
+	for i, na := range task.Networks {
+		// TODO(ijc) Is this the right approach to naming devices?
+		iface := fmt.Sprintf("eth%d", i)
+
+		c.networks = append(c.networks, &networkStatus{
+			attachment: na,
+			iface:      iface,
+		})
 	}
 
 	if err := c.reattach(context.Background()); err != nil {
@@ -193,6 +215,29 @@ func (c *containerAdapter) isPrepared() bool {
 	return c.container != nil && c.task != nil
 }
 
+func cniConfig(n *api.Network) (*libcni.NetworkConfig, error) {
+	if n.DriverState.Name != "cni" {
+		return nil, errors.New("containerd executor only supports CNI")
+	}
+
+	cniConfig, ok := n.DriverState.Options["config"]
+	if !ok {
+		return nil, errors.New("CNI network has no config")
+	}
+
+	// TODO(ijc) figure out how to cache this.
+	cninet, err := libcni.ConfFromBytes([]byte(cniConfig))
+	if err != nil {
+		return nil, errors.Wrap(err, "parsing CNI conf")
+	}
+
+	// TODO(ijc) could merge /etc/cni/net.d/<NAME>.{conf,json}, or
+	// even support networks with no Options["config"] and just go
+	// by the annotations name.
+
+	return cninet, nil
+}
+
 func (c *containerAdapter) prepare(ctx context.Context) error {
 	if c.isPrepared() {
 		return errors.New("adapter already prepared")
@@ -254,6 +299,40 @@ func (c *containerAdapter) prepare(ctx context.Context) error {
 		}
 		c.container = nil
 		return errors.Wrap(err, "creating task")
+	}
+
+	cni := libcni.CNIConfig{Path: cniPath}
+	log.G(ctx).Infof("Adding %d networks", len(c.networks))
+	for _, na := range c.networks {
+		log.G(ctx).Infof("Network %T", na.attachment.Network.Spec)
+		cninet, err := cniConfig(na.attachment.Network)
+		if err != nil {
+			// XXX destroy container + task
+			return err
+		}
+
+		// Perhaps this should be in some state somewhere, e.g. populated by networkallocator etc in some cases?
+		rt := &libcni.RuntimeConf{
+			ContainerID: c.container.ID(),
+			NetNS:       fmt.Sprintf("/proc/%d/ns/net", c.task.Pid()),
+			IfName:      na.iface,
+		}
+
+		rawResult, err := cni.AddNetwork(cninet, rt)
+		if err != nil {
+			na.cniErr = err
+			log.G(ctx).Errorf("cni.AddNetwork failed: %s", err)
+			return errors.Wrap(err, "CNI add")
+		}
+		result, err := cnicurr.NewResultFromResult(rawResult)
+		if err != nil {
+			na.cniErr = err
+			// XXX destroy container + task
+			return errors.Wrap(err, "CNI add result conversion")
+		}
+		na.cni = result
+
+		log.G(ctx).Debugf("CNI add result: %v", result)
 	}
 
 	return nil

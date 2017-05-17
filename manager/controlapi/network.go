@@ -81,6 +81,7 @@ func validateNetworkSpec(spec *api.NetworkSpec, nm network.Model) error {
 		return grpc.Errorf(codes.Unimplemented, "only overlay driver is currently supported for ingress network")
 	}
 
+	// XXX Abstractions
 	if spec.DriverConfig != nil && spec.DriverConfig.Name == "cni" {
 		if spec.IPAM != nil {
 			return grpc.Errorf(codes.InvalidArgument, "CNI networks cannot have IPAM")
