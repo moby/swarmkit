@@ -41,6 +41,22 @@ func printTaskStatus(w io.Writer, t *api.Task) {
 		fmt.Fprintf(w, "  ExitCode\t: %d\n", ctnr.ExitCode)
 	}
 
+	if len(ctnr.Networks) > 0 {
+		fmt.Fprintf(w, "  Networks\n")
+		for _, n := range ctnr.Networks {
+			var s string
+			switch t := n.Address.(type) {
+			case *api.ContainerNetworkStatus_IP:
+				s = t.IP
+			case *api.ContainerNetworkStatus_Error:
+				s = t.Error
+			default:
+				s = "Unknown"
+			}
+			fmt.Fprintf(w, "    %s\t: %s %s\n", n.Network, n.Interface, s)
+		}
+	}
+
 	if t.Status.PortStatus != nil && len(t.Status.PortStatus.Ports) > 0 {
 		ports := []string{}
 		for _, port := range t.Status.PortStatus.Ports {

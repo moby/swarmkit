@@ -57,6 +57,36 @@ func (r *controller) ContainerStatus(ctx context.Context) (*api.ContainerStatus,
 		status.ExitCode = int32(ec.ExitCode())
 	}
 
+	for _, ns := range r.adapter.networks {
+		iface := ns.iface
+		if ns.cniErr != nil {
+			status.Networks = append(status.Networks, &api.ContainerNetworkStatus{
+				Network:   ns.attachment.Network.ID,
+				Interface: iface,
+				Address: &api.ContainerNetworkStatus_Error{
+					Error: ns.cniErr.Error(),
+				},
+			})
+			continue
+		}
+		for _, ip := range ns.cni.IPs {
+			log.G(ctx).Debugf("Iface# %d, num interfaces %d", ip.Interface, len(ns.cni.Interfaces))
+			if ip.Interface >= 0 && ip.Interface < len(ns.cni.Interfaces) {
+				iface = ns.cni.Interfaces[ip.Interface].Name
+			}
+			if iface != ns.iface { // XXX weird?
+				log.G(ctx).Debugf("Interface mismatch: CNI:%s Attachment:%s", iface, ns.iface)
+			}
+			status.Networks = append(status.Networks, &api.ContainerNetworkStatus{
+				Network:   ns.attachment.Network.ID,
+				Interface: iface,
+				Address: &api.ContainerNetworkStatus_IP{
+					IP: ip.Address.String(),
+				},
+			})
+		}
+	}
+
 	return status, nil
 }
 
