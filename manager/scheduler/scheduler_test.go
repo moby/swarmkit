@@ -1833,6 +1833,7 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 	}
 
 	// node with nil platform description, cannot schedule anything
+	// with a platform constraint
 	node3 := &api.Node{
 		ID: "node3",
 		Spec: api.NodeSpec{
@@ -1890,7 +1891,7 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assignment2 := watchAssignment(t, watch)
-	assert.Regexp(t, assignment2.NodeID, "(node1|node2)")
+	assert.Regexp(t, assignment2.NodeID, "(node2|node3)")
 
 	// add task4
 	err = s.Update(func(tx store.Tx) error {
