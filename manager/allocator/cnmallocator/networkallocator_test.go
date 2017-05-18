@@ -1,4 +1,4 @@
-package networkallocator
+package cnmallocator
 
 import (
 	"fmt"
@@ -8,10 +8,11 @@ import (
 	"github.com/docker/libnetwork/discoverapi"
 	"github.com/docker/libnetwork/types"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/allocator/networkallocator"
 	"github.com/stretchr/testify/assert"
 )
 
-func newNetworkAllocator(t *testing.T) *NetworkAllocator {
+func newNetworkAllocator(t *testing.T) networkallocator.NetworkAllocator {
 	na, err := New(nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, na)
@@ -978,7 +979,7 @@ func TestCorrectlyPassIPAMOptions(t *testing.T) {
 	na := newNetworkAllocator(t)
 	ipamDriver := &mockIpam{}
 
-	err = na.drvRegistry.RegisterIpamDriver("mockipam", ipamDriver)
+	err = na.(*cnmNetworkAllocator).drvRegistry.RegisterIpamDriver("mockipam", ipamDriver)
 	assert.NoError(t, err)
 
 	n := &api.Network{

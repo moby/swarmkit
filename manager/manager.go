@@ -397,7 +397,7 @@ func (m *Manager) Run(parent context.Context) error {
 		return err
 	}
 
-	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode, m.config.SecurityConfig, m.caserver, m.config.PluginGetter)
+	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode, m.config.SecurityConfig, m.caserver, m.allocator, m.config.PluginGetter)
 	baseWatchAPI := watchapi.NewServer(m.raftNode.MemoryStore())
 	baseResourceAPI := resourceapi.New(m.raftNode.MemoryStore())
 	healthServer := health.NewHealthServer()
@@ -944,7 +944,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 			// in order to allow running services on the predefined docker
 			// networks like `bridge` and `host`.
 			log.G(ctx).Info("Creating node-local predefined networks")
-			for _, p := range networkallocator.PredefinedNetworks() {
+			for _, p := range allocator.PredefinedNetworks() {
 				if err := store.CreateNetwork(tx, newPredefinedNetwork(p.Name, p.Driver)); err != nil {
 					log.G(ctx).WithError(err).Error("failed to create predefined network " + p.Name)
 				}

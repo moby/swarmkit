@@ -7,6 +7,7 @@ import (
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/manager/allocator/cnmallocator"
 	"github.com/docker/swarmkit/manager/allocator/networkallocator"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
@@ -34,7 +35,7 @@ type networkContext struct {
 	ingressNetwork *api.Network
 	// Instance of the low-level network allocator which performs
 	// the actual network allocation.
-	nwkAllocator *networkallocator.NetworkAllocator
+	nwkAllocator networkallocator.NetworkAllocator
 
 	// A set of tasks which are ready to be allocated as a batch. This is
 	// distinct from "unallocatedTasks" which are tasks that failed to
@@ -61,7 +62,7 @@ type networkContext struct {
 }
 
 func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
-	na, err := networkallocator.New(a.pluginGetter)
+	na, err := cnmallocator.New(a.pluginGetter)
 	if err != nil {
 		return err
 	}
@@ -1069,6 +1070,16 @@ func (a *Allocator) procTasksNetwork(ctx context.Context, onRetry bool) {
 			toAllocate[t.ID] = t
 		}
 	}
+}
+
+// IsBuiltInNetworkDriver returns whether the passed driver is an internal network driver
+func (a *Allocator) IsBuiltInNetworkDriver(name string) bool {
+	return a.netCtx.nwkAllocator.IsBuiltInDriver(name)
+}
+
+// PredefinedNetworks returns the list of predefined network structures for a given network model
+func PredefinedNetworks() []networkallocator.PredefinedNetworkData {
+	return cnmallocator.PredefinedNetworks()
 }
 
 // updateTaskStatus sets TaskStatus and updates timestamp.
