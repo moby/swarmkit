@@ -232,7 +232,7 @@ func (na *cnmNetworkAllocator) AllocateService(s *api.Service) (err error) {
 
 vipLoop:
 	for _, eAttach := range s.Endpoint.VirtualIPs {
-		if na.IsVIPOnIngressNetwork(eAttach) && networkallocator.IsIngressNetworkNeeded(s) {
+		if na.isVIPOnIngressNetwork(eAttach) && networkallocator.IsIngressNetworkNeeded(s) {
 			if err = na.allocateVIP(eAttach); err != nil {
 				return err
 			}
@@ -401,7 +401,7 @@ func (na *cnmNetworkAllocator) IsServiceAllocated(s *api.Service, flags ...func(
 	if s.Endpoint != nil {
 	vipLoop:
 		for _, vip := range s.Endpoint.VirtualIPs {
-			if na.IsVIPOnIngressNetwork(vip) && networkallocator.IsIngressNetworkNeeded(s) {
+			if na.isVIPOnIngressNetwork(vip) && networkallocator.IsIngressNetworkNeeded(s) {
 				continue vipLoop
 			}
 			for _, net := range specNetworks {
@@ -936,8 +936,8 @@ func serviceNetworks(s *api.Service) []*api.NetworkAttachmentConfig {
 	return s.Spec.Task.Networks
 }
 
-// IsVIPOnIngressNetwork check if the vip is in ingress network
-func (na *cnmNetworkAllocator) IsVIPOnIngressNetwork(vip *api.Endpoint_VirtualIP) bool {
+// isVIPOnIngressNetwork check if the vip is in ingress network
+func (na *cnmNetworkAllocator) isVIPOnIngressNetwork(vip *api.Endpoint_VirtualIP) bool {
 	if vip == nil {
 		return false
 	}
