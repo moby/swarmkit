@@ -59,11 +59,25 @@ func fieldVal(payload []byte, protobufIndex protobufIndex, entries *[]api.IndexE
 		wireType := int(wire & 0x7)
 		if fieldNum == protobufIndex.fieldNumberPath[0] {
 			if len(protobufIndex.fieldNumberPath) == 1 {
-				val, err := extractValue(payload[index:], wireType, protobufIndex.finalType)
-				if err != nil {
-					return found, err
+				if protobufIndex.finalLabel == descriptor.FieldDescriptorProto_LABEL_REPEATED && // field declared repeated
+					wireType == 2 && // actual wire type is "length-delimited"
+					(wireTypes[protobufIndex.finalType] == 0 || // field has primitive integer type
+						wireTypes[protobufIndex.finalType] == 1 ||
+						wireTypes[protobufIndex.finalType] == 2) {
+					// This is a packed value
+					if err := packedVal(payload[index:], wireTypes[protobufIndex.finalType], protobufIndex, entries); err != nil {
+						return found, err
+					}
+				} else {
+					if err := checkWireType(wireType, protobufIndex.finalType); err != nil {
+						return found, err
+					}
+					val, err := extractValue(payload[index:], protobufIndex.finalType)
+					if err != nil {
+						return found, err
+					}
+					*entries = append(*entries, api.IndexEntry{Key: protobufIndex.key, Val: val})
 				}
-				*entries = append(*entries, api.IndexEntry{Key: protobufIndex.key, Val: val})
 				found = true
 			}
 			if wireType == 2 && len(protobufIndex.fieldNumberPath) > 1 {
@@ -106,6 +120,47 @@ func fieldVal(payload []byte, protobufIndex protobufIndex, entries *[]api.IndexE
 	return found, nil
 }
 
+func packedVal(payload []byte, wireType int, protobufIndex protobufIndex, entries *[]api.IndexEntry) error {
+	length, index, err := varint(payload, 0)
+	if err != nil {
+		return err
+	}
+
+	if int(length)+index > len(payload) {
+		return io.ErrUnexpectedEOF
+	}
+
+	payload = payload[index : index+int(length)]
+
+	for index < len(payload) {
+		val, err := extractValue(payload[index:], protobufIndex.finalType)
+		if err != nil {
+			return err
+		}
+		*entries = append(*entries, api.IndexEntry{Key: protobufIndex.key, Val: val})
+
+		switch wireType {
+		case 0:
+			_, index, err = varint(payload, index)
+			if err != nil {
+				return err
+			}
+		case 1:
+			index += 8
+		case 5:
+			index += 4
+		default:
+			return fmt.Errorf("unsupported wire type %d for packed value", wireType)
+		}
+	}
+
+	if index > len(payload) {
+		return io.ErrUnexpectedEOF
+	}
+
+	return nil
+}
+
 func varint(payload []byte, index int) (uint64, int, error) {
 	var res uint64
 	for shift := uint(0); ; shift += 7 {
@@ -126,13 +181,9 @@ func varint(payload []byte, index int) (uint64, int, error) {
 	return res, index, nil
 }
 
-func extractValue(payload []byte, wireType int, finalType descriptor.FieldDescriptorProto_Type) (string, error) {
+func extractValue(payload []byte, finalType descriptor.FieldDescriptorProto_Type) (string, error) {
 	switch finalType {
 	case descriptor.FieldDescriptorProto_TYPE_DOUBLE: // fixed 64
-		if wireType != 1 {
-			return "", fmt.Errorf("proto: wrong wireType = %d for double field", wireType)
-		}
-
 		if len(payload) < 8 {
 			return "", io.ErrUnexpectedEOF
 		}
@@ -142,10 +193,6 @@ func extractValue(payload []byte, wireType int, finalType descriptor.FieldDescri
 		return strconv.FormatFloat(float, 'f', -1, 64), nil
 
 	case descriptor.FieldDescriptorProto_TYPE_FLOAT: // fixed 32
-		if wireType != 5 {
-			return "", fmt.Errorf("proto: wrong wireType = %d for float field", wireType)
-		}
-
 		if len(payload) < 4 {
 			return "", io.ErrUnexpectedEOF
 		}
@@ -155,11 +202,6 @@ func extractValue(payload []byte, wireType int, finalType descriptor.FieldDescri
 		return strconv.FormatFloat(float64(float), 'f', -1, 32), nil
 
 	case descriptor.FieldDescriptorProto_TYPE_UINT32, descriptor.FieldDescriptorProto_TYPE_UINT64: // varint
-		if wireType != 0 {
-			return "", fmt.Errorf("proto: wrong wireType = %d for uint32 or uint64 field", wireType)
-		}
-
-		var val uint64
 		val, _, err := varint(payload, 0)
 		if err != nil {
 			return "", err
@@ -167,11 +209,6 @@ func extractValue(payload []byte, wireType int, finalType descriptor.FieldDescri
 
 		return strconv.FormatUint(val, 10), nil
 	case descriptor.FieldDescriptorProto_TYPE_INT32, descriptor.FieldDescriptorProto_TYPE_INT64, descriptor.FieldDescriptorProto_TYPE_ENUM: // varint, not ZigZag encoded
-		if wireType != 0 {
-			return "", fmt.Errorf("proto: wrong wireType = %d for int32, int64, or enum field", wireType)
-		}
-
-		var val uint64
 		val, _, err := varint(payload, 0)
 		if err != nil {
 			return "", err
@@ -180,10 +217,6 @@ func extractValue(payload []byte, wireType int, finalType descriptor.FieldDescri
 		return strconv.FormatInt(int64(val), 10), nil
 
 	case descriptor.FieldDescriptorProto_TYPE_FIXED64: // fixed 64
-		if wireType != 1 {
-			return "", fmt.Errorf("proto: wrong wireType = %d for fixed64 field", wireType)
-		}
-
 		if len(payload) < 8 {
 			return "", io.ErrUnexpectedEOF
 		}
@@ -192,10 +225,6 @@ func extractValue(payload []byte, wireType int, finalType descriptor.FieldDescri
 		return strconv.FormatUint(intVal, 10), nil
 
 	case descriptor.FieldDescriptorProto_TYPE_FIXED32: // fixed 32
-		if wireType != 5 {
-			return "", fmt.Errorf("proto: wrong wireType = %d for fixed32 field", wireType)
-		}
-
 		if len(payload) < 8 {
 			return "", io.ErrUnexpectedEOF
 		}
@@ -204,11 +233,6 @@ func extractValue(payload []byte, wireType int, finalType descriptor.FieldDescri
 		return strconv.FormatUint(uint64(intVal), 10), nil
 
 	case descriptor.FieldDescriptorProto_TYPE_BOOL: // varint
-		if wireType != 0 {
-			return "", fmt.Errorf("proto: wrong wireType = %d for bool field", wireType)
-		}
-
-		var val uint64
 		val, _, err := varint(payload, 0)
 		if err != nil {
 			return "", err
@@ -220,11 +244,6 @@ func extractValue(payload []byte, wireType int, finalType descriptor.FieldDescri
 		return "false", nil
 
 	case descriptor.FieldDescriptorProto_TYPE_STRING, descriptor.FieldDescriptorProto_TYPE_BYTES: // Length-delimited
-		if wireType != 2 {
-			return "", fmt.Errorf("proto: wrong wireType = %d for string or byte field", wireType)
-		}
-
-		var length uint64
 		length, index, err := varint(payload, 0)
 		if err != nil {
 			return "", err
@@ -237,10 +256,6 @@ func extractValue(payload []byte, wireType int, finalType descriptor.FieldDescri
 		return string(payload[index : index+int(length)]), nil
 
 	case descriptor.FieldDescriptorProto_TYPE_SFIXED32: // fixed 32
-		if wireType != 5 {
-			return "", fmt.Errorf("proto: wrong wireType = %d for sfixed32 field", wireType)
-		}
-
 		if len(payload) < 4 {
 			return "", io.ErrUnexpectedEOF
 		}
@@ -249,10 +264,6 @@ func extractValue(payload []byte, wireType int, finalType descriptor.FieldDescri
 		return strconv.FormatInt(int64(intVal), 10), nil
 
 	case descriptor.FieldDescriptorProto_TYPE_SFIXED64: // fixed 64
-		if wireType != 1 {
-			return "", fmt.Errorf("proto: wrong wireType = %d for sfixed64 field", wireType)
-		}
-
 		if len(payload) < 8 {
 			return "", io.ErrUnexpectedEOF
 		}
@@ -261,11 +272,6 @@ func extractValue(payload []byte, wireType int, finalType descriptor.FieldDescri
 		return strconv.FormatInt(int64(intVal), 10), nil
 
 	case descriptor.FieldDescriptorProto_TYPE_SINT32: // varint, zigzag
-		if wireType != 0 {
-			return "", fmt.Errorf("proto: wrong wireType = %d for sint32 field", wireType)
-		}
-
-		var val uint64
 		val, _, err := varint(payload, 0)
 		if err != nil {
 			return "", err
@@ -275,11 +281,6 @@ func extractValue(payload []byte, wireType int, finalType descriptor.FieldDescri
 		return strconv.FormatInt(int64(decodedVal), 10), nil
 
 	case descriptor.FieldDescriptorProto_TYPE_SINT64: // varint, zigzag
-		if wireType != 0 {
-			return "", fmt.Errorf("proto: wrong wireType = %d for sint64 field", wireType)
-		}
-
-		var val uint64
 		val, _, err := varint(payload, 0)
 		if err != nil {
 			return "", err
@@ -293,6 +294,37 @@ func extractValue(payload []byte, wireType int, finalType descriptor.FieldDescri
 	default:
 		return "", fmt.Errorf("unsupported field type %d", finalType)
 	}
+}
+
+var wireTypes = map[descriptor.FieldDescriptorProto_Type]int{
+	// varint
+	descriptor.FieldDescriptorProto_TYPE_UINT32: 0,
+	descriptor.FieldDescriptorProto_TYPE_UINT64: 0,
+	descriptor.FieldDescriptorProto_TYPE_INT32:  0,
+	descriptor.FieldDescriptorProto_TYPE_INT64:  0,
+	descriptor.FieldDescriptorProto_TYPE_ENUM:   0,
+	descriptor.FieldDescriptorProto_TYPE_BOOL:   0,
+	descriptor.FieldDescriptorProto_TYPE_SINT32: 0,
+	descriptor.FieldDescriptorProto_TYPE_SINT64: 0,
+	// length-delimited
+	descriptor.FieldDescriptorProto_TYPE_STRING: 2,
+	descriptor.FieldDescriptorProto_TYPE_BYTES:  2,
+	// fixed 64
+	descriptor.FieldDescriptorProto_TYPE_DOUBLE:   1,
+	descriptor.FieldDescriptorProto_TYPE_FIXED64:  1,
+	descriptor.FieldDescriptorProto_TYPE_SFIXED64: 1,
+	// fixed 32
+	descriptor.FieldDescriptorProto_TYPE_FLOAT:    5,
+	descriptor.FieldDescriptorProto_TYPE_FIXED32:  5,
+	descriptor.FieldDescriptorProto_TYPE_SFIXED32: 5,
+}
+
+func checkWireType(wireType int, finalType descriptor.FieldDescriptorProto_Type) error {
+	expectedWireType, ok := wireTypes[finalType]
+	if ok && wireType != expectedWireType {
+		return fmt.Errorf("proto: wrong wireType = %d for %s field", wireType, descriptor.FieldDescriptorProto_Type_name[int32(finalType)])
+	}
+	return nil
 }
 
 func skip(payload []byte) (n int, err error) {
