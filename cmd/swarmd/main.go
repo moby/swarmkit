@@ -20,6 +20,7 @@ import (
 	"github.com/docker/swarmkit/cmd/swarmd/defaults"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/encryption"
+	"github.com/docker/swarmkit/manager/network/cnm"
 	"github.com/docker/swarmkit/node"
 	"github.com/docker/swarmkit/version"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -184,6 +185,8 @@ var (
 
 			var executor exec.Executor
 
+			nm := cnm.New(nil)
+
 			if containerdAddr != "" {
 				logrus.Infof("Using containerd via %q with namespace %q", containerdAddr, containerdNamespace)
 				executor, err = containerd.NewExecutor(containerdAddr, containerdNamespace, resources)
@@ -241,6 +244,7 @@ var (
 				ElectionTick:       election,
 				AutoLockManagers:   autolockManagers,
 				UnlockKey:          unlockKey,
+				NetworkModel:       nm,
 			})
 			if err != nil {
 				return err

@@ -11,6 +11,7 @@ import (
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/network/cnm"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +28,7 @@ func TestAllocator(t *testing.T) {
 	assert.NotNil(t, s)
 	defer s.Close()
 
-	a, err := New(s, nil)
+	a, err := New(s, cnm.New(nil))
 	assert.NoError(t, err)
 	assert.NotNil(t, a)
 
@@ -650,7 +651,7 @@ func TestNoDuplicateIPs(t *testing.T) {
 			return nil
 		}))
 
-		a, err := New(s, nil)
+		a, err := New(s, cnm.New(nil))
 		assert.NoError(t, err)
 		assert.NotNil(t, a)
 

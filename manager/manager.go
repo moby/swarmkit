@@ -31,6 +31,7 @@ import (
 	"github.com/docker/swarmkit/manager/keymanager"
 	"github.com/docker/swarmkit/manager/logbroker"
 	"github.com/docker/swarmkit/manager/metrics"
+	"github.com/docker/swarmkit/manager/network"
 	"github.com/docker/swarmkit/manager/orchestrator/constraintenforcer"
 	"github.com/docker/swarmkit/manager/orchestrator/global"
 	"github.com/docker/swarmkit/manager/orchestrator/replicated"
@@ -122,6 +123,9 @@ type Config struct {
 
 	// PluginGetter provides access to docker's plugin inventory.
 	PluginGetter plugingetter.PluginGetter
+
+	// NetworkModel provides the network model
+	NetworkModel network.Model
 }
 
 // Manager is the cluster manager for Swarm.
@@ -404,7 +408,7 @@ func (m *Manager) Run(parent context.Context) error {
 		return err
 	}
 
-	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode, m.config.SecurityConfig, m.config.PluginGetter)
+	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode, m.config.SecurityConfig, m.config.NetworkModel)
 	baseResourceAPI := resourceapi.New(m.raftNode.MemoryStore())
 	healthServer := health.NewHealthServer()
 	localHealthServer := health.NewHealthServer()
@@ -990,7 +994,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	// shutdown underlying manager processes when leadership is
 	// lost.
 
-	m.allocator, err = allocator.New(s, m.config.PluginGetter)
+	m.allocator, err = allocator.New(s, m.config.NetworkModel)
 	if err != nil {
 		log.G(ctx).WithError(err).Error("failed to create allocator")
 		// TODO(stevvooe): It doesn't seem correct here to fail

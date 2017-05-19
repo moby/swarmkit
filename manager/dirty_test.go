@@ -10,6 +10,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
+	"github.com/docker/swarmkit/manager/network/cnm"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
@@ -46,6 +47,7 @@ func TestIsStateDirty(t *testing.T) {
 		AutoLockManagers: true,
 		UnlockKey:        []byte("kek"),
 		RootCAPaths:      tc.Paths.RootCA,
+		NetworkModel:     cnm.New(nil),
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, m)

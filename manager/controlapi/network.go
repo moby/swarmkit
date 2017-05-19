@@ -3,13 +3,13 @@ package controlapi
 import (
 	"net"
 
-	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/libnetwork/driverapi"
 	"github.com/docker/libnetwork/ipamapi"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/allocator"
 	"github.com/docker/swarmkit/manager/allocator/networkallocator"
+	"github.com/docker/swarmkit/manager/network"
 	"github.com/docker/swarmkit/manager/state/store"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -51,14 +51,14 @@ func validateIPAMConfiguration(ipamConf *api.IPAMConfig) error {
 	return nil
 }
 
-func validateIPAM(ipam *api.IPAMOptions, pg plugingetter.PluginGetter) error {
+func validateIPAM(ipam *api.IPAMOptions, nm network.Model) error {
 	if ipam == nil {
 		// It is ok to not specify any IPAM configurations. We
 		// will choose good defaults.
 		return nil
 	}
 
-	if err := validateDriver(ipam.Driver, pg, ipamapi.PluginEndpointType); err != nil {
+	if err := nm.ValidateDriver(ipam.Driver, ipamapi.PluginEndpointType); err != nil {
 		return err
 	}
 
@@ -71,7 +71,7 @@ func validateIPAM(ipam *api.IPAMOptions, pg plugingetter.PluginGetter) error {
 	return nil
 }
 
-func validateNetworkSpec(spec *api.NetworkSpec, pg plugingetter.PluginGetter) error {
+func validateNetworkSpec(spec *api.NetworkSpec, nm network.Model) error {
 	if spec == nil {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
@@ -92,11 +92,11 @@ func validateNetworkSpec(spec *api.NetworkSpec, pg plugingetter.PluginGetter) er
 		return grpc.Errorf(codes.PermissionDenied, "label %s is for internally created predefined networks and cannot be applied by users",
 			networkallocator.PredefinedLabel)
 	}
-	if err := validateDriver(spec.DriverConfig, pg, driverapi.NetworkPluginEndpointType); err != nil {
+	if err := nm.ValidateDriver(spec.DriverConfig, driverapi.NetworkPluginEndpointType); err != nil {
 		return err
 	}
 
-	if err := validateIPAM(spec.IPAM, pg); err != nil {
+	if err := validateIPAM(spec.IPAM, nm); err != nil {
 		return err
 	}
 
@@ -107,7 +107,7 @@ func validateNetworkSpec(spec *api.NetworkSpec, pg plugingetter.PluginGetter) er
 // - Returns `InvalidArgument` if the NetworkSpec is malformed.
 // - Returns an error if the creation fails.
 func (s *Server) CreateNetwork(ctx context.Context, request *api.CreateNetworkRequest) (*api.CreateNetworkResponse, error) {
-	if err := validateNetworkSpec(request.Spec, s.pg); err != nil {
+	if err := validateNetworkSpec(request.Spec, s.nm); err != nil {
 		return nil, err
 	}
 

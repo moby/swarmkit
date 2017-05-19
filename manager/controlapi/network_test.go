@@ -84,14 +84,6 @@ func createServiceInNetwork(t *testing.T, ts *testServer, name, image string, nw
 	return r.Service
 }
 
-func TestValidateDriver(t *testing.T) {
-	assert.NoError(t, validateDriver(nil, nil, ""))
-
-	err := validateDriver(&api.Driver{Name: ""}, nil, "")
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-}
-
 func TestValidateIPAMConfiguration(t *testing.T) {
 	err := validateIPAMConfiguration(nil)
 	assert.Error(t, err)

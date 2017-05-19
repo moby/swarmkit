@@ -68,7 +68,7 @@ type networkContext struct {
 }
 
 func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
-	na, err := cnmallocator.New(a.pluginGetter)
+	na, err := a.nm.NewAllocator()
 	if err != nil {
 		return err
 	}
@@ -1145,11 +1145,6 @@ func (a *Allocator) procTasksNetwork(ctx context.Context, onRetry bool) {
 			toAllocate[t.ID] = t
 		}
 	}
-}
-
-// IsBuiltInNetworkDriver returns whether the passed driver is an internal network driver
-func IsBuiltInNetworkDriver(name string) bool {
-	return cnmallocator.IsBuiltInDriver(name)
 }
 
 // PredefinedNetworks returns the list of predefined network structures for a given network model
