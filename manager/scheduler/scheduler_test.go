@@ -1589,12 +1589,8 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	time.Sleep(100 * time.Millisecond)
-	s.View(func(tx store.ReadTx) {
-		tasks, err := store.FindTasks(tx, store.ByNodeID(node.ID))
-		assert.NoError(t, err)
-		assert.Len(t, tasks, 1)
-	})
+	failure := watchAssignmentFailure(t, watch)
+	assert.Equal(t, "no suitable node (insufficient resources on 1 node)", failure.Status.Message)
 
 	err = s.Update(func(tx store.Tx) error {
 		// The task becomes dead
@@ -2274,13 +2270,8 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	time.Sleep(100 * time.Millisecond)
-	s.View(func(tx store.ReadTx) {
-		task := store.GetTask(tx, "task2_ID")
-		if task.Status.State >= api.TaskStateAssigned {
-			t.Fatalf("task 'task2_ID' should not have been assigned to node %v", task.NodeID)
-		}
-	})
+	failure := watchAssignmentFailure(t, watch)
+	assert.Equal(t, "no suitable node (missing plugin on 1 node)", failure.Status.Message)
 
 	// Now add the second node
 	err = s.Update(func(tx store.Tx) error {
@@ -2302,13 +2293,8 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	time.Sleep(100 * time.Millisecond)
-	s.View(func(tx store.ReadTx) {
-		task := store.GetTask(tx, "task3_ID")
-		if task.Status.State >= api.TaskStateAssigned {
-			t.Fatal("task 'task3_ID' should not have been assigned")
-		}
-	})
+	failure = watchAssignmentFailure(t, watch)
+	assert.Equal(t, "no suitable node (missing plugin on 2 nodes)", failure.Status.Message)
 
 	// Now add the node3
 	err = s.Update(func(tx store.Tx) error {
