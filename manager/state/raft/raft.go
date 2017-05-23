@@ -166,6 +166,8 @@ type NodeOptions struct {
 	// JoinAddr is the cluster to join. May be an empty string to create
 	// a standalone cluster.
 	JoinAddr string
+	// ForceJoin tells us to join even if already part of a cluster.
+	ForceJoin bool
 	// Config is the raft config.
 	Config *raft.Config
 	// StateDir is the directory to store durable state.
@@ -393,8 +395,10 @@ func (n *Node) JoinAndStart(ctx context.Context) (err error) {
 
 	// restore from snapshot
 	if loadAndStartErr == nil {
-		if n.opts.JoinAddr != "" {
-			log.G(ctx).Warning("ignoring request to join cluster, because raft state already exists")
+		if n.opts.JoinAddr != "" && n.opts.ForceJoin {
+			if err := n.joinCluster(ctx); err != nil {
+				return errors.Wrap(err, "failed to rejoin cluster")
+			}
 		}
 		n.campaignWhenAble = true
 		n.initTransport()
@@ -402,7 +406,6 @@ func (n *Node) JoinAndStart(ctx context.Context) (err error) {
 		return nil
 	}
 
-	// first member of cluster
 	if n.opts.JoinAddr == "" {
 		// First member in the cluster, self-assign ID
 		n.Config.ID = uint64(rand.Int63()) + 1
@@ -417,6 +420,22 @@ func (n *Node) JoinAndStart(ctx context.Context) (err error) {
 	}
 
 	// join to existing cluster
+
+	if err := n.joinCluster(ctx); err != nil {
+		return err
+	}
+
+	if _, err := n.newRaftLogs(n.opts.ID); err != nil {
+		return err
+	}
+
+	n.initTransport()
+	n.raftNode = raft.StartNode(n.Config, nil)
+
+	return nil
+}
+
+func (n *Node) joinCluster(ctx context.Context) error {
 	if n.opts.Addr == "" {
 		return errors.New("attempted to join raft cluster without knowing own address")
 	}
@@ -438,15 +457,7 @@ func (n *Node) JoinAndStart(ctx context.Context) (err error) {
 	}
 
 	n.Config.ID = resp.RaftID
-
-	if _, err := n.newRaftLogs(n.opts.ID); err != nil {
-		return err
-	}
 	n.bootstrapMembers = resp.Members
-
-	n.initTransport()
-	n.raftNode = raft.StartNode(n.Config, nil)
-
 	return nil
 }
 

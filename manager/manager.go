@@ -86,7 +86,11 @@ type Config struct {
 	// cluster to join.
 	JoinRaft string
 
-	// Top-level state directory
+	// ForceJoin causes us to invoke raft's Join RPC even if already part
+	// of a cluster.
+	ForceJoin bool
+
+	// StateDir is the top-level state directory
 	StateDir string
 
 	// ForceNewCluster defines if we have to force a new cluster
@@ -201,6 +205,7 @@ func New(config *Config) (*Manager, error) {
 	newNodeOpts := raft.NodeOptions{
 		ID:              config.SecurityConfig.ClientTLSCreds.NodeID(),
 		JoinAddr:        config.JoinRaft,
+		ForceJoin:       config.ForceJoin,
 		Config:          raftCfg,
 		StateDir:        raftStateDir,
 		ForceNewCluster: config.ForceNewCluster,

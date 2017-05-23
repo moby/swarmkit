@@ -828,14 +828,22 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 		}
 	}
 
-	remoteAddr, _ := n.remotes.Select(n.NodeID())
+	joinAddr := n.config.JoinAddr
+	if joinAddr == "" {
+		remoteAddr, err := n.remotes.Select(n.NodeID())
+		if err == nil {
+			joinAddr = remoteAddr.Addr
+		}
+	}
+
 	m, err := manager.New(&manager.Config{
 		ForceNewCluster:  n.config.ForceNewCluster,
 		RemoteAPI:        remoteAPI,
 		ControlAPI:       n.config.ListenControlAPI,
 		SecurityConfig:   securityConfig,
 		ExternalCAs:      n.config.ExternalCAs,
-		JoinRaft:         remoteAddr.Addr,
+		JoinRaft:         joinAddr,
+		ForceJoin:        n.config.JoinAddr != "",
 		StateDir:         n.config.StateDir,
 		HeartbeatTick:    n.config.HeartbeatTick,
 		ElectionTick:     n.config.ElectionTick,
