@@ -1256,42 +1256,48 @@ func (n *Node) processRaftMessageLogger(ctx context.Context, msg *api.ProcessRaf
 	return log.G(ctx).WithFields(fields)
 }
 
-func (n *Node) reportNewAddress(ctx context.Context, id uint64) error {
-	// too early
-	if !n.IsMember() {
-		return nil
-	}
+func (n *Node) didIPChange(ctx context.Context, msg *api.ProcessRaftMessageRequest) bool {
 	p, ok := peer.FromContext(ctx)
 	if !ok {
-		return nil
+		n.processRaftMessageLogger(ctx, msg).Debug("could get remote peer info")
+		return false
 	}
-	oldAddr, err := n.transport.PeerAddr(id)
+
+	remoteHost, _, err := net.SplitHostPort(p.Addr.String())
 	if err != nil {
-		return err
+		n.processRaftMessageLogger(ctx, msg).WithError(err).Debug("could not split remote address for peer")
+		return false
 	}
-	if oldAddr == "" {
-		// Don't know the address of the peer yet, so can't report an
-		// update.
-		return nil
+
+	member := n.cluster.GetMember(msg.Message.From)
+	if member == nil {
+		n.processRaftMessageLogger(ctx, msg).Debug("received message from unknown member")
+		return false
 	}
-	newHost, _, err := net.SplitHostPort(p.Addr.String())
+
+	expectedHost, _, err := net.SplitHostPort(member.Addr)
 	if err != nil {
-		return err
+		n.processRaftMessageLogger(ctx, msg).WithError(err).Debug("could not split expected address for peer")
+		return false
 	}
-	_, officialPort, err := net.SplitHostPort(oldAddr)
-	if err != nil {
-		return err
+
+	expectedIP := net.ParseIP(expectedHost)
+	if expectedIP == nil {
+		n.processRaftMessageLogger(ctx, msg).Debug("could not parse expected IP address for peer")
+		return false
 	}
-	newAddr := net.JoinHostPort(newHost, officialPort)
-	if err := n.transport.UpdatePeerAddr(id, newAddr); err != nil {
-		return err
+
+	remoteIP := net.ParseIP(remoteHost)
+	if remoteIP == nil {
+		n.processRaftMessageLogger(ctx, msg).Debug("could not parse remote IP address for peer")
+		return false
 	}
-	return nil
+
+	return !remoteIP.Equal(expectedIP)
 }
 
-// ProcessRaftMessage calls 'Step' which advances the
-// raft state machine with the provided message on the
-// receiving node
+// ProcessRaftMessage calls 'Step' which advances the raft state machine with
+// the provided message on the receiving node.
 func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessageRequest) (*api.ProcessRaftMessageResponse, error) {
 	if msg == nil || msg.Message == nil {
 		n.processRaftMessageLogger(ctx, msg).Debug("received empty message")
@@ -1308,25 +1314,19 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 	ctx, cancel := n.WithContext(ctx)
 	defer cancel()
 
-	// TODO(aaronl): Address changes are temporarily disabled.
-	// See https://github.com/docker/docker/issues/30455.
-	// This should be reenabled in the future with additional
-	// safeguards (perhaps storing multiple addresses per node).
-	//if err := n.reportNewAddress(ctx, msg.Message.From); err != nil {
-	//	log.G(ctx).WithError(err).Errorf("failed to report new address of %x to transport", msg.Message.From)
-	//}
+	response := &api.ProcessRaftMessageResponse{AddrMismatch: n.didIPChange(ctx, msg)}
 
 	// Reject vote requests from unreachable peers
 	if msg.Message.Type == raftpb.MsgVote {
 		member := n.cluster.GetMember(msg.Message.From)
 		if member == nil {
 			n.processRaftMessageLogger(ctx, msg).Debug("received message from unknown member")
-			return &api.ProcessRaftMessageResponse{}, nil
+			return response, nil
 		}
 
 		if err := n.transport.HealthCheck(ctx, msg.Message.From); err != nil {
 			n.processRaftMessageLogger(ctx, msg).WithError(err).Debug("member which sent vote request failed health check")
-			return &api.ProcessRaftMessageResponse{}, nil
+			return response, nil
 		}
 	}
 
@@ -1336,7 +1336,7 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 		// making proposals, so in-flight proposals can be
 		// guaranteed not to conflict.
 		n.processRaftMessageLogger(ctx, msg).Debug("dropped forwarded proposal")
-		return &api.ProcessRaftMessageResponse{}, nil
+		return response, nil
 	}
 
 	// can't stop the raft node while an async RPC is in progress
@@ -1346,7 +1346,7 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 	if n.IsMember() {
 		if msg.Message.To != n.Config.ID {
 			n.processRaftMessageLogger(ctx, msg).Errorf("received message intended for raft_id %x", msg.Message.To)
-			return &api.ProcessRaftMessageResponse{}, nil
+			return response, nil
 		}
 
 		if err := n.raftNode.Step(ctx, *msg.Message); err != nil {
@@ -1354,7 +1354,7 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 		}
 	}
 
-	return &api.ProcessRaftMessageResponse{}, nil
+	return response, nil
 }
 
 // ResolveAddress returns the address reaching for a given node ID.

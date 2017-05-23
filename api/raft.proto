@@ -53,7 +53,9 @@ message RaftMember {
 }
 
 message JoinRequest {
-	// Addr specifies the address of the member
+	// Addr specifies the address of the member, including a port. A
+	// wildcard address means the receiving side should resolve the peer's
+	// address.
 	string addr = 1;
 }
 
@@ -80,7 +82,12 @@ message ProcessRaftMessageRequest {
 	raftpb.Message message = 1;
 }
 
-message ProcessRaftMessageResponse {}
+message ProcessRaftMessageResponse {
+	// AddrMismatch tells the sending peer that its observed address does
+	// not match the address stored in Raft. Based on this, the peer may
+	// decide to call Join again to update its address.
+	bool addr_mismatch = 1;
+}
 
 message ResolveAddressRequest {
 	// raft_id is the ID to resolve to an address.
@@ -88,7 +95,7 @@ message ResolveAddressRequest {
 }
 
 message ResolveAddressResponse {
-	// Addr specifies the address of the member
+	// Addr specifies the address of the member, including a port.
 	string addr = 1;
 }
 
