@@ -160,6 +160,9 @@ type NodeOptions struct {
 	ID string
 	// Addr is the address of this node's listener
 	Addr string
+	// UpdateAddr specifies whether our address should be automatically
+	// updated if it changes from the perspective of other nodes.
+	UpdateAddr bool
 	// ForceNewCluster defines if we have to force a new cluster
 	// because we are recovering from a backup data directory.
 	ForceNewCluster bool
@@ -280,11 +283,12 @@ func (n *Node) ReportUnreachable(id uint64) {
 // SetAddr provides the raft node's address. This can be used in cases where
 // opts.Addr was not provided to NewNode, for example when a port was not bound
 // until after the raft node was created.
-func (n *Node) SetAddr(ctx context.Context, addr string) error {
+func (n *Node) SetAddr(ctx context.Context, addr string, autodetected bool) error {
 	n.addrLock.Lock()
 	defer n.addrLock.Unlock()
 
 	n.opts.Addr = addr
+	n.opts.UpdateAddr = autodetected
 
 	if !n.IsMember() {
 		return nil
@@ -351,6 +355,8 @@ func (n *Node) initTransport() {
 		SendTimeout:       n.opts.SendTimeout,
 		Credentials:       n.opts.TLSCredentials,
 		Raft:              n,
+		OurAddr:           n.opts.Addr,
+		UpdateOwnAddr:     n.opts.UpdateAddr,
 	}
 	n.transport = transport.New(transportConfig)
 }

@@ -144,7 +144,7 @@ func (c *testCluster) AddManager(lateBind bool, rootCA *ca.RootCA) error {
 		if _, err := c.GetClusterInfo(); err != nil {
 			return err
 		}
-		return n.node.BindRemote(context.Background(), "127.0.0.1:0", "")
+		return n.node.BindRemote(context.Background(), "127.0.0.1:0", "", false)
 	}
 
 	return nil

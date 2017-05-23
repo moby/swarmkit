@@ -2,6 +2,7 @@ package transport
 
 import (
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
@@ -34,11 +35,14 @@ type peer struct {
 	addr    string
 	newAddr string
 
+	ourAddr       string
+	updateOwnAddr bool
+
 	active       bool
 	becameActive time.Time
 }
 
-func newPeer(id uint64, addr string, tr *Transport) (*peer, error) {
+func newPeer(id uint64, addr, ourAddr string, updateOwnAddr bool, tr *Transport) (*peer, error) {
 	cc, err := tr.dial(addr)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create conn for %x with addr %s", id, addr)
@@ -46,14 +50,16 @@ func newPeer(id uint64, addr string, tr *Transport) (*peer, error) {
 	ctx, cancel := context.WithCancel(tr.ctx)
 	ctx = log.WithField(ctx, "peer_id", fmt.Sprintf("%x", id))
 	p := &peer{
-		id:     id,
-		addr:   addr,
-		cc:     cc,
-		tr:     tr,
-		ctx:    ctx,
-		cancel: cancel,
-		msgc:   make(chan raftpb.Message, 4096),
-		done:   make(chan struct{}),
+		id:            id,
+		addr:          addr,
+		ourAddr:       ourAddr,
+		updateOwnAddr: updateOwnAddr,
+		cc:            cc,
+		tr:            tr,
+		ctx:           ctx,
+		cancel:        cancel,
+		msgc:          make(chan raftpb.Message, 4096),
+		done:          make(chan struct{}),
 	}
 	go p.run(ctx)
 	return p, nil
@@ -135,7 +141,9 @@ func (p *peer) resolveAddr(ctx context.Context, id uint64) (string, error) {
 func (p *peer) sendProcessMessage(ctx context.Context, m raftpb.Message) error {
 	ctx, cancel := context.WithTimeout(ctx, p.tr.config.SendTimeout)
 	defer cancel()
-	_, err := api.NewRaftClient(p.conn()).ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Message: &m})
+
+	raftClient := api.NewRaftClient(p.conn())
+	resp, err := raftClient.ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Message: &m})
 	if grpc.Code(err) == codes.NotFound && grpc.ErrorDesc(err) == membership.ErrMemberRemoved.Error() {
 		p.tr.config.NodeRemoved()
 	}
@@ -150,6 +158,33 @@ func (p *peer) sendProcessMessage(ctx context.Context, m raftpb.Message) error {
 		p.tr.config.ReportUnreachable(m.To)
 		return err
 	}
+
+	if resp != nil && resp.AddrMismatch {
+		if !p.updateOwnAddr {
+			log.G(ctx).Debug("detected IP address change, but a fixed address was specified")
+		}
+
+		// The peer says our address has changed. Try to rejoin, if appropriate.
+		_, ourPort, err := net.SplitHostPort(p.ourAddr)
+		if err != nil {
+			log.G(ctx).WithError(err).Error("failed to split local node address")
+			return nil
+		}
+
+		joinCtx, joinCancel := context.WithTimeout(ctx, p.tr.config.SendTimeout)
+		defer joinCancel()
+
+		membershipClient := api.NewRaftMembershipClient(p.conn())
+		_, err = membershipClient.Join(joinCtx, &api.JoinRequest{
+			Addr: net.JoinHostPort("0.0.0.0", ourPort),
+		})
+		if err != nil {
+			log.G(ctx).WithError(err).Error("failed to rejoin cluster after IP address change")
+		} else {
+			log.G(ctx).Info("successfully rejoined cluster after IP address change")
+		}
+	}
+
 	return nil
 }
 
