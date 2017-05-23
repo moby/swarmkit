@@ -909,24 +909,6 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 		return nil, grpc.Errorf(codes.FailedPrecondition, "%s", ErrLostLeadership.Error())
 	}
 
-	// A single manager must not be able to join the raft cluster twice. If
-	// it did, that would cause the quorum to be computed incorrectly. This
-	// could happen if the WAL was deleted from an active manager.
-	for _, m := range n.cluster.Members() {
-		if m.NodeID == nodeInfo.NodeID {
-			return nil, grpc.Errorf(codes.AlreadyExists, "%s", "a raft member with this node ID already exists")
-		}
-	}
-
-	// Find a unique ID for the joining member.
-	var raftID uint64
-	for {
-		raftID = uint64(rand.Int63()) + 1
-		if n.cluster.GetMember(raftID) == nil && !n.cluster.IsIDRemoved(raftID) {
-			break
-		}
-	}
-
 	remoteAddr := req.Addr
 
 	// If the joining node sent an address like 0.0.0.0:4242, automatically
@@ -953,12 +935,54 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 		return nil, err
 	}
 
+	// If the peer is already a member of the cluster, we will only update
+	// its information, not add it as a new member. Adding it again would
+	// cause the quorum to be computed incorrectly.
+	for _, m := range n.cluster.Members() {
+		if m.NodeID == nodeInfo.NodeID {
+			if remoteAddr == m.Addr {
+				return n.joinResponse(m.RaftID), nil
+			}
+			updatedRaftMember := &api.RaftMember{
+				RaftID: m.RaftID,
+				NodeID: m.NodeID,
+				Addr:   remoteAddr,
+			}
+			if err := n.cluster.UpdateMember(m.RaftID, updatedRaftMember); err != nil {
+				return nil, err
+			}
+
+			if err := n.updateNodeBlocking(ctx, m.RaftID, remoteAddr); err != nil {
+				log.WithError(err).Error("failed to update node address")
+				return nil, err
+			}
+
+			log.Info("updated node address")
+			return n.joinResponse(m.RaftID), nil
+		}
+	}
+
+	// Find a unique ID for the joining member.
+	var raftID uint64
+	for {
+		raftID = uint64(rand.Int63()) + 1
+		if n.cluster.GetMember(raftID) == nil && !n.cluster.IsIDRemoved(raftID) {
+			break
+		}
+	}
+
 	err = n.addMember(ctx, remoteAddr, raftID, nodeInfo.NodeID)
 	if err != nil {
 		log.WithError(err).Errorf("failed to add member %x", raftID)
 		return nil, err
 	}
 
+	log.Debug("node joined")
+
+	return n.joinResponse(raftID), nil
+}
+
+func (n *Node) joinResponse(raftID uint64) *api.JoinResponse {
 	var nodes []*api.RaftMember
 	for _, node := range n.cluster.Members() {
 		nodes = append(nodes, &api.RaftMember{
@@ -967,9 +991,8 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 			Addr:   node.Addr,
 		})
 	}
-	log.Debugf("node joined")
 
-	return &api.JoinResponse{Members: nodes, RaftID: raftID}, nil
+	return &api.JoinResponse{Members: nodes, RaftID: raftID}
 }
 
 // checkHealth tries to contact an aspiring member through its advertised address
