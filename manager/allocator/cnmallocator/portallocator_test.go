@@ -1,4 +1,4 @@
-package networkallocator
+package cnmallocator
 
 import (
 	"testing"
@@ -179,7 +179,7 @@ func TestReconcilePortConfigs(t *testing.T) {
 	}
 }
 
-func TestServiceAllocatePorts(t *testing.T) {
+func TestAllocateServicePorts(t *testing.T) {
 	pa, err := newPortAllocator()
 	assert.NoError(t, err)
 

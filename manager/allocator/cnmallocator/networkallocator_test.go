@@ -1,4 +1,4 @@
-package networkallocator
+package cnmallocator
 
 import (
 	"fmt"
@@ -8,10 +8,11 @@ import (
 	"github.com/docker/libnetwork/discoverapi"
 	"github.com/docker/libnetwork/types"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/allocator/networkallocator"
 	"github.com/stretchr/testify/assert"
 )
 
-func newNetworkAllocator(t *testing.T) *NetworkAllocator {
+func newNetworkAllocator(t *testing.T) networkallocator.NetworkAllocator {
 	na, err := New(nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, na)
@@ -509,7 +510,7 @@ func TestAllocateTaskFree(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestServiceAllocate(t *testing.T) {
+func TestAllocateService(t *testing.T) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
@@ -558,7 +559,7 @@ func TestServiceAllocate(t *testing.T) {
 	gwip := net.ParseIP(n.IPAM.Configs[0].Gateway)
 	assert.NotEqual(t, gwip, nil)
 
-	err = na.ServiceAllocate(s)
+	err = na.AllocateService(s)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(s.Endpoint.Ports))
 	assert.True(t, s.Endpoint.Ports[0].PublishedPort >= dynamicPortStart &&
@@ -576,7 +577,7 @@ func TestServiceAllocate(t *testing.T) {
 	assert.Equal(t, true, subnet.Contains(ip))
 }
 
-func TestServiceAllocateUserDefinedPorts(t *testing.T) {
+func TestAllocateServiceUserDefinedPorts(t *testing.T) {
 	na := newNetworkAllocator(t)
 	s := &api.Service{
 		ID: "testID1",
@@ -599,14 +600,14 @@ func TestServiceAllocateUserDefinedPorts(t *testing.T) {
 		},
 	}
 
-	err := na.ServiceAllocate(s)
+	err := na.AllocateService(s)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(s.Endpoint.Ports))
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[1].PublishedPort)
 }
 
-func TestServiceAllocateConflictingUserDefinedPorts(t *testing.T) {
+func TestAllocateServiceConflictingUserDefinedPorts(t *testing.T) {
 	na := newNetworkAllocator(t)
 	s := &api.Service{
 		ID: "testID1",
@@ -628,11 +629,11 @@ func TestServiceAllocateConflictingUserDefinedPorts(t *testing.T) {
 		},
 	}
 
-	err := na.ServiceAllocate(s)
+	err := na.AllocateService(s)
 	assert.Error(t, err)
 }
 
-func TestServiceDeallocateAllocate(t *testing.T) {
+func TestDeallocateServiceAllocate(t *testing.T) {
 	na := newNetworkAllocator(t)
 	s := &api.Service{
 		ID: "testID1",
@@ -649,22 +650,22 @@ func TestServiceDeallocateAllocate(t *testing.T) {
 		},
 	}
 
-	err := na.ServiceAllocate(s)
+	err := na.AllocateService(s)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(s.Endpoint.Ports))
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 
-	err = na.ServiceDeallocate(s)
+	err = na.DeallocateService(s)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(s.Endpoint.Ports))
 	// Allocate again.
-	err = na.ServiceAllocate(s)
+	err = na.AllocateService(s)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(s.Endpoint.Ports))
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 }
 
-func TestServiceDeallocateAllocateIngressMode(t *testing.T) {
+func TestDeallocateServiceAllocateIngressMode(t *testing.T) {
 	na := newNetworkAllocator(t)
 
 	n := &api.Network{
@@ -700,13 +701,13 @@ func TestServiceDeallocateAllocateIngressMode(t *testing.T) {
 	s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs,
 		&api.Endpoint_VirtualIP{NetworkID: n.ID})
 
-	err = na.ServiceAllocate(s)
+	err = na.AllocateService(s)
 	assert.NoError(t, err)
 	assert.Len(t, s.Endpoint.Ports, 1)
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 	assert.Len(t, s.Endpoint.VirtualIPs, 1)
 
-	err = na.ServiceDeallocate(s)
+	err = na.DeallocateService(s)
 	assert.NoError(t, err)
 	assert.Len(t, s.Endpoint.Ports, 0)
 	assert.Len(t, s.Endpoint.VirtualIPs, 0)
@@ -714,7 +715,7 @@ func TestServiceDeallocateAllocateIngressMode(t *testing.T) {
 	s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs,
 		&api.Endpoint_VirtualIP{NetworkID: n.ID})
 
-	err = na.ServiceAllocate(s)
+	err = na.AllocateService(s)
 	assert.NoError(t, err)
 	assert.Len(t, s.Endpoint.Ports, 1)
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
@@ -757,7 +758,7 @@ func TestServiceAddRemovePortsIngressMode(t *testing.T) {
 	s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs,
 		&api.Endpoint_VirtualIP{NetworkID: n.ID})
 
-	err = na.ServiceAllocate(s)
+	err = na.AllocateService(s)
 	assert.NoError(t, err)
 	assert.Len(t, s.Endpoint.Ports, 1)
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
@@ -766,7 +767,7 @@ func TestServiceAddRemovePortsIngressMode(t *testing.T) {
 
 	//Unpublish port
 	s.Spec.Endpoint.Ports = s.Spec.Endpoint.Ports[:0]
-	err = na.ServiceAllocate(s)
+	err = na.AllocateService(s)
 	assert.NoError(t, err)
 	assert.Len(t, s.Endpoint.Ports, 0)
 	assert.Len(t, s.Endpoint.VirtualIPs, 0)
@@ -780,7 +781,7 @@ func TestServiceAddRemovePortsIngressMode(t *testing.T) {
 	})
 	s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs,
 		&api.Endpoint_VirtualIP{NetworkID: n.ID})
-	err = na.ServiceAllocate(s)
+	err = na.AllocateService(s)
 	assert.NoError(t, err)
 	assert.Len(t, s.Endpoint.Ports, 1)
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
@@ -811,9 +812,9 @@ func TestServiceUpdate(t *testing.T) {
 		},
 	}
 
-	err := na1.ServiceAllocate(s)
+	err := na1.AllocateService(s)
 	assert.NoError(t, err)
-	assert.False(t, na1.ServiceNeedsAllocation(s))
+	assert.True(t, na1.IsServiceAllocated(s))
 	assert.Equal(t, 2, len(s.Endpoint.Ports))
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 	assert.NotEqual(t, 0, s.Endpoint.Ports[1].PublishedPort)
@@ -822,20 +823,20 @@ func TestServiceUpdate(t *testing.T) {
 	allocatedPort := s.Endpoint.Ports[1].PublishedPort
 
 	// Now allocate the same service in another allocator instance
-	err = na2.ServiceAllocate(s)
+	err = na2.AllocateService(s)
 	assert.NoError(t, err)
-	assert.False(t, na2.ServiceNeedsAllocation(s))
+	assert.True(t, na2.IsServiceAllocated(s))
 	assert.Equal(t, 2, len(s.Endpoint.Ports))
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 	// Make sure we got the same port
 	assert.Equal(t, allocatedPort, s.Endpoint.Ports[1].PublishedPort)
 
 	s.Spec.Endpoint.Ports[1].PublishedPort = 1235
-	assert.True(t, na1.ServiceNeedsAllocation(s))
+	assert.False(t, na1.IsServiceAllocated(s))
 
-	err = na1.ServiceAllocate(s)
+	err = na1.AllocateService(s)
 	assert.NoError(t, err)
-	assert.False(t, na1.ServiceNeedsAllocation(s))
+	assert.True(t, na1.IsServiceAllocated(s))
 	assert.Equal(t, 2, len(s.Endpoint.Ports))
 	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 	assert.Equal(t, uint32(1235), s.Endpoint.Ports[1].PublishedPort)
@@ -886,48 +887,48 @@ func TestServiceNetworkUpdate(t *testing.T) {
 		},
 	}
 
-	err = na.ServiceAllocate(s)
+	err = na.AllocateService(s)
 	assert.NoError(t, err)
-	assert.False(t, na.ServiceNeedsAllocation(s))
+	assert.True(t, na.IsServiceAllocated(s))
 	assert.Len(t, s.Endpoint.VirtualIPs, 1)
 
 	// Now update the same service with another network
 	s.Spec.Task.Networks = append(s.Spec.Task.Networks, &api.NetworkAttachmentConfig{Target: "testID2"})
 
-	assert.True(t, na.ServiceNeedsAllocation(s))
-	err = na.ServiceAllocate(s)
+	assert.False(t, na.IsServiceAllocated(s))
+	err = na.AllocateService(s)
 	assert.NoError(t, err)
 
-	assert.False(t, na.ServiceNeedsAllocation(s))
+	assert.True(t, na.IsServiceAllocated(s))
 	assert.Len(t, s.Endpoint.VirtualIPs, 2)
 
 	s.Spec.Task.Networks = s.Spec.Task.Networks[:1]
 
 	//Check if service needs update and allocate with updated service spec
-	assert.True(t, na.ServiceNeedsAllocation(s))
+	assert.False(t, na.IsServiceAllocated(s))
 
-	err = na.ServiceAllocate(s)
+	err = na.AllocateService(s)
 	assert.NoError(t, err)
-	assert.False(t, na.ServiceNeedsAllocation(s))
+	assert.True(t, na.IsServiceAllocated(s))
 	assert.Len(t, s.Endpoint.VirtualIPs, 1)
 
 	s.Spec.Task.Networks = s.Spec.Task.Networks[:0]
 	//Check if service needs update with all the networks removed and allocate with updated service spec
-	assert.True(t, na.ServiceNeedsAllocation(s))
+	assert.False(t, na.IsServiceAllocated(s))
 
-	err = na.ServiceAllocate(s)
+	err = na.AllocateService(s)
 	assert.NoError(t, err)
-	assert.False(t, na.ServiceNeedsAllocation(s))
+	assert.True(t, na.IsServiceAllocated(s))
 	assert.Len(t, s.Endpoint.VirtualIPs, 0)
 
 	//Attach a network and allocate service
 	s.Spec.Task.Networks = append(s.Spec.Task.Networks, &api.NetworkAttachmentConfig{Target: "testID2"})
-	assert.True(t, na.ServiceNeedsAllocation(s))
+	assert.False(t, na.IsServiceAllocated(s))
 
-	err = na.ServiceAllocate(s)
+	err = na.AllocateService(s)
 	assert.NoError(t, err)
 
-	assert.False(t, na.ServiceNeedsAllocation(s))
+	assert.True(t, na.IsServiceAllocated(s))
 	assert.Len(t, s.Endpoint.VirtualIPs, 1)
 
 }
@@ -978,7 +979,7 @@ func TestCorrectlyPassIPAMOptions(t *testing.T) {
 	na := newNetworkAllocator(t)
 	ipamDriver := &mockIpam{}
 
-	err = na.drvRegistry.RegisterIpamDriver("mockipam", ipamDriver)
+	err = na.(*cnmNetworkAllocator).drvRegistry.RegisterIpamDriver("mockipam", ipamDriver)
 	assert.NoError(t, err)
 
 	n := &api.Network{

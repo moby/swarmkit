@@ -25,7 +25,7 @@ func createNetworkSpec(name string) *api.NetworkSpec {
 // createInternalNetwork creates an internal network for testing. it is the same
 // as Server.CreateNetwork except without the label check.
 func (s *Server) createInternalNetwork(ctx context.Context, request *api.CreateNetworkRequest) (*api.CreateNetworkResponse, error) {
-	if err := validateNetworkSpec(request.Spec, nil); err != nil {
+	if err := validateNetworkSpec(request.Spec, nil, nil); err != nil {
 		return nil, err
 	}
 
@@ -85,9 +85,9 @@ func createServiceInNetwork(t *testing.T, ts *testServer, name, image string, nw
 }
 
 func TestValidateDriver(t *testing.T) {
-	assert.NoError(t, validateDriver(nil, nil, ""))
+	assert.NoError(t, validateDriver(nil, nil, nil, ""))
 
-	err := validateDriver(&api.Driver{Name: ""}, nil, "")
+	err := validateDriver(&api.Driver{Name: ""}, nil, nil, "")
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 }
