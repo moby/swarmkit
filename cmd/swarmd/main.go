@@ -64,6 +64,12 @@ var (
 			if err != nil {
 				return err
 			}
+
+			advertiseAddr, err := cmd.Flags().GetString("advertise-remote-api")
+			if err != nil {
+				return err
+			}
+
 			addr, err := cmd.Flags().GetString("listen-remote-api")
 			if err != nil {
 				return err
@@ -182,19 +188,20 @@ var (
 			}
 
 			n, err := node.New(&node.Config{
-				Hostname:         hostname,
-				ForceNewCluster:  forceNewCluster,
-				ListenControlAPI: unix,
-				ListenRemoteAPI:  addr,
-				JoinAddr:         managerAddr,
-				StateDir:         stateDir,
-				JoinToken:        joinToken,
-				ExternalCAs:      externalCAOpt.Value(),
-				Executor:         executor,
-				HeartbeatTick:    hb,
-				ElectionTick:     election,
-				AutoLockManagers: autolockManagers,
-				UnlockKey:        unlockKey,
+				Hostname:           hostname,
+				ForceNewCluster:    forceNewCluster,
+				ListenControlAPI:   unix,
+				ListenRemoteAPI:    addr,
+				AdvertiseRemoteAPI: advertiseAddr,
+				JoinAddr:           managerAddr,
+				StateDir:           stateDir,
+				JoinToken:          joinToken,
+				ExternalCAs:        externalCAOpt.Value(),
+				Executor:           executor,
+				HeartbeatTick:      hb,
+				ElectionTick:       election,
+				AutoLockManagers:   autolockManagers,
+				UnlockKey:          unlockKey,
 			})
 			if err != nil {
 				return err
@@ -233,6 +240,7 @@ func init() {
 	mainCmd.Flags().StringP("join-token", "", "", "Specifies the secret token required to join the cluster")
 	mainCmd.Flags().String("engine-addr", "unix:///var/run/docker.sock", "Address of engine instance of agent.")
 	mainCmd.Flags().String("hostname", "", "Override reported agent hostname")
+	mainCmd.Flags().String("advertise-remote-api", "", "Advertise address for remote API")
 	mainCmd.Flags().String("listen-remote-api", "0.0.0.0:4242", "Listen address for remote API")
 	mainCmd.Flags().String("listen-control-api", defaults.ControlAPISocket, "Listen socket for control API")
 	mainCmd.Flags().String("listen-debug", "", "Bind the Go debug server on the provided address")
