@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 	"time"
 
@@ -252,6 +251,7 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 func TestManagerIgnoresDispatcherRootCAUpdate(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "manager-root-ca-update")
 	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
 
 	// don't bother with a listening socket
 	cAddr := filepath.Join(tmpDir, "control.sock")
@@ -264,13 +264,7 @@ func TestManagerIgnoresDispatcherRootCAUpdate(t *testing.T) {
 	node, err := New(cfg)
 	require.NoError(t, err)
 
-	var nodeErr error
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		nodeErr = node.Start(context.Background())
-		wg.Done()
-	}()
+	require.NoError(t, node.Start(context.Background()))
 
 	select {
 	case <-node.Ready():
@@ -297,13 +291,12 @@ func TestManagerIgnoresDispatcherRootCAUpdate(t *testing.T) {
 	require.Equal(t, currentCACerts, caCerts)
 
 	require.NoError(t, node.Stop(context.Background()))
-	wg.Wait()
-	require.NoError(t, nodeErr)
 }
 
 func TestAgentRespectsDispatcherRootCAUpdate(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "manager-root-ca-update")
 	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
 
 	// bootstrap worker TLS certificates
 	paths := ca.NewConfigPaths(filepath.Join(tmpDir, certDirectory))
@@ -329,13 +322,7 @@ func TestAgentRespectsDispatcherRootCAUpdate(t *testing.T) {
 	node, err := New(cfg)
 	require.NoError(t, err)
 
-	var nodeErr error
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		nodeErr = node.Start(context.Background())
-		wg.Done()
-	}()
+	require.NoError(t, node.Start(context.Background()))
 
 	select {
 	case <-node.Ready():
@@ -371,13 +358,12 @@ func TestAgentRespectsDispatcherRootCAUpdate(t *testing.T) {
 	}, time.Second))
 
 	require.NoError(t, node.Stop(context.Background()))
-	wg.Wait()
-	require.NoError(t, nodeErr)
 }
 
 func TestCertRenewals(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "no-top-level-role")
 	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
 
 	paths := ca.NewConfigPaths(filepath.Join(tmpDir, "certificates"))
 
@@ -391,13 +377,7 @@ func TestCertRenewals(t *testing.T) {
 	node, err := New(cfg)
 	require.NoError(t, err)
 
-	var nodeErr error
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		nodeErr = node.Start(context.Background())
-		wg.Done()
-	}()
+	require.NoError(t, node.Start(context.Background()))
 
 	select {
 	case <-node.Ready():
@@ -449,6 +429,44 @@ func TestCertRenewals(t *testing.T) {
 	}, 5*time.Second))
 
 	require.NoError(t, node.Stop(context.Background()))
-	wg.Wait()
-	require.NoError(t, nodeErr)
+}
+
+func TestManagerFailedStartup(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "manager-root-ca-update")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	paths := ca.NewConfigPaths(filepath.Join(tmpDir, certDirectory))
+
+	rootCA, err := ca.CreateRootCA(ca.DefaultRootCN)
+	require.NoError(t, err)
+	require.NoError(t, ca.SaveRootCA(rootCA, paths.RootCA))
+
+	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
+	require.NoError(t, err)
+	_, _, err = rootCA.IssueAndSaveNewCertificates(krw, identity.NewID(), ca.ManagerRole, identity.NewID())
+	require.NoError(t, err)
+
+	// don't bother with a listening socket
+	cAddr := filepath.Join(tmpDir, "control.sock")
+	cfg := &Config{
+		ListenControlAPI: cAddr,
+		StateDir:         tmpDir,
+		Executor:         &agentutils.TestExecutor{},
+		JoinAddr:         "127.0.0.1",
+	}
+
+	node, err := New(cfg)
+	require.NoError(t, err)
+
+	require.NoError(t, node.Start(context.Background()))
+
+	select {
+	case <-node.Ready():
+		require.FailNow(t, "node should not become ready")
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "node neither became ready nor encountered an error")
+	case <-node.closed:
+		require.EqualError(t, node.err, "manager stopped: can't initialize raft node: attempted to join raft cluster without knowing own address")
+	}
 }
