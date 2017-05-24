@@ -186,15 +186,15 @@ func (na *cnmNetworkAllocator) Deallocate(n *api.Network) error {
 	return na.freePools(n, localNet.pools)
 }
 
-// ServiceAllocate allocates all the network resources such as virtual
+// AllocateService allocates all the network resources such as virtual
 // IP and ports needed by the service.
-func (na *cnmNetworkAllocator) ServiceAllocate(s *api.Service) (err error) {
+func (na *cnmNetworkAllocator) AllocateService(s *api.Service) (err error) {
 	if err = na.portAllocator.serviceAllocatePorts(s); err != nil {
 		return err
 	}
 	defer func() {
 		if err != nil {
-			na.ServiceDeallocate(s)
+			na.DeallocateService(s)
 		}
 	}()
 
@@ -276,9 +276,9 @@ networkLoop:
 	return nil
 }
 
-// ServiceDeallocate de-allocates all the network resources such as
+// DeallocateService de-allocates all the network resources such as
 // virtual IP and ports associated with the service.
-func (na *cnmNetworkAllocator) ServiceDeallocate(s *api.Service) error {
+func (na *cnmNetworkAllocator) DeallocateService(s *api.Service) error {
 	if s.Endpoint == nil {
 		return nil
 	}
@@ -356,8 +356,8 @@ func (na *cnmNetworkAllocator) HostPublishPortsNeedUpdate(s *api.Service) bool {
 	return na.portAllocator.hostPublishPortsNeedUpdate(s)
 }
 
-// ServiceNeedsAllocation returns true if the passed service needs to have network resources allocated/updated.
-func (na *cnmNetworkAllocator) ServiceNeedsAllocation(s *api.Service, flags ...func(*networkallocator.ServiceAllocationOpts)) bool {
+// IsServiceAllocated returns false if the passed service needs to have network resources allocated/updated.
+func (na *cnmNetworkAllocator) IsServiceAllocated(s *api.Service, flags ...func(*networkallocator.ServiceAllocationOpts)) bool {
 	var options networkallocator.ServiceAllocationOpts
 	for _, flag := range flags {
 		flag(&options)
@@ -372,11 +372,11 @@ func (na *cnmNetworkAllocator) ServiceNeedsAllocation(s *api.Service, flags ...f
 			s.Spec.Endpoint.Mode == api.ResolutionModeVirtualIP) {
 
 		if _, ok := na.services[s.ID]; !ok {
-			return true
+			return false
 		}
 
 		if s.Endpoint == nil || len(s.Endpoint.VirtualIPs) == 0 {
-			return true
+			return false
 		}
 
 		// If the spec has networks which don't have a corresponding VIP,
@@ -388,7 +388,7 @@ func (na *cnmNetworkAllocator) ServiceNeedsAllocation(s *api.Service, flags ...f
 					continue networkLoop
 				}
 			}
-			return true
+			return false
 		}
 	}
 
@@ -405,7 +405,7 @@ func (na *cnmNetworkAllocator) ServiceNeedsAllocation(s *api.Service, flags ...f
 					continue vipLoop
 				}
 			}
-			return true
+			return false
 		}
 	}
 
@@ -415,15 +415,15 @@ func (na *cnmNetworkAllocator) ServiceNeedsAllocation(s *api.Service, flags ...f
 	// resources if any.
 	if s.Spec.Endpoint != nil && s.Spec.Endpoint.Mode == api.ResolutionModeDNSRoundRobin {
 		if _, ok := na.services[s.ID]; ok {
-			return true
+			return false
 		}
 	}
 
 	if (s.Spec.Endpoint != nil && len(s.Spec.Endpoint.Ports) != 0) ||
 		(s.Endpoint != nil && len(s.Endpoint.Ports) != 0) {
-		return !na.portAllocator.isPortsAllocatedOnInit(s, options.OnInit)
+		return na.portAllocator.isPortsAllocatedOnInit(s, options.OnInit)
 	}
-	return false
+	return true
 }
 
 // IsNodeAllocated returns if the passed node has its network resources allocated or not.

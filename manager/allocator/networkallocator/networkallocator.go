@@ -56,17 +56,17 @@ type NetworkAllocator interface {
 	// Service Allocation
 	//
 
-	// ServiceNeedsAllocation returns true if the passed service
+	// IsServiceAllocated returns false if the passed service
 	// needs to have network resources allocated/updated.
-	ServiceNeedsAllocation(s *api.Service, flags ...func(*ServiceAllocationOpts)) bool
+	IsServiceAllocated(s *api.Service, flags ...func(*ServiceAllocationOpts)) bool
 
-	// ServiceAllocate allocates all the network resources such as virtual
+	// AllocateService allocates all the network resources such as virtual
 	// IP and ports needed by the service.
-	ServiceAllocate(s *api.Service) (err error)
+	AllocateService(s *api.Service) (err error)
 
-	// ServiceDeallocate de-allocates all the network resources such as
+	// DeallocateService de-allocates all the network resources such as
 	// virtual IP and ports associated with the service.
-	ServiceDeallocate(s *api.Service) error
+	DeallocateService(s *api.Service) error
 
 	// HostPublishPortsNeedUpdate returns true if the passed service needs
 	// allocations for its published ports in host (non ingress) mode
