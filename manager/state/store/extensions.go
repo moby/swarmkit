@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/state/store/autoindex"
 	memdb "github.com/hashicorp/go-memdb"
 )
 
@@ -74,10 +75,11 @@ func init() {
 
 type extensionEntry struct {
 	*api.Extension
+	indexer autoindex.Indexer
 }
 
 func (e extensionEntry) CopyStoreObject() api.StoreObject {
-	return extensionEntry{Extension: e.Extension.Copy()}
+	return extensionEntry{Extension: e.Extension.Copy(), indexer: e.indexer}
 }
 
 // CreateExtension adds a new extension to the store.
@@ -93,7 +95,17 @@ func CreateExtension(tx Tx, e *api.Extension) error {
 		return ErrNameConflict
 	}
 
-	return tx.create(tableExtension, extensionEntry{e})
+	var indexer autoindex.Indexer
+
+	if e.Autoindex != nil {
+		var err error
+		indexer, err = autoindex.NewIndexer(e.Autoindex)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.create(tableExtension, extensionEntry{Extension: e, indexer: indexer})
 }
 
 // UpdateExtension updates an existing extension in the store.

@@ -85,6 +85,8 @@
 		ClusterSpec
 		SecretSpec
 		ConfigSpec
+		IndexDeclaration
+		IndexSpec
 		Meta
 		Node
 		Service

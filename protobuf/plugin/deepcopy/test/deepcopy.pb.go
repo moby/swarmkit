@@ -3,21 +3,21 @@
 // DO NOT EDIT!
 
 /*
-Package test is a generated protocol buffer package.
+	Package test is a generated protocol buffer package.
 
-It is generated from these files:
-	deepcopy.proto
+	It is generated from these files:
+		deepcopy.proto
 
-It has these top-level messages:
-	BasicScalar
-	RepeatedScalar
-	RepeatedScalarPacked
-	ExternalStruct
-	RepeatedExternalStruct
-	NonNullableExternalStruct
-	RepeatedNonNullableExternalStruct
-	MapStruct
-	OneOf
+	It has these top-level messages:
+		BasicScalar
+		RepeatedScalar
+		RepeatedScalarPacked
+		ExternalStruct
+		RepeatedExternalStruct
+		NonNullableExternalStruct
+		RepeatedNonNullableExternalStruct
+		MapStruct
+		OneOf
 */
 package test
 
