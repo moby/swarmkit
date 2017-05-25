@@ -128,6 +128,12 @@ func (f *PluginFilter) SetTask(t *api.Task) bool {
 // Check returns true if the task can be scheduled into the given node.
 // TODO(amitshukla): investigate storing Plugins as a map so it can be easily probed
 func (f *PluginFilter) Check(n *NodeInfo) bool {
+	if n.Description == nil || n.Description.Engine == nil {
+		// If the node is not running Engine, plugins are not
+		// supported.
+		return true
+	}
+
 	// Get list of plugins on the node
 	nodePlugins := n.Description.Engine.Plugins
 
