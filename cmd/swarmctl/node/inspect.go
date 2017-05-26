@@ -8,6 +8,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
 	"github.com/docker/swarmkit/cmd/swarmctl/task"
 	"github.com/dustin/go-humanize"
@@ -69,6 +70,12 @@ func printNodeSummary(node *api.Node) {
 		fmt.Fprintln(w, "Resources:\t")
 		fmt.Fprintf(w, "  CPUs\t: %d\n", desc.Resources.NanoCPUs/1e9)
 		fmt.Fprintf(w, "  Memory\t: %s\n", humanize.IBytes(uint64(desc.Resources.MemoryBytes)))
+		fmt.Fprintln(w, "  Generic Resources:\t")
+		for _, r := range desc.Resources.Generic {
+			k := genericresource.Kind(r)
+			v := genericresource.Value(r)
+			fmt.Fprintf(w, "    %s\t: %s\n", k, v)
+		}
 	}
 
 	if desc.Engine != nil {

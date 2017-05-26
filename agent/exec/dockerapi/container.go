@@ -18,6 +18,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/api/naming"
 	"github.com/docker/swarmkit/template"
 	gogotypes "github.com/gogo/protobuf/types"
@@ -138,12 +139,15 @@ func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
 }
 
 func (c *containerConfig) config() *enginecontainer.Config {
+	genericEnvs := genericresource.EnvFormat(c.task.AssignedGenericResources, "DOCKER_RESOURCE")
+	env := append(c.spec().Env, genericEnvs...)
+
 	config := &enginecontainer.Config{
 		Labels:       c.labels(),
 		StopSignal:   c.spec().StopSignal,
 		User:         c.spec().User,
 		Hostname:     c.spec().Hostname,
-		Env:          c.spec().Env,
+		Env:          env,
 		WorkingDir:   c.spec().Dir,
 		Tty:          c.spec().TTY,
 		OpenStdin:    c.spec().OpenStdin,

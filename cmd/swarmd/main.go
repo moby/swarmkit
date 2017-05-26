@@ -12,6 +12,8 @@ import (
 	"github.com/Sirupsen/logrus"
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/swarmkit/agent/exec/dockerapi"
+	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/cli"
 	"github.com/docker/swarmkit/cmd/swarmd/defaults"
 	"github.com/docker/swarmkit/log"
@@ -149,6 +151,18 @@ var (
 				}
 			}
 
+			var resources []*api.GenericResource
+			if cmd.Flags().Changed("generic-node-resources") {
+				genericResources, err := cmd.Flags().GetString("generic-node-resources")
+				if err != nil {
+					return err
+				}
+				resources, err = genericresource.Parse(genericResources)
+				if err != nil {
+					return err
+				}
+			}
+
 			// Create a cancellable context for our GRPC call
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
@@ -158,7 +172,7 @@ var (
 				return err
 			}
 
-			executor := dockerapi.NewExecutor(client)
+			executor := dockerapi.NewExecutor(client, resources)
 
 			if debugAddr != "" {
 				go func() {
@@ -246,6 +260,7 @@ func init() {
 	mainCmd.Flags().String("listen-debug", "", "Bind the Go debug server on the provided address")
 	mainCmd.Flags().String("listen-metrics", "", "Listen address for metrics")
 	mainCmd.Flags().String("join-addr", "", "Join cluster with a node at this address")
+	mainCmd.Flags().String("generic-node-resources", "", "user defined resources (e.g. fpga=2;gpu={UUID1,UUID2,UUID3})")
 	mainCmd.Flags().Bool("force-new-cluster", false, "Force the creation of a new cluster from data directory")
 	mainCmd.Flags().Uint32("heartbeat-tick", 1, "Defines the heartbeat interval (in seconds) for raft member health-check")
 	mainCmd.Flags().Uint32("election-tick", 3, "Defines the amount of ticks (in seconds) needed without a Leader to trigger a new election")

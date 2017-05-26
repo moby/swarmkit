@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/spf13/pflag"
 )
 
@@ -87,6 +88,28 @@ func parseResource(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			spec.Task.Resources.Limits = &api.Resources{}
 		}
 		if err := parseResourceCPU(flags, spec.Task.Resources.Limits, "cpu-limit"); err != nil {
+			return err
+		}
+	}
+
+	if flags.Changed("generic-resources") {
+		if spec.Task.Resources == nil {
+			spec.Task.Resources = &api.ResourceRequirements{}
+		}
+		if spec.Task.Resources.Reservations == nil {
+			spec.Task.Resources.Reservations = &api.Resources{}
+		}
+
+		cmd, err := flags.GetString("generic-resources")
+		if err != nil {
+			return err
+		}
+		spec.Task.Resources.Reservations.Generic, err = genericresource.Parse(cmd)
+		if err != nil {
+			return err
+		}
+		err = genericresource.ValidateTask(spec.Task.Resources.Reservations)
+		if err != nil {
 			return err
 		}
 	}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
@@ -824,6 +825,9 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 				Resources: &api.Resources{
 					NanoCPUs:    1e9,
 					MemoryBytes: 1e8,
+					Generic: []*api.GenericResource{
+						genericresource.NewDiscrete("apple", 1),
+					},
 				},
 			},
 		},
@@ -844,6 +848,9 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 				Resources: &api.Resources{
 					NanoCPUs:    1e9,
 					MemoryBytes: 1e9,
+					Generic: []*api.GenericResource{
+						genericresource.NewDiscrete("apple", 10),
+					},
 				},
 			},
 		},
@@ -864,6 +871,9 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 				Resources: &api.Resources{
 					NanoCPUs:    1e9,
 					MemoryBytes: 1e9,
+					Generic: []*api.GenericResource{
+						genericresource.NewDiscrete("apple", 6),
+					},
 				},
 			},
 		},
@@ -884,6 +894,9 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 				Resources: &api.Resources{
 					NanoCPUs:    1e9,
 					MemoryBytes: 1e9,
+					Generic: []*api.GenericResource{
+						genericresource.NewDiscrete("apple", 6),
+					},
 				},
 			},
 		},
@@ -904,6 +917,9 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 				Resources: &api.Resources{
 					NanoCPUs:    1e9,
 					MemoryBytes: 1e9,
+					Generic: []*api.GenericResource{
+						genericresource.NewDiscrete("apple", 6),
+					},
 				},
 			},
 		},
@@ -924,6 +940,9 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 				Resources: &api.Resources{
 					NanoCPUs:    1e9,
 					MemoryBytes: 1e9,
+					Generic: []*api.GenericResource{
+						genericresource.NewDiscrete("apple", 6),
+					},
 				},
 			},
 		},
@@ -944,6 +963,9 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 				Resources: &api.Resources{
 					NanoCPUs:    1e9,
 					MemoryBytes: 1e9,
+					Generic: []*api.GenericResource{
+						genericresource.NewDiscrete("apple", 6),
+					},
 				},
 			},
 		},
@@ -979,6 +1001,9 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
 					MemoryBytes: 2e8,
+					Generic: []*api.GenericResource{
+						genericresource.NewDiscrete("apple", 2),
+					},
 				},
 			},
 		},
@@ -1263,6 +1288,10 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 			Resources: &api.Resources{
 				NanoCPUs:    1e9,
 				MemoryBytes: 1e9,
+				Generic: append(
+					genericresource.NewSet("orange", "blue"),
+					genericresource.NewDiscrete("apple", 1),
+				),
 			},
 		},
 	}
@@ -1282,6 +1311,10 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 			Resources: &api.Resources{
 				NanoCPUs:    2e9,
 				MemoryBytes: 2e9,
+				Generic: append(
+					genericresource.NewSet("orange", "blue", "red"),
+					genericresource.NewDiscrete("apple", 2),
+				),
 			},
 		},
 	}
@@ -1299,6 +1332,10 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 			Resources: &api.Resources{
 				NanoCPUs:    2e9,
 				MemoryBytes: 2e9,
+				Generic: append(
+					genericresource.NewSet("orange", "blue", "red"),
+					genericresource.NewDiscrete("apple", 2),
+				),
 			},
 		},
 	}
@@ -1313,6 +1350,10 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
 					MemoryBytes: 2e9,
+					Generic: []*api.GenericResource{
+						genericresource.NewDiscrete("orange", 2),
+						genericresource.NewDiscrete("apple", 2),
+					},
 				},
 			},
 		},
@@ -1365,6 +1406,10 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 				Resources: &api.Resources{
 					NanoCPUs:    4e9,
 					MemoryBytes: 8e9,
+					Generic: append(
+						genericresource.NewSet("orange", "blue", "red", "green"),
+						genericresource.NewDiscrete("apple", 4),
+					),
 				},
 			},
 			Status: api.NodeStatus{
@@ -1398,6 +1443,9 @@ func TestSchedulerResourceConstraintHA(t *testing.T) {
 		Description: &api.NodeDescription{
 			Resources: &api.Resources{
 				MemoryBytes: 1e9,
+				Generic: []*api.GenericResource{
+					genericresource.NewDiscrete("apple", 2),
+				},
 			},
 		},
 	}
@@ -1414,6 +1462,9 @@ func TestSchedulerResourceConstraintHA(t *testing.T) {
 		Description: &api.NodeDescription{
 			Resources: &api.Resources{
 				MemoryBytes: 1e11,
+				Generic: []*api.GenericResource{
+					genericresource.NewDiscrete("apple", 5),
+				},
 			},
 		},
 	}
@@ -1427,6 +1478,9 @@ func TestSchedulerResourceConstraintHA(t *testing.T) {
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
 					MemoryBytes: 5e8,
+					Generic: []*api.GenericResource{
+						genericresource.NewDiscrete("apple", 1),
+					},
 				},
 			},
 		},
@@ -1530,6 +1584,9 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 			Resources: &api.Resources{
 				NanoCPUs:    1e9,
 				MemoryBytes: 1e9,
+				Generic: []*api.GenericResource{
+					genericresource.NewDiscrete("apple", 4),
+				},
 			},
 		},
 	}
@@ -1541,6 +1598,9 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
 					MemoryBytes: 8e8,
+					Generic: []*api.GenericResource{
+						genericresource.NewDiscrete("apple", 3),
+					},
 				},
 			},
 		},
@@ -1624,6 +1684,9 @@ func TestSchedulerPreexistingDeadTask(t *testing.T) {
 			Resources: &api.Resources{
 				NanoCPUs:    1e9,
 				MemoryBytes: 1e9,
+				Generic: []*api.GenericResource{
+					genericresource.NewDiscrete("apple", 1),
+				},
 			},
 		},
 	}
@@ -1636,6 +1699,9 @@ func TestSchedulerPreexistingDeadTask(t *testing.T) {
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
 					MemoryBytes: 8e8,
+					Generic: []*api.GenericResource{
+						genericresource.NewDiscrete("apple", 1),
+					},
 				},
 			},
 		},

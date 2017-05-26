@@ -14,15 +14,17 @@ import (
 )
 
 type executor struct {
-	client  engineapi.APIClient
-	secrets exec.SecretsManager
+	client           engineapi.APIClient
+	secrets          exec.SecretsManager
+	genericResources []*api.GenericResource
 }
 
 // NewExecutor returns an executor from the docker client.
-func NewExecutor(client engineapi.APIClient) exec.Executor {
+func NewExecutor(client engineapi.APIClient, genericResources []*api.GenericResource) exec.Executor {
 	return &executor{
-		client:  client,
-		secrets: secrets.NewManager(),
+		client:           client,
+		secrets:          secrets.NewManager(),
+		genericResources: genericResources,
 	}
 }
 
@@ -105,6 +107,7 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 		Resources: &api.Resources{
 			NanoCPUs:    int64(info.NCPU) * 1e9,
 			MemoryBytes: info.MemTotal,
+			Generic:     e.genericResources,
 		},
 	}
 

@@ -10,6 +10,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
 	"github.com/docker/swarmkit/cmd/swarmctl/task"
 	"github.com/dustin/go-humanize"
@@ -69,6 +70,16 @@ func printServiceSummary(service *api.Service, running int) {
 			if r.MemoryBytes != 0 {
 				fmt.Fprintf(w, "      Memory\t: %s\n", humanize.IBytes(uint64(r.MemoryBytes)))
 			}
+			if len(r.Generic) != 0 {
+				fmt.Fprintln(w, "      Generic Resources\t")
+			}
+
+			for _, r := range r.Generic {
+				k := genericresource.Kind(r)
+				v := genericresource.Value(r)
+				fmt.Fprintf(w, "        %s\t: %s\n", k, v)
+			}
+
 		}
 		if res.Reservations != nil {
 			fmt.Fprintln(w, "    Reservations:\t")
