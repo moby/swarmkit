@@ -1,11 +1,11 @@
 package main
 
 import (
-	_ "expvar"
+	"expvar"
 	"fmt"
 	"net"
 	"net/http"
-	_ "net/http/pprof"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 
@@ -177,6 +177,28 @@ var (
 			if debugAddr != "" {
 				go func() {
 					// setup listening to give access to pprof, expvar, etc.
+					http.HandleFunc("/vars", func(w http.ResponseWriter, r *http.Request) {
+						first := true
+						w.Header().Set("Content-Type", "application/json; charset=utf-8")
+						fmt.Fprintf(w, "{\n")
+						expvar.Do(func(kv expvar.KeyValue) {
+							if !first {
+								fmt.Fprintf(w, ",\n")
+							}
+							first = false
+							fmt.Fprintf(w, "%q: %s", kv.Key, kv.Value)
+						})
+						fmt.Fprintf(w, "\n}\n")
+					})
+					http.HandleFunc("/pprof/", pprof.Index)
+					http.HandleFunc("/pprof/cmdline", pprof.Cmdline)
+					http.HandleFunc("/pprof/profile", pprof.Profile)
+					http.HandleFunc("/pprof/symbol", pprof.Symbol)
+					http.HandleFunc("/pprof/trace", pprof.Trace)
+					http.HandleFunc("/pprof/block", pprof.Handler("block").ServeHTTP)
+					http.HandleFunc("/pprof/heap", pprof.Handler("heap").ServeHTTP)
+					http.HandleFunc("/pprof/goroutine", pprof.Handler("goroutine").ServeHTTP)
+					http.HandleFunc("/pprof/threadcreate", pprof.Handler("threadcreate").ServeHTTP)
 					if err := http.ListenAndServe(debugAddr, nil); err != nil {
 						panic(err)
 					}
