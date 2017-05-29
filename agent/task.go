@@ -219,6 +219,17 @@ func (tm *taskManager) run(ctx context.Context) {
 			}
 		case <-shutdown:
 			if cancel != nil {
+				// Wait for operation to finish if the task
+				// is in preparing state. This avoid the race
+				// between Prepare and Remove operations,
+				// which could cause orphan containers.
+				if tm.task.Status.State == api.TaskStatePreparing {
+					select {
+					case <-errs:
+					case <-statusq:
+					}
+				}
+
 				// cancel outstanding operation.
 				cancel()
 
