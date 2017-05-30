@@ -44,7 +44,7 @@ type Config struct {
 	// NodeTLSInfo contains the starting node TLS info to bootstrap into the agent
 	NodeTLSInfo *api.NodeTLSInfo
 
-	// SessionTracker, if provided, will have its OnSessionClosed and OnSessionError methods called
+	// SessionTracker, if provided, will have its SessionClosed and SessionError methods called
 	// when sessions close and error.
 	SessionTracker SessionTracker
 }

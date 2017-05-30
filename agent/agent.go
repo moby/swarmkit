@@ -207,9 +207,7 @@ func (a *Agent) run(ctx context.Context) {
 		subscriptions = map[string]context.CancelFunc{}
 	)
 	defer func() {
-		if session != nil {
-			session.close()
-		}
+		session.close()
 	}()
 
 	if err := a.worker.Init(ctx); err != nil {
@@ -385,8 +383,6 @@ func (a *Agent) run(ctx context.Context) {
 			if a.err == nil {
 				a.err = ctx.Err()
 			}
-			session.close()
-
 			return
 		}
 	}
