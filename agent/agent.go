@@ -206,6 +206,11 @@ func (a *Agent) run(ctx context.Context) {
 		leaving       = a.leaving
 		subscriptions = map[string]context.CancelFunc{}
 	)
+	defer func() {
+		if session != nil {
+			session.close()
+		}
+	}()
 
 	if err := a.worker.Init(ctx); err != nil {
 		log.G(ctx).WithError(err).Error("worker initialization failed")
@@ -314,6 +319,9 @@ func (a *Agent) run(ctx context.Context) {
 			if ready != nil {
 				close(ready)
 			}
+			if a.config.SessionTracker != nil {
+				a.config.SessionTracker.SessionEstablished()
+			}
 			ready = nil
 			registered = nil // we only care about this once per session
 			backoff = 0      // reset backoff
@@ -323,6 +331,10 @@ func (a *Agent) run(ctx context.Context) {
 			// but no error was sent. This must be the only place
 			// session.close is called in response to errors, for this to work.
 			if err != nil {
+				if a.config.SessionTracker != nil {
+					a.config.SessionTracker.SessionError(err)
+				}
+
 				log.G(ctx).WithError(err).Error("agent: session failed")
 				backoff = initialSessionFailureBackoff + 2*backoff
 				if backoff > maxSessionFailureBackoff {
@@ -337,6 +349,14 @@ func (a *Agent) run(ctx context.Context) {
 			// if we're here before <-registered, do nothing for that event
 			registered = nil
 		case <-session.closed:
+			if a.config.SessionTracker != nil {
+				if err := a.config.SessionTracker.SessionClosed(); err != nil {
+					log.G(ctx).WithError(err).Error("agent: exiting")
+					a.err = err
+					return
+				}
+			}
+
 			log.G(ctx).Debugf("agent: rebuild session")
 
 			// select a session registration delay from backoff range.
