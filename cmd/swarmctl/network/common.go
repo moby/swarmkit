@@ -32,6 +32,20 @@ func GetNetwork(ctx context.Context, c api.ControlClient, input string) (*api.Ne
 		}
 
 		if l := len(rl.Networks); l > 1 {
+			var match *api.Network
+			// Find and return the unique match or fail out
+			for _, n := range rl.Networks {
+				if n.Spec.Annotations.Name == input {
+					if match != nil {
+						match = nil
+						break
+					}
+					match = n
+				}
+			}
+			if match != nil {
+				return match, nil
+			}
 			return nil, fmt.Errorf("network %s is ambiguous (%d matches found)", input, l)
 		}
 

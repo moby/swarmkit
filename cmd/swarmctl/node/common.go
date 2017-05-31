@@ -153,6 +153,24 @@ func getNode(ctx context.Context, c api.ControlClient, input string) (*api.Node,
 		}
 
 		if l := len(rl.Nodes); l > 1 {
+			var match *api.Node
+			// Find and return the unique match or fail out
+			for _, n := range rl.Nodes {
+				name := ""
+				if n.Description != nil {
+					name = n.Description.Hostname
+				}
+				if name == input {
+					if match != nil {
+						match = nil
+						break
+					}
+					match = n
+				}
+			}
+			if match != nil {
+				return match, nil
+			}
 			return nil, fmt.Errorf("node %s is ambiguous (%d matches found)", input, l)
 		}
 

@@ -29,6 +29,20 @@ func getService(ctx context.Context, c api.ControlClient, input string) (*api.Se
 		}
 
 		if l := len(rl.Services); l > 1 {
+			var match *api.Service
+			// Find and return the unique match or fail out
+			for _, s := range rl.Services {
+				if s.Spec.Annotations.Name == input {
+					if match != nil {
+						match = nil
+						break
+					}
+					match = s
+				}
+			}
+			if match != nil {
+				return match, nil
+			}
 			return nil, fmt.Errorf("service %s is ambiguous (%d matches found)", input, l)
 		}
 
