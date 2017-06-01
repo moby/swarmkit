@@ -1,7 +1,6 @@
 package ca
 
 import (
-	cryptorand "crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
 	"io/ioutil"
@@ -13,6 +12,7 @@ import (
 
 	"crypto/tls"
 
+	"github.com/docker/swarmkit/ca/keyutils"
 	"github.com/docker/swarmkit/ioutils"
 	"github.com/pkg/errors"
 )
@@ -313,7 +313,7 @@ func (k *KeyReadWriter) readKey() (*pem.Block, error) {
 		return nil, err
 	}
 
-	if !x509.IsEncryptedPEMBlock(keyBlock) {
+	if !keyutils.IsEncryptedPEMBlock(keyBlock) {
 		return keyBlock, nil
 	}
 
@@ -323,10 +323,16 @@ func (k *KeyReadWriter) readKey() (*pem.Block, error) {
 		return nil, ErrInvalidKEK{Wrapped: x509.IncorrectPasswordError}
 	}
 
-	derBytes, err := x509.DecryptPEMBlock(keyBlock, k.kekData.KEK)
+	derBytes, err := keyutils.DecryptPEMBlock(keyBlock, k.kekData.KEK)
 	if err != nil {
 		return nil, ErrInvalidKEK{Wrapped: err}
 	}
+
+	// change header only if its pkcs8
+	if keyBlock.Type == "ENCRYPTED PRIVATE KEY" {
+		keyBlock.Type = "PRIVATE KEY"
+	}
+
 	// remove encryption PEM headers
 	headers := make(map[string]string)
 	mergePEMHeaders(headers, keyBlock.Headers)
@@ -342,15 +348,11 @@ func (k *KeyReadWriter) readKey() (*pem.Block, error) {
 // writing it to disk.  If the kek is nil, writes it to disk unencrypted.
 func (k *KeyReadWriter) writeKey(keyBlock *pem.Block, kekData KEKData, pkh PEMKeyHeaders) error {
 	if kekData.KEK != nil {
-		encryptedPEMBlock, err := x509.EncryptPEMBlock(cryptorand.Reader,
-			keyBlock.Type,
-			keyBlock.Bytes,
-			kekData.KEK,
-			x509.PEMCipherAES256)
+		encryptedPEMBlock, err := keyutils.EncryptPEMBlock(keyBlock.Bytes, kekData.KEK)
 		if err != nil {
 			return err
 		}
-		if encryptedPEMBlock.Headers == nil {
+		if !keyutils.IsEncryptedPEMBlock(encryptedPEMBlock) {
 			return errors.New("unable to encrypt key - invalid PEM file produced")
 		}
 		keyBlock = encryptedPEMBlock

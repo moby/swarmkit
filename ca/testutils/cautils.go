@@ -17,6 +17,7 @@ import (
 	"github.com/cloudflare/cfssl/initca"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/ca/pkcs8"
 	"github.com/docker/swarmkit/connectionbroker"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/ioutils"
@@ -295,6 +296,11 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 		return nil, nil, err
 	}
 
+	key, err = pkcs8.ConvertECPrivateKeyPEM(key)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// Obtain a signed Certificate
 	nodeID := identity.NewID()
 
@@ -386,6 +392,15 @@ func CreateRootCertAndKey(rootCN string) ([]byte, []byte, error) {
 
 	// Generate the CA and get the certificate and private key
 	cert, _, key, err := initca.New(&req)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	key, err = pkcs8.ConvertECPrivateKeyPEM(key)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	return cert, key, err
 }
 
