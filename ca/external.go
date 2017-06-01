@@ -23,6 +23,9 @@ import (
 	"golang.org/x/net/context/ctxhttp"
 )
 
+// ExternalCrossSignProfile is the profile that we will be sending cross-signing CSR sign requests with
+const ExternalCrossSignProfile = "CA"
+
 // ErrNoExternalCAURLs is an error used it indicate that an ExternalCA is
 // configured with no URLs to which it can proxy certificate signing requests.
 var ErrNoExternalCAURLs = errors.New("no external CA URLs")
@@ -157,6 +160,7 @@ func (eca *ExternalCA) CrossSignRootCA(ctx context.Context, rca RootCA) ([]byte,
 			CN:    rootCert.Subject.CommonName,
 			Names: cfCSRObj.Names,
 		},
+		Profile: ExternalCrossSignProfile,
 	}
 	// cfssl actually ignores non subject alt name extensions in the CSR, so we have to add the CA extension in the signing
 	// request as well
