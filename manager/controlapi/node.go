@@ -213,6 +213,10 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 			return grpc.Errorf(codes.NotFound, "node %s not found", request.NodeID)
 		}
 
+		if node.Certificate.Role != node.Spec.Role {
+			return grpc.Errorf(codes.FailedPrecondition, "demote/promote in progress")
+		}
+
 		// Demotion sanity checks.
 		if node.Spec.DesiredRole == api.NodeRoleManager && request.Spec.DesiredRole == api.NodeRoleWorker {
 			// Check for manager entries in Store.
