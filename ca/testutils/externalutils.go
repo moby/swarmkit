@@ -2,7 +2,6 @@ package testutils
 
 import (
 	"crypto/tls"
-	"encoding/asn1"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -13,17 +12,24 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"encoding/hex"
-
 	"github.com/cloudflare/cfssl/api"
-	"github.com/cloudflare/cfssl/csr"
+	"github.com/cloudflare/cfssl/config"
 	cfsslerrors "github.com/cloudflare/cfssl/errors"
-	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/signer"
-	"github.com/cloudflare/cfssl/signer/local"
 	"github.com/docker/swarmkit/ca"
 	"github.com/pkg/errors"
 )
+
+var crossSignPolicy = config.SigningProfile{
+	Usage: []string{"cert sign", "crl sign"},
+	// we don't want the intermediate to last for very long
+	Expiry:       ca.DefaultNodeCertExpiration,
+	Backdate:     ca.CertBackdate,
+	CAConstraint: config.CAConstraint{IsCA: true},
+	ExtensionWhitelist: map[string]bool{
+		ca.BasicConstraintsOID.String(): true,
+	},
+}
 
 // NewExternalSigningServer creates and runs a new ExternalSigningServer which
 // uses the given rootCA to sign node certificates. A server key and cert are
@@ -40,6 +46,8 @@ func NewExternalSigningServer(rootCA ca.RootCA, basedir string) (*ExternalSignin
 	if err != nil {
 		return nil, err
 	}
+	// create our own copy of the local signer so we don't mutate the rootCA's signer as we enable and disable CA signing
+	copiedSigner := *s
 
 	// Create TLS credentials for the external CA server which we will run.
 	serverPaths := ca.CertPaths{
@@ -77,9 +85,10 @@ func NewExternalSigningServer(rootCA ca.RootCA, basedir string) (*ExternalSignin
 
 	mux := http.NewServeMux()
 	handler := &signHandler{
-		numIssued:  &ess.NumIssued,
-		leafSigner: s,
-		flaky:      &ess.flaky,
+		numIssued:   &ess.NumIssued,
+		localSigner: &copiedSigner,
+		origPolicy:  copiedSigner.Policy(),
+		flaky:       &ess.flaky,
 	}
 	mux.Handle(signURL.Path, handler)
 	ess.handler = handler
@@ -123,29 +132,13 @@ func (ess *ExternalSigningServer) EnableCASigning() error {
 	ess.handler.mu.Lock()
 	defer ess.handler.mu.Unlock()
 
-	rootCert, err := helpers.ParseCertificatePEM(ess.handler.leafSigner.Cert)
-	if err != nil {
-		return errors.Wrap(err, "could not parse old CA certificate")
+	copied := *ess.handler.origPolicy
+	if copied.Profiles == nil {
+		copied.Profiles = make(map[string]*config.SigningProfile)
 	}
-	rootSigner, err := helpers.ParsePrivateKeyPEM(ess.handler.leafSigner.Key)
-	if err != nil {
-		return errors.Wrap(err, "could not parse old CA key")
-	}
+	copied.Profiles[ca.ExternalCrossSignProfile] = &crossSignPolicy
 
-	// without the whitelist, we can't accept signing requests with CA extensions
-	policy := ca.SigningPolicy(ca.DefaultNodeCertExpiration)
-	if policy.Default.ExtensionWhitelist == nil {
-		policy.Default.ExtensionWhitelist = make(map[string]bool)
-	}
-	policy.Default.ExtensionWhitelist[ca.BasicConstraintsOID.String()] = true
-	policy.Default.Usage = append(policy.Default.Usage, "cert sign")
-
-	caSigner, err := local.NewSigner(rootSigner, rootCert, signer.DefaultSigAlgo(rootSigner), policy)
-	if err != nil {
-		return errors.Wrap(err, "could not create CA signer")
-	}
-
-	ess.handler.caSigner = caSigner
+	ess.handler.localSigner.SetPolicy(&copied)
 	return nil
 }
 
@@ -153,15 +146,15 @@ func (ess *ExternalSigningServer) EnableCASigning() error {
 func (ess *ExternalSigningServer) DisableCASigning() {
 	ess.handler.mu.Lock()
 	defer ess.handler.mu.Unlock()
-	ess.handler.caSigner = nil
+	ess.handler.localSigner.SetPolicy(ess.handler.origPolicy)
 }
 
 type signHandler struct {
-	mu         sync.Mutex
-	numIssued  *uint64
-	flaky      *uint32
-	leafSigner *ca.LocalSigner
-	caSigner   signer.Signer
+	mu          sync.Mutex
+	numIssued   *uint64
+	flaky       *uint32
+	localSigner *ca.LocalSigner
+	origPolicy  *config.Signing
 }
 
 func (h *signHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -214,41 +207,7 @@ func (h *signHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var (
-		isCA    bool
-		certPEM []byte
-		err     error
-	)
-	// is this a CA CSR?  If so, do we support CA signing?
-	// based on cfssl/signer/signer.go's ParseCertificateRequest to tell from the extensions if it's a CA
-	for _, ext := range signReq.Extensions {
-		// Check the CSR for the X.509 BasicConstraints (RFC 5280, 4.2.1.9)
-		// extension and append to template if necessary
-		if asn1.ObjectIdentifier(ext.ID).Equal(ca.BasicConstraintsOID) {
-			rawVal, err := hex.DecodeString(ext.Value)
-			if err != nil {
-				continue
-			}
-			var constraints csr.BasicConstraints
-			rest, err := asn1.Unmarshal(rawVal, &constraints)
-			if err != nil || len(rest) != 0 {
-				// technically failure conditions, but these will actually be caught when signing the request
-				continue
-			}
-
-			if isCA = constraints.IsCA; isCA {
-				break
-			}
-		}
-	}
-
-	h.mu.Lock()
-	if isCA && h.caSigner != nil {
-		// Sign the requested CA certificate
-		certPEM, err = h.caSigner.Sign(signReq)
-		h.mu.Unlock()
-	} else {
-		h.mu.Unlock()
+	if signReq.Profile != ca.ExternalCrossSignProfile {
 		// The client's Org should match the Org in the sign request subject.
 		if len(reqSub.Name().Organization) == 0 || reqSub.Name().Organization[0] != clientOrg {
 			cfsslErr := cfsslerrors.New(cfsslerrors.CSRError, cfsslerrors.BadRequest)
@@ -256,10 +215,10 @@ func (h *signHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(errResponse)
 			return
 		}
-
-		// Sign the requested leaf certificate.
-		certPEM, err = h.leafSigner.Sign(signReq)
 	}
+
+	// Sign the requested certificate.
+	certPEM, err := h.localSigner.Sign(signReq)
 	if err != nil {
 		cfsslErr := cfsslerrors.New(cfsslerrors.APIClientError, cfsslerrors.ServerRequestFailed)
 		errResponse := api.NewErrorResponse(fmt.Sprintf("unable to sign requested certificate: %s", err), cfsslErr.ErrorCode)
