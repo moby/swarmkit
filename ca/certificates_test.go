@@ -383,15 +383,20 @@ func TestRequestAndSaveNewCertificatesWithIntermediates(t *testing.T) {
 	t.Parallel()
 
 	// use a RootCA with an intermediate
-	rca, err := ca.NewRootCA(cautils.ECDSACertChain[2], cautils.ECDSACertChain[1], cautils.ECDSACertChainKeys[1],
-		ca.DefaultNodeCertExpiration, append([]byte("   "), cautils.ECDSACertChain[1]...))
-	require.NoError(t, err)
-
+	apiRootCA := api.RootCA{
+		CACert: cautils.ECDSACertChain[2],
+		CAKey:  cautils.ECDSACertChainKeys[2],
+		RootRotation: &api.RootRotation{
+			CACert:            cautils.ECDSACertChain[1],
+			CAKey:             cautils.ECDSACertChainKeys[1],
+			CrossSignedCACert: concat([]byte("   "), cautils.ECDSACertChain[1]),
+		},
+	}
 	tempdir, err := ioutil.TempDir("", "test-request-and-save-new-certificates")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
-	tc := cautils.NewTestCAFromRootCA(t, tempdir, rca, nil)
+	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, apiRootCA, nil)
 	issuerInfo, parsedCerts := testRequestAndSaveNewCertificates(t, tc)
 	require.Len(t, parsedCerts, 2)
 
@@ -1245,6 +1250,10 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 
 	newRoot, err := ca.NewRootCA(fauxRootCert, fauxRootCert, cautils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
+	apiNewRoot := api.RootCA{
+		CACert: fauxRootCert,
+		CAKey:  cautils.ECDSACertChainKeys[1],
+	}
 
 	checkValidateAgainstAllRoots := func(cert []byte) {
 		for i, root := range []ca.RootCA{signWithIntermediate, oldRoot, newRoot} {
@@ -1272,7 +1281,7 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 	}
 
 	// create an external signing server that generates leaf certs with the new root (but does not append the intermediate)
-	tc := cautils.NewTestCAFromRootCA(t, tempdir, newRoot, nil)
+	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, apiNewRoot, nil)
 	defer tc.Stop()
 
 	// we need creds that trust both the old and new root in order to connect to the test CA, and we want this root CA to
