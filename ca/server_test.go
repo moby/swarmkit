@@ -538,11 +538,18 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 
 		if testCase.externalCertSignedBy != nil {
 			require.NoError(t, err)
-			parsed, err := helpers.ParseCertificatePEM(signedCert)
+			parsed, err := helpers.ParseCertificatesPEM(signedCert)
 			require.NoError(t, err)
 			rootPool := x509.NewCertPool()
 			rootPool.AppendCertsFromPEM(testCase.externalCertSignedBy)
-			_, err = parsed.Verify(x509.VerifyOptions{Roots: rootPool})
+			var intermediatePool *x509.CertPool
+			if len(parsed) > 1 {
+				intermediatePool = x509.NewCertPool()
+				for _, cert := range parsed[1:] {
+					intermediatePool.AddCert(cert)
+				}
+			}
+			_, err = parsed[0].Verify(x509.VerifyOptions{Roots: rootPool, Intermediates: intermediatePool})
 			require.NoError(t, err)
 		} else {
 			require.Equal(t, ca.ErrNoExternalCAURLs, err)
