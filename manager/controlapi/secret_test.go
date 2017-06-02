@@ -1,6 +1,7 @@
 package controlapi
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -126,6 +127,39 @@ func TestCreateSecret(t *testing.T) {
 	_, err = ts.Client.CreateSecret(context.Background(), &validSpecRequest)
 	assert.Error(t, err)
 	assert.Equal(t, codes.AlreadyExists, grpc.Code(err), grpc.ErrorDesc(err))
+}
+
+func TestCreateSecretWithInvalidSecretData(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+
+	// ---- creating a secret with nil data fails ----
+	_, err := ts.Client.CreateSecret(context.Background(), &api.CreateSecretRequest{
+		Spec: createSecretSpec("", nil, nil),
+	})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+
+	// ---- creating a secret with zero length data fails ----
+	_, err = ts.Client.CreateSecret(context.Background(), &api.CreateSecretRequest{
+		Spec: createSecretSpec("", []byte{}, nil),
+	})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+
+	// ---- creating a secret with MaxSecretSize length data fails ----
+	_, err = ts.Client.CreateSecret(context.Background(), &api.CreateSecretRequest{
+		Spec: createSecretSpec("", bytes.Repeat([]byte{byte('A')}, MaxSecretSize), nil),
+	})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+
+	// ---- creating a secret with white space only bytes data fails ----
+	_, err = ts.Client.CreateSecret(context.Background(), &api.CreateSecretRequest{
+		Spec: createSecretSpec("", []byte{}, nil),
+	})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
 }
 
 func TestGetSecret(t *testing.T) {

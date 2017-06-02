@@ -249,5 +249,10 @@ func validateSecretSpec(spec *api.SecretSpec) error {
 	if len(spec.Data) >= MaxSecretSize || len(spec.Data) < 1 {
 		return grpc.Errorf(codes.InvalidArgument, "secret data must be larger than 0 and less than %d bytes", MaxSecretSize)
 	}
+
+	if len(strings.TrimSpace(string(spec.Data))) == 0 {
+		return grpc.Errorf(codes.InvalidArgument, "secret data must contain non white space bytes")
+	}
+
 	return nil
 }
