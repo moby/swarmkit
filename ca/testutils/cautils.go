@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -103,17 +102,21 @@ var External bool
 func NewTestCA(t *testing.T, krwGenerators ...func(ca.CertPaths) *ca.KeyReadWriter) *TestCA {
 	tempdir, err := ioutil.TempDir("", "swarm-ca-test-")
 	require.NoError(t, err)
-	paths := ca.NewConfigPaths(tempdir)
 
-	rootCA, err := createAndWriteRootCA("swarm-test-CA", paths.RootCA, ca.DefaultNodeCertExpiration)
+	cert, key, err := CreateRootCertAndKey("swarm-test-CA")
 	require.NoError(t, err)
+	apiRootCA := api.RootCA{
+		CACert: cert,
+		CAKey:  key,
+	}
 
-	return NewTestCAFromRootCA(t, tempdir, rootCA, krwGenerators)
+	return NewTestCAFromAPIRootCA(t, tempdir, apiRootCA, krwGenerators)
 }
 
-// NewTestCAFromRootCA is a helper method that creates a TestCA and a bunch of default
-// connections and security configs, given a temp directory and a RootCA to use for signing.
-func NewTestCAFromRootCA(t *testing.T, tempBaseDir string, rootCA ca.RootCA, krwGenerators []func(ca.CertPaths) *ca.KeyReadWriter) *TestCA {
+// NewTestCAFromAPIRootCA is a helper method that creates a TestCA and a bunch of default
+// connections and security configs, given a temp directory and an api.RootCA to use for creating
+// a cluster and for signing.
+func NewTestCAFromAPIRootCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenerators []func(ca.CertPaths) *ca.KeyReadWriter) *TestCA {
 	s := store.NewMemoryStore(&stateutils.MockProposer{})
 
 	paths := ca.NewConfigPaths(tempBaseDir)
@@ -123,10 +126,24 @@ func NewTestCAFromRootCA(t *testing.T, tempBaseDir string, rootCA ca.RootCA, krw
 		externalSigningServer *ExternalSigningServer
 		externalCAs           []*api.ExternalCA
 		err                   error
+		rootCA                ca.RootCA
 	)
 
+	if apiRootCA.RootRotation != nil {
+		rootCA, err = ca.NewRootCA(
+			apiRootCA.CACert, apiRootCA.RootRotation.CACert, apiRootCA.RootRotation.CAKey, ca.DefaultNodeCertExpiration, apiRootCA.RootRotation.CrossSignedCACert)
+	} else {
+		rootCA, err = ca.NewRootCA(
+			apiRootCA.CACert, apiRootCA.CACert, apiRootCA.CAKey, ca.DefaultNodeCertExpiration, nil)
+
+	}
+	require.NoError(t, err)
+
+	// Write the root certificate to disk, using decent permissions
+	require.NoError(t, ioutils.AtomicWriteFile(paths.RootCA.Cert, apiRootCA.CACert, 0644))
+
 	if External {
-		// Start the CA API server.
+		// Start the CA API server - ensure that the external server doesn't have any intermediates
 		externalSigningServer, err = NewExternalSigningServer(rootCA, tempBaseDir)
 		assert.NoError(t, err)
 		externalCAs = []*api.ExternalCA{
@@ -175,7 +192,7 @@ func NewTestCAFromRootCA(t *testing.T, tempBaseDir string, rootCA ca.RootCA, krw
 	serverOpts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(serverOpts...)
 
-	clusterObj := createClusterObject(t, s, organization, &rootCA, externalCAs...)
+	clusterObj := createClusterObject(t, s, organization, apiRootCA, &rootCA, externalCAs...)
 
 	caServer := ca.NewServer(s, managerConfig, paths.RootCA)
 	caServer.SetReconciliationRetryInterval(50 * time.Millisecond)
@@ -338,7 +355,7 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 	})
 }
 
-func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, rootCA *ca.RootCA, externalCAs ...*api.ExternalCA) *api.Cluster {
+func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, apiRootCA api.RootCA, caRootCA *ca.RootCA, externalCAs ...*api.ExternalCA) *api.Cluster {
 	cluster := &api.Cluster{
 		ID: clusterID,
 		Spec: api.ClusterSpec{
@@ -349,16 +366,13 @@ func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, r
 				ExternalCAs: externalCAs,
 			},
 		},
-		RootCA: api.RootCA{
-			CACert: rootCA.Certs,
-			JoinTokens: api.JoinTokens{
-				Worker:  ca.GenerateJoinToken(rootCA),
-				Manager: ca.GenerateJoinToken(rootCA),
-			},
-		},
+		RootCA: apiRootCA,
 	}
-	if s, err := rootCA.Signer(); err == nil && !External {
-		cluster.RootCA.CAKey = s.Key
+	if cluster.RootCA.JoinTokens.Worker == "" {
+		cluster.RootCA.JoinTokens.Worker = ca.GenerateJoinToken(caRootCA)
+	}
+	if cluster.RootCA.JoinTokens.Manager == "" {
+		cluster.RootCA.JoinTokens.Manager = ca.GenerateJoinToken(caRootCA)
 	}
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, cluster)
@@ -379,35 +393,6 @@ func CreateRootCertAndKey(rootCN string) ([]byte, []byte, error) {
 	// Generate the CA and get the certificate and private key
 	cert, _, key, err := initca.New(&req)
 	return cert, key, err
-}
-
-// createAndWriteRootCA creates a Certificate authority for a new Swarm Cluster.
-// We're copying ca.CreateRootCA, so we can have smaller key-sizes for tests
-func createAndWriteRootCA(rootCN string, paths ca.CertPaths, expiry time.Duration) (ca.RootCA, error) {
-	cert, key, err := CreateRootCertAndKey(rootCN)
-	if err != nil {
-		return ca.RootCA{}, err
-	}
-
-	rootCA, err := ca.NewRootCA(cert, cert, key, ca.DefaultNodeCertExpiration, nil)
-	if err != nil {
-		return ca.RootCA{}, err
-	}
-
-	// Ensure directory exists
-	err = os.MkdirAll(filepath.Dir(paths.Cert), 0755)
-	if err != nil {
-		return ca.RootCA{}, err
-	}
-
-	// Write the Private Key and Certificate to disk, using decent permissions
-	if err := ioutils.AtomicWriteFile(paths.Cert, cert, 0644); err != nil {
-		return ca.RootCA{}, err
-	}
-	if err := ioutils.AtomicWriteFile(paths.Key, key, 0600); err != nil {
-		return ca.RootCA{}, err
-	}
-	return rootCA, nil
 }
 
 // ReDateCert takes an existing cert and changes the not before and not after date, to make it easier
