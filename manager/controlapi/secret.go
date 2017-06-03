@@ -196,7 +196,7 @@ func (s *Server) RemoveSecret(ctx context.Context, request *api.RemoveSecretRequ
 		// Check if the secret exists
 		secret := store.GetSecret(tx, request.SecretID)
 		if secret == nil {
-			return grpc.Errorf(codes.NotFound, "could not find secret %s", request.SecretID)
+			return grpc.Errorf(codes.NotFound, "secret %s not found", request.SecretID)
 		}
 
 		// Check if any services currently reference this secret, return error if so
