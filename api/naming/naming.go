@@ -28,8 +28,8 @@ func Task(t *api.Task) string {
 		slot = t.NodeID
 	}
 
-	// fallback to service.instance.id.
-	return fmt.Sprintf("%s.%s.%s", t.ServiceAnnotations.Name, slot, t.ID)
+	// fallback to service.instance
+	return fmt.Sprintf("%s.%s", t.ServiceAnnotations.Name, slot)
 }
 
 // TODO(stevvooe): Consolidate "Hostname" style validation here.
