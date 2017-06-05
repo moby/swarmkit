@@ -133,7 +133,10 @@ func TestCreateSecurityConfigNoCerts(t *testing.T) {
 		assert.NotNil(t, nodeConfig)
 		assert.NotNil(t, nodeConfig.ClientTLSCreds)
 		assert.NotNil(t, nodeConfig.ServerTLSCreds)
-		assert.Equal(t, tc.RootCA, *nodeConfig.RootCA())
+		// tc.RootCA can maybe sign, and the node root CA can also maybe sign, so we want to just compare the root
+		// certs and intermediates
+		assert.Equal(t, tc.RootCA.Certs, nodeConfig.RootCA().Certs)
+		assert.Equal(t, tc.RootCA.Intermediates, nodeConfig.RootCA().Intermediates)
 
 		issuerInfo := nodeConfig.IssuerInfo()
 		assert.NotNil(t, issuerInfo)
@@ -299,6 +302,8 @@ func TestLoadSecurityConfigIntermediates(t *testing.T) {
 	conn.Close()
 }
 
+// When the root CA is updated on the security config, the root pools are updated
+// and the external CA's rootCA is also updated.
 func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
@@ -308,6 +313,7 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	// create the "original" security config, and we'll update it to trust the test server's
 	cert, key, err := testutils.CreateRootCertAndKey("root1")
 	require.NoError(t, err)
+
 	rootCA, err := ca.NewRootCA(cert, cert, key, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
@@ -370,11 +376,17 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 		require.Contains(t, err.Error(), x509.UnknownAuthorityError{}.Error())
 	}
 
-	// update the root CA on the "original"" security config to support both the old root
-	// and the "new root" (the testing CA root)
+	// update the root CA on the "original security config to support both the old root
+	// and the "new root" (the testing CA root).  Also make sure this root CA has an
+	// intermediate; we won't use it for anything, just make sure that newly generated TLS
+	// certs have the intermediate appended.
+	someOtherRootCA, err := ca.CreateRootCA("someOtherRootCA")
+	require.NoError(t, err)
+	intermediate, err := someOtherRootCA.CrossSignCACertificate(cert)
+	require.NoError(t, err)
 	rSigner, err := rootCA.Signer()
 	require.NoError(t, err)
-	updatedRootCA, err := ca.NewRootCA(append(rootCA.Certs, tc.RootCA.Certs...), rSigner.Cert, rSigner.Key, ca.DefaultNodeCertExpiration, nil)
+	updatedRootCA, err := ca.NewRootCA(concat(rootCA.Certs, tc.RootCA.Certs, someOtherRootCA.Certs), rSigner.Cert, rSigner.Key, ca.DefaultNodeCertExpiration, intermediate)
 	require.NoError(t, err)
 	err = secConfig.UpdateRootCA(&updatedRootCA, updatedRootCA.Pool)
 	require.NoError(t, err)
@@ -387,15 +399,31 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 
 	dialOpts = append(dialOptsBase, grpc.WithTransportCredentials(secConfig.ClientTLSCreds))
 	conn, err = grpc.Dial(tc.Addr, dialOpts...)
+
 	require.NoError(t, err)
 	conn.Close()
 
-	// we can also now connect to the test CA's external signing server
+	// make sure any generated certs after updating contain the intermediate
+	var generatedCert []byte
 	if testutils.External {
+		// we can also now connect to the test CA's external signing server
 		secConfig.ExternalCA().UpdateURLs(externalServer.URL)
-		_, err := secConfig.ExternalCA().Sign(context.Background(), req)
+		generatedCert, err = secConfig.ExternalCA().Sign(context.Background(), req)
+		require.NoError(t, err)
+	} else {
+		krw := ca.NewKeyReadWriter(configPaths.Node, nil, nil)
+		_, _, err := secConfig.RootCA().IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
+		require.NoError(t, err)
+		generatedCert, _, err = krw.Read()
 		require.NoError(t, err)
 	}
+
+	parsedCerts, err := helpers.ParseCertificatesPEM(generatedCert)
+	require.NoError(t, err)
+	require.Len(t, parsedCerts, 2)
+	parsedIntermediate, err := helpers.ParseCertificatePEM(intermediate)
+	require.NoError(t, err)
+	require.Equal(t, parsedIntermediate, parsedCerts[1])
 }
 
 func TestSecurityConfigSetWatch(t *testing.T) {

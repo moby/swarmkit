@@ -82,13 +82,19 @@ func (eca *ExternalCA) UpdateTLSConfig(tlsConfig *tls.Config) {
 	}
 }
 
-// UpdateURLs updates the list of CSR API endpoints by setting it to the given
-// urls.
+// UpdateURLs updates the list of CSR API endpoints by setting it to the given urls.
 func (eca *ExternalCA) UpdateURLs(urls ...string) {
 	eca.mu.Lock()
 	defer eca.mu.Unlock()
 
 	eca.urls = urls
+}
+
+// UpdateRootCA changes the root CA used to append intermediates
+func (eca *ExternalCA) UpdateRootCA(rca *RootCA) {
+	eca.mu.Lock()
+	eca.rootCA = rca
+	eca.mu.Unlock()
 }
 
 // Sign signs a new certificate by proxying the given certificate signing
@@ -99,6 +105,7 @@ func (eca *ExternalCA) Sign(ctx context.Context, req signer.SignRequest) (cert [
 	eca.mu.Lock()
 	urls := eca.urls
 	client := eca.client
+	intermediates := eca.rootCA.Intermediates
 	eca.mu.Unlock()
 
 	if len(urls) == 0 {
@@ -117,7 +124,7 @@ func (eca *ExternalCA) Sign(ctx context.Context, req signer.SignRequest) (cert [
 		cert, err = makeExternalSignRequest(requestCtx, client, url, csrJSON)
 		cancel()
 		if err == nil {
-			return append(cert, eca.rootCA.Intermediates...), err
+			return append(cert, intermediates...), err
 		}
 		logrus.Debugf("unable to proxy certificate signing request to %s: %s", url, err)
 	}
