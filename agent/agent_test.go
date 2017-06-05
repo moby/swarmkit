@@ -106,6 +106,7 @@ func TestHandleSessionMessageNetworkManagerChanges(t *testing.T) {
 	defer close(nodeChangeCh)
 	tester := agentTestEnv(t, nodeChangeCh, nil)
 	defer tester.cleanup()
+	defer tester.StartAgent(t)()
 
 	currSession, closedSessions := tester.dispatcher.GetSessions()
 	require.NotNil(t, currSession)
@@ -160,6 +161,7 @@ func TestHandleSessionMessageNodeChanges(t *testing.T) {
 	defer close(nodeChangeCh)
 	tester := agentTestEnv(t, nodeChangeCh, nil)
 	defer tester.cleanup()
+	defer tester.StartAgent(t)()
 
 	currSession, closedSessions := tester.dispatcher.GetSessions()
 	require.NotNil(t, currSession)
@@ -235,6 +237,7 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 	defer close(tlsCh)
 	tester := agentTestEnv(t, nil, tlsCh)
 	defer tester.cleanup()
+	defer tester.StartAgent(t)()
 
 	currSession, closedSessions := tester.dispatcher.GetSessions()
 	require.NotNil(t, currSession)
@@ -297,6 +300,7 @@ func TestSessionReconnectsIfDispatcherErrors(t *testing.T) {
 
 	tester := agentTestEnv(t, nil, tlsCh)
 	defer tester.cleanup()
+	defer tester.StartAgent(t)()
 
 	// create a second dispatcher we can fall back on
 	anotherConfig, err := tester.testCA.NewNodeConfig(ca.ManagerRole)
@@ -347,6 +351,107 @@ func TestSessionReconnectsIfDispatcherErrors(t *testing.T) {
 	}, 5*time.Second))
 }
 
+type testSessionTracker struct {
+	closeCounter, errCounter, establishedSessions int
+	err                                           error
+	mu                                            sync.Mutex
+}
+
+func (t *testSessionTracker) SessionError(err error) {
+	t.mu.Lock()
+	t.err = err
+	t.errCounter++
+	t.mu.Unlock()
+}
+
+func (t *testSessionTracker) SessionClosed() error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.closeCounter++
+	if t.closeCounter >= 3 {
+		return t.err
+	}
+	return nil
+}
+
+func (t *testSessionTracker) SessionEstablished() {
+	t.mu.Lock()
+	t.establishedSessions++
+	t.mu.Unlock()
+}
+
+func (t *testSessionTracker) Stats() (int, int, int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.establishedSessions, t.errCounter, t.closeCounter
+}
+
+// If we pass a session tracker, and OnSessionClosed returns an error, the agent should exit with that error
+// as opposed to rebuilding
+func TestAgentExitsBasedOnSessionTracker(t *testing.T) {
+	tlsCh := make(chan events.Event, 1)
+	defer close(tlsCh)
+	tester := agentTestEnv(t, nil, tlsCh)
+	defer tester.cleanup()
+
+	// set the dispatcher to always error
+	tester.dispatcher.SetSessionHandler(func(r *api.SessionRequest, stream api.Dispatcher_SessionServer) error {
+		return errors.New("I always error")
+	})
+
+	// add a hook to the agent to exit after 3 session rebuilds
+	tracker := testSessionTracker{}
+	tester.agent.config.SessionTracker = &tracker
+
+	go tester.agent.Start(context.Background())
+	defer tester.agent.Stop(context.Background())
+
+	getErr := make(chan error)
+	go func() {
+		getErr <- tester.agent.Err(context.Background())
+	}()
+
+	select {
+	case err := <-getErr:
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "I always error")
+	case <-tester.agent.Ready():
+		require.FailNow(t, "agent should have failed to connect")
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "agent didn't fail within 5 seconds")
+	}
+
+	establishedSessions, errCounter, closeClounter := tracker.Stats()
+	require.Equal(t, establishedSessions, 0)
+	require.Equal(t, errCounter, 3)
+	require.Equal(t, closeClounter, 3)
+	currSession, closedSessions := tester.dispatcher.GetSessions()
+	require.Nil(t, currSession)
+	require.Len(t, closedSessions, 3)
+}
+
+// If we pass a session tracker, established sessions get tracked.
+func TestAgentRegistersSessionsWithSessionTracker(t *testing.T) {
+	tlsCh := make(chan events.Event, 1)
+	defer close(tlsCh)
+	tester := agentTestEnv(t, nil, tlsCh)
+	defer tester.cleanup()
+
+	// add a hook to the agent to exit after 3 session rebuilds
+	tracker := testSessionTracker{}
+	tester.agent.config.SessionTracker = &tracker
+
+	defer tester.StartAgent(t)()
+
+	establishedSessions, errCounter, closeClounter := tracker.Stats()
+	require.Equal(t, establishedSessions, 1)
+	require.Equal(t, errCounter, 0)
+	require.Equal(t, closeClounter, 0)
+	currSession, closedSessions := tester.dispatcher.GetSessions()
+	require.NotNil(t, currSession)
+	require.Len(t, closedSessions, 0)
+}
+
 type agentTester struct {
 	agent                   *Agent
 	dispatcher              *agentutils.MockDispatcher
@@ -354,6 +459,26 @@ type agentTester struct {
 	stopDispatcher, cleanup func()
 	testCA                  *cautils.TestCA
 	remotes                 *fakeRemotes
+}
+
+func (a *agentTester) StartAgent(t *testing.T) func() {
+	go a.agent.Start(context.Background())
+
+	getErr := make(chan error)
+	go func() {
+		getErr <- a.agent.Err(context.Background())
+	}()
+	select {
+	case err := <-getErr:
+		require.FailNow(t, "starting agent errored with: %v", err)
+	case <-a.agent.Ready():
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "agent not ready within 5 seconds")
+	}
+
+	return func() {
+		a.agent.Stop(context.Background())
+	}
 }
 
 func agentTestEnv(t *testing.T, nodeChangeCh chan *NodeChanges, tlsChangeCh chan events.Event) *agentTester {
@@ -409,23 +534,6 @@ func agentTestEnv(t *testing.T, nodeChangeCh chan *NodeChanges, tlsChangeCh chan
 	})
 	require.NoError(t, err)
 	agent.nodeUpdatePeriod = 200 * time.Millisecond
-
-	go agent.Start(context.Background())
-	cleanup = append(cleanup, func() {
-		agent.Stop(context.Background())
-	})
-
-	getErr := make(chan error)
-	go func() {
-		getErr <- agent.Err(context.Background())
-	}()
-	select {
-	case err := <-getErr:
-		require.FailNow(t, "starting agent errored with: %v", err)
-	case <-agent.Ready():
-	case <-time.After(5 * time.Second):
-		require.FailNow(t, "agent not ready within 5 seconds")
-	}
 
 	return &agentTester{
 		agent:          agent,
