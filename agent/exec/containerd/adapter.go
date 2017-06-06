@@ -1,12 +1,9 @@
 package containerd
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,31 +11,21 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/containerd/containerd"
 	containersapi "github.com/containerd/containerd/api/services/containers"
-	contentapi "github.com/containerd/containerd/api/services/content"
 	"github.com/containerd/containerd/api/services/execution"
-	imagesapi "github.com/containerd/containerd/api/services/images"
-	"github.com/containerd/containerd/api/types/mount"
 	"github.com/containerd/containerd/api/types/task"
 	"github.com/containerd/containerd/archive"
 	"github.com/containerd/containerd/archive/compression"
 	"github.com/containerd/containerd/content"
-	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/containerd/remotes"
-	"github.com/containerd/containerd/remotes/docker"
-	contentservice "github.com/containerd/containerd/services/content"
-	imagesservice "github.com/containerd/containerd/services/images"
 	"github.com/containerd/fifo"
 	dockermount "github.com/docker/docker/pkg/mount"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/naming"
 	"github.com/docker/swarmkit/log"
-	protobuf "github.com/gogo/protobuf/types"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/runtime-spec/specs-go"
@@ -62,21 +49,18 @@ var (
 // are mostly naked calls to the client API, seeded with information from
 // containerConfig.
 type containerAdapter struct {
-	conn              *grpc.ClientConn
-	taskClient        execution.TasksClient
-	spec              *api.ContainerSpec
-	secrets           exec.SecretGetter
-	dir               string
-	name              string
-	resolvedImageName string
-	deleteResponse    *execution.DeleteResponse
+	client         *containerd.Client
+	spec           *api.ContainerSpec
+	secrets        exec.SecretGetter
+	dir            string
+	name           string
+	image          containerd.Image // Pulled image
+	container      containerd.Container
+	task           containerd.Task
+	deleteResponse *execution.DeleteResponse
 }
 
-func withNamespace(ctx context.Context) context.Context {
-	return namespaces.WithNamespace(ctx, "default")
-}
-
-func newContainerAdapter(conn *grpc.ClientConn, containerDir string, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
+func newContainerAdapter(client *containerd.Client, containerDir string, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
 	spec := task.Spec.GetContainer()
 	if spec == nil {
 		return nil, exec.ErrRuntimeUnsupported
@@ -85,12 +69,11 @@ func newContainerAdapter(conn *grpc.ClientConn, containerDir string, task *api.T
 	dir := filepath.Join(containerDir, task.ID)
 
 	return &containerAdapter{
-		conn:       conn,
-		taskClient: execution.NewTasksClient(conn),
-		spec:       spec,
-		secrets:    secrets,
-		dir:        dir,
-		name:       naming.Task(task),
+		client:  client,
+		spec:    spec,
+		secrets: secrets,
+		dir:     dir,
+		name:    naming.Task(task),
 	}, nil
 }
 
@@ -154,52 +137,13 @@ func prepareStdio(stdout, stderr string, console bool) (wg *sync.WaitGroup, err 
 }
 
 func (c *containerAdapter) pullImage(ctx context.Context) error {
-	ctx = withNamespace(ctx)
-
-	options := docker.ResolverOptions{}
-
-	tr := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-			DualStack: true,
-		}).DialContext,
-		MaxIdleConns:          10,
-		IdleConnTimeout:       30 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		TLSClientConfig:       &tls.Config{},
-		ExpectContinueTimeout: 5 * time.Second,
-	}
-
-	options.Client = &http.Client{
-		Transport: tr,
-	}
-
-	resolver := docker.NewResolver(options)
-
-	name, desc, err := resolver.Resolve(ctx, c.spec.Image)
+	image, err := c.client.Pull(ctx, c.spec.Image)
 	if err != nil {
-		return errors.Wrap(err, "failed to resolve ref")
+		return errors.Wrap(err, "pulling container image")
 	}
-	fetcher, err := resolver.Fetcher(ctx, name)
-	if err != nil {
-		return errors.Wrap(err, "failed to resolve fetcher")
-	}
-	c.resolvedImageName = name
+	c.image = image
 
-	content := contentservice.NewStoreFromClient(contentapi.NewContentClient(c.conn))
-	imageStore := imagesservice.NewStoreFromClient(imagesapi.NewImagesClient(c.conn))
-
-	if err := imageStore.Put(ctx, name, desc); err != nil {
-		return errors.Wrap(err, "put image")
-	}
-
-	return images.Dispatch(ctx,
-		images.Handlers(
-			remotes.FetchHandler(content, fetcher),
-			images.ChildrenHandler(content)),
-		desc)
+	return nil
 }
 
 func (c *containerAdapter) makeAnonVolume(ctx context.Context, target string) (specs.Mount, error) {
@@ -452,17 +396,14 @@ func (c *containerAdapter) makeSpec(ctx context.Context, config *ocispec.ImageCo
 }
 
 func (c *containerAdapter) create(ctx context.Context) error {
-	ctx = withNamespace(ctx)
-
-	if c.resolvedImageName == "" {
+	if c.image == nil {
 		return errors.New("image has not been pulled")
 	}
 
-	containers := containersapi.NewContainersClient(c.conn)
-	cs := contentservice.NewStoreFromClient(contentapi.NewContentClient(c.conn))
-	imageStore := imagesservice.NewStoreFromClient(imagesapi.NewImagesClient(c.conn))
+	cs := c.client.ContentStore()
+	imageStore := c.client.ImageService()
 
-	image, err := imageStore.Get(ctx, c.resolvedImageName)
+	image, err := imageStore.Get(ctx, c.image.Name())
 	if err != nil {
 		return errors.Wrap(err, "image get")
 	}
@@ -514,33 +455,21 @@ func (c *containerAdapter) create(ctx context.Context) error {
 		return err
 	}
 
-	data, err := json.MarshalIndent(spec, "    ", "    ")
-	if err != nil {
-		return err
-	}
-
-	_, err = containers.Create(ctx, &containersapi.CreateContainerRequest{
-		Container: containersapi.Container{
-			ID: c.name,
-			Spec: &protobuf.Any{
-				TypeUrl: specs.Version,
-				Value:   data,
-			},
-			Runtime: "io.containerd.runtime.v1.linux",
-		},
-	})
+	c.container, err = c.client.NewContainer(ctx, c.name, containerd.WithSpec(spec))
 	if err != nil {
 		return errors.Wrap(err, "creating container")
 	}
 
-	_, err = c.taskClient.Create(ctx, &execution.CreateRequest{
-		ContainerID: c.name,
-		Rootfs:      []*mount.Mount{},
-		Stdin:       stdin,
-		Stdout:      stdout,
-		Stderr:      stderr,
-		Terminal:    spec.Process.Terminal,
-	})
+	io := func() (*containerd.IO, error) {
+		return &containerd.IO{
+			Stdin:    stdin,
+			Stdout:   stdout,
+			Stderr:   stderr,
+			Terminal: spec.Process.Terminal,
+		}, nil
+	}
+
+	c.task, err = c.container.NewTask(ctx, io)
 	if err != nil {
 		return errors.Wrap(err, "creating task")
 	}
@@ -549,8 +478,9 @@ func (c *containerAdapter) create(ctx context.Context) error {
 }
 
 func (c *containerAdapter) start(ctx context.Context) error {
-	ctx = withNamespace(ctx)
-	_, err := c.taskClient.Start(ctx, &execution.StartRequest{
+	tasks := c.client.TaskService()
+
+	_, err := tasks.Start(ctx, &execution.StartRequest{
 		ContainerID: c.name,
 	})
 	return err
@@ -572,8 +502,6 @@ func (c *containerAdapter) eventStream(ctx context.Context, id string) (<-chan t
 // A chan struct{} is returned that will be closed if the event processing
 // fails and needs to be restarted.
 func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) (<-chan task.Event, <-chan struct{}, error) {
-	ctx = withNamespace(ctx)
-
 	l := log.G(ctx).WithFields(logrus.Fields{
 		"ID": c.name,
 	})
@@ -587,7 +515,8 @@ func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) 
 
 	l.Debugf("waiting on events")
 
-	cl, err := c.taskClient.Events(ctx, &execution.EventsRequest{}, opts...)
+	tasks := c.client.TaskService()
+	cl, err := tasks.Events(ctx, &execution.EventsRequest{}, opts...)
 	if err != nil {
 		l.WithError(err).Errorf("failed to start event stream")
 		return nil, nil, err
@@ -619,9 +548,8 @@ func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) 
 }
 
 func (c *containerAdapter) inspect(ctx context.Context) (task.Task, error) {
-	ctx = withNamespace(ctx)
-
-	rsp, err := c.taskClient.Info(ctx, &execution.InfoRequest{ContainerID: c.name})
+	tasks := c.client.TaskService()
+	rsp, err := tasks.Info(ctx, &execution.InfoRequest{ContainerID: c.name})
 	if err != nil {
 		return task.Task{}, err
 	}
@@ -629,8 +557,6 @@ func (c *containerAdapter) inspect(ctx context.Context) (task.Task, error) {
 }
 
 func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
-	ctx = withNamespace(ctx)
-
 	l := log.G(ctx).WithFields(logrus.Fields{
 		"ID": c.name,
 	})
@@ -639,14 +565,15 @@ func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
 		var err error
 		l.Debug("Deleting")
 
-		rsp, err := c.taskClient.Delete(ctx, &execution.DeleteRequest{ContainerID: c.name})
+		tasks := c.client.TaskService()
+		rsp, err := tasks.Delete(ctx, &execution.DeleteRequest{ContainerID: c.name})
 		if err != nil {
 			return 0, err
 		}
 		l.Debugf("Status=%d", rsp.ExitStatus)
 		c.deleteResponse = rsp
 
-		containers := containersapi.NewContainersClient(c.conn)
+		containers := c.client.ContainerService()
 		_, err = containers.Delete(ctx, &containersapi.DeleteContainerRequest{
 			ID: c.name,
 		})
@@ -659,8 +586,6 @@ func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
 }
 
 func (c *containerAdapter) terminate(ctx context.Context) error {
-	ctx = withNamespace(ctx)
-
 	l := log.G(ctx).WithFields(logrus.Fields{
 		"ID": c.name,
 	})
@@ -669,8 +594,6 @@ func (c *containerAdapter) terminate(ctx context.Context) error {
 }
 
 func (c *containerAdapter) remove(ctx context.Context) error {
-	ctx = withNamespace(ctx)
-
 	l := log.G(ctx).WithFields(logrus.Fields{
 		"ID": c.name,
 	})

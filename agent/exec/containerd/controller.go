@@ -3,6 +3,7 @@ package containerd
 import (
 	"fmt"
 
+	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/api/types/task"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
@@ -25,8 +26,8 @@ type controller struct {
 
 var _ exec.Controller = &controller{}
 
-func newController(conn *grpc.ClientConn, containerDir string, task *api.Task, secrets exec.SecretGetter) (exec.Controller, error) {
-	adapter, err := newContainerAdapter(conn, containerDir, task, secrets)
+func newController(client *containerd.Client, containerDir string, task *api.Task, secrets exec.SecretGetter) (exec.Controller, error) {
+	adapter, err := newContainerAdapter(client, containerDir, task, secrets)
 	if err != nil {
 		return nil, err
 	}
