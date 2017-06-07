@@ -108,7 +108,7 @@ func TestManager(t *testing.T) {
 
 	client = api.NewDispatcherClient(conn2)
 	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
-	assert.Contains(t, grpc.ErrorDesc(err), "Permission denied: unauthorized peer role: rpc error: code = 7 desc = Permission denied: remote certificate not part of organization")
+	assert.Contains(t, grpc.ErrorDesc(err), "Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = Permission denied: remote certificate not part of organization")
 
 	// Verify that requests to the various GRPC services running on TCP
 	// are rejected if they don't have certs.
@@ -125,15 +125,15 @@ func TestManager(t *testing.T) {
 
 	client = api.NewDispatcherClient(noCertConn)
 	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
-	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
+	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = no client certificates in request")
 
 	controlClient := api.NewControlClient(noCertConn)
 	_, err = controlClient.ListNodes(context.Background(), &api.ListNodesRequest{})
-	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
+	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = no client certificates in request")
 
 	raftClient := api.NewRaftMembershipClient(noCertConn)
 	_, err = raftClient.Join(context.Background(), &api.JoinRequest{})
-	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
+	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = no client certificates in request")
 
 	opts = []grpc.DialOption{
 		grpc.WithTimeout(10 * time.Second),
