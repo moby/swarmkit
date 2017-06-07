@@ -340,8 +340,6 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 
 // returns the issuer as well as all the parsed certs returned from the request
 func testRequestAndSaveNewCertificates(t *testing.T, tc *cautils.TestCA) (*ca.IssuerInfo, []*x509.Certificate) {
-	defer tc.Stop()
-
 	// Copy the current RootCA without the signer
 	rca := ca.RootCA{Certs: tc.RootCA.Certs, Pool: tc.RootCA.Pool}
 	tlsCert, issuerInfo, err := rca.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter,
@@ -371,6 +369,7 @@ func TestRequestAndSaveNewCertificatesNoIntermediate(t *testing.T) {
 	t.Parallel()
 
 	tc := cautils.NewTestCA(t)
+	defer tc.Stop()
 	issuerInfo, parsedCerts := testRequestAndSaveNewCertificates(t, tc)
 	require.Len(t, parsedCerts, 1)
 
@@ -397,6 +396,7 @@ func TestRequestAndSaveNewCertificatesWithIntermediates(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 
 	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, apiRootCA, nil)
+	defer tc.Stop()
 	issuerInfo, parsedCerts := testRequestAndSaveNewCertificates(t, tc)
 	require.Len(t, parsedCerts, 2)
 
@@ -541,7 +541,7 @@ func TestGetRemoteSignedCertificate(t *testing.T) {
 	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
-	certs, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.RootCA.Pool,
+	certs, err := ca.GetRemoteSignedCertificate(tc.Context, csr, tc.RootCA.Pool,
 		ca.CertificateRequestConfig{
 			Token:      tc.ManagerToken,
 			ConnBroker: tc.ConnBroker,
@@ -581,7 +581,7 @@ func TestGetRemoteSignedCertificateNodeInfo(t *testing.T) {
 	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
-	cert, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.RootCA.Pool,
+	cert, err := ca.GetRemoteSignedCertificate(tc.Context, csr, tc.RootCA.Pool,
 		ca.CertificateRequestConfig{
 			Token:      tc.WorkerToken,
 			ConnBroker: tc.ConnBroker,
@@ -705,11 +705,12 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	defer cancel()
 
 	fakeCAServer := newNonSigningCAServer(t, tc)
+	defer fakeCAServer.stop(t)
 
 	completed := make(chan error)
 	defer close(completed)
 	go func() {
-		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.RootCA.Pool,
+		_, err := ca.GetRemoteSignedCertificate(tc.Context, csr, tc.RootCA.Pool,
 			ca.CertificateRequestConfig{
 				Token:      tc.WorkerToken,
 				ConnBroker: fakeCAServer.getConnBroker(),
@@ -764,7 +765,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	// make sure if we time out the GetRemoteSignedCertificate call, it cancels immediately and doesn't keep
 	// polling the status
 	go func() {
-		ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
+		ctx, _ := context.WithTimeout(tc.Context, 1*time.Second)
 		_, err := ca.GetRemoteSignedCertificate(ctx, csr, tc.RootCA.Pool,
 			ca.CertificateRequestConfig{
 				Token:      tc.WorkerToken,
@@ -860,7 +861,7 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 	defer close(completed)
 	defer close(done)
 	go func() {
-		_, err := ca.GetRemoteSignedCertificate(context.Background(), csr, tc.RootCA.Pool,
+		_, err := ca.GetRemoteSignedCertificate(tc.Context, csr, tc.RootCA.Pool,
 			ca.CertificateRequestConfig{
 				Token:      tc.WorkerToken,
 				ConnBroker: multiBroker,
@@ -917,7 +918,7 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 			{Addr: fakeSigningServers[1].addr},
 		},
 	})
-	_, err = ca.GetRemoteSignedCertificate(context.Background(), csr, tc.RootCA.Pool,
+	_, err = ca.GetRemoteSignedCertificate(tc.Context, csr, tc.RootCA.Pool,
 		ca.CertificateRequestConfig{
 			Token:      tc.WorkerToken,
 			ConnBroker: multiBroker,
@@ -1289,7 +1290,7 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 	connectToExternalRootCA, err := ca.NewRootCA(append(cautils.ECDSACertChain[2], fauxRootCert...), cautils.ECDSACertChain[1],
 		cautils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration, cautils.ECDSACertChain[1])
 	require.NoError(t, err)
-	secConfig, err := connectToExternalRootCA.CreateSecurityConfig(context.Background(), krw, ca.CertificateRequestConfig{})
+	secConfig, err := connectToExternalRootCA.CreateSecurityConfig(tc.Context, krw, ca.CertificateRequestConfig{})
 	require.NoError(t, err)
 
 	externalCA := secConfig.ExternalCA()
@@ -1298,7 +1299,7 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 	newCSR, _, err := ca.GenerateNewCSR()
 	require.NoError(t, err)
 
-	tlsCert, err = externalCA.Sign(context.Background(), ca.PrepareCSR(newCSR, "cn", ca.ManagerRole, secConfig.ClientTLSCreds.Organization()))
+	tlsCert, err = externalCA.Sign(tc.Context, ca.PrepareCSR(newCSR, "cn", ca.ManagerRole, secConfig.ClientTLSCreds.Organization()))
 	require.NoError(t, err)
 
 	checkValidateAgainstAllRoots(tlsCert)
