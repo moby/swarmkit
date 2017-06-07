@@ -1297,3 +1297,67 @@ func TestListServices(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r.Services))
 }
+
+func TestRemoveReplica(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+	_, err := ts.Client.RemoveReplica(context.Background(), &api.RemoveReplicaRequest{})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	service := createService(t, ts, "s1", "image", 3)
+
+	err = ts.Store.Update(func(tx store.Tx) error {
+		tasks := []*api.Task{
+			{
+				ID:           "task1",
+				Slot:         1,
+				DesiredState: api.TaskStateRunning,
+				ServiceID:    service.ID,
+			},
+			{
+				ID:           "task2",
+				Slot:         2,
+				DesiredState: api.TaskStateRunning,
+				ServiceID:    service.ID,
+			},
+			{
+				ID:           "task3",
+				Slot:         3,
+				DesiredState: api.TaskStateRunning,
+				ServiceID:    service.ID,
+			},
+		}
+		for _, task := range tasks {
+			assert.NoError(t, store.CreateTask(tx, task))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	r, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
+	assert.NoError(t, err)
+	mode, ok := r.Service.Spec.GetMode().(*api.ServiceSpec_Replicated)
+	assert.Equal(t, ok, true)
+	assert.True(t, mode.Replicated.Replicas == 3)
+
+	// Remove a replica referenced by task3
+	_, err = ts.Client.RemoveReplica(context.Background(), &api.RemoveReplicaRequest{ServiceID: service.ID, Slot: uint64(3)})
+	assert.NoError(t, err)
+
+	r, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
+	assert.NoError(t, err)
+	mode, ok = r.Service.Spec.GetMode().(*api.ServiceSpec_Replicated)
+	assert.Equal(t, ok, true)
+	assert.True(t, mode.Replicated.Replicas == 2)
+
+	// Remove a replica referenced by task2
+	_, err = ts.Client.RemoveReplica(context.Background(), &api.RemoveReplicaRequest{ServiceID: service.ID, Slot: uint64(2)})
+	assert.NoError(t, err)
+
+	r, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
+	assert.NoError(t, err)
+	mode, ok = r.Service.Spec.GetMode().(*api.ServiceSpec_Replicated)
+	assert.Equal(t, ok, true)
+	assert.True(t, mode.Replicated.Replicas == 1)
+}
