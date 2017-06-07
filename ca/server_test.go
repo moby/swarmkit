@@ -725,6 +725,7 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				"3": getFakeAPINode(t, "3", api.IssuanceStateRotate, nil, true),
 				"4": getFakeAPINode(t, "4", api.IssuanceStatePending, nil, true),
 				"5": getFakeAPINode(t, "5", api.IssuanceStateFailed, nil, true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStateIssued, nil, false),
 			},
 			rootCA: &api.RootCA{
 				CACert:     startCluster.RootCA.CACert,
@@ -743,6 +744,7 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				"3": getFakeAPINode(t, "3", api.IssuanceStateRotate, nil, true),
 				"4": getFakeAPINode(t, "4", api.IssuanceStateRotate, nil, true),
 				"5": getFakeAPINode(t, "5", api.IssuanceStateRotate, nil, true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStateRotate, nil, false),
 			},
 		},
 		{
@@ -756,6 +758,7 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				"3": getFakeAPINode(t, "3", api.IssuanceStateIssued, rotationTLSInfo[0], true),
 				"4": getFakeAPINode(t, "4", api.IssuanceStateIssued, rotationTLSInfo[0], true),
 				"5": getFakeAPINode(t, "5", api.IssuanceStateIssued, oldNodeTLSInfo, true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStateIssued, oldNodeTLSInfo, false),
 			},
 			rootCA: &api.RootCA{ // no change in root CA from previous
 				CACert:     startCluster.RootCA.CACert,
@@ -774,6 +777,7 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				"3": getFakeAPINode(t, "3", api.IssuanceStateIssued, rotationTLSInfo[0], true),
 				"4": getFakeAPINode(t, "4", api.IssuanceStateIssued, rotationTLSInfo[0], true),
 				"5": getFakeAPINode(t, "5", api.IssuanceStateRotate, oldNodeTLSInfo, true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStateRotate, oldNodeTLSInfo, false),
 			},
 		},
 		{
@@ -784,7 +788,8 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				"3": getFakeAPINode(t, "3", api.IssuanceStateIssued, rotationTLSInfo[0], true),
 				"4": getFakeAPINode(t, "4", api.IssuanceStateIssued, rotationTLSInfo[0], true),
 				"5": getFakeAPINode(t, "5", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"6": getFakeAPINode(t, "6", api.IssuanceStateRenew, nil, true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStateIssued, rotationTLSInfo[0], false),
+				"7": getFakeAPINode(t, "7", api.IssuanceStateRenew, nil, true),
 			},
 			rootCA: &api.RootCA{ // no change in root CA from previous
 				CACert:     startCluster.RootCA.CACert,
@@ -802,7 +807,8 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				"3": getFakeAPINode(t, "3", api.IssuanceStateIssued, rotationTLSInfo[0], true),
 				"4": getFakeAPINode(t, "4", api.IssuanceStateIssued, rotationTLSInfo[0], true),
 				"5": getFakeAPINode(t, "5", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"6": getFakeAPINode(t, "6", api.IssuanceStateRotate, nil, true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStateIssued, rotationTLSInfo[0], false),
+				"7": getFakeAPINode(t, "7", api.IssuanceStateRotate, nil, true),
 			},
 		},
 		{
@@ -816,6 +822,7 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				"4": getFakeAPINode(t, "4", api.IssuanceStateIssued, rotationTLSInfo[0], true),
 				"5": getFakeAPINode(t, "5", api.IssuanceStateIssued, oldNodeTLSInfo, true),
 				"6": getFakeAPINode(t, "6", api.IssuanceStateIssued, rotationTLSInfo[0], true),
+				"7": getFakeAPINode(t, "7", api.IssuanceStateIssued, rotationTLSInfo[0], false),
 			},
 			rootCA: &api.RootCA{ // new root rotation
 				CACert:     startCluster.RootCA.CACert,
@@ -834,13 +841,14 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				"4": getFakeAPINode(t, "4", api.IssuanceStateRotate, rotationTLSInfo[0], true),
 				"5": getFakeAPINode(t, "5", api.IssuanceStateRotate, oldNodeTLSInfo, true),
 				"6": getFakeAPINode(t, "6", api.IssuanceStateRotate, rotationTLSInfo[0], true),
+				"7": getFakeAPINode(t, "7", api.IssuanceStateRotate, rotationTLSInfo[0], false),
 			},
 		},
 		{
 			descr: ("Once all nodes have rotated to their desired TLS info (even if it's because " +
 				"a node with the wrong TLS info has been removed, the root rotation is completed."),
 			nodes: map[string]*api.Node{
-				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
+				"0": getFakeAPINode(t, "0", api.IssuanceStateIssued, rotationTLSInfo[1], false),
 				"1": getFakeAPINode(t, "1", api.IssuanceStateIssued, rotationTLSInfo[1], true),
 				"3": getFakeAPINode(t, "3", api.IssuanceStateIssued, rotationTLSInfo[1], true),
 				"4": getFakeAPINode(t, "4", api.IssuanceStateIssued, rotationTLSInfo[1], true),
@@ -877,6 +885,7 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				"3": getFakeAPINode(t, "3", api.IssuanceStateIssued, rotationTLSInfo[1], true),
 				"4": getFakeAPINode(t, "4", api.IssuanceStateIssued, rotationTLSInfo[1], true),
 				"6": getFakeAPINode(t, "6", api.IssuanceStateIssued, rotationTLSInfo[1], true),
+				"7": getFakeAPINode(t, "7", api.IssuanceStateIssued, rotationTLSInfo[1], false),
 			},
 			rootCA: &api.RootCA{
 				CACert:     startCluster.RootCA.CACert,
@@ -894,27 +903,33 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				"3": getFakeAPINode(t, "3", api.IssuanceStateRotate, rotationTLSInfo[1], true),
 				"4": getFakeAPINode(t, "4", api.IssuanceStateRotate, rotationTLSInfo[1], true),
 				"6": getFakeAPINode(t, "6", api.IssuanceStateRotate, rotationTLSInfo[1], true),
+				"7": getFakeAPINode(t, "7", api.IssuanceStateRotate, rotationTLSInfo[1], false),
 			},
 		},
 	}
 
 	for _, testcase := range testcases {
-		if testcase.caServerRestart {
-			rt.tc.CAServer.Stop()
-		}
-
-		rt.convergeRootCA(testcase.rootCA, testcase.descr)
+		// stop the CA server, get the cluster to the state we want (correct root CA, correct nodes, etc.)
+		rt.tc.CAServer.Stop()
 		rt.convergeWantedNodes(testcase.nodes, testcase.descr)
+
+		if testcase.caServerRestart {
+			// if we want to simulate restarting the CA server with a root rotation already done, set the rootCA to
+			// have a root rotation, then start the CA
+			rt.convergeRootCA(testcase.rootCA, testcase.descr)
+			startCAServer(rt.tc.CAServer)
+		} else {
+			// otherwise, start the CA in the state where there is no root rotation, and start a root rotation
+			rt.convergeRootCA(&startCluster.RootCA, testcase.descr) // no root rotation
+			startCAServer(rt.tc.CAServer)
+			rt.convergeRootCA(testcase.rootCA, testcase.descr)
+		}
 
 		if testcase.expectedNodes == nil {
 			testcase.expectedNodes = testcase.nodes
 		}
 		if testcase.expectedRootCA == nil {
 			testcase.expectedRootCA = testcase.rootCA
-		}
-
-		if testcase.caServerRestart {
-			startCAServer(rt.tc.CAServer)
 		}
 
 		require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
@@ -1022,6 +1037,7 @@ func TestRootRotationReconciliationNoChanges(t *testing.T) {
 				"3": getFakeAPINode(t, "3", api.IssuanceStateRotate, nil, true),
 				"4": getFakeAPINode(t, "4", api.IssuanceStatePending, nil, true),
 				"5": getFakeAPINode(t, "5", api.IssuanceStateFailed, nil, true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStateIssued, oldNodeTLSInfo, false),
 			},
 			rootCA: &api.RootCA{
 				CACert:     startCluster.RootCA.CACert,
@@ -1035,13 +1051,13 @@ func TestRootRotationReconciliationNoChanges(t *testing.T) {
 			},
 		},
 		{
-			descr: ("If all nodes have the right TLS info or are already rotated (or are not members), " +
+			descr: ("If all nodes have the right TLS info or are already rotated, rotating, or pending, " +
 				"there will be no changes needed"),
 			nodes: map[string]*api.Node{
 				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
 				"1": getFakeAPINode(t, "1", api.IssuanceStateIssued, rotationTLSInfo, true),
 				"2": getFakeAPINode(t, "2", api.IssuanceStateRotate, oldNodeTLSInfo, true),
-				"3": getFakeAPINode(t, "3", api.IssuanceStateRotate, rotationTLSInfo, true),
+				"3": getFakeAPINode(t, "3", api.IssuanceStateRotate, rotationTLSInfo, false),
 			},
 			rootCA: &api.RootCA{ // no change in root CA from previous
 				CACert:     startCluster.RootCA.CACert,
@@ -1063,6 +1079,7 @@ func TestRootRotationReconciliationNoChanges(t *testing.T) {
 				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
 				"1": getFakeAPINode(t, "1", api.IssuanceStateIssued, rotationTLSInfo, true),
 				"2": getFakeAPINode(t, "2", api.IssuanceStateRotate, oldNodeTLSInfo, true),
+				"3": getFakeAPINode(t, "3", api.IssuanceStateRotate, oldNodeTLSInfo, false),
 			},
 			rootCA: &api.RootCA{ // no change in root CA from previous
 				CACert:     startCluster.RootCA.CACert,
@@ -1073,14 +1090,15 @@ func TestRootRotationReconciliationNoChanges(t *testing.T) {
 	}
 
 	for _, testcase := range testcases {
-		if testcase.caServerStopped {
-			rt.tc.CAServer.Stop()
-		} else {
+		// stop the CA server, get the cluster to the state we want (correct root CA, correct nodes, etc.)
+		rt.tc.CAServer.Stop()
+		rt.convergeWantedNodes(testcase.nodes, testcase.descr)
+		rt.convergeRootCA(&startCluster.RootCA, testcase.descr) // no root rotation
+
+		if !testcase.caServerStopped {
 			startCAServer(rt.tc.CAServer)
 		}
-
 		rt.convergeRootCA(testcase.rootCA, testcase.descr)
-		rt.convergeWantedNodes(testcase.nodes, testcase.descr)
 
 		time.Sleep(500 * time.Millisecond)
 
@@ -1286,7 +1304,7 @@ func TestRootRotationReconciliationThrottled(t *testing.T) {
 		tc.MemoryStore, func(tx store.ReadTx) error {
 			// don't bother getting the cluster - the CA server has already done that when first running
 			var err error
-			nodes, err = store.FindNodes(tx, store.ByMembership(api.NodeMembershipAccepted))
+			nodes, err = store.FindNodes(tx, store.All)
 			return err
 		},
 		api.EventUpdateCluster{
