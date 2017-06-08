@@ -146,12 +146,28 @@ func NewTestCAFromAPIRootCA(t *testing.T, tempBaseDir string, apiRootCA api.Root
 
 	if External {
 		// Start the CA API server - ensure that the external server doesn't have any intermediates
-		externalSigningServer, err = NewExternalSigningServer(rootCA, tempBaseDir)
-		assert.NoError(t, err)
+		var extRootCA ca.RootCA
+		if apiRootCA.RootRotation != nil {
+			extRootCA, err = ca.NewRootCA(
+				apiRootCA.RootRotation.CACert, apiRootCA.RootRotation.CACert, apiRootCA.RootRotation.CAKey, ca.DefaultNodeCertExpiration, nil)
+			// remove the key from the API root CA so that once the CA server starts up, it won't have a local signer
+			apiRootCA.RootRotation.CAKey = nil
+		} else {
+			extRootCA, err = ca.NewRootCA(
+				apiRootCA.CACert, apiRootCA.CACert, apiRootCA.CAKey, ca.DefaultNodeCertExpiration, nil)
+			// remove the key from the API root CA so that once the CA server starts up, it won't have a local signer
+			apiRootCA.CAKey = nil
+		}
+		require.NoError(t, err)
+
+		externalSigningServer, err = NewExternalSigningServer(extRootCA, tempBaseDir)
+		require.NoError(t, err)
+
 		externalCAs = []*api.ExternalCA{
 			{
 				Protocol: api.ExternalCA_CAProtocolCFSSL,
 				URL:      externalSigningServer.URL,
+				CACert:   extRootCA.Certs,
 			},
 		}
 	}
