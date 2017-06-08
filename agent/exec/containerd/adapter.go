@@ -16,8 +16,6 @@ import (
 	containersapi "github.com/containerd/containerd/api/services/containers"
 	"github.com/containerd/containerd/api/services/execution"
 	"github.com/containerd/containerd/api/types/task"
-	"github.com/containerd/containerd/archive"
-	"github.com/containerd/containerd/archive/compression"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/fifo"
 	dockermount "github.com/docker/docker/pkg/mount"
@@ -25,7 +23,6 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/naming"
 	"github.com/docker/swarmkit/log"
-	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
@@ -76,23 +73,6 @@ func newContainerAdapter(client *containerd.Client, containerDir string, task *a
 	}, nil
 }
 
-func (c *containerAdapter) applyLayer(ctx context.Context, cs content.Store, rootfs string, layer digest.Digest) error {
-	blob, err := cs.Reader(ctx, layer)
-	if err != nil {
-		return err
-	}
-
-	rd, err := compression.DecompressStream(blob)
-	if err != nil {
-		return err
-	}
-
-	_, err = archive.Apply(ctx, rootfs, rd)
-
-	blob.Close()
-	return err
-}
-
 // github.com/containerd/containerd cmd/ctr/utils.go, dropped stdin handling
 func prepareStdio(stdout, stderr string, console bool) (wg *sync.WaitGroup, err error) {
 	wg = &sync.WaitGroup{}
@@ -136,7 +116,7 @@ func prepareStdio(stdout, stderr string, console bool) (wg *sync.WaitGroup, err 
 }
 
 func (c *containerAdapter) pullImage(ctx context.Context) error {
-	image, err := c.client.Pull(ctx, c.spec.Image)
+	image, err := c.client.Pull(ctx, c.spec.Image, containerd.WithPullUnpack)
 	if err != nil {
 		return errors.Wrap(err, "pulling container image")
 	}
@@ -275,16 +255,13 @@ func (c *containerAdapter) setMounts(ctx context.Context, s *specs.Spec, mounts 
 
 		s.Mounts = append(s.Mounts, mt)
 	}
+
 	return nil
 }
 
-func (c *containerAdapter) specOpts(ctx context.Context, config *ocispec.ImageConfig, rootfs string) []containerd.SpecOpts {
+func (c *containerAdapter) specOpts(ctx context.Context, config *ocispec.ImageConfig) []containerd.SpecOpts {
 	opts := []containerd.SpecOpts{
 		containerd.WithImageConfig(ctx, c.image),
-		func(s *specs.Spec) error {
-			s.Root.Path = rootfs
-			return nil
-		},
 		func(s *specs.Spec) error {
 			if err := c.setMounts(ctx, s, c.spec.Mounts, config.Volumes); err != nil {
 				return errors.Wrap(err, "failed to set mounts")
@@ -331,15 +308,14 @@ func (c *containerAdapter) create(ctx context.Context) error {
 		return err
 	}
 
-	rootfs := filepath.Join(c.dir, "rootfs")
+	if err := os.MkdirAll(c.dir, 0755); err != nil {
+		return err
+	}
+
 	// TODO(ijc) support ControllerLogs interface
 	stdin := "/dev/null"
 	stdout := filepath.Join(c.dir, "stdout")
 	stderr := filepath.Join(c.dir, "stderr")
-
-	if err := os.MkdirAll(rootfs, 0755); err != nil {
-		return err
-	}
 
 	var config ocispec.Image
 
@@ -357,13 +333,7 @@ func (c *containerAdapter) create(ctx context.Context) error {
 		return errors.Wrap(err, "unmarshalling image config")
 	}
 
-	for _, layer := range manifest.Layers {
-		if err := c.applyLayer(ctx, cs, rootfs, layer.Digest); err != nil {
-			return errors.Wrapf(err, "failed to apply layer %s", layer.Digest.String())
-		}
-	}
-
-	spec, err := containerd.GenerateSpec(c.specOpts(ctx, &config.Config, rootfs)...)
+	spec, err := containerd.GenerateSpec(c.specOpts(ctx, &config.Config)...)
 	if err != nil {
 		return err
 	}
@@ -373,7 +343,9 @@ func (c *containerAdapter) create(ctx context.Context) error {
 		return err
 	}
 
-	c.container, err = c.client.NewContainer(ctx, c.name, containerd.WithSpec(spec))
+	c.container, err = c.client.NewContainer(ctx, c.name,
+		containerd.WithSpec(spec),
+		containerd.WithNewRootFS(c.name, c.image))
 	if err != nil {
 		return errors.Wrap(err, "creating container")
 	}
