@@ -18,6 +18,7 @@ import (
 	"github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/signer"
+	"github.com/docker/swarmkit/log"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"golang.org/x/net/context/ctxhttp"
@@ -126,7 +127,7 @@ func (eca *ExternalCA) Sign(ctx context.Context, req signer.SignRequest) (cert [
 		if err == nil {
 			return append(cert, intermediates...), err
 		}
-		logrus.Debugf("unable to proxy certificate signing request to %s: %s", url, err)
+		log.G(ctx).Debugf("unable to proxy certificate signing request to %s: %s", url, err)
 	}
 
 	return nil, err

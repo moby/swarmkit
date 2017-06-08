@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	cfcsr "github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/initca"
@@ -49,12 +50,13 @@ type TestCA struct {
 	ManagerToken                string
 	ConnBroker                  *connectionbroker.Broker
 	KeyReadWriter               *ca.KeyReadWriter
-	watchCancel                 func()
+	ctxCancel, watchCancel      func()
 }
 
 // Stop cleans up after TestCA
 func (tc *TestCA) Stop() {
 	tc.watchCancel()
+	tc.ctxCancel()
 	os.RemoveAll(tc.TempDir)
 	for _, conn := range tc.Conns {
 		conn.Close()
@@ -200,7 +202,11 @@ func NewTestCAFromAPIRootCA(t *testing.T, tempBaseDir string, apiRootCA api.Root
 	api.RegisterCAServer(grpcServer, caServer)
 	api.RegisterNodeCAServer(grpcServer, caServer)
 
-	ctx := context.Background()
+	fields := logrus.Fields{"testHasExternalCA": External}
+	if t != nil {
+		fields["testname"] = t.Name()
+	}
+	ctx, ctxCancel := context.WithCancel(log.WithLogger(context.Background(), log.L.WithFields(fields)))
 
 	clusterWatch, clusterWatchCancel, err := store.ViewAndWatch(
 		s, func(tx store.ReadTx) error {
@@ -260,6 +266,7 @@ func NewTestCAFromAPIRootCA(t *testing.T, tempBaseDir string, apiRootCA api.Root
 		ConnBroker:            connectionbroker.New(remotes),
 		KeyReadWriter:         krw,
 		watchCancel:           clusterWatchCancel,
+		ctxCancel:             ctxCancel,
 	}
 }
 
