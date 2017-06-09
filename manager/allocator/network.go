@@ -830,7 +830,7 @@ func (a *Allocator) allocateNetwork(ctx context.Context, n *api.Network) error {
 
 	if err := nc.nwkAllocator.Allocate(n); err != nil {
 		nc.unallocatedNetworks[n.ID] = n
-		return errors.Wrapf(err, "failed during network allocation for network %s", n.ID)
+		return err
 	}
 
 	return nil
@@ -897,7 +897,6 @@ func (a *Allocator) allocateTask(ctx context.Context, t *api.Task) (err error) {
 			}
 
 			if err = nc.nwkAllocator.AllocateTask(t); err != nil {
-				err = errors.Wrapf(err, "failed during network allocation for task %s", t.ID)
 				return
 			}
 			if nc.nwkAllocator.IsTaskAllocated(t) {
