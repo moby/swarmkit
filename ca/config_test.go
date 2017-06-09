@@ -426,6 +426,55 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	require.Equal(t, parsedIntermediate, parsedCerts[1])
 }
 
+// You can't update the root CA to one that doesn't match the TLS certificates
+func TestSecurityConfigUpdateRootCAUpdateConsistentWithTLSCertificates(t *testing.T) {
+	t.Parallel()
+	if testutils.External {
+		return // we don't care about external CAs at all
+	}
+	tempdir, err := ioutil.TempDir("", "")
+	require.NoError(t, err)
+	krw := ca.NewKeyReadWriter(ca.NewConfigPaths(tempdir).Node, nil, nil)
+
+	rootCA, err := ca.CreateRootCA("rootcn")
+	require.NoError(t, err)
+	tlsKeyPair, issuerInfo, err := rootCA.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
+	require.NoError(t, err)
+
+	otherRootCA, err := ca.CreateRootCA("otherCN")
+	require.NoError(t, err)
+	_, otherIssuerInfo, err := otherRootCA.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
+	require.NoError(t, err)
+	intermediate, err := rootCA.CrossSignCACertificate(otherRootCA.Certs)
+	require.NoError(t, err)
+	otherTLSCert, otherTLSKey, err := krw.Read()
+	require.NoError(t, err)
+	otherTLSKeyPair, err := tls.X509KeyPair(append(otherTLSCert, intermediate...), otherTLSKey)
+	require.NoError(t, err)
+
+	// Note - the validation only happens on UpdateRootCA for now, because the assumption is
+	// that something else does the validation when loading the security config for the first
+	// time and when getting new TLS credentials
+
+	secConfig, err := ca.NewSecurityConfig(&rootCA, krw, tlsKeyPair, issuerInfo)
+	require.NoError(t, err)
+
+	// can't update the root CA or external pool to one that doesn't match the tls certs
+	require.Error(t, secConfig.UpdateRootCA(&otherRootCA, rootCA.Pool))
+	require.Error(t, secConfig.UpdateRootCA(&rootCA, otherRootCA.Pool))
+
+	// can update the secConfig's root CA to one that does match the certs
+	combinedRootCA, err := ca.NewRootCA(append(otherRootCA.Certs, rootCA.Certs...), nil, nil,
+		ca.DefaultNodeCertExpiration, nil)
+	require.NoError(t, err)
+	require.NoError(t, secConfig.UpdateRootCA(&combinedRootCA, combinedRootCA.Pool))
+
+	// if there are intermediates, we can update to a root CA that signed the intermediate
+	require.NoError(t, secConfig.UpdateTLSCredentials(&otherTLSKeyPair, otherIssuerInfo))
+	require.NoError(t, secConfig.UpdateRootCA(&rootCA, rootCA.Pool))
+
+}
+
 func TestSecurityConfigSetWatch(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
