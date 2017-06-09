@@ -21,14 +21,15 @@ type Server struct {
 	raft           *raft.Node
 	securityConfig *ca.SecurityConfig
 	scu            ca.APISecurityConfigUpdater
-	a              *allocator.Allocator
+	a              **allocator.Allocator
 	pg             plugingetter.PluginGetter
 }
 
 // NewServer creates a Cluster API server.
 func NewServer(store *store.MemoryStore, raft *raft.Node, securityConfig *ca.SecurityConfig,
-	scu ca.APISecurityConfigUpdater, a *allocator.Allocator, pg plugingetter.PluginGetter) *Server {
+	scu ca.APISecurityConfigUpdater, a **allocator.Allocator, pg plugingetter.PluginGetter) *Server {
 	return &Server{
+		a:              a,
 		store:          store,
 		raft:           raft,
 		securityConfig: securityConfig,
