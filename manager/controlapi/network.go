@@ -107,7 +107,7 @@ func validateNetworkSpec(spec *api.NetworkSpec, a *allocator.Allocator, pg plugi
 // - Returns `InvalidArgument` if the NetworkSpec is malformed.
 // - Returns an error if the creation fails.
 func (s *Server) CreateNetwork(ctx context.Context, request *api.CreateNetworkRequest) (*api.CreateNetworkResponse, error) {
-	if err := validateNetworkSpec(request.Spec, s.a, s.pg); err != nil {
+	if err := validateNetworkSpec(request.Spec, *(s.a), s.pg); err != nil {
 		return nil, err
 	}
 

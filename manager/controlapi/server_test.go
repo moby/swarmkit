@@ -12,6 +12,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
+	"github.com/docker/swarmkit/manager/allocator"
 	"github.com/docker/swarmkit/manager/state/store"
 	stateutils "github.com/docker/swarmkit/manager/state/testutils"
 	"github.com/stretchr/testify/assert"
@@ -48,7 +49,8 @@ func newTestServer(t *testing.T) *testServer {
 	ts.Store = store.NewMemoryStore(&stateutils.MockProposer{})
 	assert.NotNil(t, ts.Store)
 
-	ts.Server = NewServer(ts.Store, nil, securityConfig, ca.NewServer(ts.Store, securityConfig, tc.Paths.RootCA), nil, nil)
+	var a *allocator.Allocator
+	ts.Server = NewServer(ts.Store, nil, securityConfig, ca.NewServer(ts.Store, securityConfig, tc.Paths.RootCA), &a, nil)
 	assert.NotNil(t, ts.Server)
 
 	temp, err := ioutil.TempFile("", "test-socket")
