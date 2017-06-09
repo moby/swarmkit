@@ -271,7 +271,7 @@ func TestRegisterNoCert(t *testing.T) {
 	defer stream.CloseSend()
 	resp, err := stream.Recv()
 	assert.Nil(t, resp)
-	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
+	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = no client certificates in request")
 }
 
 func TestHeartbeat(t *testing.T) {
@@ -331,7 +331,7 @@ func TestHeartbeatNoCert(t *testing.T) {
 	// heartbeat without correct SessionID should fail
 	resp, err := gd.Clients[2].Heartbeat(context.Background(), &api.HeartbeatRequest{})
 	assert.Nil(t, resp)
-	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
+	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = no client certificates in request")
 }
 
 func TestHeartbeatTimeout(t *testing.T) {
@@ -894,7 +894,7 @@ func TestTasksNoCert(t *testing.T) {
 	assert.NotNil(t, stream)
 	resp, err := stream.Recv()
 	assert.Nil(t, resp)
-	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
+	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = no client certificates in request")
 }
 
 func TestTaskUpdate(t *testing.T) {
@@ -1048,7 +1048,7 @@ func TestTaskUpdateNoCert(t *testing.T) {
 	resp, err := gd.Clients[2].UpdateTaskStatus(context.Background(), updReq)
 	assert.Nil(t, resp)
 	assert.Error(t, err)
-	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
+	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = no client certificates in request")
 }
 
 func TestSession(t *testing.T) {
@@ -1076,7 +1076,7 @@ func TestSessionNoCert(t *testing.T) {
 	assert.NoError(t, err)
 	msg, err := stream.Recv()
 	assert.Nil(t, msg)
-	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
+	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = no client certificates in request")
 }
 
 func getSessionAndNodeID(t *testing.T, c api.DispatcherClient) (string, string) {
@@ -1474,7 +1474,7 @@ func TestOldTasksNoCert(t *testing.T) {
 	assert.NotNil(t, stream)
 	resp, err := stream.Recv()
 	assert.Nil(t, resp)
-	assert.EqualError(t, err, "rpc error: code = 7 desc = Permission denied: unauthorized peer role: rpc error: code = 7 desc = no client certificates in request")
+	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = no client certificates in request")
 }
 
 func TestClusterUpdatesSendMessages(t *testing.T) {

@@ -279,23 +279,23 @@ func TestNewNodeCertificateRequiresToken(t *testing.T) {
 	role := api.NodeRoleManager
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
-	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid join token is necessary to join this cluster")
+	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	role = api.NodeRoleWorker
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
-	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid join token is necessary to join this cluster")
+	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	// Issuance fails if wrong secret is provided
 	role = api.NodeRoleManager
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
-	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid join token is necessary to join this cluster")
+	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	role = api.NodeRoleWorker
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
-	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid join token is necessary to join this cluster")
+	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	// Issuance succeeds if correct token is provided
 	role = api.NodeRoleManager
@@ -335,12 +335,12 @@ func TestNewNodeCertificateRequiresToken(t *testing.T) {
 	}))
 
 	// Old token should fail
-	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid join token is necessary to join this cluster")
+	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	role = api.NodeRoleWorker
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: tc.WorkerToken}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
-	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid join token is necessary to join this cluster")
+	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	// New token should succeed
 	role = api.NodeRoleManager
@@ -365,12 +365,12 @@ func TestNewNodeCertificateBadToken(t *testing.T) {
 	role := api.NodeRoleManager
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
-	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid join token is necessary to join this cluster")
+	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	role = api.NodeRoleWorker
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(context.Background(), issueRequest)
-	assert.EqualError(t, err, "rpc error: code = 3 desc = A valid join token is necessary to join this cluster")
+	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 }
 
 func TestGetUnlockKey(t *testing.T) {
