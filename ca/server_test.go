@@ -11,11 +11,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/equality"
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
+	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/testutils"
 	"github.com/opencontainers/go-digest"
@@ -641,10 +643,10 @@ func getFakeAPINode(t *testing.T, id string, state api.IssuanceStatus_State, tls
 	return node
 }
 
-func startCAServer(caServer *ca.Server) {
+func startCAServer(ctx context.Context, caServer *ca.Server) {
 	alreadyRunning := make(chan struct{})
 	go func() {
-		if err := caServer.Run(context.Background()); err != nil {
+		if err := caServer.Run(ctx); err != nil {
 			close(alreadyRunning)
 		}
 	}()
@@ -917,11 +919,11 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 			// if we want to simulate restarting the CA server with a root rotation already done, set the rootCA to
 			// have a root rotation, then start the CA
 			rt.convergeRootCA(testcase.rootCA, testcase.descr)
-			startCAServer(rt.tc.CAServer)
+			startCAServer(rt.tc.Context, rt.tc.CAServer)
 		} else {
 			// otherwise, start the CA in the state where there is no root rotation, and start a root rotation
 			rt.convergeRootCA(&startCluster.RootCA, testcase.descr) // no root rotation
-			startCAServer(rt.tc.CAServer)
+			startCAServer(rt.tc.Context, rt.tc.CAServer)
 			rt.convergeRootCA(testcase.rootCA, testcase.descr)
 		}
 
@@ -1096,7 +1098,7 @@ func TestRootRotationReconciliationNoChanges(t *testing.T) {
 		rt.convergeRootCA(&startCluster.RootCA, testcase.descr) // no root rotation
 
 		if !testcase.caServerStopped {
-			startCAServer(rt.tc.CAServer)
+			startCAServer(rt.tc.Context, rt.tc.CAServer)
 		}
 		rt.convergeRootCA(testcase.rootCA, testcase.descr)
 
@@ -1145,6 +1147,7 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 
 	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
+	tc.CAServer.Stop() // we can't use the testCA's CA server because we need to inject extra behavior into the control loop
 	rt := rootRotationTester{
 		tc: tc,
 		t:  t,
@@ -1154,23 +1157,29 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
-	var otherServers []*ca.Server
-	var secConfigs []*ca.SecurityConfig
-	for i := 0; i < 3; i++ { // to make sure we get some collision
+	var (
+		otherServers   = make([]*ca.Server, 5)
+		secConfigs     = make([]*ca.SecurityConfig, 5)
+		serverContexts = make([]context.Context, 5)
+		paths          = make([]*ca.SecurityConfigPaths, 5)
+	)
+
+	for i := 0; i < 5; i++ { // to make sure we get some collision
 		// start a competing CA server
-		competingSecConfig, err := tc.NewNodeConfig(ca.ManagerRole)
+		secConfigs[i], err = tc.NewNodeConfig(ca.ManagerRole)
 		require.NoError(t, err)
-		secConfigs = append(secConfigs, competingSecConfig)
 
-		paths := ca.NewConfigPaths(filepath.Join(tempDir, fmt.Sprintf("%d", i)))
+		paths[i] = ca.NewConfigPaths(filepath.Join(tempDir, fmt.Sprintf("%d", i)))
 
-		otherServer := ca.NewServer(tc.MemoryStore, competingSecConfig, paths.RootCA)
+		otherServers[i] = ca.NewServer(tc.MemoryStore, secConfigs[i], paths[i].RootCA)
 		// offset each server's reconciliation interval somewhat so that some will
 		// pre-empt others
-		otherServer.SetRootReconciliationInterval(time.Millisecond * time.Duration((i+1)*10))
-		startCAServer(otherServer)
-		defer otherServer.Stop()
-		otherServers = append(otherServers, otherServer)
+		otherServers[i].SetRootReconciliationInterval(time.Millisecond * time.Duration((i+1)*10))
+		serverContexts[i] = log.WithLogger(tc.Context, log.G(tc.Context).WithFields(logrus.Fields{
+			"otherCAServer": i,
+		}))
+		startCAServer(serverContexts[i], otherServers[i])
+		defer otherServers[i].Stop()
 	}
 	clusterWatch, clusterWatchCancel, err := store.ViewAndWatch(
 		tc.MemoryStore, func(tx store.ReadTx) error {
@@ -1192,8 +1201,15 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 			select {
 			case event := <-clusterWatch:
 				clusterEvent := event.(api.EventUpdateCluster)
-				for _, s := range otherServers {
-					s.UpdateRootCA(context.Background(), clusterEvent.Cluster)
+				for i, s := range otherServers { // the security config of each
+					s.UpdateRootCA(tc.Context, clusterEvent.Cluster)
+					// also update the TLS configs with a new TLS creds, otherwise we won't be able to update the
+					// root CA the second time around
+					tlsKeyPair, issuerInfo, err := secConfigs[i].RootCA().IssueAndSaveNewCertificates(
+						ca.NewKeyReadWriter(paths[i].Node, nil, nil), "cn", "ou", "org")
+					if err == nil {
+						secConfigs[i].UpdateTLSCredentials(tlsKeyPair, issuerInfo)
+					}
 				}
 			case <-done:
 				return
@@ -1219,6 +1235,7 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 		var (
 			rotationCrossSigned []byte
 			rotationTLSInfo     *api.NodeTLSInfo
+			caRootCA            ca.RootCA
 		)
 		rotationCert, rotationKey, err = cautils.CreateRootCertAndKey(fmt.Sprintf("root cn %d", i))
 		require.NoError(t, err)
@@ -1228,7 +1245,7 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 				return errors.New("cluster has disappeared")
 			}
 			rootCA := cluster.RootCA.Copy()
-			caRootCA, err := ca.NewRootCA(rootCA.CACert, rootCA.CACert, rootCA.CAKey, ca.DefaultNodeCertExpiration, nil)
+			caRootCA, err = ca.NewRootCA(rootCA.CACert, rootCA.CACert, rootCA.CAKey, ca.DefaultNodeCertExpiration, nil)
 			if err != nil {
 				return err
 			}
@@ -1289,14 +1306,14 @@ func TestRootRotationReconciliationThrottled(t *testing.T) {
 
 	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
-	// immediately stop the CA server - we want to run our down
+	// immediately stop the CA server - we want to run our own
 	tc.CAServer.Stop()
 
 	caServer := ca.NewServer(tc.MemoryStore, tc.ServingSecurityConfig, tc.Paths.RootCA)
 	// set the reconciliation interval to something ridiculous, so we can make sure the first
 	// batch does update all of them
 	caServer.SetRootReconciliationInterval(time.Hour)
-	startCAServer(caServer)
+	startCAServer(tc.Context, caServer)
 	defer caServer.Stop()
 
 	var nodes []*api.Node
