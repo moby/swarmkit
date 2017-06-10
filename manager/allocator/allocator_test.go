@@ -3,6 +3,7 @@ package allocator
 import (
 	"net"
 	"runtime/debug"
+	"strconv"
 	"testing"
 	"time"
 
@@ -106,6 +107,7 @@ func TestAllocator(t *testing.T) {
 	go func() {
 		assert.NoError(t, a.Run(context.Background()))
 	}()
+	defer a.Stop()
 
 	// Now verify if we get network and tasks updated properly
 	watchNetwork(t, netWatch, false, isValidNetwork)
@@ -409,8 +411,113 @@ func TestAllocator(t *testing.T) {
 	}))
 	watchService(t, serviceWatch, false, nil)
 	watchTask(t, s, taskWatch, false, isValidTask)
+}
 
-	a.Stop()
+func TestNoDuplicateIPs(t *testing.T) {
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	// Try adding some objects to store before allocator is started
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		n1 := &api.Network{
+			ID: "testID1",
+			Spec: api.NetworkSpec{
+				Annotations: api.Annotations{
+					Name: "test1",
+				},
+			},
+		}
+		assert.NoError(t, store.CreateNetwork(tx, n1))
+
+		s1 := &api.Service{
+			ID: "testServiceID1",
+			Spec: api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "service1",
+				},
+				Task: api.TaskSpec{
+					Networks: []*api.NetworkAttachmentConfig{
+						{
+							Target: "testID1",
+						},
+					},
+				},
+				Endpoint: &api.EndpointSpec{
+					Mode: api.ResolutionModeVirtualIP,
+					Ports: []*api.PortConfig{
+						{
+							Name:          "portName",
+							Protocol:      api.ProtocolTCP,
+							TargetPort:    8000,
+							PublishedPort: 8001,
+						},
+					},
+				},
+			},
+		}
+		assert.NoError(t, store.CreateService(tx, s1))
+
+		return nil
+	}))
+
+	taskWatch, cancel := state.Watch(s.WatchQueue(), state.EventUpdateTask{}, state.EventDeleteTask{})
+	defer cancel()
+
+	assignedIPs := make(map[string]string)
+	hasUniqueIP := func(fakeT assert.TestingT, s *store.MemoryStore, task *api.Task) bool {
+		if len(task.Networks) == 0 {
+			panic("missing networks")
+		}
+		if len(task.Networks[0].Addresses) == 0 {
+			panic("missing network address")
+		}
+
+		assignedIP := task.Networks[0].Addresses[0]
+		oldTaskID, present := assignedIPs[assignedIP]
+		if present && task.ID != oldTaskID {
+			t.Fatalf("task %s assigned duplicate IP %s, previously assigned to task %s", task.ID, assignedIP, oldTaskID)
+		}
+		assignedIPs[assignedIP] = task.ID
+		return true
+	}
+
+	reps := 100
+	for i := 0; i != reps; i++ {
+		assert.NoError(t, s.Update(func(tx store.Tx) error {
+			t2 := &api.Task{
+				// The allocator iterates over the tasks in
+				// lexical order, so number tasks in descending
+				// order. Note that the problem this test was
+				// meant to trigger also showed up with tasks
+				// numbered in ascending order, but it took
+				// until the 52nd task.
+				ID: "testTaskID" + strconv.Itoa(reps-i),
+				Status: api.TaskStatus{
+					State: api.TaskStateNew,
+				},
+				ServiceID:    "testServiceID1",
+				DesiredState: api.TaskStateRunning,
+			}
+			assert.NoError(t, store.CreateTask(tx, t2))
+
+			return nil
+		}))
+
+		a, err := New(s, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, a)
+
+		// Start allocator
+		go func() {
+			assert.NoError(t, a.Run(context.Background()))
+		}()
+
+		// Confirm task gets a unique IP
+		watchTask(t, s, taskWatch, false, hasUniqueIP)
+
+		a.Stop()
+	}
 }
 
 func isValidNetwork(t assert.TestingT, n *api.Network) bool {
