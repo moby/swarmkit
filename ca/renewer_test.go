@@ -26,7 +26,7 @@ func TestForceRenewTLSConfig(t *testing.T) {
 	nodeConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
 	assert.NoError(t, err)
 
-	renewer := ca.NewTLSRenewer(nodeConfig, tc.ConnBroker)
+	renewer := ca.NewTLSRenewer(nodeConfig, tc.ConnBroker, tc.Paths.RootCA)
 	updates := renewer.Start(ctx)
 	renewer.Renew()
 	select {
@@ -67,7 +67,7 @@ func TestForceRenewExpectedRole(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	renewer := ca.NewTLSRenewer(nodeConfig, tc.ConnBroker)
+	renewer := ca.NewTLSRenewer(nodeConfig, tc.ConnBroker, tc.Paths.RootCA)
 	updates := renewer.Start(ctx)
 	renewer.SetExpectedRole(ca.WorkerRole)
 	renewer.Renew()
