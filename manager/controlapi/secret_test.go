@@ -89,6 +89,16 @@ func TestValidateSecretSpec(t *testing.T) {
 		err := validateSecretSpec(good)
 		assert.NoError(t, err)
 	}
+
+	// Ensure secret driver has a name
+	spec := createSecretSpec("secret-driver", make([]byte, 1), nil)
+	spec.Driver = &api.Driver{}
+	err := validateSecretSpec(spec)
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+	spec.Driver.Name = "secret-driver"
+	err = validateSecretSpec(spec)
+	assert.NoError(t, err)
 }
 
 func TestCreateSecret(t *testing.T) {

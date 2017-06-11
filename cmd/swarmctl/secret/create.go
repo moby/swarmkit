@@ -24,8 +24,13 @@ var createCmd = &cobra.Command{
 		var (
 			secretData []byte
 			err        error
+			driver     string
 		)
 
+		driver, err = flags.GetString("driver")
+		if err != nil {
+			return fmt.Errorf("Error reading secret driver %s", err.Error())
+		}
 		if flags.Changed("file") {
 			filename, err := flags.GetString("file")
 			if err != nil {
@@ -35,7 +40,7 @@ var createCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("Error reading from file '%s': %s", filename, err.Error())
 			}
-		} else {
+		} else if driver == "" {
 			secretData, err = ioutil.ReadAll(os.Stdin)
 			if err != nil {
 				return fmt.Errorf("Error reading content from STDIN: %s", err.Error())
@@ -51,6 +56,9 @@ var createCmd = &cobra.Command{
 			Annotations: api.Annotations{Name: args[0]},
 			Data:        secretData,
 		}
+		if driver != "" {
+			spec.Driver = &api.Driver{Name: driver}
+		}
 
 		resp, err := client.CreateSecret(common.Context(cmd), &api.CreateSecretRequest{Spec: spec})
 		if err != nil {
@@ -63,4 +71,5 @@ var createCmd = &cobra.Command{
 
 func init() {
 	createCmd.Flags().StringP("file", "f", "", "Rather than read the secret from STDIN, read from the given file")
+	createCmd.Flags().StringP("driver", "d", "", "Rather than read the secret from STDIN, read the value from an external secret driver")
 }

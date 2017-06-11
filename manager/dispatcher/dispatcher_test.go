@@ -2,9 +2,13 @@ package dispatcher
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
@@ -15,11 +19,14 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 
+	"github.com/docker/docker/pkg/plugingetter"
+	"github.com/docker/docker/pkg/plugins"
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/identity"
+	"github.com/docker/swarmkit/manager/drivers"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/testutils"
 	digest "github.com/opencontainers/go-digest"
@@ -36,6 +43,7 @@ type grpcDispatcher struct {
 	conns            []*grpc.ClientConn
 	testCA           *cautils.TestCA
 	testCluster      *testCluster
+	PluginGetter     *mockPluginGetter
 }
 
 func (gd *grpcDispatcher) Close() {
@@ -45,6 +53,7 @@ func (gd *grpcDispatcher) Close() {
 	}
 	gd.dispatcherServer.Stop()
 	gd.grpcServer.Stop()
+	gd.PluginGetter.Close()
 	gd.testCA.Stop()
 }
 
@@ -145,7 +154,8 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 
 	s := grpc.NewServer(serverOpts...)
 	tc := newTestCluster(l.Addr().String(), tca.MemoryStore)
-	d := New(tc, c)
+	driverGetter := &mockPluginGetter{}
+	d := New(tc, c, drivers.New(driverGetter))
 
 	authorize := func(ctx context.Context, roles []string) error {
 		_, err := ca.AuthorizeForwardedRoleAndOrg(ctx, roles, []string{ca.ManagerRole}, tca.Organization, nil)
@@ -203,6 +213,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 		grpcServer:       s,
 		testCA:           tca,
 		testCluster:      tc,
+		PluginGetter:     driverGetter,
 	}, nil
 }
 
@@ -406,6 +417,84 @@ func TestAssignmentsErrorsIfNoSessionID(t *testing.T) {
 	assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
 }
 
+func TestAssignmentsSecretDriver(t *testing.T) {
+	t.Parallel()
+
+	const (
+		secretDriver       = "secret-driver"
+		existingSecretName = "existing-secret"
+		secretValue        = "custom-secret-value"
+	)
+
+	responses := map[string]*drivers.SecretsProviderResponse{
+		existingSecretName: {Value: secretValue},
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc(drivers.SecretsProviderAPI, func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		body, err := ioutil.ReadAll(r.Body)
+		var request drivers.SecretsProviderRequest
+		assert.NoError(t, err)
+		assert.NoError(t, json.Unmarshal(body, &request))
+		response := responses[request.Name]
+		assert.NotNil(t, response)
+		resp, err := json.Marshal(response)
+		assert.NoError(t, err)
+		w.Write(resp)
+	})
+
+	gd, err := startDispatcher(DefaultConfig())
+	assert.NoError(t, err)
+	assert.NoError(t, gd.PluginGetter.SetupPlugin(secretDriver, mux))
+	defer gd.Close()
+
+	expectedSessionID, nodeID := getSessionAndNodeID(t, gd.Clients[0])
+
+	secret := &api.Secret{
+		ID: "driverSecret",
+		Spec: api.SecretSpec{
+			Annotations: api.Annotations{Name: existingSecretName},
+			Driver:      &api.Driver{Name: secretDriver},
+		},
+	}
+	config := &api.Config{
+		ID: "config",
+		Spec: api.ConfigSpec{
+			Data: []byte("config"),
+		},
+	}
+	spec := taskSpecFromDependencies(secret, config)
+	task := &api.Task{
+		NodeID:       nodeID,
+		ID:           "secretTask",
+		Status:       api.TaskStatus{State: api.TaskStateReady},
+		DesiredState: api.TaskStateNew,
+		Spec:         spec,
+	}
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateSecret(tx, secret))
+		assert.NoError(t, store.CreateConfig(tx, config))
+		assert.NoError(t, store.CreateTask(tx, task))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{SessionID: expectedSessionID})
+	assert.NoError(t, err)
+	defer stream.CloseSend()
+
+	resp, err := stream.Recv()
+	assert.NoError(t, err)
+
+	_, _, secretChanges := splitChanges(resp.Changes)
+	assert.Len(t, secretChanges, 1)
+	for _, s := range secretChanges {
+		assert.Equal(t, secretValue, string(s.Spec.Data))
+	}
+}
+
 // Assignments will send down any existing node tasks > ASSIGNED, and any secrets
 // for said tasks that are <= RUNNING (if the secrets exist)
 func TestAssignmentsInitialNodeTasks(t *testing.T) {
@@ -419,6 +508,7 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 
 	// create the relevant secrets and tasks
 	secrets, configs, tasks := makeTasksAndDependencies(t, nodeID)
+
 	err = gd.Store.Update(func(tx store.Tx) error {
 		for _, secret := range secrets {
 			assert.NoError(t, store.CreateSecret(tx, secret))
@@ -1549,4 +1639,73 @@ func TestClusterUpdatesSendMessages(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expected, msg)
 	}
+}
+
+// mockPluginGetter enables mocking the server plugin getter with customized plugins
+type mockPluginGetter struct {
+	addr   string
+	server *httptest.Server
+	name   string
+	plugin plugingetter.CompatPlugin
+}
+
+// SetupPlugin setup a new plugin - the same plugin wil always return in all calls
+func (m *mockPluginGetter) SetupPlugin(name string, handler http.Handler) error {
+	m.server = httptest.NewServer(handler)
+	client, err := plugins.NewClient(m.server.URL, nil)
+	if err != nil {
+		return err
+	}
+	m.plugin = NewMockPlugin(m.name, client)
+	m.name = name
+	return nil
+}
+
+// Close closes the mock plugin getter
+func (m *mockPluginGetter) Close() {
+	if m.server == nil {
+		return
+	}
+	m.server.Close()
+}
+
+func (m *mockPluginGetter) Get(name, capability string, mode int) (plugingetter.CompatPlugin, error) {
+	if name != m.name {
+		return nil, fmt.Errorf("plugin with name %s not defined", name)
+	}
+	return m.plugin, nil
+}
+func (m *mockPluginGetter) GetAllByCap(capability string) ([]plugingetter.CompatPlugin, error) {
+	return nil, nil
+}
+func (m *mockPluginGetter) GetAllManagedPluginsByCap(capability string) []plugingetter.CompatPlugin {
+	return nil
+}
+func (m *mockPluginGetter) Handle(capability string, callback func(string, *plugins.Client)) {
+	return
+}
+
+// MockPlugin mocks a v2 docker plugin
+type MockPlugin struct {
+	client *plugins.Client
+	name   string
+}
+
+// NewMockPlugin creates a new v2 plugin fake (returns the specified client and name for all calls)
+func NewMockPlugin(name string, client *plugins.Client) *MockPlugin {
+	return &MockPlugin{name: name, client: client}
+}
+
+func (m *MockPlugin) Client() *plugins.Client {
+	return m.client
+}
+func (m *MockPlugin) Name() string {
+	return m.name
+}
+func (m *MockPlugin) BasePath() string {
+	return ""
+
+}
+func (m *MockPlugin) IsV1() bool {
+	return false
 }
