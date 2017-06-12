@@ -93,7 +93,7 @@ func validateConfigOrSecretAnnotations(m api.Annotations) error {
 	return nil
 }
 
-func validateDriver(driver *api.Driver, a *allocator.Allocator, pg plugingetter.PluginGetter, pluginType string) error {
+func validateDriver(driver *api.Driver, pg plugingetter.PluginGetter, pluginType string) error {
 	if driver == nil {
 		// It is ok to not specify the driver. We will choose
 		// a default driver.
@@ -111,7 +111,7 @@ func validateDriver(driver *api.Driver, a *allocator.Allocator, pg plugingetter.
 			return nil
 		}
 	default:
-		if a.IsBuiltInNetworkDriver(driver.Name) {
+		if allocator.IsBuiltInNetworkDriver(driver.Name) {
 			return nil
 		}
 	}
