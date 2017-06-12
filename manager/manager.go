@@ -955,6 +955,16 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 					log.G(ctx).WithError(err).Error("failed to create predefined network " + p.Name)
 				}
 			}
+		} else {
+			// If it is already part of cluster, check if the store contains predefined
+			//networks like bridge/host and add it if not present.
+			for _, p := range networkallocator.PredefinedNetworks() {
+				if store.GetNetwork(tx, p.Name) == nil {
+					if err := store.CreateNetwork(tx, newPredefinedNetwork(p.Name, p.Driver)); err != nil {
+						log.G(ctx).WithError(err).Error("failed to create predefined network " + p.Name)
+					}
+				}
+			}
 		}
 
 		return nil

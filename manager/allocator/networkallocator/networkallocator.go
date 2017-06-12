@@ -152,6 +152,8 @@ func (na *NetworkAllocator) Allocate(n *api.Network) error {
 		n.DriverState = &api.Driver{
 			Name: d.name,
 		}
+		//populate for backward compatibility
+		n.IPAM = &api.IPAMOptions{Driver: &api.Driver{}}
 	} else {
 		nw.pools, err = na.allocatePools(n)
 		if err != nil {
