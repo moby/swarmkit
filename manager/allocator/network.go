@@ -1073,8 +1073,8 @@ func (a *Allocator) procTasksNetwork(ctx context.Context, onRetry bool) {
 }
 
 // IsBuiltInNetworkDriver returns whether the passed driver is an internal network driver
-func (a *Allocator) IsBuiltInNetworkDriver(name string) bool {
-	return a.netCtx.nwkAllocator.IsBuiltInDriver(name)
+func IsBuiltInNetworkDriver(name string) bool {
+	return cnmallocator.IsBuiltInDriver(name)
 }
 
 // PredefinedNetworks returns the list of predefined network structures for a given network model

@@ -187,6 +187,18 @@ func TestManager(t *testing.T) {
 		)
 	}))
 	controlClient = api.NewControlClient(controlConn)
+	_, err = controlClient.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
+		Spec: &api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "test-network-bad-driver",
+			},
+			DriverConfig: &api.Driver{
+				Name: "invalid-must-never-exist",
+			},
+		},
+	})
+	assert.Error(t, err)
+
 	_, err = controlClient.RemoveNode(context.Background(),
 		&api.RemoveNodeRequest{
 			NodeID: agentID,
