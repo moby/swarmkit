@@ -57,13 +57,20 @@ func (c *containerConfig) setTask(t *api.Task) error {
 		return ErrImageRequired
 	}
 
+	c.task = t
+
+	networks, err := template.ExpandNetworks(t)
+	if err != nil {
+		return err
+	}
+	c.task.Networks = networks
+
 	// index the networks by name
-	c.networksAttachments = make(map[string]*api.NetworkAttachment, len(t.Networks))
-	for _, attachment := range t.Networks {
+	c.networksAttachments = make(map[string]*api.NetworkAttachment, len(networks))
+	for _, attachment := range networks {
 		c.networksAttachments[attachment.Network.Spec.Annotations.Name] = attachment
 	}
 
-	c.task = t
 	preparedSpec, err := template.ExpandContainerSpec(t)
 	if err != nil {
 		return err
