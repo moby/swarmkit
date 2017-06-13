@@ -1173,11 +1173,23 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 func TestSchedulerFaultyNode(t *testing.T) {
 	ctx := context.Background()
 
-	taskTemplate := &api.Task{
+	replicatedTaskTemplate := &api.Task{
 		ServiceID:    "service1",
 		DesiredState: api.TaskStateRunning,
 		ServiceAnnotations: api.Annotations{
 			Name: "name1",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+	}
+
+	preassignedTaskTemplate := &api.Task{
+		ServiceID:    "service2",
+		NodeID:       "id1",
+		DesiredState: api.TaskStateRunning,
+		ServiceAnnotations: api.Annotations{
+			Name: "name2",
 		},
 		Status: api.TaskStatus{
 			State: api.TaskStatePending,
@@ -1213,15 +1225,21 @@ func TestSchedulerFaultyNode(t *testing.T) {
 	defer s.Close()
 
 	err := s.Update(func(tx store.Tx) error {
-		// Add initial nodes, and one task assigned to node id1
+		// Add initial nodes, and one task of each type assigned to node id1
 		assert.NoError(t, store.CreateNode(tx, node1))
 		assert.NoError(t, store.CreateNode(tx, node2))
 
-		task1 := taskTemplate.Copy()
+		task1 := replicatedTaskTemplate.Copy()
 		task1.ID = "id1"
 		task1.NodeID = "id1"
 		task1.Status.State = api.TaskStateRunning
 		assert.NoError(t, store.CreateTask(tx, task1))
+
+		task2 := preassignedTaskTemplate.Copy()
+		task2.ID = "id2"
+		task2.NodeID = "id1"
+		task2.Status.State = api.TaskStateRunning
+		assert.NoError(t, store.CreateTask(tx, task2))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -1238,17 +1256,17 @@ func TestSchedulerFaultyNode(t *testing.T) {
 
 	for i := 0; i != 8; i++ {
 		// Simulate a task failure cycle
-		newTask := taskTemplate.Copy()
-		newTask.ID = identity.NewID()
+		newReplicatedTask := replicatedTaskTemplate.Copy()
+		newReplicatedTask.ID = identity.NewID()
 
 		err = s.Update(func(tx store.Tx) error {
-			assert.NoError(t, store.CreateTask(tx, newTask))
+			assert.NoError(t, store.CreateTask(tx, newReplicatedTask))
 			return nil
 		})
 		assert.NoError(t, err)
 
 		assignment := watchAssignment(t, watch)
-		assert.Equal(t, newTask.ID, assignment.ID)
+		assert.Equal(t, newReplicatedTask.ID, assignment.ID)
 
 		if i < 5 {
 			// The first 5 attempts should be assigned to node id2 because
@@ -1260,11 +1278,38 @@ func TestSchedulerFaultyNode(t *testing.T) {
 			assert.Equal(t, "id1", assignment.NodeID)
 		}
 
+		newPreassignedTask := preassignedTaskTemplate.Copy()
+		newPreassignedTask.ID = identity.NewID()
+
 		err = s.Update(func(tx store.Tx) error {
-			newTask := store.GetTask(tx, newTask.ID)
-			require.NotNil(t, newTask)
-			newTask.Status.State = api.TaskStateFailed
-			assert.NoError(t, store.UpdateTask(tx, newTask))
+			assert.NoError(t, store.CreateTask(tx, newPreassignedTask))
+			return nil
+		})
+		assert.NoError(t, err)
+
+		assignment = watchAssignment(t, watch)
+		assert.Equal(t, newPreassignedTask.ID, assignment.ID)
+
+		// The preassigned task is always assigned to node id1
+		assert.Equal(t, "id1", assignment.NodeID)
+
+		// The service associated with the preassigned task will not be
+		// marked as
+		nodeInfo, err := scheduler.nodeSet.nodeInfo("id1")
+		assert.NoError(t, err)
+		assert.Len(t, nodeInfo.recentFailures["service2"], 0)
+
+		err = s.Update(func(tx store.Tx) error {
+			newReplicatedTask := store.GetTask(tx, newReplicatedTask.ID)
+			require.NotNil(t, newReplicatedTask)
+			newReplicatedTask.Status.State = api.TaskStateFailed
+			assert.NoError(t, store.UpdateTask(tx, newReplicatedTask))
+
+			newPreassignedTask := store.GetTask(tx, newPreassignedTask.ID)
+			require.NotNil(t, newPreassignedTask)
+			newPreassignedTask.Status.State = api.TaskStateFailed
+			assert.NoError(t, store.UpdateTask(tx, newPreassignedTask))
+
 			return nil
 		})
 		assert.NoError(t, err)
