@@ -39,7 +39,7 @@ func (ns *nodeSet) addOrUpdateNode(n NodeInfo) {
 		n.ActiveTasksCountByService = make(map[string]int)
 	}
 	if n.recentFailures == nil {
-		n.recentFailures = make(map[string][]time.Time)
+		n.recentFailures = make(map[versionedService][]time.Time)
 	}
 
 	ns.nodes[n.ID] = n
