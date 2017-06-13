@@ -711,7 +711,7 @@ func TestRepeatedRootRotation(t *testing.T) {
 
 func TestNodeRejoins(t *testing.T) {
 	t.Parallel()
-	numWorker, numManager := 1, 3
+	numWorker, numManager := 1, 1
 	cl := newCluster(t, numWorker, numManager)
 	defer func() {
 		require.NoError(t, cl.Stop())
@@ -721,56 +721,40 @@ func TestNodeRejoins(t *testing.T) {
 	clusterInfo, err := cl.GetClusterInfo()
 	require.NoError(t, err)
 
-	leader, err := cl.Leader()
-	require.NoError(t, err)
-
-	// Find a manager (not the leader) and the worker to shut down.
-	getNonLeaderAndWorker := func() map[string]*testNode {
-		results := make(map[string]*testNode)
-		for _, n := range cl.nodes {
-			nodeID := n.node.NodeID()
-			if n.IsManager() {
-				if nodeID != leader.node.NodeID() {
-					results[ca.ManagerRole] = n
-				}
-			} else {
-				results[ca.WorkerRole] = n
-			}
+	// find the worker
+	var worker *testNode
+	for _, n := range cl.nodes {
+		if !n.IsManager() {
+			worker = n
 		}
-		return results
 	}
 
 	// rejoining succeeds - (both because the certs are correct, and because node.Pause sets the JoinAddr to "")
-	for _, n := range getNonLeaderAndWorker() {
-		nodeID := n.node.NodeID()
-		require.NoError(t, n.Pause(false))
-		require.NoError(t, cl.StartNode(nodeID))
-	}
+	nodeID := worker.node.NodeID()
+	require.NoError(t, worker.Pause(false))
+	require.NoError(t, cl.StartNode(nodeID))
 	pollClusterReady(t, cl, numWorker, numManager)
 
 	// rejoining if the certs are wrong will fail fast so long as the join address is passed, but will keep retrying
 	// forever if the join address is not passed
-	leader, err = cl.Leader() // in case leadership changed
+	leader, err := cl.Leader()
 	require.NoError(t, err)
-	for role, n := range getNonLeaderAndWorker() {
-		nodeID := n.node.NodeID()
-		require.NoError(t, n.Pause(false))
+	require.NoError(t, worker.Pause(false))
 
-		// generate new certs with the same node ID, role, and cluster ID, but with the wrong CA
-		paths := ca.NewConfigPaths(filepath.Join(n.config.StateDir, "certificates"))
-		newRootCA, err := ca.CreateRootCA("bad root CA")
-		require.NoError(t, err)
-		ca.SaveRootCA(newRootCA, paths.RootCA)
-		krw := ca.NewKeyReadWriter(paths.Node, nil, &manager.RaftDEKData{}) // make sure the key headers are preserved
-		_, _, err = krw.Read()
-		require.NoError(t, err)
-		_, _, err = newRootCA.IssueAndSaveNewCertificates(krw, nodeID, role, clusterInfo.ID)
-		require.NoError(t, err)
+	// generate new certs with the same node ID, role, and cluster ID, but with the wrong CA
+	paths := ca.NewConfigPaths(filepath.Join(worker.config.StateDir, "certificates"))
+	newRootCA, err := ca.CreateRootCA("bad root CA")
+	require.NoError(t, err)
+	ca.SaveRootCA(newRootCA, paths.RootCA)
+	krw := ca.NewKeyReadWriter(paths.Node, nil, &manager.RaftDEKData{}) // make sure the key headers are preserved
+	_, _, err = krw.Read()
+	require.NoError(t, err)
+	_, _, err = newRootCA.IssueAndSaveNewCertificates(krw, nodeID, ca.WorkerRole, clusterInfo.ID)
+	require.NoError(t, err)
 
-		n.config.JoinAddr, err = leader.node.RemoteAPIAddr()
-		require.NoError(t, err)
-		err = cl.StartNode(nodeID)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "certificate signed by unknown authority")
-	}
+	worker.config.JoinAddr, err = leader.node.RemoteAPIAddr()
+	require.NoError(t, err)
+	err = cl.StartNode(nodeID)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "certificate signed by unknown authority")
 }
