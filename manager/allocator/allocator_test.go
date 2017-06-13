@@ -52,7 +52,7 @@ func TestAllocator(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "swarm-macvlan",
 			},
-			DriverConfig: &api.Driver{Name: "mac-vlan"},
+			DriverConfig: &api.Driver{Name: "macvlan"},
 		},
 	}
 
@@ -233,9 +233,8 @@ func TestAllocator(t *testing.T) {
 	})
 	assert.NotNil(t, ps)
 	assert.NotNil(t, sn)
-	assert.Nil(t, ps.IPAM, "Non nil IPAMOptions for predefined network")
-	assert.Nil(t, sn.IPAM, "Non nil IPAMOptions for predefined network")
-
+	assert.NotNil(t, ps.IPAM)
+	assert.NotNil(t, sn.IPAM)
 	// Verify no allocation was done for tasks on node-local networks
 	var (
 		tp1 *api.Task
