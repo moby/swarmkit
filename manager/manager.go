@@ -1034,7 +1034,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	}(m.constraintEnforcer)
 
 	go func(taskReaper *taskreaper.TaskReaper) {
-		taskReaper.Run()
+		taskReaper.Run(ctx)
 	}(m.taskReaper)
 
 	go func(orchestrator *replicated.Orchestrator) {
