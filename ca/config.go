@@ -157,7 +157,7 @@ func NewSecurityConfig(rootCA *RootCA, krw *KeyReadWriter, tlsKeyPair *tls.Certi
 		issuerInfo:  issuerInfo,
 		queue:       q,
 
-		externalCA:               NewExternalCA(rootCA, externalCATLSConfig),
+		externalCA:               NewExternalCA(rootCA.Intermediates, externalCATLSConfig),
 		ClientTLSCreds:           clientTLSCreds,
 		ServerTLSCreds:           serverTLSCreds,
 		externalCAClientRootPool: rootCA.Pool,
@@ -199,7 +199,7 @@ func (s *SecurityConfig) UpdateRootCA(rootCA *RootCA, externalCARootPool *x509.C
 
 	s.rootCA = rootCA
 	s.externalCAClientRootPool = externalCARootPool
-	s.externalCA.UpdateRootCA(rootCA)
+	s.externalCA.UpdateIntermediates(rootCA.Intermediates)
 
 	return s.updateTLSCredentials(s.certificate, s.issuerInfo)
 }

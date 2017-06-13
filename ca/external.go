@@ -47,18 +47,28 @@ var ErrNoExternalCAURLs = errors.New("no external CA URLs")
 type ExternalCA struct {
 	ExternalRequestTimeout time.Duration
 
-	mu     sync.Mutex
-	rootCA *RootCA
-	urls   []string
-	client *http.Client
+	mu            sync.Mutex
+	intermediates []byte
+	urls          []string
+	client        *http.Client
+}
+
+// NewExternalCATLSConfig takes a TLS certificate and root pool and returns a TLS config that can be updated
+// without killing existing connections
+func NewExternalCATLSConfig(keyPair tls.Certificate, rootPool *x509.CertPool) *tls.Config {
+	return &tls.Config{
+		Certificates: []tls.Certificate{keyPair},
+		RootCAs:      rootPool,
+		MinVersion:   tls.VersionTLS12,
+	}
 }
 
 // NewExternalCA creates a new ExternalCA which uses the given tlsConfig to
 // authenticate to any of the given URLS of CFSSL API endpoints.
-func NewExternalCA(rootCA *RootCA, tlsConfig *tls.Config, urls ...string) *ExternalCA {
+func NewExternalCA(intermediates []byte, tlsConfig *tls.Config, urls ...string) *ExternalCA {
 	return &ExternalCA{
 		ExternalRequestTimeout: 5 * time.Second,
-		rootCA:                 rootCA,
+		intermediates:          intermediates,
 		urls:                   urls,
 		client: &http.Client{
 			Transport: &http.Transport{
@@ -75,7 +85,7 @@ func (eca *ExternalCA) Copy() *ExternalCA {
 
 	return &ExternalCA{
 		ExternalRequestTimeout: eca.ExternalRequestTimeout,
-		rootCA:                 eca.rootCA,
+		intermediates:          eca.intermediates,
 		urls:                   eca.urls,
 		client:                 eca.client,
 	}
@@ -102,10 +112,10 @@ func (eca *ExternalCA) UpdateURLs(urls ...string) {
 	eca.urls = urls
 }
 
-// UpdateRootCA changes the root CA used to append intermediates
-func (eca *ExternalCA) UpdateRootCA(rca *RootCA) {
+// UpdateIntermediates changes the intermediates that will be appended to any certs
+func (eca *ExternalCA) UpdateIntermediates(intermediates []byte) {
 	eca.mu.Lock()
-	eca.rootCA = rca
+	eca.intermediates = intermediates
 	eca.mu.Unlock()
 }
 
@@ -117,7 +127,7 @@ func (eca *ExternalCA) Sign(ctx context.Context, req signer.SignRequest) (cert [
 	eca.mu.Lock()
 	urls := eca.urls
 	client := eca.client
-	intermediates := eca.rootCA.Intermediates
+	intermediates := eca.intermediates
 	eca.mu.Unlock()
 
 	if len(urls) == 0 {

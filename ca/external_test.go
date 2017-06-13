@@ -34,8 +34,10 @@ func TestExternalCACrossSign(t *testing.T) {
 		ca.NewKeyReadWriter(paths.Node, nil, nil), ca.CertificateRequestConfig{})
 	require.NoError(t, err)
 	cancel()
-	externalCA := secConfig.ExternalCA()
-	externalCA.UpdateURLs(tc.ExternalSigningServer.URL)
+
+	externalCA := ca.NewExternalCA(nil,
+		ca.NewExternalCATLSConfig(secConfig.ClientTLSCreds.Config().Certificates[0], tc.RootCA.Pool),
+		tc.ExternalSigningServer.URL)
 
 	for _, testcase := range []struct{ cert, key []byte }{
 		{
@@ -106,9 +108,6 @@ func TestExternalCASignRequestTimesOut(t *testing.T) {
 		"testHasExternalCA": false,
 	}))
 
-	rootCA, err := ca.CreateRootCA("rootCN")
-	require.NoError(t, err)
-
 	signDone, allDone := make(chan error), make(chan struct{})
 	defer close(signDone)
 	mux := http.NewServeMux()
@@ -127,7 +126,7 @@ func TestExternalCASignRequestTimesOut(t *testing.T) {
 	csr, _, err := ca.GenerateNewCSR()
 	require.NoError(t, err)
 
-	externalCA := ca.NewExternalCA(&rootCA, nil, server.URL)
+	externalCA := ca.NewExternalCA(nil, nil, server.URL)
 	externalCA.ExternalRequestTimeout = time.Second
 	go func() {
 		_, err := externalCA.Sign(ctx, ca.PrepareCSR(csr, "cn", "ou", "org"))
@@ -161,7 +160,8 @@ func TestExternalCACopy(t *testing.T) {
 
 	secConfig, err := tc.NewNodeConfig(ca.ManagerRole)
 	require.NoError(t, err)
-	externalCA1 := secConfig.ExternalCA()
+	externalCA1 := ca.NewExternalCA(nil,
+		ca.NewExternalCATLSConfig(secConfig.ClientTLSCreds.Config().Certificates[0], tc.RootCA.Pool))
 	externalCA2 := externalCA1.Copy()
 	externalCA2.UpdateURLs(tc.ExternalSigningServer.URL)
 
@@ -219,7 +219,7 @@ func TestExternalCASignRequestSizeLimit(t *testing.T) {
 	csr, _, err := ca.GenerateNewCSR()
 	require.NoError(t, err)
 
-	externalCA := ca.NewExternalCA(&rootCA, nil, server.URL)
+	externalCA := ca.NewExternalCA(rootCA.Intermediates, nil, server.URL)
 	externalCA.ExternalRequestTimeout = time.Second
 	go func() {
 		_, err := externalCA.Sign(ctx, ca.PrepareCSR(csr, "cn", "ou", "org"))
