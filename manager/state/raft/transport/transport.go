@@ -151,24 +151,21 @@ func (t *Transport) Send(m raftpb.Message) error {
 }
 
 // AddPeer adds new peer with id and address addr to Transport.
-// If there is already peer with such id in Transport it will return error if
-// address is different (UpdatePeer should be used) or nil otherwise.
-func (t *Transport) AddPeer(id uint64, addr string) error {
+// It chooses first address to which it's able to dial and using rest as backup.
+func (t *Transport) AddPeer(id uint64, addrs ...string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.stopped {
 		return errors.New("transport stopped")
 	}
-	if ep, ok := t.peers[id]; ok {
-		if ep.address() == addr {
-			return nil
-		}
-		return errors.Errorf("peer %x already added with addr %s", id, ep.addr)
-	}
-	log.G(t.ctx).Debugf("transport: add peer %x with address %s", id, addr)
-	p, err := newPeer(id, addr, t)
+	log.G(t.ctx).Debugf("transport: addding peer %x with addresses %v", id, addrs)
+	p, err := newPeer(id, t, addrs...)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create peer %x with addr %s", id, addr)
+		return errors.Wrapf(err, "failed to create peer %x with addresses %v", id, addrs)
+	}
+	if ep, ok := t.peers[id]; ok {
+		ep.stop()
+		<-ep.done
 	}
 	t.peers[id] = p
 	return nil
@@ -204,7 +201,8 @@ func (t *Transport) RemovePeer(id uint64) error {
 }
 
 // UpdatePeer updates peer with new address. It replaces connection immediately.
-func (t *Transport) UpdatePeer(id uint64, addr string) error {
+// It chooses first address to which it's able to dial and using rest as backup.
+func (t *Transport) UpdatePeer(id uint64, addrs ...string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -215,16 +213,16 @@ func (t *Transport) UpdatePeer(id uint64, addr string) error {
 	if !ok {
 		return ErrIsNotFound
 	}
-	if err := p.update(addr); err != nil {
+	if err := p.update(addrs...); err != nil {
 		return err
 	}
-	log.G(t.ctx).Debugf("peer %x updated to address %s", id, addr)
+	log.G(t.ctx).Debugf("peer %x updated to addresses %v", id, addrs)
 	return nil
 }
 
 // UpdatePeerAddr updates peer with new address, but delays connection creation.
 // New address won't be used until first failure on old address.
-func (t *Transport) UpdatePeerAddr(id uint64, addr string) error {
+func (t *Transport) UpdatePeerAddr(id uint64, addrs ...string) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -235,7 +233,7 @@ func (t *Transport) UpdatePeerAddr(id uint64, addr string) error {
 	if !ok {
 		return ErrIsNotFound
 	}
-	if err := p.updateAddr(addr); err != nil {
+	if err := p.updateAddr(addrs...); err != nil {
 		return err
 	}
 	return nil
@@ -382,7 +380,7 @@ func (t *Transport) resolvePeer(ctx context.Context, id uint64) (*peer, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newPeer(id, addr, t)
+	return newPeer(id, t, addr)
 }
 
 func (t *Transport) sendUnknownMessage(ctx context.Context, m raftpb.Message) error {
