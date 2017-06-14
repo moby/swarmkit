@@ -11,6 +11,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/node"
 	"github.com/docker/swarmkit/testutils"
@@ -87,9 +88,15 @@ func (c *testCluster) AddManager(lateBind bool, rootCA *ca.RootCA) error {
 	// first node
 	var n *testNode
 	if len(c.nodes) == 0 {
-		node, err := newTestNode("", "", lateBind, rootCA)
+		node, err := newTestNode("", "", lateBind)
 		if err != nil {
 			return err
+		}
+		// generate TLS certs for this manager for bootstrapping, else the node will generate its own CA
+		if rootCA != nil {
+			if err := generateCerts(node.stateDir, rootCA, identity.NewID(), ca.ManagerRole, identity.NewID(), true); err != nil {
+				return err
+			}
 		}
 		n = node
 	} else {
@@ -102,7 +109,7 @@ func (c *testCluster) AddManager(lateBind bool, rootCA *ca.RootCA) error {
 		if err != nil {
 			return err
 		}
-		node, err := newTestNode(joinAddr, clusterInfo.RootCA.JoinTokens.Manager, false, nil)
+		node, err := newTestNode(joinAddr, clusterInfo.RootCA.JoinTokens.Manager, false)
 		if err != nil {
 			return err
 		}
@@ -158,7 +165,7 @@ func (c *testCluster) AddAgent() error {
 	if err != nil {
 		return err
 	}
-	node, err := newTestNode(joinAddr, clusterInfo.RootCA.JoinTokens.Worker, false, nil)
+	node, err := newTestNode(joinAddr, clusterInfo.RootCA.JoinTokens.Worker, false)
 	if err != nil {
 		return err
 	}
