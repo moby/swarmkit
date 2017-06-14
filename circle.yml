@@ -59,7 +59,10 @@ test:
         # - `checkprotos`: Build and check the proto files *only* once all
         #                  tests pass with checked-in generated code.
         # - `coverage`: Generate coverage reports.
-        - cd "$WORKDIR" && make ci
+        - sudo mkdir /tmpfs
+        - sudo mount -t tmpfs tmpfs /tmpfs
+        - sudo chown 1000:1000 /tmpfs
+        - cd "$WORKDIR" && TMPDIR=/tmpfs make ci
 
     post:
         # Report to codecov.io
