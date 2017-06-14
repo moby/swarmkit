@@ -13,7 +13,6 @@ import (
 	agentutils "github.com/docker/swarmkit/agent/testutils"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/node"
 	"github.com/docker/swarmkit/testutils"
 	"golang.org/x/net/context"
@@ -27,11 +26,35 @@ type testNode struct {
 	stateDir string
 }
 
+// generateCerts generates/overwrites TLS certificates for a node in a particular directory
+func generateCerts(tmpDir string, rootCA *ca.RootCA, nodeID, role, org string, writeKey bool) error {
+	signer, err := rootCA.Signer()
+	if err != nil {
+		return err
+	}
+	certDir := filepath.Join(tmpDir, "certificates")
+	if err := os.MkdirAll(certDir, 0700); err != nil {
+		return err
+	}
+	certPaths := ca.NewConfigPaths(certDir)
+	if err := ioutil.WriteFile(certPaths.RootCA.Cert, signer.Cert, 0644); err != nil {
+		return err
+	}
+	if writeKey {
+		if err := ioutil.WriteFile(certPaths.RootCA.Key, signer.Key, 0600); err != nil {
+			return err
+		}
+	}
+	_, _, err = rootCA.IssueAndSaveNewCertificates(
+		ca.NewKeyReadWriter(certPaths.Node, nil, nil), nodeID, role, org)
+	return err
+}
+
 // newNode creates new node with specific role(manager or agent) and joins to
 // existing cluster. if joinAddr is empty string, then new cluster will be initialized.
 // It uses TestExecutor as executor. If lateBind is set, the remote API port is not
 // bound.  If rootCA is set, this root is used to bootstrap the node's TLS certs.
-func newTestNode(joinAddr, joinToken string, lateBind bool, rootCA *ca.RootCA) (*testNode, error) {
+func newTestNode(joinAddr, joinToken string, lateBind bool) (*testNode, error) {
 	tmpDir, err := ioutil.TempDir("", "swarmkit-integration-")
 	if err != nil {
 		return nil, err
@@ -47,30 +70,6 @@ func newTestNode(joinAddr, joinToken string, lateBind bool, rootCA *ca.RootCA) (
 	}
 	if !lateBind {
 		cfg.ListenRemoteAPI = "127.0.0.1:0"
-	}
-	if rootCA != nil {
-		signer, err := rootCA.Signer()
-		if err != nil {
-			return nil, err
-		}
-		certDir := filepath.Join(tmpDir, "certificates")
-		if err := os.MkdirAll(certDir, 0700); err != nil {
-			return nil, err
-		}
-		certPaths := ca.NewConfigPaths(certDir)
-		if err := ioutil.WriteFile(certPaths.RootCA.Cert, signer.Cert, 0644); err != nil {
-			return nil, err
-		}
-		if err := ioutil.WriteFile(certPaths.RootCA.Key, signer.Key, 0600); err != nil {
-			return nil, err
-		}
-		// generate TLS certs for this manager for bootstrapping, else the node will generate its own CA
-		_, _, err = rootCA.IssueAndSaveNewCertificates(
-			ca.NewKeyReadWriter(certPaths.Node, nil, nil),
-			identity.NewID(), ca.ManagerRole, identity.NewID())
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	node, err := node.New(cfg)

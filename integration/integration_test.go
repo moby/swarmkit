@@ -22,6 +22,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
+	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager"
 	"github.com/docker/swarmkit/testutils"
 	"github.com/pkg/errors"
@@ -769,6 +770,45 @@ func TestNodeRejoins(t *testing.T) {
 
 		n.config.JoinAddr, err = leader.node.RemoteAPIAddr()
 		require.NoError(t, err)
+		err = cl.StartNode(nodeID)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "certificate signed by unknown authority")
+	}
+}
+
+func TestNodeJoinWithWrongCerts(t *testing.T) {
+	t.Parallel()
+	numWorker, numManager := 1, 1
+	cl := newCluster(t, numWorker, numManager)
+	defer func() {
+		require.NoError(t, cl.Stop())
+	}()
+	pollClusterReady(t, cl, numWorker, numManager)
+
+	clusterInfo, err := cl.GetClusterInfo()
+	require.NoError(t, err)
+
+	joinAddr, err := cl.RandomManager().node.RemoteAPIAddr()
+	require.NoError(t, err)
+
+	tokens := map[string]string{
+		ca.WorkerRole:  clusterInfo.RootCA.JoinTokens.Worker,
+		ca.ManagerRole: clusterInfo.RootCA.JoinTokens.Manager,
+	}
+
+	rootCA, err := ca.CreateRootCA("rootCA")
+	require.NoError(t, err)
+
+	for role, token := range tokens {
+		node, err := newTestNode(joinAddr, token, false)
+		require.NoError(t, err)
+		nodeID := identity.NewID()
+		require.NoError(t,
+			generateCerts(node.stateDir, &rootCA, nodeID, role, clusterInfo.ID, false))
+		cl.counter++
+		cl.nodes[nodeID] = node
+		cl.nodesOrder[nodeID] = cl.counter
+
 		err = cl.StartNode(nodeID)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "certificate signed by unknown authority")
