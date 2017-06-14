@@ -55,9 +55,9 @@ type ExternalCA struct {
 
 // NewExternalCATLSConfig takes a TLS certificate and root pool and returns a TLS config that can be updated
 // without killing existing connections
-func NewExternalCATLSConfig(keyPair tls.Certificate, rootPool *x509.CertPool) *tls.Config {
+func NewExternalCATLSConfig(certs []tls.Certificate, rootPool *x509.CertPool) *tls.Config {
 	return &tls.Config{
-		Certificates: []tls.Certificate{keyPair},
+		Certificates: certs,
 		RootCAs:      rootPool,
 		MinVersion:   tls.VersionTLS12,
 	}
@@ -110,13 +110,6 @@ func (eca *ExternalCA) UpdateURLs(urls ...string) {
 	defer eca.mu.Unlock()
 
 	eca.urls = urls
-}
-
-// UpdateIntermediates changes the intermediates that will be appended to any certs
-func (eca *ExternalCA) UpdateIntermediates(intermediates []byte) {
-	eca.mu.Lock()
-	eca.intermediates = intermediates
-	eca.mu.Unlock()
 }
 
 // Sign signs a new certificate by proxying the given certificate signing

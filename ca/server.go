@@ -43,6 +43,8 @@ type Server struct {
 	cancel                      func()
 	store                       *store.MemoryStore
 	securityConfig              *SecurityConfig
+	externalCA                  *ExternalCA
+	externalCAPool              *x509.CertPool
 	joinTokens                  *api.JoinTokens
 	reconciliationRetryInterval time.Duration
 
@@ -60,7 +62,7 @@ type Server struct {
 	// the security config as a result
 	lastSeenClusterRootCA *api.RootCA
 	lastSeenExternalCAs   []*api.ExternalCA
-	secConfigMu           sync.Mutex
+	signingMu             sync.Mutex
 
 	// before we update the security config with the new root CA, we need to be able to save the root certs
 	rootPaths CertPaths
@@ -82,12 +84,20 @@ func NewServer(store *store.MemoryStore, securityConfig *SecurityConfig, rootCAP
 	return &Server{
 		store:                           store,
 		securityConfig:                  securityConfig,
+		externalCA:                      NewExternalCA(nil, nil),
 		pending:                         make(map[string]*api.Node),
 		started:                         make(chan struct{}),
 		reconciliationRetryInterval:     defaultReconciliationRetryInterval,
 		rootReconciliationRetryInterval: defaultRootReconciliationInterval,
 		rootPaths:                       rootCAPaths,
 	}
+}
+
+// ExternalCA returns the current external CA
+func (s *Server) ExternalCA() *ExternalCA {
+	s.signingMu.Lock()
+	defer s.signingMu.Unlock()
+	return s.externalCA
 }
 
 // SetReconciliationRetryInterval changes the time interval between
@@ -565,6 +575,37 @@ func (s *Server) isRunning() bool {
 	return true
 }
 
+// saveAndFilterExternalCAURLS saves a copy of the external CAs to the server, and also returns a list of external CA
+// urls filtered by the desired cert. This function assumes that something else has called s.signingMu.Lock() and
+// will also unlock it
+func (s *Server) saveAndFilterExternalCAURLS(ctx context.Context, desiredCert, defaultCert []byte, apiExternalCAs []*api.ExternalCA) (urls []string) {
+	desiredCert = NormalizePEMs(desiredCert)
+	s.lastSeenExternalCAs = make([]*api.ExternalCA, len(apiExternalCAs))
+
+	// TODO(aaronl): In the future, this will be abstracted with an ExternalCA interface that has different
+	// implementations for different CA types. At the moment, only CFSSL is supported.
+	for i, extCA := range apiExternalCAs {
+		s.lastSeenExternalCAs[i] = extCA.Copy()
+		// We want to support old external CA specifications which did not have a CA cert.  If there is no cert specified,
+		// we assume it's the old cert
+		certForExtCA := extCA.CACert
+		if len(certForExtCA) == 0 {
+			certForExtCA = defaultCert
+		}
+		certForExtCA = NormalizePEMs(certForExtCA)
+		if extCA.Protocol != api.ExternalCA_CAProtocolCFSSL {
+			log.G(ctx).Debugf("skipping external CA %d (url: %s) due to unknown protocol type", i, extCA.URL)
+			continue
+		}
+		if !bytes.Equal(certForExtCA, desiredCert) {
+			log.G(ctx).Debugf("skipping external CA %d (url: %s) because it has the wrong CA cert", i, extCA.URL)
+			continue
+		}
+		urls = append(urls, extCA.URL)
+	}
+	return
+}
+
 // UpdateRootCA is called when there are cluster changes, and it ensures that the local RootCA is
 // always aware of changes in clusterExpiry and the Root CA key material - this can be called by
 // anything to update the root CA material
@@ -578,20 +619,20 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) error {
 		reconciler.UpdateRootCA(rCA)
 	}
 
-	s.secConfigMu.Lock()
-	defer s.secConfigMu.Unlock()
+	s.signingMu.Lock()
+	defer s.signingMu.Unlock()
 	firstSeenCluster := s.lastSeenClusterRootCA == nil && s.lastSeenExternalCAs == nil
 	rootCAChanged := len(rCA.CACert) != 0 && !equality.RootCAEqualStable(s.lastSeenClusterRootCA, rCA)
 	externalCAChanged := !equality.ExternalCAsEqualStable(s.lastSeenExternalCAs, cluster.Spec.CAConfig.ExternalCAs)
-	logger := log.G(ctx).WithFields(logrus.Fields{
+	ctx = log.WithLogger(ctx, log.G(ctx).WithFields(logrus.Fields{
 		"cluster.id": cluster.ID,
 		"method":     "(*Server).UpdateRootCA",
-	})
+	}))
 
 	if rootCAChanged {
 		setOrUpdate := "set"
 		if !firstSeenCluster {
-			logger.Debug("Updating security config due to change in cluster Root CA")
+			log.G(ctx).Debug("Updating security config and external CA due to change in cluster Root CA")
 			setOrUpdate = "updated"
 		}
 		expiry := DefaultNodeCertExpiration
@@ -599,23 +640,25 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) error {
 			// NodeCertExpiry exists, let's try to parse the duration out of it
 			clusterExpiry, err := gogotypes.DurationFromProto(cluster.Spec.CAConfig.NodeCertExpiry)
 			if err != nil {
-				logger.WithError(err).Warn("failed to parse certificate expiration, using default")
+				log.G(ctx).WithError(err).Warn("failed to parse certificate expiration, using default")
 			} else {
 				// We were able to successfully parse the expiration out of the cluster.
 				expiry = clusterExpiry
 			}
 		} else {
 			// NodeCertExpiry seems to be nil
-			logger.Warn("no certificate expiration specified, using default")
+			log.G(ctx).Warn("no certificate expiration specified, using default")
 		}
 		// Attempt to update our local RootCA with the new parameters
 		var intermediates []byte
 		signingCert := rCA.CACert
 		signingKey := rCA.CAKey
+		externalCACert := rCA.CACert
 		if rCA.RootRotation != nil {
 			signingCert = rCA.RootRotation.CrossSignedCACert
 			signingKey = rCA.RootRotation.CAKey
 			intermediates = rCA.RootRotation.CrossSignedCACert
+			externalCACert = rCA.RootRotation.CACert
 		}
 		if signingKey == nil {
 			signingCert = nil
@@ -624,66 +667,42 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) error {
 		if err != nil {
 			return errors.Wrap(err, "invalid Root CA object in cluster")
 		}
-		externalCARootPool := updatedRootCA.Pool
-		if rCA.RootRotation != nil {
-			// the external CA has to trust the new CA cert
-			externalCARootPool = x509.NewCertPool()
-			externalCARootPool.AppendCertsFromPEM(rCA.CACert)
-			externalCARootPool.AppendCertsFromPEM(rCA.RootRotation.CACert)
-		}
-
-		// Attempt to update our local RootCA with the new parameters
-		if err := s.securityConfig.UpdateRootCA(&updatedRootCA, externalCARootPool); err != nil {
+		if err := s.securityConfig.UpdateRootCA(&updatedRootCA); err != nil {
 			return errors.Wrap(err, "updating Root CA failed")
 		}
 		if err := SaveRootCA(updatedRootCA, s.rootPaths); err != nil {
 			return errors.Wrap(err, "unable to save new root CA certificates")
 		}
-		// only update the server cache if we've successfully updated the root CA
-		logger.Debugf("Root CA %s successfully", setOrUpdate)
-		s.lastSeenClusterRootCA = rCA
-	}
 
-	// we want to update if the external CA changed, or if the root CA changed because the root CA could affect what
-	// certificate for external CAs we want to filter by
-	if rootCAChanged || externalCAChanged {
+		s.externalCAPool = updatedRootCA.Pool
+		if rCA.RootRotation != nil {
+			// the external CA has to trust the new CA cert
+			s.externalCAPool = x509.NewCertPool()
+			s.externalCAPool.AppendCertsFromPEM(rCA.CACert)
+			s.externalCAPool.AppendCertsFromPEM(rCA.RootRotation.CACert)
+		}
+		urls := s.saveAndFilterExternalCAURLS(ctx, externalCACert, rCA.CACert, cluster.Spec.CAConfig.ExternalCAs)
+		// Replace the external CA with the relevant intermediates, URLS, and TLS config
+		s.externalCA = NewExternalCA(updatedRootCA.Intermediates,
+			NewExternalCATLSConfig(s.securityConfig.ClientTLSCreds.Config().Certificates, s.externalCAPool), urls...)
+
+		// only update the server cache if we've successfully updated the root CA
+		log.G(ctx).Debugf("Root CA %s successfully", setOrUpdate)
+		s.lastSeenClusterRootCA = rCA
+	} else if externalCAChanged {
+		// we want to update only if the external CA URLS have changed, since if the root CA has changed we already
+		// run similar logic
 		if !firstSeenCluster {
-			logger.Debug("Updating security config external CA URLs due to change in cluster Root CA or cluster spec")
+			log.G(ctx).Debug("Updating security config external CA URLs due to change in cluster spec's list of external CAs")
 		}
 		wantedExternalCACert := rCA.CACert // we want to only add external CA URLs that use this cert
 		if rCA.RootRotation != nil {
 			// we're rotating to a new root, so we only want external CAs with the new root cert
 			wantedExternalCACert = rCA.RootRotation.CACert
 		}
-		wantedExternalCACert = NormalizePEMs(wantedExternalCACert)
-		// Update our security config with the list of External CA URLs
-		// from the new cluster state.
-
-		// TODO(aaronl): In the future, this will be abstracted with an
-		// ExternalCA interface that has different implementations for
-		// different CA types. At the moment, only CFSSL is supported.
-		var cfsslURLs []string
-		for i, extCA := range cluster.Spec.CAConfig.ExternalCAs {
-			// We want to support old external CA specifications which did not have a CA cert.  If there is no cert specified,
-			// we assume it's the old cert
-			certForExtCA := extCA.CACert
-			if len(certForExtCA) == 0 {
-				certForExtCA = rCA.CACert
-			}
-			certForExtCA = NormalizePEMs(certForExtCA)
-			if extCA.Protocol != api.ExternalCA_CAProtocolCFSSL {
-				logger.Debugf("skipping external CA %d (url: %s) due to unknown protocol type", i, extCA.URL)
-				continue
-			}
-			if !bytes.Equal(certForExtCA, wantedExternalCACert) {
-				logger.Debugf("skipping external CA %d (url: %s) because it has the wrong CA cert", i, extCA.URL)
-				continue
-			}
-			cfsslURLs = append(cfsslURLs, extCA.URL)
-		}
-
-		s.securityConfig.externalCA.UpdateURLs(cfsslURLs...)
-		s.lastSeenExternalCAs = cluster.Spec.CAConfig.Copy().ExternalCAs
+		// Update our external CA with the list of External CA URLs from the new cluster state
+		urls := s.saveAndFilterExternalCAURLS(ctx, wantedExternalCACert, rCA.CACert, cluster.Spec.CAConfig.ExternalCAs)
+		s.externalCA.UpdateURLs(urls...)
 	}
 	return nil
 }
@@ -714,8 +733,10 @@ func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) er
 
 // signNodeCert does the bulk of the work for signing a certificate
 func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
+	s.signingMu.Lock()
 	rootCA := s.securityConfig.RootCA()
-	externalCA := s.securityConfig.externalCA
+	externalCA := s.externalCA
+	s.signingMu.Unlock()
 
 	node = node.Copy()
 	nodeID := node.ID

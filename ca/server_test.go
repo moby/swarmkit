@@ -533,7 +533,7 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 		require.Equal(t, testCase.rootCASigningKey, signingKey, "%d", i)
 		require.Equal(t, testCase.rootCAIntermediates, rootCA.Intermediates)
 
-		externalCA := tc.ServingSecurityConfig.ExternalCA()
+		externalCA := tc.CAServer.ExternalCA()
 		csr, _, err := ca.GenerateNewCSR()
 		require.NoError(t, err)
 		signedCert, err := externalCA.Sign(tc.Context, ca.PrepareCSR(csr, "cn", ca.ManagerRole, tc.Organization))

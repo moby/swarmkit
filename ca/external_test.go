@@ -36,7 +36,7 @@ func TestExternalCACrossSign(t *testing.T) {
 	cancel()
 
 	externalCA := ca.NewExternalCA(nil,
-		ca.NewExternalCATLSConfig(secConfig.ClientTLSCreds.Config().Certificates[0], tc.RootCA.Pool),
+		ca.NewExternalCATLSConfig(secConfig.ClientTLSCreds.Config().Certificates, tc.RootCA.Pool),
 		tc.ExternalSigningServer.URL)
 
 	for _, testcase := range []struct{ cert, key []byte }{
@@ -161,7 +161,7 @@ func TestExternalCACopy(t *testing.T) {
 	secConfig, err := tc.NewNodeConfig(ca.ManagerRole)
 	require.NoError(t, err)
 	externalCA1 := ca.NewExternalCA(nil,
-		ca.NewExternalCATLSConfig(secConfig.ClientTLSCreds.Config().Certificates[0], tc.RootCA.Pool))
+		ca.NewExternalCATLSConfig(secConfig.ClientTLSCreds.Config().Certificates, tc.RootCA.Pool))
 	externalCA2 := externalCA1.Copy()
 	externalCA2.UpdateURLs(tc.ExternalSigningServer.URL)
 

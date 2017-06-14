@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	cryptorand "crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
@@ -1290,17 +1291,15 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 	connectToExternalRootCA, err := ca.NewRootCA(append(cautils.ECDSACertChain[2], fauxRootCert...), cautils.ECDSACertChain[1],
 		cautils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration, cautils.ECDSACertChain[1])
 	require.NoError(t, err)
-	secConfig, cancel, err := connectToExternalRootCA.CreateSecurityConfig(tc.Context, krw, ca.CertificateRequestConfig{})
+	tlsKeyPair, _, err := connectToExternalRootCA.IssueAndSaveNewCertificates(krw, "cn", ca.ManagerRole, tc.Organization)
 	require.NoError(t, err)
-	cancel()
-
-	externalCA := secConfig.ExternalCA()
-	externalCA.UpdateURLs(tc.ExternalSigningServer.URL)
+	externalCA := ca.NewExternalCA(cautils.ECDSACertChain[1],
+		ca.NewExternalCATLSConfig([]tls.Certificate{*tlsKeyPair}, connectToExternalRootCA.Pool), tc.ExternalSigningServer.URL)
 
 	newCSR, _, err := ca.GenerateNewCSR()
 	require.NoError(t, err)
 
-	tlsCert, err = externalCA.Sign(tc.Context, ca.PrepareCSR(newCSR, "cn", ca.ManagerRole, secConfig.ClientTLSCreds.Organization()))
+	tlsCert, err = externalCA.Sign(tc.Context, ca.PrepareCSR(newCSR, "cn", ca.ManagerRole, tc.Organization))
 	require.NoError(t, err)
 
 	checkValidateAgainstAllRoots(tlsCert)

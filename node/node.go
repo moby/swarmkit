@@ -346,7 +346,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 						log.G(ctx).WithError(err).Error("invalid new root certificate from the dispatcher")
 						continue
 					}
-					if err := securityConfig.UpdateRootCA(&newRootCA, newRootCA.Pool); err != nil {
+					if err := securityConfig.UpdateRootCA(&newRootCA); err != nil {
 						log.G(ctx).WithError(err).Error("could not use new root CA from dispatcher")
 						continue
 					}

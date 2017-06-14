@@ -317,8 +317,12 @@ func TestLoadSecurityConfigIntermediates(t *testing.T) {
 }
 
 // When the root CA is updated on the security config, the root pools are updated
-// and the external CA's rootCA is also updated.
 func TestSecurityConfigUpdateRootCA(t *testing.T) {
+	t.Parallel()
+	if cautils.External { // don't need an external CA server
+		return
+	}
+
 	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 	tcConfig, err := tc.NewNodeConfig("worker")
@@ -368,29 +372,6 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	require.Error(t, err)
 	require.IsType(t, x509.UnknownAuthorityError{}, err)
 
-	// we can't connect to the test CA's external server either
-	csr, _, err := ca.GenerateNewCSR()
-	require.NoError(t, err)
-	req := ca.PrepareCSR(csr, "cn", ca.ManagerRole, secConfig.ClientTLSCreds.Organization())
-
-	externalServer := tc.ExternalSigningServer
-	tcSigner, err := tc.RootCA.Signer()
-	require.NoError(t, err)
-	if cautils.External {
-		// stop the external server and create a new one because the external server actually has to trust our client certs as well.
-		updatedRoot, err := ca.NewRootCA(append(tc.RootCA.Certs, cert...), tcSigner.Cert, tcSigner.Key, ca.DefaultNodeCertExpiration, nil)
-		require.NoError(t, err)
-		externalServer, err = cautils.NewExternalSigningServer(updatedRoot, tc.TempDir)
-		require.NoError(t, err)
-		defer externalServer.Stop()
-
-		secConfig.ExternalCA().UpdateURLs(externalServer.URL)
-		_, err = secConfig.ExternalCA().Sign(tc.Context, req)
-		require.Error(t, err)
-		// the type is weird (it's wrapped in a bunch of other things in ctxhttp), so just compare strings
-		require.Contains(t, err.Error(), x509.UnknownAuthorityError{}.Error())
-	}
-
 	// update the root CA on the "original security config to support both the old root
 	// and the "new root" (the testing CA root).  Also make sure this root CA has an
 	// intermediate; we won't use it for anything, just make sure that newly generated TLS
@@ -403,7 +384,7 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	require.NoError(t, err)
 	updatedRootCA, err := ca.NewRootCA(concat(rootCA.Certs, tc.RootCA.Certs, someOtherRootCA.Certs), rSigner.Cert, rSigner.Key, ca.DefaultNodeCertExpiration, intermediate)
 	require.NoError(t, err)
-	err = secConfig.UpdateRootCA(&updatedRootCA, updatedRootCA.Pool)
+	err = secConfig.UpdateRootCA(&updatedRootCA)
 	require.NoError(t, err)
 
 	// can now connect to the test CA using our modified security config, and can cannect to our server using
@@ -419,19 +400,11 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	conn.Close()
 
 	// make sure any generated certs after updating contain the intermediate
-	var generatedCert []byte
-	if cautils.External {
-		// we can also now connect to the test CA's external signing server
-		secConfig.ExternalCA().UpdateURLs(externalServer.URL)
-		generatedCert, err = secConfig.ExternalCA().Sign(tc.Context, req)
-		require.NoError(t, err)
-	} else {
-		krw := ca.NewKeyReadWriter(configPaths.Node, nil, nil)
-		_, _, err := secConfig.RootCA().IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
-		require.NoError(t, err)
-		generatedCert, _, err = krw.Read()
-		require.NoError(t, err)
-	}
+	krw := ca.NewKeyReadWriter(configPaths.Node, nil, nil)
+	_, _, err = secConfig.RootCA().IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
+	require.NoError(t, err)
+	generatedCert, _, err := krw.Read()
+	require.NoError(t, err)
 
 	parsedCerts, err := helpers.ParseCertificatesPEM(generatedCert)
 	require.NoError(t, err)
@@ -475,19 +448,18 @@ func TestSecurityConfigUpdateRootCAUpdateConsistentWithTLSCertificates(t *testin
 	require.NoError(t, err)
 	cancel()
 
-	// can't update the root CA or external pool to one that doesn't match the tls certs
-	require.Error(t, secConfig.UpdateRootCA(&otherRootCA, rootCA.Pool))
-	require.Error(t, secConfig.UpdateRootCA(&rootCA, otherRootCA.Pool))
+	// can't update the root CA to one that doesn't match the tls certs
+	require.Error(t, secConfig.UpdateRootCA(&otherRootCA))
 
 	// can update the secConfig's root CA to one that does match the certs
 	combinedRootCA, err := ca.NewRootCA(append(otherRootCA.Certs, rootCA.Certs...), nil, nil,
 		ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
-	require.NoError(t, secConfig.UpdateRootCA(&combinedRootCA, combinedRootCA.Pool))
+	require.NoError(t, secConfig.UpdateRootCA(&combinedRootCA))
 
 	// if there are intermediates, we can update to a root CA that signed the intermediate
 	require.NoError(t, secConfig.UpdateTLSCredentials(&otherTLSKeyPair, otherIssuerInfo))
-	require.NoError(t, secConfig.UpdateRootCA(&rootCA, rootCA.Pool))
+	require.NoError(t, secConfig.UpdateRootCA(&rootCA))
 
 }
 
@@ -516,7 +488,7 @@ func TestSecurityConfigWatch(t *testing.T) {
 		require.FailNow(t, "on TLS certificate update, we should have gotten a security config update")
 	}
 
-	require.NoError(t, secConfig.UpdateRootCA(&tc.RootCA, tc.RootCA.Pool))
+	require.NoError(t, secConfig.UpdateRootCA(&tc.RootCA))
 	select {
 	case ev := <-configWatch:
 		nodeTLSInfo, ok := ev.(*api.NodeTLSInfo)
@@ -533,7 +505,7 @@ func TestSecurityConfigWatch(t *testing.T) {
 	configCancel()
 
 	// ensure that we can still update tls certs and roots without error even though the watch is closed
-	require.NoError(t, secConfig.UpdateRootCA(&tc.RootCA, tc.RootCA.Pool))
+	require.NoError(t, secConfig.UpdateRootCA(&tc.RootCA))
 	require.NoError(t, ca.RenewTLSConfigNow(tc.Context, secConfig, tc.ConnBroker, tc.Paths.RootCA))
 }
 
@@ -740,23 +712,6 @@ func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
 	leafCert, err := ioutil.ReadFile(paths.Node.Cert)
 	require.NoError(t, err)
 
-	cert, key, err := cautils.CreateRootCertAndKey("extra root cert for external CA")
-	require.NoError(t, err)
-	extraExternalRootCA, err := ca.NewRootCA(append(cert, tc.RootCA.Certs...), cert, key, ca.DefaultNodeCertExpiration, nil)
-	require.NoError(t, err)
-	extraExternalServer, err := cautils.NewExternalSigningServer(extraExternalRootCA, tc.TempDir)
-	require.NoError(t, err)
-	defer extraExternalServer.Stop()
-	secConfig.ExternalCA().UpdateURLs(extraExternalServer.URL)
-
-	externalPool := x509.NewCertPool()
-	externalPool.AppendCertsFromPEM(tc.RootCA.Certs)
-	externalPool.AppendCertsFromPEM(cert)
-
-	csr, _, err := ca.GenerateNewCSR()
-	require.NoError(t, err)
-	signReq := ca.PrepareCSR(csr, "cn", ca.WorkerRole, tc.Organization)
-
 	for i := 0; i < 5; i++ {
 		cert, _, err := cautils.CreateRootCertAndKey(fmt.Sprintf("root %d", i+2))
 		require.NoError(t, err)
@@ -774,8 +729,7 @@ func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
 			}
 			updatedRootCA, err := ca.NewRootCA(append(rootCA.Certs, cert...), s.Cert, s.Key, ca.DefaultNodeCertExpiration, nil)
 			require.NoError(t, err)
-			externalPool.AppendCertsFromPEM(cert)
-			require.NoError(t, secConfig.UpdateRootCA(&updatedRootCA, externalPool))
+			require.NoError(t, secConfig.UpdateRootCA(&updatedRootCA))
 		}()
 
 		go func() {
@@ -795,9 +749,6 @@ func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
 		// at the start of this loop had i+1 certs, afterward should have added one more
 		require.Len(t, secConfig.ClientTLSCreds.Config().RootCAs.Subjects(), i+2)
 		require.Len(t, secConfig.ServerTLSCreds.Config().RootCAs.Subjects(), i+2)
-		// no matter what, the external CA still has the extra external CA root cert
-		_, err = secConfig.ExternalCA().Sign(tc.Context, signReq)
-		require.NoError(t, err)
 	}
 }
 
