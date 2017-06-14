@@ -37,6 +37,10 @@ type NodeInfo struct {
 	// the most recent failures the node has experienced from replicas of
 	// that service.
 	recentFailures map[versionedService][]time.Time
+
+	// lastCleanup is the last time recentFailures was cleaned up. This is
+	// done periodically to avoid recentFailures growing without any limit.
+	lastCleanup time.Time
 }
 
 func newNodeInfo(n *api.Node, tasks map[string]*api.Task, availableResources api.Resources) NodeInfo {
@@ -47,6 +51,7 @@ func newNodeInfo(n *api.Node, tasks map[string]*api.Task, availableResources api
 		AvailableResources:        availableResources.Copy(),
 		usedHostPorts:             make(map[hostPortSpec]struct{}),
 		recentFailures:            make(map[versionedService][]time.Time),
+		lastCleanup:               time.Now(),
 	}
 
 	for _, t := range tasks {
@@ -155,10 +160,27 @@ func taskReservations(spec api.TaskSpec) (reservations api.Resources) {
 	return
 }
 
+func (nodeInfo *NodeInfo) cleanupFailures(now time.Time) {
+entriesLoop:
+	for key, failuresEntry := range nodeInfo.recentFailures {
+		for _, timestamp := range failuresEntry {
+			if now.Sub(timestamp) < monitorFailures {
+				continue entriesLoop
+			}
+		}
+		delete(nodeInfo.recentFailures, key)
+	}
+	nodeInfo.lastCleanup = now
+}
+
 // taskFailed records a task failure from a given service.
 func (nodeInfo *NodeInfo) taskFailed(ctx context.Context, t *api.Task) {
 	expired := 0
 	now := time.Now()
+
+	if now.Sub(nodeInfo.lastCleanup) >= monitorFailures {
+		nodeInfo.cleanupFailures(now)
+	}
 
 	versionedService := versionedService{serviceID: t.ServiceID}
 	if t.SpecVersion != nil {
