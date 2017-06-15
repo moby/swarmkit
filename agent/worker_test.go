@@ -186,10 +186,14 @@ func TestWorkerAssign(t *testing.T) {
 		assert.Equal(t, testcase.expectedTasks, tasks)
 		assert.Equal(t, testcase.expectedAssigned, assigned)
 		for _, secret := range testcase.expectedSecrets {
-			assert.NotNil(t, executor.Secrets().Get(secret.ID))
+			secret, err := executor.Secrets().Get(secret.ID)
+			assert.NoError(t, err)
+			assert.NotNil(t, secret)
 		}
 		for _, config := range testcase.expectedConfigs {
-			assert.NotNil(t, executor.Configs().Get(config.ID))
+			config, err := executor.Configs().Get(config.ID)
+			assert.NoError(t, err)
+			assert.NotNil(t, config)
 		}
 	}
 }
@@ -280,10 +284,14 @@ func TestWorkerWait(t *testing.T) {
 	assert.Equal(t, expectedTasks, tasks)
 	assert.Equal(t, expectedAssigned, assigned)
 	for _, secret := range expectedSecrets {
-		assert.NotNil(t, executor.Secrets().Get(secret.ID))
+		secret, err := executor.Secrets().Get(secret.ID)
+		assert.NoError(t, err)
+		assert.NotNil(t, secret)
 	}
 	for _, config := range expectedConfigs {
-		assert.NotNil(t, executor.Configs().Get(config.ID))
+		config, err := executor.Configs().Get(config.ID)
+		assert.NoError(t, err)
+		assert.NotNil(t, config)
 	}
 
 	err := worker.Assign(ctx, nil)
@@ -573,10 +581,14 @@ func TestWorkerUpdate(t *testing.T) {
 		assert.Equal(t, testcase.expectedTasks, tasks)
 		assert.Equal(t, testcase.expectedAssigned, assigned)
 		for _, secret := range testcase.expectedSecrets {
-			assert.NotNil(t, executor.Secrets().Get(secret.ID))
+			secret, err := executor.Secrets().Get(secret.ID)
+			assert.NoError(t, err)
+			assert.NotNil(t, secret)
 		}
 		for _, config := range testcase.expectedConfigs {
-			assert.NotNil(t, executor.Configs().Get(config.ID))
+			config, err := executor.Configs().Get(config.ID)
+			assert.NoError(t, err)
+			assert.NotNil(t, config)
 		}
 	}
 }
