@@ -2,20 +2,16 @@ package containerd
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
-	"syscall"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/containerd/containerd"
 	containersapi "github.com/containerd/containerd/api/services/containers"
 	"github.com/containerd/containerd/api/services/execution"
 	"github.com/containerd/containerd/api/types/task"
-	"github.com/containerd/fifo"
 	dockermount "github.com/docker/docker/pkg/mount"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
@@ -28,6 +24,7 @@ import (
 )
 
 var (
+	devNull                    *os.File
 	mountPropagationReverseMap = map[api.Mount_BindOptions_MountPropagation]string{
 		api.MountPropagationPrivate:  "private",
 		api.MountPropagationRPrivate: "rprivate",
@@ -68,48 +65,6 @@ func newContainerAdapter(client *containerd.Client, containerDir string, task *a
 		dir:     dir,
 		name:    naming.Task(task),
 	}, nil
-}
-
-// github.com/containerd/containerd cmd/ctr/utils.go, dropped stdin handling
-func prepareStdio(stdout, stderr string, console bool) (wg *sync.WaitGroup, err error) {
-	wg = &sync.WaitGroup{}
-	ctx := context.Background()
-
-	f, err := fifo.OpenFifo(ctx, stdout, syscall.O_RDONLY|syscall.O_CREAT|syscall.O_NONBLOCK, 0700)
-	if err != nil {
-		return nil, err
-	}
-	defer func(c io.Closer) {
-		if err != nil {
-			c.Close()
-		}
-	}(f)
-	wg.Add(1)
-	go func(r io.ReadCloser) {
-		io.Copy(os.Stdout, r)
-		r.Close()
-		wg.Done()
-	}(f)
-
-	f, err = fifo.OpenFifo(ctx, stderr, syscall.O_RDONLY|syscall.O_CREAT|syscall.O_NONBLOCK, 0700)
-	if err != nil {
-		return nil, err
-	}
-	defer func(c io.Closer) {
-		if err != nil {
-			c.Close()
-		}
-	}(f)
-	if !console {
-		wg.Add(1)
-		go func(r io.ReadCloser) {
-			io.Copy(os.Stderr, r)
-			r.Close()
-			wg.Done()
-		}(f)
-	}
-
-	return wg, nil
 }
 
 func (c *containerAdapter) pullImage(ctx context.Context) error {
@@ -226,19 +181,17 @@ func (c *containerAdapter) create(ctx context.Context) error {
 		return err
 	}
 
-	// TODO(ijc) support ControllerLogs interface
-	stdin := "/dev/null"
-	stdout := filepath.Join(c.dir, "stdout")
-	stderr := filepath.Join(c.dir, "stderr")
-
 	spec, err := containerd.GenerateSpec(c.specOpts(ctx)...)
 	if err != nil {
 		return err
 	}
 
-	_, err = prepareStdio(stdout, stderr, spec.Process.Terminal)
-	if err != nil {
-		return err
+	// TODO(ijc) Consider an addition to container library which
+	// directly attaches stdin to /dev/null.
+	if devNull == nil {
+		if devNull, err = os.Open(os.DevNull); err != nil {
+			return errors.Wrap(err, "opening null device")
+		}
 	}
 
 	c.container, err = c.client.NewContainer(ctx, c.name,
@@ -248,14 +201,8 @@ func (c *containerAdapter) create(ctx context.Context) error {
 		return errors.Wrap(err, "creating container")
 	}
 
-	io := func() (*containerd.IO, error) {
-		return &containerd.IO{
-			Stdin:    stdin,
-			Stdout:   stdout,
-			Stderr:   stderr,
-			Terminal: spec.Process.Terminal,
-		}, nil
-	}
+	// TODO(ijc) support ControllerLogs interface.
+	io := containerd.NewIOWithTerminal(devNull, os.Stdout, os.Stderr, spec.Process.Terminal)
 
 	c.task, err = c.container.NewTask(ctx, io)
 	if err != nil {
