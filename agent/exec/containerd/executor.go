@@ -2,7 +2,6 @@ package containerd
 
 import (
 	"os"
-	"path/filepath"
 	"runtime"
 
 	"github.com/containerd/containerd"
@@ -20,13 +19,12 @@ type executor struct {
 	client           *containerd.Client
 	secrets          exec.SecretsManager
 	genericResources []*api.GenericResource
-	containerDir     string
 }
 
 var _ exec.Executor = &executor{}
 
 // NewExecutor returns an executor using the given containerd control socket
-func NewExecutor(sock, stateDir string, genericResources []*api.GenericResource) (exec.Executor, error) {
+func NewExecutor(sock string, genericResources []*api.GenericResource) (exec.Executor, error) {
 	// TODO(ijc), configurable namespace.
 	// TODO(ijc), default to swarmd?
 	client, err := containerd.New(sock, containerd.WithDefaultNamespace("default"))
@@ -34,13 +32,10 @@ func NewExecutor(sock, stateDir string, genericResources []*api.GenericResource)
 		return nil, errors.Wrap(err, "creating containerd client")
 	}
 
-	containerDir := filepath.Join(stateDir, "containers")
-
 	return &executor{
 		client:           client,
 		secrets:          secrets.NewManager(),
 		genericResources: genericResources,
-		containerDir:     containerDir,
 	}, nil
 }
 
@@ -83,7 +78,7 @@ func (e *executor) Configure(ctx context.Context, node *api.Node) error {
 
 // Controller returns a docker container controller.
 func (e *executor) Controller(t *api.Task) (exec.Controller, error) {
-	ctlr, err := newController(e.client, e.containerDir, t, secrets.Restrict(e.secrets, t))
+	ctlr, err := newController(e.client, t, secrets.Restrict(e.secrets, t))
 	if err != nil {
 		return nil, err
 	}

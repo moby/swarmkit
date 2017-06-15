@@ -26,8 +26,8 @@ type controller struct {
 
 var _ exec.Controller = &controller{}
 
-func newController(client *containerd.Client, containerDir string, task *api.Task, secrets exec.SecretGetter) (exec.Controller, error) {
-	adapter, err := newContainerAdapter(client, containerDir, task, secrets)
+func newController(client *containerd.Client, task *api.Task, secrets exec.SecretGetter) (exec.Controller, error) {
+	adapter, err := newContainerAdapter(client, task, secrets)
 	if err != nil {
 		return nil, err
 	}

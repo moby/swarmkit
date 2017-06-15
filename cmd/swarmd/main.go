@@ -182,7 +182,7 @@ var (
 
 			if containerdAddr != "" {
 				logrus.Infof("Using containerd via %s", containerdAddr)
-				executor, err = containerd.NewExecutor(containerdAddr, stateDir, resources)
+				executor, err = containerd.NewExecutor(containerdAddr, resources)
 				if err != nil {
 					return err
 				}

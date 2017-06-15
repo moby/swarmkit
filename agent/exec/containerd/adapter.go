@@ -42,7 +42,6 @@ type containerAdapter struct {
 	client         *containerd.Client
 	spec           *api.ContainerSpec
 	secrets        exec.SecretGetter
-	dir            string
 	name           string
 	image          containerd.Image // Pulled image
 	container      containerd.Container
@@ -50,19 +49,16 @@ type containerAdapter struct {
 	deleteResponse *execution.DeleteResponse
 }
 
-func newContainerAdapter(client *containerd.Client, containerDir string, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
+func newContainerAdapter(client *containerd.Client, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
 	spec := task.Spec.GetContainer()
 	if spec == nil {
 		return nil, exec.ErrRuntimeUnsupported
 	}
 
-	dir := filepath.Join(containerDir, task.ID)
-
 	return &containerAdapter{
 		client:  client,
 		spec:    spec,
 		secrets: secrets,
-		dir:     dir,
 		name:    naming.Task(task),
 	}, nil
 }
@@ -150,10 +146,6 @@ func withMounts(ctx context.Context, ms []api.Mount) containerd.SpecOpts {
 func (c *containerAdapter) create(ctx context.Context) error {
 	if c.image == nil {
 		return errors.New("image has not been pulled")
-	}
-
-	if err := os.MkdirAll(c.dir, 0755); err != nil {
-		return err
 	}
 
 	specOpts := []containerd.SpecOpts{
@@ -329,7 +321,7 @@ func (c *containerAdapter) remove(ctx context.Context) error {
 		"ID": c.name,
 	})
 	l.Debug("Remove")
-	return os.RemoveAll(c.dir)
+	return nil
 }
 
 func isContainerCreateNameConflict(err error) bool {
