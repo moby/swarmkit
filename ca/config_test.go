@@ -1,6 +1,7 @@
 package ca_test
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -21,10 +22,11 @@ import (
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/testutils"
+	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/docker/swarmkit/watch"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +34,7 @@ import (
 )
 
 func TestDownloadRootCASuccess(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Remove the CA cert
@@ -60,7 +62,7 @@ func TestDownloadRootCASuccess(t *testing.T) {
 }
 
 func TestDownloadRootCAWrongCAHash(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Remove the CA cert
@@ -89,10 +91,10 @@ func TestDownloadRootCAWrongCAHash(t *testing.T) {
 }
 
 func TestCreateSecurityConfigEmptyDir(t *testing.T) {
-	if testutils.External {
+	if cautils.External {
 		return // this doesn't require any servers at all
 	}
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 	assert.NoError(t, tc.CAServer.Stop())
 
@@ -120,7 +122,7 @@ func TestCreateSecurityConfigEmptyDir(t *testing.T) {
 }
 
 func TestCreateSecurityConfigNoCerts(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
@@ -162,10 +164,10 @@ func TestCreateSecurityConfigNoCerts(t *testing.T) {
 }
 
 func TestLoadSecurityConfigExpiredCert(t *testing.T) {
-	if testutils.External {
+	if cautils.External {
 		return // this doesn't require any servers at all
 	}
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 	s, err := tc.RootCA.Signer()
 	require.NoError(t, err)
@@ -179,7 +181,7 @@ func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 	require.NoError(t, err)
 
 	// A cert that is not yet valid is not valid even if expiry is allowed
-	invalidCert := testutils.ReDateCert(t, certBytes, tc.RootCA.Certs, s.Key, now.Add(time.Hour), now.Add(time.Hour*2))
+	invalidCert := cautils.ReDateCert(t, certBytes, tc.RootCA.Certs, s.Key, now.Add(time.Hour), now.Add(time.Hour*2))
 	require.NoError(t, ioutil.WriteFile(tc.Paths.Node.Cert, invalidCert, 0700))
 
 	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
@@ -191,7 +193,7 @@ func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 	require.IsType(t, x509.CertificateInvalidError{}, errors.Cause(err))
 
 	// a cert that is expired is not valid if expiry is not allowed
-	invalidCert = testutils.ReDateCert(t, certBytes, tc.RootCA.Certs, s.Key, now.Add(-2*time.Minute), now.Add(-1*time.Minute))
+	invalidCert = cautils.ReDateCert(t, certBytes, tc.RootCA.Certs, s.Key, now.Add(-2*time.Minute), now.Add(-1*time.Minute))
 	require.NoError(t, ioutil.WriteFile(tc.Paths.Node.Cert, invalidCert, 0700))
 
 	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
@@ -204,10 +206,10 @@ func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 }
 
 func TestLoadSecurityConfigInvalidCert(t *testing.T) {
-	if testutils.External {
+	if cautils.External {
 		return // this doesn't require any servers at all
 	}
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Write some garbage to the cert
@@ -222,10 +224,10 @@ some random garbage\n
 }
 
 func TestLoadSecurityConfigInvalidKey(t *testing.T) {
-	if testutils.External {
+	if cautils.External {
 		return // this doesn't require any servers at all
 	}
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	// Write some garbage to the Key
@@ -240,10 +242,10 @@ some random garbage\n
 }
 
 func TestLoadSecurityConfigIncorrectPassphrase(t *testing.T) {
-	if testutils.External {
+	if cautils.External {
 		return // this doesn't require any servers at all
 	}
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	paths := ca.NewConfigPaths(tc.TempDir)
@@ -256,7 +258,7 @@ func TestLoadSecurityConfigIncorrectPassphrase(t *testing.T) {
 }
 
 func TestLoadSecurityConfigIntermediates(t *testing.T) {
-	if testutils.External {
+	if cautils.External {
 		return // this doesn't require any servers at all
 	}
 	tempdir, err := ioutil.TempDir("", "test-load-config-with-intermediates")
@@ -265,7 +267,7 @@ func TestLoadSecurityConfigIntermediates(t *testing.T) {
 	paths := ca.NewConfigPaths(tempdir)
 	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
 
-	rootCA, err := ca.NewRootCA(testutils.ECDSACertChain[2], nil, nil, ca.DefaultNodeCertExpiration, nil)
+	rootCA, err := ca.NewRootCA(cautils.ECDSACertChain[2], nil, nil, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
 	ctx := log.WithLogger(context.Background(), log.L.WithFields(logrus.Fields{
@@ -274,15 +276,15 @@ func TestLoadSecurityConfigIntermediates(t *testing.T) {
 	}))
 
 	// loading the incomplete chain fails
-	require.NoError(t, krw.Write(testutils.ECDSACertChain[0], testutils.ECDSACertChainKeys[0], nil))
+	require.NoError(t, krw.Write(cautils.ECDSACertChain[0], cautils.ECDSACertChainKeys[0], nil))
 	_, err = ca.LoadSecurityConfig(ctx, rootCA, krw, false)
 	require.Error(t, err)
 
-	intermediate, err := helpers.ParseCertificatePEM(testutils.ECDSACertChain[1])
+	intermediate, err := helpers.ParseCertificatePEM(cautils.ECDSACertChain[1])
 	require.NoError(t, err)
 
 	// loading the complete chain succeeds
-	require.NoError(t, krw.Write(append(testutils.ECDSACertChain[0], testutils.ECDSACertChain[1]...), testutils.ECDSACertChainKeys[0], nil))
+	require.NoError(t, krw.Write(append(cautils.ECDSACertChain[0], cautils.ECDSACertChain[1]...), cautils.ECDSACertChainKeys[0], nil))
 	secConfig, err := ca.LoadSecurityConfig(ctx, rootCA, krw, false)
 	require.NoError(t, err)
 	require.NotNil(t, secConfig)
@@ -314,13 +316,13 @@ func TestLoadSecurityConfigIntermediates(t *testing.T) {
 // When the root CA is updated on the security config, the root pools are updated
 // and the external CA's rootCA is also updated.
 func TestSecurityConfigUpdateRootCA(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 	tcConfig, err := tc.NewNodeConfig("worker")
 	require.NoError(t, err)
 
 	// create the "original" security config, and we'll update it to trust the test server's
-	cert, key, err := testutils.CreateRootCertAndKey("root1")
+	cert, key, err := cautils.CreateRootCertAndKey("root1")
 	require.NoError(t, err)
 
 	rootCA, err := ca.NewRootCA(cert, cert, key, ca.DefaultNodeCertExpiration, nil)
@@ -370,11 +372,11 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	externalServer := tc.ExternalSigningServer
 	tcSigner, err := tc.RootCA.Signer()
 	require.NoError(t, err)
-	if testutils.External {
+	if cautils.External {
 		// stop the external server and create a new one because the external server actually has to trust our client certs as well.
 		updatedRoot, err := ca.NewRootCA(append(tc.RootCA.Certs, cert...), tcSigner.Cert, tcSigner.Key, ca.DefaultNodeCertExpiration, nil)
 		require.NoError(t, err)
-		externalServer, err = testutils.NewExternalSigningServer(updatedRoot, tc.TempDir)
+		externalServer, err = cautils.NewExternalSigningServer(updatedRoot, tc.TempDir)
 		require.NoError(t, err)
 		defer externalServer.Stop()
 
@@ -414,7 +416,7 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 
 	// make sure any generated certs after updating contain the intermediate
 	var generatedCert []byte
-	if testutils.External {
+	if cautils.External {
 		// we can also now connect to the test CA's external signing server
 		secConfig.ExternalCA().UpdateURLs(externalServer.URL)
 		generatedCert, err = secConfig.ExternalCA().Sign(tc.Context, req)
@@ -438,7 +440,7 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 // You can't update the root CA to one that doesn't match the TLS certificates
 func TestSecurityConfigUpdateRootCAUpdateConsistentWithTLSCertificates(t *testing.T) {
 	t.Parallel()
-	if testutils.External {
+	if cautils.External {
 		return // we don't care about external CAs at all
 	}
 	tempdir, err := ioutil.TempDir("", "")
@@ -485,7 +487,7 @@ func TestSecurityConfigUpdateRootCAUpdateConsistentWithTLSCertificates(t *testin
 }
 
 func TestSecurityConfigSetWatch(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	secConfig, err := tc.NewNodeConfig(ca.ManagerRole)
@@ -551,7 +553,7 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 		cas          = make([]ca.RootCA, 3)
 	)
 	for i := 0; i < 3; i++ {
-		certs[i], keys[i], err = testutils.CreateRootCertAndKey(fmt.Sprintf("CA%d", i))
+		certs[i], keys[i], err = cautils.CreateRootCertAndKey(fmt.Sprintf("CA%d", i))
 		require.NoError(t, err)
 		switch i {
 		case 0:
@@ -568,7 +570,7 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 
 	// the CA server is going to start off with a cert issued by the second CA, cross-signed by the first CA, and then
 	// rotate to one issued by the third CA, cross-signed by the second.
-	tc := testutils.NewTestCAFromAPIRootCA(t, tempdir, api.RootCA{
+	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, api.RootCA{
 		CACert: certs[0],
 		CAKey:  keys[0],
 		RootRotation: &api.RootRotation{
@@ -589,6 +591,24 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 		}
 		return store.UpdateCluster(tx, cluster)
 	}))
+	// wait until the CA is returning certs signed by the latest root
+	rootCA, err := ca.NewRootCA(certs[1], nil, nil, ca.DefaultNodeCertExpiration, nil)
+	require.NoError(t, err)
+	expectedIssuer, err := helpers.ParseCertificatePEM(certs[2])
+	require.NoError(t, err)
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
+		_, issuerInfo, err := rootCA.RequestAndSaveNewCertificates(tc.Context, tc.KeyReadWriter, ca.CertificateRequestConfig{
+			Token:      tc.WorkerToken,
+			ConnBroker: tc.ConnBroker,
+		})
+		if err != nil {
+			return err
+		}
+		if !bytes.Equal(issuerInfo.PublicKey, expectedIssuer.RawSubjectPublicKeyInfo) {
+			return errors.New("CA server hasn't finished updating yet")
+		}
+		return nil
+	}, 2*time.Second))
 
 	paths := ca.NewConfigPaths(tempdir)
 	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
@@ -657,12 +677,12 @@ func TestRenewTLSConfigUpdatesRootNonUnknownAuthError(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
-	cert, key, err := testutils.CreateRootCertAndKey("rootCA")
+	cert, key, err := cautils.CreateRootCertAndKey("rootCA")
 	require.NoError(t, err)
 	rootCA, err := ca.NewRootCA(cert, cert, key, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
-	tc := testutils.NewTestCAFromAPIRootCA(t, tempdir, api.RootCA{
+	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, api.RootCA{
 		CACert: cert,
 		CAKey:  key,
 	}, nil)
@@ -689,7 +709,7 @@ func TestRenewTLSConfigUpdatesRootNonUnknownAuthError(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					node.Certificate.Certificate = testutils.ReDateCert(t, certChain, cert, key, time.Now().Add(-5*time.Hour), time.Now().Add(-4*time.Hour))
+					node.Certificate.Certificate = cautils.ReDateCert(t, certChain, cert, key, time.Now().Add(-5*time.Hour), time.Now().Add(-4*time.Hour))
 					node.Certificate.Status = api.IssuanceStatus{
 						State: api.IssuanceStateIssued,
 					}
@@ -709,7 +729,7 @@ func TestRenewTLSConfigUpdatesRootNonUnknownAuthError(t *testing.T) {
 // enforce that no matter what order updating the root CA and updating TLS credential happens, we
 // end up with a security config that has updated certs, and an updated root pool
 func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 	paths := ca.NewConfigPaths(tc.TempDir)
 
@@ -719,11 +739,11 @@ func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
 	leafCert, err := ioutil.ReadFile(paths.Node.Cert)
 	require.NoError(t, err)
 
-	cert, key, err := testutils.CreateRootCertAndKey("extra root cert for external CA")
+	cert, key, err := cautils.CreateRootCertAndKey("extra root cert for external CA")
 	require.NoError(t, err)
 	extraExternalRootCA, err := ca.NewRootCA(append(cert, tc.RootCA.Certs...), cert, key, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
-	extraExternalServer, err := testutils.NewExternalSigningServer(extraExternalRootCA, tc.TempDir)
+	extraExternalServer, err := cautils.NewExternalSigningServer(extraExternalRootCA, tc.TempDir)
 	require.NoError(t, err)
 	defer extraExternalServer.Stop()
 	secConfig.ExternalCA().UpdateURLs(extraExternalServer.URL)
@@ -737,7 +757,7 @@ func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
 	signReq := ca.PrepareCSR(csr, "cn", ca.WorkerRole, tc.Organization)
 
 	for i := 0; i < 5; i++ {
-		cert, _, err := testutils.CreateRootCertAndKey(fmt.Sprintf("root %d", i+2))
+		cert, _, err := cautils.CreateRootCertAndKey(fmt.Sprintf("root %d", i+2))
 		require.NoError(t, err)
 
 		ctx, cancel := context.WithCancel(tc.Context)
@@ -780,7 +800,7 @@ func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
 	}
 }
 
-func writeAlmostExpiringCertToDisk(t *testing.T, tc *testutils.TestCA, cn, ou, org string) {
+func writeAlmostExpiringCertToDisk(t *testing.T, tc *cautils.TestCA, cn, ou, org string) {
 	s, err := tc.RootCA.Signer()
 	require.NoError(t, err)
 
@@ -807,7 +827,7 @@ func writeAlmostExpiringCertToDisk(t *testing.T, tc *testutils.TestCA, cn, ou, o
 func TestRenewTLSConfigWorker(t *testing.T) {
 	t.Parallel()
 
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	ctx, cancel := context.WithCancel(tc.Context)
@@ -843,7 +863,7 @@ func TestRenewTLSConfigWorker(t *testing.T) {
 func TestRenewTLSConfigManager(t *testing.T) {
 	t.Parallel()
 
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	ctx, cancel := context.WithCancel(tc.Context)
@@ -879,7 +899,7 @@ func TestRenewTLSConfigManager(t *testing.T) {
 func TestRenewTLSConfigWithNoNode(t *testing.T) {
 	t.Parallel()
 
-	tc := testutils.NewTestCA(t)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	ctx, cancel := context.WithCancel(tc.Context)
