@@ -8,9 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
+	"github.com/docker/swarmkit/log"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,7 +29,7 @@ func TestExternalCACrossSign(t *testing.T) {
 	defer tc.Stop()
 	paths := ca.NewConfigPaths(tc.TempDir)
 
-	secConfig, err := tc.RootCA.CreateSecurityConfig(context.Background(),
+	secConfig, err := tc.RootCA.CreateSecurityConfig(tc.Context,
 		ca.NewKeyReadWriter(paths.Node, nil, nil), ca.CertificateRequestConfig{})
 	require.NoError(t, err)
 	externalCA := secConfig.ExternalCA()
@@ -57,12 +59,12 @@ func TestExternalCACrossSign(t *testing.T) {
 
 		// we have not enabled CA signing on the external server
 		tc.ExternalSigningServer.DisableCASigning()
-		_, err = externalCA.CrossSignRootCA(context.Background(), rootCA2)
+		_, err = externalCA.CrossSignRootCA(tc.Context, rootCA2)
 		require.Error(t, err)
 
 		require.NoError(t, tc.ExternalSigningServer.EnableCASigning())
 
-		intermediate, err := externalCA.CrossSignRootCA(context.Background(), rootCA2)
+		intermediate, err := externalCA.CrossSignRootCA(tc.Context, rootCA2)
 		require.NoError(t, err)
 
 		parsedIntermediate, err := helpers.ParseCertificatePEM(intermediate)
@@ -97,6 +99,11 @@ func TestExternalCASignRequestTimesOut(t *testing.T) {
 		return // this does not require the external CA in any way
 	}
 
+	ctx := log.WithLogger(context.Background(), log.L.WithFields(logrus.Fields{
+		"testname":          t.Name(),
+		"testHasExternalCA": false,
+	}))
+
 	rootCA, err := ca.CreateRootCA("rootCN")
 	require.NoError(t, err)
 
@@ -121,7 +128,7 @@ func TestExternalCASignRequestTimesOut(t *testing.T) {
 	externalCA := ca.NewExternalCA(&rootCA, nil, server.URL)
 	externalCA.ExternalRequestTimeout = time.Second
 	go func() {
-		_, err := externalCA.Sign(context.Background(), ca.PrepareCSR(csr, "cn", "ou", "org"))
+		_, err := externalCA.Sign(ctx, ca.PrepareCSR(csr, "cn", "ou", "org"))
 		select {
 		case <-allDone:
 		case signDone <- err:
@@ -157,10 +164,10 @@ func TestExternalCACopy(t *testing.T) {
 	externalCA2.UpdateURLs(tc.ExternalSigningServer.URL)
 
 	// externalCA1 can't sign, but externalCA2, which has been updated with URLS, can
-	_, err = externalCA1.Sign(context.Background(), signReq)
+	_, err = externalCA1.Sign(tc.Context, signReq)
 	require.Equal(t, ca.ErrNoExternalCAURLs, err)
 
-	cert, err := externalCA2.Sign(context.Background(), signReq)
+	cert, err := externalCA2.Sign(tc.Context, signReq)
 	require.NoError(t, err)
 	require.NotNil(t, cert)
 }
