@@ -1278,6 +1278,23 @@ func TestSchedulerFaultyNode(t *testing.T) {
 			assert.Equal(t, "id1", assignment.NodeID)
 		}
 
+		node2Info, err := scheduler.nodeSet.nodeInfo("id2")
+		assert.NoError(t, err)
+		expectedNode2Failures := i
+		if i > 5 {
+			expectedNode2Failures = 5
+		}
+		assert.Len(t, node2Info.recentFailures[versionedService{serviceID: "service1"}], expectedNode2Failures)
+
+		node1Info, err := scheduler.nodeSet.nodeInfo("id1")
+		assert.NoError(t, err)
+
+		expectedNode1Failures := i - 5
+		if i < 5 {
+			expectedNode1Failures = 0
+		}
+		assert.Len(t, node1Info.recentFailures[versionedService{serviceID: "service1"}], expectedNode1Failures)
+
 		newPreassignedTask := preassignedTaskTemplate.Copy()
 		newPreassignedTask.ID = identity.NewID()
 
@@ -1414,6 +1431,28 @@ func TestSchedulerFaultyNodeSpecVersion(t *testing.T) {
 			// flag id2 as potentially faulty.
 			assert.Equal(t, "id1", assignment.NodeID)
 		}
+
+		node1Info, err := scheduler.nodeSet.nodeInfo("id1")
+		assert.NoError(t, err)
+		node2Info, err := scheduler.nodeSet.nodeInfo("id2")
+		assert.NoError(t, err)
+		expectedNode1Spec1Failures := 0
+		expectedNode1Spec2Failures := 0
+		expectedNode2Spec1Failures := i
+		expectedNode2Spec2Failures := 0
+		if i > 5 {
+			expectedNode1Spec1Failures = 1
+			expectedNode2Spec1Failures = 5
+			expectedNode2Spec2Failures = i - 6
+		}
+		if i > 11 {
+			expectedNode1Spec2Failures = i - 11
+			expectedNode2Spec2Failures = 5
+		}
+		assert.Len(t, node1Info.recentFailures[versionedService{serviceID: "service1", specVersion: api.Version{Index: 1}}], expectedNode1Spec1Failures)
+		assert.Len(t, node1Info.recentFailures[versionedService{serviceID: "service1", specVersion: api.Version{Index: 2}}], expectedNode1Spec2Failures)
+		assert.Len(t, node2Info.recentFailures[versionedService{serviceID: "service1", specVersion: api.Version{Index: 1}}], expectedNode2Spec1Failures)
+		assert.Len(t, node2Info.recentFailures[versionedService{serviceID: "service1", specVersion: api.Version{Index: 2}}], expectedNode2Spec2Failures)
 
 		err = s.Update(func(tx store.Tx) error {
 			newTask := store.GetTask(tx, newTask.ID)
