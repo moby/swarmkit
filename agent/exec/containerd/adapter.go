@@ -147,8 +147,16 @@ func withMounts(ctx context.Context, ms []api.Mount) containerd.SpecOpts {
 	}
 }
 
-func (c *containerAdapter) specOpts(ctx context.Context) []containerd.SpecOpts {
-	opts := []containerd.SpecOpts{
+func (c *containerAdapter) create(ctx context.Context) error {
+	if c.image == nil {
+		return errors.New("image has not been pulled")
+	}
+
+	if err := os.MkdirAll(c.dir, 0755); err != nil {
+		return err
+	}
+
+	specOpts := []containerd.SpecOpts{
 		containerd.WithImageConfig(ctx, c.image),
 		withMounts(ctx, c.spec.Mounts),
 	}
@@ -161,27 +169,15 @@ func (c *containerAdapter) specOpts(ctx context.Context) []containerd.SpecOpts {
 	// TODO(ijc) Improve this
 	if len(c.spec.Command) > 0 {
 		args := append(c.spec.Command, c.spec.Args...)
-		opts = append(opts, containerd.WithProcessArgs(args...))
+		specOpts = append(specOpts, containerd.WithProcessArgs(args...))
 	} else {
-		opts = append(opts, func(s *specs.Spec) error {
+		specOpts = append(specOpts, func(s *specs.Spec) error {
 			s.Process.Args = append(s.Process.Args, c.spec.Args...)
 			return nil
 		})
 	}
 
-	return opts
-}
-
-func (c *containerAdapter) create(ctx context.Context) error {
-	if c.image == nil {
-		return errors.New("image has not been pulled")
-	}
-
-	if err := os.MkdirAll(c.dir, 0755); err != nil {
-		return err
-	}
-
-	spec, err := containerd.GenerateSpec(c.specOpts(ctx)...)
+	spec, err := containerd.GenerateSpec(specOpts...)
 	if err != nil {
 		return err
 	}
