@@ -19,7 +19,7 @@ func TestForceRenewTLSConfig(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(tc.Context)
 	defer cancel()
 
 	// Get a new managerConfig with a TLS cert that has 15 minutes to live
@@ -45,7 +45,7 @@ func TestForceRenewExpectedRole(t *testing.T) {
 	tc := testutils.NewTestCA(t)
 	defer tc.Stop()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(tc.Context)
 	defer cancel()
 
 	// Get a new managerConfig with a TLS cert that has 15 minutes to live
