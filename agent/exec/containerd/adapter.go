@@ -1,7 +1,6 @@
 package containerd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -16,14 +15,12 @@ import (
 	containersapi "github.com/containerd/containerd/api/services/containers"
 	"github.com/containerd/containerd/api/services/execution"
 	"github.com/containerd/containerd/api/types/task"
-	"github.com/containerd/containerd/content"
 	"github.com/containerd/fifo"
 	dockermount "github.com/docker/docker/pkg/mount"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/naming"
 	"github.com/docker/swarmkit/log"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -125,150 +122,80 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 	return nil
 }
 
-func (c *containerAdapter) makeAnonVolume(ctx context.Context, target string) (specs.Mount, error) {
-	source := filepath.Join(c.dir, "anon-volumes", target)
-	if err := os.MkdirAll(source, 0755); err != nil {
-		return specs.Mount{}, err
-	}
+func withMounts(ctx context.Context, ms []api.Mount) containerd.SpecOpts {
+	sort.Sort(mounts(ms))
 
-	return specs.Mount{
-		Destination: target,
-		Type:        "bind",
-		Source:      source,
-		Options:     []string{"rbind", "rprivate", "rw"},
-	}, nil
-}
-
-// Somewhat like docker/docker/daemon/oci_linux.go:setMounts
-func (c *containerAdapter) setMounts(ctx context.Context, s *specs.Spec, mounts []api.Mount, volumes map[string]struct{}) error {
-
-	userMounts := make(map[string]struct{})
-	for _, m := range mounts {
-		userMounts[m.Target] = struct{}{}
-	}
-
-	// Filter out mounts that are overridden by user supplied mounts
-	var defaultMounts []specs.Mount
-	_, mountDev := userMounts["/dev"]
-	for _, m := range s.Mounts {
-		if _, ok := userMounts[m.Destination]; !ok {
-			if mountDev && strings.HasPrefix(m.Destination, "/dev/") {
-				continue
+	return func(s *specs.Spec) error {
+		for _, m := range ms {
+			if !filepath.IsAbs(m.Target) {
+				return errors.Errorf("mount %s is not absolute", m.Target)
 			}
-			defaultMounts = append(defaultMounts, m)
-		}
-	}
 
-	s.Mounts = defaultMounts
-	for _, m := range mounts {
-		if !filepath.IsAbs(m.Target) {
-			return errors.Errorf("mount %s is not absolute", m.Target)
-		}
-
-		for _, cm := range s.Mounts {
-			if cm.Destination == m.Target {
-				return errors.Errorf("duplicate mount point '%s'", m.Target)
-			}
-		}
-
-		delete(volumes, m.Target) // volume is no longer anon
-
-		switch m.Type {
-		case api.MountTypeTmpfs:
-			opts := []string{"noexec", "nosuid", "nodev", "rprivate"}
-			if m.TmpfsOptions != nil {
-				if m.TmpfsOptions.SizeBytes <= 0 {
-					return errors.New("invalid tmpfs size give")
+			switch m.Type {
+			case api.MountTypeTmpfs:
+				opts := []string{"noexec", "nosuid", "nodev", "rprivate"}
+				if m.TmpfsOptions != nil {
+					if m.TmpfsOptions.SizeBytes <= 0 {
+						return errors.New("invalid tmpfs size give")
+					}
+					opts = append(opts, fmt.Sprintf("size=%d", m.TmpfsOptions.SizeBytes))
+					opts = append(opts, fmt.Sprintf("mode=%o", m.TmpfsOptions.Mode))
 				}
-				opts = append(opts, fmt.Sprintf("size=%d", m.TmpfsOptions.SizeBytes))
-				opts = append(opts, fmt.Sprintf("mode=%o", m.TmpfsOptions.Mode))
-			}
-			if m.ReadOnly {
-				opts = append(opts, "ro")
-			} else {
-				opts = append(opts, "rw")
-			}
-
-			opts, err := dockermount.MergeTmpfsOptions(opts)
-			if err != nil {
-				return err
-			}
-
-			s.Mounts = append(s.Mounts, specs.Mount{
-				Destination: m.Target,
-				Type:        "tmpfs",
-				Source:      "tmpfs",
-				Options:     opts,
-			})
-
-		case api.MountTypeVolume:
-			if m.Source != "" {
-				return errors.Errorf("non-anon volume mounts not implemented, ignoring %v", m)
-			}
-			if m.VolumeOptions != nil {
-				return errors.Errorf("volume mount VolumeOptions not implemented, ignoring %v", m)
-			}
-
-			mt, err := c.makeAnonVolume(ctx, m.Target)
-			if err != nil {
-				return err
-			}
-
-			s.Mounts = append(s.Mounts, mt)
-			continue
-
-		case api.MountTypeBind:
-			opts := []string{"rbind"}
-			if m.ReadOnly {
-				opts = append(opts, "ro")
-			} else {
-				opts = append(opts, "rw")
-			}
-
-			propagation := "rprivate"
-			if m.BindOptions != nil {
-				if p, ok := mountPropagationReverseMap[m.BindOptions.Propagation]; ok {
-					propagation = p
+				if m.ReadOnly {
+					opts = append(opts, "ro")
 				} else {
-					log.G(ctx).Warningf("unknown bind mount propagation,  using %q", propagation)
+					opts = append(opts, "rw")
 				}
+
+				opts, err := dockermount.MergeTmpfsOptions(opts)
+				if err != nil {
+					return err
+				}
+
+				s.Mounts = append(s.Mounts, specs.Mount{
+					Destination: m.Target,
+					Type:        "tmpfs",
+					Source:      "tmpfs",
+					Options:     opts,
+				})
+
+			case api.MountTypeVolume:
+				return errors.Errorf("volume mounts not implemented, ignoring %v", m)
+
+			case api.MountTypeBind:
+				opts := []string{"rbind"}
+				if m.ReadOnly {
+					opts = append(opts, "ro")
+				} else {
+					opts = append(opts, "rw")
+				}
+
+				propagation := "rprivate"
+				if m.BindOptions != nil {
+					if p, ok := mountPropagationReverseMap[m.BindOptions.Propagation]; ok {
+						propagation = p
+					} else {
+						log.G(ctx).Warningf("unknown bind mount propagation, using %q", propagation)
+					}
+				}
+				opts = append(opts, propagation)
+
+				s.Mounts = append(s.Mounts, specs.Mount{
+					Destination: m.Target,
+					Type:        "bind",
+					Source:      m.Source,
+					Options:     opts,
+				})
 			}
-			opts = append(opts, propagation)
-
-			mt := specs.Mount{
-				Destination: m.Target,
-				Type:        "bind",
-				Source:      m.Source,
-				Options:     opts,
-			}
-
-			s.Mounts = append(s.Mounts, mt)
-			continue
 		}
+		return nil
 	}
-
-	for v := range volumes {
-		mt, err := c.makeAnonVolume(ctx, v)
-		if err != nil {
-			return err
-		}
-
-		s.Mounts = append(s.Mounts, mt)
-	}
-
-	return nil
 }
 
-func (c *containerAdapter) specOpts(ctx context.Context, config *ocispec.ImageConfig) []containerd.SpecOpts {
+func (c *containerAdapter) specOpts(ctx context.Context) []containerd.SpecOpts {
 	opts := []containerd.SpecOpts{
 		containerd.WithImageConfig(ctx, c.image),
-		func(s *specs.Spec) error {
-			if err := c.setMounts(ctx, s, c.spec.Mounts, config.Volumes); err != nil {
-				return errors.Wrap(err, "failed to set mounts")
-			}
-			sort.Sort(mounts(s.Mounts))
-			return nil
-		},
+		withMounts(ctx, c.spec.Mounts),
 	}
 
 	// spec.Process.Args is config.Entrypoint + config.Cmd at this
@@ -295,19 +222,6 @@ func (c *containerAdapter) create(ctx context.Context) error {
 		return errors.New("image has not been pulled")
 	}
 
-	cs := c.client.ContentStore()
-	imageStore := c.client.ImageService()
-
-	image, err := imageStore.Get(ctx, c.image.Name())
-	if err != nil {
-		return errors.Wrap(err, "image get")
-	}
-
-	mbytes, err := content.ReadBlob(ctx, cs, image.Target.Digest)
-	if err != nil {
-		return err
-	}
-
 	if err := os.MkdirAll(c.dir, 0755); err != nil {
 		return err
 	}
@@ -317,23 +231,7 @@ func (c *containerAdapter) create(ctx context.Context) error {
 	stdout := filepath.Join(c.dir, "stdout")
 	stderr := filepath.Join(c.dir, "stderr")
 
-	var config ocispec.Image
-
-	var manifest ocispec.Manifest
-	if err := json.Unmarshal(mbytes, &manifest); err != nil {
-		return errors.Wrap(err, "unmarshalling image manifest")
-	}
-
-	bytes, err := content.ReadBlob(ctx, cs, manifest.Config.Digest)
-	if err != nil {
-		return err
-	}
-
-	if err := json.Unmarshal(bytes, &config); err != nil {
-		return errors.Wrap(err, "unmarshalling image config")
-	}
-
-	spec, err := containerd.GenerateSpec(c.specOpts(ctx, &config.Config)...)
+	spec, err := containerd.GenerateSpec(c.specOpts(ctx)...)
 	if err != nil {
 		return err
 	}
@@ -502,7 +400,7 @@ func isUnknownContainer(err error) bool {
 }
 
 // For sort.Sort
-type mounts []specs.Mount
+type mounts []api.Mount
 
 // Len returns the number of mounts. Used in sorting.
 func (m mounts) Len() int {
@@ -523,5 +421,5 @@ func (m mounts) Swap(i, j int) {
 
 // parts returns the number of parts in the destination of a mount. Used in sorting.
 func (m mounts) parts(i int) int {
-	return strings.Count(filepath.Clean(m[i].Destination), string(os.PathSeparator))
+	return strings.Count(filepath.Clean(m[i].Target), string(os.PathSeparator))
 }
