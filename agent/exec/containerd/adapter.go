@@ -65,9 +65,9 @@ type containerAdapter struct {
 	conn              *grpc.ClientConn
 	taskClient        execution.TasksClient
 	spec              *api.ContainerSpec
-	task              *api.Task
 	secrets           exec.SecretGetter
 	dir               string
+	name              string
 	resolvedImageName string
 	deleteResponse    *execution.DeleteResponse
 }
@@ -88,9 +88,9 @@ func newContainerAdapter(conn *grpc.ClientConn, containerDir string, task *api.T
 		conn:       conn,
 		taskClient: execution.NewTasksClient(conn),
 		spec:       spec,
-		task:       task,
 		secrets:    secrets,
 		dir:        dir,
+		name:       naming.Task(task),
 	}, nil
 }
 
@@ -519,10 +519,9 @@ func (c *containerAdapter) create(ctx context.Context) error {
 		return err
 	}
 
-	cid := naming.Task(c.task)
 	_, err = containers.Create(ctx, &containersapi.CreateContainerRequest{
 		Container: containersapi.Container{
-			ID: cid,
+			ID: c.name,
 			Spec: &protobuf.Any{
 				TypeUrl: specs.Version,
 				Value:   data,
@@ -535,7 +534,7 @@ func (c *containerAdapter) create(ctx context.Context) error {
 	}
 
 	_, err = c.taskClient.Create(ctx, &execution.CreateRequest{
-		ContainerID: cid,
+		ContainerID: c.name,
 		Rootfs:      []*mount.Mount{},
 		Stdin:       stdin,
 		Stdout:      stdout,
@@ -552,7 +551,7 @@ func (c *containerAdapter) create(ctx context.Context) error {
 func (c *containerAdapter) start(ctx context.Context) error {
 	ctx = withNamespace(ctx)
 	_, err := c.taskClient.Start(ctx, &execution.StartRequest{
-		ContainerID: naming.Task(c.task),
+		ContainerID: c.name,
 	})
 	return err
 }
@@ -575,10 +574,8 @@ func (c *containerAdapter) eventStream(ctx context.Context, id string) (<-chan t
 func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) (<-chan task.Event, <-chan struct{}, error) {
 	ctx = withNamespace(ctx)
 
-	id := naming.Task(c.task)
-
 	l := log.G(ctx).WithFields(logrus.Fields{
-		"ID": id,
+		"ID": c.name,
 	})
 
 	// TODO(stevvooe): Move this to a single, global event dispatch. For
@@ -605,7 +602,7 @@ func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) 
 				l.WithError(err).Error("fatal error from events stream")
 				return
 			}
-			if evt.ID != id {
+			if evt.ID != c.name {
 				l.Debugf("Event for a different container %s", evt.ID)
 				continue
 			}
@@ -624,8 +621,7 @@ func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) 
 func (c *containerAdapter) inspect(ctx context.Context) (task.Task, error) {
 	ctx = withNamespace(ctx)
 
-	id := naming.Task(c.task)
-	rsp, err := c.taskClient.Info(ctx, &execution.InfoRequest{ContainerID: id})
+	rsp, err := c.taskClient.Info(ctx, &execution.InfoRequest{ContainerID: c.name})
 	if err != nil {
 		return task.Task{}, err
 	}
@@ -635,16 +631,15 @@ func (c *containerAdapter) inspect(ctx context.Context) (task.Task, error) {
 func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
 	ctx = withNamespace(ctx)
 
-	id := naming.Task(c.task)
 	l := log.G(ctx).WithFields(logrus.Fields{
-		"ID": id,
+		"ID": c.name,
 	})
 
 	if c.deleteResponse == nil {
 		var err error
 		l.Debug("Deleting")
 
-		rsp, err := c.taskClient.Delete(ctx, &execution.DeleteRequest{ContainerID: id})
+		rsp, err := c.taskClient.Delete(ctx, &execution.DeleteRequest{ContainerID: c.name})
 		if err != nil {
 			return 0, err
 		}
@@ -653,7 +648,7 @@ func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
 
 		containers := containersapi.NewContainersClient(c.conn)
 		_, err = containers.Delete(ctx, &containersapi.DeleteContainerRequest{
-			ID: id,
+			ID: c.name,
 		})
 		if err != nil {
 			l.WithError(err).Warnf("failed to delete container")
@@ -666,9 +661,8 @@ func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
 func (c *containerAdapter) terminate(ctx context.Context) error {
 	ctx = withNamespace(ctx)
 
-	id := naming.Task(c.task)
 	l := log.G(ctx).WithFields(logrus.Fields{
-		"ID": id,
+		"ID": c.name,
 	})
 	l.Debug("Terminate")
 	return errors.New("terminate not implemented")
@@ -677,9 +671,8 @@ func (c *containerAdapter) terminate(ctx context.Context) error {
 func (c *containerAdapter) remove(ctx context.Context) error {
 	ctx = withNamespace(ctx)
 
-	id := naming.Task(c.task)
 	l := log.G(ctx).WithFields(logrus.Fields{
-		"ID": id,
+		"ID": c.name,
 	})
 	l.Debug("Remove")
 	return os.RemoveAll(c.dir)
