@@ -64,7 +64,7 @@ var (
 type containerAdapter struct {
 	conn              *grpc.ClientConn
 	taskClient        execution.TasksClient
-	container         *api.ContainerSpec
+	spec              *api.ContainerSpec
 	task              *api.Task
 	secrets           exec.SecretGetter
 	dir               string
@@ -77,8 +77,8 @@ func withNamespace(ctx context.Context) context.Context {
 }
 
 func newContainerAdapter(conn *grpc.ClientConn, containerDir string, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
-	container := task.Spec.GetContainer()
-	if container == nil {
+	spec := task.Spec.GetContainer()
+	if spec == nil {
 		return nil, exec.ErrRuntimeUnsupported
 	}
 
@@ -87,7 +87,7 @@ func newContainerAdapter(conn *grpc.ClientConn, containerDir string, task *api.T
 	return &containerAdapter{
 		conn:       conn,
 		taskClient: execution.NewTasksClient(conn),
-		container:  container,
+		spec:       spec,
 		task:       task,
 		secrets:    secrets,
 		dir:        dir,
@@ -178,7 +178,7 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 
 	resolver := docker.NewResolver(options)
 
-	name, desc, err := resolver.Resolve(ctx, c.container.Image)
+	name, desc, err := resolver.Resolve(ctx, c.spec.Image)
 	if err != nil {
 		return errors.Wrap(err, "failed to resolve ref")
 	}
@@ -335,7 +335,7 @@ func (c *containerAdapter) setMounts(ctx context.Context, s *specs.Spec, mounts 
 	return nil
 }
 
-func (c *containerAdapter) spec(ctx context.Context, config *ocispec.ImageConfig, rootfs string) (*specs.Spec, error) {
+func (c *containerAdapter) makeSpec(ctx context.Context, config *ocispec.ImageConfig, rootfs string) (*specs.Spec, error) {
 	caps := []string{
 		"CAP_CHOWN",
 		"CAP_DAC_OVERRIDE",
@@ -430,20 +430,20 @@ func (c *containerAdapter) spec(ctx context.Context, config *ocispec.ImageConfig
 	spec.Process.Env = config.Env
 
 	var args []string
-	if len(c.container.Args) > 0 {
-		args = c.container.Args
+	if len(c.spec.Args) > 0 {
+		args = c.spec.Args
 	} else {
 		args = config.Cmd
 	}
 
-	if len(c.container.Command) > 0 {
-		spec.Process.Args = append(c.container.Command, args...)
+	if len(c.spec.Command) > 0 {
+		spec.Process.Args = append(c.spec.Command, args...)
 	} else {
 		spec.Process.Args = append(config.Entrypoint, args...)
 	}
 
 	log.G(ctx).Debugf("Process args: %v", spec.Process.Args)
-	if err := c.setMounts(ctx, &spec, c.container.Mounts, config.Volumes); err != nil {
+	if err := c.setMounts(ctx, &spec, c.spec.Mounts, config.Volumes); err != nil {
 		return nil, errors.Wrap(err, "failed to set mounts")
 	}
 	sort.Sort(mounts(spec.Mounts))
@@ -504,7 +504,7 @@ func (c *containerAdapter) create(ctx context.Context) error {
 		}
 	}
 
-	spec, err := c.spec(ctx, &config.Config, rootfs)
+	spec, err := c.makeSpec(ctx, &config.Config, rootfs)
 	if err != nil {
 		return err
 	}
