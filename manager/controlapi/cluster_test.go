@@ -440,8 +440,8 @@ func TestUpdateClusterRotateUnlockKey(t *testing.T) {
 }
 
 // root rotation tests have already been covered by ca_rotation_test.go - this test only makes sure that the function tested in those
-// tests is actually called by `UpdateCluster`, and that the results of GetCluster and ListCluster have the rotation root CA key
-// redacted
+// tests is actually called by `UpdateCluster`, and that the results of GetCluster and ListCluster have the CA keys
+// and the spec key and cert redacted
 func TestUpdateClusterRootRotation(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
@@ -464,26 +464,57 @@ func TestUpdateClusterRootRotation(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	var gottenClusters []*api.Cluster
+	checkCluster := func() *api.Cluster {
+		response, err = ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: cluster.ID})
+		require.NoError(t, err)
+		require.NotNil(t, response.Cluster)
 
-	response, err = ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: cluster.ID})
-	require.NoError(t, err)
-	require.NotNil(t, response.Cluster)
-	gottenClusters = append(gottenClusters, response.Cluster)
+		listResponse, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
+		require.NoError(t, err)
+		require.Len(t, listResponse.Clusters, 1)
 
-	listResponse, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
-	require.NoError(t, err)
-	require.Len(t, listResponse.Clusters, 1)
-	gottenClusters = append(gottenClusters, listResponse.Clusters[0])
+		require.Equal(t, response.Cluster, listResponse.Clusters[0])
 
-	for _, c := range gottenClusters {
+		c := response.Cluster
 		require.NotNil(t, c.RootCA.RootRotation)
 
-		// check signing key redaction
+		// check that all keys are redacted, and that the spec signing cert is also redacted (not because
+		// the cert is a secret, but because that makes it easier to get-and-update)
 		require.Len(t, c.RootCA.CAKey, 0)
 		require.Len(t, c.RootCA.RootRotation.CAKey, 0)
 		require.Len(t, c.Spec.CAConfig.SigningCAKey, 0)
+		require.Len(t, c.Spec.CAConfig.SigningCACert, 0)
+
+		return c
 	}
+
+	getUnredactedRootCA := func() (rootCA *api.RootCA) {
+		ts.Store.View(func(tx store.ReadTx) {
+			c := store.GetCluster(tx, cluster.ID)
+			require.NotNil(t, c)
+			rootCA = &c.RootCA
+		})
+		return
+	}
+
+	cluster = checkCluster()
+	unredactedRootCA := getUnredactedRootCA()
+
+	// update something else, but make sure this doesn't the root CA rotation doesn't change
+	updatedSpec = cluster.Spec.Copy()
+	updatedSpec.CAConfig.NodeCertExpiry = gogotypes.DurationProto(time.Hour)
+	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
+		ClusterID:      cluster.ID,
+		Spec:           updatedSpec,
+		ClusterVersion: &cluster.Meta.Version,
+	})
+	require.NoError(t, err)
+
+	updatedCluster := checkCluster()
+	require.NotEqual(t, cluster.Spec.CAConfig.NodeCertExpiry, updatedCluster.Spec.CAConfig.NodeCertExpiry)
+	updatedUnredactedRootCA := getUnredactedRootCA()
+
+	require.Equal(t, unredactedRootCA, updatedUnredactedRootCA)
 }
 
 func TestListClusters(t *testing.T) {
