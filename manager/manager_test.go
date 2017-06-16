@@ -31,8 +31,6 @@ import (
 )
 
 func TestManager(t *testing.T) {
-	ctx := context.Background()
-
 	temp, err := ioutil.TempFile("", "test-socket")
 	assert.NoError(t, err)
 	assert.NoError(t, temp.Close())
@@ -73,7 +71,7 @@ func TestManager(t *testing.T) {
 	done := make(chan error)
 	defer close(done)
 	go func() {
-		done <- m.Run(ctx)
+		done <- m.Run(tc.Context)
 	}()
 
 	opts := []grpc.DialOption{
@@ -89,9 +87,9 @@ func TestManager(t *testing.T) {
 
 	// We have to send a dummy request to verify if the connection is actually up.
 	client := api.NewDispatcherClient(conn)
-	_, err = client.Heartbeat(ctx, &api.HeartbeatRequest{})
+	_, err = client.Heartbeat(tc.Context, &api.HeartbeatRequest{})
 	assert.Equal(t, dispatcher.ErrNodeNotRegistered.Error(), grpc.ErrorDesc(err))
-	_, err = client.Session(ctx, &api.SessionRequest{})
+	_, err = client.Session(tc.Context, &api.SessionRequest{})
 	assert.NoError(t, err)
 
 	// Try to have a client in a different org access this manager
@@ -211,7 +209,7 @@ func TestManager(t *testing.T) {
 	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
 	assert.Contains(t, grpc.ErrorDesc(err), "removed from swarm")
 
-	m.Stop(ctx, false)
+	m.Stop(tc.Context, false)
 
 	// After stopping we should MAY receive an error from ListenAndServe if
 	// all this happened before WaitForLeader completed, so don't check the
@@ -221,8 +219,6 @@ func TestManager(t *testing.T) {
 
 // Tests locking and unlocking the manager and key rotations
 func TestManagerLockUnlock(t *testing.T) {
-	ctx := context.Background()
-
 	temp, err := ioutil.TempFile("", "test-manager-lock")
 	require.NoError(t, err)
 	require.NoError(t, temp.Close())
@@ -257,7 +253,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	done := make(chan error)
 	defer close(done)
 	go func() {
-		done <- m.Run(ctx)
+		done <- m.Run(tc.Context)
 	}()
 
 	opts := []grpc.DialOption{
@@ -277,7 +273,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	client := api.NewControlClient(conn)
 
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
-		resp, err := client.ListClusters(ctx, &api.ListClustersRequest{})
+		resp, err := client.ListClusters(tc.Context, &api.ListClustersRequest{})
 		if err != nil {
 			return err
 		}
@@ -303,13 +299,13 @@ func TestManagerLockUnlock(t *testing.T) {
 
 	// update the lock key - this may fail due to update out of sequence errors, so try again
 	for {
-		getResp, err := client.GetCluster(ctx, &api.GetClusterRequest{ClusterID: cluster.ID})
+		getResp, err := client.GetCluster(tc.Context, &api.GetClusterRequest{ClusterID: cluster.ID})
 		require.NoError(t, err)
 		cluster = getResp.Cluster
 
 		spec := cluster.Spec.Copy()
 		spec.EncryptionConfig.AutoLockManagers = true
-		updateResp, err := client.UpdateCluster(ctx, &api.UpdateClusterRequest{
+		updateResp, err := client.UpdateCluster(tc.Context, &api.UpdateClusterRequest{
 			ClusterID:      cluster.ID,
 			ClusterVersion: &cluster.Meta.Version,
 			Spec:           spec,
@@ -326,7 +322,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	require.NoError(t, err)
 
 	caConn := api.NewCAClient(conn)
-	unlockKeyResp, err := caConn.GetUnlockKey(ctx, &api.GetUnlockKeyRequest{})
+	unlockKeyResp, err := caConn.GetUnlockKey(tc.Context, &api.GetUnlockKeyRequest{})
 	require.NoError(t, err)
 
 	// this should update the TLS key, rotate the DEK, and finish snapshotting
@@ -377,13 +373,13 @@ func TestManagerLockUnlock(t *testing.T) {
 
 	// update the lock key to nil
 	for i := 0; i < 3; i++ {
-		getResp, err := client.GetCluster(ctx, &api.GetClusterRequest{ClusterID: cluster.ID})
+		getResp, err := client.GetCluster(tc.Context, &api.GetClusterRequest{ClusterID: cluster.ID})
 		require.NoError(t, err)
 		cluster = getResp.Cluster
 
 		spec := cluster.Spec.Copy()
 		spec.EncryptionConfig.AutoLockManagers = false
-		_, err = client.UpdateCluster(ctx, &api.UpdateClusterRequest{
+		_, err = client.UpdateCluster(tc.Context, &api.UpdateClusterRequest{
 			ClusterID:      cluster.ID,
 			ClusterVersion: &cluster.Meta.Version,
 			Spec:           spec,
@@ -420,7 +416,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	require.NotNil(t, unencryptedDEK)
 	require.Equal(t, currentDEK, unencryptedDEK)
 
-	m.Stop(ctx, false)
+	m.Stop(tc.Context, false)
 
 	// After stopping we should MAY receive an error from ListenAndServe if
 	// all this happened before WaitForLeader completed, so don't check the
@@ -431,8 +427,6 @@ func TestManagerLockUnlock(t *testing.T) {
 // If the root CA material is updated in the memory store, a manager will update its own
 // security configs even if it's "not the leader" (which we will fake by calling `becomeFollower`)
 func TestManagerUpdatesSecurityConfig(t *testing.T) {
-	ctx := context.Background()
-
 	temp, err := ioutil.TempFile("", "test-manager-update-security-config")
 	require.NoError(t, err)
 	require.NoError(t, temp.Close())
@@ -466,7 +460,7 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 	done := make(chan error)
 	defer close(done)
 	go func() {
-		done <- m.Run(ctx)
+		done <- m.Run(tc.Context)
 	}()
 
 	// wait until the CA server is running
@@ -484,7 +478,7 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 	client := api.NewCAClient(conn)
 
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
-		ctx, _ := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		ctx, _ := context.WithTimeout(tc.Context, 500*time.Millisecond)
 		_, err := client.GetRootCACertificate(ctx, &api.GetRootCACertificateRequest{})
 		return err
 	}, time.Second))
@@ -530,7 +524,7 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 		return nil
 	}, 1*time.Second))
 
-	m.Stop(ctx, false)
+	m.Stop(tc.Context, false)
 
 	// After stopping we should MAY receive an error from ListenAndServe if
 	// all this happened before WaitForLeader completed, so don't check the
@@ -540,8 +534,6 @@ func TestManagerUpdatesSecurityConfig(t *testing.T) {
 
 // Tests manager rotates encryption of root key data in the raft store
 func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
-	ctx := context.Background()
-
 	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
@@ -579,7 +571,7 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 		require.NotNil(t, m)
 
 		go func() {
-			done <- m.Run(ctx)
+			done <- m.Run(tc.Context)
 		}()
 	}
 
@@ -606,7 +598,7 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 	defer os.Unsetenv(ca.PassphraseENVVar)
 
 	// restart
-	m.Stop(ctx, false)
+	m.Stop(tc.Context, false)
 	<-done
 	startManager()
 
@@ -635,7 +627,7 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 	defer os.Unsetenv(ca.PassphraseENVVarPrev)
 
 	// restart
-	m.Stop(ctx, false)
+	m.Stop(tc.Context, false)
 	<-done
 	startManager()
 
@@ -687,11 +679,11 @@ G80TfNRRr/qdB9hLwfyOyk2tBipkAgs6cl+CZAaqx3k=
 	}))
 
 	// restart
-	m.Stop(ctx, false)
+	m.Stop(tc.Context, false)
 	<-done
 	startManager()
 	require.NoError(t, pollDecrypted())
 
-	m.Stop(ctx, false)
+	m.Stop(tc.Context, false)
 	<-done
 }
