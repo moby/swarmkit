@@ -2566,8 +2566,6 @@ func TestSchedulerHostPort(t *testing.T) {
 		// Add initial node and task
 		assert.NoError(t, store.CreateTask(tx, task1))
 		assert.NoError(t, store.CreateTask(tx, task2))
-		assert.NoError(t, store.CreateNode(tx, node1))
-		assert.NoError(t, store.CreateNode(tx, node2))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -2581,6 +2579,18 @@ func TestSchedulerHostPort(t *testing.T) {
 		assert.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
+
+	// Tasks shouldn't be scheduled because there are no nodes.
+	watchAssignmentFailure(t, watch)
+	watchAssignmentFailure(t, watch)
+
+	err = s.Update(func(tx store.Tx) error {
+		// Add initial node and task
+		assert.NoError(t, store.CreateNode(tx, node1))
+		assert.NoError(t, store.CreateNode(tx, node2))
+		return nil
+	})
+	assert.NoError(t, err)
 
 	// Tasks 1 and 2 should be assigned to different nodes.
 	assignment1 := watchAssignment(t, watch)
