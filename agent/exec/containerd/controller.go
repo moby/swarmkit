@@ -147,7 +147,7 @@ func (r *controller) Start(ctx context.Context) error {
 		return errors.Wrap(err, "starting container failed")
 	}
 
-	// TODO(ijc): Wait for HealtCheck to report OK.
+	// TODO(ijc): Wait for HealthCheck to report OK.
 
 	return nil
 }
