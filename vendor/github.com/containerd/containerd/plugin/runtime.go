@@ -32,8 +32,12 @@ type Exit struct {
 // Runtime is responsible for the creation of containers for a certain platform,
 // arch, or custom usage.
 type Runtime interface {
+	// ID of the runtime
+	ID() string
 	// Create creates a container with the provided id and options
 	Create(ctx context.Context, id string, opts CreateOpts) (Task, error)
+	// Get returns a container
+	Get(context.Context, string) (Task, error)
 	// Containers returns all the current containers for the runtime
 	Tasks(context.Context) ([]Task, error)
 	// Delete removes the container in the runtime

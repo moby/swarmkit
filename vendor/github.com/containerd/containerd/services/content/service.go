@@ -30,15 +30,23 @@ var bufPool = sync.Pool{
 var _ api.ContentServer = &Service{}
 
 func init() {
-	plugin.Register("content-grpc", &plugin.Registration{
+	plugin.Register(&plugin.Registration{
 		Type: plugin.GRPCPlugin,
+		ID:   "content",
+		Requires: []plugin.PluginType{
+			plugin.ContentPlugin,
+		},
 		Init: NewService,
 	})
 }
 
 func NewService(ic *plugin.InitContext) (interface{}, error) {
+	c, err := ic.Get(plugin.ContentPlugin)
+	if err != nil {
+		return nil, err
+	}
 	return &Service{
-		store: ic.Content,
+		store: c.(content.Store),
 	}, nil
 }
 
@@ -275,7 +283,7 @@ func (s *Service) Write(session api.Content_WriteServer) (err error) {
 	// this action locks the writer for the session.
 	wr, err := s.store.Writer(ctx, ref, total, expected)
 	if err != nil {
-		return err
+		return serverErrorToGRPC(err, ref)
 	}
 	defer wr.Close()
 
@@ -283,7 +291,7 @@ func (s *Service) Write(session api.Content_WriteServer) (err error) {
 		msg.Action = req.Action
 		ws, err := wr.Status()
 		if err != nil {
-			return err
+			return serverErrorToGRPC(err, ref)
 		}
 
 		msg.Offset = ws.Offset // always set the offset.

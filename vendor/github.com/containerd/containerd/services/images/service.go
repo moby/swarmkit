@@ -4,6 +4,7 @@ import (
 	"github.com/boltdb/bolt"
 	imagesapi "github.com/containerd/containerd/api/services/images"
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/metadata"
 	"github.com/containerd/containerd/plugin"
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
@@ -11,10 +12,18 @@ import (
 )
 
 func init() {
-	plugin.Register("images-grpc", &plugin.Registration{
+	plugin.Register(&plugin.Registration{
 		Type: plugin.GRPCPlugin,
+		ID:   "images",
+		Requires: []plugin.PluginType{
+			plugin.MetadataPlugin,
+		},
 		Init: func(ic *plugin.InitContext) (interface{}, error) {
-			return NewService(ic.Meta), nil
+			m, err := ic.Get(plugin.MetadataPlugin)
+			if err != nil {
+				return nil, err
+			}
+			return NewService(m.(*bolt.DB)), nil
 		},
 	})
 }
@@ -73,7 +82,7 @@ func (s *Service) Delete(ctx context.Context, req *imagesapi.DeleteRequest) (*em
 }
 
 func (s *Service) withStore(ctx context.Context, fn func(ctx context.Context, store images.Store) error) func(tx *bolt.Tx) error {
-	return func(tx *bolt.Tx) error { return fn(ctx, images.NewStore(tx)) }
+	return func(tx *bolt.Tx) error { return fn(ctx, metadata.NewImageStore(tx)) }
 }
 
 func (s *Service) withStoreView(ctx context.Context, fn func(ctx context.Context, store images.Store) error) error {

@@ -27,6 +27,7 @@ import (
 	"github.com/containerd/containerd/archive/compression"
 	"github.com/containerd/containerd/content"
 	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
 	contentservice "github.com/containerd/containerd/services/content"
@@ -69,6 +70,10 @@ type containerAdapter struct {
 	dir               string
 	resolvedImageName string
 	deleteResponse    *execution.DeleteResponse
+}
+
+func withNamespace(ctx context.Context) context.Context {
+	return namespaces.WithNamespace(ctx, "default")
 }
 
 func newContainerAdapter(conn *grpc.ClientConn, containerDir string, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
@@ -149,6 +154,8 @@ func prepareStdio(stdout, stderr string, console bool) (wg *sync.WaitGroup, err 
 }
 
 func (c *containerAdapter) pullImage(ctx context.Context) error {
+	ctx = withNamespace(ctx)
+
 	options := docker.ResolverOptions{}
 
 	tr := &http.Transport{
@@ -445,6 +452,8 @@ func (c *containerAdapter) spec(ctx context.Context, config *ocispec.ImageConfig
 }
 
 func (c *containerAdapter) create(ctx context.Context) error {
+	ctx = withNamespace(ctx)
+
 	if c.resolvedImageName == "" {
 		return errors.New("image has not been pulled")
 	}
@@ -518,7 +527,7 @@ func (c *containerAdapter) create(ctx context.Context) error {
 				TypeUrl: specs.Version,
 				Value:   data,
 			},
-			Runtime: "linux",
+			Runtime: "io.containerd.runtime.v1.linux",
 		},
 	})
 	if err != nil {
@@ -541,6 +550,7 @@ func (c *containerAdapter) create(ctx context.Context) error {
 }
 
 func (c *containerAdapter) start(ctx context.Context) error {
+	ctx = withNamespace(ctx)
 	_, err := c.taskClient.Start(ctx, &execution.StartRequest{
 		ContainerID: naming.Task(c.task),
 	})
@@ -563,6 +573,8 @@ func (c *containerAdapter) eventStream(ctx context.Context, id string) (<-chan t
 // A chan struct{} is returned that will be closed if the event processing
 // fails and needs to be restarted.
 func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) (<-chan task.Event, <-chan struct{}, error) {
+	ctx = withNamespace(ctx)
+
 	id := naming.Task(c.task)
 
 	l := log.G(ctx).WithFields(logrus.Fields{
@@ -610,6 +622,8 @@ func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) 
 }
 
 func (c *containerAdapter) inspect(ctx context.Context) (task.Task, error) {
+	ctx = withNamespace(ctx)
+
 	id := naming.Task(c.task)
 	rsp, err := c.taskClient.Info(ctx, &execution.InfoRequest{ContainerID: id})
 	if err != nil {
@@ -619,6 +633,8 @@ func (c *containerAdapter) inspect(ctx context.Context) (task.Task, error) {
 }
 
 func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
+	ctx = withNamespace(ctx)
+
 	id := naming.Task(c.task)
 	l := log.G(ctx).WithFields(logrus.Fields{
 		"ID": id,
@@ -648,6 +664,8 @@ func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
 }
 
 func (c *containerAdapter) terminate(ctx context.Context) error {
+	ctx = withNamespace(ctx)
+
 	id := naming.Task(c.task)
 	l := log.G(ctx).WithFields(logrus.Fields{
 		"ID": id,
@@ -657,6 +675,8 @@ func (c *containerAdapter) terminate(ctx context.Context) error {
 }
 
 func (c *containerAdapter) remove(ctx context.Context) error {
+	ctx = withNamespace(ctx)
+
 	id := naming.Task(c.task)
 	l := log.G(ctx).WithFields(logrus.Fields{
 		"ID": id,
