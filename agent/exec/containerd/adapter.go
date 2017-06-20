@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -279,120 +278,39 @@ func (c *containerAdapter) setMounts(ctx context.Context, s *specs.Spec, mounts 
 	return nil
 }
 
-func (c *containerAdapter) makeSpec(ctx context.Context, config *ocispec.ImageConfig, rootfs string) (*specs.Spec, error) {
-	caps := []string{
-		"CAP_CHOWN",
-		"CAP_DAC_OVERRIDE",
-		"CAP_FSETID",
-		"CAP_FOWNER",
-		"CAP_MKNOD",
-		"CAP_NET_RAW",
-		"CAP_SETGID",
-		"CAP_SETUID",
-		"CAP_SETFCAP",
-		"CAP_SETPCAP",
-		"CAP_NET_BIND_SERVICE",
-		"CAP_SYS_CHROOT",
-		"CAP_KILL",
-		"CAP_AUDIT_WRITE",
-	}
-
-	// Need github.com/docker/docker/oci.DefaultSpec()
-	spec := specs.Spec{
-		Version: "1.0.0-rc2-dev",
-		Root: specs.Root{
-			Path: rootfs,
+func (c *containerAdapter) specOpts(ctx context.Context, config *ocispec.ImageConfig, rootfs string) []containerd.SpecOpts {
+	opts := []containerd.SpecOpts{
+		containerd.WithImageConfig(ctx, c.image),
+		func(s *specs.Spec) error {
+			s.Root.Path = rootfs
+			return nil
 		},
-		Mounts: []specs.Mount{
-			{
-				Destination: "/proc",
-				Type:        "proc",
-				Source:      "proc",
-				Options:     []string{"nosuid", "noexec", "nodev"},
-			},
-			{
-				Destination: "/dev",
-				Type:        "tmpfs",
-				Source:      "tmpfs",
-				Options:     []string{"nosuid", "strictatime", "mode=755"},
-			},
-			{
-				Destination: "/dev/pts",
-				Type:        "devpts",
-				Source:      "devpts",
-				Options:     []string{"nosuid", "noexec", "newinstance", "ptmxmode=0666", "mode=0620", "gid=5"},
-			},
-			{
-				Destination: "/sys",
-				Type:        "sysfs",
-				Source:      "sysfs",
-				Options:     []string{"nosuid", "noexec", "nodev", "ro"},
-			},
-			{
-				Destination: "/sys/fs/cgroup",
-				Type:        "cgroup",
-				Source:      "cgroup",
-				Options:     []string{"ro", "nosuid", "noexec", "nodev"},
-			},
-			{
-				Destination: "/dev/mqueue",
-				Type:        "mqueue",
-				Source:      "mqueue",
-				Options:     []string{"nosuid", "noexec", "nodev"},
-			},
-		},
-		Process: specs.Process{
-			Cwd: "/",
-			Capabilities: &specs.LinuxCapabilities{
-				Bounding:    caps,
-				Effective:   caps,
-				Inheritable: caps,
-				Permitted:   caps,
-				Ambient:     caps,
-			},
-			NoNewPrivileges: true,
-			Terminal:        false,
-		},
-		Linux: &specs.Linux{
-			Namespaces: []specs.LinuxNamespace{
-				{Type: "mount"},
-				{Type: "network"},
-				{Type: "uts"},
-				{Type: "pid"},
-				{Type: "ipc"},
-			},
+		func(s *specs.Spec) error {
+			if err := c.setMounts(ctx, s, c.spec.Mounts, config.Volumes); err != nil {
+				return errors.Wrap(err, "failed to set mounts")
+			}
+			sort.Sort(mounts(s.Mounts))
+			return nil
 		},
 	}
 
-	spec.Platform = specs.Platform{
-		OS:   runtime.GOOS,
-		Arch: runtime.GOARCH,
-	}
-	if config.WorkingDir != "" {
-		spec.Process.Cwd = config.WorkingDir
-	}
-	spec.Process.Env = config.Env
-
-	var args []string
-	if len(c.spec.Args) > 0 {
-		args = c.spec.Args
-	} else {
-		args = config.Cmd
-	}
-
+	// spec.Process.Args is config.Entrypoint + config.Cmd at this
+	// point from WithImageConfig above. If the ContainerSpec
+	// specifies a Command then we can completely override. If it
+	// does not then all we can do is append our Args and hope
+	// they do not conflict.
+	// TODO(ijc) Improve this
 	if len(c.spec.Command) > 0 {
-		spec.Process.Args = append(c.spec.Command, args...)
+		args := append(c.spec.Command, c.spec.Args...)
+		opts = append(opts, containerd.WithProcessArgs(args...))
 	} else {
-		spec.Process.Args = append(config.Entrypoint, args...)
+		opts = append(opts, func(s *specs.Spec) error {
+			s.Process.Args = append(s.Process.Args, c.spec.Args...)
+			return nil
+		})
 	}
 
-	log.G(ctx).Debugf("Process args: %v", spec.Process.Args)
-	if err := c.setMounts(ctx, &spec, c.spec.Mounts, config.Volumes); err != nil {
-		return nil, errors.Wrap(err, "failed to set mounts")
-	}
-	sort.Sort(mounts(spec.Mounts))
-
-	return &spec, nil
+	return opts
 }
 
 func (c *containerAdapter) create(ctx context.Context) error {
@@ -445,7 +363,7 @@ func (c *containerAdapter) create(ctx context.Context) error {
 		}
 	}
 
-	spec, err := c.makeSpec(ctx, &config.Config, rootfs)
+	spec, err := containerd.GenerateSpec(c.specOpts(ctx, &config.Config, rootfs)...)
 	if err != nil {
 		return err
 	}
