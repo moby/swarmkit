@@ -317,9 +317,7 @@ func TestRaftSnapshotForceNewCluster(t *testing.T) {
 	nodes[1].Server.Stop()
 	nodes[1].ShutdownRaft()
 	nodes[1] = raftutils.RestartNode(t, clockSource, nodes[1], true)
-	delete(nodes, 3)
-	delete(nodes, 4)
-	raftutils.WaitForCluster(t, clockSource, nodes)
+	raftutils.WaitForCluster(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1]})
 
 	// The memberlist should contain exactly one node (self)
 	memberlist := nodes[1].GetMemberlist()

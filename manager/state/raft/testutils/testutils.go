@@ -262,7 +262,7 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA,
 
 	cfg := raft.DefaultNodeConfig()
 
-	stateDir, err := ioutil.TempDir("", "test-raft")
+	stateDir, err := ioutil.TempDir("", t.Name())
 	require.NoError(t, err, "can't create temporary state directory")
 
 	keyRotator := NewSimpleKeyRotator(raft.EncryptionKeys{CurrentDEK: []byte("current")})

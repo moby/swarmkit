@@ -685,20 +685,15 @@ func TestRaftForceNewCluster(t *testing.T) {
 		assert.Len(t, nodes[uint64(i)].GetMemberlist(), 3)
 	}
 
-	// Stop all nodes
-	for _, node := range nodes {
-		node.Server.Stop()
-		node.ShutdownRaft()
-	}
+	// Stop the first node, and remove the second and third one.
+	nodes[1].Server.Stop()
+	nodes[1].ShutdownRaft()
 
 	raftutils.AdvanceTicks(clockSource, 5)
 
-	toClean := map[uint64]*raftutils.TestNode{
-		2: nodes[2],
-		3: nodes[3],
-	}
-	raftutils.TeardownCluster(toClean)
+	raftutils.ShutdownNode(nodes[2])
 	delete(nodes, 2)
+	raftutils.ShutdownNode(nodes[3])
 	delete(nodes, 3)
 
 	// Only restart the first node with force-new-cluster option
@@ -708,19 +703,9 @@ func TestRaftForceNewCluster(t *testing.T) {
 	// The memberlist should contain only one node (self)
 	assert.Len(t, nodes[1].GetMemberlist(), 1)
 
-	// Add 2 more members
-	nodes[2] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, tc)
-	raftutils.WaitForCluster(t, clockSource, nodes)
-
-	nodes[3] = raftutils.NewJoinNode(t, clockSource, nodes[1].Address, tc)
-	raftutils.WaitForCluster(t, clockSource, nodes)
-
-	newCluster := map[uint64]*raftutils.TestNode{
-		1: nodes[1],
-		2: nodes[2],
-		3: nodes[3],
-	}
-	defer raftutils.TeardownCluster(newCluster)
+	// Replace the other 2 members
+	raftutils.AddRaftNode(t, clockSource, nodes, tc)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 
 	// The memberlist should contain 3 members on each node
 	for i := 1; i <= 3; i++ {
@@ -762,18 +747,12 @@ func TestRaftUnreachableNode(t *testing.T) {
 	t.Parallel()
 
 	nodes := make(map[uint64]*raftutils.TestNode)
+	defer raftutils.TeardownCluster(nodes)
 	var clockSource *fakeclock.FakeClock
 	nodes[1], clockSource = raftutils.NewInitNode(t, tc, nil)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	// Add a new node
-	nodes[2] = raftutils.NewNode(t, clockSource, tc, raft.NodeOptions{JoinAddr: nodes[1].Address})
-
-	err := nodes[2].JoinAndStart(ctx)
-	require.NoError(t, err, "can't join cluster")
-
-	go nodes[2].Run(ctx)
+	raftutils.AddRaftNode(t, clockSource, nodes, tc, raft.NodeOptions{JoinAddr: nodes[1].Address})
 
 	// Stop the Raft server of second node on purpose after joining
 	nodes[2].Server.Stop()

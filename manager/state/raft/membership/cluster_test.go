@@ -357,7 +357,6 @@ func TestCanRemoveMember(t *testing.T) {
 
 	// Add back node 3
 	raftutils.ShutdownNode(nodes[3])
-	delete(nodes, 3)
 	nodes[3] = raftutils.NewJoinNode(t, clockSource, nodes[leader].Address, tc)
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
