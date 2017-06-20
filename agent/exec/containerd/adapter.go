@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 var (
@@ -56,12 +57,55 @@ func newContainerAdapter(client *containerd.Client, task *api.Task, secrets exec
 		return nil, exec.ErrRuntimeUnsupported
 	}
 
-	return &containerAdapter{
+	c := &containerAdapter{
 		client:  client,
 		spec:    spec,
 		secrets: secrets,
 		name:    naming.Task(task),
-	}, nil
+	}
+
+	if err := c.reattach(context.Background()); err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+// reattaches to an existing container. If the container is found but
+// the task is missing then still succeeds, allowing subsequent use of
+// c.delete()
+func (c *containerAdapter) reattach(ctx context.Context) error {
+	container, err := c.client.LoadContainer(ctx, c.name)
+	if err != nil {
+		if grpc.Code(err) == codes.NotFound {
+			c.log(ctx).Debug("reattach: container not found")
+			return nil
+		}
+
+		return errors.Wrap(err, "reattach: loading container")
+	}
+	c.log(ctx).Debug("reattach: loaded container")
+	c.container = container
+
+	// TODO(ijc) Consider an addition to container library which
+	// directly attaches stdin to /dev/null.
+	if devNull == nil {
+		if devNull, err = os.Open(os.DevNull); err != nil {
+			return errors.Wrap(err, "reattach: opening null device")
+		}
+	}
+
+	task, err := container.Task(ctx, containerd.WithAttach(devNull, os.Stdout, os.Stderr))
+	if err != nil {
+		if err == containerd.ErrNoRunningTask {
+			c.log(ctx).WithError(err).Info("reattach: no running task")
+			return nil
+		}
+		return errors.Wrap(err, "reattach: reattaching task")
+	}
+	c.task = task
+	c.log(ctx).Debug("reattach: successful")
+	return nil
 }
 
 func (c *containerAdapter) pullImage(ctx context.Context) error {
