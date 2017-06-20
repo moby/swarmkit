@@ -134,7 +134,7 @@ func (r *controller) Prepare(ctx context.Context) error {
 		}
 	}
 
-	if err := r.adapter.create(ctx); err != nil {
+	if err := r.adapter.prepare(ctx); err != nil {
 		if isContainerCreateNameConflict(err) {
 			if _, err := r.adapter.inspect(ctx); err != nil {
 				return err

@@ -143,7 +143,7 @@ func withMounts(ctx context.Context, ms []api.Mount) containerd.SpecOpts {
 	}
 }
 
-func (c *containerAdapter) create(ctx context.Context) error {
+func (c *containerAdapter) prepare(ctx context.Context) error {
 	if c.image == nil {
 		return errors.New("image has not been pulled")
 	}
