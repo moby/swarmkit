@@ -25,6 +25,7 @@ import (
 
 var (
 	devNull                    *os.File
+	errAdapterNotPrepared      = errors.New("container adapter not prepared")
 	mountPropagationReverseMap = map[api.Mount_BindOptions_MountPropagation]string{
 		api.MountPropagationPrivate:  "private",
 		api.MountPropagationRPrivate: "rprivate",
@@ -143,7 +144,14 @@ func withMounts(ctx context.Context, ms []api.Mount) containerd.SpecOpts {
 	}
 }
 
+func (c *containerAdapter) isPrepared() bool {
+	return c.container != nil && c.task != nil
+}
+
 func (c *containerAdapter) prepare(ctx context.Context) error {
+	if c.isPrepared() {
+		return errors.New("adapter already prepared")
+	}
 	if c.image == nil {
 		return errors.New("image has not been pulled")
 	}
@@ -201,6 +209,10 @@ func (c *containerAdapter) prepare(ctx context.Context) error {
 }
 
 func (c *containerAdapter) start(ctx context.Context) error {
+	if !c.isPrepared() {
+		return errAdapterNotPrepared
+	}
+
 	tasks := c.client.TaskService()
 
 	_, err := tasks.Start(ctx, &execution.StartRequest{
@@ -225,6 +237,10 @@ func (c *containerAdapter) eventStream(ctx context.Context, id string) (<-chan t
 // A chan struct{} is returned that will be closed if the event processing
 // fails and needs to be restarted.
 func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) (<-chan task.Event, <-chan struct{}, error) {
+	if !c.isPrepared() {
+		return nil, nil, errAdapterNotPrepared
+	}
+
 	l := log.G(ctx).WithFields(logrus.Fields{
 		"ID": c.name,
 	})
@@ -271,6 +287,10 @@ func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) 
 }
 
 func (c *containerAdapter) inspect(ctx context.Context) (task.Task, error) {
+	if !c.isPrepared() {
+		return task.Task{}, errAdapterNotPrepared
+	}
+
 	tasks := c.client.TaskService()
 	rsp, err := tasks.Info(ctx, &execution.InfoRequest{ContainerID: c.name})
 	if err != nil {
@@ -280,6 +300,10 @@ func (c *containerAdapter) inspect(ctx context.Context) (task.Task, error) {
 }
 
 func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
+	if !c.isPrepared() {
+		return 0, errAdapterNotPrepared
+	}
+
 	l := log.G(ctx).WithFields(logrus.Fields{
 		"ID": c.name,
 	})
@@ -309,6 +333,10 @@ func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
 }
 
 func (c *containerAdapter) terminate(ctx context.Context) error {
+	if !c.isPrepared() {
+		return errAdapterNotPrepared
+	}
+
 	l := log.G(ctx).WithFields(logrus.Fields{
 		"ID": c.name,
 	})
@@ -317,6 +345,10 @@ func (c *containerAdapter) terminate(ctx context.Context) error {
 }
 
 func (c *containerAdapter) remove(ctx context.Context) error {
+	if !c.isPrepared() {
+		return errAdapterNotPrepared
+	}
+
 	l := log.G(ctx).WithFields(logrus.Fields{
 		"ID": c.name,
 	})
