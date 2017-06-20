@@ -156,6 +156,10 @@ func (c *containerAdapter) prepare(ctx context.Context) error {
 		return errors.New("image has not been pulled")
 	}
 
+	l := log.G(ctx).WithFields(logrus.Fields{
+		"ID": c.name,
+	})
+
 	specOpts := []containerd.SpecOpts{
 		containerd.WithImageConfig(ctx, c.image),
 		withMounts(ctx, c.spec.Mounts),
@@ -202,6 +206,12 @@ func (c *containerAdapter) prepare(ctx context.Context) error {
 
 	c.task, err = c.container.NewTask(ctx, io)
 	if err != nil {
+		// Destroy the container we created above, but
+		// propagate the original error.
+		if err2 := c.container.Delete(ctx); err2 != nil {
+			l.WithError(err2).Error("failed to delete container on prepare failure")
+		}
+		c.container = nil
 		return errors.Wrap(err, "creating task")
 	}
 
