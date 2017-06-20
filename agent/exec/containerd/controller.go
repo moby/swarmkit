@@ -195,12 +195,18 @@ func (r *controller) Wait(ctx context.Context) error {
 		return errors.Wrap(err, "inspecting container failed")
 	}
 
+	// TODO(ijc) this shouldn't be needed here, figure out why
+	// .shutdown/.remove are not being called otherwise.
 	shutdownWithExitStatus := func(reason string) error {
 		exitStatus, err := r.adapter.shutdown(ctx)
 		if err != nil {
 			return err
 		}
 		log.G(ctx).Errorf("EXIT STATUS %v", exitStatus)
+		if err := r.adapter.remove(ctx); err != nil {
+			// Just log it, report the exit status
+			log.G(ctx).WithError(err).Info("remove after wait failed")
+		}
 		return makeExitError(exitStatus, reason)
 	}
 	switch ctnr.Status {

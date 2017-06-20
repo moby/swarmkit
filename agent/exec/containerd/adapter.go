@@ -361,11 +361,6 @@ func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
 		}
 		c.log(ctx).Debugf("Status=%d", rsp.ExitStatus)
 		c.deleteResponse = rsp
-
-		// TODO(ijc) this should be moved to the remove method.
-		if err := c.container.Delete(ctx); err != nil {
-			c.log(ctx).WithError(err).Warnf("failed to delete container")
-		}
 	}
 
 	return c.deleteResponse.ExitStatus, nil
@@ -381,12 +376,16 @@ func (c *containerAdapter) terminate(ctx context.Context) error {
 }
 
 func (c *containerAdapter) remove(ctx context.Context) error {
-	if !c.isPrepared() {
+	// Unlike most other entry points we don't use c.isPrepared
+	// here so that we can clean up a container which was
+	// partially reattached (via c.attach).
+	if c.container == nil {
 		return errAdapterNotPrepared
 	}
 
 	c.log(ctx).Debug("Remove")
-	return nil
+	err := c.container.Delete(ctx)
+	return errors.Wrap(err, "removing container")
 }
 
 func isContainerCreateNameConflict(err error) bool {
