@@ -267,13 +267,8 @@ func (c *containerAdapter) start(ctx context.Context) error {
 	if !c.isPrepared() {
 		return errAdapterNotPrepared
 	}
-
-	tasks := c.client.TaskService()
-
-	_, err := tasks.Start(ctx, &execution.StartRequest{
-		ContainerID: c.name,
-	})
-	return err
+	err := c.task.Start(ctx)
+	return errors.Wrap(err, "starting")
 }
 
 func (c *containerAdapter) eventStream(ctx context.Context, id string) (<-chan task.Event, <-chan error, error) {
