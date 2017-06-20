@@ -108,6 +108,12 @@ func (c *containerAdapter) reattach(ctx context.Context) error {
 	return nil
 }
 
+func (c *containerAdapter) log(ctx context.Context) *logrus.Entry {
+	return log.G(ctx).WithFields(logrus.Fields{
+		"ID": c.name,
+	})
+}
+
 func (c *containerAdapter) pullImage(ctx context.Context) error {
 	image, err := c.client.Pull(ctx, c.spec.Image, containerd.WithPullUnpack)
 	if err != nil {
@@ -200,10 +206,6 @@ func (c *containerAdapter) prepare(ctx context.Context) error {
 		return errors.New("image has not been pulled")
 	}
 
-	l := log.G(ctx).WithFields(logrus.Fields{
-		"ID": c.name,
-	})
-
 	specOpts := []containerd.SpecOpts{
 		containerd.WithImageConfig(ctx, c.image),
 		withMounts(ctx, c.spec.Mounts),
@@ -253,7 +255,7 @@ func (c *containerAdapter) prepare(ctx context.Context) error {
 		// Destroy the container we created above, but
 		// propagate the original error.
 		if err2 := c.container.Delete(ctx); err2 != nil {
-			l.WithError(err2).Error("failed to delete container on prepare failure")
+			c.log(ctx).WithError(err2).Error("failed to delete container on prepare failure")
 		}
 		c.container = nil
 		return errors.Wrap(err, "creating task")
@@ -295,10 +297,6 @@ func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) 
 		return nil, nil, errAdapterNotPrepared
 	}
 
-	l := log.G(ctx).WithFields(logrus.Fields{
-		"ID": c.name,
-	})
-
 	// TODO(stevvooe): Move this to a single, global event dispatch. For
 	// now, we create a connection per container.
 	var (
@@ -306,12 +304,12 @@ func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) 
 		closed  = make(chan struct{})
 	)
 
-	l.Debugf("waiting on events")
+	c.log(ctx).Debugf("waiting on events")
 
 	tasks := c.client.TaskService()
 	cl, err := tasks.Events(ctx, &execution.EventsRequest{}, opts...)
 	if err != nil {
-		l.WithError(err).Errorf("failed to start event stream")
+		c.log(ctx).WithError(err).Errorf("failed to start event stream")
 		return nil, nil, err
 	}
 
@@ -321,11 +319,11 @@ func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) 
 		for {
 			evt, err := cl.Recv()
 			if err != nil {
-				l.WithError(err).Error("fatal error from events stream")
+				c.log(ctx).WithError(err).Error("fatal error from events stream")
 				return
 			}
 			if evt.ID != c.name {
-				l.Debugf("Event for a different container %s", evt.ID)
+				c.log(ctx).Debugf("Event for a different container %s", evt.ID)
 				continue
 			}
 
@@ -358,20 +356,16 @@ func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
 		return 0, errAdapterNotPrepared
 	}
 
-	l := log.G(ctx).WithFields(logrus.Fields{
-		"ID": c.name,
-	})
-
 	if c.deleteResponse == nil {
 		var err error
-		l.Debug("Deleting")
+		c.log(ctx).Debug("Deleting")
 
 		tasks := c.client.TaskService()
 		rsp, err := tasks.Delete(ctx, &execution.DeleteRequest{ContainerID: c.name})
 		if err != nil {
 			return 0, err
 		}
-		l.Debugf("Status=%d", rsp.ExitStatus)
+		c.log(ctx).Debugf("Status=%d", rsp.ExitStatus)
 		c.deleteResponse = rsp
 
 		containers := c.client.ContainerService()
@@ -379,7 +373,7 @@ func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
 			ID: c.name,
 		})
 		if err != nil {
-			l.WithError(err).Warnf("failed to delete container")
+			c.log(ctx).WithError(err).Warnf("failed to delete container")
 		}
 	}
 
@@ -391,10 +385,7 @@ func (c *containerAdapter) terminate(ctx context.Context) error {
 		return errAdapterNotPrepared
 	}
 
-	l := log.G(ctx).WithFields(logrus.Fields{
-		"ID": c.name,
-	})
-	l.Debug("Terminate")
+	c.log(ctx).Debug("Terminate")
 	return errors.New("terminate not implemented")
 }
 
@@ -403,10 +394,7 @@ func (c *containerAdapter) remove(ctx context.Context) error {
 		return errAdapterNotPrepared
 	}
 
-	l := log.G(ctx).WithFields(logrus.Fields{
-		"ID": c.name,
-	})
-	l.Debug("Remove")
+	c.log(ctx).Debug("Remove")
 	return nil
 }
 
