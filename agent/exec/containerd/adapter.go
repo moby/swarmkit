@@ -9,7 +9,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/containerd/containerd"
-	containersapi "github.com/containerd/containerd/api/services/containers"
 	"github.com/containerd/containerd/api/services/execution"
 	"github.com/containerd/containerd/api/types/task"
 	dockermount "github.com/docker/docker/pkg/mount"
@@ -368,11 +367,8 @@ func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
 		c.log(ctx).Debugf("Status=%d", rsp.ExitStatus)
 		c.deleteResponse = rsp
 
-		containers := c.client.ContainerService()
-		_, err = containers.Delete(ctx, &containersapi.DeleteContainerRequest{
-			ID: c.name,
-		})
-		if err != nil {
+		// TODO(ijc) this should be moved to the remove method.
+		if err := c.container.Delete(ctx); err != nil {
 			c.log(ctx).WithError(err).Warnf("failed to delete container")
 		}
 	}
