@@ -362,21 +362,16 @@ func (c *containerAdapter) shutdown(ctx context.Context) error {
 		return errAdapterNotPrepared
 	}
 
-	if c.exitStatus == nil {
-		var err error
-		c.log(ctx).Debug("Deleting")
+	var err error
 
-		tasks := c.client.TaskService()
-		rsp, err := tasks.Delete(ctx, &execution.DeleteRequest{ContainerID: c.name})
-		if err != nil {
-			c.log(ctx).WithError(err).Debug("Task.Delete failed")
-			return err
-		}
-		c.log(ctx).Debugf("Task.Delete success, status=%d", rsp.ExitStatus)
-		c.exitStatus = makeExitError(rsp.ExitStatus, "")
-	} else {
-		c.log(ctx).Debug("Task already deleted, error=%s", c.exitStatus)
+	tasks := c.client.TaskService()
+	rsp, err := tasks.Delete(ctx, &execution.DeleteRequest{ContainerID: c.name})
+	if err != nil {
+		c.log(ctx).WithError(err).Debug("Task.Delete failed")
+		return err
 	}
+	c.log(ctx).Debugf("Task.Delete success, status=%d", rsp.ExitStatus)
+	c.exitStatus = makeExitError(rsp.ExitStatus, "")
 
 	return c.exitStatus
 }
