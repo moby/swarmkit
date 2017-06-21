@@ -332,17 +332,36 @@ func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) 
 	return eventsq, closed, nil
 }
 
-func (c *containerAdapter) inspect(ctx context.Context) (task.Task, error) {
+type status struct {
+	ID         string
+	Pid        uint32
+	Status     task.Status
+	ExitStatus error
+}
+
+func (c *containerAdapter) inspect(ctx context.Context) (status, error) {
 	if !c.isPrepared() {
-		return task.Task{}, errAdapterNotPrepared
+		return status{}, errAdapterNotPrepared
 	}
 
 	tasks := c.client.TaskService()
 	rsp, err := tasks.Info(ctx, &execution.InfoRequest{ContainerID: c.name})
 	if err != nil {
-		return task.Task{}, err
+		return status{}, err
 	}
-	return *rsp.Task, nil
+	if rsp.Task.ID != c.container.ID() {
+		c.log(ctx).Errorf("inspect: container id mismatch %s %s", rsp.Task.ID, c.container.ID())
+	}
+	if rsp.Task.Pid != c.task.Pid() {
+		c.log(ctx).Errorf("inspect: task pid mismatch %s %s", rsp.Task.Pid, c.task.Pid())
+	}
+	s := status{
+		ID:         c.container.ID(),
+		Pid:        c.task.Pid(),
+		Status:     rsp.Task.Status,
+		ExitStatus: c.exitStatus,
+	}
+	return s, nil
 }
 
 func (c *containerAdapter) shutdown(ctx context.Context) error {
