@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	events "github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/state"
@@ -16,6 +17,43 @@ import (
 )
 
 var (
+	clusterSet = []*api.Cluster{
+		{
+			ID: "id1",
+			Spec: api.ClusterSpec{
+				Annotations: api.Annotations{
+					Name: "name1",
+				},
+			},
+		},
+		{
+			ID: "id2",
+			Spec: api.ClusterSpec{
+				Annotations: api.Annotations{
+					Name: "name2",
+				},
+			},
+		},
+		{
+			ID: "id3",
+			Spec: api.ClusterSpec{
+				Annotations: api.Annotations{
+					Name: "name3",
+				},
+			},
+		},
+	}
+	altClusterSet = []*api.Cluster{
+		{
+			ID: "alt-id1",
+			Spec: api.ClusterSpec{
+				Annotations: api.Annotations{
+					Name: "alt-name1",
+				},
+			},
+		},
+	}
+
 	nodeSet = []*api.Node{
 		{
 			ID: "id1",
@@ -49,6 +87,18 @@ var (
 			Role: api.NodeRoleWorker,
 		},
 	}
+	altNodeSet = []*api.Node{
+		{
+			ID: "alt-id1",
+			Spec: api.NodeSpec{
+				Membership: api.NodeMembershipPending,
+			},
+			Description: &api.NodeDescription{
+				Hostname: "alt-name1",
+			},
+			Role: api.NodeRoleManager,
+		},
+	}
 
 	serviceSet = []*api.Service{
 		{
@@ -75,6 +125,16 @@ var (
 			Spec: api.ServiceSpec{
 				Annotations: api.Annotations{
 					Name: "name3",
+				},
+			},
+		},
+	}
+	altServiceSet = []*api.Service{
+		{
+			ID: "alt-id1",
+			Spec: api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "alt-name1",
 				},
 			},
 		},
@@ -114,6 +174,19 @@ var (
 			DesiredState: api.TaskStateShutdown,
 		},
 	}
+	altTaskSet = []*api.Task{
+		{
+			ID: "alt-id1",
+			Annotations: api.Annotations{
+				Name: "alt-name1",
+			},
+			ServiceAnnotations: api.Annotations{
+				Name: "alt-name1",
+			},
+			DesiredState: api.TaskStateRunning,
+			NodeID:       altNodeSet[0].ID,
+		},
+	}
 
 	networkSet = []*api.Network{
 		{
@@ -141,28 +214,202 @@ var (
 			},
 		},
 	}
+	altNetworkSet = []*api.Network{
+		{
+			ID: "alt-id1",
+			Spec: api.NetworkSpec{
+				Annotations: api.Annotations{
+					Name: "alt-name1",
+				},
+			},
+		},
+	}
+
+	configSet = []*api.Config{
+		{
+			ID: "id1",
+			Spec: api.ConfigSpec{
+				Annotations: api.Annotations{
+					Name: "name1",
+				},
+			},
+		},
+		{
+			ID: "id2",
+			Spec: api.ConfigSpec{
+				Annotations: api.Annotations{
+					Name: "name2",
+				},
+			},
+		},
+		{
+			ID: "id3",
+			Spec: api.ConfigSpec{
+				Annotations: api.Annotations{
+					Name: "name3",
+				},
+			},
+		},
+	}
+	altConfigSet = []*api.Config{
+		{
+			ID: "alt-id1",
+			Spec: api.ConfigSpec{
+				Annotations: api.Annotations{
+					Name: "alt-name1",
+				},
+			},
+		},
+	}
+
+	secretSet = []*api.Secret{
+		{
+			ID: "id1",
+			Spec: api.SecretSpec{
+				Annotations: api.Annotations{
+					Name: "name1",
+				},
+			},
+		},
+		{
+			ID: "id2",
+			Spec: api.SecretSpec{
+				Annotations: api.Annotations{
+					Name: "name2",
+				},
+			},
+		},
+		{
+			ID: "id3",
+			Spec: api.SecretSpec{
+				Annotations: api.Annotations{
+					Name: "name3",
+				},
+			},
+		},
+	}
+	altSecretSet = []*api.Secret{
+		{
+			ID: "alt-id1",
+			Spec: api.SecretSpec{
+				Annotations: api.Annotations{
+					Name: "alt-name1",
+				},
+			},
+		},
+	}
+
+	extensionSet = []*api.Extension{
+		{
+			ID: "id1",
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+		},
+		{
+			ID: "id2",
+			Annotations: api.Annotations{
+				Name: "name2",
+			},
+		},
+		{
+			ID: "id3",
+			Annotations: api.Annotations{
+				Name: "name3",
+			},
+		},
+	}
+	altExtensionSet = []*api.Extension{
+		{
+			ID: "alt-id1",
+			Annotations: api.Annotations{
+				Name: "alt-name1",
+			},
+		},
+	}
+
+	resourceSet = []*api.Resource{
+		{
+			ID: "id1",
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+			Kind: "name1", // corresponds to extension id1
+		},
+		{
+			ID: "id2",
+			Annotations: api.Annotations{
+				Name: "name2",
+			},
+			Kind: "name2", // corresponds to extension id2
+		},
+		{
+			ID: "id3",
+			Annotations: api.Annotations{
+				Name: "name3",
+			},
+			Kind: "name3", // corresponds to extension id3
+		},
+	}
+	altResourceSet = []*api.Resource{
+		{
+			ID: "alt-id1",
+			Annotations: api.Annotations{
+				Name: "alt-name1",
+			},
+			Kind: "alt-name1", // corresponds to extension alt-id1
+		},
+	}
 )
 
 func setupTestStore(t *testing.T, s *MemoryStore) {
+	populateTestStore(t, s,
+		clusterSet, nodeSet, serviceSet, taskSet, networkSet, configSet, secretSet,
+		extensionSet, resourceSet)
+}
+
+func populateTestStore(t *testing.T, s *MemoryStore,
+	clusters []*api.Cluster, nodes []*api.Node, services []*api.Service, tasks []*api.Task, networks []*api.Network,
+	configs []*api.Config, secrets []*api.Secret, extensions []*api.Extension, resources []*api.Resource) {
 	err := s.Update(func(tx Tx) error {
+		// Prepoulate clusters
+		for _, c := range clusters {
+			assert.NoError(t, CreateCluster(tx, c))
+		}
+
 		// Prepoulate nodes
-		for _, n := range nodeSet {
+		for _, n := range nodes {
 			assert.NoError(t, CreateNode(tx, n))
 		}
 
 		// Prepopulate services
-		for _, s := range serviceSet {
+		for _, s := range services {
 			assert.NoError(t, CreateService(tx, s))
 		}
 		// Prepopulate tasks
-		for _, task := range taskSet {
+		for _, task := range tasks {
 			assert.NoError(t, CreateTask(tx, task))
 		}
 		// Prepopulate networks
-		for _, n := range networkSet {
+		for _, n := range networks {
 			assert.NoError(t, CreateNetwork(tx, n))
 		}
-
+		// Prepopulate configs
+		for _, c := range configs {
+			assert.NoError(t, CreateConfig(tx, c))
+		}
+		// Prepopulate secrets
+		for _, s := range secrets {
+			assert.NoError(t, CreateSecret(tx, s))
+		}
+		// Prepopulate extensions
+		for _, c := range extensions {
+			assert.NoError(t, CreateExtension(tx, c))
+		}
+		// Prepopulate resources
+		for _, s := range resources {
+			assert.NoError(t, CreateResource(tx, s))
+		}
 		return nil
 	})
 	assert.NoError(t, err)
@@ -1145,11 +1392,59 @@ func TestStoreSaveRestore(t *testing.T) {
 
 	s2 := NewMemoryStore(nil)
 	assert.NotNil(t, s2)
+	// setup s2 with the first element of each of the object sets (which should be
+	// updated on restore), as well as one extraneous object (which should be deleted
+	// on restore).  We also want to bump the version on all the ones that will be
+	// updated just to make sure that restoration works.
+	version := api.Version{Index: 100}
+	c := clusterSet[0].Copy()
+	c.Meta.Version = version
+	n := nodeSet[0].Copy()
+	n.Meta.Version = version
+	s := serviceSet[0].Copy()
+	s.Meta.Version = version
+	task := taskSet[0].Copy()
+	task.Meta.Version = version
+	nw := networkSet[0].Copy()
+	nw.Meta.Version = version
+	cf := configSet[0].Copy()
+	cf.Meta.Version = version
+	sk := secretSet[0].Copy()
+	sk.Meta.Version = version
+	ext := extensionSet[0].Copy()
+	ext.Meta.Version = version
+	r := resourceSet[0].Copy()
+	r.Meta.Version = version
+	populateTestStore(t, s2,
+		append(altClusterSet, c),
+		append(altNodeSet, n),
+		append(altServiceSet, s),
+		append(altTaskSet, task),
+		append(altNetworkSet, nw),
+		append(altConfigSet, cf),
+		append(altSecretSet, sk),
+		append(altExtensionSet, ext),
+		append(altResourceSet, r),
+	)
 
-	err := s2.Restore(snapshot)
+	watcher, cancel, err := ViewAndWatch(s2, func(ReadTx) error {
+		return nil
+	})
+	assert.NoError(t, err)
+	defer cancel()
+
+	err = s2.Restore(snapshot)
 	assert.NoError(t, err)
 
+	// s2 should end up looking just like s1
 	s2.View(func(tx ReadTx) {
+		allClusters, err := FindClusters(tx, All)
+		assert.NoError(t, err)
+		assert.Len(t, allClusters, len(clusterSet))
+		for i := range allClusters {
+			assert.Equal(t, allClusters[i], clusterSet[i])
+		}
+
 		allTasks, err := FindTasks(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allTasks, len(taskSet))
@@ -1177,7 +1472,245 @@ func TestStoreSaveRestore(t *testing.T) {
 		for i := range allServices {
 			assert.Equal(t, allServices[i], serviceSet[i])
 		}
+
+		allConfigs, err := FindConfigs(tx, All)
+		assert.NoError(t, err)
+		assert.Len(t, allConfigs, len(configSet))
+		for i := range allConfigs {
+			assert.Equal(t, allConfigs[i], configSet[i])
+		}
+
+		allSecrets, err := FindSecrets(tx, All)
+		assert.NoError(t, err)
+		assert.Len(t, allSecrets, len(secretSet))
+		for i := range allSecrets {
+			assert.Equal(t, allSecrets[i], secretSet[i])
+		}
+
+		allExtensions, err := FindExtensions(tx, All)
+		assert.NoError(t, err)
+		assert.Len(t, allExtensions, len(extensionSet))
+		for i := range allExtensions {
+			assert.Equal(t, allExtensions[i], extensionSet[i])
+		}
+
+		allResources, err := FindResources(tx, All)
+		assert.NoError(t, err)
+		assert.Len(t, allResources, len(resourceSet))
+		for i := range allResources {
+			assert.Equal(t, allResources[i], resourceSet[i])
+		}
 	})
+
+	timeout := time.After(time.Second)
+
+	// make sure we have 1 update event, 2 create events, and 1 delete event for each
+	// object type
+	var (
+		clusterUpdates, clusterCreates, clusterDeletes,
+		nodeUpdates, nodeCreates, nodeDeletes,
+		serviceUpdates, serviceCreates, serviceDeletes,
+		taskUpdates, taskCreates, taskDeletes,
+		networkUpdates, networkCreates, networkDeletes,
+		configUpdates, configCreates, configDeletes,
+		secretUpdates, secretCreates, secretDeletes,
+		extensionUpdates, extensionCreates, extensionDeletes,
+		resourceUpdates, resourceCreates, resourceDeletes []api.StoreObject
+	)
+
+waitForAllEvents:
+	for {
+		var update events.Event
+		select {
+		case update = <-watcher:
+		case <-timeout:
+			assert.FailNow(t, "did not get all the events we were expecting after a snapshot was restored")
+		}
+
+		switch e := update.(type) {
+
+		case api.EventUpdateCluster:
+			clusterUpdates = append(clusterUpdates, e.Cluster)
+		case api.EventCreateCluster:
+			clusterCreates = append(clusterCreates, e.Cluster)
+		case api.EventDeleteCluster:
+			clusterDeletes = append(clusterDeletes, e.Cluster)
+
+		case api.EventUpdateNode:
+			nodeUpdates = append(nodeUpdates, e.Node)
+		case api.EventCreateNode:
+			nodeCreates = append(nodeCreates, e.Node)
+		case api.EventDeleteNode:
+			nodeDeletes = append(nodeDeletes, e.Node)
+
+		case api.EventUpdateService:
+			serviceUpdates = append(serviceUpdates, e.Service)
+		case api.EventCreateService:
+			serviceCreates = append(serviceCreates, e.Service)
+		case api.EventDeleteService:
+			serviceDeletes = append(serviceDeletes, e.Service)
+
+		case api.EventUpdateTask:
+			taskUpdates = append(taskUpdates, e.Task)
+		case api.EventCreateTask:
+			taskCreates = append(taskCreates, e.Task)
+		case api.EventDeleteTask:
+			taskDeletes = append(taskDeletes, e.Task)
+
+		case api.EventUpdateNetwork:
+			networkUpdates = append(networkUpdates, e.Network)
+		case api.EventCreateNetwork:
+			networkCreates = append(networkCreates, e.Network)
+		case api.EventDeleteNetwork:
+			networkDeletes = append(networkDeletes, e.Network)
+
+		case api.EventUpdateConfig:
+			configUpdates = append(configUpdates, e.Config)
+		case api.EventCreateConfig:
+			configCreates = append(configCreates, e.Config)
+		case api.EventDeleteConfig:
+			configDeletes = append(configDeletes, e.Config)
+
+		case api.EventUpdateSecret:
+			secretUpdates = append(secretUpdates, e.Secret)
+		case api.EventCreateSecret:
+			secretCreates = append(secretCreates, e.Secret)
+		case api.EventDeleteSecret:
+			secretDeletes = append(secretDeletes, e.Secret)
+
+		case api.EventUpdateExtension:
+			extensionUpdates = append(extensionUpdates, e.Extension)
+		case api.EventCreateExtension:
+			extensionCreates = append(extensionCreates, e.Extension)
+		case api.EventDeleteExtension:
+			extensionDeletes = append(extensionDeletes, e.Extension)
+
+		case api.EventUpdateResource:
+			resourceUpdates = append(resourceUpdates, e.Resource)
+		case api.EventCreateResource:
+			resourceCreates = append(resourceCreates, e.Resource)
+		case api.EventDeleteResource:
+			resourceDeletes = append(resourceDeletes, e.Resource)
+		}
+
+		// wait until we have all the events we want
+		for _, x := range [][]api.StoreObject{
+			clusterUpdates, clusterDeletes,
+			nodeUpdates, nodeDeletes,
+			serviceUpdates, serviceDeletes,
+			taskUpdates, taskDeletes,
+			networkUpdates, networkDeletes,
+			configUpdates, configDeletes,
+			secretUpdates, secretDeletes,
+			extensionUpdates, extensionDeletes,
+			resourceUpdates, resourceDeletes,
+		} {
+			if len(x) < 1 {
+				continue waitForAllEvents
+			}
+		}
+
+		for _, x := range [][]api.StoreObject{
+			clusterCreates,
+			nodeCreates,
+			serviceCreates,
+			taskCreates,
+			networkCreates,
+			configCreates,
+			secretCreates,
+			extensionCreates,
+			resourceCreates,
+		} {
+			if len(x) < 2 {
+				continue waitForAllEvents
+			}
+		}
+		break
+	}
+
+	assertHasSameIDs := func(changes []api.StoreObject, expected ...api.StoreObject) {
+		assert.Equal(t, len(expected), len(changes))
+		expectedIDs := make(map[string]struct{})
+		for _, s := range expected {
+			expectedIDs[s.GetID()] = struct{}{}
+		}
+		for _, s := range changes {
+			_, ok := expectedIDs[s.GetID()]
+			assert.True(t, ok)
+		}
+	}
+
+	assertHasSameIDs(clusterUpdates, clusterSet[0])
+	assertHasSameIDs(clusterDeletes, altClusterSet[0])
+	cantCastArrays := make([]api.StoreObject, len(clusterSet[1:]))
+	for i, x := range clusterSet[1:] {
+		cantCastArrays[i] = x
+	}
+	assertHasSameIDs(clusterCreates, cantCastArrays...)
+
+	assertHasSameIDs(nodeUpdates, nodeSet[0])
+	assertHasSameIDs(nodeDeletes, altNodeSet[0])
+	cantCastArrays = make([]api.StoreObject, len(nodeSet[1:]))
+	for i, x := range nodeSet[1:] {
+		cantCastArrays[i] = x
+	}
+	assertHasSameIDs(nodeCreates, cantCastArrays...)
+
+	assertHasSameIDs(serviceUpdates, serviceSet[0])
+	assertHasSameIDs(serviceDeletes, altServiceSet[0])
+	cantCastArrays = make([]api.StoreObject, len(serviceSet[1:]))
+	for i, x := range serviceSet[1:] {
+		cantCastArrays[i] = x
+	}
+	assertHasSameIDs(serviceCreates, cantCastArrays...)
+
+	assertHasSameIDs(taskUpdates, taskSet[0])
+	assertHasSameIDs(taskDeletes, altTaskSet[0])
+	cantCastArrays = make([]api.StoreObject, len(taskSet[1:]))
+	for i, x := range taskSet[1:] {
+		cantCastArrays[i] = x
+	}
+	assertHasSameIDs(taskCreates, cantCastArrays...)
+
+	assertHasSameIDs(networkUpdates, networkSet[0])
+	assertHasSameIDs(networkDeletes, altNetworkSet[0])
+	cantCastArrays = make([]api.StoreObject, len(networkSet[1:]))
+	for i, x := range networkSet[1:] {
+		cantCastArrays[i] = x
+	}
+	assertHasSameIDs(networkCreates, cantCastArrays...)
+
+	assertHasSameIDs(configUpdates, configSet[0])
+	assertHasSameIDs(configDeletes, altConfigSet[0])
+	cantCastArrays = make([]api.StoreObject, len(configSet[1:]))
+	for i, x := range configSet[1:] {
+		cantCastArrays[i] = x
+	}
+	assertHasSameIDs(configCreates, cantCastArrays...)
+
+	assertHasSameIDs(secretUpdates, secretSet[0])
+	assertHasSameIDs(secretDeletes, altSecretSet[0])
+	cantCastArrays = make([]api.StoreObject, len(secretSet[1:]))
+	for i, x := range secretSet[1:] {
+		cantCastArrays[i] = x
+	}
+	assertHasSameIDs(secretCreates, cantCastArrays...)
+
+	assertHasSameIDs(extensionUpdates, extensionSet[0])
+	assertHasSameIDs(extensionDeletes, altExtensionSet[0])
+	cantCastArrays = make([]api.StoreObject, len(extensionSet[1:]))
+	for i, x := range extensionSet[1:] {
+		cantCastArrays[i] = x
+	}
+	assertHasSameIDs(extensionCreates, cantCastArrays...)
+
+	assertHasSameIDs(resourceUpdates, resourceSet[0])
+	assertHasSameIDs(resourceDeletes, altResourceSet[0])
+	cantCastArrays = make([]api.StoreObject, len(resourceSet[1:]))
+	for i, x := range resourceSet[1:] {
+		cantCastArrays[i] = x
+	}
+	assertHasSameIDs(resourceCreates, cantCastArrays...)
 }
 
 func TestWatchFrom(t *testing.T) {
