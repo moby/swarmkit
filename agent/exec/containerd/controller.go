@@ -55,18 +55,11 @@ func (r *controller) ContainerStatus(ctx context.Context) (*api.ContainerStatus,
 		PID:         int32(ctnr.Pid),
 	}
 
-	switch ctnr.Status {
-	case containerd.Stopped:
-		err := r.adapter.shutdown(ctx)
-		if ec, ok := err.(exec.ExitCoder); ok {
-			status.ExitCode = int32(ec.ExitCode())
-			return status, nil
-		}
-		return status, err
-	default:
-		return status, nil
+	if ec, ok := ctnr.ExitStatus.(exec.ExitCoder); ok {
+		status.ExitCode = int32(ec.ExitCode())
 	}
 
+	return status, nil
 }
 
 // Update takes a recent task update and applies it to the container.
