@@ -6,16 +6,20 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/api/services/execution"
 	"github.com/containerd/containerd/api/types/task"
 	dockermount "github.com/docker/docker/pkg/mount"
+	"github.com/docker/docker/pkg/signal"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/naming"
 	"github.com/docker/swarmkit/log"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -362,18 +366,77 @@ func (c *containerAdapter) shutdown(ctx context.Context) error {
 		return errAdapterNotPrepared
 	}
 
-	var err error
+	var (
+		sig     syscall.Signal
+		timeout = time.Duration(10 * time.Second)
+		err     error
+	)
 
-	tasks := c.client.TaskService()
-	rsp, err := tasks.Delete(ctx, &execution.DeleteRequest{ContainerID: c.name})
-	if err != nil {
-		c.log(ctx).WithError(err).Debug("Task.Delete failed")
-		return err
+	if c.spec.StopSignal != "" {
+		if sig, err = signal.ParseSignal(c.spec.StopSignal); err != nil {
+			sig = syscall.SIGTERM
+			c.log(ctx).WithError(err).Errorf("unknown StopSignal, using %q", sig)
+		}
+	} else {
+		sig = syscall.SIGTERM
+		c.log(ctx).Infof("no StopSignal given, using %q", sig)
 	}
-	c.log(ctx).Debugf("Task.Delete success, status=%d", rsp.ExitStatus)
-	c.exitStatus = makeExitError(rsp.ExitStatus, "")
 
-	return c.exitStatus
+	if c.spec.StopGracePeriod != nil {
+		timeout, _ = gogotypes.DurationFromProto(c.spec.StopGracePeriod)
+	}
+
+	deleteErr := make(chan error, 1)
+	deleteCtx, deleteCancel := context.WithCancel(ctx)
+	defer deleteCancel()
+
+	go func(ctx context.Context, ch chan error) {
+		status, err := c.task.Delete(ctx)
+		if err != nil {
+			c.log(ctx).WithError(err).Debug("Task.Delete failed")
+			ch <- err
+		}
+		c.log(ctx).Debugf("Task.Delete success, status=%d", status)
+		ch <- makeExitError(status, "")
+	}(deleteCtx, deleteErr)
+
+	c.log(ctx).Debugf("Killing task with %q signal", sig)
+	if err := c.task.Kill(ctx, sig); err != nil {
+		return errors.Wrapf(err, "killing task with %q", sig)
+	}
+
+	select {
+	case c.exitStatus = <-deleteErr:
+		return c.exitStatus
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(timeout):
+		c.log(ctx).Infof("Task did not exit after %s", timeout)
+		// Fall through
+	}
+
+	if sig == syscall.SIGKILL {
+		// We've tried as hard as we can.
+		return errors.New("task is unkillable")
+	}
+
+	// Bring out the big guns
+	sig = syscall.SIGKILL
+	c.log(ctx).Debugf("Killing task harder with %q signal", sig)
+	if err := c.task.Kill(ctx, sig); err != nil {
+		return errors.Wrapf(err, "killing task with %q", sig)
+	}
+
+	select {
+	case c.exitStatus = <-deleteErr:
+		return c.exitStatus
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(timeout):
+		c.log(ctx).Infof("Task did exit after %s", timeout)
+		return errors.New("task is unkillable")
+	}
+
 }
 
 func (c *containerAdapter) terminate(ctx context.Context) error {
