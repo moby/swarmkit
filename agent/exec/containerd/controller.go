@@ -231,9 +231,7 @@ func (r *controller) Wait(ctx context.Context) error {
 			switch event.Type {
 			case task.Event_EXIT:
 				return shutdownWithExitStatus("")
-			case task.Event_OOM:
-				return shutdownWithExitStatus("Container OOMd")
-			case task.Event_CREATE, task.Event_START, task.Event_EXEC_ADDED, task.Event_PAUSED:
+			case task.Event_OOM, task.Event_CREATE, task.Event_START, task.Event_EXEC_ADDED, task.Event_PAUSED:
 				continue
 			default:
 				return errors.Errorf("Unknown event type %s\n", event.Type.String())
