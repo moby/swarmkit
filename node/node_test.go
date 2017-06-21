@@ -40,8 +40,9 @@ func TestLoadSecurityConfigNewNode(t *testing.T) {
 			AutoLockManagers: autoLockManagers,
 		})
 		require.NoError(t, err)
-		securityConfig, err := node.loadSecurityConfig(context.Background(), paths)
+		securityConfig, cancel, err := node.loadSecurityConfig(context.Background(), paths)
 		require.NoError(t, err)
+		defer cancel()
 		require.NotNil(t, securityConfig)
 
 		unencryptedReader := ca.NewKeyReadWriter(paths.Node, nil, nil)
@@ -70,8 +71,9 @@ func TestLoadSecurityConfigPartialCertsOnDisk(t *testing.T) {
 		StateDir: tempdir,
 	})
 	require.NoError(t, err)
-	securityConfig, err := node.loadSecurityConfig(context.Background(), paths)
+	securityConfig, cancel, err := node.loadSecurityConfig(context.Background(), paths)
 	require.NoError(t, err)
+	defer cancel()
 	require.NotNil(t, securityConfig)
 
 	cert, key, err := securityConfig.KeyReader().Read()
@@ -88,8 +90,9 @@ func TestLoadSecurityConfigPartialCertsOnDisk(t *testing.T) {
 		StateDir: tempdir,
 	})
 	require.NoError(t, err)
-	securityConfig, err = node.loadSecurityConfig(context.Background(), paths)
+	securityConfig, cancel, err = node.loadSecurityConfig(context.Background(), paths)
 	require.NoError(t, err)
+	defer cancel()
 	require.NotNil(t, securityConfig)
 
 	newCert, newKey, err := securityConfig.KeyReader().Read()
@@ -129,8 +132,9 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 		UnlockKey: []byte("passphrase"),
 	})
 	require.NoError(t, err)
-	securityConfig, err := node.loadSecurityConfig(context.Background(), paths)
+	securityConfig, cancel, err := node.loadSecurityConfig(context.Background(), paths)
 	require.NoError(t, err)
+	defer cancel()
 	require.NotNil(t, securityConfig)
 
 	// Invalid passphrase
@@ -140,7 +144,7 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 		JoinToken: tc.ManagerToken,
 	})
 	require.NoError(t, err)
-	_, err = node.loadSecurityConfig(context.Background(), paths)
+	_, _, err = node.loadSecurityConfig(context.Background(), paths)
 	require.Equal(t, ErrInvalidUnlockKey, err)
 
 	// Invalid CA
@@ -154,7 +158,7 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 		UnlockKey: []byte("passphrase"),
 	})
 	require.NoError(t, err)
-	_, err = node.loadSecurityConfig(context.Background(), paths)
+	_, _, err = node.loadSecurityConfig(context.Background(), paths)
 	require.IsType(t, x509.UnknownAuthorityError{}, errors.Cause(err))
 }
 
@@ -174,7 +178,7 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 		JoinAddr: "127.0.0.1:12",
 	})
 	require.NoError(t, err)
-	_, err = node.loadSecurityConfig(context.Background(), paths)
+	_, _, err = node.loadSecurityConfig(context.Background(), paths)
 	require.Error(t, err)
 
 	tc := cautils.NewTestCA(t)
@@ -189,8 +193,9 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 		JoinToken: tc.ManagerToken,
 	})
 	require.NoError(t, err)
-	_, err = node.loadSecurityConfig(context.Background(), paths)
+	_, cancel, err := node.loadSecurityConfig(context.Background(), paths)
 	require.NoError(t, err)
+	cancel()
 
 	// the TLS key and cert were written to disk unencrypted
 	_, _, err = ca.NewKeyReadWriter(paths.Node, nil, nil).Read()
@@ -233,8 +238,9 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 		JoinToken: tc.ManagerToken,
 	})
 	require.NoError(t, err)
-	_, err = node.loadSecurityConfig(context.Background(), paths)
+	_, cancel, err = node.loadSecurityConfig(context.Background(), paths)
 	require.NoError(t, err)
+	cancel()
 
 	// make sure the CA cert has not been replaced
 	readCertBytes, err := ioutil.ReadFile(paths.RootCA.Cert)
@@ -303,9 +309,10 @@ func TestAgentRespectsDispatcherRootCAUpdate(t *testing.T) {
 	rootCA, err := ca.CreateRootCA("rootCN")
 	require.NoError(t, err)
 	require.NoError(t, ca.SaveRootCA(rootCA, paths.RootCA))
-	managerSecConfig, err := rootCA.CreateSecurityConfig(context.Background(),
+	managerSecConfig, cancel, err := rootCA.CreateSecurityConfig(context.Background(),
 		ca.NewKeyReadWriter(paths.Node, nil, nil), ca.CertificateRequestConfig{})
 	require.NoError(t, err)
+	defer cancel()
 
 	_, _, err = rootCA.IssueAndSaveNewCertificates(ca.NewKeyReadWriter(paths.Node, nil, nil), "workerNode",
 		ca.WorkerRole, managerSecConfig.ServerTLSCreds.Organization())

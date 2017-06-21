@@ -1290,8 +1290,9 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 	connectToExternalRootCA, err := ca.NewRootCA(append(cautils.ECDSACertChain[2], fauxRootCert...), cautils.ECDSACertChain[1],
 		cautils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration, cautils.ECDSACertChain[1])
 	require.NoError(t, err)
-	secConfig, err := connectToExternalRootCA.CreateSecurityConfig(tc.Context, krw, ca.CertificateRequestConfig{})
+	secConfig, cancel, err := connectToExternalRootCA.CreateSecurityConfig(tc.Context, krw, ca.CertificateRequestConfig{})
 	require.NoError(t, err)
+	cancel()
 
 	externalCA := secConfig.ExternalCA()
 	externalCA.UpdateURLs(tc.ExternalSigningServer.URL)
