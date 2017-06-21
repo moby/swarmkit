@@ -190,19 +190,9 @@ func (r *controller) Wait(ctx context.Context) error {
 		return errors.Wrap(err, "inspecting container failed")
 	}
 
-	// TODO(ijc) this shouldn't be needed here, figure out why
-	// .shutdown/.remove are not being called otherwise.
-	shutdownWithExitStatus := func() error {
-		err := r.adapter.shutdown(ctx)
-		if err2 := r.adapter.remove(ctx); err != nil {
-			// Just log it, report the exit status
-			log.G(ctx).WithError(err2).Info("remove after wait failed")
-		}
-		return err
-	}
 	switch ctnr.Status {
 	case containerd.Stopped:
-		return shutdownWithExitStatus()
+		return ctnr.ExitStatus
 	}
 
 	// We do not disable FailFast for this initial call (like we
@@ -219,7 +209,7 @@ func (r *controller) Wait(ctx context.Context) error {
 		case event := <-eventq:
 			switch event.Type {
 			case task.Event_EXIT:
-				return shutdownWithExitStatus()
+				return makeExitError(event.ExitStatus, "")
 			case task.Event_OOM, task.Event_CREATE, task.Event_START, task.Event_EXEC_ADDED, task.Event_PAUSED:
 				continue
 			default:
@@ -245,7 +235,7 @@ func (r *controller) Wait(ctx context.Context) error {
 			}
 			switch ctnr.Status {
 			case containerd.Stopped:
-				return shutdownWithExitStatus()
+				return ctnr.ExitStatus
 			}
 
 		case <-ctx.Done():
