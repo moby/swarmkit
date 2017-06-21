@@ -40,14 +40,14 @@ var (
 // are mostly naked calls to the client API, seeded with information from
 // containerConfig.
 type containerAdapter struct {
-	client         *containerd.Client
-	spec           *api.ContainerSpec
-	secrets        exec.SecretGetter
-	name           string
-	image          containerd.Image // Pulled image
-	container      containerd.Container
-	task           containerd.Task
-	deleteResponse *execution.DeleteResponse
+	client     *containerd.Client
+	spec       *api.ContainerSpec
+	secrets    exec.SecretGetter
+	name       string
+	image      containerd.Image // Pulled image
+	container  containerd.Container
+	task       containerd.Task
+	exitStatus error
 }
 
 func newContainerAdapter(client *containerd.Client, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
@@ -345,25 +345,28 @@ func (c *containerAdapter) inspect(ctx context.Context) (task.Task, error) {
 	return *rsp.Task, nil
 }
 
-func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
+func (c *containerAdapter) shutdown(ctx context.Context) error {
 	if !c.isPrepared() {
-		return 0, errAdapterNotPrepared
+		return errAdapterNotPrepared
 	}
 
-	if c.deleteResponse == nil {
+	if c.exitStatus == nil {
 		var err error
 		c.log(ctx).Debug("Deleting")
 
 		tasks := c.client.TaskService()
 		rsp, err := tasks.Delete(ctx, &execution.DeleteRequest{ContainerID: c.name})
 		if err != nil {
-			return 0, err
+			c.log(ctx).WithError(err).Debug("Task.Delete failed")
+			return err
 		}
-		c.log(ctx).Debugf("Status=%d", rsp.ExitStatus)
-		c.deleteResponse = rsp
+		c.log(ctx).Debugf("Task.Delete success, status=%d", rsp.ExitStatus)
+		c.exitStatus = makeExitError(rsp.ExitStatus, "")
+	} else {
+		c.log(ctx).Debug("Task already deleted, error=%s", c.exitStatus)
 	}
 
-	return c.deleteResponse.ExitStatus, nil
+	return c.exitStatus
 }
 
 func (c *containerAdapter) terminate(ctx context.Context) error {

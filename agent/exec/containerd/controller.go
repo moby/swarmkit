@@ -57,14 +57,16 @@ func (r *controller) ContainerStatus(ctx context.Context) (*api.ContainerStatus,
 
 	switch ctnr.Status {
 	case task.StatusStopped:
-		exitStatus, err := r.adapter.shutdown(ctx)
-		if err != nil {
-			return nil, err
+		err := r.adapter.shutdown(ctx)
+		if ec, ok := err.(exec.ExitCoder); ok {
+			status.ExitCode = int32(ec.ExitCode())
+			return status, nil
 		}
-		status.ExitCode = int32(exitStatus)
+		return status, err
+	default:
+		return status, nil
 	}
 
-	return status, err
 }
 
 // Update takes a recent task update and applies it to the container.
@@ -197,21 +199,17 @@ func (r *controller) Wait(ctx context.Context) error {
 
 	// TODO(ijc) this shouldn't be needed here, figure out why
 	// .shutdown/.remove are not being called otherwise.
-	shutdownWithExitStatus := func(reason string) error {
-		exitStatus, err := r.adapter.shutdown(ctx)
-		if err != nil {
-			return err
-		}
-		log.G(ctx).Errorf("EXIT STATUS %v", exitStatus)
-		if err := r.adapter.remove(ctx); err != nil {
+	shutdownWithExitStatus := func() error {
+		err := r.adapter.shutdown(ctx)
+		if err2 := r.adapter.remove(ctx); err != nil {
 			// Just log it, report the exit status
-			log.G(ctx).WithError(err).Info("remove after wait failed")
+			log.G(ctx).WithError(err2).Info("remove after wait failed")
 		}
-		return makeExitError(exitStatus, reason)
+		return err
 	}
 	switch ctnr.Status {
 	case task.StatusStopped:
-		return shutdownWithExitStatus("")
+		return shutdownWithExitStatus()
 	}
 
 	// We do not disable FailFast for this initial call (like we
@@ -226,11 +224,9 @@ func (r *controller) Wait(ctx context.Context) error {
 	for {
 		select {
 		case event := <-eventq:
-			log.G(ctx).Debugf("Event: %v", event)
-
 			switch event.Type {
 			case task.Event_EXIT:
-				return shutdownWithExitStatus("")
+				return shutdownWithExitStatus()
 			case task.Event_OOM, task.Event_CREATE, task.Event_START, task.Event_EXEC_ADDED, task.Event_PAUSED:
 				continue
 			default:
@@ -256,7 +252,7 @@ func (r *controller) Wait(ctx context.Context) error {
 			}
 			switch ctnr.Status {
 			case task.StatusStopped:
-				return shutdownWithExitStatus("container had exited after event stream restart")
+				return shutdownWithExitStatus()
 			}
 
 		case <-ctx.Done():
@@ -279,7 +275,7 @@ func (r *controller) Shutdown(ctx context.Context) error {
 		r.cancelPull()
 	}
 
-	if _, err := r.adapter.shutdown(ctx); err != nil {
+	if err := r.adapter.shutdown(ctx); err != nil {
 		if isUnknownContainer(err) {
 			return nil
 		}
