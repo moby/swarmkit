@@ -109,7 +109,7 @@ func (c *containerAdapter) reattach(ctx context.Context) error {
 
 func (c *containerAdapter) log(ctx context.Context) *logrus.Entry {
 	return log.G(ctx).WithFields(logrus.Fields{
-		"ID": c.name,
+		"container.id": c.name,
 	})
 }
 
