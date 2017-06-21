@@ -56,7 +56,7 @@ func (r *controller) ContainerStatus(ctx context.Context) (*api.ContainerStatus,
 	}
 
 	switch ctnr.Status {
-	case task.StatusStopped:
+	case containerd.Stopped:
 		err := r.adapter.shutdown(ctx)
 		if ec, ok := err.(exec.ExitCoder); ok {
 			status.ExitCode = int32(ec.ExitCode())
@@ -170,7 +170,7 @@ func (r *controller) Start(ctx context.Context) error {
 	//
 	// TODO(stevvooe): This is very racy. While reading inspect, another could
 	// start the process and we could end up starting it twice.
-	if ctnr.Status != task.StatusCreated {
+	if ctnr.Status != containerd.Created {
 		return exec.ErrTaskStarted
 	}
 
@@ -208,7 +208,7 @@ func (r *controller) Wait(ctx context.Context) error {
 		return err
 	}
 	switch ctnr.Status {
-	case task.StatusStopped:
+	case containerd.Stopped:
 		return shutdownWithExitStatus()
 	}
 
@@ -251,7 +251,7 @@ func (r *controller) Wait(ctx context.Context) error {
 				return errors.Wrap(err, "inspecting container on event restart failed")
 			}
 			switch ctnr.Status {
-			case task.StatusStopped:
+			case containerd.Stopped:
 				return shutdownWithExitStatus()
 			}
 
