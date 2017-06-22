@@ -31,6 +31,7 @@ func TestTemplatedSecret(t *testing.T) {
 		desc        string
 		secretSpec  api.SecretSpec
 		task        *api.Task
+		node        *api.NodeDescription
 		expected    string
 		expectedErr string
 	}
@@ -43,14 +44,20 @@ func TestTemplatedSecret(t *testing.T) {
 					"SERVICE_NAME={{.Service.Name}}\n" +
 					"TASK_ID={{.Task.ID}}\n" +
 					"TASK_NAME={{.Task.Name}}\n" +
-					"NODE_ID={{.Node.ID}}\n"),
+					"NODE_ID={{.Node.ID}}\n" +
+					"NODE_HOSTNAME={{.Node.Hostname}}\n" +
+					"NODE_OS={{.Node.Platform.OS}}\n" +
+					"NODE_ARCHITECTURE={{.Node.Platform.Architecture}}"),
 				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "SERVICE_ID=serviceID\n" +
 				"SERVICE_NAME=serviceName\n" +
 				"TASK_ID=taskID\n" +
 				"TASK_NAME=serviceName.10.taskID\n" +
-				"NODE_ID=nodeID\n",
+				"NODE_ID=nodeID\n" +
+				"NODE_HOSTNAME=myhostname\n" +
+				"NODE_OS=testOS\n" +
+				"NODE_ARCHITECTURE=testArchitecture",
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -64,6 +71,11 @@ func TestTemplatedSecret(t *testing.T) {
 						},
 					},
 				}
+			}),
+			node: modifyNode(func(n *api.NodeDescription) {
+				n.Hostname = "myhostname"
+				n.Platform.OS = "testOS"
+				n.Platform.Architecture = "testArchitecture"
 			}),
 		},
 		{
@@ -98,6 +110,9 @@ func TestTemplatedSecret(t *testing.T) {
 						},
 					},
 				}
+			}),
+			node: modifyNode(func(n *api.NodeDescription) {
+				// use default values
 			}),
 		},
 		{
@@ -135,6 +150,9 @@ func TestTemplatedSecret(t *testing.T) {
 					},
 				}
 			}),
+			node: modifyNode(func(n *api.NodeDescription) {
+				// use default values
+			}),
 		},
 		{
 			desc: "Test expansion of secret not available to task",
@@ -157,6 +175,9 @@ func TestTemplatedSecret(t *testing.T) {
 					},
 				}
 			}),
+			node: modifyNode(func(n *api.NodeDescription) {
+				// use default values
+			}),
 		},
 		{
 			desc: "Test expansion of config not available to task",
@@ -178,6 +199,9 @@ func TestTemplatedSecret(t *testing.T) {
 						},
 					},
 				}
+			}),
+			node: modifyNode(func(n *api.NodeDescription) {
+				// use default values
 			}),
 		},
 		{
@@ -209,6 +233,9 @@ func TestTemplatedSecret(t *testing.T) {
 					},
 				}
 			}),
+			node: modifyNode(func(n *api.NodeDescription) {
+				// use default values
+			}),
 		},
 		{
 			desc: "Test env",
@@ -234,6 +261,9 @@ func TestTemplatedSecret(t *testing.T) {
 					},
 				}
 			}),
+			node: modifyNode(func(n *api.NodeDescription) {
+				// use default values
+			}),
 		},
 	}
 
@@ -244,7 +274,7 @@ func TestTemplatedSecret(t *testing.T) {
 		dependencyManager.Secrets().Add(*templatedSecret, *referencedSecret)
 		dependencyManager.Configs().Add(*referencedConfig)
 
-		templatedDependencies := NewTemplatedDependencyGetter(agent.Restrict(dependencyManager, testCase.task), testCase.task)
+		templatedDependencies := NewTemplatedDependencyGetter(agent.Restrict(dependencyManager, testCase.task), testCase.task, testCase.node)
 		expandedSecret, err := templatedDependencies.Secrets().Get("templatedsecret")
 
 		if testCase.expectedErr != "" {
@@ -281,6 +311,7 @@ func TestTemplatedConfig(t *testing.T) {
 		task        *api.Task
 		expected    string
 		expectedErr string
+		node        *api.NodeDescription
 	}
 
 	testCases := []testCase{
@@ -291,14 +322,20 @@ func TestTemplatedConfig(t *testing.T) {
 					"SERVICE_NAME={{.Service.Name}}\n" +
 					"TASK_ID={{.Task.ID}}\n" +
 					"TASK_NAME={{.Task.Name}}\n" +
-					"NODE_ID={{.Node.ID}}\n"),
+					"NODE_ID={{.Node.ID}}\n" +
+					"NODE_HOSTNAME={{.Node.Hostname}}\n" +
+					"NODE_OS={{.Node.Platform.OS}}\n" +
+					"NODE_ARCHITECTURE={{.Node.Platform.Architecture}}"),
 				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "SERVICE_ID=serviceID\n" +
 				"SERVICE_NAME=serviceName\n" +
 				"TASK_ID=taskID\n" +
 				"TASK_NAME=serviceName.10.taskID\n" +
-				"NODE_ID=nodeID\n",
+				"NODE_ID=nodeID\n" +
+				"NODE_HOSTNAME=myhostname\n" +
+				"NODE_OS=testOS\n" +
+				"NODE_ARCHITECTURE=testArchitecture",
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -312,6 +349,11 @@ func TestTemplatedConfig(t *testing.T) {
 						},
 					},
 				}
+			}),
+			node: modifyNode(func(n *api.NodeDescription) {
+				n.Hostname = "myhostname"
+				n.Platform.OS = "testOS"
+				n.Platform.Architecture = "testArchitecture"
 			}),
 		},
 		{
@@ -349,6 +391,9 @@ func TestTemplatedConfig(t *testing.T) {
 					},
 				}
 			}),
+			node: modifyNode(func(n *api.NodeDescription) {
+				// use default values
+			}),
 		},
 		{
 			desc: "Test expansion of config, by target",
@@ -383,6 +428,9 @@ func TestTemplatedConfig(t *testing.T) {
 					},
 				}
 			}),
+			node: modifyNode(func(n *api.NodeDescription) {
+				// use default values
+			}),
 		},
 		{
 			desc: "Test expansion of secret not available to task",
@@ -405,6 +453,9 @@ func TestTemplatedConfig(t *testing.T) {
 					},
 				}
 			}),
+			node: modifyNode(func(n *api.NodeDescription) {
+				// use default values
+			}),
 		},
 		{
 			desc: "Test expansion of config not available to task",
@@ -426,6 +477,9 @@ func TestTemplatedConfig(t *testing.T) {
 						},
 					},
 				}
+			}),
+			node: modifyNode(func(n *api.NodeDescription) {
+				// use default values
 			}),
 		},
 		{
@@ -457,6 +511,9 @@ func TestTemplatedConfig(t *testing.T) {
 					},
 				}
 			}),
+			node: modifyNode(func(n *api.NodeDescription) {
+				// use default values
+			}),
 		},
 		{
 			desc: "Test env",
@@ -482,6 +539,9 @@ func TestTemplatedConfig(t *testing.T) {
 					},
 				}
 			}),
+			node: modifyNode(func(n *api.NodeDescription) {
+				// use default values
+			}),
 		},
 	}
 
@@ -492,7 +552,7 @@ func TestTemplatedConfig(t *testing.T) {
 		dependencyManager.Configs().Add(*templatedConfig, *referencedConfig)
 		dependencyManager.Secrets().Add(*referencedSecret)
 
-		templatedDependencies := NewTemplatedDependencyGetter(agent.Restrict(dependencyManager, testCase.task), testCase.task)
+		templatedDependencies := NewTemplatedDependencyGetter(agent.Restrict(dependencyManager, testCase.task), testCase.task, testCase.node)
 		expandedConfig, err := templatedDependencies.Configs().Get("templatedconfig")
 
 		if testCase.expectedErr != "" {
