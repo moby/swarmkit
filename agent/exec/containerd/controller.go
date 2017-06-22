@@ -4,13 +4,11 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/api/types/task"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
 
 type controller struct {
@@ -184,66 +182,10 @@ func (r *controller) Wait(ctx context.Context) error {
 		return err
 	}
 
-	// check the initial state and report that.
-	ctnr, err := r.adapter.inspect(ctx)
-	if err != nil {
-		return errors.Wrap(err, "inspecting container failed")
-	}
-
-	switch ctnr.Status {
-	case containerd.Stopped:
-		return ctnr.ExitStatus
-	}
-
-	// We do not disable FailFast for this initial call (like we
-	// do on the retry below) since we are still halfway through
-	// setting up the container and if containerd goes away half
-	// way through we consider that a failure.
-	eventq, closed, err := r.adapter.events(ctx)
-	if err != nil {
-		return err
-	}
-
-	for {
-		select {
-		case event := <-eventq:
-			switch event.Type {
-			case task.Event_EXIT:
-				return makeExitError(event.ExitStatus, "")
-			case task.Event_OOM, task.Event_CREATE, task.Event_START, task.Event_EXEC_ADDED, task.Event_PAUSED:
-				continue
-			default:
-				return errors.Errorf("Unknown event type %s\n", event.Type.String())
-			}
-		case <-closed:
-			// restart!
-			log.G(ctx).Debugf("Restarting event stream")
-			// We disable FailFast for this call so that gRPC will keep
-			// retrying while we wait for containerd to come back. Otherwise
-			// a temporary glitch in the connection (e.g. a containerd restart)
-			// will result in the task being declared dead even though it is
-			// likely to be recoverable.
-			eventq, closed, err = r.adapter.events(ctx, grpc.FailFast(false))
-			if err != nil {
-				return err
-			}
-
-			// recheck the container state, if this fails then we may have missed a
-			ctnr, err := r.adapter.inspect(ctx)
-			if err != nil {
-				return errors.Wrap(err, "inspecting container on event restart failed")
-			}
-			switch ctnr.Status {
-			case containerd.Stopped:
-				return ctnr.ExitStatus
-			}
-
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-r.closed:
-			return r.err
-		}
-	}
+	// TODO(ijc) HealthCheck
+	// TODO(ijc) Underlying wait is racy
+	// TODO(ijc) Underlying wait does not handle restart
+	return r.adapter.wait(ctx)
 }
 
 // Shutdown the container cleanly.

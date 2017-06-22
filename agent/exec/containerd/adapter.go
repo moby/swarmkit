@@ -11,8 +11,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/containerd/containerd"
-	"github.com/containerd/containerd/api/services/execution"
-	"github.com/containerd/containerd/api/types/task"
 	dockermount "github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/pkg/signal"
 	"github.com/docker/swarmkit/agent/exec"
@@ -275,65 +273,16 @@ func (c *containerAdapter) start(ctx context.Context) error {
 	return errors.Wrap(err, "starting")
 }
 
-func (c *containerAdapter) eventStream(ctx context.Context, id string) (<-chan task.Event, <-chan error, error) {
-
-	var (
-		evtch = make(chan task.Event)
-		errch = make(chan error)
-	)
-
-	return evtch, errch, nil
-}
-
-// events issues a call to the events API and returns a channel with all
-// events. The stream of events can be shutdown by cancelling the context.
-//
-// A chan struct{} is returned that will be closed if the event processing
-// fails and needs to be restarted.
-func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) (<-chan task.Event, <-chan struct{}, error) {
+func (c *containerAdapter) wait(ctx context.Context) error {
 	if !c.isPrepared() {
-		return nil, nil, errAdapterNotPrepared
+		return errAdapterNotPrepared
 	}
-
-	// TODO(stevvooe): Move this to a single, global event dispatch. For
-	// now, we create a connection per container.
-	var (
-		eventsq = make(chan task.Event)
-		closed  = make(chan struct{})
-	)
-
-	c.log(ctx).Debugf("waiting on events")
-
-	tasks := c.client.TaskService()
-	cl, err := tasks.Events(ctx, &execution.EventsRequest{}, opts...)
+	status, err := c.task.Wait(ctx)
 	if err != nil {
-		c.log(ctx).WithError(err).Errorf("failed to start event stream")
-		return nil, nil, err
+		return errors.Wrap(err, "waiting")
 	}
-
-	go func() {
-		defer close(closed)
-
-		for {
-			evt, err := cl.Recv()
-			if err != nil {
-				c.log(ctx).WithError(err).Error("fatal error from events stream")
-				return
-			}
-			if evt.ID != c.name {
-				c.log(ctx).Debugf("Event for a different container %s", evt.ID)
-				continue
-			}
-
-			select {
-			case eventsq <- *evt:
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	return eventsq, closed, nil
+	// Should update c.exitStatus or not?
+	return makeExitError(status, "")
 }
 
 type status struct {
