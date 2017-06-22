@@ -1,15 +1,81 @@
 package watch
 
 import (
+	"context"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/docker/go-events"
+	"github.com/stretchr/testify/require"
 )
+
+func TestTimeoutLimitWatch(t *testing.T) {
+	require := require.New(t)
+	q := NewQueue(WithTimeout(time.Second), WithLimit(5), WithCloseOutChan())
+	defer q.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Cancelling a watcher's context should remove the watcher from the queue and
+	// close its channel.
+	doneChan := make(chan struct{})
+	go func() {
+		events := q.WatchContext(ctx)
+		for range events {
+		}
+		close(doneChan)
+	}()
+	cancel()
+	<-doneChan
+
+	// Test a scenario with a faster write rate than read rate The queue
+	// should eventually fill up and the channel will be closed.
+	readerSleepDuration := 100 * time.Millisecond
+	writerSleepDuration := 10 * time.Millisecond
+
+	events, cancel := q.Watch()
+	defer cancel()
+
+	receivedChan := make(chan struct{})
+	eventsClosed := make(chan struct{})
+
+	go func() {
+		closed := false
+		for range events {
+			if !closed {
+				close(receivedChan)
+				closed = true
+			}
+			time.Sleep(readerSleepDuration)
+		}
+		close(eventsClosed)
+	}()
+
+	// Publish one event and wait for the watcher to receive it
+	q.Publish("new event")
+	<-receivedChan
+
+	timeoutTimer := time.NewTimer(time.Minute)
+selectLoop:
+	for {
+		select {
+		case <-timeoutTimer.C:
+			require.Fail("Timeout exceeded")
+		case <-time.After(writerSleepDuration):
+			q.Publish("new event")
+		case <-eventsClosed:
+			break selectLoop
+		}
+	}
+
+	_, ok := <-events
+	require.False(ok)
+}
 
 func TestWatch(t *testing.T) {
 	// Create a queue
 	q := NewQueue()
+	defer q.Close()
 
 	type testEvent struct {
 		tags []string
@@ -150,6 +216,11 @@ func BenchmarkWatch1000Listeners64Publishers(b *testing.B) {
 
 func benchmarkWatch(b *testing.B, nlisteners, npublishers int, waitForWatchers bool) {
 	q := NewQueue()
+	defer q.Close()
+	benchmarkWatchForQueue(q, b, nlisteners, npublishers, waitForWatchers)
+}
+
+func benchmarkWatchForQueue(q *Queue, b *testing.B, nlisteners, npublishers int, waitForWatchers bool) {
 	var (
 		watchersAttached  sync.WaitGroup
 		watchersRunning   sync.WaitGroup
