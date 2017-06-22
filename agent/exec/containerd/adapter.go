@@ -11,7 +11,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/containerd/containerd"
-	dockermount "github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/pkg/signal"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
@@ -148,11 +147,6 @@ func withMounts(ctx context.Context, ms []api.Mount) containerd.SpecOpts {
 					opts = append(opts, "ro")
 				} else {
 					opts = append(opts, "rw")
-				}
-
-				opts, err := dockermount.MergeTmpfsOptions(opts)
-				if err != nil {
-					return err
 				}
 
 				s.Mounts = append(s.Mounts, specs.Mount{
