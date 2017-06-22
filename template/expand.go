@@ -39,6 +39,38 @@ func ExpandContainerSpec(t *api.Task) (*api.ContainerSpec, error) {
 	return container, errors.Wrap(err, "expanding hostname failed")
 }
 
+// ExpandNetworks expands templated fields in the network attachments.
+func ExpandNetworks(t *api.Task) ([]*api.NetworkAttachment, error) {
+	networks := make([]*api.NetworkAttachment, len(t.Networks))
+
+	ctx := NewContextFromTask(t)
+
+	for indexNetworks, network := range t.Networks {
+		network = network.Copy()
+		networks[indexNetworks] = network
+
+		aliases := network.Aliases
+		for indexAliases, alias := range aliases {
+			alias, err := ctx.Expand(alias)
+			if err != nil {
+				return networks, errors.Wrap(err, "expanding alias failed")
+			}
+			aliases[indexAliases] = alias
+		}
+
+		driverOpts := network.DriverAttachmentOpts
+		for key, value := range driverOpts {
+			value, err := ctx.Expand(value)
+			if err != nil {
+				return networks, errors.Wrap(err, "expanding driver options failed")
+			}
+			driverOpts[key] = value
+		}
+	}
+
+	return networks, nil
+}
+
 func expandMounts(ctx Context, mounts []api.Mount) ([]api.Mount, error) {
 	if len(mounts) == 0 {
 		return mounts, nil

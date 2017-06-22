@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTemplateContext(t *testing.T) {
+func TestTemplateContextContainerSpec(t *testing.T) {
 	for _, testcase := range []struct {
 		Test     string
 		Task     *api.Task
@@ -216,5 +216,90 @@ func visitAllTemplatedFields(spec *api.ContainerSpec, fn func(value string)) {
 				}
 			}
 		}
+	}
+}
+
+func TestExpandNetworks(t *testing.T) {
+	for _, testcase := range []struct {
+		Test     string
+		Task     *api.Task
+		Expected []*api.NetworkAttachment
+	}{
+		{
+			Test: "Identity",
+			Task: modifyTask(func(t *api.Task) {
+				t.Networks = []*api.NetworkAttachment{
+					{
+						Aliases: []string{
+							"foo",
+						},
+					},
+				}
+			}),
+			Expected: []*api.NetworkAttachment{
+				{
+					Aliases: []string{
+						"foo",
+					},
+				},
+			},
+		},
+		{
+			Test: "Aliases",
+			Task: modifyTask(func(t *api.Task) {
+				t.Networks = []*api.NetworkAttachment{
+					{
+						Aliases: []string{
+							"foo",
+							"bar-{{.Service.Name}}",
+							"{{.Service.ID}}",
+						},
+					},
+				}
+			}),
+			Expected: []*api.NetworkAttachment{
+				{
+					Aliases: []string{
+						"foo",
+						"bar-serviceName",
+						"serviceID",
+					},
+				},
+			},
+		},
+		{
+			Test: "Driver Attachment Options",
+			Task: modifyTask(func(t *api.Task) {
+				t.Networks = []*api.NetworkAttachment{
+					{
+						DriverAttachmentOpts: map[string]string{
+							"foo": "foo",
+							"bar": "bar-{{.Node.ID}}",
+							"baz": "{{.Task.Slot}}",
+						},
+					},
+				}
+			}),
+			Expected: []*api.NetworkAttachment{
+				{
+					DriverAttachmentOpts: map[string]string{
+						"foo": "foo",
+						"bar": "bar-nodeID",
+						"baz": "10",
+					},
+				},
+			},
+		},
+	} {
+		t.Run(testcase.Test, func(t *testing.T) {
+			networks, err := ExpandNetworks(testcase.Task)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			for index := range networks {
+				assert.Equal(t, testcase.Expected[index], networks[index])
+			}
+		})
 	}
 }
