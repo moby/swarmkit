@@ -24,10 +24,11 @@ type executor struct {
 var _ exec.Executor = &executor{}
 
 // NewExecutor returns an executor using the given containerd control socket
-func NewExecutor(sock string, genericResources []*api.GenericResource) (exec.Executor, error) {
-	// TODO(ijc), configurable namespace.
-	// TODO(ijc), default to swarmd?
-	client, err := containerd.New(sock, containerd.WithDefaultNamespace("default"))
+func NewExecutor(sock, namespace string, genericResources []*api.GenericResource) (exec.Executor, error) {
+	if namespace == "" {
+		return nil, errors.New("A containerd namespace is required")
+	}
+	client, err := containerd.New(sock, containerd.WithDefaultNamespace(namespace))
 	if err != nil {
 		return nil, errors.Wrap(err, "creating containerd client")
 	}
