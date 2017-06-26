@@ -27,7 +27,6 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/testutils"
-	"github.com/docker/swarmkit/watch"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -101,12 +100,13 @@ func TestCreateSecurityConfigEmptyDir(t *testing.T) {
 	// Remove all the contents from the temp dir and try again with a new node
 	os.RemoveAll(tc.TempDir)
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
-	nodeConfig, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
+	nodeConfig, cancel, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
 		ca.CertificateRequestConfig{
 			Token:      tc.WorkerToken,
 			ConnBroker: tc.ConnBroker,
 		})
 	assert.NoError(t, err)
+	cancel()
 	assert.NotNil(t, nodeConfig)
 	assert.NotNil(t, nodeConfig.ClientTLSCreds)
 	assert.NotNil(t, nodeConfig.ServerTLSCreds)
@@ -130,12 +130,13 @@ func TestCreateSecurityConfigNoCerts(t *testing.T) {
 	assert.NoError(t, err)
 
 	validateNodeConfig := func(rootCA *ca.RootCA) {
-		nodeConfig, err := rootCA.CreateSecurityConfig(tc.Context, krw,
+		nodeConfig, cancel, err := rootCA.CreateSecurityConfig(tc.Context, krw,
 			ca.CertificateRequestConfig{
 				Token:      tc.WorkerToken,
 				ConnBroker: tc.ConnBroker,
 			})
 		assert.NoError(t, err)
+		cancel()
 		assert.NotNil(t, nodeConfig)
 		assert.NotNil(t, nodeConfig.ClientTLSCreds)
 		assert.NotNil(t, nodeConfig.ServerTLSCreds)
@@ -184,11 +185,11 @@ func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 	invalidCert := cautils.ReDateCert(t, certBytes, tc.RootCA.Certs, s.Key, now.Add(time.Hour), now.Add(time.Hour*2))
 	require.NoError(t, ioutil.WriteFile(tc.Paths.Node.Cert, invalidCert, 0700))
 
-	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
+	_, _, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
 	require.Error(t, err)
 	require.IsType(t, x509.CertificateInvalidError{}, errors.Cause(err))
 
-	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, true)
+	_, _, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, true)
 	require.Error(t, err)
 	require.IsType(t, x509.CertificateInvalidError{}, errors.Cause(err))
 
@@ -196,13 +197,14 @@ func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 	invalidCert = cautils.ReDateCert(t, certBytes, tc.RootCA.Certs, s.Key, now.Add(-2*time.Minute), now.Add(-1*time.Minute))
 	require.NoError(t, ioutil.WriteFile(tc.Paths.Node.Cert, invalidCert, 0700))
 
-	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
+	_, _, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
 	require.Error(t, err)
 	require.IsType(t, x509.CertificateInvalidError{}, errors.Cause(err))
 
 	// but it is valid if expiry is allowed
-	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, true)
+	_, cancel, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, true)
 	require.NoError(t, err)
+	cancel()
 }
 
 func TestLoadSecurityConfigInvalidCert(t *testing.T) {
@@ -219,7 +221,7 @@ some random garbage\n
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 
-	_, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
+	_, _, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
 	assert.Error(t, err)
 }
 
@@ -237,7 +239,7 @@ some random garbage\n
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 
-	_, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
+	_, _, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
 	assert.Error(t, err)
 }
 
@@ -253,7 +255,7 @@ func TestLoadSecurityConfigIncorrectPassphrase(t *testing.T) {
 		"nodeID", ca.WorkerRole, tc.Organization)
 	require.NoError(t, err)
 
-	_, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, ca.NewKeyReadWriter(paths.Node, nil, nil), false)
+	_, _, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, ca.NewKeyReadWriter(paths.Node, nil, nil), false)
 	require.IsType(t, ca.ErrInvalidKEK{}, err)
 }
 
@@ -277,7 +279,7 @@ func TestLoadSecurityConfigIntermediates(t *testing.T) {
 
 	// loading the incomplete chain fails
 	require.NoError(t, krw.Write(cautils.ECDSACertChain[0], cautils.ECDSACertChainKeys[0], nil))
-	_, err = ca.LoadSecurityConfig(ctx, rootCA, krw, false)
+	_, _, err = ca.LoadSecurityConfig(ctx, rootCA, krw, false)
 	require.Error(t, err)
 
 	intermediate, err := helpers.ParseCertificatePEM(cautils.ECDSACertChain[1])
@@ -285,8 +287,9 @@ func TestLoadSecurityConfigIntermediates(t *testing.T) {
 
 	// loading the complete chain succeeds
 	require.NoError(t, krw.Write(append(cautils.ECDSACertChain[0], cautils.ECDSACertChain[1]...), cautils.ECDSACertChainKeys[0], nil))
-	secConfig, err := ca.LoadSecurityConfig(ctx, rootCA, krw, false)
+	secConfig, cancel, err := ca.LoadSecurityConfig(ctx, rootCA, krw, false)
 	require.NoError(t, err)
+	defer cancel()
 	require.NotNil(t, secConfig)
 	issuerInfo := secConfig.IssuerInfo()
 	require.NotNil(t, issuerInfo)
@@ -333,9 +336,10 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	configPaths := ca.NewConfigPaths(tempdir)
 
-	secConfig, err := rootCA.CreateSecurityConfig(tc.Context,
+	secConfig, cancel, err := rootCA.CreateSecurityConfig(tc.Context,
 		ca.NewKeyReadWriter(configPaths.Node, nil, nil), ca.CertificateRequestConfig{})
 	require.NoError(t, err)
+	cancel()
 	// update the server TLS to require certificates, otherwise this will all pass
 	// even if the root pools aren't updated
 	secConfig.ServerTLSCreds.Config().ClientAuth = tls.RequireAndVerifyClientCert
@@ -467,8 +471,9 @@ func TestSecurityConfigUpdateRootCAUpdateConsistentWithTLSCertificates(t *testin
 	// that something else does the validation when loading the security config for the first
 	// time and when getting new TLS credentials
 
-	secConfig, err := ca.NewSecurityConfig(&rootCA, krw, tlsKeyPair, issuerInfo)
+	secConfig, cancel, err := ca.NewSecurityConfig(&rootCA, krw, tlsKeyPair, issuerInfo)
 	require.NoError(t, err)
+	cancel()
 
 	// can't update the root CA or external pool to one that doesn't match the tls certs
 	require.Error(t, secConfig.UpdateRootCA(&otherRootCA, rootCA.Pool))
@@ -486,7 +491,7 @@ func TestSecurityConfigUpdateRootCAUpdateConsistentWithTLSCertificates(t *testin
 
 }
 
-func TestSecurityConfigSetWatch(t *testing.T) {
+func TestSecurityConfigWatch(t *testing.T) {
 	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
@@ -494,11 +499,7 @@ func TestSecurityConfigSetWatch(t *testing.T) {
 	require.NoError(t, err)
 	issuer := secConfig.IssuerInfo()
 
-	w := watch.NewQueue()
-	defer w.Close()
-	secConfig.SetWatch(w)
-
-	configWatch, configCancel := w.Watch()
+	configWatch, configCancel := secConfig.Watch()
 	defer configCancel()
 
 	require.NoError(t, ca.RenewTLSConfigNow(tc.Context, secConfig, tc.ConnBroker, tc.Paths.RootCA))
@@ -530,7 +531,6 @@ func TestSecurityConfigSetWatch(t *testing.T) {
 	}
 
 	configCancel()
-	w.Close()
 
 	// ensure that we can still update tls certs and roots without error even though the watch is closed
 	require.NoError(t, secConfig.UpdateRootCA(&tc.RootCA, tc.RootCA.Pool))
@@ -648,8 +648,9 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 				},
 			})
 		}))
-		secConfig, err := ca.NewSecurityConfig(testCase.initialRootCA, krw, tlsKeyPair, issuerInfo)
+		secConfig, qClose, err := ca.NewSecurityConfig(testCase.initialRootCA, krw, tlsKeyPair, issuerInfo)
 		require.NoError(t, err)
+		defer qClose()
 
 		paths := ca.NewConfigPaths(filepath.Join(tempdir, nodeID))
 		err = ca.RenewTLSConfigNow(tc.Context, secConfig, tc.ConnBroker, paths.RootCA)

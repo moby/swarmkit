@@ -51,12 +51,16 @@ type TestCA struct {
 	ConnBroker                  *connectionbroker.Broker
 	KeyReadWriter               *ca.KeyReadWriter
 	ctxCancel, watchCancel      func()
+	securityConfigCleanups      []func() error
 }
 
 // Stop cleans up after TestCA
 func (tc *TestCA) Stop() {
 	tc.watchCancel()
 	tc.ctxCancel()
+	for _, qClose := range tc.securityConfigCleanups {
+		qClose()
+	}
 	os.RemoveAll(tc.TempDir)
 	for _, conn := range tc.Conns {
 		conn.Close()
@@ -71,28 +75,23 @@ func (tc *TestCA) Stop() {
 
 // NewNodeConfig returns security config for a new node, given a role
 func (tc *TestCA) NewNodeConfig(role string) (*ca.SecurityConfig, error) {
-	withNonSigningRoot := tc.ExternalSigningServer != nil
-	return genSecurityConfig(tc.MemoryStore, tc.RootCA, tc.KeyReadWriter, role, tc.Organization, tc.TempDir, withNonSigningRoot)
+	return tc.NewNodeConfigOrg(role, tc.Organization)
 }
 
 // WriteNewNodeConfig returns security config for a new node, given a role
 // saving the generated key and certificates to disk
 func (tc *TestCA) WriteNewNodeConfig(role string) (*ca.SecurityConfig, error) {
-	withNonSigningRoot := tc.ExternalSigningServer != nil
-	return genSecurityConfig(tc.MemoryStore, tc.RootCA, tc.KeyReadWriter, role, tc.Organization, tc.TempDir, withNonSigningRoot)
+	return tc.NewNodeConfigOrg(role, tc.Organization)
 }
 
 // NewNodeConfigOrg returns security config for a new node, given a role and an org
 func (tc *TestCA) NewNodeConfigOrg(role, org string) (*ca.SecurityConfig, error) {
 	withNonSigningRoot := tc.ExternalSigningServer != nil
-	return genSecurityConfig(tc.MemoryStore, tc.RootCA, tc.KeyReadWriter, role, org, tc.TempDir, withNonSigningRoot)
-}
-
-// WriteNewNodeConfigOrg returns security config for a new node, given a role and an org
-// saving the generated key and certificates to disk
-func (tc *TestCA) WriteNewNodeConfigOrg(role, org string) (*ca.SecurityConfig, error) {
-	withNonSigningRoot := tc.ExternalSigningServer != nil
-	return genSecurityConfig(tc.MemoryStore, tc.RootCA, tc.KeyReadWriter, role, org, tc.TempDir, withNonSigningRoot)
+	s, qClose, err := genSecurityConfig(tc.MemoryStore, tc.RootCA, tc.KeyReadWriter, role, org, tc.TempDir, withNonSigningRoot)
+	if err != nil {
+		tc.securityConfigCleanups = append(tc.securityConfigCleanups, qClose)
+	}
+	return s, err
 }
 
 // External controls whether or not NewTestCA() will create a TestCA server
@@ -177,13 +176,13 @@ func NewTestCAFromAPIRootCA(t *testing.T, tempBaseDir string, apiRootCA api.Root
 		krw = krwGenerators[0](paths.Node)
 	}
 
-	managerConfig, err := genSecurityConfig(s, rootCA, krw, ca.ManagerRole, organization, "", External)
+	managerConfig, qClose1, err := genSecurityConfig(s, rootCA, krw, ca.ManagerRole, organization, "", External)
 	assert.NoError(t, err)
 
-	managerDiffOrgConfig, err := genSecurityConfig(s, rootCA, krw, ca.ManagerRole, "swarm-test-org-2", "", External)
+	managerDiffOrgConfig, qClose2, err := genSecurityConfig(s, rootCA, krw, ca.ManagerRole, "swarm-test-org-2", "", External)
 	assert.NoError(t, err)
 
-	workerConfig, err := genSecurityConfig(s, rootCA, krw, ca.WorkerRole, organization, "", External)
+	workerConfig, qClose3, err := genSecurityConfig(s, rootCA, krw, ca.WorkerRole, organization, "", External)
 	assert.NoError(t, err)
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -263,26 +262,27 @@ func NewTestCAFromAPIRootCA(t *testing.T, tempBaseDir string, apiRootCA api.Root
 	conns := []*grpc.ClientConn{conn1, conn2, conn3, conn4}
 
 	return &TestCA{
-		RootCA:                rootCA,
-		ExternalSigningServer: externalSigningServer,
-		MemoryStore:           s,
-		TempDir:               tempBaseDir,
-		Organization:          organization,
-		Paths:                 paths,
-		Context:               ctx,
-		CAClients:             caClients,
-		NodeCAClients:         nodeCAClients,
-		Conns:                 conns,
-		Addr:                  l.Addr().String(),
-		Server:                grpcServer,
-		ServingSecurityConfig: managerConfig,
-		CAServer:              caServer,
-		WorkerToken:           clusterObj.RootCA.JoinTokens.Worker,
-		ManagerToken:          clusterObj.RootCA.JoinTokens.Manager,
-		ConnBroker:            connectionbroker.New(remotes),
-		KeyReadWriter:         krw,
-		watchCancel:           clusterWatchCancel,
-		ctxCancel:             ctxCancel,
+		RootCA:                 rootCA,
+		ExternalSigningServer:  externalSigningServer,
+		MemoryStore:            s,
+		TempDir:                tempBaseDir,
+		Organization:           organization,
+		Paths:                  paths,
+		Context:                ctx,
+		CAClients:              caClients,
+		NodeCAClients:          nodeCAClients,
+		Conns:                  conns,
+		Addr:                   l.Addr().String(),
+		Server:                 grpcServer,
+		ServingSecurityConfig:  managerConfig,
+		CAServer:               caServer,
+		WorkerToken:            clusterObj.RootCA.JoinTokens.Worker,
+		ManagerToken:           clusterObj.RootCA.JoinTokens.Manager,
+		ConnBroker:             connectionbroker.New(remotes),
+		KeyReadWriter:          krw,
+		watchCancel:            clusterWatchCancel,
+		ctxCancel:              ctxCancel,
+		securityConfigCleanups: []func() error{qClose1, qClose2, qClose3},
 	}
 }
 
@@ -314,14 +314,14 @@ func createNode(s *store.MemoryStore, nodeID, role string, csr, cert []byte) err
 	return err
 }
 
-func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWriter, role, org, tmpDir string, nonSigningRoot bool) (*ca.SecurityConfig, error) {
+func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWriter, role, org, tmpDir string, nonSigningRoot bool) (*ca.SecurityConfig, func() error, error) {
 	req := &cfcsr.CertificateRequest{
 		KeyRequest: cfcsr.NewBasicKeyRequest(),
 	}
 
 	csr, key, err := cfcsr.ParseRequest(req)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Obtain a signed Certificate
@@ -329,29 +329,29 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 
 	certChain, err := rootCA.ParseValidateAndSignCSR(csr, nodeID, role, org)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// If we were instructed to persist the files
 	if tmpDir != "" {
 		paths := ca.NewConfigPaths(tmpDir)
 		if err := ioutil.WriteFile(paths.Node.Cert, certChain, 0644); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := ioutil.WriteFile(paths.Node.Key, key, 0600); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	// Load a valid tls.Certificate from the chain and the key
 	nodeCert, err := tls.X509KeyPair(certChain, key)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = createNode(s, nodeID, role, csr, certChain)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	signingCert := rootCA.Certs
@@ -360,7 +360,7 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 	}
 	parsedCert, err := helpers.ParseCertificatePEM(signingCert)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if nonSigningRoot {

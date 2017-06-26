@@ -29,9 +29,10 @@ func TestExternalCACrossSign(t *testing.T) {
 	defer tc.Stop()
 	paths := ca.NewConfigPaths(tc.TempDir)
 
-	secConfig, err := tc.RootCA.CreateSecurityConfig(tc.Context,
+	secConfig, cancel, err := tc.RootCA.CreateSecurityConfig(tc.Context,
 		ca.NewKeyReadWriter(paths.Node, nil, nil), ca.CertificateRequestConfig{})
 	require.NoError(t, err)
+	cancel()
 	externalCA := secConfig.ExternalCA()
 	externalCA.UpdateURLs(tc.ExternalSigningServer.URL)
 
