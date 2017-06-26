@@ -375,9 +375,6 @@ func (c *containerAdapter) shutdown(ctx context.Context) error {
 		return c.exitStatus
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-time.After(timeout):
-		c.log(ctx).Infof("Task did exit after %s", timeout)
-		return errors.New("task is unkillable")
 	}
 
 }
