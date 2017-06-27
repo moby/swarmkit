@@ -88,7 +88,7 @@ func Expect(t *testing.T, watch chan events.Event, specifiers ...api.Event) {
 			}
 			return
 		case <-time.After(time.Second):
-			assert.FailNow(t, "no commit event")
+			assert.FailNow(t, "no matching event")
 		}
 	}
 }
