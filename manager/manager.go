@@ -966,7 +966,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		// are known to be present in each cluster node. This is needed
 		// in order to allow running services on the predefined docker
 		// networks like `bridge` and `host`.
-		for _, p := range allocator.PredefinedNetworks() {
+		for _, p := range m.config.NetworkModel.PredefinedNetworks() {
 			if store.GetNetwork(tx, p.Name) == nil {
 				if err := store.CreateNetwork(tx, newPredefinedNetwork(p.Name, p.Driver)); err != nil {
 					log.G(ctx).WithError(err).Error("failed to create predefined network " + p.Name)

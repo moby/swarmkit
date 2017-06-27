@@ -9,4 +9,12 @@ import (
 type Model interface {
 	NewAllocator() (networkallocator.NetworkAllocator, error)
 	ValidateDriver(driver *api.Driver, pluginType string) error
+	PredefinedNetworks() []PredefinedNetworkData
+}
+
+// PredefinedNetworkData contains the minimum set of data needed
+// to create the correspondent predefined network object in the store.
+type PredefinedNetworkData struct {
+	Name   string
+	Driver string
 }
