@@ -414,9 +414,6 @@ func TestTaskFailure(t *testing.T) {
 	failTask(t, store, observedTask3)
 	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	observedTask4 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask4.DesiredState, api.TaskStateShutdown)
-	testutils.Expect(t, watch, state.EventCommit{})
 
 	// the task should not be recreated
 	select {
@@ -430,10 +427,14 @@ func TestTaskFailure(t *testing.T) {
 	testutils.Expect(t, watch, api.EventUpdateService{})
 	testutils.Expect(t, watch, state.EventCommit{})
 
-	observedTask5 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask5.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask5.ServiceAnnotations.Name, "norestart")
-	assert.Equal(t, observedTask5.NodeID, "nodeid1")
+	observedTask4 := testutils.WatchTaskCreate(t, watch)
+	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "norestart")
+	assert.Equal(t, observedTask4.NodeID, "nodeid1")
+
+	// old task gets shut down as the new one is created
+	observedTask5 := testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, observedTask5.DesiredState, api.TaskStateShutdown)
 	testutils.Expect(t, watch, state.EventCommit{})
 }
 

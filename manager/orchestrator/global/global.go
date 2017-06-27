@@ -187,7 +187,7 @@ func (g *Orchestrator) FixTask(ctx context.Context, batch *store.Batch, t *api.T
 		node = g.nodes[t.NodeID]
 	}
 	// if the node no longer valid, remove the task
-	if t.NodeID == "" || orchestrator.InvalidNode(node) {
+	if node == nil || node.Spec.Availability == api.NodeAvailabilityDrain || node.Status.State == api.NodeStatus_DOWN {
 		g.shutdownTask(ctx, batch, t)
 		return
 	}
@@ -496,7 +496,7 @@ func (g *Orchestrator) tickTasks(ctx context.Context) {
 					return store.UpdateTask(tx, t)
 				}
 
-				return g.restarts.Restart(ctx, tx, g.cluster, service, *t)
+				return g.restarts.Restart(ctx, tx, g.cluster, service, *t, false)
 			})
 			if err != nil {
 				log.G(ctx).WithError(err).Errorf("orchestrator restartTask transaction failed")

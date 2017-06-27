@@ -15,7 +15,12 @@ type Orchestrator struct {
 	store *store.MemoryStore
 
 	reconcileServices map[string]*api.Service
-	restartTasks      map[string]struct{}
+
+	// restartTasks' keys are tasks that need to have Restart called.
+	// The value is whether to force the desired state to shutdown
+	// even when the restart policy does not call for this, for example
+	// when a node is drained.
+	restartTasks map[string]bool
 
 	// stopChan signals to the state machine to stop running.
 	stopChan chan struct{}
@@ -37,7 +42,7 @@ func NewReplicatedOrchestrator(store *store.MemoryStore) *Orchestrator {
 		stopChan:          make(chan struct{}),
 		doneChan:          make(chan struct{}),
 		reconcileServices: make(map[string]*api.Service),
-		restartTasks:      make(map[string]struct{}),
+		restartTasks:      make(map[string]bool),
 		updater:           updater,
 		restarts:          restartSupervisor,
 	}
