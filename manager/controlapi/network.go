@@ -1,11 +1,6 @@
 package controlapi
 
 import (
-	"net"
-
-	"github.com/containernetworking/cni/libcni"
-	"github.com/docker/libnetwork/driverapi"
-	"github.com/docker/libnetwork/ipamapi"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/allocator"
@@ -17,95 +12,13 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func validateIPAMConfiguration(ipamConf *api.IPAMConfig) error {
-	if ipamConf == nil {
-		return grpc.Errorf(codes.InvalidArgument, "ipam configuration: cannot be empty")
-	}
-
-	_, subnet, err := net.ParseCIDR(ipamConf.Subnet)
-	if err != nil {
-		return grpc.Errorf(codes.InvalidArgument, "ipam configuration: invalid subnet %s", ipamConf.Subnet)
-	}
-
-	if ipamConf.Range != "" {
-		ip, _, err := net.ParseCIDR(ipamConf.Range)
-		if err != nil {
-			return grpc.Errorf(codes.InvalidArgument, "ipam configuration: invalid range %s", ipamConf.Range)
-		}
-
-		if !subnet.Contains(ip) {
-			return grpc.Errorf(codes.InvalidArgument, "ipam configuration: subnet %s does not contain range %s", ipamConf.Subnet, ipamConf.Range)
-		}
-	}
-
-	if ipamConf.Gateway != "" {
-		ip := net.ParseIP(ipamConf.Gateway)
-		if ip == nil {
-			return grpc.Errorf(codes.InvalidArgument, "ipam configuration: invalid gateway %s", ipamConf.Gateway)
-		}
-
-		if !subnet.Contains(ip) {
-			return grpc.Errorf(codes.InvalidArgument, "ipam configuration: subnet %s does not contain gateway %s", ipamConf.Subnet, ipamConf.Gateway)
-		}
-	}
-
-	return nil
-}
-
-func validateIPAM(ipam *api.IPAMOptions, nm network.Model) error {
-	if ipam == nil {
-		// It is ok to not specify any IPAM configurations. We
-		// will choose good defaults.
-		return nil
-	}
-
-	if err := nm.ValidateDriver(ipam.Driver, ipamapi.PluginEndpointType); err != nil {
-		return err
-	}
-
-	for _, ipamConf := range ipam.Configs {
-		if err := validateIPAMConfiguration(ipamConf); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func validateNetworkSpec(spec *api.NetworkSpec, nm network.Model) error {
 	if spec == nil {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
-	if spec.Ingress && spec.DriverConfig != nil && spec.DriverConfig.Name != "overlay" {
-		return grpc.Errorf(codes.Unimplemented, "only overlay driver is currently supported for ingress network")
-	}
-
-	// XXX Abstractions
-	if spec.DriverConfig != nil && spec.DriverConfig.Name == "cni" {
-		if spec.IPAM != nil {
-			return grpc.Errorf(codes.InvalidArgument, "CNI networks cannot have IPAM")
-		}
-
-		// This is rather similar to cniConfig in the containerd executor...
-		cniConfig, ok := spec.DriverConfig.Options["config"]
-		if !ok {
-			return grpc.Errorf(codes.InvalidArgument, "CNI network has no config")
-		}
-
-		cni, err := libcni.ConfFromBytes([]byte(cniConfig))
-		if err != nil {
-			return grpc.Errorf(codes.InvalidArgument, "Failed to parse CNI config: %s", err)
-		}
-
-		if spec.Annotations.Name != "" && spec.Annotations.Name != cni.Network.Name {
-			return grpc.Errorf(codes.InvalidArgument,
-				"CNI Network name (%q) must match Spec annotations name (%q)",
-				cni.Network.Name, spec.Annotations.Name)
-		}
-
-		// XXX updating in a function called validate..., pretty bad form?
-		spec.Annotations.Name = cni.Network.Name
+	if err := nm.ValidateNetworkSpec(spec); err != nil {
+		return err
 	}
 
 	if spec.Attachable && spec.Ingress {
@@ -120,13 +33,6 @@ func validateNetworkSpec(spec *api.NetworkSpec, nm network.Model) error {
 		return grpc.Errorf(codes.PermissionDenied, "label %s is for internally created predefined networks and cannot be applied by users",
 			networkallocator.PredefinedLabel)
 	}
-	if err := nm.ValidateDriver(spec.DriverConfig, driverapi.NetworkPluginEndpointType); err != nil {
-		return err
-	}
-
-	if err := validateIPAM(spec.IPAM, nm); err != nil {
-		return err
-	}
 
 	return nil
 }
@@ -135,6 +41,9 @@ func validateNetworkSpec(spec *api.NetworkSpec, nm network.Model) error {
 // - Returns `InvalidArgument` if the NetworkSpec is malformed.
 // - Returns an error if the creation fails.
 func (s *Server) CreateNetwork(ctx context.Context, request *api.CreateNetworkRequest) (*api.CreateNetworkResponse, error) {
+	if err := s.nm.SetDefaults(request.Spec); err != nil {
+		return nil, err
+	}
 	if err := validateNetworkSpec(request.Spec, s.nm); err != nil {
 		return nil, err
 	}

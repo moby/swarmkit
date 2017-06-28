@@ -8,7 +8,8 @@ import (
 // Model is an abstraction over the Network Model to be used.
 type Model interface {
 	NewAllocator() (networkallocator.NetworkAllocator, error)
-	ValidateDriver(driver *api.Driver, pluginType string) error
+	SetDefaults(spec *api.NetworkSpec) error
+	ValidateNetworkSpec(spec *api.NetworkSpec) error
 	PredefinedNetworks() []PredefinedNetworkData
 	SupportsIngressNetwork() bool
 }
