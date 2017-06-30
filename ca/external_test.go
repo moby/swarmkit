@@ -144,36 +144,6 @@ func TestExternalCASignRequestTimesOut(t *testing.T) {
 	}
 }
 
-func TestExternalCACopy(t *testing.T) {
-	t.Parallel()
-
-	if !testutils.External {
-		return // this is only tested using the external CA
-	}
-
-	tc := testutils.NewTestCA(t)
-	defer tc.Stop()
-
-	csr, _, err := ca.GenerateNewCSR()
-	require.NoError(t, err)
-	signReq := ca.PrepareCSR(csr, "cn", ca.ManagerRole, tc.Organization)
-
-	secConfig, err := tc.NewNodeConfig(ca.ManagerRole)
-	require.NoError(t, err)
-	externalCA1 := ca.NewExternalCA(nil,
-		ca.NewExternalCATLSConfig(secConfig.ClientTLSCreds.Config().Certificates, tc.RootCA.Pool))
-	externalCA2 := externalCA1.Copy()
-	externalCA2.UpdateURLs(tc.ExternalSigningServer.URL)
-
-	// externalCA1 can't sign, but externalCA2, which has been updated with URLS, can
-	_, err = externalCA1.Sign(tc.Context, signReq)
-	require.Equal(t, ca.ErrNoExternalCAURLs, err)
-
-	cert, err := externalCA2.Sign(tc.Context, signReq)
-	require.NoError(t, err)
-	require.NotNil(t, cert)
-}
-
 // The ExternalCA object will stop reading the response from the server past a
 // a certain size
 func TestExternalCASignRequestSizeLimit(t *testing.T) {
