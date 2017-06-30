@@ -3,13 +3,12 @@ package containerd
 import (
 	"fmt"
 
-	"github.com/containerd/containerd/api/types/task"
+	"github.com/containerd/containerd"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
 
 type controller struct {
@@ -25,8 +24,8 @@ type controller struct {
 
 var _ exec.Controller = &controller{}
 
-func newController(conn *grpc.ClientConn, containerDir string, task *api.Task, secrets exec.SecretGetter) (exec.Controller, error) {
-	adapter, err := newContainerAdapter(conn, containerDir, task, secrets)
+func newController(client *containerd.Client, task *api.Task, secrets exec.SecretGetter) (exec.Controller, error) {
+	adapter, err := newContainerAdapter(client, task, secrets)
 	if err != nil {
 		return nil, err
 	}
@@ -36,6 +35,29 @@ func newController(conn *grpc.ClientConn, containerDir string, task *api.Task, s
 		adapter: adapter,
 		closed:  make(chan struct{}),
 	}, nil
+}
+
+// ContainerStatus returns the container-specific status for the task.
+func (r *controller) ContainerStatus(ctx context.Context) (*api.ContainerStatus, error) {
+	ctnr, err := r.adapter.inspect(ctx)
+	if err != nil {
+		if isUnknownContainer(err) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	status := &api.ContainerStatus{
+		ContainerID: ctnr.ID,
+		PID:         int32(ctnr.Pid),
+	}
+
+	if ec, ok := ctnr.ExitStatus.(exec.ExitCoder); ok {
+		status.ExitCode = int32(ec.ExitCode())
+	}
+
+	return status, nil
 }
 
 // Update takes a recent task update and applies it to the container.
@@ -105,7 +127,7 @@ func (r *controller) Prepare(ctx context.Context) error {
 		}
 	}
 
-	if err := r.adapter.create(ctx); err != nil {
+	if err := r.adapter.prepare(ctx); err != nil {
 		if isContainerCreateNameConflict(err) {
 			if _, err := r.adapter.inspect(ctx); err != nil {
 				return err
@@ -139,7 +161,7 @@ func (r *controller) Start(ctx context.Context) error {
 	//
 	// TODO(stevvooe): This is very racy. While reading inspect, another could
 	// start the process and we could end up starting it twice.
-	if ctnr.Status != task.StatusCreated {
+	if ctnr.Status != containerd.Created {
 		return exec.ErrTaskStarted
 	}
 
@@ -147,7 +169,7 @@ func (r *controller) Start(ctx context.Context) error {
 		return errors.Wrap(err, "starting container failed")
 	}
 
-	// TODO(ijc): Wait for HealtCheck to report OK.
+	// TODO(ijc): Wait for HealthCheck to report OK.
 
 	return nil
 }
@@ -160,78 +182,10 @@ func (r *controller) Wait(ctx context.Context) error {
 		return err
 	}
 
-	// check the initial state and report that.
-	ctnr, err := r.adapter.inspect(ctx)
-	if err != nil {
-		return errors.Wrap(err, "inspecting container failed")
-	}
-
-	shutdownWithExitStatus := func(reason string) error {
-		exitStatus, err := r.adapter.shutdown(ctx)
-		if err != nil {
-			return err
-		}
-		log.G(ctx).Errorf("EXIT STATUS %v", exitStatus)
-		return makeExitError(exitStatus, reason)
-	}
-	switch ctnr.Status {
-	case task.StatusStopped:
-		return shutdownWithExitStatus("")
-	}
-
-	// We do not disable FailFast for this initial call (like we
-	// do on the retry below) since we are still halfway through
-	// setting up the container and if containerd goes away half
-	// way through we consider that a failure.
-	eventq, closed, err := r.adapter.events(ctx)
-	if err != nil {
-		return err
-	}
-
-	for {
-		select {
-		case event := <-eventq:
-			log.G(ctx).Debugf("Event: %v", event)
-
-			switch event.Type {
-			case task.Event_EXIT:
-				return shutdownWithExitStatus("")
-			case task.Event_OOM:
-				return shutdownWithExitStatus("Container OOMd")
-			case task.Event_CREATE, task.Event_START, task.Event_EXEC_ADDED, task.Event_PAUSED:
-				continue
-			default:
-				return errors.Errorf("Unknown event type %s\n", event.Type.String())
-			}
-		case <-closed:
-			// restart!
-			log.G(ctx).Debugf("Restarting event stream")
-			// We disable FailFast for this call so that gRPC will keep
-			// retrying while we wait for containerd to come back. Otherwise
-			// a temporary glitch in the connection (e.g. a containerd restart)
-			// will result in the task being declared dead even though it is
-			// likely to be recoverable.
-			eventq, closed, err = r.adapter.events(ctx, grpc.FailFast(false))
-			if err != nil {
-				return err
-			}
-
-			// recheck the container state, if this fails then we may have missed a
-			ctnr, err := r.adapter.inspect(ctx)
-			if err != nil {
-				return errors.Wrap(err, "inspecting container on event restart failed")
-			}
-			switch ctnr.Status {
-			case task.StatusStopped:
-				return shutdownWithExitStatus("container had exited after event stream restart")
-			}
-
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-r.closed:
-			return r.err
-		}
-	}
+	// TODO(ijc) HealthCheck
+	// TODO(ijc) Underlying wait is racy
+	// TODO(ijc) Underlying wait does not handle restart
+	return r.adapter.wait(ctx)
 }
 
 // Shutdown the container cleanly.
@@ -246,7 +200,7 @@ func (r *controller) Shutdown(ctx context.Context) error {
 		r.cancelPull()
 	}
 
-	if _, err := r.adapter.shutdown(ctx); err != nil {
+	if err := r.adapter.shutdown(ctx); err != nil {
 		if isUnknownContainer(err) {
 			return nil
 		}

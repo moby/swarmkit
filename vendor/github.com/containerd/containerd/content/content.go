@@ -7,20 +7,9 @@ import (
 	"time"
 
 	"github.com/opencontainers/go-digest"
-	"github.com/pkg/errors"
 )
 
 var (
-	// ErrNotFound is returned when an item is not found.
-	//
-	// Use IsNotFound(err) to detect this condition.
-	ErrNotFound = errors.New("content: not found")
-
-	// ErrExists is returned when something exists when it may not be expected.
-	//
-	// Use IsExists(err) to detect this condition.
-	ErrExists = errors.New("content: exists")
-
 	bufPool = sync.Pool{
 		New: func() interface{} {
 			return make([]byte, 1<<20)
@@ -30,6 +19,7 @@ var (
 
 type Provider interface {
 	Reader(ctx context.Context, dgst digest.Digest) (io.ReadCloser, error)
+	ReaderAt(ctx context.Context, dgst digest.Digest) (io.ReaderAt, error)
 }
 
 type Ingester interface {
@@ -98,12 +88,4 @@ type Store interface {
 	Manager
 	Ingester
 	Provider
-}
-
-func IsNotFound(err error) bool {
-	return errors.Cause(err) == ErrNotFound
-}
-
-func IsExists(err error) bool {
-	return errors.Cause(err) == ErrExists
 }

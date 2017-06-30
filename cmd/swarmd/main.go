@@ -140,6 +140,10 @@ var (
 			if err != nil {
 				return err
 			}
+			containerdNamespace, err := cmd.Flags().GetString("containerd-namespace")
+			if err != nil {
+				return err
+			}
 
 			autolockManagers, err := cmd.Flags().GetBool("autolock")
 			if err != nil {
@@ -181,8 +185,8 @@ var (
 			var executor exec.Executor
 
 			if containerdAddr != "" {
-				logrus.Infof("Using containerd via %s", containerdAddr)
-				executor, err = containerd.NewExecutor(containerdAddr, stateDir, resources)
+				logrus.Infof("Using containerd via %q with namespace %q", containerdAddr, containerdNamespace)
+				executor, err = containerd.NewExecutor(containerdAddr, containerdNamespace, resources)
 				if err != nil {
 					return err
 				}
@@ -275,6 +279,7 @@ func init() {
 	mainCmd.Flags().StringP("join-token", "", "", "Specifies the secret token required to join the cluster")
 	mainCmd.Flags().String("engine-addr", "unix:///var/run/docker.sock", "Address of engine instance of agent.")
 	mainCmd.Flags().String("containerd-addr", "", "Address of containerd instance of agent.")
+	mainCmd.Flags().String("containerd-namespace", "swarmd", "Namespace to use when using containerd agent.")
 	mainCmd.Flags().String("hostname", "", "Override reported agent hostname")
 	mainCmd.Flags().String("advertise-remote-api", "", "Advertise address for remote API")
 	mainCmd.Flags().String("listen-remote-api", "0.0.0.0:4242", "Listen address for remote API")

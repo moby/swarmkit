@@ -1,52 +1,32 @@
 package containerd
 
 import (
-	"crypto/tls"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net"
-	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	containersapi "github.com/containerd/containerd/api/services/containers"
-	contentapi "github.com/containerd/containerd/api/services/content"
-	"github.com/containerd/containerd/api/services/execution"
-	imagesapi "github.com/containerd/containerd/api/services/images"
-	"github.com/containerd/containerd/api/types/mount"
-	"github.com/containerd/containerd/api/types/task"
-	"github.com/containerd/containerd/archive"
-	"github.com/containerd/containerd/archive/compression"
-	"github.com/containerd/containerd/content"
-	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/remotes"
-	"github.com/containerd/containerd/remotes/docker"
-	contentservice "github.com/containerd/containerd/services/content"
-	imagesservice "github.com/containerd/containerd/services/images"
-	"github.com/containerd/fifo"
-	dockermount "github.com/docker/docker/pkg/mount"
+	"github.com/containerd/containerd"
+	"github.com/docker/docker/pkg/signal"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/naming"
 	"github.com/docker/swarmkit/log"
-	protobuf "github.com/gogo/protobuf/types"
-	"github.com/opencontainers/go-digest"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 var (
+	devNull                    *os.File
+	errAdapterNotPrepared      = errors.New("container adapter not prepared")
 	mountPropagationReverseMap = map[api.Mount_BindOptions_MountPropagation]string{
 		api.MountPropagationPrivate:  "private",
 		api.MountPropagationRPrivate: "rprivate",
@@ -61,479 +41,218 @@ var (
 // are mostly naked calls to the client API, seeded with information from
 // containerConfig.
 type containerAdapter struct {
-	conn              *grpc.ClientConn
-	taskClient        execution.TasksClient
-	container         *api.ContainerSpec
-	task              *api.Task
-	secrets           exec.SecretGetter
-	dir               string
-	resolvedImageName string
-	deleteResponse    *execution.DeleteResponse
+	client     *containerd.Client
+	spec       *api.ContainerSpec
+	secrets    exec.SecretGetter
+	name       string
+	image      containerd.Image // Pulled image
+	container  containerd.Container
+	task       containerd.Task
+	exitStatus error
 }
 
-func newContainerAdapter(conn *grpc.ClientConn, containerDir string, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
-	container := task.Spec.GetContainer()
-	if container == nil {
+func newContainerAdapter(client *containerd.Client, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
+	spec := task.Spec.GetContainer()
+	if spec == nil {
 		return nil, exec.ErrRuntimeUnsupported
 	}
 
-	dir := filepath.Join(containerDir, task.ID)
-
-	return &containerAdapter{
-		conn:       conn,
-		taskClient: execution.NewTasksClient(conn),
-		container:  container,
-		task:       task,
-		secrets:    secrets,
-		dir:        dir,
-	}, nil
-}
-
-func (c *containerAdapter) applyLayer(ctx context.Context, cs content.Store, rootfs string, layer digest.Digest) error {
-	blob, err := cs.Reader(ctx, layer)
-	if err != nil {
-		return err
+	c := &containerAdapter{
+		client:  client,
+		spec:    spec,
+		secrets: secrets,
+		name:    naming.Task(task),
 	}
 
-	rd, err := compression.DecompressStream(blob)
-	if err != nil {
-		return err
-	}
-
-	_, err = archive.Apply(ctx, rootfs, rd)
-
-	blob.Close()
-	return err
-}
-
-// github.com/containerd/containerd cmd/ctr/utils.go, dropped stdin handling
-func prepareStdio(stdout, stderr string, console bool) (wg *sync.WaitGroup, err error) {
-	wg = &sync.WaitGroup{}
-	ctx := context.Background()
-
-	f, err := fifo.OpenFifo(ctx, stdout, syscall.O_RDONLY|syscall.O_CREAT|syscall.O_NONBLOCK, 0700)
-	if err != nil {
+	if err := c.reattach(context.Background()); err != nil {
 		return nil, err
 	}
-	defer func(c io.Closer) {
-		if err != nil {
-			c.Close()
-		}
-	}(f)
-	wg.Add(1)
-	go func(r io.ReadCloser) {
-		io.Copy(os.Stdout, r)
-		r.Close()
-		wg.Done()
-	}(f)
 
-	f, err = fifo.OpenFifo(ctx, stderr, syscall.O_RDONLY|syscall.O_CREAT|syscall.O_NONBLOCK, 0700)
-	if err != nil {
-		return nil, err
-	}
-	defer func(c io.Closer) {
-		if err != nil {
-			c.Close()
-		}
-	}(f)
-	if !console {
-		wg.Add(1)
-		go func(r io.ReadCloser) {
-			io.Copy(os.Stderr, r)
-			r.Close()
-			wg.Done()
-		}(f)
-	}
-
-	return wg, nil
+	return c, nil
 }
 
-func (c *containerAdapter) pullImage(ctx context.Context) error {
-	options := docker.ResolverOptions{}
-
-	tr := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-			DualStack: true,
-		}).DialContext,
-		MaxIdleConns:          10,
-		IdleConnTimeout:       30 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		TLSClientConfig:       &tls.Config{},
-		ExpectContinueTimeout: 5 * time.Second,
-	}
-
-	options.Client = &http.Client{
-		Transport: tr,
-	}
-
-	resolver := docker.NewResolver(options)
-
-	name, desc, err := resolver.Resolve(ctx, c.container.Image)
+// reattaches to an existing container. If the container is found but
+// the task is missing then still succeeds, allowing subsequent use of
+// c.delete()
+func (c *containerAdapter) reattach(ctx context.Context) error {
+	container, err := c.client.LoadContainer(ctx, c.name)
 	if err != nil {
-		return errors.Wrap(err, "failed to resolve ref")
+		if grpc.Code(err) == codes.NotFound {
+			c.log(ctx).Debug("reattach: container not found")
+			return nil
+		}
+
+		return errors.Wrap(err, "reattach: loading container")
 	}
-	fetcher, err := resolver.Fetcher(ctx, name)
+	c.log(ctx).Debug("reattach: loaded container")
+	c.container = container
+
+	// TODO(ijc) Consider an addition to container library which
+	// directly attaches stdin to /dev/null.
+	if devNull == nil {
+		if devNull, err = os.Open(os.DevNull); err != nil {
+			return errors.Wrap(err, "reattach: opening null device")
+		}
+	}
+
+	task, err := container.Task(ctx, containerd.WithAttach(devNull, os.Stdout, os.Stderr))
 	if err != nil {
-		return errors.Wrap(err, "failed to resolve fetcher")
-	}
-	c.resolvedImageName = name
-
-	content := contentservice.NewStoreFromClient(contentapi.NewContentClient(c.conn))
-	imageStore := imagesservice.NewStoreFromClient(imagesapi.NewImagesClient(c.conn))
-
-	if err := imageStore.Put(ctx, name, desc); err != nil {
-		return errors.Wrap(err, "put image")
-	}
-
-	return images.Dispatch(ctx,
-		images.Handlers(
-			remotes.FetchHandler(content, fetcher),
-			images.ChildrenHandler(content)),
-		desc)
-}
-
-func (c *containerAdapter) makeAnonVolume(ctx context.Context, target string) (specs.Mount, error) {
-	source := filepath.Join(c.dir, "anon-volumes", target)
-	if err := os.MkdirAll(source, 0755); err != nil {
-		return specs.Mount{}, err
-	}
-
-	return specs.Mount{
-		Destination: target,
-		Type:        "bind",
-		Source:      source,
-		Options:     []string{"rbind", "rprivate", "rw"},
-	}, nil
-}
-
-// Somewhat like docker/docker/daemon/oci_linux.go:setMounts
-func (c *containerAdapter) setMounts(ctx context.Context, s *specs.Spec, mounts []api.Mount, volumes map[string]struct{}) error {
-
-	userMounts := make(map[string]struct{})
-	for _, m := range mounts {
-		userMounts[m.Target] = struct{}{}
-	}
-
-	// Filter out mounts that are overridden by user supplied mounts
-	var defaultMounts []specs.Mount
-	_, mountDev := userMounts["/dev"]
-	for _, m := range s.Mounts {
-		if _, ok := userMounts[m.Destination]; !ok {
-			if mountDev && strings.HasPrefix(m.Destination, "/dev/") {
-				continue
-			}
-			defaultMounts = append(defaultMounts, m)
+		if err == containerd.ErrNoRunningTask {
+			c.log(ctx).WithError(err).Info("reattach: no running task")
+			return nil
 		}
+		return errors.Wrap(err, "reattach: reattaching task")
 	}
-
-	s.Mounts = defaultMounts
-	for _, m := range mounts {
-		if !filepath.IsAbs(m.Target) {
-			return errors.Errorf("mount %s is not absolute", m.Target)
-		}
-
-		for _, cm := range s.Mounts {
-			if cm.Destination == m.Target {
-				return errors.Errorf("duplicate mount point '%s'", m.Target)
-			}
-		}
-
-		delete(volumes, m.Target) // volume is no longer anon
-
-		switch m.Type {
-		case api.MountTypeTmpfs:
-			opts := []string{"noexec", "nosuid", "nodev", "rprivate"}
-			if m.TmpfsOptions != nil {
-				if m.TmpfsOptions.SizeBytes <= 0 {
-					return errors.New("invalid tmpfs size give")
-				}
-				opts = append(opts, fmt.Sprintf("size=%d", m.TmpfsOptions.SizeBytes))
-				opts = append(opts, fmt.Sprintf("mode=%o", m.TmpfsOptions.Mode))
-			}
-			if m.ReadOnly {
-				opts = append(opts, "ro")
-			} else {
-				opts = append(opts, "rw")
-			}
-
-			opts, err := dockermount.MergeTmpfsOptions(opts)
-			if err != nil {
-				return err
-			}
-
-			s.Mounts = append(s.Mounts, specs.Mount{
-				Destination: m.Target,
-				Type:        "tmpfs",
-				Source:      "tmpfs",
-				Options:     opts,
-			})
-
-		case api.MountTypeVolume:
-			if m.Source != "" {
-				return errors.Errorf("non-anon volume mounts not implemented, ignoring %v", m)
-			}
-			if m.VolumeOptions != nil {
-				return errors.Errorf("volume mount VolumeOptions not implemented, ignoring %v", m)
-			}
-
-			mt, err := c.makeAnonVolume(ctx, m.Target)
-			if err != nil {
-				return err
-			}
-
-			s.Mounts = append(s.Mounts, mt)
-			continue
-
-		case api.MountTypeBind:
-			opts := []string{"rbind"}
-			if m.ReadOnly {
-				opts = append(opts, "ro")
-			} else {
-				opts = append(opts, "rw")
-			}
-
-			propagation := "rprivate"
-			if m.BindOptions != nil {
-				if p, ok := mountPropagationReverseMap[m.BindOptions.Propagation]; ok {
-					propagation = p
-				} else {
-					log.G(ctx).Warningf("unknown bind mount propagation,  using %q", propagation)
-				}
-			}
-			opts = append(opts, propagation)
-
-			mt := specs.Mount{
-				Destination: m.Target,
-				Type:        "bind",
-				Source:      m.Source,
-				Options:     opts,
-			}
-
-			s.Mounts = append(s.Mounts, mt)
-			continue
-		}
-	}
-
-	for v := range volumes {
-		mt, err := c.makeAnonVolume(ctx, v)
-		if err != nil {
-			return err
-		}
-
-		s.Mounts = append(s.Mounts, mt)
-	}
+	c.task = task
+	c.log(ctx).Debug("reattach: successful")
 	return nil
 }
 
-func (c *containerAdapter) spec(ctx context.Context, config *ocispec.ImageConfig, rootfs string) (*specs.Spec, error) {
-	caps := []string{
-		"CAP_CHOWN",
-		"CAP_DAC_OVERRIDE",
-		"CAP_FSETID",
-		"CAP_FOWNER",
-		"CAP_MKNOD",
-		"CAP_NET_RAW",
-		"CAP_SETGID",
-		"CAP_SETUID",
-		"CAP_SETFCAP",
-		"CAP_SETPCAP",
-		"CAP_NET_BIND_SERVICE",
-		"CAP_SYS_CHROOT",
-		"CAP_KILL",
-		"CAP_AUDIT_WRITE",
-	}
-
-	// Need github.com/docker/docker/oci.DefaultSpec()
-	spec := specs.Spec{
-		Version: "1.0.0-rc2-dev",
-		Root: specs.Root{
-			Path: rootfs,
-		},
-		Mounts: []specs.Mount{
-			{
-				Destination: "/proc",
-				Type:        "proc",
-				Source:      "proc",
-				Options:     []string{"nosuid", "noexec", "nodev"},
-			},
-			{
-				Destination: "/dev",
-				Type:        "tmpfs",
-				Source:      "tmpfs",
-				Options:     []string{"nosuid", "strictatime", "mode=755"},
-			},
-			{
-				Destination: "/dev/pts",
-				Type:        "devpts",
-				Source:      "devpts",
-				Options:     []string{"nosuid", "noexec", "newinstance", "ptmxmode=0666", "mode=0620", "gid=5"},
-			},
-			{
-				Destination: "/sys",
-				Type:        "sysfs",
-				Source:      "sysfs",
-				Options:     []string{"nosuid", "noexec", "nodev", "ro"},
-			},
-			{
-				Destination: "/sys/fs/cgroup",
-				Type:        "cgroup",
-				Source:      "cgroup",
-				Options:     []string{"ro", "nosuid", "noexec", "nodev"},
-			},
-			{
-				Destination: "/dev/mqueue",
-				Type:        "mqueue",
-				Source:      "mqueue",
-				Options:     []string{"nosuid", "noexec", "nodev"},
-			},
-		},
-		Process: specs.Process{
-			Cwd: "/",
-			Capabilities: &specs.LinuxCapabilities{
-				Bounding:    caps,
-				Effective:   caps,
-				Inheritable: caps,
-				Permitted:   caps,
-				Ambient:     caps,
-			},
-			NoNewPrivileges: true,
-			Terminal:        false,
-		},
-		Linux: &specs.Linux{
-			Namespaces: []specs.LinuxNamespace{
-				{Type: "mount"},
-				{Type: "network"},
-				{Type: "uts"},
-				{Type: "pid"},
-				{Type: "ipc"},
-			},
-		},
-	}
-
-	spec.Platform = specs.Platform{
-		OS:   runtime.GOOS,
-		Arch: runtime.GOARCH,
-	}
-	if config.WorkingDir != "" {
-		spec.Process.Cwd = config.WorkingDir
-	}
-	spec.Process.Env = config.Env
-
-	var args []string
-	if len(c.container.Args) > 0 {
-		args = c.container.Args
-	} else {
-		args = config.Cmd
-	}
-
-	if len(c.container.Command) > 0 {
-		spec.Process.Args = append(c.container.Command, args...)
-	} else {
-		spec.Process.Args = append(config.Entrypoint, args...)
-	}
-
-	log.G(ctx).Debugf("Process args: %v", spec.Process.Args)
-	if err := c.setMounts(ctx, &spec, c.container.Mounts, config.Volumes); err != nil {
-		return nil, errors.Wrap(err, "failed to set mounts")
-	}
-	sort.Sort(mounts(spec.Mounts))
-
-	return &spec, nil
+func (c *containerAdapter) log(ctx context.Context) *logrus.Entry {
+	return log.G(ctx).WithFields(logrus.Fields{
+		"container.id": c.name,
+	})
 }
 
-func (c *containerAdapter) create(ctx context.Context) error {
-	if c.resolvedImageName == "" {
+func (c *containerAdapter) pullImage(ctx context.Context) error {
+	image, err := c.client.Pull(ctx, c.spec.Image, containerd.WithPullUnpack)
+	if err != nil {
+		return errors.Wrap(err, "pulling container image")
+	}
+	c.image = image
+
+	return nil
+}
+
+func withMounts(ctx context.Context, ms []api.Mount) containerd.SpecOpts {
+	sort.Sort(mounts(ms))
+
+	return func(s *specs.Spec) error {
+		for _, m := range ms {
+			if !filepath.IsAbs(m.Target) {
+				return errors.Errorf("mount %s is not absolute", m.Target)
+			}
+
+			switch m.Type {
+			case api.MountTypeTmpfs:
+				opts := []string{"noexec", "nosuid", "nodev", "rprivate"}
+				if m.TmpfsOptions != nil {
+					if m.TmpfsOptions.SizeBytes <= 0 {
+						return errors.New("invalid tmpfs size give")
+					}
+					opts = append(opts, fmt.Sprintf("size=%d", m.TmpfsOptions.SizeBytes))
+					opts = append(opts, fmt.Sprintf("mode=%o", m.TmpfsOptions.Mode))
+				}
+				if m.ReadOnly {
+					opts = append(opts, "ro")
+				} else {
+					opts = append(opts, "rw")
+				}
+
+				s.Mounts = append(s.Mounts, specs.Mount{
+					Destination: m.Target,
+					Type:        "tmpfs",
+					Source:      "tmpfs",
+					Options:     opts,
+				})
+
+			case api.MountTypeVolume:
+				return errors.Errorf("volume mounts not implemented, ignoring %v", m)
+
+			case api.MountTypeBind:
+				opts := []string{"rbind"}
+				if m.ReadOnly {
+					opts = append(opts, "ro")
+				} else {
+					opts = append(opts, "rw")
+				}
+
+				propagation := "rprivate"
+				if m.BindOptions != nil {
+					if p, ok := mountPropagationReverseMap[m.BindOptions.Propagation]; ok {
+						propagation = p
+					} else {
+						log.G(ctx).Warningf("unknown bind mount propagation, using %q", propagation)
+					}
+				}
+				opts = append(opts, propagation)
+
+				s.Mounts = append(s.Mounts, specs.Mount{
+					Destination: m.Target,
+					Type:        "bind",
+					Source:      m.Source,
+					Options:     opts,
+				})
+			}
+		}
+		return nil
+	}
+}
+
+func (c *containerAdapter) isPrepared() bool {
+	return c.container != nil && c.task != nil
+}
+
+func (c *containerAdapter) prepare(ctx context.Context) error {
+	if c.isPrepared() {
+		return errors.New("adapter already prepared")
+	}
+	if c.image == nil {
 		return errors.New("image has not been pulled")
 	}
 
-	containers := containersapi.NewContainersClient(c.conn)
-	cs := contentservice.NewStoreFromClient(contentapi.NewContentClient(c.conn))
-	imageStore := imagesservice.NewStoreFromClient(imagesapi.NewImagesClient(c.conn))
-
-	image, err := imageStore.Get(ctx, c.resolvedImageName)
-	if err != nil {
-		return errors.Wrap(err, "image get")
+	specOpts := []containerd.SpecOpts{
+		containerd.WithImageConfig(ctx, c.image),
+		withMounts(ctx, c.spec.Mounts),
 	}
 
-	mbytes, err := content.ReadBlob(ctx, cs, image.Target.Digest)
-	if err != nil {
-		return err
+	// spec.Process.Args is config.Entrypoint + config.Cmd at this
+	// point from WithImageConfig above. If the ContainerSpec
+	// specifies a Command then we can completely override. If it
+	// does not then all we can do is append our Args and hope
+	// they do not conflict.
+	// TODO(ijc) Improve this
+	if len(c.spec.Command) > 0 {
+		args := append(c.spec.Command, c.spec.Args...)
+		specOpts = append(specOpts, containerd.WithProcessArgs(args...))
+	} else {
+		specOpts = append(specOpts, func(s *specs.Spec) error {
+			s.Process.Args = append(s.Process.Args, c.spec.Args...)
+			return nil
+		})
 	}
 
-	rootfs := filepath.Join(c.dir, "rootfs")
-	// TODO(ijc) support ControllerLogs interface
-	stdin := "/dev/null"
-	stdout := filepath.Join(c.dir, "stdout")
-	stderr := filepath.Join(c.dir, "stderr")
-
-	if err := os.MkdirAll(rootfs, 0755); err != nil {
-		return err
-	}
-
-	var config ocispec.Image
-
-	var manifest ocispec.Manifest
-	if err := json.Unmarshal(mbytes, &manifest); err != nil {
-		return errors.Wrap(err, "unmarshalling image manifest")
-	}
-
-	bytes, err := content.ReadBlob(ctx, cs, manifest.Config.Digest)
+	spec, err := containerd.GenerateSpec(specOpts...)
 	if err != nil {
 		return err
 	}
 
-	if err := json.Unmarshal(bytes, &config); err != nil {
-		return errors.Wrap(err, "unmarshalling image config")
-	}
-
-	for _, layer := range manifest.Layers {
-		if err := c.applyLayer(ctx, cs, rootfs, layer.Digest); err != nil {
-			return errors.Wrapf(err, "failed to apply layer %s", layer.Digest.String())
+	// TODO(ijc) Consider an addition to container library which
+	// directly attaches stdin to /dev/null.
+	if devNull == nil {
+		if devNull, err = os.Open(os.DevNull); err != nil {
+			return errors.Wrap(err, "opening null device")
 		}
 	}
 
-	spec, err := c.spec(ctx, &config.Config, rootfs)
-	if err != nil {
-		return err
-	}
-
-	_, err = prepareStdio(stdout, stderr, spec.Process.Terminal)
-	if err != nil {
-		return err
-	}
-
-	data, err := json.MarshalIndent(spec, "    ", "    ")
-	if err != nil {
-		return err
-	}
-
-	cid := naming.Task(c.task)
-	_, err = containers.Create(ctx, &containersapi.CreateContainerRequest{
-		Container: containersapi.Container{
-			ID: cid,
-			Spec: &protobuf.Any{
-				TypeUrl: specs.Version,
-				Value:   data,
-			},
-			Runtime: "linux",
-		},
-	})
+	c.container, err = c.client.NewContainer(ctx, c.name,
+		containerd.WithSpec(spec),
+		containerd.WithNewRootFS(c.name, c.image))
 	if err != nil {
 		return errors.Wrap(err, "creating container")
 	}
 
-	_, err = c.taskClient.Create(ctx, &execution.CreateRequest{
-		ContainerID: cid,
-		Rootfs:      []*mount.Mount{},
-		Stdin:       stdin,
-		Stdout:      stdout,
-		Stderr:      stderr,
-		Terminal:    spec.Process.Terminal,
-	})
+	// TODO(ijc) support ControllerLogs interface.
+	io := containerd.NewIOWithTerminal(devNull, os.Stdout, os.Stderr, spec.Process.Terminal)
+
+	c.task, err = c.container.NewTask(ctx, io)
 	if err != nil {
+		// Destroy the container we created above, but
+		// propagate the original error.
+		if err2 := c.container.Delete(ctx); err2 != nil {
+			c.log(ctx).WithError(err2).Error("failed to delete container on prepare failure")
+		}
+		c.container = nil
 		return errors.Wrap(err, "creating task")
 	}
 
@@ -541,128 +260,145 @@ func (c *containerAdapter) create(ctx context.Context) error {
 }
 
 func (c *containerAdapter) start(ctx context.Context) error {
-	_, err := c.taskClient.Start(ctx, &execution.StartRequest{
-		ContainerID: naming.Task(c.task),
-	})
-	return err
+	if !c.isPrepared() {
+		return errAdapterNotPrepared
+	}
+	err := c.task.Start(ctx)
+	return errors.Wrap(err, "starting")
 }
 
-func (c *containerAdapter) eventStream(ctx context.Context, id string) (<-chan task.Event, <-chan error, error) {
+func (c *containerAdapter) wait(ctx context.Context) error {
+	if !c.isPrepared() {
+		return errAdapterNotPrepared
+	}
+	status, err := c.task.Wait(ctx)
+	if err != nil {
+		return errors.Wrap(err, "waiting")
+	}
+	// Should update c.exitStatus or not?
+	return makeExitError(status, "")
+}
+
+type status struct {
+	ID         string
+	Pid        uint32
+	Status     containerd.TaskStatus
+	ExitStatus error
+}
+
+func (c *containerAdapter) inspect(ctx context.Context) (status, error) {
+	if !c.isPrepared() {
+		return status{}, errAdapterNotPrepared
+	}
+
+	ts, err := c.task.Status(ctx)
+	if err != nil {
+		return status{}, err
+	}
+	s := status{
+		ID:         c.container.ID(),
+		Pid:        c.task.Pid(),
+		Status:     ts,
+		ExitStatus: c.exitStatus,
+	}
+	return s, nil
+}
+
+func (c *containerAdapter) shutdown(ctx context.Context) error {
+	if !c.isPrepared() {
+		return errAdapterNotPrepared
+	}
 
 	var (
-		evtch = make(chan task.Event)
-		errch = make(chan error)
+		sig     syscall.Signal
+		timeout = time.Duration(10 * time.Second)
+		err     error
 	)
 
-	return evtch, errch, nil
-}
-
-// events issues a call to the events API and returns a channel with all
-// events. The stream of events can be shutdown by cancelling the context.
-//
-// A chan struct{} is returned that will be closed if the event processing
-// fails and needs to be restarted.
-func (c *containerAdapter) events(ctx context.Context, opts ...grpc.CallOption) (<-chan task.Event, <-chan struct{}, error) {
-	id := naming.Task(c.task)
-
-	l := log.G(ctx).WithFields(logrus.Fields{
-		"ID": id,
-	})
-
-	// TODO(stevvooe): Move this to a single, global event dispatch. For
-	// now, we create a connection per container.
-	var (
-		eventsq = make(chan task.Event)
-		closed  = make(chan struct{})
-	)
-
-	l.Debugf("waiting on events")
-
-	cl, err := c.taskClient.Events(ctx, &execution.EventsRequest{}, opts...)
-	if err != nil {
-		l.WithError(err).Errorf("failed to start event stream")
-		return nil, nil, err
-	}
-
-	go func() {
-		defer close(closed)
-
-		for {
-			evt, err := cl.Recv()
-			if err != nil {
-				l.WithError(err).Error("fatal error from events stream")
-				return
-			}
-			if evt.ID != id {
-				l.Debugf("Event for a different container %s", evt.ID)
-				continue
-			}
-
-			select {
-			case eventsq <- *evt:
-			case <-ctx.Done():
-				return
-			}
+	if c.spec.StopSignal != "" {
+		if sig, err = signal.ParseSignal(c.spec.StopSignal); err != nil {
+			sig = syscall.SIGTERM
+			c.log(ctx).WithError(err).Errorf("unknown StopSignal, using %q", sig)
 		}
-	}()
-
-	return eventsq, closed, nil
-}
-
-func (c *containerAdapter) inspect(ctx context.Context) (task.Task, error) {
-	id := naming.Task(c.task)
-	rsp, err := c.taskClient.Info(ctx, &execution.InfoRequest{ContainerID: id})
-	if err != nil {
-		return task.Task{}, err
+	} else {
+		sig = syscall.SIGTERM
+		c.log(ctx).Infof("no StopSignal given, using %q", sig)
 	}
-	return *rsp.Task, nil
-}
 
-func (c *containerAdapter) shutdown(ctx context.Context) (uint32, error) {
-	id := naming.Task(c.task)
-	l := log.G(ctx).WithFields(logrus.Fields{
-		"ID": id,
-	})
+	if c.spec.StopGracePeriod != nil {
+		timeout, _ = gogotypes.DurationFromProto(c.spec.StopGracePeriod)
+	}
 
-	if c.deleteResponse == nil {
-		var err error
-		l.Debug("Deleting")
+	deleteErr := make(chan error, 1)
+	deleteCtx, deleteCancel := context.WithCancel(ctx)
+	defer deleteCancel()
 
-		rsp, err := c.taskClient.Delete(ctx, &execution.DeleteRequest{ContainerID: id})
+	go func(ctx context.Context, ch chan error) {
+		status, err := c.task.Delete(ctx)
 		if err != nil {
-			return 0, err
+			c.log(ctx).WithError(err).Debug("Task.Delete failed")
+			ch <- err
 		}
-		l.Debugf("Status=%d", rsp.ExitStatus)
-		c.deleteResponse = rsp
+		c.log(ctx).Debugf("Task.Delete success, status=%d", status)
+		ch <- makeExitError(status, "")
+	}(deleteCtx, deleteErr)
 
-		containers := containersapi.NewContainersClient(c.conn)
-		_, err = containers.Delete(ctx, &containersapi.DeleteContainerRequest{
-			ID: id,
-		})
-		if err != nil {
-			l.WithError(err).Warnf("failed to delete container")
-		}
+	c.log(ctx).Debugf("Killing task with %q signal", sig)
+	if err := c.task.Kill(ctx, sig); err != nil {
+		return errors.Wrapf(err, "killing task with %q", sig)
 	}
 
-	return c.deleteResponse.ExitStatus, nil
+	select {
+	case c.exitStatus = <-deleteErr:
+		return c.exitStatus
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(timeout):
+		c.log(ctx).Infof("Task did not exit after %s", timeout)
+		// Fall through
+	}
+
+	if sig == syscall.SIGKILL {
+		// We've tried as hard as we can.
+		return errors.New("task is unkillable")
+	}
+
+	// Bring out the big guns
+	sig = syscall.SIGKILL
+	c.log(ctx).Debugf("Killing task harder with %q signal", sig)
+	if err := c.task.Kill(ctx, sig); err != nil {
+		return errors.Wrapf(err, "killing task with %q", sig)
+	}
+
+	select {
+	case c.exitStatus = <-deleteErr:
+		return c.exitStatus
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
 }
 
 func (c *containerAdapter) terminate(ctx context.Context) error {
-	id := naming.Task(c.task)
-	l := log.G(ctx).WithFields(logrus.Fields{
-		"ID": id,
-	})
-	l.Debug("Terminate")
+	if !c.isPrepared() {
+		return errAdapterNotPrepared
+	}
+
+	c.log(ctx).Debug("Terminate")
 	return errors.New("terminate not implemented")
 }
 
 func (c *containerAdapter) remove(ctx context.Context) error {
-	id := naming.Task(c.task)
-	l := log.G(ctx).WithFields(logrus.Fields{
-		"ID": id,
-	})
-	l.Debug("Remove")
-	return os.RemoveAll(c.dir)
+	// Unlike most other entry points we don't use c.isPrepared
+	// here so that we can clean up a container which was
+	// partially reattached (via c.attach).
+	if c.container == nil {
+		return errAdapterNotPrepared
+	}
+
+	c.log(ctx).Debug("Remove")
+	err := c.container.Delete(ctx)
+	return errors.Wrap(err, "removing container")
 }
 
 func isContainerCreateNameConflict(err error) bool {
@@ -676,7 +412,7 @@ func isUnknownContainer(err error) bool {
 }
 
 // For sort.Sort
-type mounts []specs.Mount
+type mounts []api.Mount
 
 // Len returns the number of mounts. Used in sorting.
 func (m mounts) Len() int {
@@ -697,5 +433,5 @@ func (m mounts) Swap(i, j int) {
 
 // parts returns the number of parts in the destination of a mount. Used in sorting.
 func (m mounts) parts(i int) int {
-	return strings.Count(filepath.Clean(m[i].Destination), string(os.PathSeparator))
+	return strings.Count(filepath.Clean(m[i].Target), string(os.PathSeparator))
 }

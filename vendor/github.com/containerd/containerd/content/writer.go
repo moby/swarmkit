@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/containerd/containerd/log"
-	"github.com/nightlyone/lockfile"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 )
@@ -15,9 +13,8 @@ import (
 type writer struct {
 	s         *store
 	fp        *os.File // opened data file
-	lock      lockfile.Lockfile
-	path      string // path to writer dir
-	ref       string // ref key
+	path      string   // path to writer dir
+	ref       string   // ref key
 	offset    int64
 	total     int64
 	digester  digest.Digester
@@ -102,13 +99,14 @@ func (w *writer) Commit(size int64, expected digest.Digest) error {
 	if err := os.Rename(ingest, target); err != nil {
 		if os.IsExist(err) {
 			// collision with the target file!
-			return ErrExists
+			return ErrExists("")
 		}
 		return err
 	}
 
-	unlock(w.lock)
+	unlock(w.ref)
 	w.fp = nil
+
 	return nil
 }
 
@@ -122,9 +120,7 @@ func (w *writer) Commit(size int64, expected digest.Digest) error {
 // To abandon a transaction completely, first call close then `Store.Remove` to
 // clean up the associated resources.
 func (cw *writer) Close() (err error) {
-	if err := unlock(cw.lock); err != nil {
-		log.L.Debug("unlock failed: %v", err)
-	}
+	unlock(cw.ref)
 
 	if cw.fp != nil {
 		cw.fp.Sync()
