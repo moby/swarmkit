@@ -19,8 +19,8 @@ func TestClaimSingleDiscrete(t *testing.T) {
 	assert.Len(t, nodeRes, 1)
 	assert.Len(t, taskAssigned, 1)
 
-	assert.Equal(t, int64(1), nodeRes[0].GetDiscrete().Value)
-	assert.Equal(t, int64(2), taskAssigned[0].GetDiscrete().Value)
+	assert.Equal(t, int64(1), nodeRes[0].GetDiscreteResourceSpec().Value)
+	assert.Equal(t, int64(2), taskAssigned[0].GetDiscreteResourceSpec().Value)
 }
 
 func TestClaimMultipleDiscrete(t *testing.T) {
@@ -46,8 +46,8 @@ func TestClaimMultipleDiscrete(t *testing.T) {
 	assert.Len(t, apples, 1)
 	assert.Len(t, oranges, 1)
 
-	assert.Equal(t, int64(2), apples[0].GetDiscrete().Value)
-	assert.Equal(t, int64(4), oranges[0].GetDiscrete().Value)
+	assert.Equal(t, int64(2), apples[0].GetDiscreteResourceSpec().Value)
+	assert.Equal(t, int64(4), oranges[0].GetDiscreteResourceSpec().Value)
 }
 
 func TestClaimSingleStr(t *testing.T) {
@@ -102,13 +102,13 @@ func TestReclaimSingleDiscrete(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, nodeRes, 1)
-	assert.Equal(t, int64(2), nodeRes[0].GetDiscrete().Value)
+	assert.Equal(t, int64(2), nodeRes[0].GetDiscreteResourceSpec().Value)
 
 	err = reclaimResources(&nodeRes, taskAssigned)
 	assert.NoError(t, err)
 
 	assert.Len(t, nodeRes, 1)
-	assert.Equal(t, int64(4), nodeRes[0].GetDiscrete().Value)
+	assert.Equal(t, int64(4), nodeRes[0].GetDiscreteResourceSpec().Value)
 }
 
 func TestReclaimMultipleDiscrete(t *testing.T) {
@@ -133,9 +133,9 @@ func TestReclaimMultipleDiscrete(t *testing.T) {
 	assert.Len(t, oranges, 1)
 	assert.Len(t, bananas, 1)
 
-	assert.Equal(t, int64(5), apples[0].GetDiscrete().Value)
-	assert.Equal(t, int64(4), oranges[0].GetDiscrete().Value)
-	assert.Equal(t, int64(2), bananas[0].GetDiscrete().Value)
+	assert.Equal(t, int64(5), apples[0].GetDiscreteResourceSpec().Value)
+	assert.Equal(t, int64(4), oranges[0].GetDiscreteResourceSpec().Value)
+	assert.Equal(t, int64(2), bananas[0].GetDiscreteResourceSpec().Value)
 }
 
 func TestReclaimSingleStr(t *testing.T) {
@@ -212,9 +212,9 @@ func TestReclaimResources(t *testing.T) {
 	assert.Len(t, grapes, 2)
 	assert.Len(t, coffe, 1)
 
-	assert.Equal(t, int64(6), apples[0].GetDiscrete().Value)
-	assert.Equal(t, int64(2), cakes[0].GetDiscrete().Value)
-	assert.Equal(t, int64(2), coffe[0].GetDiscrete().Value)
+	assert.Equal(t, int64(6), apples[0].GetDiscreteResourceSpec().Value)
+	assert.Equal(t, int64(2), cakes[0].GetDiscreteResourceSpec().Value)
+	assert.Equal(t, int64(2), coffe[0].GetDiscreteResourceSpec().Value)
 
 	for _, k := range []string{"red", "orange", "green", "blue"} {
 		assert.True(t, HasResource(NewString("orange", k), oranges))
@@ -241,19 +241,19 @@ func TestSanitizeDiscrete(t *testing.T) {
 
 	sanitize(nodeRes, &nodeAvailableResources)
 	assert.Len(t, nodeAvailableResources, 1)
-	assert.Equal(t, int64(4), nodeAvailableResources[0].GetDiscrete().Value)
+	assert.Equal(t, int64(4), nodeAvailableResources[0].GetDiscreteResourceSpec().Value)
 
-	nodeRes[0].GetDiscrete().Value = 4
-
-	sanitize(nodeRes, &nodeAvailableResources)
-	assert.Len(t, nodeAvailableResources, 1)
-	assert.Equal(t, int64(4), nodeAvailableResources[0].GetDiscrete().Value)
-
-	nodeRes[0].GetDiscrete().Value = 2
+	nodeRes[0].GetDiscreteResourceSpec().Value = 4
 
 	sanitize(nodeRes, &nodeAvailableResources)
 	assert.Len(t, nodeAvailableResources, 1)
-	assert.Equal(t, int64(2), nodeAvailableResources[0].GetDiscrete().Value)
+	assert.Equal(t, int64(4), nodeAvailableResources[0].GetDiscreteResourceSpec().Value)
+
+	nodeRes[0].GetDiscreteResourceSpec().Value = 2
+
+	sanitize(nodeRes, &nodeAvailableResources)
+	assert.Len(t, nodeAvailableResources, 1)
+	assert.Equal(t, int64(2), nodeAvailableResources[0].GetDiscreteResourceSpec().Value)
 
 	nodeRes = append(nodeRes, NewDiscrete("banana", 6))
 	nodeRes = append(nodeRes, NewDiscrete("cake", 6))
@@ -263,9 +263,9 @@ func TestSanitizeDiscrete(t *testing.T) {
 
 	sanitize(nodeRes, &nodeAvailableResources)
 	assert.Len(t, nodeAvailableResources, 3)
-	assert.Equal(t, int64(2), nodeAvailableResources[0].GetDiscrete().Value) // oranges
-	assert.Equal(t, int64(2), nodeAvailableResources[1].GetDiscrete().Value) // cake
-	assert.Equal(t, int64(6), nodeAvailableResources[2].GetDiscrete().Value) // banana
+	assert.Equal(t, int64(2), nodeAvailableResources[0].GetDiscreteResourceSpec().Value) // oranges
+	assert.Equal(t, int64(2), nodeAvailableResources[1].GetDiscreteResourceSpec().Value) // cake
+	assert.Equal(t, int64(6), nodeAvailableResources[2].GetDiscreteResourceSpec().Value) // banana
 }
 
 func TestSanitizeStr(t *testing.T) {
@@ -295,7 +295,7 @@ func TestSanitizeChangeDiscreteToSet(t *testing.T) {
 
 	sanitize(nodeRes, &nodeAvailableResources)
 	assert.Len(t, nodeAvailableResources, 1)
-	assert.Equal(t, "red", nodeAvailableResources[0].GetStr().Value)
+	assert.Equal(t, "red", nodeAvailableResources[0].GetNamedResourceSpec().Value)
 
 	nodeRes = NewSet("apple", "red", "orange", "green")
 	nodeAvailableResources = []*api.GenericResource{NewDiscrete("apple", 5)}
@@ -343,14 +343,14 @@ func TestSanitizeChangeSetToDiscrete(t *testing.T) {
 
 	sanitize(nodeRes, &nodeAvailableResources)
 	assert.Len(t, nodeAvailableResources, 1)
-	assert.Equal(t, int64(5), nodeAvailableResources[0].GetDiscrete().Value)
+	assert.Equal(t, int64(5), nodeAvailableResources[0].GetDiscreteResourceSpec().Value)
 
 	nodeRes = []*api.GenericResource{NewDiscrete("apple", 5)}
 	nodeAvailableResources = NewSet("apple", "red", "orange", "green")
 
 	sanitize(nodeRes, &nodeAvailableResources)
 	assert.Len(t, nodeAvailableResources, 1)
-	assert.Equal(t, int64(5), nodeAvailableResources[0].GetDiscrete().Value)
+	assert.Equal(t, int64(5), nodeAvailableResources[0].GetDiscreteResourceSpec().Value)
 
 	nodeRes = append(nodeRes, NewDiscrete("orange", 3))
 	nodeRes = append(nodeRes, NewDiscrete("cake", 1))
@@ -368,7 +368,7 @@ func TestSanitizeChangeSetToDiscrete(t *testing.T) {
 	assert.Len(t, oranges, 1)
 	assert.Len(t, cakes, 1)
 
-	assert.Equal(t, int64(5), apples[0].GetDiscrete().Value)
-	assert.Equal(t, int64(3), oranges[0].GetDiscrete().Value)
-	assert.Equal(t, int64(1), cakes[0].GetDiscrete().Value)
+	assert.Equal(t, int64(5), apples[0].GetDiscreteResourceSpec().Value)
+	assert.Equal(t, int64(3), oranges[0].GetDiscreteResourceSpec().Value)
+	assert.Equal(t, int64(1), cakes[0].GetDiscreteResourceSpec().Value)
 }
