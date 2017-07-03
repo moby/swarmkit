@@ -514,6 +514,38 @@ file {
       type_name: ".google.protobuf.EnumOptions"
       json_name: "options"
     }
+    field {
+      name: "reserved_range"
+      number: 4
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".google.protobuf.EnumDescriptorProto.EnumReservedRange"
+      json_name: "reservedRange"
+    }
+    field {
+      name: "reserved_name"
+      number: 5
+      label: LABEL_REPEATED
+      type: TYPE_STRING
+      json_name: "reservedName"
+    }
+    nested_type {
+      name: "EnumReservedRange"
+      field {
+        name: "start"
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_INT32
+        json_name: "start"
+      }
+      field {
+        name: "end"
+        number: 2
+        label: LABEL_OPTIONAL
+        type: TYPE_INT32
+        json_name: "end"
+      }
+    }
   }
   message_type {
     name: "EnumValueDescriptorProto"
@@ -698,7 +730,7 @@ file {
     }
     field {
       name: "php_generic_services"
-      number: 19
+      number: 42
       label: LABEL_OPTIONAL
       type: TYPE_BOOL
       default_value: "false"
@@ -1256,6 +1288,7 @@ file {
     java_outer_classname: "DescriptorProtos"
     optimize_for: SPEED
     go_package: "github.com/golang/protobuf/protoc-gen-go/descriptor;descriptor"
+    cc_enable_arenas: true
     objc_class_prefix: "GPB"
     csharp_namespace: "Google.Protobuf.Reflection"
   }
@@ -3009,6 +3042,13 @@ file {
         number: 1
         options {
           66001: "ProtocolUDP"
+        }
+      }
+      value {
+        name: "SCTP"
+        number: 2
+        options {
+          66001: "ProtocolSCTP"
         }
       }
       options {
