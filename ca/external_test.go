@@ -8,9 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
+	"github.com/docker/swarmkit/log"
 	"github.com/stretchr/testify/require"
 )
 
@@ -163,4 +165,78 @@ func TestExternalCACopy(t *testing.T) {
 	cert, err := externalCA2.Sign(context.Background(), signReq)
 	require.NoError(t, err)
 	require.NotNil(t, cert)
+}
+
+// The ExternalCA object will stop reading the response from the server past a
+// a certain size
+func TestExternalCASignRequestSizeLimit(t *testing.T) {
+	t.Parallel()
+
+	if testutils.External {
+		return // this does not require the external CA in any way
+	}
+
+	ctx := log.WithLogger(context.Background(), log.L.WithFields(logrus.Fields{
+		"testname":          t.Name(),
+		"testHasExternalCA": false,
+	}))
+
+	rootCA, err := ca.CreateRootCA("rootCN")
+	require.NoError(t, err)
+
+	signDone, allDone, writeDone := make(chan error), make(chan struct{}), make(chan int64)
+	defer close(signDone)
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+		var written int64
+		garbage := []byte("abcdefghijklmnopqrstuvwxyz")
+		// keep writing until done
+		for {
+			select {
+			case <-allDone:
+				return
+			default:
+				wrote, err := w.Write(garbage)
+				if err != nil {
+					writeDone <- written
+					return
+				}
+				written += int64(wrote)
+			}
+		}
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+	defer server.CloseClientConnections()
+	defer close(allDone)
+
+	csr, _, err := ca.GenerateNewCSR()
+	require.NoError(t, err)
+
+	externalCA := ca.NewExternalCA(&rootCA, nil, server.URL)
+	externalCA.ExternalRequestTimeout = time.Second
+	go func() {
+		_, err := externalCA.Sign(ctx, ca.PrepareCSR(csr, "cn", "ou", "org"))
+		select {
+		case <-allDone:
+		case signDone <- err:
+		}
+	}()
+
+	select {
+	case err = <-signDone:
+		require.Error(t, err)
+	case <-time.After(3 * time.Second):
+		require.FailNow(t, "call to external CA signing should have failed by now")
+	}
+
+	select {
+	case written := <-writeDone:
+		// due to buffering/client disconnecting, it may be a little over the max size, so add a fudge factor
+		require.True(t, written <= 2*ca.CertificateMaxSize)
+	case <-time.After(time.Second):
+		require.FailNow(t, "the client connection to the server should have been closed by now")
+	}
 }
