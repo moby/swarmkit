@@ -25,7 +25,7 @@ func TestConsumeResourcesSingle(t *testing.T) {
 
 	ConsumeNodeResources(&nodeAvailableResources, res)
 	assert.Len(t, nodeAvailableResources, 3)
-	assert.Equal(t, int64(3), nodeAvailableResources[2].GetDiscrete().Value)
+	assert.Equal(t, int64(3), nodeAvailableResources[2].GetDiscreteResourceSpec().Value)
 }
 
 func TestConsumeResourcesMultiple(t *testing.T) {
@@ -61,6 +61,6 @@ func TestConsumeResourcesMultiple(t *testing.T) {
 		assert.True(t, HasResource(NewString("grape", k), grapes))
 	}
 
-	assert.Equal(t, int64(5), oranges[0].GetDiscrete().Value)
-	assert.Equal(t, int64(1), bananas[0].GetDiscrete().Value)
+	assert.Equal(t, int64(5), oranges[0].GetDiscreteResourceSpec().Value)
+	assert.Equal(t, int64(1), bananas[0].GetDiscreteResourceSpec().Value)
 }

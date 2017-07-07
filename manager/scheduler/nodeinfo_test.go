@@ -96,7 +96,7 @@ func TestRemoveTask(t *testing.T) {
 		)
 	}
 
-	assert.Equal(t, int64(6), apples[0].GetDiscrete().Value)
+	assert.Equal(t, int64(6), apples[0].GetDiscreteResourceSpec().Value)
 }
 
 func TestAddTask(t *testing.T) {
@@ -165,8 +165,8 @@ func TestAddTask(t *testing.T) {
 	assert.Len(t, apples, 1)
 	assert.Len(t, oranges, 1)
 
-	o := oranges[0].GetStr()
+	o := oranges[0].GetNamedResourceSpec()
 	assert.True(t, o.Value == "blue" || o.Value == "red")
-	assert.Equal(t, int64(3), apples[0].GetDiscrete().Value)
+	assert.Equal(t, int64(3), apples[0].GetDiscreteResourceSpec().Value)
 
 }
