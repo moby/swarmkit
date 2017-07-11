@@ -204,12 +204,12 @@ func TestCNMAllocator(t *testing.T) {
 		return nil
 	}))
 
-	netWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
-	defer cancel()
-	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
-	defer cancel()
-	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
-	defer cancel()
+	netWatch, netCancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
+	defer netCancel()
+	taskWatch, taskCancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
+	defer taskCancel()
+	serviceWatch, serviceCancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+	defer serviceCancel()
 
 	// Start allocator
 	go func() {
@@ -811,10 +811,10 @@ func TestCNIAllocator(t *testing.T) {
 		return nil
 	}))
 
-	netWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
-	defer cancel()
-	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
-	defer cancel()
+	netWatch, netCancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
+	defer netCancel()
+	taskWatch, taskCancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
+	defer taskCancel()
 
 	// Start allocator
 	go func() {
