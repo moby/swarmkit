@@ -155,7 +155,7 @@ func TestDeleteNode(t *testing.T) {
 
 	deleteNode(t, store, node1)
 	// task should be set to dead
-	observedTask := testutils.WatchShutdownTask(t, watch)
+	observedTask := testutils.WatchTaskDelete(t, watch)
 	assert.Equal(t, observedTask.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask.NodeID, "nodeid1")
 }
