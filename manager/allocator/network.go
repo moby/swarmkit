@@ -7,7 +7,6 @@ import (
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
 	"github.com/docker/swarmkit/manager/network"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
@@ -192,7 +191,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			break
 		}
 
-		if IsIngressNetwork(n) && nc.ingressNetwork != nil {
+		if network.IsIngressNetwork(n) && nc.ingressNetwork != nil {
 			log.G(ctx).Errorf("Cannot allocate ingress network %s (%s) because another ingress network is already present: %s (%s)",
 				n.ID, n.Spec.Annotations.Name, nc.ingressNetwork.ID, nc.ingressNetwork.Spec.Annotations)
 			break
@@ -209,7 +208,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			log.G(ctx).WithError(err).Errorf("Failed to commit allocation for network %s", n.ID)
 		}
 
-		if IsIngressNetwork(n) {
+		if network.IsIngressNetwork(n) {
 			nc.ingressNetwork = n
 			err := a.allocateNodes(ctx, false)
 			if err != nil {
@@ -219,7 +218,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 	case api.EventDeleteNetwork:
 		n := v.Network.Copy()
 
-		if IsIngressNetwork(n) && nc.ingressNetwork != nil && nc.ingressNetwork.ID == n.ID {
+		if network.IsIngressNetwork(n) && nc.ingressNetwork != nil && nc.ingressNetwork.ID == n.ID {
 			nc.ingressNetwork = nil
 			if err := a.deallocateNodes(ctx); err != nil {
 				log.G(ctx).WithError(err).Error(err)
@@ -633,11 +632,6 @@ func taskUpdateEndpoint(t *api.Task, endpoint *api.Endpoint) {
 	t.Endpoint = endpoint.Copy()
 }
 
-// IsIngressNetworkNeeded checks whether the service requires the routing-mesh
-func IsIngressNetworkNeeded(s *api.Service) bool {
-	return networkallocator.IsIngressNetworkNeeded(s)
-}
-
 func (a *Allocator) taskCreateNetworkAttachments(t *api.Task, s *api.Service) {
 	// If task network attachments have already been filled in no
 	// need to do anything else.
@@ -646,7 +640,7 @@ func (a *Allocator) taskCreateNetworkAttachments(t *api.Task, s *api.Service) {
 	}
 
 	var networks []*api.NetworkAttachment
-	if IsIngressNetworkNeeded(s) && a.netCtx.ingressNetwork != nil {
+	if network.IsIngressNetworkNeeded(s) && a.netCtx.ingressNetwork != nil {
 		networks = append(networks, &api.NetworkAttachment{Network: a.netCtx.ingressNetwork})
 	}
 
@@ -830,7 +824,7 @@ func (a *Allocator) allocateService(ctx context.Context, s *api.Service) error {
 		// The service is trying to expose ports to the external
 		// world. Automatically attach the service to the ingress
 		// network only if it is not already done.
-		if IsIngressNetworkNeeded(s) {
+		if network.IsIngressNetworkNeeded(s) {
 			if nc.ingressNetwork == nil {
 				return fmt.Errorf("ingress network is missing")
 			}
@@ -864,7 +858,7 @@ func (a *Allocator) allocateService(ctx context.Context, s *api.Service) error {
 	// If the service doesn't expose ports any more and if we have
 	// any lingering virtual IP references for ingress network
 	// clean them up here.
-	if !IsIngressNetworkNeeded(s) && nc.ingressNetwork != nil {
+	if !network.IsIngressNetworkNeeded(s) && nc.ingressNetwork != nil {
 		if s.Endpoint != nil {
 			for i, vip := range s.Endpoint.VirtualIPs {
 				if vip.NetworkID == nc.ingressNetwork.ID {
@@ -1154,11 +1148,6 @@ func updateTaskStatus(t *api.Task, newStatus api.TaskState, message string) {
 	t.Status.Timestamp = ptypes.MustTimestampProto(time.Now())
 }
 
-// IsIngressNetwork returns whether the passed network is an ingress network.
-func IsIngressNetwork(nw *api.Network) bool {
-	return networkallocator.IsIngressNetwork(nw)
-}
-
 // GetIngressNetwork fetches the ingress network from store.
 // ErrNoIngress will be returned if the ingress network is not present,
 // nil otherwise. In case of any other failure in accessing the store,
@@ -1175,7 +1164,7 @@ func GetIngressNetwork(s *store.MemoryStore) (*api.Network, error) {
 		return nil, err
 	}
 	for _, n := range networks {
-		if IsIngressNetwork(n) {
+		if network.IsIngressNetwork(n) {
 			return n, nil
 		}
 	}

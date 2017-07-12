@@ -13,7 +13,6 @@ import (
 	"github.com/docker/libnetwork/netlabel"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
 	"github.com/docker/swarmkit/manager/network"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -233,7 +232,7 @@ func (na *cnmNetworkAllocator) AllocateService(s *api.Service) (err error) {
 
 vipLoop:
 	for _, eAttach := range s.Endpoint.VirtualIPs {
-		if na.isVIPOnIngressNetwork(eAttach) && networkallocator.IsIngressNetworkNeeded(s) {
+		if na.isVIPOnIngressNetwork(eAttach) && network.IsIngressNetworkNeeded(s) {
 			if err = na.allocateVIP(eAttach); err != nil {
 				return err
 			}
@@ -402,7 +401,7 @@ func (na *cnmNetworkAllocator) IsServiceAllocated(s *api.Service, flags ...func(
 	if s.Endpoint != nil {
 	vipLoop:
 		for _, vip := range s.Endpoint.VirtualIPs {
-			if na.isVIPOnIngressNetwork(vip) && networkallocator.IsIngressNetworkNeeded(s) {
+			if na.isVIPOnIngressNetwork(vip) && network.IsIngressNetworkNeeded(s) {
 				continue vipLoop
 			}
 			for _, net := range specNetworks {
@@ -945,7 +944,7 @@ func (na *cnmNetworkAllocator) isVIPOnIngressNetwork(vip *api.Endpoint_VirtualIP
 
 	localNet := na.getNetwork(vip.NetworkID)
 	if localNet != nil && localNet.nw != nil {
-		return networkallocator.IsIngressNetwork(localNet.nw)
+		return network.IsIngressNetwork(localNet.nw)
 	}
 	return false
 }

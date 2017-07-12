@@ -114,7 +114,7 @@ func (s *Server) RemoveNetwork(ctx context.Context, request *api.RemoveNetworkRe
 		return nil, grpc.Errorf(codes.NotFound, "network %s not found", request.NetworkID)
 	}
 
-	if allocator.IsIngressNetwork(n) {
+	if network.IsIngressNetwork(n) {
 		rm = s.removeIngressNetwork
 	}
 
@@ -165,7 +165,7 @@ func (s *Server) removeIngressNetwork(id string) error {
 			return grpc.Errorf(codes.Internal, "could not find services using network %s: %v", id, err)
 		}
 		for _, srv := range services {
-			if allocator.IsIngressNetworkNeeded(srv) {
+			if network.IsIngressNetworkNeeded(srv) {
 				return grpc.Errorf(codes.FailedPrecondition, "ingress network cannot be removed because service %s depends on it", srv.ID)
 			}
 		}
