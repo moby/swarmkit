@@ -30,6 +30,13 @@ type instanceRestartInfo struct {
 	// Restart.MaxAttempts and Restart.Window are both
 	// nonzero.
 	restartedInstances *list.List
+	// Why is specVersion in this structure and not in the map key? While
+	// putting it in the key would be a very simple solution, it wouldn't
+	// be easy to clean up map entries corresponding to old specVersions.
+	// Making the key version-agnostic and clearing the value whenever the
+	// version changes avoids the issue of stale map entries for old
+	// versions.
+	specVersion api.Version
 }
 
 type delayedStart struct {
@@ -43,10 +50,9 @@ type delayedStart struct {
 }
 
 type instanceTuple struct {
-	instance    uint64 // unset for global tasks
-	serviceID   string
-	nodeID      string // unset for replicated tasks
-	specVersion api.Version
+	instance  uint64 // unset for global tasks
+	serviceID string
+	nodeID    string // unset for replicated tasks
 }
 
 // Supervisor initiates and manages restarts. It's responsible for
@@ -214,7 +220,7 @@ func (r *Supervisor) shouldRestart(ctx context.Context, t *api.Task, service *ap
 	defer r.mu.Unlock()
 
 	restartInfo := r.historyByService[t.ServiceID][instanceTuple]
-	if restartInfo == nil {
+	if restartInfo == nil || (t.SpecVersion != nil && *t.SpecVersion != restartInfo.specVersion) {
 		return true
 	}
 
@@ -263,9 +269,6 @@ func (r *Supervisor) recordRestartHistory(restartTask *api.Task) {
 		serviceID: restartTask.ServiceID,
 		nodeID:    restartTask.NodeID,
 	}
-	if restartTask.SpecVersion != nil {
-		tuple.specVersion = *restartTask.SpecVersion
-	}
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -278,6 +281,17 @@ func (r *Supervisor) recordRestartHistory(restartTask *api.Task) {
 	}
 
 	restartInfo := r.historyByService[restartTask.ServiceID][tuple]
+
+	if restartTask.SpecVersion != nil && *restartTask.SpecVersion != restartInfo.specVersion {
+		// This task has a different SpecVersion from the one we're
+		// tracking. Most likely, the service was updated. Past failures
+		// shouldn't count against the new service definition, so clear
+		// the history for this instance.
+		*restartInfo = instanceRestartInfo{
+			specVersion: *restartTask.SpecVersion,
+		}
+	}
+
 	restartInfo.totalRestarts++
 
 	if restartTask.Spec.Restart.Window != nil && (restartTask.Spec.Restart.Window.Seconds != 0 || restartTask.Spec.Restart.Window.Nanos != 0) {
