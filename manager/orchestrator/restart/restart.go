@@ -54,8 +54,7 @@ type Supervisor struct {
 	mu               sync.Mutex
 	store            *store.MemoryStore
 	delays           map[string]*delayedStart
-	history          map[instanceTuple]*instanceRestartInfo
-	historyByService map[string]map[instanceTuple]struct{}
+	historyByService map[string]map[instanceTuple]*instanceRestartInfo
 	TaskTimeout      time.Duration
 }
 
@@ -64,8 +63,7 @@ func NewSupervisor(store *store.MemoryStore) *Supervisor {
 	return &Supervisor{
 		store:            store,
 		delays:           make(map[string]*delayedStart),
-		history:          make(map[instanceTuple]*instanceRestartInfo),
-		historyByService: make(map[string]map[instanceTuple]struct{}),
+		historyByService: make(map[string]map[instanceTuple]*instanceRestartInfo),
 		TaskTimeout:      defaultOldTaskTimeout,
 	}
 }
@@ -214,7 +212,7 @@ func (r *Supervisor) shouldRestart(ctx context.Context, t *api.Task, service *ap
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	restartInfo := r.history[instanceTuple]
+	restartInfo := r.historyByService[t.ServiceID][instanceTuple]
 	if restartInfo == nil {
 		return true
 	}
@@ -268,17 +266,15 @@ func (r *Supervisor) recordRestartHistory(restartTask *api.Task) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if r.history[tuple] == nil {
-		r.history[tuple] = &instanceRestartInfo{}
-	}
-
-	restartInfo := r.history[tuple]
-	restartInfo.totalRestarts++
-
 	if r.historyByService[restartTask.ServiceID] == nil {
-		r.historyByService[restartTask.ServiceID] = make(map[instanceTuple]struct{})
+		r.historyByService[restartTask.ServiceID] = make(map[instanceTuple]*instanceRestartInfo)
 	}
-	r.historyByService[restartTask.ServiceID][tuple] = struct{}{}
+	if r.historyByService[restartTask.ServiceID][tuple] == nil {
+		r.historyByService[restartTask.ServiceID][tuple] = &instanceRestartInfo{}
+	}
+
+	restartInfo := r.historyByService[restartTask.ServiceID][tuple]
+	restartInfo.totalRestarts++
 
 	if restartTask.Spec.Restart.Window != nil && (restartTask.Spec.Restart.Window.Seconds != 0 || restartTask.Spec.Restart.Window.Nanos != 0) {
 		if restartInfo.restartedInstances == nil {
@@ -432,16 +428,6 @@ func (r *Supervisor) CancelAll() {
 // ClearServiceHistory forgets restart history related to a given service ID.
 func (r *Supervisor) ClearServiceHistory(serviceID string) {
 	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	tuples := r.historyByService[serviceID]
-	if tuples == nil {
-		return
-	}
-
 	delete(r.historyByService, serviceID)
-
-	for t := range tuples {
-		delete(r.history, t)
-	}
+	r.mu.Unlock()
 }
