@@ -4,12 +4,6 @@ import (
 	"github.com/docker/swarmkit/api"
 )
 
-const (
-	// PredefinedLabel identifies internally allocated swarm networks
-	// corresponding to the node-local predefined networks on the host.
-	PredefinedLabel = "com.docker.swarm.predefined"
-)
-
 // IsIngressNetwork check if the network is an ingress network
 func IsIngressNetwork(nw *api.Network) bool {
 	if nw.Spec.Ingress {

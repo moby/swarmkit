@@ -4,6 +4,12 @@ import (
 	"github.com/docker/swarmkit/api"
 )
 
+const (
+	// PredefinedLabel identifies internally allocated swarm networks
+	// corresponding to the node-local predefined networks on the host.
+	PredefinedLabel = "com.docker.swarm.predefined"
+)
+
 // ServiceAllocationOpts is struct used for functional options in
 // IsServiceAllocated
 type ServiceAllocationOpts struct {

@@ -23,7 +23,6 @@ import (
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/allocator"
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
 	"github.com/docker/swarmkit/manager/controlapi"
 	"github.com/docker/swarmkit/manager/dispatcher"
 	"github.com/docker/swarmkit/manager/drivers"
@@ -1201,7 +1200,7 @@ func newPredefinedNetwork(name, driver string) *api.Network {
 			Annotations: api.Annotations{
 				Name: name,
 				Labels: map[string]string{
-					networkallocator.PredefinedLabel: "true",
+					network.PredefinedLabel: "true",
 				},
 			},
 			DriverConfig: &api.Driver{Name: driver},
