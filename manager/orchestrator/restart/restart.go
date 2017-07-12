@@ -43,9 +43,10 @@ type delayedStart struct {
 }
 
 type instanceTuple struct {
-	instance  uint64 // unset for global tasks
-	serviceID string
-	nodeID    string // unset for replicated tasks
+	instance    uint64 // unset for global tasks
+	serviceID   string
+	nodeID      string // unset for replicated tasks
+	specVersion api.Version
 }
 
 // Supervisor initiates and manages restarts. It's responsible for
@@ -261,6 +262,9 @@ func (r *Supervisor) recordRestartHistory(restartTask *api.Task) {
 		instance:  restartTask.Slot,
 		serviceID: restartTask.ServiceID,
 		nodeID:    restartTask.NodeID,
+	}
+	if restartTask.SpecVersion != nil {
+		tuple.specVersion = *restartTask.SpecVersion
 	}
 
 	r.mu.Lock()
