@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
+	"github.com/docker/swarmkit/manager/network"
 	"github.com/pkg/errors"
 )
 
@@ -19,8 +19,8 @@ type cniNetworkAllocator struct {
 	nodes map[string]struct{}
 }
 
-// New returns a new NetworkAllocator handle
-func New() (networkallocator.NetworkAllocator, error) {
+// New returns a new Allocator handle
+func New() (network.Allocator, error) {
 	na := &cniNetworkAllocator{
 		networks: make(map[string]*api.Network),
 		tasks:    make(map[string]struct{}),
@@ -109,7 +109,7 @@ func (na *cniNetworkAllocator) HostPublishPortsNeedUpdate(s *api.Service) bool {
 }
 
 // IsServiceAllocated returns false if the passed service needs to have network resources allocated/updated.
-func (na *cniNetworkAllocator) IsServiceAllocated(s *api.Service, flags ...func(*networkallocator.ServiceAllocationOpts)) bool {
+func (na *cniNetworkAllocator) IsServiceAllocated(s *api.Service, flags ...func(*network.ServiceAllocationOpts)) bool {
 	// No service ever needs allocation for CNI
 	return true
 }

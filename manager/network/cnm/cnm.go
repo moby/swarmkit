@@ -9,7 +9,6 @@ import (
 	"github.com/docker/libnetwork/ipamapi"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/allocator/cnmallocator"
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
 	"github.com/docker/swarmkit/manager/network"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -26,7 +25,7 @@ func New(pg plugingetter.PluginGetter) network.Model {
 	}
 }
 
-func (nm *cnm) NewAllocator() (networkallocator.NetworkAllocator, error) {
+func (nm *cnm) NewAllocator() (network.Allocator, error) {
 	return cnmallocator.New(nm.pg)
 }
 

@@ -14,6 +14,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/allocator/networkallocator"
+	"github.com/docker/swarmkit/manager/network"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -37,7 +38,7 @@ type cnmNetworkAllocator struct {
 	portAllocator *portAllocator
 
 	// Local network state used by cnmNetworkAllocator to do network management.
-	networks map[string]*network
+	networks map[string]*nwstate
 
 	// Allocator state to indicate if allocation has been
 	// successfully completed for this service.
@@ -53,7 +54,7 @@ type cnmNetworkAllocator struct {
 }
 
 // Local in-memory state related to network that need to be tracked by cnmNetworkAllocator
-type network struct {
+type nwstate struct {
 	// A local cache of the store object.
 	nw *api.Network
 
@@ -84,9 +85,9 @@ type initializer struct {
 }
 
 // New returns a new NetworkAllocator handle
-func New(pg plugingetter.PluginGetter) (networkallocator.NetworkAllocator, error) {
+func New(pg plugingetter.PluginGetter) (network.Allocator, error) {
 	na := &cnmNetworkAllocator{
-		networks: make(map[string]*network),
+		networks: make(map[string]*nwstate),
 		services: make(map[string]struct{}),
 		tasks:    make(map[string]struct{}),
 		nodes:    make(map[string]struct{}),
@@ -129,7 +130,7 @@ func (na *cnmNetworkAllocator) Allocate(n *api.Network) error {
 		return err
 	}
 
-	nw := &network{
+	nw := &nwstate{
 		nw:          n,
 		endpoints:   make(map[string]string),
 		isNodeLocal: d.capability.DataScope == datastore.LocalScope,
@@ -163,7 +164,7 @@ func (na *cnmNetworkAllocator) Allocate(n *api.Network) error {
 	return nil
 }
 
-func (na *cnmNetworkAllocator) getNetwork(id string) *network {
+func (na *cnmNetworkAllocator) getNetwork(id string) *nwstate {
 	return na.networks[id]
 }
 
@@ -361,8 +362,8 @@ func (na *cnmNetworkAllocator) HostPublishPortsNeedUpdate(s *api.Service) bool {
 }
 
 // IsServiceAllocated returns false if the passed service needs to have network resources allocated/updated.
-func (na *cnmNetworkAllocator) IsServiceAllocated(s *api.Service, flags ...func(*networkallocator.ServiceAllocationOpts)) bool {
-	var options networkallocator.ServiceAllocationOpts
+func (na *cnmNetworkAllocator) IsServiceAllocated(s *api.Service, flags ...func(*network.ServiceAllocationOpts)) bool {
+	var options network.ServiceAllocationOpts
 	for _, flag := range flags {
 		flag(&options)
 	}

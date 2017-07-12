@@ -4,11 +4,11 @@ import (
 	"testing"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
+	"github.com/docker/swarmkit/manager/network"
 	"github.com/stretchr/testify/assert"
 )
 
-func newNetworkAllocator(t *testing.T) networkallocator.NetworkAllocator {
+func newNetworkAllocator(t *testing.T) network.Allocator {
 	na, err := New()
 	assert.NoError(t, err)
 	assert.NotNil(t, na)

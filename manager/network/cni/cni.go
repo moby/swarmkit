@@ -4,7 +4,6 @@ import (
 	"github.com/containernetworking/cni/libcni"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/allocator/cniallocator"
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
 	"github.com/docker/swarmkit/manager/network"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -17,7 +16,7 @@ func New() network.Model {
 	return &cni{}
 }
 
-func (nm *cni) NewAllocator() (networkallocator.NetworkAllocator, error) {
+func (nm *cni) NewAllocator() (network.Allocator, error) {
 	return cniallocator.New()
 }
 

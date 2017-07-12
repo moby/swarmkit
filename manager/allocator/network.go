@@ -8,6 +8,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/allocator/networkallocator"
+	"github.com/docker/swarmkit/manager/network"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
@@ -34,7 +35,7 @@ type networkContext struct {
 	ingressNetwork *api.Network
 	// Instance of the low-level network allocator which performs
 	// the actual network allocation.
-	nwkAllocator networkallocator.NetworkAllocator
+	nwkAllocator network.Allocator
 
 	// A set of tasks which are ready to be allocated as a batch. This is
 	// distinct from "unallocatedTasks" which are tasks that failed to
@@ -491,7 +492,7 @@ func (a *Allocator) allocateServices(ctx context.Context, existingAddressesOnly 
 
 	var allocatedServices []*api.Service
 	for _, s := range services {
-		if nc.nwkAllocator.IsServiceAllocated(s, networkallocator.OnInit) {
+		if nc.nwkAllocator.IsServiceAllocated(s, network.OnInit) {
 			continue
 		}
 
