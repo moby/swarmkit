@@ -3,7 +3,6 @@ package controlapi
 import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/allocator"
 	"github.com/docker/swarmkit/manager/network"
 	"github.com/docker/swarmkit/manager/state/store"
 	"golang.org/x/net/context"
@@ -56,9 +55,9 @@ func (s *Server) CreateNetwork(ctx context.Context, request *api.CreateNetworkRe
 
 	err := s.store.Update(func(tx store.Tx) error {
 		if request.Spec.Ingress {
-			if n, err := allocator.GetIngressNetwork(s.store); err == nil {
+			if n, err := network.GetIngressNetwork(s.store); err == nil {
 				return grpc.Errorf(codes.AlreadyExists, "ingress network (%s) is already present", n.ID)
-			} else if err != allocator.ErrNoIngress {
+			} else if err != network.ErrNoIngress {
 				return grpc.Errorf(codes.Internal, "failed ingress network presence check: %v", err)
 			}
 		}

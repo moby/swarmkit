@@ -22,8 +22,6 @@ const (
 )
 
 var (
-	// ErrNoIngress is returned when no ingress network is found in store
-	ErrNoIngress = errors.New("no ingress network found")
 	errNoChanges = errors.New("task unchanged")
 
 	retryInterval = 5 * time.Minute
@@ -92,7 +90,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 	// Check if we have the ingress network. If found, make sure it is
 	// allocated, before reading all network objects for allocation.
 	// If not found, it means it was removed by user, nothing to do here.
-	ingressNetwork, err := GetIngressNetwork(a.store)
+	ingressNetwork, err := network.GetIngressNetwork(a.store)
 	switch err {
 	case nil:
 		// Try to complete ingress network allocation before anything else so
@@ -110,7 +108,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 				log.G(ctx).WithError(err).Error("failed committing allocation of ingress network during init")
 			}
 		}
-	case ErrNoIngress:
+	case network.ErrNoIngress:
 		// Ingress network is not present in store, It means user removed it
 		// and did not create a new one.
 	default:
@@ -1146,27 +1144,4 @@ func updateTaskStatus(t *api.Task, newStatus api.TaskState, message string) {
 	t.Status.State = newStatus
 	t.Status.Message = message
 	t.Status.Timestamp = ptypes.MustTimestampProto(time.Now())
-}
-
-// GetIngressNetwork fetches the ingress network from store.
-// ErrNoIngress will be returned if the ingress network is not present,
-// nil otherwise. In case of any other failure in accessing the store,
-// the respective error will be reported as is.
-func GetIngressNetwork(s *store.MemoryStore) (*api.Network, error) {
-	var (
-		networks []*api.Network
-		err      error
-	)
-	s.View(func(tx store.ReadTx) {
-		networks, err = store.FindNetworks(tx, store.All)
-	})
-	if err != nil {
-		return nil, err
-	}
-	for _, n := range networks {
-		if network.IsIngressNetwork(n) {
-			return n, nil
-		}
-	}
-	return nil, ErrNoIngress
 }

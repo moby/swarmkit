@@ -2,12 +2,19 @@ package network
 
 import (
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/pkg/errors"
 )
 
 const (
 	// PredefinedLabel identifies internally allocated swarm networks
 	// corresponding to the node-local predefined networks on the host.
 	PredefinedLabel = "com.docker.swarm.predefined"
+)
+
+var (
+	// ErrNoIngress is returned when no ingress network is found in store
+	ErrNoIngress = errors.New("no ingress network found")
 )
 
 // ServiceAllocationOpts is struct used for functional options in
@@ -138,4 +145,27 @@ func IsIngressNetwork(nw *api.Network) bool {
 	// Check if legacy defined ingress network
 	_, ok := nw.Spec.Annotations.Labels["com.docker.swarm.internal"]
 	return ok && nw.Spec.Annotations.Name == "ingress"
+}
+
+// GetIngressNetwork fetches the ingress network from store.
+// ErrNoIngress will be returned if the ingress network is not present,
+// nil otherwise. In case of any other failure in accessing the store,
+// the respective error will be reported as is.
+func GetIngressNetwork(s *store.MemoryStore) (*api.Network, error) {
+	var (
+		networks []*api.Network
+		err      error
+	)
+	s.View(func(tx store.ReadTx) {
+		networks, err = store.FindNetworks(tx, store.All)
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range networks {
+		if IsIngressNetwork(n) {
+			return n, nil
+		}
+	}
+	return nil, ErrNoIngress
 }

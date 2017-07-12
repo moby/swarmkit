@@ -12,7 +12,6 @@ import (
 	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/api/naming"
 	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/allocator"
 	"github.com/docker/swarmkit/manager/constraint"
 	"github.com/docker/swarmkit/manager/network"
 	"github.com/docker/swarmkit/manager/state/store"
@@ -673,7 +672,7 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 	}
 
 	if network.IsIngressNetworkNeeded(service) {
-		if _, err := allocator.GetIngressNetwork(s.store); err == allocator.ErrNoIngress {
+		if _, err := network.GetIngressNetwork(s.store); err == network.ErrNoIngress {
 			return nil, grpc.Errorf(codes.FailedPrecondition, "service needs ingress network, but no ingress network is present")
 		}
 	}
@@ -826,7 +825,7 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 		}
 
 		if network.IsIngressNetworkNeeded(service) {
-			if _, err := allocator.GetIngressNetwork(s.store); err == allocator.ErrNoIngress {
+			if _, err := network.GetIngressNetwork(s.store); err == network.ErrNoIngress {
 				return grpc.Errorf(codes.FailedPrecondition, "service needs ingress network, but no ingress network is present")
 			}
 		}
