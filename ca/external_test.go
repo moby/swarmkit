@@ -3,6 +3,7 @@ package ca_test
 import (
 	"context"
 	"crypto/x509"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -190,12 +191,11 @@ func TestExternalCASignRequestSizeLimit(t *testing.T) {
 	rootCA, err := ca.CreateRootCA("rootCN")
 	require.NoError(t, err)
 
-	signDone, allDone, writeDone := make(chan error), make(chan struct{}), make(chan int64)
+	signDone, allDone, writeDone := make(chan error), make(chan struct{}), make(chan error)
 	defer close(signDone)
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
-		var written int64
 		garbage := []byte("abcdefghijklmnopqrstuvwxyz")
 		// keep writing until done
 		for {
@@ -203,12 +203,10 @@ func TestExternalCASignRequestSizeLimit(t *testing.T) {
 			case <-allDone:
 				return
 			default:
-				wrote, err := w.Write(garbage)
-				if err != nil {
-					writeDone <- written
+				if _, err := w.Write(garbage); err != nil {
+					writeDone <- err
 					return
 				}
-				written += int64(wrote)
 			}
 		}
 	})
@@ -234,14 +232,18 @@ func TestExternalCASignRequestSizeLimit(t *testing.T) {
 	select {
 	case err = <-signDone:
 		require.Error(t, err)
-	case <-time.After(3 * time.Second):
+		require.Contains(t, err.Error(), "unable to parse JSON response")
+	case <-time.After(2 * time.Second):
 		require.FailNow(t, "call to external CA signing should have failed by now")
 	}
 
 	select {
-	case written := <-writeDone:
-		// due to buffering/client disconnecting, it may be a little over the max size, so add a fudge factor
-		require.True(t, written <= 2*ca.CertificateMaxSize)
+	case err := <-writeDone:
+		// due to buffering/client disconnecting, we don't know how much was written to the TCP socket,
+		// but the client should have terminated the connection after receiving the max amount, so the
+		// request should have finished and the write to the socket failed.
+		require.Error(t, err)
+		require.IsType(t, &net.OpError{}, err)
 	case <-time.After(time.Second):
 		require.FailNow(t, "the client connection to the server should have been closed by now")
 	}
