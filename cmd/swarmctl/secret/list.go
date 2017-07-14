@@ -63,15 +63,21 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				common.PrintHeader(w, "ID", "Name", "Created")
+				common.PrintHeader(w, "ID", "Name", "Driver", "Created")
 				output = func(s *api.Secret) {
 					created, err := gogotypes.TimestampFromProto(s.Meta.CreatedAt)
 					if err != nil {
 						panic(err)
 					}
-					fmt.Fprintf(w, "%s\t%s\t%s\n",
+					var driver string
+					if s.Spec.Driver != nil {
+						driver = s.Spec.Driver.Name
+					}
+
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 						s.ID,
 						s.Spec.Annotations.Name,
+						driver,
 						humanize.Time(created),
 					)
 				}
