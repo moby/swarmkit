@@ -126,8 +126,8 @@ func TestLogBrokerLogs(t *testing.T) {
 
 	wg.Wait()
 
-	// Make sure double Run throws an error
-	require.EqualError(t, broker.Run(ctx), errAlreadyRunning.Error())
+	// Make sure double Start throws an error
+	require.EqualError(t, broker.Start(ctx), errAlreadyRunning.Error())
 	// Stop should work
 	require.NoError(t, broker.Stop())
 	// Double stopping should fail
@@ -780,7 +780,7 @@ func testLogBrokerEnv(t *testing.T) (context.Context, *testutils.TestCA, *LogBro
 		}
 	}()
 
-	go broker.Run(ctx)
+	require.NoError(t, broker.Start(ctx))
 
 	return ctx, tca, broker, logListener.Addr().String(), brokerListener.Addr().String(), func() {
 		broker.Stop()
