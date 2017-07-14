@@ -15,20 +15,17 @@ import (
 	"golang.org/x/net/context"
 )
 
-func TestUpdaterRollbackAndPause(t *testing.T) {
-	testUpdaterRollback(t, api.UpdateConfig_PAUSE, true)
+func TestUpdaterRollback(t *testing.T) {
+	t.Run("pause/monitor_set/spec_version_unset", func(t *testing.T) { testUpdaterRollback(t, api.UpdateConfig_PAUSE, true, false) })
+	t.Run("pause/monitor_set/spec_version_set", func(t *testing.T) { testUpdaterRollback(t, api.UpdateConfig_PAUSE, true, true) })
+	// skipped, see #2137
+	// t.Run("pause/monitor_unset/spec_version_unset", func(t *testing.T) { testUpdaterRollback(t, api.UpdateConfig_PAUSE, false, false) })
+	// t.Run("pause/monitor_unset/spec_version_set", func(t *testing.T) { testUpdaterRollback(t, api.UpdateConfig_PAUSE, false, true) })
+	t.Run("continue/spec_version_unset", func(t *testing.T) { testUpdaterRollback(t, api.UpdateConfig_CONTINUE, true, false) })
+	t.Run("continue/spec_version_set", func(t *testing.T) { testUpdaterRollback(t, api.UpdateConfig_CONTINUE, true, true) })
 }
 
-func TestUpdaterRollbackAndPauseNoMonitor(t *testing.T) {
-	t.Skip("skipping - see #2137")
-	testUpdaterRollback(t, api.UpdateConfig_PAUSE, false)
-}
-
-func TestUpdaterRollbackAndContinue(t *testing.T) {
-	testUpdaterRollback(t, api.UpdateConfig_CONTINUE, true)
-}
-
-func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_FailureAction, setMonitor bool) {
+func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_FailureAction, setMonitor bool, useSpecVersion bool) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
@@ -134,6 +131,11 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 			s1.Spec.Update.Monitor = gogotypes.DurationProto(500 * time.Millisecond)
 			s1.Spec.Rollback.Monitor = gogotypes.DurationProto(500 * time.Millisecond)
 		}
+		if useSpecVersion {
+			s1.SpecVersion = &api.Version{
+				Index: 1,
+			}
+		}
 
 		assert.NoError(t, store.CreateService(tx, s1))
 		return nil
@@ -168,8 +170,12 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 		s1 := store.GetService(tx, "id1")
 		require.NotNil(t, s1)
 		s1.PreviousSpec = s1.Spec.Copy()
+		s1.PreviousSpecVersion = s1.SpecVersion.Copy()
 		s1.UpdateStatus = nil
 		s1.Spec.Task.GetContainer().Image = "image2"
+		if s1.SpecVersion != nil {
+			s1.SpecVersion.Index = 2
+		}
 		assert.NoError(t, store.UpdateService(tx, s1))
 		return nil
 	})
@@ -234,8 +240,12 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 		s1 := store.GetService(tx, "id1")
 		require.NotNil(t, s1)
 		s1.PreviousSpec = s1.Spec.Copy()
+		s1.PreviousSpecVersion = s1.SpecVersion.Copy()
 		s1.UpdateStatus = nil
 		s1.Spec.Task.GetContainer().Image = "image2"
+		if s1.SpecVersion != nil {
+			s1.SpecVersion.Index = 2
+		}
 		assert.NoError(t, store.UpdateService(tx, s1))
 		return nil
 	})
