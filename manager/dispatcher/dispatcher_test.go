@@ -500,7 +500,18 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 // for said tasks that are <= RUNNING (if the secrets exist)
 func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	t.Parallel()
+	testFuncs := []taskGeneratorFunc{
+		makeTasksAndDependenciesWithResourceReferences,
+		makeTasksAndDependenciesNoResourceReferences,
+		makeTasksAndDependenciesOnlyResourceReferences,
+		makeTasksAndDependenciesWithRedundantReferences,
+	}
+	for _, testFunc := range testFuncs {
+		testAssignmentsInitialNodeTasksWithGivenTasks(t, testFunc)
+	}
+}
 
+func testAssignmentsInitialNodeTasksWithGivenTasks(t *testing.T, genTasks taskGeneratorFunc) {
 	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
@@ -508,7 +519,7 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	expectedSessionID, nodeID := getSessionAndNodeID(t, gd.Clients[0])
 
 	// create the relevant secrets and tasks
-	secrets, configs, resourceRefs, tasks := makeTasksAndDependencies(t, nodeID)
+	secrets, configs, resourceRefs, tasks := genTasks(t, nodeID)
 	err = gd.Store.Update(func(tx store.Tx) error {
 		for _, secret := range secrets {
 			assert.NoError(t, store.CreateSecret(tx, secret))
@@ -617,6 +628,40 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	})
 }
 
+func mockNumberedConfig(i int) *api.Config {
+	return &api.Config{
+		ID: fmt.Sprintf("IDconfig%d", i),
+		Spec: api.ConfigSpec{
+			Annotations: api.Annotations{
+				Name: fmt.Sprintf("config%d", i),
+			},
+			Data: []byte(fmt.Sprintf("config%d", i)),
+		},
+	}
+}
+
+func mockNumberedSecret(i int) *api.Secret {
+	return &api.Secret{
+		ID: fmt.Sprintf("IDsecret%d", i),
+		Spec: api.SecretSpec{
+			Annotations: api.Annotations{
+				Name: fmt.Sprintf("secret%d", i),
+			},
+			Data: []byte(fmt.Sprintf("secret%d", i)),
+		},
+	}
+}
+
+func mockNumberedReadyTask(i int, nodeID string, taskState api.TaskState, spec api.TaskSpec) *api.Task {
+	return &api.Task{
+		NodeID:       nodeID,
+		ID:           fmt.Sprintf("testTask%d", i),
+		Status:       api.TaskStatus{State: taskState},
+		DesiredState: api.TaskStateReady,
+		Spec:         spec,
+	}
+}
+
 func makeMockResource(tx store.Tx, resourceRef *api.ResourceReference) error {
 	switch resourceRef.ResourceType {
 	case api.ResourceType_SECRET:
@@ -629,7 +674,11 @@ func makeMockResource(tx store.Tx, resourceRef *api.ResourceReference) error {
 				Data: []byte(fmt.Sprintf("secret_%s", resourceRef.ResourceID)),
 			},
 		}
-		return store.CreateSecret(tx, dummySecret)
+		if store.GetSecret(tx, dummySecret.ID) == nil {
+			return store.CreateSecret(tx, dummySecret)
+		}
+		// the resource already exists
+		return nil
 	case api.ResourceType_CONFIG:
 		dummyConfig := &api.Config{
 			ID: resourceRef.ResourceID,
@@ -640,7 +689,11 @@ func makeMockResource(tx store.Tx, resourceRef *api.ResourceReference) error {
 				Data: []byte(fmt.Sprintf("config_%s", resourceRef.ResourceID)),
 			},
 		}
-		return store.CreateConfig(tx, dummyConfig)
+		if store.GetConfig(tx, dummyConfig.ID) == nil {
+			return store.CreateConfig(tx, dummyConfig)
+		}
+		// the resource already exists
+		return nil
 	default:
 		return fmt.Errorf("unsupported mock resource type")
 	}
@@ -651,7 +704,18 @@ func makeMockResource(tx store.Tx, resourceRef *api.ResourceReference) error {
 // they don't, even if they are referenced, the task is still sent down)
 func TestAssignmentsAddingTasks(t *testing.T) {
 	t.Parallel()
+	testFuncs := []taskGeneratorFunc{
+		makeTasksAndDependenciesWithResourceReferences,
+		makeTasksAndDependenciesNoResourceReferences,
+		makeTasksAndDependenciesOnlyResourceReferences,
+		makeTasksAndDependenciesWithRedundantReferences,
+	}
+	for _, testFunc := range testFuncs {
+		testAssignmentsAddingTasksWithGivenTasks(t, testFunc)
+	}
+}
 
+func testAssignmentsAddingTasksWithGivenTasks(t *testing.T, genTasks taskGeneratorFunc) {
 	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
@@ -670,14 +734,25 @@ func TestAssignmentsAddingTasks(t *testing.T) {
 	assert.Empty(t, resp.Changes)
 
 	// create the relevant secrets, configs, and tasks and update the tasks
-	secrets, configs, resourceRefs, tasks := makeTasksAndDependencies(t, nodeID)
-	createdSecrets, createdConfigs := secrets[:len(secrets)-1], configs[:len(configs)-1]
+	secrets, configs, resourceRefs, tasks := genTasks(t, nodeID)
+	var createdSecrets []*api.Secret
+	var createdConfigs []*api.Config
+	if len(secrets) > 0 {
+		createdSecrets = secrets[:len(secrets)-1]
+	}
+	if len(configs) > 0 {
+		createdConfigs = configs[:len(configs)-1]
+	}
 	err = gd.Store.Update(func(tx store.Tx) error {
 		for _, secret := range createdSecrets {
-			assert.NoError(t, store.CreateSecret(tx, secret))
+			if store.GetSecret(tx, secret.ID) == nil {
+				assert.NoError(t, store.CreateSecret(tx, secret))
+			}
 		}
 		for _, config := range createdConfigs {
-			assert.NoError(t, store.CreateConfig(tx, config))
+			if store.GetConfig(tx, config.ID) == nil {
+				assert.NoError(t, store.CreateConfig(tx, config))
+			}
 		}
 		// make dummy secrets and configs for resourceRefs
 		for _, resourceRef := range resourceRefs {
@@ -760,7 +835,18 @@ func TestAssignmentsAddingTasks(t *testing.T) {
 // If a secret or config is updated or deleted, even if it's for an existing task, no changes will be sent down
 func TestAssignmentsDependencyUpdateAndDeletion(t *testing.T) {
 	t.Parallel()
+	testFuncs := []taskGeneratorFunc{
+		makeTasksAndDependenciesWithResourceReferences,
+		makeTasksAndDependenciesNoResourceReferences,
+		makeTasksAndDependenciesOnlyResourceReferences,
+		makeTasksAndDependenciesWithRedundantReferences,
+	}
+	for _, testFunc := range testFuncs {
+		testAssignmentsDependencyUpdateAndDeletionWithGivenTasks(t, testFunc)
+	}
+}
 
+func testAssignmentsDependencyUpdateAndDeletionWithGivenTasks(t *testing.T, genTasks taskGeneratorFunc) {
 	gd, err := startDispatcher(DefaultConfig())
 	assert.NoError(t, err)
 	defer gd.Close()
@@ -768,13 +854,17 @@ func TestAssignmentsDependencyUpdateAndDeletion(t *testing.T) {
 	expectedSessionID, nodeID := getSessionAndNodeID(t, gd.Clients[0])
 
 	// create the relevant secrets and tasks
-	secrets, configs, resourceRefs, tasks := makeTasksAndDependencies(t, nodeID)
+	secrets, configs, resourceRefs, tasks := genTasks(t, nodeID)
 	err = gd.Store.Update(func(tx store.Tx) error {
 		for _, secret := range secrets {
-			assert.NoError(t, store.CreateSecret(tx, secret))
+			if store.GetSecret(tx, secret.ID) == nil {
+				assert.NoError(t, store.CreateSecret(tx, secret))
+			}
 		}
 		for _, config := range configs {
-			assert.NoError(t, store.CreateConfig(tx, config))
+			if store.GetConfig(tx, config.ID) == nil {
+				assert.NoError(t, store.CreateConfig(tx, config))
+			}
 		}
 		// make dummy secrets and configs for resourceRefs
 		for _, resourceRef := range resourceRefs {
@@ -820,14 +910,16 @@ func TestAssignmentsDependencyUpdateAndDeletion(t *testing.T) {
 	})
 
 	// updating secrets and configs, used by tasks or not, do not cause any changes
+	uniqueSecrets := uniquifySecrets(secrets)
+	uniqueConfigs := uniquifyConfigs(configs)
 	assert.NoError(t, gd.Store.Update(func(tx store.Tx) error {
-		for _, s := range secrets {
+		for _, s := range uniqueSecrets {
 			s.Spec.Data = []byte("new secret data")
 			if err := store.UpdateSecret(tx, s); err != nil {
 				return err
 			}
 		}
-		for _, c := range configs {
+		for _, c := range uniqueConfigs {
 			c.Spec.Data = []byte("new config data")
 			if err := store.UpdateConfig(tx, c); err != nil {
 				return err
@@ -850,10 +942,10 @@ func TestAssignmentsDependencyUpdateAndDeletion(t *testing.T) {
 
 	// deleting secrets and configs, used by tasks or not, do not cause any changes
 	err = gd.Store.Update(func(tx store.Tx) error {
-		for _, secret := range secrets {
+		for _, secret := range uniqueSecrets {
 			assert.NoError(t, store.DeleteSecret(tx, secret.ID))
 		}
-		for _, config := range configs {
+		for _, config := range uniqueConfigs {
 			assert.NoError(t, store.DeleteConfig(tx, config.ID))
 		}
 		return nil
@@ -1380,14 +1472,40 @@ func filterDependencies(secrets []*api.Secret, configs []*api.Config, inTasks, n
 			filteredConfigs = append(filteredConfigs, c)
 		}
 	}
-	return filteredSecrets, filteredConfigs
+	return uniquifySecrets(filteredSecrets), uniquifyConfigs(filteredConfigs)
 }
+
+func uniquifySecrets(secrets []*api.Secret) []*api.Secret {
+	uniqueSecrets := make(map[string]struct{})
+	var finalSecrets []*api.Secret
+	for _, secret := range secrets {
+		if _, ok := uniqueSecrets[secret.ID]; !ok {
+			uniqueSecrets[secret.ID] = struct{}{}
+			finalSecrets = append(finalSecrets, secret)
+		}
+	}
+	return finalSecrets
+}
+
+func uniquifyConfigs(configs []*api.Config) []*api.Config {
+	uniqueConfigs := make(map[string]struct{})
+	var finalConfigs []*api.Config
+	for _, config := range configs {
+		if _, ok := uniqueConfigs[config.ID]; !ok {
+			uniqueConfigs[config.ID] = struct{}{}
+			finalConfigs = append(finalConfigs, config)
+		}
+	}
+	return finalConfigs
+}
+
+type taskGeneratorFunc func(t *testing.T, nodeID string) ([]*api.Secret, []*api.Config, []*api.ResourceReference, []*api.Task)
 
 // Creates 1 task for every possible task state, so there are 12 tasks, ID=0-11 inclusive.
 // Creates 1 secret and 1 config for every single task state + 1, so there are 13 secrets, 13 configs, ID=0-12 inclusive
 // Creates 1 secret and 1 config per task by resource reference so there are an additional of each eventually created
-// For each task, the dependencies assigned to it are: secret<i>, secret12, config<i>, config12.
-func makeTasksAndDependencies(t *testing.T, nodeID string) ([]*api.Secret, []*api.Config, []*api.ResourceReference, []*api.Task) {
+// For each task, the dependencies assigned to it are: secret, secret12, config, config12, resourceRefSecret, resourceRefConfig
+func makeTasksAndDependenciesWithResourceReferences(t *testing.T, nodeID string) ([]*api.Secret, []*api.Config, []*api.ResourceReference, []*api.Task) {
 	var (
 		secrets      []*api.Secret
 		configs      []*api.Config
@@ -1395,24 +1513,8 @@ func makeTasksAndDependencies(t *testing.T, nodeID string) ([]*api.Secret, []*ap
 		tasks        []*api.Task
 	)
 	for i := 0; i <= len(taskStatesInOrder); i++ {
-		secrets = append(secrets, &api.Secret{
-			ID: fmt.Sprintf("IDsecret%d", i),
-			Spec: api.SecretSpec{
-				Annotations: api.Annotations{
-					Name: fmt.Sprintf("secret%d", i),
-				},
-				Data: []byte(fmt.Sprintf("secret%d", i)),
-			},
-		})
-		configs = append(configs, &api.Config{
-			ID: fmt.Sprintf("IDconfig%d", i),
-			Spec: api.ConfigSpec{
-				Annotations: api.Annotations{
-					Name: fmt.Sprintf("config%d", i),
-				},
-				Data: []byte(fmt.Sprintf("config%d", i)),
-			},
-		})
+		secrets = append(secrets, mockNumberedSecret(i))
+		configs = append(configs, mockNumberedConfig(i))
 
 		resourceRefs = append(resourceRefs, &api.ResourceReference{
 			ResourceID:   fmt.Sprintf("IDresourceRefSecret%d", i),
@@ -1425,13 +1527,86 @@ func makeTasksAndDependencies(t *testing.T, nodeID string) ([]*api.Secret, []*ap
 
 	for i, taskState := range taskStatesInOrder {
 		spec := taskSpecFromDependencies(secrets[i], secrets[len(secrets)-1], configs[i], configs[len(configs)-1], resourceRefs[2*i], resourceRefs[2*i+1])
-		tasks = append(tasks, &api.Task{
-			NodeID:       nodeID,
-			ID:           fmt.Sprintf("testTask%d", i),
-			Status:       api.TaskStatus{State: taskState},
-			DesiredState: api.TaskStateReady,
-			Spec:         spec,
+		tasks = append(tasks, mockNumberedReadyTask(i, nodeID, taskState, spec))
+	}
+	return secrets, configs, resourceRefs, tasks
+}
+
+// Creates 1 task for every possible task state, so there are 12 tasks, ID=0-11 inclusive.
+// Creates 1 secret and 1 config for every single task state + 1, so there are 13 secrets, 13 configs, ID=0-12 inclusive
+// For each task, the dependencies assigned to it are: secret<i>, secret12, config<i>, config12.
+// There are no ResourceReferences in these TaskSpecs
+func makeTasksAndDependenciesNoResourceReferences(t *testing.T, nodeID string) ([]*api.Secret, []*api.Config, []*api.ResourceReference, []*api.Task) {
+	var (
+		secrets      []*api.Secret
+		configs      []*api.Config
+		resourceRefs []*api.ResourceReference
+		tasks        []*api.Task
+	)
+	for i := 0; i <= len(taskStatesInOrder); i++ {
+		secrets = append(secrets, mockNumberedSecret(i))
+		configs = append(configs, mockNumberedConfig(i))
+	}
+	for i, taskState := range taskStatesInOrder {
+		spec := taskSpecFromDependencies(secrets[i], secrets[len(secrets)-1], configs[i], configs[len(configs)-1])
+		tasks = append(tasks, mockNumberedReadyTask(i, nodeID, taskState, spec))
+	}
+	return secrets, configs, resourceRefs, tasks
+}
+
+// Creates 1 secret and 1 config per task by resource reference
+// For each task, the dependencies assigned to it are: resourceRefSecret<i>, resourceRefConfig<i>,.
+func makeTasksAndDependenciesOnlyResourceReferences(t *testing.T, nodeID string) ([]*api.Secret, []*api.Config, []*api.ResourceReference, []*api.Task) {
+	var (
+		secrets      []*api.Secret
+		configs      []*api.Config
+		resourceRefs []*api.ResourceReference
+		tasks        []*api.Task
+	)
+	for i := 0; i <= len(taskStatesInOrder); i++ {
+		resourceRefs = append(resourceRefs, &api.ResourceReference{
+			ResourceID:   fmt.Sprintf("IDresourceRefSecret%d", i),
+			ResourceType: api.ResourceType_SECRET,
+		}, &api.ResourceReference{
+			ResourceID:   fmt.Sprintf("IDresourceRefConfig%d", i),
+			ResourceType: api.ResourceType_CONFIG,
 		})
+	}
+	for i, taskState := range taskStatesInOrder {
+		spec := taskSpecFromDependencies(resourceRefs[2*i], resourceRefs[2*i+1])
+		tasks = append(tasks, mockNumberedReadyTask(i, nodeID, taskState, spec))
+	}
+	return secrets, configs, resourceRefs, tasks
+}
+
+// Creates 1 task for every possible task state, so there are 12 tasks, ID=0-11 inclusive.
+// Creates 1 secret and 1 config for every single task state + 1, so there are 13 secrets, 13 configs, ID=0-12 inclusive
+// Creates 1 secret and 1 config per task by resource reference, however they point to existing ID=0-12 secrets and configs so they are not created
+// For each task, the dependencies assigned to it are: secret<i>, secret12, config<i>, config12.
+func makeTasksAndDependenciesWithRedundantReferences(t *testing.T, nodeID string) ([]*api.Secret, []*api.Config, []*api.ResourceReference, []*api.Task) {
+	var (
+		secrets      []*api.Secret
+		configs      []*api.Config
+		resourceRefs []*api.ResourceReference
+		tasks        []*api.Task
+	)
+	for i := 0; i <= len(taskStatesInOrder); i++ {
+		secrets = append(secrets, mockNumberedSecret(i))
+		configs = append(configs, mockNumberedConfig(i))
+
+		// Note that the IDs here will match the original secret and config reference IDs
+		resourceRefs = append(resourceRefs, &api.ResourceReference{
+			ResourceID:   fmt.Sprintf("IDsecret%d", i),
+			ResourceType: api.ResourceType_SECRET,
+		}, &api.ResourceReference{
+			ResourceID:   fmt.Sprintf("IDconfig%d", i),
+			ResourceType: api.ResourceType_CONFIG,
+		})
+	}
+
+	for i, taskState := range taskStatesInOrder {
+		spec := taskSpecFromDependencies(secrets[i], secrets[len(secrets)-1], configs[i], configs[len(configs)-1], resourceRefs[2*i], resourceRefs[2*i+1])
+		tasks = append(tasks, mockNumberedReadyTask(i, nodeID, taskState, spec))
 	}
 	return secrets, configs, resourceRefs, tasks
 }
@@ -1439,7 +1614,7 @@ func makeTasksAndDependencies(t *testing.T, nodeID string) ([]*api.Secret, []*ap
 func taskSpecFromDependencies(dependencies ...interface{}) api.TaskSpec {
 	var secretRefs []*api.SecretReference
 	var configRefs []*api.ConfigReference
-	var resourceRefs []*api.ResourceReference
+	var resourceRefs []api.ResourceReference
 	for _, d := range dependencies {
 		switch v := d.(type) {
 		case *api.Secret:
@@ -1469,7 +1644,7 @@ func taskSpecFromDependencies(dependencies ...interface{}) api.TaskSpec {
 				},
 			})
 		case *api.ResourceReference:
-			resourceRefs = append(resourceRefs, &api.ResourceReference{
+			resourceRefs = append(resourceRefs, api.ResourceReference{
 				ResourceID:   v.ResourceID,
 				ResourceType: v.ResourceType,
 			})
