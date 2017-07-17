@@ -495,6 +495,7 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 	}
 }
 
+// When connecting to a dispatcher to get Assignments, if there are tasks already in the store,
 // Assignments will send down any existing node tasks > ASSIGNED, and any secrets
 // for said tasks that are <= RUNNING (if the secrets exist)
 func TestAssignmentsInitialNodeTasks(t *testing.T) {
@@ -533,22 +534,26 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	resp, err := stream.Recv()
 	assert.NoError(t, err)
 
-	// FIXME(aaronl): This is hard to maintain.
-	assert.Equal(t, 10+7+7, len(resp.Changes))
+	assignedToRunningTasks := filterTasks(tasks, func(s api.TaskState) bool {
+		return s >= api.TaskStateAssigned && s <= api.TaskStateRunning
+	})
+	pastRunningTasks := filterTasks(tasks, func(s api.TaskState) bool {
+		return s > api.TaskStateRunning
+	})
+	atLeastAssignedTasks := filterTasks(tasks, func(s api.TaskState) bool {
+		return s >= api.TaskStateAssigned
+	})
 
-	taskChanges, configChanges, secretChanges := splitChanges(resp.Changes)
-	assert.Len(t, taskChanges, 10) // 10 types of task states >= assigned, 2 types < assigned
-	for _, task := range tasks[2:] {
-		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
-	}
-	assert.Len(t, secretChanges, 7) // 6 different secrets for states between assigned and running inclusive plus secret12
-	for _, secret := range secrets[2:8] {
-		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
-	}
-	assert.Len(t, configChanges, 7) // 6 different configs for states between assigned and running inclusive plus config12
-	for _, config := range configs[2:8] {
-		assert.NotNil(t, configChanges[idAndAction{id: config.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
-	}
+	// dispatcher sends dependencies for all tasks >= ASSIGNED and <= RUNNING
+	updatedSecrets, updatedConfigs := filterDependencies(secrets, configs, assignedToRunningTasks, nil)
+	verifyChanges(t, resp.Changes, []changeExpectations{
+		{
+			action:  api.AssignmentChange_AssignmentActionUpdate,
+			tasks:   atLeastAssignedTasks, // dispatcher sends task updates for all tasks >= ASSIGNED
+			secrets: updatedSecrets,
+			configs: updatedConfigs,
+		},
+	})
 
 	// updating all the tasks will attempt to remove all the secrets for the tasks that are in state > running
 	err = gd.Store.Update(func(tx store.Tx) error {
@@ -560,23 +565,24 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// updates for all the tasks, remove secret sent for the 4 types of states > running
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1+4+4, len(resp.Changes))
-	taskChanges, configChanges, secretChanges = splitChanges(resp.Changes)
-	assert.Len(t, taskChanges, 1)
-	assert.NotNil(t, taskChanges[idAndAction{id: tasks[2].ID, action: api.AssignmentChange_AssignmentActionUpdate}]) // this is the task in ASSIGNED
-
-	assert.Len(t, secretChanges, 4) // these are the secrets for states > running
-	for _, secret := range secrets[9 : len(secrets)-1] {
-		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionRemove}])
-	}
-	assert.Len(t, configChanges, 4) // these are the configs for states > running
-	for _, config := range configs[9 : len(configs)-1] {
-		assert.NotNil(t, configChanges[idAndAction{id: config.ID, action: api.AssignmentChange_AssignmentActionRemove}])
-	}
+	// dependencies for tasks > RUNNING are removed, but only if they are not currently being used
+	// by a task >= ASSIGNED and <= RUNNING
+	updatedSecrets, updatedConfigs = filterDependencies(secrets, configs, pastRunningTasks, assignedToRunningTasks)
+	verifyChanges(t, resp.Changes, []changeExpectations{
+		{
+			// ASSIGNED tasks are always sent down even if they haven't changed
+			action: api.AssignmentChange_AssignmentActionUpdate,
+			tasks:  filterTasks(tasks, func(s api.TaskState) bool { return s == api.TaskStateAssigned }),
+		},
+		{
+			action:  api.AssignmentChange_AssignmentActionRemove,
+			secrets: updatedSecrets,
+			configs: updatedConfigs,
+		},
+	})
 
 	// deleting the tasks removes all the secrets for every single task, no matter
 	// what state it's in
@@ -588,30 +594,25 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// updates for all the tasks >= ASSIGNMENT, and remove secrets for all of them,
-	// (there will be 2 tasks changes that won't be sent down)
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, len(tasks)-2+len(secrets)-2+len(configs)-2, len(resp.Changes))
-	taskChanges, configChanges, secretChanges = splitChanges(resp.Changes)
-	assert.Len(t, taskChanges, len(tasks)-2)
-	for _, task := range tasks[2:] {
-		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionRemove}])
-	}
 
-	assert.Len(t, secretChanges, len(secrets)-2)
-	for _, secret := range secrets[2:] {
-		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionRemove}])
-	}
-
-	assert.Len(t, configChanges, len(configs)-2)
-	for _, config := range configs[2:] {
-		assert.NotNil(t, configChanges[idAndAction{id: config.ID, action: api.AssignmentChange_AssignmentActionRemove}])
-	}
+	// tasks >= ASSIGNED and their dependencies have all been removed;
+	// task < ASSIGNED and their dependencies were never sent in the first place, so don't need to be removed
+	updatedSecrets, updatedConfigs = filterDependencies(secrets, configs, atLeastAssignedTasks, nil)
+	verifyChanges(t, resp.Changes, []changeExpectations{
+		{
+			action:  api.AssignmentChange_AssignmentActionRemove,
+			tasks:   atLeastAssignedTasks,
+			secrets: updatedSecrets,
+			configs: updatedConfigs,
+		},
+	})
 }
 
-// As tasks are added, assignments will send down tasks > ASSIGNED, and any secrets
-// for said tasks that are <= RUNNING (if the secrets exist)
+// When connecting to a dispatcher with no tasks or assignments, when tasks are updated, assignments will send down
+// tasks > ASSIGNED, and any secrets for said tasks that are <= RUNNING (but only if the secrets/configs exist - if
+// they don't, even if they are referenced, the task is still sent down)
 func TestAssignmentsAddingTasks(t *testing.T) {
 	t.Parallel()
 
@@ -634,11 +635,12 @@ func TestAssignmentsAddingTasks(t *testing.T) {
 
 	// create the relevant secrets, configs, and tasks and update the tasks
 	secrets, configs, tasks := makeTasksAndDependencies(t, nodeID)
+	createdSecrets, createdConfigs := secrets[:len(secrets)-1], configs[:len(configs)-1]
 	err = gd.Store.Update(func(tx store.Tx) error {
-		for _, secret := range secrets[:len(secrets)-1] {
+		for _, secret := range createdSecrets {
 			assert.NoError(t, store.CreateSecret(tx, secret))
 		}
-		for _, config := range configs[:len(configs)-1] {
+		for _, config := range createdConfigs {
 			assert.NoError(t, store.CreateConfig(tx, config))
 		}
 		for _, task := range tasks {
@@ -648,8 +650,8 @@ func TestAssignmentsAddingTasks(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Nothing happens until we update.  Updating all the tasks will send updates for all the tasks >= ASSIGNED (10),
-	// and secrets for all the tasks >= ASSIGNED and <= RUNNING (6).
+	// Nothing happens until we update.  Updating all the tasks will send updates for all the tasks >= ASSIGNED,
+	// and secrets for all the tasks >= ASSIGNED and <= RUNNING.
 	err = gd.Store.Update(func(tx store.Tx) error {
 		for _, task := range tasks {
 			assert.NoError(t, store.UpdateTask(tx, task))
@@ -662,25 +664,25 @@ func TestAssignmentsAddingTasks(t *testing.T) {
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
 
-	// FIXME(aaronl): This is hard to maintain.
-	assert.Equal(t, 10+6+6, len(resp.Changes))
-	taskChanges, configChanges, secretChanges := splitChanges(resp.Changes)
-	assert.Len(t, taskChanges, 10)
-	for _, task := range tasks[2:] {
-		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
-	}
+	assignedToRunningTasks := filterTasks(tasks, func(s api.TaskState) bool {
+		return s >= api.TaskStateAssigned && s <= api.TaskStateRunning
+	})
+	atLeastAssignedTasks := filterTasks(tasks, func(s api.TaskState) bool {
+		return s >= api.TaskStateAssigned
+	})
 
-	assert.Len(t, secretChanges, 6)
-	// all the secrets for tasks >= ASSIGNED and <= RUNNING
-	for _, secret := range secrets[2:8] {
-		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
-	}
-
-	assert.Len(t, configChanges, 6)
-	// all the secrets for tasks >= ASSIGNED and <= RUNNING
-	for _, config := range configs[2:8] {
-		assert.NotNil(t, configChanges[idAndAction{id: config.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
-	}
+	// dispatcher sends dependencies for all tasks >= ASSIGNED and <= RUNNING, but only if they exist in
+	// the store - if a dependency is referenced by a task but does not exist, that's fine, it just won't be
+	// included in the changes
+	updatedSecrets, updatedConfigs := filterDependencies(createdSecrets, createdConfigs, assignedToRunningTasks, nil)
+	verifyChanges(t, resp.Changes, []changeExpectations{
+		{
+			action:  api.AssignmentChange_AssignmentActionUpdate,
+			tasks:   atLeastAssignedTasks, // dispatcher sends task updates for all tasks >= ASSIGNED
+			secrets: updatedSecrets,
+			configs: updatedConfigs,
+		},
+	})
 
 	// deleting the tasks removes all the secrets for every single task, no matter
 	// what state it's in
@@ -693,31 +695,24 @@ func TestAssignmentsAddingTasks(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// updates for all the tasks >= ASSIGNMENT, and remove secrets for all of them, even ones that don't exist
-	// (there will be 2 tasks changes that won't be sent down)
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
 
-	assert.Equal(t, len(tasks)-2+len(secrets)-2+len(configs)-2, len(resp.Changes))
-	taskChanges, configChanges, secretChanges = splitChanges(resp.Changes)
-	assert.Len(t, taskChanges, len(tasks)-2)
-	for _, task := range tasks[2:] {
-		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionRemove}])
-	}
-
-	assert.Len(t, secretChanges, len(secrets)-2)
-	for _, secret := range secrets[2:] {
-		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionRemove}])
-	}
-
-	assert.Len(t, configChanges, len(configs)-2)
-	for _, config := range configs[2:] {
-		assert.NotNil(t, configChanges[idAndAction{id: config.ID, action: api.AssignmentChange_AssignmentActionRemove}])
-	}
+	// tasks >= ASSIGNED and their dependencies have all been removed, even if they don't exist in the store;
+	// task < ASSIGNED and their dependencies were never sent in the first place, so don't need to be removed
+	updatedSecrets, updatedConfigs = filterDependencies(secrets, configs, atLeastAssignedTasks, nil)
+	verifyChanges(t, resp.Changes, []changeExpectations{
+		{
+			action:  api.AssignmentChange_AssignmentActionRemove,
+			tasks:   atLeastAssignedTasks,
+			secrets: updatedSecrets,
+			configs: updatedConfigs,
+		},
+	})
 }
 
-// If a secret is updated or deleted, even if it's for an existing task, no changes will be sent down
-func TestAssignmentsSecretUpdateAndDeletion(t *testing.T) {
+// If a secret or config is updated or deleted, even if it's for an existing task, no changes will be sent down
+func TestAssignmentsDependencyUpdateAndDeletion(t *testing.T) {
 	t.Parallel()
 
 	gd, err := startDispatcher(DefaultConfig())
@@ -729,10 +724,10 @@ func TestAssignmentsSecretUpdateAndDeletion(t *testing.T) {
 	// create the relevant secrets and tasks
 	secrets, configs, tasks := makeTasksAndDependencies(t, nodeID)
 	err = gd.Store.Update(func(tx store.Tx) error {
-		for _, secret := range secrets[:len(secrets)-1] {
+		for _, secret := range secrets {
 			assert.NoError(t, store.CreateSecret(tx, secret))
 		}
-		for _, config := range configs[:len(configs)-1] {
+		for _, config := range configs {
 			assert.NoError(t, store.CreateConfig(tx, config))
 		}
 		for _, task := range tasks {
@@ -752,31 +747,35 @@ func TestAssignmentsSecretUpdateAndDeletion(t *testing.T) {
 	resp, err := stream.Recv()
 	assert.NoError(t, err)
 
-	// FIXME(aaronl): This is hard to maintain.
-	assert.Equal(t, 10+6+6, len(resp.Changes))
-	taskChanges, configChanges, secretChanges := splitChanges(resp.Changes)
-	assert.Len(t, taskChanges, 10) // 10 types of task states >= assigned, 2 types < assigned
-	for _, task := range tasks[2:] {
-		assert.NotNil(t, taskChanges[idAndAction{id: task.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
-	}
-	assert.Len(t, secretChanges, 6) // 6 types of task states between assigned and running inclusive
-	for _, secret := range secrets[2:8] {
-		assert.NotNil(t, secretChanges[idAndAction{id: secret.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
-	}
-	assert.Len(t, configChanges, 6) // 6 types of task states between assigned and running inclusive
-	for _, config := range configs[2:8] {
-		assert.NotNil(t, configChanges[idAndAction{id: config.ID, action: api.AssignmentChange_AssignmentActionUpdate}])
-	}
+	assignedToRunningTasks := filterTasks(tasks, func(s api.TaskState) bool {
+		return s >= api.TaskStateAssigned && s <= api.TaskStateRunning
+	})
+	atLeastAssignedTasks := filterTasks(tasks, func(s api.TaskState) bool {
+		return s >= api.TaskStateAssigned
+	})
 
-	// updating secrets, used by tasks or not, do not cause any changes
+	// dispatcher sends dependencies for all tasks >= ASSIGNED and <= RUNNING
+	updatedSecrets, updatedConfigs := filterDependencies(secrets, configs, assignedToRunningTasks, nil)
+	verifyChanges(t, resp.Changes, []changeExpectations{
+		{
+			action:  api.AssignmentChange_AssignmentActionUpdate,
+			tasks:   atLeastAssignedTasks, // dispatcher sends task updates for all tasks >= ASSIGNED
+			secrets: updatedSecrets,
+			configs: updatedConfigs,
+		},
+	})
+
+	// updating secrets and configs, used by tasks or not, do not cause any changes
 	assert.NoError(t, gd.Store.Update(func(tx store.Tx) error {
-		for _, secret := range secrets[:len(secrets)-2] {
-			s := store.GetSecret(tx, secret.ID)
-			if s == nil {
-				return errors.New("no secret")
-			}
+		for _, s := range secrets {
 			s.Spec.Data = []byte("new secret data")
 			if err := store.UpdateSecret(tx, s); err != nil {
+				return err
+			}
+		}
+		for _, c := range configs {
+			c.Spec.Data = []byte("new config data")
+			if err := store.UpdateConfig(tx, c); err != nil {
 				return err
 			}
 		}
@@ -795,10 +794,13 @@ func TestAssignmentsSecretUpdateAndDeletion(t *testing.T) {
 	case <-time.After(250 * time.Millisecond):
 	}
 
-	// deleting secrets, used by tasks or not, do not cause any changes
+	// deleting secrets and configs, used by tasks or not, do not cause any changes
 	err = gd.Store.Update(func(tx store.Tx) error {
-		for _, secret := range secrets[:len(secrets)-2] {
+		for _, secret := range secrets {
 			assert.NoError(t, store.DeleteSecret(tx, secret.ID))
+		}
+		for _, config := range configs {
+			assert.NoError(t, store.DeleteConfig(tx, config.ID))
 		}
 		return nil
 	})
@@ -870,13 +872,13 @@ func TestTasksStatusChange(t *testing.T) {
 
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, len(resp.Changes), 2)
-	tasks, configs, secrets := splitChanges(resp.Changes)
-	assert.Len(t, tasks, 2)
-	assert.Len(t, secrets, 0)
-	assert.Len(t, configs, 0)
-	assert.NotNil(t, tasks[idAndAction{id: "testTask1", action: api.AssignmentChange_AssignmentActionUpdate}])
-	assert.NotNil(t, tasks[idAndAction{id: "testTask2", action: api.AssignmentChange_AssignmentActionUpdate}])
+
+	verifyChanges(t, resp.Changes, []changeExpectations{
+		{
+			action: api.AssignmentChange_AssignmentActionUpdate,
+			tasks:  []*api.Task{testTask1, testTask2},
+		},
+	})
 
 	assert.NoError(t, gd.Store.Update(func(tx store.Tx) error {
 		task := store.GetTask(tx, testTask1.ID)
@@ -964,14 +966,14 @@ func TestTasksBatch(t *testing.T) {
 
 	resp, err = stream.Recv()
 	assert.NoError(t, err)
-	// all tasks have been deleted
 
-	tasks, configs, secrets := splitChanges(resp.Changes)
-	assert.Len(t, tasks, 2)
-	assert.Len(t, secrets, 0)
-	assert.Len(t, configs, 0)
-	assert.Equal(t, api.AssignmentChange_AssignmentActionRemove, resp.Changes[0].Action)
-	assert.Equal(t, api.AssignmentChange_AssignmentActionRemove, resp.Changes[1].Action)
+	// all tasks have been deleted
+	verifyChanges(t, resp.Changes, []changeExpectations{
+		{
+			action: api.AssignmentChange_AssignmentActionRemove,
+			tasks:  []*api.Task{testTask1, testTask2},
+		},
+	})
 }
 
 func TestTasksNoCert(t *testing.T) {
@@ -1206,6 +1208,94 @@ func splitChanges(changes []*api.AssignmentChange) (map[idAndAction]*api.Task, m
 	return tasks, configs, secrets
 }
 
+type changeExpectations struct {
+	tasks   []*api.Task
+	secrets []*api.Secret
+	configs []*api.Config
+	action  api.AssignmentChange_AssignmentAction
+}
+
+// Ensures that the changes contain the following actions for the following tasks/secrets/configs
+func verifyChanges(t *testing.T, changes []*api.AssignmentChange, expectations []changeExpectations) {
+	taskChanges, configChanges, secretChanges := splitChanges(changes)
+
+	var expectedTasks, expectedSecrets, expectedConfigs int
+	for _, c := range expectations {
+		for _, task := range c.tasks {
+			expectedTasks++
+			index := idAndAction{id: task.ID, action: c.action}
+			require.NotNil(t, taskChanges[index], "missing task change %v", index)
+		}
+
+		for _, secret := range c.secrets {
+			expectedSecrets++
+			index := idAndAction{id: secret.ID, action: c.action}
+			require.NotNil(t, secretChanges[index], "missing secret change %v", index)
+		}
+
+		for _, config := range c.configs {
+			expectedConfigs++
+			index := idAndAction{id: config.ID, action: c.action}
+			require.NotNil(t, configChanges[index], "missing config change %v", index)
+		}
+	}
+
+	require.Len(t, taskChanges, expectedTasks)
+	require.Len(t, secretChanges, expectedSecrets)
+	require.Len(t, configChanges, expectedConfigs)
+	require.Len(t, changes, expectedTasks+expectedSecrets+expectedConfigs)
+}
+
+// filter all tasks by task state, which is given by a function because it's hard to take a range of constants
+func filterTasks(tasks []*api.Task, include func(api.TaskState) bool) []*api.Task {
+	var result []*api.Task
+	for _, t := range tasks {
+		if include(t.Status.State) {
+			result = append(result, t)
+		}
+	}
+	return result
+}
+
+// filters all dependencies (secrets, configs); dependencies should be in `inTasks`, but not be in `notInTasks``
+func filterDependencies(secrets []*api.Secret, configs []*api.Config, inTasks, notInTasks []*api.Task) ([]*api.Secret, []*api.Config) {
+	var (
+		wantSecrets, wantConfigs = make(map[string]struct{}), make(map[string]struct{})
+		filteredSecrets          []*api.Secret
+		filteredConfigs          []*api.Config
+	)
+	for _, t := range inTasks {
+		for _, s := range t.Spec.GetContainer().Secrets {
+			wantSecrets[s.SecretID] = struct{}{}
+		}
+		for _, s := range t.Spec.GetContainer().Configs {
+			wantConfigs[s.ConfigID] = struct{}{}
+		}
+	}
+	for _, t := range notInTasks {
+		for _, s := range t.Spec.GetContainer().Secrets {
+			delete(wantSecrets, s.SecretID)
+		}
+		for _, s := range t.Spec.GetContainer().Configs {
+			delete(wantConfigs, s.ConfigID)
+		}
+	}
+	for _, s := range secrets {
+		if _, ok := wantSecrets[s.ID]; ok {
+			filteredSecrets = append(filteredSecrets, s)
+		}
+	}
+	for _, c := range configs {
+		if _, ok := wantConfigs[c.ID]; ok {
+			filteredConfigs = append(filteredConfigs, c)
+		}
+	}
+	return filteredSecrets, filteredConfigs
+}
+
+// Creates 1 task for every possible task state, so there are 12 tasks, ID=0-11 inclusive.
+// Creates 1 secret and 1 config for every single task state + 1, so there are 13 secrets, 13 configs, ID=0-12 inclusive
+// For each task, the dependencies assigned to it are: secret<i>, secret12, config<i>, config12.
 func makeTasksAndDependencies(t *testing.T, nodeID string) ([]*api.Secret, []*api.Config, []*api.Task) {
 	var (
 		secrets []*api.Secret
