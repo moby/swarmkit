@@ -34,8 +34,10 @@ func TestExternalCACrossSign(t *testing.T) {
 		ca.NewKeyReadWriter(paths.Node, nil, nil), ca.CertificateRequestConfig{})
 	require.NoError(t, err)
 	cancel()
-	externalCA := secConfig.ExternalCA()
-	externalCA.UpdateURLs(tc.ExternalSigningServer.URL)
+
+	externalCA := ca.NewExternalCA(nil,
+		ca.NewExternalCATLSConfig(secConfig.ClientTLSCreds.Config().Certificates, tc.RootCA.Pool),
+		tc.ExternalSigningServer.URL)
 
 	for _, testcase := range []struct{ cert, key []byte }{
 		{
@@ -106,9 +108,6 @@ func TestExternalCASignRequestTimesOut(t *testing.T) {
 		"testHasExternalCA": false,
 	}))
 
-	rootCA, err := ca.CreateRootCA("rootCN")
-	require.NoError(t, err)
-
 	signDone, allDone := make(chan error), make(chan struct{})
 	defer close(signDone)
 	mux := http.NewServeMux()
@@ -127,7 +126,7 @@ func TestExternalCASignRequestTimesOut(t *testing.T) {
 	csr, _, err := ca.GenerateNewCSR()
 	require.NoError(t, err)
 
-	externalCA := ca.NewExternalCA(&rootCA, nil, server.URL)
+	externalCA := ca.NewExternalCA(nil, nil, server.URL)
 	externalCA.ExternalRequestTimeout = time.Second
 	go func() {
 		_, err := externalCA.Sign(ctx, ca.PrepareCSR(csr, "cn", "ou", "org"))
@@ -143,35 +142,6 @@ func TestExternalCASignRequestTimesOut(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		require.FailNow(t, "call to external CA signing should have timed out after 1 second - it's been 3")
 	}
-}
-
-func TestExternalCACopy(t *testing.T) {
-	t.Parallel()
-
-	if !testutils.External {
-		return // this is only tested using the external CA
-	}
-
-	tc := testutils.NewTestCA(t)
-	defer tc.Stop()
-
-	csr, _, err := ca.GenerateNewCSR()
-	require.NoError(t, err)
-	signReq := ca.PrepareCSR(csr, "cn", ca.ManagerRole, tc.Organization)
-
-	secConfig, err := tc.NewNodeConfig(ca.ManagerRole)
-	require.NoError(t, err)
-	externalCA1 := secConfig.ExternalCA()
-	externalCA2 := externalCA1.Copy()
-	externalCA2.UpdateURLs(tc.ExternalSigningServer.URL)
-
-	// externalCA1 can't sign, but externalCA2, which has been updated with URLS, can
-	_, err = externalCA1.Sign(tc.Context, signReq)
-	require.Equal(t, ca.ErrNoExternalCAURLs, err)
-
-	cert, err := externalCA2.Sign(tc.Context, signReq)
-	require.NoError(t, err)
-	require.NotNil(t, cert)
 }
 
 // The ExternalCA object will stop reading the response from the server past a
@@ -219,7 +189,7 @@ func TestExternalCASignRequestSizeLimit(t *testing.T) {
 	csr, _, err := ca.GenerateNewCSR()
 	require.NoError(t, err)
 
-	externalCA := ca.NewExternalCA(&rootCA, nil, server.URL)
+	externalCA := ca.NewExternalCA(rootCA.Intermediates, nil, server.URL)
 	externalCA.ExternalRequestTimeout = time.Second
 	go func() {
 		_, err := externalCA.Sign(ctx, ca.PrepareCSR(csr, "cn", "ou", "org"))

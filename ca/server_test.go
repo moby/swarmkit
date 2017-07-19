@@ -2,6 +2,7 @@ package ca_test
 
 import (
 	"bytes"
+	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
@@ -432,6 +433,58 @@ type clusterObjToUpdate struct {
 	externalCertSignedBy []byte
 }
 
+// When the SecurityConfig is updated with a new TLS keypair, the server automatically uses that keypair to contact
+// the external CA
+func TestServerExternalCAGetsTLSKeypairUpdates(t *testing.T) {
+	t.Parallel()
+
+	// this one needs the external CA server for testing
+	if !cautils.External {
+		return
+	}
+
+	tc := cautils.NewTestCA(t)
+	defer tc.Stop()
+
+	// show that we can connect to the external CA using our original creds
+	csr, _, err := ca.GenerateNewCSR()
+	require.NoError(t, err)
+	req := ca.PrepareCSR(csr, "cn", ca.ManagerRole, tc.Organization)
+
+	externalCA := tc.CAServer.ExternalCA()
+	extSignedCert, err := externalCA.Sign(tc.Context, req)
+	require.NoError(t, err)
+	require.NotNil(t, extSignedCert)
+
+	// get a new cert and make it expired
+	_, issuerInfo, err := tc.RootCA.IssueAndSaveNewCertificates(
+		tc.KeyReadWriter, tc.ServingSecurityConfig.ClientTLSCreds.NodeID(), ca.ManagerRole, tc.Organization)
+	require.NoError(t, err)
+	cert, key, err := tc.KeyReadWriter.Read()
+	require.NoError(t, err)
+
+	s, err := tc.RootCA.Signer()
+	require.NoError(t, err)
+	cert = cautils.ReDateCert(t, cert, s.Cert, s.Key, time.Now().Add(-5*time.Hour), time.Now().Add(-3*time.Hour))
+
+	// we have to create the keypair and update the security config manually, because all the renew functions check for
+	// expiry
+	tlsKeyPair, err := tls.X509KeyPair(cert, key)
+	require.NoError(t, err)
+	require.NoError(t, tc.ServingSecurityConfig.UpdateTLSCredentials(&tlsKeyPair, issuerInfo))
+
+	// show that we now cannot connect to the external CA using our original creds
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
+		externalCA := tc.CAServer.ExternalCA()
+		// wait for the credentials for the external CA to update
+		if _, err = externalCA.Sign(tc.Context, req); err == nil {
+			return errors.New("external CA creds haven't updated yet to be invalid")
+		}
+		return nil
+	}, 2*time.Second))
+	require.Contains(t, errors.Cause(err).Error(), "remote error: tls: bad certificate")
+}
+
 func TestCAServerUpdateRootCA(t *testing.T) {
 	// this one needs both external CA servers for testing
 	if !cautils.External {
@@ -533,7 +586,7 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 		require.Equal(t, testCase.rootCASigningKey, signingKey, "%d", i)
 		require.Equal(t, testCase.rootCAIntermediates, rootCA.Intermediates)
 
-		externalCA := tc.ServingSecurityConfig.ExternalCA()
+		externalCA := tc.CAServer.ExternalCA()
 		csr, _, err := ca.GenerateNewCSR()
 		require.NoError(t, err)
 		signedCert, err := externalCA.Sign(tc.Context, ca.PrepareCSR(csr, "cn", ca.ManagerRole, tc.Organization))
