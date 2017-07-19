@@ -69,7 +69,7 @@ The slot model is discussed in more detail below.
 
 ### Node ID
 
-`node_id` assigns the task to a specific node. This is used by both replicated 
+`node_id` assigns the task to a specific node. This is used by both replicated
 tasks and global tasks. For global tasks, the node ID is assigned when the task
 is first created. For replicated tasks, it is assigned by the scheduler when
 the task gets scheduled.
@@ -120,9 +120,9 @@ in the `NEW` state.
 
 Tasks next run through the allocator, which allocate resources such as network
 attachments which are necessary for the tasks to run. When the allocator has
-processed a task, it moves the task to the `ALLOCATED` state.
+processed a task, it moves the task to the `PENDING` state.
 
-The scheduler takes `ALLOCATED` tasks and assigns them to nodes (or verifies
+The scheduler takes `PENDING` tasks and assigns them to nodes (or verifies
 that the requested node has the necessary resources, in the case of global
 services' tasks). It changes their state to `ASSIGNED`.
 
@@ -132,8 +132,9 @@ way to `RUNNING`. If a task exits without an error code, it moves to the
 `COMPLETE` state. If it fails, it moves to the `FAILED` state instead.
 
 A task may alternatively end up in the `SHUTDOWN` state if its shutdown was
-requested by the orchestrator, or the `REJECTED` state if the agent rejected the
-task.
+requested by the orchestrator, the `REJECTED` state if the agent rejected the
+task, or the `ORPHANED` state if the node on which the task is scheduled is
+down for too long.
 
 The task state can never move backwards - it only increases monotonically.
 
