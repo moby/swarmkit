@@ -57,6 +57,12 @@ message GenericResource {
 	}
 }
 
+enum ResourceType {
+	TASK = 0;
+	SECRET = 1;
+	CONFIG = 2;
+}
+
 message Resources {
 	// Amount of CPUs (e.g. 2000000000 = 2 CPU cores)
 	int64 nano_cpus = 1 [(gogoproto.customname) = "NanoCPUs"];
