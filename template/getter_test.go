@@ -306,12 +306,13 @@ func TestTemplatedConfig(t *testing.T) {
 	}
 
 	type testCase struct {
-		desc        string
-		configSpec  api.ConfigSpec
-		task        *api.Task
-		expected    string
-		expectedErr string
-		node        *api.NodeDescription
+		desc              string
+		configSpec        api.ConfigSpec
+		task              *api.Task
+		expected          string
+		expectedErr       string
+		expectedSensitive bool
+		node              *api.NodeDescription
 	}
 
 	testCases := []testCase{
@@ -362,7 +363,8 @@ func TestTemplatedConfig(t *testing.T) {
 				Data:       []byte("SECRET_VAL={{secret \"referencedsecrettarget\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
 			},
-			expected: "SECRET_VAL=mysecret\n",
+			expected:          "SECRET_VAL=mysecret\n",
+			expectedSensitive: true,
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -553,14 +555,20 @@ func TestTemplatedConfig(t *testing.T) {
 		dependencyManager.Secrets().Add(*referencedSecret)
 
 		templatedDependencies := NewTemplatedDependencyGetter(agent.Restrict(dependencyManager, testCase.task), testCase.task, testCase.node)
-		expandedConfig, err := templatedDependencies.Configs().Get("templatedconfig")
+		expandedConfig1, err1 := templatedDependencies.Configs().Get("templatedconfig")
+		expandedConfig2, sensitive, err2 := templatedDependencies.Configs().(TemplatedConfigGetter).GetAndFlagSecretData("templatedconfig")
 
 		if testCase.expectedErr != "" {
-			assert.EqualError(t, err, testCase.expectedErr)
+			assert.EqualError(t, err1, testCase.expectedErr)
+			assert.EqualError(t, err2, testCase.expectedErr)
 		} else {
-			assert.NoError(t, err)
-			require.NotNil(t, expandedConfig)
-			assert.Equal(t, testCase.expected, string(expandedConfig.Spec.Data), testCase.desc)
+			assert.NoError(t, err1)
+			assert.NoError(t, err2)
+			require.NotNil(t, expandedConfig1)
+			require.NotNil(t, expandedConfig2)
+			assert.Equal(t, testCase.expected, string(expandedConfig1.Spec.Data), testCase.desc)
+			assert.Equal(t, testCase.expected, string(expandedConfig2.Spec.Data), testCase.desc)
+			assert.Equal(t, testCase.expectedSensitive, sensitive, testCase.desc)
 		}
 	}
 }
