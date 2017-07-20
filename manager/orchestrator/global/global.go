@@ -156,14 +156,7 @@ func (g *Orchestrator) Run(ctx context.Context) error {
 				g.reconcileOneNode(ctx, v.Node)
 			case api.EventUpdateNode:
 				g.updateNode(v.Node)
-				switch v.Node.Status.State {
-				// NodeStatus_DISCONNECTED is a transient state, no need to make any change
-				case api.NodeStatus_DOWN:
-					g.foreachTaskFromNode(ctx, v.Node, g.shutdownTask)
-				case api.NodeStatus_READY:
-					// node could come back to READY from DOWN or DISCONNECT
-					g.reconcileOneNode(ctx, v.Node)
-				}
+				g.reconcileOneNode(ctx, v.Node)
 			case api.EventDeleteNode:
 				g.foreachTaskFromNode(ctx, v.Node, g.deleteTask)
 				delete(g.nodes, v.Node.ID)
@@ -341,7 +334,7 @@ func (g *Orchestrator) reconcileServices(ctx context.Context, serviceIDs []strin
 
 // updateNode updates g.nodes based on the current node value
 func (g *Orchestrator) updateNode(node *api.Node) {
-	if node.Spec.Availability == api.NodeAvailabilityDrain {
+	if node.Spec.Availability == api.NodeAvailabilityDrain || node.Status.State == api.NodeStatus_DOWN {
 		delete(g.nodes, node.ID)
 	} else {
 		g.nodes[node.ID] = node
@@ -365,8 +358,19 @@ func (g *Orchestrator) updateService(service *api.Service) {
 // reconcileOneNode checks all global services on one node
 func (g *Orchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
 	if node.Spec.Availability == api.NodeAvailabilityDrain {
-		log.G(ctx).Debugf("global orchestrator: node %s in drain state, removing tasks from it", node.ID)
+		log.G(ctx).Debugf("global orchestrator: node %s in drain state, shutting down its tasks", node.ID)
 		g.foreachTaskFromNode(ctx, node, g.shutdownTask)
+		return
+	}
+
+	if node.Status.State == api.NodeStatus_DOWN {
+		log.G(ctx).Debugf("global orchestrator: node %s is down, shutting down its tasks", node.ID)
+		g.foreachTaskFromNode(ctx, node, g.shutdownTask)
+		return
+	}
+
+	if node.Spec.Availability == api.NodeAvailabilityPause {
+		// the node is paused, so we won't add or update tasks
 		return
 	}
 
@@ -374,12 +378,8 @@ func (g *Orchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
 	for id := range g.globalServices {
 		serviceIDs = append(serviceIDs, id)
 	}
-	g.reconcileServicesOneNode(ctx, serviceIDs, node.ID)
-}
 
-// reconcileServicesOneNode checks the specified services on one node
-func (g *Orchestrator) reconcileServicesOneNode(ctx context.Context, serviceIDs []string, nodeID string) {
-	node, exists := g.nodes[nodeID]
+	node, exists := g.nodes[node.ID]
 	if !exists {
 		return
 	}
@@ -393,10 +393,10 @@ func (g *Orchestrator) reconcileServicesOneNode(ctx context.Context, serviceIDs 
 	)
 
 	g.store.View(func(tx store.ReadTx) {
-		tasksOnNode, err = store.FindTasks(tx, store.ByNodeID(nodeID))
+		tasksOnNode, err = store.FindTasks(tx, store.ByNodeID(node.ID))
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("global orchestrator: reconcile failed finding tasks on node %s", nodeID)
+		log.G(ctx).WithError(err).Errorf("global orchestrator: reconcile failed finding tasks on node %s", node.ID)
 		return
 	}
 
@@ -422,13 +422,8 @@ func (g *Orchestrator) reconcileServicesOneNode(ctx context.Context, serviceIDs 
 				continue
 			}
 
-			if node.Spec.Availability == api.NodeAvailabilityPause {
-				// the node is paused, so we won't add or update tasks
-				continue
-			}
-
 			if len(tasks) == 0 {
-				g.addTask(ctx, batch, service.Service, nodeID)
+				g.addTask(ctx, batch, service.Service, node.ID)
 			} else {
 				// If task is out of date, update it. This can happen
 				// on node reconciliation if, for example, we pause a
@@ -458,7 +453,7 @@ func (g *Orchestrator) reconcileServicesOneNode(ctx context.Context, serviceIDs 
 				}
 
 				if len(cleanTasks) == 0 {
-					g.addTask(ctx, batch, service.Service, nodeID)
+					g.addTask(ctx, batch, service.Service, node.ID)
 				} else {
 					dirtyTasks = append(dirtyTasks, cleanTasks[1:]...)
 				}
@@ -494,7 +489,9 @@ func (g *Orchestrator) tickTasks(ctx context.Context) {
 				if !nodeExists || !serviceExists {
 					return nil
 				}
-				if !constraint.NodeMatches(serviceEntry.constraints, node) {
+
+				if node.Spec.Availability == api.NodeAvailabilityPause ||
+					!constraint.NodeMatches(serviceEntry.constraints, node) {
 					t.DesiredState = api.TaskStateShutdown
 					return store.UpdateTask(tx, t)
 				}
