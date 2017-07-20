@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"net"
 	"os"
 	"reflect"
 	"strconv"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
 
 	"golang.org/x/net/context"
@@ -88,8 +88,18 @@ func dial(n *raftutils.TestNode, addr string) (*grpc.ClientConn, error) {
 func TestRaftJoinTwice(t *testing.T) {
 	t.Parallel()
 
-	nodes, _ := raftutils.NewRaftCluster(t, tc)
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(nodes)
+
+	// Node 3's address changes
+	nodes[3].Server.Stop()
+	nodes[3].ShutdownRaft()
+	nodes[3].Listener.CloseListener()
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err, "can't bind to raft service port")
+	nodes[3].Listener = raftutils.NewWrappedListener(l)
+	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
 
 	// Node 3 tries to join again
 	// Use gRPC instead of calling handler directly because of
@@ -99,10 +109,23 @@ func TestRaftJoinTwice(t *testing.T) {
 	raftClient := api.NewRaftMembershipClient(cc)
 	defer cc.Close()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	_, err = raftClient.Join(ctx, &api.JoinRequest{})
-	assert.Error(t, err, "expected error on duplicate Join")
-	assert.Equal(t, grpc.Code(err), codes.AlreadyExists)
-	assert.Equal(t, grpc.ErrorDesc(err), "a raft member with this node ID already exists")
+	_, err = raftClient.Join(ctx, &api.JoinRequest{Addr: l.Addr().String()})
+	assert.NoError(t, err)
+
+	// Propose a value and wait for it to propagate
+	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
+	assert.NoError(t, err, "failed to propose value")
+	raftutils.CheckValue(t, clockSource, nodes[2], value)
+
+	// Restart node 2
+	nodes[2].Server.Stop()
+	nodes[2].ShutdownRaft()
+	nodes[2] = raftutils.RestartNode(t, clockSource, nodes[2], false)
+	raftutils.WaitForCluster(t, clockSource, nodes)
+
+	// Node 2 should have the updated address for node 3 in its member list
+	require.NotNil(t, nodes[2].GetMemberlist()[nodes[3].Config.ID])
+	require.Equal(t, l.Addr().String(), nodes[2].GetMemberlist()[nodes[3].Config.ID].Addr)
 }
 
 func TestRaftLeader(t *testing.T) {

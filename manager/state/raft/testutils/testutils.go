@@ -159,8 +159,8 @@ func (l *WrappedListener) Close() error {
 	return nil
 }
 
-// CloseListener closes the listener
-func (l *WrappedListener) close() error {
+// CloseListener closes the underlying listener
+func (l *WrappedListener) CloseListener() error {
 	return l.Listener.Close()
 }
 
@@ -471,7 +471,7 @@ func ShutdownNode(node *TestNode) {
 		<-node.Done()
 	}
 	os.RemoveAll(node.StateDir)
-	node.Listener.close()
+	node.Listener.CloseListener()
 }
 
 // ShutdownRaft shutdowns only raft part of node.
@@ -487,7 +487,7 @@ func (n *TestNode) ShutdownRaft() {
 func CleanupNonRunningNode(node *TestNode) {
 	node.Server.Stop()
 	os.RemoveAll(node.StateDir)
-	node.Listener.close()
+	node.Listener.CloseListener()
 }
 
 // Leader determines who is the leader amongst a set of raft nodes
