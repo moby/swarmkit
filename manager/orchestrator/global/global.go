@@ -187,7 +187,7 @@ func (g *Orchestrator) FixTask(ctx context.Context, batch *store.Batch, t *api.T
 		node = g.nodes[t.NodeID]
 	}
 	// if the node no longer valid, remove the task
-	if node == nil || node.Spec.Availability == api.NodeAvailabilityDrain || node.Status.State == api.NodeStatus_DOWN {
+	if node == nil || node.Spec.Availability == api.NodeAvailabilityDrain {
 		g.shutdownTask(ctx, batch, t)
 		return
 	}
@@ -295,9 +295,14 @@ func (g *Orchestrator) reconcileServices(ctx context.Context, serviceIDs []strin
 					continue
 				}
 
-				if node.Spec.Availability == api.NodeAvailabilityPause {
-					// the node is paused, so we won't add or update
-					// any tasks
+				if node.Spec.Availability == api.NodeAvailabilityPause ||
+					node.Status.State == api.NodeStatus_DOWN {
+					// The node is paused or down, so we
+					// won't add or update any tasks. When
+					// the node is unpaused or comes back
+					// up, it will trigger node
+					// reconciliation, correcting anything
+					// we might have skiped here.
 					continue
 				}
 
@@ -334,7 +339,7 @@ func (g *Orchestrator) reconcileServices(ctx context.Context, serviceIDs []strin
 
 // updateNode updates g.nodes based on the current node value
 func (g *Orchestrator) updateNode(node *api.Node) {
-	if node.Spec.Availability == api.NodeAvailabilityDrain || node.Status.State == api.NodeStatus_DOWN {
+	if node.Spec.Availability == api.NodeAvailabilityDrain {
 		delete(g.nodes, node.ID)
 	} else {
 		g.nodes[node.ID] = node
@@ -363,14 +368,12 @@ func (g *Orchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
 		return
 	}
 
-	if node.Status.State == api.NodeStatus_DOWN {
-		log.G(ctx).Debugf("global orchestrator: node %s is down, shutting down its tasks", node.ID)
-		g.foreachTaskFromNode(ctx, node, g.shutdownTask)
-		return
-	}
-
-	if node.Spec.Availability == api.NodeAvailabilityPause {
-		// the node is paused, so we won't add or update tasks
+	if node.Spec.Availability == api.NodeAvailabilityPause ||
+		node.Status.State == api.NodeStatus_DOWN {
+		// The node is paused or down, so we won't add or update any
+		// tasks. When the node is unpaused or comes back up, it will
+		// trigger node reconciliation, correcting anything we might
+		// have skiped here.
 		return
 	}
 
