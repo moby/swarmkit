@@ -284,6 +284,10 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image1")
 
+	observedTask = testutils.WatchTaskCreate(t, watchCreate)
+	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image1")
+
 	switch rollbackFailureAction {
 	case api.UpdateConfig_PAUSE:
 		// Should end up in ROLLBACK_PAUSED state
