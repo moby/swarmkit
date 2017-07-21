@@ -174,6 +174,9 @@ func (s *Server) RemoveNetwork(ctx context.Context, request *api.RemoveNetworkRe
 		}
 
 		nw := store.GetNetwork(tx, request.NetworkID)
+		if nw == nil {
+			return grpc.Errorf(codes.NotFound, "network %s not found", request.NetworkID)
+		}
 		if _, ok := nw.Spec.Annotations.Labels["com.docker.swarm.internal"]; ok {
 			networkDescription := nw.ID
 			if nw.Spec.Annotations.Name != "" {
