@@ -213,7 +213,7 @@ func TestNodeAvailability(t *testing.T) {
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	// updating the service shouldn't restart the task
-	updateService(t, store, service1)
+	updateService(t, store, service1, true)
 	testutils.Expect(t, watch, api.EventUpdateService{})
 	testutils.Expect(t, watch, state.EventCommit{})
 	select {
@@ -241,7 +241,7 @@ func TestNodeAvailability(t *testing.T) {
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	// updating the service shouldn't restart the task
-	updateService(t, store, service1)
+	updateService(t, store, service1, true)
 	testutils.Expect(t, watch, api.EventUpdateService{})
 	testutils.Expect(t, watch, state.EventCommit{})
 	select {
@@ -277,7 +277,7 @@ func TestNodeState(t *testing.T) {
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	// updating the service shouldn't restart the task
-	updateService(t, store, service1)
+	updateService(t, store, service1, true)
 	testutils.Expect(t, watch, api.EventUpdateService{})
 	testutils.Expect(t, watch, state.EventCommit{})
 	select {
@@ -425,8 +425,20 @@ func TestTaskFailure(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 	}
 
-	// update the service. now the task should be recreated.
-	updateService(t, store, serviceNoRestart)
+	// update the service with no spec changes, to trigger a
+	// reconciliation. the task should still not be updated.
+	updateService(t, store, serviceNoRestart, false)
+	testutils.Expect(t, watch, api.EventUpdateService{})
+	testutils.Expect(t, watch, state.EventCommit{})
+
+	select {
+	case event := <-watch:
+		t.Fatalf("got unexpected event %T: %+v", event, event)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	// update the service with spec changes. now the task should be recreated.
+	updateService(t, store, serviceNoRestart, true)
 	testutils.Expect(t, watch, api.EventUpdateService{})
 	testutils.Expect(t, watch, state.EventCommit{})
 
@@ -444,11 +456,13 @@ func addService(t *testing.T, s *store.MemoryStore, service *api.Service) {
 	})
 }
 
-func updateService(t *testing.T, s *store.MemoryStore, service *api.Service) {
+func updateService(t *testing.T, s *store.MemoryStore, service *api.Service, force bool) {
 	s.Update(func(tx store.Tx) error {
 		service := store.GetService(tx, service.ID)
 		require.NotNil(t, service)
-		service.Spec.Task.ForceUpdate++
+		if force {
+			service.Spec.Task.ForceUpdate++
+		}
 		assert.NoError(t, store.UpdateService(tx, service))
 		return nil
 	})

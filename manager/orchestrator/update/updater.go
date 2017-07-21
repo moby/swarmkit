@@ -502,6 +502,9 @@ func (u *Updater) removeOldTasks(ctx context.Context, batch *store.Batch, remove
 				return fmt.Errorf("task %s not found while trying to shut it down", original.ID)
 			}
 			if t.DesiredState > api.TaskStateRunning {
+				if t.DontRestart {
+					return nil
+				}
 				return fmt.Errorf("task %s was already shut down when reached by updater", original.ID)
 			}
 			t.DesiredState = api.TaskStateShutdown
@@ -584,28 +587,64 @@ func (u *Updater) rollbackUpdate(ctx context.Context, serviceID, message string)
 	log.G(ctx).Debugf("starting rollback of service %s", serviceID)
 
 	var service *api.Service
-	err := u.store.Update(func(tx store.Tx) error {
-		service = store.GetService(tx, serviceID)
-		if service == nil {
-			return nil
-		}
-		if service.UpdateStatus == nil {
-			// The service was updated since we started this update
-			return nil
+	err := u.store.Batch(func(batch *store.Batch) error {
+		var serviceTasks []*api.Task
+
+		err := batch.Update(func(tx store.Tx) error {
+			var err error
+			serviceTasks, err = store.FindTasks(tx, store.ByServiceID(serviceID))
+			return err
+		})
+		if err != nil {
+			return err
 		}
 
-		service.UpdateStatus.State = api.UpdateStatus_ROLLBACK_STARTED
-		service.UpdateStatus.Message = message
-
-		if service.PreviousSpec == nil {
-			return errors.New("cannot roll back service because no previous spec is available")
+		// Clear DontRestart flag on all of this service's tasks. Since
+		// this is a rollback, we want a converged state instead of
+		// deferring to the restart policy.
+		for _, task := range serviceTasks {
+			if task.DontRestart {
+				err = batch.Update(func(tx store.Tx) error {
+					task.DontRestart = false
+					return store.UpdateTask(tx, task)
+				})
+				if err != nil {
+					return err
+				}
+			}
 		}
-		service.Spec = *service.PreviousSpec
-		service.SpecVersion = service.PreviousSpecVersion.Copy()
-		service.PreviousSpec = nil
-		service.PreviousSpecVersion = nil
 
-		return store.UpdateService(tx, service)
+		return batch.Update(func(tx store.Tx) error {
+			service = store.GetService(tx, serviceID)
+			if service == nil {
+				return nil
+			}
+			if service.UpdateStatus == nil {
+				// The service was updated since we started this update
+				return nil
+			}
+
+			service.UpdateStatus.State = api.UpdateStatus_ROLLBACK_STARTED
+			service.UpdateStatus.Message = message
+
+			if service.PreviousSpec == nil {
+				return errors.New("cannot roll back service because no previous spec is available")
+			}
+
+			var err error
+			serviceTasks, err = store.FindTasks(tx, store.ByServiceID(serviceID))
+			if err != nil {
+				return err
+			}
+
+			service.Spec = *service.PreviousSpec
+			service.SpecVersion = service.PreviousSpecVersion.Copy()
+			service.PreviousSpec = nil
+			service.PreviousSpecVersion = nil
+
+			return store.UpdateService(tx, service)
+
+		})
 	})
 
 	if err != nil {

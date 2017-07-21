@@ -178,13 +178,22 @@ func (tr *TaskReaper) tick() {
 
 			// TODO(aaronl): This could filter for non-running tasks and use quickselect
 			// instead of sorting the whole slice.
+			// TODO(aaronl): This sort should really use lamport time instead of wall
+			// clock time. We should store a Version in the Status field.
 			sort.Sort(tasksByTimestamp(historicTasks))
 
 			runningTasks := 0
-			for _, t := range historicTasks {
+			for i, t := range historicTasks {
 				if t.DesiredState <= api.TaskStateRunning || t.Status.State <= api.TaskStateRunning {
 					// Don't delete running tasks
 					runningTasks++
+					continue
+				}
+
+				// If the most recent task has the DontRestart
+				// flag set, preserve that task to keep the
+				// flag visible to the orchestrator.
+				if i == len(historicTasks)-1 && t.DontRestart {
 					continue
 				}
 
