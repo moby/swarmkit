@@ -5,7 +5,6 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/containerd/containerd/errdefs"
-	"github.com/containerd/containerd/identifiers"
 	"github.com/containerd/containerd/namespaces"
 	"github.com/pkg/errors"
 )
@@ -24,7 +23,7 @@ func (s *namespaceStore) Create(ctx context.Context, namespace string, labels ma
 		return err
 	}
 
-	if err := identifiers.Validate(namespace); err != nil {
+	if err := namespaces.Validate(namespace); err != nil {
 		return err
 	}
 
@@ -32,7 +31,7 @@ func (s *namespaceStore) Create(ctx context.Context, namespace string, labels ma
 	bkt, err := topbkt.CreateBucket([]byte(namespace))
 	if err != nil {
 		if err == bolt.ErrBucketExists {
-			return errors.Wrapf(errdefs.ErrAlreadyExists, "namespace %q")
+			return errors.Wrapf(errdefs.ErrAlreadyExists, "namespace %q", namespace)
 		}
 
 		return err

@@ -11,6 +11,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containernetworking/cni/libcni"
 	cnicurr "github.com/containernetworking/cni/pkg/types/current"
 	"github.com/docker/docker/pkg/signal"
@@ -22,8 +23,6 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 )
 
 var (
@@ -99,7 +98,7 @@ func newContainerAdapter(client *containerd.Client, task *api.Task, secrets exec
 func (c *containerAdapter) reattach(ctx context.Context) error {
 	container, err := c.client.LoadContainer(ctx, c.name)
 	if err != nil {
-		if grpc.Code(err) == codes.NotFound {
+		if errdefs.IsNotFound(err) {
 			c.log(ctx).Debug("reattach: container not found")
 			return nil
 		}
@@ -119,7 +118,7 @@ func (c *containerAdapter) reattach(ctx context.Context) error {
 
 	task, err := container.Task(ctx, containerd.WithAttach(devNull, os.Stdout, os.Stderr))
 	if err != nil {
-		if err == containerd.ErrNoRunningTask {
+		if errdefs.IsNotFound(err) {
 			c.log(ctx).WithError(err).Info("reattach: no running task")
 			return nil
 		}

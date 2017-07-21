@@ -8,6 +8,7 @@ import (
 	"github.com/containerd/containerd/api/services/events/v1"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/typeurl"
 	goevents "github.com/docker/go-events"
 	"github.com/pkg/errors"
 )
@@ -27,7 +28,6 @@ func (s *eventSink) Write(evt goevents.Event) error {
 	if !ok {
 		return errors.New("event is not a sink event")
 	}
-	topic := getTopic(e.ctx)
 
 	ns, _ := namespaces.Namespace(e.ctx)
 	if ns != "" && ns != s.ns {
@@ -35,7 +35,13 @@ func (s *eventSink) Write(evt goevents.Event) error {
 		return nil
 	}
 
-	eventData, err := MarshalEvent(e.event)
+	if ev, ok := e.event.(*events.Envelope); ok {
+		s.ch <- ev
+		return nil
+	}
+	topic := getTopic(e.ctx)
+
+	eventData, err := typeurl.MarshalAny(e.event)
 	if err != nil {
 		return err
 	}

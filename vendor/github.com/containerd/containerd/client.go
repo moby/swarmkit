@@ -7,10 +7,11 @@ import (
 	"log"
 	"net/http"
 	"runtime"
+	"strconv"
 	"sync"
 	"time"
 
-	"github.com/containerd/containerd/api/services/containers/v1"
+	containersapi "github.com/containerd/containerd/api/services/containers/v1"
 	contentapi "github.com/containerd/containerd/api/services/content/v1"
 	diffapi "github.com/containerd/containerd/api/services/diff/v1"
 	eventsapi "github.com/containerd/containerd/api/services/events/v1"
@@ -19,7 +20,9 @@ import (
 	snapshotapi "github.com/containerd/containerd/api/services/snapshot/v1"
 	"github.com/containerd/containerd/api/services/tasks/v1"
 	versionservice "github.com/containerd/containerd/api/services/version/v1"
+	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/remotes"
@@ -31,9 +34,11 @@ import (
 	imagesservice "github.com/containerd/containerd/services/images"
 	snapshotservice "github.com/containerd/containerd/services/snapshot"
 	"github.com/containerd/containerd/snapshot"
+	"github.com/containerd/containerd/typeurl"
 	pempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	specs "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
@@ -43,6 +48,13 @@ import (
 func init() {
 	// reset the grpc logger so that it does not output in the STDIO of the calling process
 	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
+
+	// register TypeUrls for commonly marshaled external types
+	major := strconv.Itoa(specs.VersionMajor)
+	typeurl.Register(&specs.Spec{}, "opencontainers/runtime-spec", major, "Spec")
+	typeurl.Register(&specs.Process{}, "opencontainers/runtime-spec", major, "Process")
+	typeurl.Register(&specs.LinuxResources{}, "opencontainers/runtime-spec", major, "LinuxResources")
+	typeurl.Register(&specs.WindowsResources{}, "opencontainers/runtime-spec", major, "WindowsResources")
 }
 
 type clientOpts struct {
@@ -128,15 +140,13 @@ func (c *Client) IsServing(ctx context.Context) (bool, error) {
 
 // Containers returns all containers created in containerd
 func (c *Client) Containers(ctx context.Context, filters ...string) ([]Container, error) {
-	r, err := c.ContainerService().List(ctx, &containers.ListContainersRequest{
-		Filters: filters,
-	})
+	r, err := c.ContainerService().List(ctx, filters...)
 	if err != nil {
 		return nil, err
 	}
 	var out []Container
-	for _, container := range r.Containers {
-		out = append(out, containerFromProto(c, container))
+	for _, container := range r {
+		out = append(out, containerFromRecord(c, container))
 	}
 	return out, nil
 }
@@ -155,7 +165,7 @@ func WithContainerLabels(labels map[string]string) NewContainerOpts {
 func WithExistingRootFS(id string) NewContainerOpts {
 	return func(ctx context.Context, client *Client, c *containers.Container) error {
 		// check that the snapshot exists, if not, fail on creation
-		if _, err := client.SnapshotService().Mounts(ctx, id); err != nil {
+		if _, err := client.SnapshotService(c.Snapshotter).Mounts(ctx, id); err != nil {
 			return err
 		}
 		c.RootFS = id
@@ -171,7 +181,7 @@ func WithNewRootFS(id string, i Image) NewContainerOpts {
 		if err != nil {
 			return err
 		}
-		if _, err := client.SnapshotService().Prepare(ctx, id, identity.ChainID(diffIDs).String()); err != nil {
+		if _, err := client.SnapshotService(c.Snapshotter).Prepare(ctx, id, identity.ChainID(diffIDs).String()); err != nil {
 			return err
 		}
 		c.RootFS = id
@@ -188,7 +198,7 @@ func WithNewReadonlyRootFS(id string, i Image) NewContainerOpts {
 		if err != nil {
 			return err
 		}
-		if _, err := client.SnapshotService().View(ctx, id, identity.ChainID(diffIDs).String()); err != nil {
+		if _, err := client.SnapshotService(c.Snapshotter).View(ctx, id, identity.ChainID(diffIDs).String()); err != nil {
 			return err
 		}
 		c.RootFS = id
@@ -201,9 +211,16 @@ func WithNewReadonlyRootFS(id string, i Image) NewContainerOpts {
 // be used to create tasks for the container
 func WithRuntime(name string) NewContainerOpts {
 	return func(ctx context.Context, client *Client, c *containers.Container) error {
-		c.Runtime = &containers.Container_Runtime{
+		c.Runtime = containers.RuntimeInfo{
 			Name: name,
 		}
+		return nil
+	}
+}
+
+func WithSnapshotter(name string) NewContainerOpts {
+	return func(ctx context.Context, client *Client, c *containers.Container) error {
+		c.Snapshotter = name
 		return nil
 	}
 }
@@ -220,7 +237,7 @@ func WithImage(i Image) NewContainerOpts {
 func (c *Client) NewContainer(ctx context.Context, id string, opts ...NewContainerOpts) (Container, error) {
 	container := containers.Container{
 		ID: id,
-		Runtime: &containers.Container_Runtime{
+		Runtime: containers.RuntimeInfo{
 			Name: c.runtime,
 		},
 	}
@@ -229,23 +246,19 @@ func (c *Client) NewContainer(ctx context.Context, id string, opts ...NewContain
 			return nil, err
 		}
 	}
-	r, err := c.ContainerService().Create(ctx, &containers.CreateContainerRequest{
-		Container: container,
-	})
+	r, err := c.ContainerService().Create(ctx, container)
 	if err != nil {
 		return nil, err
 	}
-	return containerFromProto(c, r.Container), nil
+	return containerFromRecord(c, r), nil
 }
 
 func (c *Client) LoadContainer(ctx context.Context, id string) (Container, error) {
-	response, err := c.ContainerService().Get(ctx, &containers.GetContainerRequest{
-		ID: id,
-	})
+	r, err := c.ContainerService().Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	return containerFromProto(c, response.Container), nil
+	return containerFromRecord(c, r), nil
 }
 
 type RemoteOpts func(*Client, *RemoteContext) error
@@ -261,6 +274,9 @@ type RemoteContext struct {
 	// If an image is not unpacked on pull, it can be unpacked any time
 	// afterwards. Unpacking is required to run an image.
 	Unpack bool
+
+	// Snapshotter used for unpacking
+	Snapshotter string
 
 	// BaseHandlers are a set of handlers which get are called on dispatch.
 	// These handlers always get called before any operation specific
@@ -287,6 +303,14 @@ func defaultRemoteContext() *RemoteContext {
 func WithPullUnpack(client *Client, c *RemoteContext) error {
 	c.Unpack = true
 	return nil
+}
+
+// WithPullSnapshotter specifies snapshotter name used for unpacking
+func WithPullSnapshotter(snapshotterName string) RemoteOpts {
+	return func(client *Client, c *RemoteContext) error {
+		c.Snapshotter = snapshotterName
+		return nil
+	}
 }
 
 // WithSchema1Conversion is used to convert Docker registry schema 1
@@ -355,20 +379,33 @@ func (c *Client) Pull(ctx context.Context, ref string, opts ...RemoteOpts) (Imag
 		}
 	}
 
+	imgrec := images.Image{
+		Name:   name,
+		Target: desc,
+	}
+
 	is := c.ImageService()
-	if err := is.Update(ctx, name, desc); err != nil {
-		return nil, err
+	if updated, err := is.Update(ctx, imgrec, "target"); err != nil {
+		if !errdefs.IsNotFound(err) {
+			return nil, err
+		}
+
+		created, err := is.Create(ctx, imgrec)
+		if err != nil {
+			return nil, err
+		}
+
+		imgrec = created
+	} else {
+		imgrec = updated
 	}
-	i, err := is.Get(ctx, name)
-	if err != nil {
-		return nil, err
-	}
+
 	img := &image{
 		client: c,
-		i:      i,
+		i:      imgrec,
 	}
 	if pullCtx.Unpack {
-		if err := img.Unpack(ctx); err != nil {
+		if err := img.Unpack(ctx, pullCtx.Snapshotter); err != nil {
 			return nil, err
 		}
 	}
@@ -464,16 +501,16 @@ func (c *Client) NamespaceService() namespacesapi.NamespacesClient {
 	return namespacesapi.NewNamespacesClient(c.conn)
 }
 
-func (c *Client) ContainerService() containers.ContainersClient {
-	return containers.NewContainersClient(c.conn)
+func (c *Client) ContainerService() containers.Store {
+	return NewRemoteContainerStore(containersapi.NewContainersClient(c.conn))
 }
 
 func (c *Client) ContentStore() content.Store {
 	return contentservice.NewStoreFromClient(contentapi.NewContentClient(c.conn))
 }
 
-func (c *Client) SnapshotService() snapshot.Snapshotter {
-	return snapshotservice.NewSnapshotterFromClient(snapshotapi.NewSnapshotsClient(c.conn))
+func (c *Client) SnapshotService(snapshotterName string) snapshot.Snapshotter {
+	return snapshotservice.NewSnapshotterFromClient(snapshotapi.NewSnapshotsClient(c.conn), snapshotterName)
 }
 
 func (c *Client) TaskService() tasks.TasksClient {
