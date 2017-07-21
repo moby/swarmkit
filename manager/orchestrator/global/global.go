@@ -265,8 +265,15 @@ func (g *Orchestrator) reconcileServices(ctx context.Context, serviceIDs []strin
 			nodeTasks[serviceID] = make(map[string][]*api.Task)
 
 			for _, t := range tasks {
-				if t.DesiredState <= api.TaskStateRunning {
-					// Collect all running instances of this service
+				service := g.globalServices[serviceID].Service
+				if service == nil {
+					continue
+				}
+				// Collect all runnable instances of this service,
+				// and instances that were not be restarted due
+				// to restart policy but may be updated if the
+				// service spec changed.
+				if g.restarts.IsTaskUpdatable(ctx, t, service) {
 					nodeTasks[serviceID][t.NodeID] = append(nodeTasks[serviceID][t.NodeID], t)
 				}
 			}
@@ -374,11 +381,6 @@ func (g *Orchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
 		return
 	}
 
-	var serviceIDs []string
-	for id := range g.globalServices {
-		serviceIDs = append(serviceIDs, id)
-	}
-
 	node, exists := g.nodes[node.ID]
 	if !exists {
 		return
@@ -400,24 +402,19 @@ func (g *Orchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
 		return
 	}
 
-	for _, serviceID := range serviceIDs {
+	for serviceID, service := range g.globalServices {
 		for _, t := range tasksOnNode {
 			if t.ServiceID != serviceID {
 				continue
 			}
-			if t.DesiredState <= api.TaskStateRunning {
+			if g.restarts.IsTaskUpdatable(ctx, t, service.Service) {
 				tasks[serviceID] = append(tasks[serviceID], t)
 			}
 		}
 	}
 
 	err = g.store.Batch(func(batch *store.Batch) error {
-		for _, serviceID := range serviceIDs {
-			service, exists := g.globalServices[serviceID]
-			if !exists {
-				continue
-			}
-
+		for serviceID, service := range g.globalServices {
 			if !constraint.NodeMatches(service.constraints, node) {
 				continue
 			}

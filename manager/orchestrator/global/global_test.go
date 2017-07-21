@@ -213,7 +213,7 @@ func TestNodeAvailability(t *testing.T) {
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	// updating the service shouldn't restart the task
-	updateService(t, store, service1)
+	updateService(t, store, service1, true)
 	testutils.Expect(t, watch, api.EventUpdateService{})
 	testutils.Expect(t, watch, state.EventCommit{})
 	select {
@@ -241,7 +241,7 @@ func TestNodeAvailability(t *testing.T) {
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	// updating the service shouldn't restart the task
-	updateService(t, store, service1)
+	updateService(t, store, service1, true)
 	testutils.Expect(t, watch, api.EventUpdateService{})
 	testutils.Expect(t, watch, state.EventCommit{})
 	select {
@@ -277,7 +277,7 @@ func TestNodeState(t *testing.T) {
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	// updating the service shouldn't restart the task
-	updateService(t, store, service1)
+	updateService(t, store, service1, true)
 	testutils.Expect(t, watch, api.EventUpdateService{})
 	testutils.Expect(t, watch, state.EventCommit{})
 	select {
@@ -425,8 +425,20 @@ func TestTaskFailure(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 	}
 
-	// update the service. now the task should be recreated.
-	updateService(t, store, serviceNoRestart)
+	// update the service with no spec changes, to trigger a
+	// reconciliation. the task should still not be updated.
+	updateService(t, store, serviceNoRestart, false)
+	testutils.Expect(t, watch, api.EventUpdateService{})
+	testutils.Expect(t, watch, state.EventCommit{})
+
+	select {
+	case event := <-watch:
+		t.Fatalf("got unexpected event %T: %+v", event, event)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	// update the service with spec changes. now the task should be recreated.
+	updateService(t, store, serviceNoRestart, true)
 	testutils.Expect(t, watch, api.EventUpdateService{})
 	testutils.Expect(t, watch, state.EventCommit{})
 
@@ -444,11 +456,13 @@ func addService(t *testing.T, s *store.MemoryStore, service *api.Service) {
 	})
 }
 
-func updateService(t *testing.T, s *store.MemoryStore, service *api.Service) {
+func updateService(t *testing.T, s *store.MemoryStore, service *api.Service, force bool) {
 	s.Update(func(tx store.Tx) error {
 		service := store.GetService(tx, service.ID)
 		require.NotNil(t, service)
-		service.Spec.Task.ForceUpdate++
+		if force {
+			service.Spec.Task.ForceUpdate++
+		}
 		assert.NoError(t, store.UpdateService(tx, service))
 		return nil
 	})
@@ -1096,4 +1110,196 @@ func TestInitializationTaskOnNonexistentNode(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, deadCnt, 1)
 	assert.Equal(t, liveCnt, 0)
+}
+
+func TestInitializationRestartHistory(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	// create nodes, services and tasks in store directly
+	addNode(t, s, node1)
+
+	service := &api.Service{
+		ID: "serviceid1",
+		SpecVersion: &api.Version{
+			Index: 2,
+		},
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+				Restart: &api.RestartPolicy{
+					Condition:   api.RestartOnAny,
+					Delay:       gogotypes.DurationProto(restartDelay),
+					MaxAttempts: 3,
+					Window:      gogotypes.DurationProto(10 * time.Minute),
+				},
+			},
+			Mode: &api.ServiceSpec_Global{
+				Global: &api.GlobalService{},
+			},
+		},
+	}
+	addService(t, s, service)
+
+	now := time.Now()
+
+	tasks := []*api.Task{
+		// old spec versions should be ignored for restart tracking
+		{
+			ID: "oldspec",
+			Meta: api.Meta{
+				CreatedAt: ptypes.MustTimestampProto(now.Add(-5 * time.Minute)),
+			},
+			DesiredState: api.TaskStateShutdown,
+			SpecVersion: &api.Version{
+				Index: 1,
+			},
+			Status: api.TaskStatus{
+				State:     api.TaskStateShutdown,
+				Timestamp: ptypes.MustTimestampProto(now.Add(-5 * time.Minute)),
+			},
+			Spec:      service.Spec.Task,
+			ServiceID: "serviceid1",
+			NodeID:    "nodeid1",
+		},
+		// this is the first task with the current spec version
+		{
+			ID: "firstcurrent",
+			Meta: api.Meta{
+				CreatedAt: ptypes.MustTimestampProto(now.Add(-12 * time.Minute)),
+			},
+			DesiredState: api.TaskStateShutdown,
+			SpecVersion: &api.Version{
+				Index: 2,
+			},
+			Status: api.TaskStatus{
+				State:     api.TaskStateFailed,
+				Timestamp: ptypes.MustTimestampProto(now.Add(-12 * time.Minute)),
+			},
+			Spec:      service.Spec.Task,
+			ServiceID: "serviceid1",
+			NodeID:    "nodeid1",
+		},
+
+		// this task falls outside the restart window
+		{
+			ID: "outsidewindow",
+			Meta: api.Meta{
+				CreatedAt: ptypes.MustTimestampProto(now.Add(-11 * time.Minute)),
+			},
+			DesiredState: api.TaskStateShutdown,
+			SpecVersion: &api.Version{
+				Index: 2,
+			},
+			Status: api.TaskStatus{
+				State:     api.TaskStateFailed,
+				Timestamp: ptypes.MustTimestampProto(now.Add(-11 * time.Minute)),
+			},
+			Spec:      service.Spec.Task,
+			ServiceID: "serviceid1",
+			NodeID:    "nodeid1",
+		},
+		// first task inside restart window
+		{
+			ID: "firstinside",
+			Meta: api.Meta{
+				CreatedAt: ptypes.MustTimestampProto(now.Add(-9 * time.Minute)),
+			},
+			DesiredState: api.TaskStateShutdown,
+			SpecVersion: &api.Version{
+				Index: 2,
+			},
+			Status: api.TaskStatus{
+				State:     api.TaskStateFailed,
+				Timestamp: ptypes.MustTimestampProto(now.Add(-9 * time.Minute)),
+			},
+			Spec:      service.Spec.Task,
+			ServiceID: "serviceid1",
+			NodeID:    "nodeid1",
+		},
+		// second task inside restart window, currently running
+		{
+			ID: "secondinside",
+			Meta: api.Meta{
+				CreatedAt: ptypes.MustTimestampProto(now.Add(-8 * time.Minute)),
+			},
+			DesiredState: api.TaskStateRunning,
+			SpecVersion: &api.Version{
+				Index: 2,
+			},
+			Status: api.TaskStatus{
+				State:     api.TaskStateRunning,
+				Timestamp: ptypes.MustTimestampProto(now.Add(-8 * time.Minute)),
+			},
+			Spec:      service.Spec.Task,
+			ServiceID: "serviceid1",
+			NodeID:    "nodeid1",
+		},
+	}
+	for _, task := range tasks {
+		addTask(t, s, task)
+	}
+
+	// watch orchestration events
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventDeleteTask{})
+	defer cancel()
+
+	orchestrator := NewGlobalOrchestrator(s)
+	defer orchestrator.Stop()
+
+	go func() {
+		assert.NoError(t, orchestrator.Run(ctx))
+	}()
+
+	// Fail the running task
+	s.Update(func(tx store.Tx) error {
+		task := store.GetTask(tx, "secondinside")
+		require.NotNil(t, task)
+		task.Status.State = api.TaskStateFailed
+		task.Status.Timestamp = ptypes.MustTimestampProto(time.Now())
+		assert.NoError(t, store.UpdateTask(tx, task))
+		return nil
+	})
+	testutils.Expect(t, watch, api.EventUpdateTask{})
+
+	// It should restart, because this will only be the third restart
+	// attempt within the time window.
+	observedTask1 := testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, "secondinside", observedTask1.ID)
+	assert.Equal(t, api.TaskStateFailed, observedTask1.Status.State)
+
+	observedTask2 := testutils.WatchTaskCreate(t, watch)
+	assert.Equal(t, observedTask2.NodeID, "nodeid1")
+	assert.Equal(t, api.TaskStateNew, observedTask2.Status.State)
+	assert.Equal(t, api.TaskStateReady, observedTask2.DesiredState)
+
+	observedTask3 := testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, observedTask2.ID, observedTask3.ID)
+	assert.Equal(t, api.TaskStateRunning, observedTask3.DesiredState)
+
+	// Reject the new task
+	s.Update(func(tx store.Tx) error {
+		task := store.GetTask(tx, observedTask2.ID)
+		require.NotNil(t, task)
+		task.Status.State = api.TaskStateRejected
+		task.Status.Timestamp = ptypes.MustTimestampProto(time.Now())
+		assert.NoError(t, store.UpdateTask(tx, task))
+		return nil
+	})
+	testutils.Expect(t, watch, api.EventUpdateTask{}) // our update
+	testutils.Expect(t, watch, api.EventUpdateTask{}) // orchestrator changes desired state
+
+	// It shouldn't restart - that would exceed MaxAttempts
+	select {
+	case event := <-watch:
+		t.Fatalf("got unexpected event %T: %+v", event, event)
+	case <-time.After(100 * time.Millisecond):
+	}
 }

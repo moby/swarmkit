@@ -8,6 +8,7 @@ import (
 	"github.com/docker/swarmkit/manager/orchestrator/testutils"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -72,7 +73,7 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed}
+	updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
@@ -95,7 +96,7 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 
 	// Mark the second task as completed. Confirm that it gets restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateCompleted}
+	updatedTask2.Status = api.TaskStatus{State: api.TaskStateCompleted, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
@@ -118,6 +119,8 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 }
 
 func TestOrchestratorRestartOnFailure(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
@@ -126,7 +129,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{})
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -175,15 +178,13 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed}
+	updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
 	})
 	assert.NoError(t, err)
-	testutils.Expect(t, watch, state.EventCommit{})
 	testutils.Expect(t, watch, api.EventUpdateTask{})
-	testutils.Expect(t, watch, state.EventCommit{})
 	testutils.Expect(t, watch, api.EventUpdateTask{})
 
 	observedTask3 := testutils.WatchTaskCreate(t, watch)
@@ -191,34 +192,59 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	assert.Equal(t, observedTask3.DesiredState, api.TaskStateReady)
 	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
 
-	testutils.Expect(t, watch, state.EventCommit{})
-
 	observedTask4 := testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, observedTask4.DesiredState, api.TaskStateRunning)
 	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name1")
 
 	// Mark the second task as completed. Confirm that it does not get restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateCompleted}
+	updatedTask2.Status = api.TaskStatus{State: api.TaskStateCompleted, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
 	})
 	assert.NoError(t, err)
-	testutils.Expect(t, watch, state.EventCommit{})
 	testutils.Expect(t, watch, api.EventUpdateTask{})
-	testutils.Expect(t, watch, state.EventCommit{})
 	testutils.Expect(t, watch, api.EventUpdateTask{})
-	testutils.Expect(t, watch, state.EventCommit{})
 
 	select {
 	case <-watch:
 		t.Fatal("got unexpected event")
 	case <-time.After(100 * time.Millisecond):
 	}
+
+	// Update the service, but don't change anything in the spec. The
+	// second instance instance should not be restarted.
+	err = s.Update(func(tx store.Tx) error {
+		service := store.GetService(tx, "id1")
+		require.NotNil(t, service)
+		assert.NoError(t, store.UpdateService(tx, service))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	select {
+	case <-watch:
+		t.Fatal("got unexpected event")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	// Update the service, and change the TaskSpec. Now the second instance
+	// should be restarted.
+	err = s.Update(func(tx store.Tx) error {
+		service := store.GetService(tx, "id1")
+		require.NotNil(t, service)
+		service.Spec.Task.ForceUpdate++
+		assert.NoError(t, store.UpdateService(tx, service))
+		return nil
+	})
+	assert.NoError(t, err)
+	testutils.Expect(t, watch, api.EventCreateTask{})
 }
 
 func TestOrchestratorRestartOnNone(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
@@ -227,7 +253,7 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{})
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -281,11 +307,8 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
-	testutils.Expect(t, watch, state.EventCommit{})
 	testutils.Expect(t, watch, api.EventUpdateTask{})
-	testutils.Expect(t, watch, state.EventCommit{})
 	testutils.Expect(t, watch, api.EventUpdateTask{})
-	testutils.Expect(t, watch, state.EventCommit{})
 
 	select {
 	case <-watch:
@@ -295,25 +318,66 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 
 	// Mark the second task as completed. Confirm that it does not get restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateCompleted}
+	updatedTask2.Status = api.TaskStatus{State: api.TaskStateCompleted, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
 	})
 	assert.NoError(t, err)
 	testutils.Expect(t, watch, api.EventUpdateTask{})
-	testutils.Expect(t, watch, state.EventCommit{})
 	testutils.Expect(t, watch, api.EventUpdateTask{})
-	testutils.Expect(t, watch, state.EventCommit{})
 
 	select {
 	case <-watch:
 		t.Fatal("got unexpected event")
 	case <-time.After(100 * time.Millisecond):
 	}
+
+	// Update the service, but don't change anything in the spec. Neither
+	// instance should be restarted.
+	err = s.Update(func(tx store.Tx) error {
+		service := store.GetService(tx, "id1")
+		require.NotNil(t, service)
+		assert.NoError(t, store.UpdateService(tx, service))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	select {
+	case <-watch:
+		t.Fatal("got unexpected event")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	// Update the service, and change the TaskSpec. Both instances should
+	// be restarted.
+	err = s.Update(func(tx store.Tx) error {
+		service := store.GetService(tx, "id1")
+		require.NotNil(t, service)
+		service.Spec.Task.ForceUpdate++
+		assert.NoError(t, store.UpdateService(tx, service))
+		return nil
+	})
+	assert.NoError(t, err)
+	testutils.Expect(t, watch, api.EventCreateTask{})
+	newTask := testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, api.TaskStateRunning, newTask.DesiredState)
+	err = s.Update(func(tx store.Tx) error {
+		newTask := store.GetTask(tx, newTask.ID)
+		require.NotNil(t, newTask)
+		newTask.Status.State = api.TaskStateRunning
+		assert.NoError(t, store.UpdateTask(tx, newTask))
+		return nil
+	})
+	assert.NoError(t, err)
+	testutils.Expect(t, watch, api.EventUpdateTask{})
+
+	testutils.Expect(t, watch, api.EventCreateTask{})
 }
 
 func TestOrchestratorRestartDelay(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
@@ -371,7 +435,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed}
+	updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	before := time.Now()
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
@@ -414,7 +478,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{})
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -457,38 +521,65 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 		assert.NoError(t, orchestrator.Run(ctx))
 	}()
 
-	testRestart := func() {
+	failTask := func(task *api.Task, expectRestart bool) {
+		task = task.Copy()
+		task.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
+		err = s.Update(func(tx store.Tx) error {
+			assert.NoError(t, store.UpdateTask(tx, task))
+			return nil
+		})
+		assert.NoError(t, err)
+		testutils.Expect(t, watch, api.EventUpdateTask{})
+		task = testutils.WatchShutdownTask(t, watch)
+		if expectRestart {
+			createdTask := testutils.WatchTaskCreate(t, watch)
+			assert.Equal(t, createdTask.Status.State, api.TaskStateNew)
+			assert.Equal(t, createdTask.DesiredState, api.TaskStateReady)
+			assert.Equal(t, createdTask.ServiceAnnotations.Name, "name1")
+		}
+		err = s.Update(func(tx store.Tx) error {
+			task := task.Copy()
+			task.Status.State = api.TaskStateShutdown
+			assert.NoError(t, store.UpdateTask(tx, task))
+			return nil
+		})
+		assert.NoError(t, err)
+		testutils.Expect(t, watch, api.EventUpdateTask{})
+	}
+
+	testRestart := func(serviceUpdated bool) {
 		observedTask1 := testutils.WatchTaskCreate(t, watch)
 		assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
 		assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
+
+		if serviceUpdated {
+			runnableTask := testutils.WatchTaskUpdate(t, watch)
+			assert.Equal(t, observedTask1.ID, runnableTask.ID)
+			assert.Equal(t, api.TaskStateRunning, runnableTask.DesiredState)
+			err = s.Update(func(tx store.Tx) error {
+				task := runnableTask.Copy()
+				task.Status.State = api.TaskStateRunning
+				assert.NoError(t, store.UpdateTask(tx, task))
+				return nil
+			})
+			assert.NoError(t, err)
+
+			testutils.Expect(t, watch, api.EventUpdateTask{})
+		}
 
 		observedTask2 := testutils.WatchTaskCreate(t, watch)
 		assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
 		assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 
-		testutils.Expect(t, watch, state.EventCommit{})
+		if serviceUpdated {
+			testutils.Expect(t, watch, api.EventUpdateTask{})
+		}
 
 		// Fail the first task. Confirm that it gets restarted.
-		updatedTask1 := observedTask1.Copy()
-		updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed}
 		before := time.Now()
-		err = s.Update(func(tx store.Tx) error {
-			assert.NoError(t, store.UpdateTask(tx, updatedTask1))
-			return nil
-		})
-		assert.NoError(t, err)
-		testutils.Expect(t, watch, api.EventUpdateTask{})
-		testutils.Expect(t, watch, state.EventCommit{})
-		testutils.Expect(t, watch, api.EventUpdateTask{})
-
-		observedTask3 := testutils.WatchTaskCreate(t, watch)
-		testutils.Expect(t, watch, state.EventCommit{})
-		assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
-		assert.Equal(t, observedTask3.DesiredState, api.TaskStateReady)
-		assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
+		failTask(observedTask1, true)
 
 		observedTask4 := testutils.WatchTaskUpdate(t, watch)
-		testutils.Expect(t, watch, state.EventCommit{})
 		after := time.Now()
 
 		// At least 100 ms should have elapsed. Only check the lower bound,
@@ -502,40 +593,15 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 		assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name1")
 
 		// Fail the second task. Confirm that it gets restarted.
-		updatedTask2 := observedTask2.Copy()
-		updatedTask2.Status = api.TaskStatus{State: api.TaskStateFailed}
-		err = s.Update(func(tx store.Tx) error {
-			assert.NoError(t, store.UpdateTask(tx, updatedTask2))
-			return nil
-		})
-		assert.NoError(t, err)
-		testutils.Expect(t, watch, api.EventUpdateTask{})
-		testutils.Expect(t, watch, state.EventCommit{})
-		testutils.Expect(t, watch, api.EventUpdateTask{})
-
-		observedTask5 := testutils.WatchTaskCreate(t, watch)
-		testutils.Expect(t, watch, state.EventCommit{})
-		assert.Equal(t, observedTask5.Status.State, api.TaskStateNew)
-		assert.Equal(t, observedTask5.DesiredState, api.TaskStateReady)
+		failTask(observedTask2, true)
 
 		observedTask6 := testutils.WatchTaskUpdate(t, watch) // task gets started after a delay
-		testutils.Expect(t, watch, state.EventCommit{})
 		assert.Equal(t, observedTask6.Status.State, api.TaskStateNew)
 		assert.Equal(t, observedTask6.DesiredState, api.TaskStateRunning)
 		assert.Equal(t, observedTask6.ServiceAnnotations.Name, "name1")
 
 		// Fail the first instance again. It should not be restarted.
-		updatedTask1 = observedTask3.Copy()
-		updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed}
-		err = s.Update(func(tx store.Tx) error {
-			assert.NoError(t, store.UpdateTask(tx, updatedTask1))
-			return nil
-		})
-		assert.NoError(t, err)
-		testutils.Expect(t, watch, api.EventUpdateTask{})
-		testutils.Expect(t, watch, state.EventCommit{})
-		testutils.Expect(t, watch, api.EventUpdateTask{})
-		testutils.Expect(t, watch, state.EventCommit{})
+		failTask(observedTask4, false)
 
 		select {
 		case <-watch:
@@ -544,17 +610,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 		}
 
 		// Fail the second instance again. It should not be restarted.
-		updatedTask2 = observedTask5.Copy()
-		updatedTask2.Status = api.TaskStatus{State: api.TaskStateFailed}
-		err = s.Update(func(tx store.Tx) error {
-			assert.NoError(t, store.UpdateTask(tx, updatedTask2))
-			return nil
-		})
-		assert.NoError(t, err)
-		testutils.Expect(t, watch, api.EventUpdateTask{})
-		testutils.Expect(t, watch, state.EventCommit{})
-		testutils.Expect(t, watch, api.EventUpdateTask{})
-		testutils.Expect(t, watch, state.EventCommit{})
+		failTask(observedTask6, false)
 
 		select {
 		case <-watch:
@@ -563,7 +619,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 		}
 	}
 
-	testRestart()
+	testRestart(false)
 
 	// Update the service spec
 	err = s.Update(func(tx store.Tx) error {
@@ -576,7 +632,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	testRestart()
+	testRestart(true)
 }
 
 func TestOrchestratorRestartWindow(t *testing.T) {
@@ -638,7 +694,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed}
+	updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	before := time.Now()
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
@@ -671,7 +727,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 
 	// Fail the second task. Confirm that it gets restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateFailed}
+	updatedTask2.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
@@ -696,7 +752,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 
 	// Fail the first instance again. It should not be restarted.
 	updatedTask1 = observedTask3.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed}
+	updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
@@ -718,7 +774,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	// Fail the second instance again. It should get restarted because
 	// enough time has elapsed since the last restarts.
 	updatedTask2 = observedTask5.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateFailed}
+	updatedTask2.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	before = time.Now()
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))

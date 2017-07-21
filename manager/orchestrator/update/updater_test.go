@@ -16,11 +16,24 @@ import (
 )
 
 func getRunnableSlotSlice(t *testing.T, s *store.MemoryStore, service *api.Service) []orchestrator.Slot {
-	runnable, _, err := orchestrator.GetRunnableAndDeadSlots(s, service.ID)
+	var (
+		tasks []*api.Task
+		err   error
+	)
+	s.View(func(tx store.ReadTx) {
+		tasks, err = store.FindTasks(tx, store.ByServiceID(service.ID))
+	})
 	require.NoError(t, err)
 
+	runningSlots := make(map[uint64]orchestrator.Slot)
+	for _, t := range tasks {
+		if t.DesiredState <= api.TaskStateRunning {
+			runningSlots[t.Slot] = append(runningSlots[t.Slot], t)
+		}
+	}
+
 	var runnableSlice []orchestrator.Slot
-	for _, slot := range runnable {
+	for _, slot := range runningSlots {
 		runnableSlice = append(runnableSlice, slot)
 	}
 	return runnableSlice

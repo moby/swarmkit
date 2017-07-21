@@ -3,6 +3,8 @@ package replicated
 import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/orchestrator"
+	"github.com/docker/swarmkit/manager/state/store"
+	"golang.org/x/net/context"
 )
 
 type slotsByRunningState []orchestrator.Slot
@@ -52,4 +54,37 @@ func (is slotsByIndex) Less(i, j int) bool {
 		return true
 	}
 	return is[i].index < is[j].index
+}
+
+// updatableAndDeadSlots returns two maps of slots. The first contains slots
+// that have at least one task with a desired state above NEW and lesser or
+// equal to RUNNING, or a task that shouldn't be restarted. The second contains
+// all other slots with at least one task.
+func (r *Orchestrator) updatableAndDeadSlots(ctx context.Context, service *api.Service) (map[uint64]orchestrator.Slot, map[uint64]orchestrator.Slot, error) {
+	var (
+		tasks []*api.Task
+		err   error
+	)
+	r.store.View(func(tx store.ReadTx) {
+		tasks, err = store.FindTasks(tx, store.ByServiceID(service.ID))
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	updatableSlots := make(map[uint64]orchestrator.Slot)
+	for _, t := range tasks {
+		if r.restarts.IsTaskUpdatable(ctx, t, service) {
+			updatableSlots[t.Slot] = append(updatableSlots[t.Slot], t)
+		}
+	}
+
+	deadSlots := make(map[uint64]orchestrator.Slot)
+	for _, t := range tasks {
+		if _, exists := updatableSlots[t.Slot]; !exists {
+			deadSlots[t.Slot] = append(deadSlots[t.Slot], t)
+		}
+	}
+
+	return updatableSlots, deadSlots, nil
 }

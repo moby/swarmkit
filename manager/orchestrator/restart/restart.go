@@ -138,7 +138,7 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 		return err
 	}
 
-	if !r.shouldRestart(ctx, &t, service) {
+	if !r.ShouldRestart(ctx, &t, service) {
 		return nil
 	}
 
@@ -191,9 +191,10 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 	return nil
 }
 
-func (r *Supervisor) shouldRestart(ctx context.Context, t *api.Task, service *api.Service) bool {
+// ShouldRestart returns true if a task should be restarted according to the
+// restart policy.
+func (r *Supervisor) ShouldRestart(ctx context.Context, t *api.Task, service *api.Service) bool {
 	// TODO(aluzzardi): This function should not depend on `service`.
-
 	condition := orchestrator.RestartCondition(t)
 
 	if condition != api.RestartOnAny &&
@@ -237,25 +238,67 @@ func (r *Supervisor) shouldRestart(ctx context.Context, t *api.Task, service *ap
 		log.G(ctx).WithError(err).Error("invalid restart lookback window")
 		return restartInfo.totalRestarts < t.Spec.Restart.MaxAttempts
 	}
-	lookback := time.Now().Add(-window)
+
+	var timestamp time.Time
+	// Prefer the manager's timestamp over the agent's, since manager
+	// clocks are more trustworthy.
+	if t.Status.AppliedAt != nil {
+		timestamp, err = gogotypes.TimestampFromProto(t.Status.AppliedAt)
+		if err != nil {
+			log.G(ctx).WithError(err).Error("invalid task status AppliedAt timestamp")
+			return restartInfo.totalRestarts < t.Spec.Restart.MaxAttempts
+		}
+	} else {
+		// It's safe to call TimestampFromProto with a nil timestamp
+		timestamp, err = gogotypes.TimestampFromProto(t.Status.Timestamp)
+		if t.Status.Timestamp == nil || err != nil {
+			log.G(ctx).WithError(err).Error("invalid task completion timestamp")
+			return restartInfo.totalRestarts < t.Spec.Restart.MaxAttempts
+		}
+	}
+	lookback := timestamp.Add(-window)
+
+	numRestarts := uint64(restartInfo.restartedInstances.Len())
 
 	var next *list.Element
 	for e := restartInfo.restartedInstances.Front(); e != nil; e = next {
 		next = e.Next()
 
 		if e.Value.(restartedInstance).timestamp.After(lookback) {
+			for e2 := restartInfo.restartedInstances.Back(); e2 != nil; e2 = e2.Prev() {
+				// Ignore restarts that didn't happen before the
+				// task we're looking at.
+				if e.Value.(restartedInstance).timestamp.Before(timestamp) {
+					break
+				}
+				numRestarts--
+			}
 			break
 		}
 		restartInfo.restartedInstances.Remove(e)
+		numRestarts--
 	}
 
-	numRestarts := uint64(restartInfo.restartedInstances.Len())
-
-	if numRestarts == 0 {
+	if restartInfo.restartedInstances.Len() == 0 {
 		restartInfo.restartedInstances = nil
 	}
 
 	return numRestarts < t.Spec.Restart.MaxAttempts
+}
+
+// IsTaskUpdatable determines whether the task should be passed to the updater
+// or not. An updatable task is either a task that with desired state <=
+// RUNNING, or a task which has stopped running and should not be restarted. The
+// latter case is for making sure that tasks that shouldn't normally be
+// restarted will still be handled by rolling updates when they become outdated.
+// There is a special case for rollbacks to make sure that a rollback always
+// takes the service to a converged state, instead of ignoring tasks with the
+// original spec that stopped running and shouldn't be restarted according to
+// the restart policy.
+func (r *Supervisor) IsTaskUpdatable(ctx context.Context, t *api.Task, service *api.Service) bool {
+	return t.DesiredState <= api.TaskStateRunning ||
+		((service.UpdateStatus == nil || service.UpdateStatus.State != api.UpdateStatus_ROLLBACK_STARTED) &&
+			!r.ShouldRestart(ctx, t, service))
 }
 
 func (r *Supervisor) recordRestartHistory(restartTask *api.Task) {
@@ -337,7 +380,9 @@ func (r *Supervisor) DelayStart(ctx context.Context, _ store.Tx, oldTask *api.Ta
 	var watch chan events.Event
 	cancelWatch := func() {}
 
-	if waitStop && oldTask != nil {
+	waitForTask := waitStop && oldTask != nil && oldTask.Status.State <= api.TaskStateRunning
+
+	if waitForTask {
 		// Wait for either the old task to complete, or the old task's
 		// node to become unavailable.
 		watch, cancelWatch = state.Watch(
@@ -378,7 +423,7 @@ func (r *Supervisor) DelayStart(ctx context.Context, _ store.Tx, oldTask *api.Ta
 			}
 		}
 
-		if waitStop && oldTask != nil {
+		if waitForTask {
 			select {
 			case <-watch:
 			case <-oldTaskTimer.C:

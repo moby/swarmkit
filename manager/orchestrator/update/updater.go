@@ -502,6 +502,9 @@ func (u *Updater) removeOldTasks(ctx context.Context, batch *store.Batch, remove
 				return fmt.Errorf("task %s not found while trying to shut it down", original.ID)
 			}
 			if t.DesiredState > api.TaskStateRunning {
+				if !u.restarts.ShouldRestart(ctx, t, u.newService) {
+					return nil
+				}
 				return fmt.Errorf("task %s was already shut down when reached by updater", original.ID)
 			}
 			t.DesiredState = api.TaskStateShutdown
@@ -583,9 +586,8 @@ func (u *Updater) pauseUpdate(ctx context.Context, serviceID, message string) {
 func (u *Updater) rollbackUpdate(ctx context.Context, serviceID, message string) {
 	log.G(ctx).Debugf("starting rollback of service %s", serviceID)
 
-	var service *api.Service
 	err := u.store.Update(func(tx store.Tx) error {
-		service = store.GetService(tx, serviceID)
+		service := store.GetService(tx, serviceID)
 		if service == nil {
 			return nil
 		}
