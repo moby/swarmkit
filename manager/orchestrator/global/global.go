@@ -493,8 +493,7 @@ func (g *Orchestrator) tickTasks(ctx context.Context) {
 					return nil
 				}
 
-				if node.Spec.Availability == api.NodeAvailabilityPause ||
-					!constraint.NodeMatches(serviceEntry.constraints, node) {
+				if !constraint.NodeMatches(serviceEntry.constraints, node) {
 					t.DesiredState = api.TaskStateShutdown
 					return store.UpdateTask(tx, t)
 				}
