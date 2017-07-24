@@ -44,16 +44,20 @@ func printTaskStatus(w io.Writer, t *api.Task) {
 	if len(ctnr.Networks) > 0 {
 		fmt.Fprintf(w, "  Networks\n")
 		for _, n := range ctnr.Networks {
-			var s string
-			switch t := n.Address.(type) {
-			case *api.ContainerNetworkStatus_IP:
-				s = t.IP
-			case *api.ContainerNetworkStatus_Error:
-				s = t.Error
-			default:
-				s = "Unknown"
+			fmt.Fprintf(w, "    %s\n", n.Network)
+			if n.Error != "" {
+				fmt.Fprintf(w, "      \t: %s\n", n.Error)
+				continue
 			}
-			fmt.Fprintf(w, "    %s\t: %s %s\n", n.Network, n.Interface, s)
+
+			for _, iface := range n.Interfaces {
+				ifname := iface.Name
+				for _, ip := range iface.IP {
+					fmt.Fprintf(w, "      %s\t: %s\n", ifname, ip)
+					ifname = "" // Only for the first line for this interface
+				}
+
+			}
 		}
 	}
 

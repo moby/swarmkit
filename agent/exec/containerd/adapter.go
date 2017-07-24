@@ -76,12 +76,12 @@ func newContainerAdapter(client *containerd.Client, task *api.Task, secrets exec
 	}
 
 	for i, na := range task.Networks {
-		// TODO(ijc) Is this the right approach to naming devices?
-		iface := fmt.Sprintf("eth%d", i)
-
 		c.networks = append(c.networks, &networkStatus{
 			attachment: na,
-			iface:      iface,
+			// This becomes CNI_IFNAME which according to
+			// the spec is optional, but the
+			// implementation currently requires it.
+			iface: fmt.Sprintf("eth%d", i),
 		})
 	}
 

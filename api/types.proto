@@ -470,16 +470,17 @@ message ContainerNetworkStatus {
 	// Network is the Network ID
 	string network = 1;
 
-	// Interface is the device name as seen within the container
-	string interface = 2;
+	// Error, if any.
+	string error = 2;
 
-	oneof address {
-		// IP is in dotted decimal ("192.0.2.1") or IPv6 ("2001:db8::68") form.
-		string ip = 3 [(gogoproto.customname) = "IP"];
+	message NetworkInterface {
+		string name = 1;
 
-		// If no address is available then error is a descriptive message as to why.
-		string error = 4;
-	}
+		// Each IP is in dotted decimal ("192.0.2.1") or IPv6 ("2001:db8::68") form.
+		repeated string ip = 2 [(gogoproto.customname) = "IP"];
+	};
+
+	repeated NetworkInterface interfaces = 3;
 }
 
 // Container specific status.
