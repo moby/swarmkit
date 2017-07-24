@@ -215,7 +215,7 @@ func (c *containerAdapter) isPrepared() bool {
 }
 
 func cniConfig(n *api.Network) (*libcni.NetworkConfig, error) {
-	if n.DriverState.Name != "cni" {
+	if n.DriverState == nil || n.DriverState.Name != "cni" {
 		return nil, errors.New("containerd executor only supports CNI")
 	}
 
