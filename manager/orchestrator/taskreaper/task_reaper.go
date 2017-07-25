@@ -140,6 +140,22 @@ func (tr *TaskReaper) tick() {
 
 			taskHistory := tr.taskHistory
 
+			// If MaxAttempts is set, keep at least one more than
+			// that number of tasks. This is necessary reconstruct
+			// restart history when the orchestrator starts up.
+			// TODO(aaronl): Consider hiding tasks beyond the normal
+			// retention limit in the UI.
+			// TODO(aaronl): There are some ways to cut down the
+			// number of retained tasks at the cost of more
+			// complexity:
+			//   - Don't force retention of tasks with an older spec
+			//     version.
+			//   - Don't force retention of tasks outside of the
+			//     time window configured for restart lookback.
+			if service.Spec.Task.Restart != nil && service.Spec.Task.Restart.MaxAttempts > 0 {
+				taskHistory = int64(service.Spec.Task.Restart.MaxAttempts) + 1
+			}
+
 			if taskHistory < 0 {
 				continue
 			}
@@ -173,6 +189,8 @@ func (tr *TaskReaper) tick() {
 
 			// TODO(aaronl): This could filter for non-running tasks and use quickselect
 			// instead of sorting the whole slice.
+			// TODO(aaronl): This sort should really use lamport time instead of wall
+			// clock time. We should store a Version in the Status field.
 			sort.Sort(tasksByTimestamp(historicTasks))
 
 			runningTasks := 0
