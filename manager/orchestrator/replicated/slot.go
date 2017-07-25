@@ -88,3 +88,11 @@ func (r *Orchestrator) updatableAndDeadSlots(ctx context.Context, service *api.S
 
 	return updatableSlots, deadSlots, nil
 }
+
+// SlotTuple returns a slot tuple for the replicated service task.
+func (r *Orchestrator) SlotTuple(t *api.Task) orchestrator.SlotTuple {
+	return orchestrator.SlotTuple{
+		ServiceID: t.ServiceID,
+		Slot:      t.Slot,
+	}
+}

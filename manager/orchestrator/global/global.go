@@ -557,6 +557,14 @@ func (g *Orchestrator) IsRelatedService(service *api.Service) bool {
 	return orchestrator.IsGlobalService(service)
 }
 
+// SlotTuple returns a slot tuple for the global service task.
+func (g *Orchestrator) SlotTuple(t *api.Task) orchestrator.SlotTuple {
+	return orchestrator.SlotTuple{
+		ServiceID: t.ServiceID,
+		NodeID:    t.NodeID,
+	}
+}
+
 func isTaskCompleted(t *api.Task, restartPolicy api.RestartPolicy_RestartCondition) bool {
 	if t == nil || t.DesiredState <= api.TaskStateRunning {
 		return false

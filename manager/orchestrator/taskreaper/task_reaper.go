@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"golang.org/x/net/context"
@@ -18,19 +19,13 @@ const (
 	reaperBatchingInterval = 250 * time.Millisecond
 )
 
-type instanceTuple struct {
-	instance  uint64 // unset for global tasks
-	serviceID string
-	nodeID    string // unset for replicated tasks
-}
-
 // A TaskReaper deletes old tasks when more than TaskHistoryRetentionLimit tasks
 // exist for the same service/instance or service/nodeid combination.
 type TaskReaper struct {
 	store *store.MemoryStore
 	// taskHistory is the number of tasks to keep
 	taskHistory int64
-	dirty       map[instanceTuple]struct{}
+	dirty       map[orchestrator.SlotTuple]struct{}
 	orphaned    []string
 	stopChan    chan struct{}
 	doneChan    chan struct{}
@@ -40,7 +35,7 @@ type TaskReaper struct {
 func New(store *store.MemoryStore) *TaskReaper {
 	return &TaskReaper{
 		store:    store,
-		dirty:    make(map[instanceTuple]struct{}),
+		dirty:    make(map[orchestrator.SlotTuple]struct{}),
 		stopChan: make(chan struct{}),
 		doneChan: make(chan struct{}),
 	}
@@ -93,10 +88,10 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 			switch v := event.(type) {
 			case api.EventCreateTask:
 				t := v.Task
-				tr.dirty[instanceTuple{
-					instance:  t.Slot,
-					serviceID: t.ServiceID,
-					nodeID:    t.NodeID,
+				tr.dirty[orchestrator.SlotTuple{
+					Slot:      t.Slot,
+					ServiceID: t.ServiceID,
+					NodeID:    t.NodeID,
 				}] = struct{}{}
 			case api.EventUpdateTask:
 				t := v.Task
@@ -138,7 +133,7 @@ func (tr *TaskReaper) tick() {
 	}
 	tr.store.View(func(tx store.ReadTx) {
 		for dirty := range tr.dirty {
-			service := store.GetService(tx, dirty.serviceID)
+			service := store.GetService(tx, dirty.ServiceID)
 			if service == nil {
 				continue
 			}
@@ -154,19 +149,19 @@ func (tr *TaskReaper) tick() {
 			switch service.Spec.GetMode().(type) {
 			case *api.ServiceSpec_Replicated:
 				var err error
-				historicTasks, err = store.FindTasks(tx, store.BySlot(dirty.serviceID, dirty.instance))
+				historicTasks, err = store.FindTasks(tx, store.BySlot(dirty.ServiceID, dirty.Slot))
 				if err != nil {
 					continue
 				}
 
 			case *api.ServiceSpec_Global:
-				tasksByNode, err := store.FindTasks(tx, store.ByNodeID(dirty.nodeID))
+				tasksByNode, err := store.FindTasks(tx, store.ByNodeID(dirty.NodeID))
 				if err != nil {
 					continue
 				}
 
 				for _, t := range tasksByNode {
-					if t.ServiceID == dirty.serviceID {
+					if t.ServiceID == dirty.ServiceID {
 						historicTasks = append(historicTasks, t)
 					}
 				}
