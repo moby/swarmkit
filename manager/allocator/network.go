@@ -1191,3 +1191,8 @@ func GetIngressNetwork(s *store.MemoryStore) (*api.Network, error) {
 	}
 	return nil, ErrNoIngress
 }
+
+// IsPredefinedNetwork checks if the network is a host/bridge network
+func IsPredefinedNetwork(target string) bool {
+	return cnmallocator.IsPredefinedNetwork(target)
+}

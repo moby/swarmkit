@@ -23,7 +23,6 @@ import (
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/allocator"
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
 	"github.com/docker/swarmkit/manager/controlapi"
 	"github.com/docker/swarmkit/manager/dispatcher"
 	"github.com/docker/swarmkit/manager/drivers"
@@ -958,18 +957,6 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 				log.G(ctx).WithError(err).Error("failed to create default ingress network")
 			}
 		}
-		// Create now the static predefined if the store does not contain predefined
-		//networks like bridge/host node-local networks which
-		// are known to be present in each cluster node. This is needed
-		// in order to allow running services on the predefined docker
-		// networks like `bridge` and `host`.
-		for _, p := range allocator.PredefinedNetworks() {
-			if store.GetNetwork(tx, p.Name) == nil {
-				if err := store.CreateNetwork(tx, newPredefinedNetwork(p.Name, p.Driver)); err != nil {
-					log.G(ctx).WithError(err).Error("failed to create predefined network " + p.Name)
-				}
-			}
-		}
 		return nil
 	})
 
@@ -1181,27 +1168,6 @@ func newIngressNetwork() *api.Network {
 					},
 				},
 			},
-		},
-	}
-}
-
-// Creates a network object representing one of the predefined networks
-// known to be statically created on the cluster nodes. These objects
-// are populated in the store at cluster creation solely in order to
-// support running services on the nodes' predefined networks.
-// External clients can filter these predefined networks by looking
-// at the predefined label.
-func newPredefinedNetwork(name, driver string) *api.Network {
-	return &api.Network{
-		ID: identity.NewID(),
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
-				Name: name,
-				Labels: map[string]string{
-					networkallocator.PredefinedLabel: "true",
-				},
-			},
-			DriverConfig: &api.Driver{Name: driver},
 		},
 	}
 }

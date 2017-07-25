@@ -26,3 +26,13 @@ func PredefinedNetworks() []networkallocator.PredefinedNetworkData {
 		{Name: "host", Driver: "host"},
 	}
 }
+
+// IsPredefinedNetwork checks if the network is a host/bridge network
+func IsPredefinedNetwork(target string) bool {
+	for _, p := range PredefinedNetworks() {
+		if target == p.Name {
+			return true
+		}
+	}
+	return false
+}
