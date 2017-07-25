@@ -34,9 +34,9 @@ func newAssignmentSet(log *logrus.Entry, dp *drivers.DriverProvider) *assignment
 	}
 }
 
-func assignSecret(a *assignmentSet, readTx store.ReadTx, mapKey typeAndID) {
+func assignSecret(a *assignmentSet, readTx store.ReadTx, mapKey typeAndID, t *api.Task) {
 	a.tasksUsingDependency[mapKey] = make(map[string]struct{})
-	secret, err := a.secret(readTx, mapKey.id)
+	secret, err := a.secret(readTx, t, mapKey.id)
 	if err != nil {
 		a.log.WithFields(logrus.Fields{
 			"resource.type": "secret",
@@ -81,7 +81,7 @@ func (a *assignmentSet) addTaskDependencies(readTx store.ReadTx, t *api.Task) {
 		if len(a.tasksUsingDependency[mapKey]) == 0 {
 			switch resourceRef.ResourceType {
 			case api.ResourceType_SECRET:
-				assignSecret(a, readTx, mapKey)
+				assignSecret(a, readTx, mapKey, t)
 			case api.ResourceType_CONFIG:
 				assignConfig(a, readTx, mapKey)
 			default:
@@ -105,7 +105,7 @@ func (a *assignmentSet) addTaskDependencies(readTx store.ReadTx, t *api.Task) {
 		mapKey := typeAndID{objType: api.ResourceType_SECRET, id: secretID}
 
 		if len(a.tasksUsingDependency[mapKey]) == 0 {
-			assignSecret(a, readTx, mapKey)
+			assignSecret(a, readTx, mapKey, t)
 		}
 		a.tasksUsingDependency[mapKey][t.ID] = struct{}{}
 	}
@@ -291,7 +291,7 @@ func (a *assignmentSet) message() api.AssignmentsMessage {
 
 // secret populates the secret value from raft store. For external secrets, the value is populated
 // from the secret driver.
-func (a *assignmentSet) secret(readTx store.ReadTx, secretID string) (*api.Secret, error) {
+func (a *assignmentSet) secret(readTx store.ReadTx, task *api.Task, secretID string) (*api.Secret, error) {
 	secret := store.GetSecret(readTx, secretID)
 	if secret == nil {
 		return nil, fmt.Errorf("secret not found")
@@ -303,7 +303,7 @@ func (a *assignmentSet) secret(readTx store.ReadTx, secretID string) (*api.Secre
 	if err != nil {
 		return nil, err
 	}
-	value, err := d.Get(&secret.Spec)
+	value, err := d.Get(&secret.Spec, task)
 	if err != nil {
 		return nil, err
 	}
