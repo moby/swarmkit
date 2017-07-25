@@ -434,7 +434,13 @@ message UpdateSecretRequest {
 
 	// Spec is the new spec to apply to the Secret
 	// Only some fields are allowed to be updated.
-	SecretSpec spec = 3;
+	BasicSecretSpec basic_spec = 3 [deprecated=true];
+
+	oneof spec {
+		BasicSecretSpec basic = 4;
+		PKISpec pki = 5 [(gogoproto.customname) = "PKI"];
+		ServiceIdentitySpec secvice_identity = 6;
+	}
 }
 
 message UpdateSecretResponse {
@@ -465,7 +471,13 @@ message ListSecretsResponse {
 // CreateSecretRequest specifies a new secret (it will not update an existing
 // secret) to create.
 message CreateSecretRequest {
-	SecretSpec spec = 1;
+	BasicSecretSpec basic_spec = 1 [deprecated=true];
+
+	oneof spec {
+		BasicSecretSpec basic = 2;
+		PKISpec pki = 3 [(gogoproto.customname) = "PKI"];
+		ServiceIdentitySpec secvice_identity = 4;
+	}
 }
 
 // CreateSecretResponse contains the newly created `Secret` corresponding to the

@@ -87,8 +87,10 @@
 		EndpointSpec
 		NetworkSpec
 		ClusterSpec
-		SecretSpec
+		BasicSecretSpec
 		ConfigSpec
+		PKISpec
+		ServiceIdentitySpec
 		Meta
 		Node
 		Service
@@ -101,6 +103,9 @@
 		Config
 		Resource
 		Extension
+		BasicSecret
+		ServiceIdentitySecret
+		PKISecret
 		GetNodeRequest
 		GetNodeResponse
 		ListNodesRequest

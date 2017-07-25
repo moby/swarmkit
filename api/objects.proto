@@ -257,7 +257,7 @@ message NetworkAttachment {
 
 	// List of aliases by which a task is resolved in a network
 	repeated string aliases = 3;
-	
+
 	// Map of all the driver attachment options for this network
 	map<string,string> driver_attachment_opts = 4;
 }
@@ -352,10 +352,16 @@ message Secret {
 
 	// Spec contains the actual secret data, as well as any context around the
 	// secret data that the user provides.
-	SecretSpec spec = 3  [(gogoproto.nullable) = false];
+	BasicSecretSpec spec = 3 [deprecated=true];
 
 	// Whether the secret is an internal secret (not set by a user) or not.
 	bool internal = 4;
+
+	oneof secret_type {
+		BasicSecret basic = 5;
+		PKISecret pki = 6 [(gogoproto.customname) = "PKI"];
+		ServiceIdentitySecret service_identity = 7;
+	}
 }
 
 // Config represents a set of configuration files that should be passed to a
@@ -449,4 +455,23 @@ message Extension {
 	//
 	// // Indices, with values expressed as Go templates.
 	//repeated IndexEntry index_templates = 6;
+}
+
+message BasicSecret {
+	// Spec contains the actual secret data, as well as any context around the
+	// secret data that the user provides.
+	BasicSecretSpec spec = 1  [(gogoproto.nullable)=false];
+}
+
+// ServiceIdentitySecret specifies a certificate and private key pair
+message ServiceIdentitySecret {
+	ServiceIdentitySpec spec = 1 [(gogoproto.nullable)=false];
+	bytes private_key = 2;
+	bytes certificate = 3;
+}
+
+// PKISecret specifies a PKI (CA) issuer
+message PKISecret {
+	PKISpec spec = 1 [(gogoproto.nullable)=false];
+	RootCA root_ca = 2 [(gogoproto.nullable)=false, (gogoproto.customname)="RootCA"];
 }

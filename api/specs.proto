@@ -395,8 +395,8 @@ message ClusterSpec {
 	EncryptionConfig encryption_config = 8 [(gogoproto.nullable) = false];
 }
 
-// SecretSpec specifies a user-provided secret.
-message SecretSpec {
+// BasicSecretSpec specifies a user-provided secret.
+message BasicSecretSpec {
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
 	// Data is the secret payload - the maximum size is 500KB (that is, 500*1024 bytes)
@@ -428,4 +428,18 @@ message ConfigSpec {
 	// The currently recognized values are:
 	// - golang: Go templating
 	Driver templating = 3;
+}
+
+message PKISpec {
+	Annotations annotations = 1 [(gogoproto.nullable) = false];
+
+	// CAConfig specifies how we want the CA configured
+	CAConfig ca_config = 2 [(gogoproto.nullable) = false, (gogoproto.customname) = "CAConfig"];
+}
+
+message ServiceIdentitySpec {
+	Annotations annotations = 1 [(gogoproto.nullable) = false];
+
+	// Issuer must contain a reference to a PKI secret used to issue TLS certificates
+	SecretReference issuer = 2 [(gogoproto.nullable) = false];
 }
