@@ -257,7 +257,7 @@ message NetworkAttachment {
 
 	// List of aliases by which a task is resolved in a network
 	repeated string aliases = 3;
-	
+
 	// Map of all the driver attachment options for this network
 	map<string,string> driver_attachment_opts = 4;
 }
@@ -354,8 +354,19 @@ message Secret {
 	// secret data that the user provides.
 	SecretSpec spec = 3  [(gogoproto.nullable) = false];
 
-	// Whether the secret is an internal secret (not set by a user) or not.
+	// Whether the secret is an internal secret (not set by a user, not visible to user) or not.
 	bool internal = 4;
+
+	oneof special {
+		// PKISecret is a CA type of secret - its spec should have a special type CAInfo.  This
+		// type of secret is setable by the user.
+		PKISecret PKI = 5 [(gogoproto.customname) = "PKI"];
+
+		// ServiceIdentitySecret is a certificate type of secret - its spec should have a special
+		// type LeafCertificate.  This type of secret is not modifiable by the user, and its
+		// lifecycle is managed by the swarm itself.
+		ServiceIdentitySecret service_identity = 6;
+	}
 }
 
 // Config represents a set of configuration files that should be passed to a

@@ -409,8 +409,13 @@ message SecretSpec {
 	// - golang: Go templating
 	Driver templating = 3;
 
-	// Driver is the the secret driver that is used to store the specified secret
+	// Driver is the the secret driver that is used to store the specified secret.
 	Driver driver = 4;
+
+	oneof special_secret_type {
+		CAInfo ca = 5 [(gogoproto.customname) = "CA"];
+		LeafCertInfo leaf_certificate = 6;
+	}
 }
 
 // ConfigSpec specifies user-provided configuration files.
@@ -428,4 +433,29 @@ message ConfigSpec {
 	// The currently recognized values are:
 	// - golang: Go templating
 	Driver templating = 3;
+}
+
+// CAInfo is the certificate info part of a CA.  We are not using CAConfig because the signing key
+// is part of the secret data, and CAInfo is intended to be extra information attached to a Secret object.
+message CAInfo {
+	// NodeCertExpiry is the duration certificates should be issued for
+	// Note: can't use stdduration because this field needs to be nullable.
+	google.protobuf.Duration node_cert_expiry = 1;
+
+	// ExternalCAs is a list of CAs to which a manager node will make
+	// certificate signing requests for node certificates.
+	repeated ExternalCA external_cas = 2 [(gogoproto.customname) = "ExternalCAs"];
+
+	// Certificate is the certificate that matches the private key stored in the Data field in a CA type secret
+	bytes certificate = 3;
+
+	// CertBundle are optional extra root certificates to include with the CA certificate
+	bytes cert_bundle = 4;
+}
+
+// LeafCertInfo is the certificate part of a TLS key-pair secret.  It is intended to be extra information
+// that is attached to a Secret object.
+message LeafCertInfo {
+	// Certificate is the certificate that matches the private key stored in the Data field in a LeafCert type secret
+	bytes certificate = 1;
 }

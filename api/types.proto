@@ -1045,3 +1045,30 @@ message Privileges {
 	}
 	SELinuxContext selinux_context = 2 [(gogoproto.customname) = "SELinuxContext"];
 }
+
+// ServiceIdentitySecret contains extra information for a secret that is required by
+// service identities, namely a reference to the issuing PKI secret.  Service identity
+// secrets are generated, and cannot be modified by users.
+message ServiceIdentitySecret {
+	// Reference to the PKI secret that issued it
+	SecretReference pki = 1 [(gogoproto.nullable)=false, (gogoproto.customname) = "PKI"];
+
+	// Expiry specifies when the certificate will expire (and hence when it needs
+	// to be rotated.)
+	google.protobuf.Timestamp expiry = 2;
+
+	// ServiceID is a reference to the service for which this secret was generated.
+	// Only the service for which it was created can reference this secret, and the
+	// secret can be deleted once the referenced service is deleted.
+	string service_id = 3 [(gogoproto.customname) = "ServiceID"];
+}
+
+message PKISecret {
+	// RootCA stores the current root CA and future root CA (if a rotation is pending)
+	// for CA type secrets
+	RootCA root_ca = 1 [(gogoproto.nullable)=false, (gogoproto.customname) = "RootCA"];
+
+	// Expiry specifies when the root certificate will expire (and hence when it needs
+	// to be rotated.)
+	google.protobuf.Timestamp expiry = 2;
+}

@@ -435,6 +435,9 @@ message UpdateSecretRequest {
 	// Spec is the new spec to apply to the Secret
 	// Only some fields are allowed to be updated.
 	SecretSpec spec = 3;
+
+	// GenerateNewCertificate forces a PKI rotation if the secret type is CA or LEAFCERT.
+	bool generate_new_certificate = 4;
 }
 
 message UpdateSecretResponse {
