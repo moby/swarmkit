@@ -3,8 +3,10 @@ package cni
 import (
 	"github.com/containernetworking/cni/libcni"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/allocator/cniallocator"
 	"github.com/docker/swarmkit/manager/network"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
@@ -38,24 +40,7 @@ func parseCNIspec(spec *api.NetworkSpec) (*libcni.NetworkConfig, error) {
 	return cni, nil
 }
 
-func (nm *cni) SetDefaults(spec *api.NetworkSpec) error {
-	if spec.DriverConfig == nil || spec.DriverConfig.Name != "cni" {
-		return nil
-	}
-
-	cni, err := parseCNIspec(spec)
-	if err != nil {
-		return err
-	}
-
-	if spec.Annotations.Name == "" {
-		spec.Annotations.Name = cni.Network.Name
-	}
-
-	return nil
-}
-
-func (nm *cni) ValidateNetworkSpec(spec *api.NetworkSpec) error {
+func (nm *cni) ValidateNetworkSpec(ctx context.Context, spec *api.NetworkSpec) error {
 	if spec.DriverConfig == nil || spec.DriverConfig.Name != "cni" {
 		return grpc.Errorf(codes.InvalidArgument, "spec is not for a CNI network")
 	}
@@ -66,8 +51,7 @@ func (nm *cni) ValidateNetworkSpec(spec *api.NetworkSpec) error {
 	}
 
 	if spec.Annotations.Name != cni.Network.Name {
-		return grpc.Errorf(codes.InvalidArgument,
-			"CNI Network name (%q) must match Spec annotations name (%q)",
+		log.G(ctx).Infof("CNI Network name (%q) does not match Spec name (%q)",
 			cni.Network.Name, spec.Annotations.Name)
 	}
 

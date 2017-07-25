@@ -4,6 +4,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -101,8 +102,7 @@ type Allocator interface {
 // Model is an abstraction over the Network Model to be used.
 type Model interface {
 	NewAllocator() (Allocator, error)
-	SetDefaults(spec *api.NetworkSpec) error
-	ValidateNetworkSpec(spec *api.NetworkSpec) error
+	ValidateNetworkSpec(ctx context.Context, spec *api.NetworkSpec) error
 	PredefinedNetworks() []PredefinedNetworkData
 	SupportsIngressNetwork() bool
 }

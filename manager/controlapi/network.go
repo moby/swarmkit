@@ -10,12 +10,12 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func validateNetworkSpec(spec *api.NetworkSpec, nm network.Model) error {
+func validateNetworkSpec(ctx context.Context, spec *api.NetworkSpec, nm network.Model) error {
 	if spec == nil {
 		return grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
-	if err := nm.ValidateNetworkSpec(spec); err != nil {
+	if err := nm.ValidateNetworkSpec(ctx, spec); err != nil {
 		return err
 	}
 
@@ -39,10 +39,7 @@ func validateNetworkSpec(spec *api.NetworkSpec, nm network.Model) error {
 // - Returns `InvalidArgument` if the NetworkSpec is malformed.
 // - Returns an error if the creation fails.
 func (s *Server) CreateNetwork(ctx context.Context, request *api.CreateNetworkRequest) (*api.CreateNetworkResponse, error) {
-	if err := s.nm.SetDefaults(request.Spec); err != nil {
-		return nil, err
-	}
-	if err := validateNetworkSpec(request.Spec, s.nm); err != nil {
+	if err := validateNetworkSpec(ctx, request.Spec, s.nm); err != nil {
 		return nil, err
 	}
 

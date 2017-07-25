@@ -22,7 +22,7 @@ func createNetworkSpec(name string) *api.NetworkSpec {
 // createInternalNetwork creates an internal network for testing. it is the same
 // as Server.CreateNetwork except without the label check.
 func (s *Server) createInternalNetwork(ctx context.Context, request *api.CreateNetworkRequest) (*api.CreateNetworkResponse, error) {
-	if err := validateNetworkSpec(request.Spec, nil); err != nil {
+	if err := validateNetworkSpec(ctx, request.Spec, nil); err != nil {
 		return nil, err
 	}
 

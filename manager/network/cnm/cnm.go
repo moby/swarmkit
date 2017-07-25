@@ -10,6 +10,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/allocator/cnmallocator"
 	"github.com/docker/swarmkit/manager/network"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
@@ -33,7 +34,7 @@ func (nm *cnm) SupportsIngressNetwork() bool {
 	return true
 }
 
-func (nm *cnm) ValidateNetworkSpec(spec *api.NetworkSpec) error {
+func (nm *cnm) ValidateNetworkSpec(ctx context.Context, spec *api.NetworkSpec) error {
 	if spec.Ingress && spec.DriverConfig != nil && spec.DriverConfig.Name != "overlay" {
 		return grpc.Errorf(codes.Unimplemented, "only overlay driver is currently supported for ingress network")
 	}
@@ -46,10 +47,6 @@ func (nm *cnm) ValidateNetworkSpec(spec *api.NetworkSpec) error {
 		return err
 	}
 
-	return nil
-}
-
-func (nm *cnm) SetDefaults(spec *api.NetworkSpec) error {
 	return nil
 }
 
