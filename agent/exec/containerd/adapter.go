@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/containerd/containerd"
 	"github.com/docker/docker/pkg/signal"
 	"github.com/docker/swarmkit/agent/exec"
@@ -19,6 +18,7 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
