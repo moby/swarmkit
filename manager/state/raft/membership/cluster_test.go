@@ -13,7 +13,6 @@ import (
 
 	"google.golang.org/grpc/grpclog"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/docker/swarmkit/api"
 	cautils "github.com/docker/swarmkit/ca/testutils"
@@ -21,6 +20,7 @@ import (
 	"github.com/docker/swarmkit/manager/state/raft/membership"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/testutils"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
