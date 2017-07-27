@@ -132,7 +132,7 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 		return err
 	}
 
-	if !r.ShouldRestart(ctx, &t, service) {
+	if !r.shouldRestart(ctx, &t, service) {
 		return nil
 	}
 
@@ -190,9 +190,9 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 	return nil
 }
 
-// ShouldRestart returns true if a task should be restarted according to the
+// shouldRestart returns true if a task should be restarted according to the
 // restart policy.
-func (r *Supervisor) ShouldRestart(ctx context.Context, t *api.Task, service *api.Service) bool {
+func (r *Supervisor) shouldRestart(ctx context.Context, t *api.Task, service *api.Service) bool {
 	// TODO(aluzzardi): This function should not depend on `service`.
 	condition := orchestrator.RestartCondition(t)
 
@@ -276,7 +276,7 @@ func (r *Supervisor) ShouldRestart(ctx context.Context, t *api.Task, service *ap
 
 	// Ignore restarts that didn't happen before the task we're looking at.
 	for e2 := restartInfo.restartedInstances.Back(); e2 != nil; e2 = e2.Prev() {
-		if e.Value.(restartedInstance).timestamp.Before(timestamp) {
+		if e2.Value.(restartedInstance).timestamp.Before(timestamp) {
 			break
 		}
 		numRestarts--
@@ -289,19 +289,48 @@ func (r *Supervisor) ShouldRestart(ctx context.Context, t *api.Task, service *ap
 	return numRestarts < t.Spec.Restart.MaxAttempts
 }
 
-// IsTaskUpdatable determines whether the task should be passed to the updater
-// or not. An updatable task is either a task that with desired state <=
-// RUNNING, or a task which has stopped running and should not be restarted. The
-// latter case is for making sure that tasks that shouldn't normally be
-// restarted will still be handled by rolling updates when they become outdated.
-// There is a special case for rollbacks to make sure that a rollback always
-// takes the service to a converged state, instead of ignoring tasks with the
-// original spec that stopped running and shouldn't be restarted according to
-// the restart policy.
-func (r *Supervisor) IsTaskUpdatable(ctx context.Context, t *api.Task, service *api.Service) bool {
-	return t.DesiredState <= api.TaskStateRunning ||
-		((service.UpdateStatus == nil || service.UpdateStatus.State != api.UpdateStatus_ROLLBACK_STARTED) &&
-			!r.ShouldRestart(ctx, t, service))
+// UpdatableTasksInSlot returns the set of tasks that should be passed to the
+// updater from this slot, or an empty slice if none should be.  An updatable
+// slot has either at least one task that with desired state <= RUNNING, or its
+// most recent task has stopped running and should not be restarted. The latter
+// case is for making sure that tasks that shouldn't normally be restarted will
+// still be handled by rolling updates when they become outdated.  There is a
+// special case for rollbacks to make sure that a rollback always takes the
+// service to a converged state, instead of ignoring tasks with the original
+// spec that stopped running and shouldn't be restarted according to the
+// restart policy.
+func (r *Supervisor) UpdatableTasksInSlot(ctx context.Context, slot orchestrator.Slot, service *api.Service) orchestrator.Slot {
+	if len(slot) < 1 {
+		return nil
+	}
+
+	var updatable orchestrator.Slot
+	for _, t := range slot {
+		if t.DesiredState <= api.TaskStateRunning {
+			updatable = append(updatable, t)
+		}
+	}
+	if len(updatable) > 0 {
+		return updatable
+	}
+
+	if service.UpdateStatus != nil && service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_STARTED {
+		return nil
+	}
+
+	// Find most recent task
+	byTimestamp := orchestrator.TasksByTimestamp(slot)
+	newestIndex := 0
+	for i := 1; i != len(slot); i++ {
+		if byTimestamp.Less(newestIndex, i) {
+			newestIndex = i
+		}
+	}
+
+	if !r.shouldRestart(ctx, slot[newestIndex], service) {
+		return orchestrator.Slot{slot[newestIndex]}
+	}
+	return nil
 }
 
 // RecordRestartHistory updates the historyByService map to reflect the restart

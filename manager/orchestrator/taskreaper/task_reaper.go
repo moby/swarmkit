@@ -191,7 +191,7 @@ func (tr *TaskReaper) tick() {
 			// instead of sorting the whole slice.
 			// TODO(aaronl): This sort should really use lamport time instead of wall
 			// clock time. We should store a Version in the Status field.
-			sort.Sort(tasksByTimestamp(historicTasks))
+			sort.Sort(orchestrator.TasksByTimestamp(historicTasks))
 
 			runningTasks := 0
 			for _, t := range historicTasks {
@@ -231,28 +231,4 @@ func (tr *TaskReaper) tick() {
 func (tr *TaskReaper) Stop() {
 	close(tr.stopChan)
 	<-tr.doneChan
-}
-
-type tasksByTimestamp []*api.Task
-
-func (t tasksByTimestamp) Len() int {
-	return len(t)
-}
-func (t tasksByTimestamp) Swap(i, j int) {
-	t[i], t[j] = t[j], t[i]
-}
-func (t tasksByTimestamp) Less(i, j int) bool {
-	if t[i].Status.Timestamp == nil {
-		return true
-	}
-	if t[j].Status.Timestamp == nil {
-		return false
-	}
-	if t[i].Status.Timestamp.Seconds < t[j].Status.Timestamp.Seconds {
-		return true
-	}
-	if t[i].Status.Timestamp.Seconds > t[j].Status.Timestamp.Seconds {
-		return false
-	}
-	return t[i].Status.Timestamp.Nanos < t[j].Status.Timestamp.Nanos
 }

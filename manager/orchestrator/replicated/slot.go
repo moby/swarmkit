@@ -74,15 +74,17 @@ func (r *Orchestrator) updatableAndDeadSlots(ctx context.Context, service *api.S
 
 	updatableSlots := make(map[uint64]orchestrator.Slot)
 	for _, t := range tasks {
-		if r.restarts.IsTaskUpdatable(ctx, t, service) {
-			updatableSlots[t.Slot] = append(updatableSlots[t.Slot], t)
-		}
+		updatableSlots[t.Slot] = append(updatableSlots[t.Slot], t)
 	}
 
 	deadSlots := make(map[uint64]orchestrator.Slot)
-	for _, t := range tasks {
-		if _, exists := updatableSlots[t.Slot]; !exists {
-			deadSlots[t.Slot] = append(deadSlots[t.Slot], t)
+	for slotID, slot := range updatableSlots {
+		updatable := r.restarts.UpdatableTasksInSlot(ctx, slot, service)
+		if len(updatable) != 0 {
+			updatableSlots[slotID] = updatable
+		} else {
+			delete(updatableSlots, slotID)
+			deadSlots[slotID] = slot
 		}
 	}
 
