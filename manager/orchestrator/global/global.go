@@ -265,8 +265,11 @@ func (g *Orchestrator) reconcileServices(ctx context.Context, serviceIDs []strin
 			nodeTasks[serviceID] = make(map[string][]*api.Task)
 
 			for _, t := range tasks {
-				if t.DesiredState <= api.TaskStateRunning {
-					// Collect all running instances of this service
+				if t.DesiredState <= api.TaskStateRunning || t.DontRestart {
+					// Collect all runnable instances of this service,
+					// and instances that were not be restarted due
+					// to restart policy but may be updated if the
+					// service spec changed.
 					nodeTasks[serviceID][t.NodeID] = append(nodeTasks[serviceID][t.NodeID], t)
 				}
 			}
@@ -405,7 +408,7 @@ func (g *Orchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
 			if t.ServiceID != serviceID {
 				continue
 			}
-			if t.DesiredState <= api.TaskStateRunning {
+			if t.DesiredState <= api.TaskStateRunning || t.DontRestart {
 				tasks[serviceID] = append(tasks[serviceID], t)
 			}
 		}

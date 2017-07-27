@@ -131,14 +131,19 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 		return errors.New("Restart called on task that was already shut down")
 	}
 
+	shouldRestart := r.shouldRestart(ctx, &t, service)
+
 	t.DesiredState = api.TaskStateShutdown
+	if !shouldRestart {
+		t.DontRestart = true
+	}
 	err := store.UpdateTask(tx, &t)
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("failed to set task desired state to dead")
 		return err
 	}
 
-	if !r.shouldRestart(ctx, &t, service) {
+	if !shouldRestart {
 		return nil
 	}
 
@@ -337,7 +342,9 @@ func (r *Supervisor) DelayStart(ctx context.Context, _ store.Tx, oldTask *api.Ta
 	var watch chan events.Event
 	cancelWatch := func() {}
 
-	if waitStop && oldTask != nil {
+	waitForTask := waitStop && oldTask != nil && oldTask.Status.State <= api.TaskStateRunning
+
+	if waitForTask {
 		// Wait for either the old task to complete, or the old task's
 		// node to become unavailable.
 		watch, cancelWatch = state.Watch(
@@ -378,7 +385,7 @@ func (r *Supervisor) DelayStart(ctx context.Context, _ store.Tx, oldTask *api.Ta
 			}
 		}
 
-		if waitStop && oldTask != nil {
+		if waitForTask {
 			select {
 			case <-watch:
 			case <-oldTaskTimer.C:

@@ -223,6 +223,12 @@ message Task {
 	// is only written by the manager.
 	TaskState desired_state = 10;
 
+	// DontRestart indicates that the restart supervisor decided not to
+	// start a replacement task for this task. This flag records the
+	// decision so that orchestrators can honor it when they do
+	// service-level reconciliation.
+	bool dont_restart = 16;
+
 	// List of network attachments by the task.
 	repeated NetworkAttachment networks = 11;
 

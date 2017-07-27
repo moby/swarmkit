@@ -30,7 +30,7 @@ func GetRunnableAndDeadSlots(s *store.MemoryStore, serviceID string) (map[uint64
 
 	runningSlots := make(map[uint64]Slot)
 	for _, t := range tasks {
-		if t.DesiredState <= api.TaskStateRunning {
+		if t.DesiredState <= api.TaskStateRunning || t.DontRestart {
 			runningSlots[t.Slot] = append(runningSlots[t.Slot], t)
 		}
 	}
