@@ -24,7 +24,7 @@ VNDR=$(shell which vndr || echo '')
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
-.PHONY: clean all AUTHORS fmt vet lint build binaries test integration setup generate checkprotos coverage ci check help install uninstall dep-validate
+.PHONY: clean all AUTHORS fmt vet lint build binaries test integration setup generate protos checkprotos coverage ci check help install uninstall dep-validate
 .DEFAULT: default
 
 all: check binaries test integration ## run fmt, vet, lint, build the binaries and run the tests
