@@ -255,6 +255,11 @@ func (g *Orchestrator) reconcileServices(ctx context.Context, serviceIDs []strin
 
 	g.store.View(func(tx store.ReadTx) {
 		for _, serviceID := range serviceIDs {
+			service := g.globalServices[serviceID].Service
+			if service == nil {
+				continue
+			}
+
 			tasks, err := store.FindTasks(tx, store.ByServiceID(serviceID))
 			if err != nil {
 				log.G(ctx).WithError(err).Errorf("global orchestrator: reconcileServices failed finding tasks for service %s", serviceID)
@@ -265,11 +270,22 @@ func (g *Orchestrator) reconcileServices(ctx context.Context, serviceIDs []strin
 			nodeTasks[serviceID] = make(map[string][]*api.Task)
 
 			for _, t := range tasks {
-				if t.DesiredState <= api.TaskStateRunning {
-					// Collect all running instances of this service
-					nodeTasks[serviceID][t.NodeID] = append(nodeTasks[serviceID][t.NodeID], t)
+				nodeTasks[serviceID][t.NodeID] = append(nodeTasks[serviceID][t.NodeID], t)
+			}
+
+			// Keep all runnable instances of this service,
+			// and instances that were not be restarted due
+			// to restart policy but may be updated if the
+			// service spec changed.
+			for nodeID, slot := range nodeTasks[serviceID] {
+				updatable := g.restarts.UpdatableTasksInSlot(ctx, slot, g.globalServices[serviceID].Service)
+				if len(updatable) != 0 {
+					nodeTasks[serviceID][nodeID] = updatable
+				} else {
+					delete(nodeTasks[serviceID], nodeID)
 				}
 			}
+
 		}
 	})
 
@@ -374,11 +390,6 @@ func (g *Orchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
 		return
 	}
 
-	var serviceIDs []string
-	for id := range g.globalServices {
-		serviceIDs = append(serviceIDs, id)
-	}
-
 	node, exists := g.nodes[node.ID]
 	if !exists {
 		return
@@ -400,24 +411,31 @@ func (g *Orchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
 		return
 	}
 
-	for _, serviceID := range serviceIDs {
+	for serviceID, service := range g.globalServices {
 		for _, t := range tasksOnNode {
 			if t.ServiceID != serviceID {
 				continue
 			}
-			if t.DesiredState <= api.TaskStateRunning {
-				tasks[serviceID] = append(tasks[serviceID], t)
+			tasks[serviceID] = append(tasks[serviceID], t)
+		}
+
+		// Keep all runnable instances of this service,
+		// and instances that were not be restarted due
+		// to restart policy but may be updated if the
+		// service spec changed.
+		for serviceID, slot := range tasks {
+			updatable := g.restarts.UpdatableTasksInSlot(ctx, slot, service.Service)
+
+			if len(updatable) != 0 {
+				tasks[serviceID] = updatable
+			} else {
+				delete(tasks, serviceID)
 			}
 		}
 	}
 
 	err = g.store.Batch(func(batch *store.Batch) error {
-		for _, serviceID := range serviceIDs {
-			service, exists := g.globalServices[serviceID]
-			if !exists {
-				continue
-			}
-
+		for serviceID, service := range g.globalServices {
 			if !constraint.NodeMatches(service.constraints, node) {
 				continue
 			}
@@ -558,6 +576,14 @@ func (g *Orchestrator) deleteTask(ctx context.Context, batch *store.Batch, t *ap
 // IsRelatedService returns true if the service should be governed by this orchestrator
 func (g *Orchestrator) IsRelatedService(service *api.Service) bool {
 	return orchestrator.IsGlobalService(service)
+}
+
+// SlotTuple returns a slot tuple for the global service task.
+func (g *Orchestrator) SlotTuple(t *api.Task) orchestrator.SlotTuple {
+	return orchestrator.SlotTuple{
+		ServiceID: t.ServiceID,
+		NodeID:    t.NodeID,
+	}
 }
 
 func isTaskCompleted(t *api.Task, restartPolicy api.RestartPolicy_RestartCondition) bool {

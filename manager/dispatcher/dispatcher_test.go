@@ -155,7 +155,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	s := grpc.NewServer(serverOpts...)
 	tc := newTestCluster(l.Addr().String(), tca.MemoryStore)
 	driverGetter := &mockPluginGetter{}
-	d := New(tc, c, drivers.New(driverGetter))
+	d := New(tc, c, drivers.New(driverGetter), managerSecurityConfig)
 
 	authorize := func(ctx context.Context, roles []string) error {
 		_, err := ca.AuthorizeForwardedRoleAndOrg(ctx, roles, []string{ca.ManagerRole}, tca.Organization, nil)
