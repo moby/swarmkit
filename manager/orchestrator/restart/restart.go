@@ -259,22 +259,26 @@ func (r *Supervisor) ShouldRestart(ctx context.Context, t *api.Task, service *ap
 
 	numRestarts := uint64(restartInfo.restartedInstances.Len())
 
+	// Disregard any restarts that happened before the lookback window,
+	// and remove them from the linked list since they will no longer
+	// be relevant to figuring out if tasks should be restarted going
+	// forward.
 	var next *list.Element
 	for e := restartInfo.restartedInstances.Front(); e != nil; e = next {
 		next = e.Next()
 
 		if e.Value.(restartedInstance).timestamp.After(lookback) {
-			for e2 := restartInfo.restartedInstances.Back(); e2 != nil; e2 = e2.Prev() {
-				// Ignore restarts that didn't happen before the
-				// task we're looking at.
-				if e.Value.(restartedInstance).timestamp.Before(timestamp) {
-					break
-				}
-				numRestarts--
-			}
 			break
 		}
 		restartInfo.restartedInstances.Remove(e)
+		numRestarts--
+	}
+
+	// Ignore restarts that didn't happen before the task we're looking at.
+	for e2 := restartInfo.restartedInstances.Back(); e2 != nil; e2 = e2.Prev() {
+		if e.Value.(restartedInstance).timestamp.Before(timestamp) {
+			break
+		}
 		numRestarts--
 	}
 
