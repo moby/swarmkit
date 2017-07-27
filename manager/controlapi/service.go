@@ -435,6 +435,9 @@ func validateConfigRefsSpec(spec api.TaskSpec) error {
 
 func (s *Server) validateNetworks(networks []*api.NetworkAttachmentConfig) error {
 	for _, na := range networks {
+		if allocator.IsPredefinedNetwork(na.Target) {
+			continue
+		}
 		var network *api.Network
 		s.store.View(func(tx store.ReadTx) {
 			network = store.GetNetwork(tx, na.Target)

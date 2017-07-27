@@ -328,7 +328,7 @@ func (na *cnmNetworkAllocator) IsTaskAllocated(t *api.Task) bool {
 	// allocate for every network or we allocate for none.
 
 	// Find the first global scope network
-	for _, nAttach := range t.Networks {
+	for _, nAttach := range taskNetworks(t) {
 		// If the network is not allocated, the task cannot be allocated.
 		localNet, ok := na.networks[nAttach.Network.ID]
 		if !ok {
@@ -483,12 +483,12 @@ func (na *cnmNetworkAllocator) DeallocateNode(node *api.Node) error {
 // AllocateTask allocates all the endpoint resources for all the
 // networks that a task is attached to.
 func (na *cnmNetworkAllocator) AllocateTask(t *api.Task) error {
-	for i, nAttach := range t.Networks {
+	for i, nAttach := range taskNetworks(t) {
 		if localNet := na.getNetwork(nAttach.Network.ID); localNet != nil && localNet.isNodeLocal {
 			continue
 		}
 		if err := na.allocateNetworkIPs(nAttach); err != nil {
-			if err := na.releaseEndpoints(t.Networks[:i]); err != nil {
+			if err := na.releaseEndpoints(taskNetworks(t)[:i]); err != nil {
 				log.G(context.TODO()).WithError(err).Errorf("Failed to release IP addresses while rolling back allocation for task %s network %s", t.ID, nAttach.Network.ID)
 			}
 			return errors.Wrapf(err, "failed to allocate network IP for task %s network %s", t.ID, nAttach.Network.ID)
@@ -504,7 +504,7 @@ func (na *cnmNetworkAllocator) AllocateTask(t *api.Task) error {
 // networks that a task is attached to.
 func (na *cnmNetworkAllocator) DeallocateTask(t *api.Task) error {
 	delete(na.tasks, t.ID)
-	return na.releaseEndpoints(t.Networks)
+	return na.releaseEndpoints(taskNetworks(t))
 }
 
 func (na *cnmNetworkAllocator) releaseEndpoints(networks []*api.NetworkAttachment) error {
@@ -930,10 +930,29 @@ func initializeDrivers(reg *drvregistry.DrvRegistry) error {
 
 func serviceNetworks(s *api.Service) []*api.NetworkAttachmentConfig {
 	// Always prefer NetworkAttachmentConfig in the TaskSpec
+	networks := s.Spec.Task.Networks
+	filteredNetworks := []*api.NetworkAttachmentConfig{}
 	if len(s.Spec.Task.Networks) == 0 && len(s.Spec.Networks) != 0 {
-		return s.Spec.Networks
+		networks = s.Spec.Networks
 	}
-	return s.Spec.Task.Networks
+	for _, n := range networks {
+		if IsPredefinedNetwork(n.Target) {
+			continue
+		}
+		filteredNetworks = append(filteredNetworks, n)
+	}
+	return filteredNetworks
+}
+
+func taskNetworks(t *api.Task) []*api.NetworkAttachment {
+	filteredNetworks := []*api.NetworkAttachment{}
+	for _, n := range t.Networks {
+		if IsPredefinedNetwork(n.Network.ID) {
+			continue
+		}
+		filteredNetworks = append(filteredNetworks, n)
+	}
+	return filteredNetworks
 }
 
 // IsVIPOnIngressNetwork check if the vip is in ingress network

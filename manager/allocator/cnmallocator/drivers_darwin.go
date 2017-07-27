@@ -15,3 +15,8 @@ var initializers = []initializer{
 func PredefinedNetworks() []networkallocator.PredefinedNetworkData {
 	return nil
 }
+
+// IsPredefinedNetwork checks if the network is a host/bridge network
+func IsPredefinedNetwork(target string) bool {
+	return false
+}
