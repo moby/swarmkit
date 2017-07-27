@@ -216,20 +216,17 @@ func TestDrain(t *testing.T) {
 		assert.NoError(t, orchestrator.Run(ctx))
 	}()
 
-	// id2 and id5 should be killed immediately
+	// id5 should be killed immediately
 	deletion1 := testutils.WatchShutdownTask(t, watch)
-	deletion2 := testutils.WatchShutdownTask(t, watch)
 
-	assert.Regexp(t, "id(2|5)", deletion1.ID)
-	assert.Regexp(t, "id(2|5)", deletion1.NodeID)
-	assert.Regexp(t, "id(2|5)", deletion2.ID)
-	assert.Regexp(t, "id(2|5)", deletion2.NodeID)
+	assert.Equal(t, "id5", deletion1.ID)
+	assert.Equal(t, "id5", deletion1.NodeID)
 
-	// Create a new task, assigned to node id2
+	// Create a new task, assigned to node id5
 	err = s.Update(func(tx store.Tx) error {
 		task := initialTaskSet[2].Copy()
 		task.ID = "newtask"
-		task.NodeID = "id2"
+		task.NodeID = "id5"
 		assert.NoError(t, store.CreateTask(tx, task))
 		return nil
 	})
@@ -237,7 +234,7 @@ func TestDrain(t *testing.T) {
 
 	deletion3 := testutils.WatchShutdownTask(t, watch)
 	assert.Equal(t, "newtask", deletion3.ID)
-	assert.Equal(t, "id2", deletion3.NodeID)
+	assert.Equal(t, "id5", deletion3.NodeID)
 
 	// Set node id4 to the DRAINED state
 	err = s.Update(func(tx store.Tx) error {

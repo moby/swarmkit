@@ -208,8 +208,6 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	testutils.Expect(t, watch, state.EventCommit{})
 	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, api.EventUpdateTask{})
-	testutils.Expect(t, watch, state.EventCommit{})
 
 	select {
 	case <-watch:
@@ -284,8 +282,6 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 	testutils.Expect(t, watch, state.EventCommit{})
 	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	testutils.Expect(t, watch, api.EventUpdateTask{})
-	testutils.Expect(t, watch, state.EventCommit{})
 
 	select {
 	case <-watch:
@@ -301,8 +297,6 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
-	testutils.Expect(t, watch, api.EventUpdateTask{})
-	testutils.Expect(t, watch, state.EventCommit{})
 	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
 
@@ -414,7 +408,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{})
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -457,16 +451,44 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 		assert.NoError(t, orchestrator.Run(ctx))
 	}()
 
-	testRestart := func() {
+	testRestart := func(serviceUpdated bool) {
 		observedTask1 := testutils.WatchTaskCreate(t, watch)
 		assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
 		assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
+		if serviceUpdated {
+			shutdownTask := testutils.WatchTaskUpdate(t, watch)
+			runnableTask := testutils.WatchTaskUpdate(t, watch)
+
+			assert.Equal(t, api.TaskStateShutdown, shutdownTask.DesiredState)
+			err = s.Update(func(tx store.Tx) error {
+				task := shutdownTask.Copy()
+				task.Status.State = api.TaskStateShutdown
+				assert.NoError(t, store.UpdateTask(tx, task))
+				return nil
+			})
+			assert.NoError(t, err)
+
+			testutils.Expect(t, watch, api.EventUpdateTask{})
+
+			assert.Equal(t, api.TaskStateRunning, runnableTask.DesiredState)
+			err = s.Update(func(tx store.Tx) error {
+				task := runnableTask.Copy()
+				task.Status.State = api.TaskStateRunning
+				assert.NoError(t, store.UpdateTask(tx, task))
+				return nil
+			})
+			assert.NoError(t, err)
+
+			testutils.Expect(t, watch, api.EventUpdateTask{})
+		}
 
 		observedTask2 := testutils.WatchTaskCreate(t, watch)
 		assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
 		assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
-
-		testutils.Expect(t, watch, state.EventCommit{})
+		if serviceUpdated {
+			testutils.Expect(t, watch, api.EventUpdateTask{})
+			testutils.Expect(t, watch, api.EventUpdateTask{})
+		}
 
 		// Fail the first task. Confirm that it gets restarted.
 		updatedTask1 := observedTask1.Copy()
@@ -478,17 +500,14 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		testutils.Expect(t, watch, api.EventUpdateTask{})
-		testutils.Expect(t, watch, state.EventCommit{})
 		testutils.Expect(t, watch, api.EventUpdateTask{})
 
 		observedTask3 := testutils.WatchTaskCreate(t, watch)
-		testutils.Expect(t, watch, state.EventCommit{})
 		assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
 		assert.Equal(t, observedTask3.DesiredState, api.TaskStateReady)
 		assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
 
 		observedTask4 := testutils.WatchTaskUpdate(t, watch)
-		testutils.Expect(t, watch, state.EventCommit{})
 		after := time.Now()
 
 		// At least 100 ms should have elapsed. Only check the lower bound,
@@ -510,16 +529,13 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		testutils.Expect(t, watch, api.EventUpdateTask{})
-		testutils.Expect(t, watch, state.EventCommit{})
 		testutils.Expect(t, watch, api.EventUpdateTask{})
 
 		observedTask5 := testutils.WatchTaskCreate(t, watch)
-		testutils.Expect(t, watch, state.EventCommit{})
 		assert.Equal(t, observedTask5.Status.State, api.TaskStateNew)
 		assert.Equal(t, observedTask5.DesiredState, api.TaskStateReady)
 
 		observedTask6 := testutils.WatchTaskUpdate(t, watch) // task gets started after a delay
-		testutils.Expect(t, watch, state.EventCommit{})
 		assert.Equal(t, observedTask6.Status.State, api.TaskStateNew)
 		assert.Equal(t, observedTask6.DesiredState, api.TaskStateRunning)
 		assert.Equal(t, observedTask6.ServiceAnnotations.Name, "name1")
@@ -533,9 +549,6 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		testutils.Expect(t, watch, api.EventUpdateTask{})
-		testutils.Expect(t, watch, state.EventCommit{})
-		testutils.Expect(t, watch, api.EventUpdateTask{})
-		testutils.Expect(t, watch, state.EventCommit{})
 
 		select {
 		case <-watch:
@@ -552,9 +565,6 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		testutils.Expect(t, watch, api.EventUpdateTask{})
-		testutils.Expect(t, watch, state.EventCommit{})
-		testutils.Expect(t, watch, api.EventUpdateTask{})
-		testutils.Expect(t, watch, state.EventCommit{})
 
 		select {
 		case <-watch:
@@ -563,7 +573,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 		}
 	}
 
-	testRestart()
+	testRestart(false)
 
 	// Update the service spec
 	err = s.Update(func(tx store.Tx) error {
@@ -576,7 +586,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	testRestart()
+	testRestart(true)
 }
 
 func TestOrchestratorRestartWindow(t *testing.T) {
@@ -702,8 +712,6 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 		return nil
 	})
 	assert.NoError(t, err)
-	testutils.Expect(t, watch, api.EventUpdateTask{})
-	testutils.Expect(t, watch, state.EventCommit{})
 	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
 

@@ -266,15 +266,19 @@ func TestNodeState(t *testing.T) {
 	defer orchestrator.Stop()
 
 	testutils.WatchTaskCreate(t, watch)
+	testutils.Expect(t, watch, state.EventCommit{})
 
 	// set node1 to down
 	updateNodeState(t, store, node1, api.NodeStatus_DOWN)
-
-	// task should be set to dead
-	observedTask1 := testutils.WatchShutdownTask(t, watch)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
-	assert.Equal(t, observedTask1.NodeID, "nodeid1")
+	testutils.Expect(t, watch, api.EventUpdateNode{})
 	testutils.Expect(t, watch, state.EventCommit{})
+
+	// nothing should happen
+	select {
+	case event := <-watch:
+		t.Fatalf("got unexpected event %T: %+v", event, event)
+	case <-time.After(100 * time.Millisecond):
+	}
 
 	// updating the service shouldn't restart the task
 	updateService(t, store, service1)
@@ -288,7 +292,7 @@ func TestNodeState(t *testing.T) {
 
 	// set node1 to ready
 	updateNodeState(t, store, node1, api.NodeStatus_READY)
-	// task should be added back
+	// task should be updated now
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
@@ -414,9 +418,6 @@ func TestTaskFailure(t *testing.T) {
 	failTask(t, store, observedTask3)
 	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
-	observedTask4 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask4.DesiredState, api.TaskStateShutdown)
-	testutils.Expect(t, watch, state.EventCommit{})
 
 	// the task should not be recreated
 	select {
@@ -430,10 +431,14 @@ func TestTaskFailure(t *testing.T) {
 	testutils.Expect(t, watch, api.EventUpdateService{})
 	testutils.Expect(t, watch, state.EventCommit{})
 
-	observedTask5 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask5.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask5.ServiceAnnotations.Name, "norestart")
-	assert.Equal(t, observedTask5.NodeID, "nodeid1")
+	observedTask4 := testutils.WatchTaskCreate(t, watch)
+	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
+	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "norestart")
+	assert.Equal(t, observedTask4.NodeID, "nodeid1")
+
+	// old task gets shut down as the new one is created
+	observedTask5 := testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, observedTask5.DesiredState, api.TaskStateShutdown)
 	testutils.Expect(t, watch, state.EventCommit{})
 }
 

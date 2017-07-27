@@ -96,7 +96,7 @@ func (r *Supervisor) waitRestart(ctx context.Context, oldDelay *delayedStart, cl
 		if service == nil {
 			return nil
 		}
-		return r.Restart(ctx, tx, cluster, service, *t)
+		return r.Restart(ctx, tx, cluster, service, *t, false)
 	})
 
 	if err != nil {
@@ -106,7 +106,7 @@ func (r *Supervisor) waitRestart(ctx context.Context, oldDelay *delayedStart, cl
 
 // Restart initiates a new task to replace t if appropriate under the service's
 // restart policy.
-func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Cluster, service *api.Service, t api.Task) error {
+func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Cluster, service *api.Service, t api.Task, forceShutdownState bool) error {
 	// TODO(aluzzardi): This function should not depend on `service`.
 
 	// Is the old task still in the process of restarting? If so, wait for
@@ -131,6 +131,12 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 		return errors.New("Restart called on task that was already shut down")
 	}
 
+	shouldRestart := r.shouldRestart(ctx, &t, service)
+
+	if !forceShutdownState && !shouldRestart {
+		return nil
+	}
+
 	t.DesiredState = api.TaskStateShutdown
 	err := store.UpdateTask(tx, &t)
 	if err != nil {
@@ -138,22 +144,26 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 		return err
 	}
 
-	if !r.shouldRestart(ctx, &t, service) {
+	if !shouldRestart {
 		return nil
 	}
+
+	n := store.GetNode(tx, t.NodeID)
 
 	var restartTask *api.Task
 
 	if orchestrator.IsReplicatedService(service) {
 		restartTask = orchestrator.NewTask(cluster, service, t.Slot, "")
 	} else if orchestrator.IsGlobalService(service) {
+		if n != nil && (n.Status.State == api.NodeStatus_DOWN || n.Spec.Availability == api.NodeAvailabilityPause) {
+			// We don't restart global service tasks on a node that's down or paused
+			return nil
+		}
 		restartTask = orchestrator.NewTask(cluster, service, 0, t.NodeID)
 	} else {
 		log.G(ctx).Error("service not supported by restart supervisor")
 		return nil
 	}
-
-	n := store.GetNode(tx, t.NodeID)
 
 	restartTask.DesiredState = api.TaskStateReady
 
