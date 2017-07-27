@@ -43,6 +43,8 @@ type Server struct {
 	cancel                      func()
 	store                       *store.MemoryStore
 	securityConfig              *SecurityConfig
+	clusterID                   string
+	localRootCA                 *RootCA
 	externalCA                  *ExternalCA
 	externalCAPool              *x509.CertPool
 	joinTokens                  *api.JoinTokens
@@ -69,9 +71,6 @@ type Server struct {
 	// of the SecurityConfig
 	signingMu sync.Mutex
 
-	// before we update the security config with the new root CA, we need to be able to save the root certs
-	rootPaths CertPaths
-
 	// lets us monitor and finish root rotations
 	rootReconciler                  *rootRotationReconciler
 	rootReconciliationRetryInterval time.Duration
@@ -85,16 +84,17 @@ func DefaultCAConfig() api.CAConfig {
 }
 
 // NewServer creates a CA API server.
-func NewServer(store *store.MemoryStore, securityConfig *SecurityConfig, rootCAPaths CertPaths) *Server {
+func NewServer(store *store.MemoryStore, securityConfig *SecurityConfig) *Server {
 	return &Server{
 		store:                           store,
 		securityConfig:                  securityConfig,
+		clusterID:                       securityConfig.ClientTLSCreds.Organization(),
+		localRootCA:                     securityConfig.RootCA(),
 		externalCA:                      NewExternalCA(nil, nil),
 		pending:                         make(map[string]*api.Node),
 		started:                         make(chan struct{}),
 		reconciliationRetryInterval:     defaultReconciliationRetryInterval,
 		rootReconciliationRetryInterval: defaultRootReconciliationInterval,
-		rootPaths:                       rootCAPaths,
 	}
 }
 
@@ -104,6 +104,14 @@ func (s *Server) ExternalCA() *ExternalCA {
 	s.signingMu.Lock()
 	defer s.signingMu.Unlock()
 	return s.externalCA
+}
+
+// RootCA returns the current local root CA - this is exposed to support unit testing only, and the root CA
+// should really be a private field
+func (s *Server) RootCA() *RootCA {
+	s.signingMu.Lock()
+	defer s.signingMu.Unlock()
+	return s.localRootCA
 }
 
 // SetReconciliationRetryInterval changes the time interval between
@@ -130,7 +138,7 @@ func (s *Server) GetUnlockKey(ctx context.Context, request *api.GetUnlockKeyRequ
 	// a cached value.
 	resp := api.GetUnlockKeyResponse{}
 	s.store.View(func(tx store.ReadTx) {
-		cluster := store.GetCluster(tx, s.securityConfig.ClientTLSCreds.Organization())
+		cluster := store.GetCluster(tx, s.clusterID)
 		resp.Version = cluster.Meta.Version
 		if cluster.Spec.EncryptionConfig.AutoLockManagers {
 			for _, encryptionKey := range cluster.UnlockKeys {
@@ -270,14 +278,14 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 
 	// If the remote node is a worker (either forwarded by a manager, or calling directly),
 	// issue a renew worker certificate entry with the correct ID
-	nodeID, err := AuthorizeForwardedRoleAndOrg(ctx, []string{WorkerRole}, []string{ManagerRole}, s.securityConfig.ClientTLSCreds.Organization(), blacklistedCerts)
+	nodeID, err := AuthorizeForwardedRoleAndOrg(ctx, []string{WorkerRole}, []string{ManagerRole}, s.clusterID, blacklistedCerts)
 	if err == nil {
 		return s.issueRenewCertificate(ctx, nodeID, request.CSR)
 	}
 
 	// If the remote node is a manager (either forwarded by another manager, or calling directly),
 	// issue a renew certificate entry with the correct ID
-	nodeID, err = AuthorizeForwardedRoleAndOrg(ctx, []string{ManagerRole}, []string{ManagerRole}, s.securityConfig.ClientTLSCreds.Organization(), blacklistedCerts)
+	nodeID, err = AuthorizeForwardedRoleAndOrg(ctx, []string{ManagerRole}, []string{ManagerRole}, s.clusterID, blacklistedCerts)
 	if err == nil {
 		return s.issueRenewCertificate(ctx, nodeID, request.CSR)
 	}
@@ -409,8 +417,11 @@ func (s *Server) GetRootCACertificate(ctx context.Context, request *api.GetRootC
 		"method": "GetRootCACertificate",
 	})
 
+	s.signingMu.Lock()
+	defer s.signingMu.Unlock()
+
 	return &api.GetRootCACertificateResponse{
-		Certificate: s.securityConfig.RootCA().Certs,
+		Certificate: s.localRootCA.Certs,
 	}, nil
 }
 
@@ -428,7 +439,7 @@ func (s *Server) Run(ctx context.Context) error {
 	// we need to set it on the server, because `Server.UpdateRootCA` can be called from outside the Run function
 	s.rootReconciler = &rootRotationReconciler{
 		ctx:                 log.WithField(ctx, "method", "(*Server).rootRotationReconciler"),
-		clusterID:           s.securityConfig.ClientTLSCreds.Organization(),
+		clusterID:           s.clusterID,
 		store:               s.store,
 		batchUpdateInterval: s.rootReconciliationRetryInterval,
 	}
@@ -694,13 +705,8 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) error {
 		if err != nil {
 			return errors.Wrap(err, "invalid Root CA object in cluster")
 		}
-		if err := s.securityConfig.UpdateRootCA(&updatedRootCA); err != nil {
-			return errors.Wrap(err, "updating Root CA failed")
-		}
-		if err := SaveRootCA(updatedRootCA, s.rootPaths); err != nil {
-			return errors.Wrap(err, "unable to save new root CA certificates")
-		}
 
+		s.localRootCA = &updatedRootCA
 		s.externalCAPool = updatedRootCA.Pool
 		if rCA.RootRotation != nil {
 			// the external CA has to trust the new CA cert
@@ -763,7 +769,7 @@ func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) er
 // signNodeCert does the bulk of the work for signing a certificate
 func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
 	s.signingMu.Lock()
-	rootCA := s.securityConfig.RootCA()
+	rootCA := s.localRootCA
 	externalCA := s.externalCA
 	s.signingMu.Unlock()
 
@@ -786,7 +792,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
 		rawCSR = node.Certificate.CSR
 		cn     = node.Certificate.CN
 		ou     = role
-		org    = s.securityConfig.ClientTLSCreds.Organization()
+		org    = s.clusterID
 	)
 
 	// Try using the external CA first.

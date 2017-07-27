@@ -575,7 +575,7 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 	} {
 		require.NoError(t, tc.CAServer.UpdateRootCA(tc.Context, testCase.clusterObj))
 
-		rootCA := tc.ServingSecurityConfig.RootCA()
+		rootCA := tc.CAServer.RootCA()
 		require.Equal(t, testCase.rootCARoots, rootCA.Certs)
 		var signingCert, signingKey []byte
 		if s, err := rootCA.Signer(); err == nil {
@@ -1030,12 +1030,12 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				if testcase.expectedRootCA.RootRotation != nil {
 					expectedKey = testcase.expectedRootCA.RootRotation.CAKey
 				}
-				s, err := rt.tc.ServingSecurityConfig.RootCA().Signer()
+				s, err := rt.tc.CAServer.RootCA().Signer()
 				if err != nil {
 					return err
 				}
 				if !bytes.Equal(s.Key, expectedKey) {
-					return fmt.Errorf("the security config has not been updated correctly")
+					return fmt.Errorf("the CA Server's root CA has not been updated correctly")
 				}
 			}
 			return nil
@@ -1178,12 +1178,12 @@ func TestRootRotationReconciliationNoChanges(t *testing.T) {
 			require.Equal(t, expected.Certificate.Status, node.Certificate.Status, "node %s: %s", node.ID, testcase.descr)
 		}
 
-		// ensure that the security config's root CA object has the same expected key
+		// ensure that the server's root CA object has the same expected key
 		expectedKey := testcase.rootCA.CAKey
 		if testcase.rootCA.RootRotation != nil {
 			expectedKey = testcase.rootCA.RootRotation.CAKey
 		}
-		s, err := rt.tc.ServingSecurityConfig.RootCA().Signer()
+		s, err := rt.tc.CAServer.RootCA().Signer()
 		require.NoError(t, err, testcase.descr)
 		require.Equal(t, s.Key, expectedKey, testcase.descr)
 	}
@@ -1212,19 +1212,18 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 
 	var (
 		otherServers   = make([]*ca.Server, 5)
-		secConfigs     = make([]*ca.SecurityConfig, 5)
 		serverContexts = make([]context.Context, 5)
 		paths          = make([]*ca.SecurityConfigPaths, 5)
 	)
 
 	for i := 0; i < 5; i++ { // to make sure we get some collision
 		// start a competing CA server
-		secConfigs[i], err = tc.NewNodeConfig(ca.ManagerRole)
-		require.NoError(t, err)
-
 		paths[i] = ca.NewConfigPaths(filepath.Join(tempDir, fmt.Sprintf("%d", i)))
 
-		otherServers[i] = ca.NewServer(tc.MemoryStore, secConfigs[i], paths[i].RootCA)
+		// the sec config is only used to get the organization, the initial root CA copy, and any updates to
+		// TLS certificates, so all the servers can share the same one
+		otherServers[i] = ca.NewServer(tc.MemoryStore, tc.ServingSecurityConfig)
+
 		// offset each server's reconciliation interval somewhat so that some will
 		// pre-empt others
 		otherServers[i].SetRootReconciliationInterval(time.Millisecond * time.Duration((i+1)*10))
@@ -1254,15 +1253,8 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 			select {
 			case event := <-clusterWatch:
 				clusterEvent := event.(api.EventUpdateCluster)
-				for i, s := range otherServers { // the security config of each
+				for _, s := range otherServers {
 					s.UpdateRootCA(tc.Context, clusterEvent.Cluster)
-					// also update the TLS configs with a new TLS creds, otherwise we won't be able to update the
-					// root CA the second time around
-					tlsKeyPair, issuerInfo, err := secConfigs[i].RootCA().IssueAndSaveNewCertificates(
-						ca.NewKeyReadWriter(paths[i].Node, nil, nil), "cn", "ou", "org")
-					if err == nil {
-						secConfigs[i].UpdateTLSCredentials(tlsKeyPair, issuerInfo)
-					}
 				}
 			case <-done:
 				return
@@ -1334,8 +1326,8 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 		if !bytes.Equal(cluster.RootCA.CAKey, rotationKey) {
 			return errors.New("expected root key is wrong")
 		}
-		for _, secConfig := range secConfigs {
-			s, err := secConfig.RootCA().Signer()
+		for _, server := range append(otherServers, tc.CAServer) {
+			s, err := server.RootCA().Signer()
 			if err != nil {
 				return err
 			}
@@ -1362,7 +1354,7 @@ func TestRootRotationReconciliationThrottled(t *testing.T) {
 	// immediately stop the CA server - we want to run our own
 	tc.CAServer.Stop()
 
-	caServer := ca.NewServer(tc.MemoryStore, tc.ServingSecurityConfig, tc.Paths.RootCA)
+	caServer := ca.NewServer(tc.MemoryStore, tc.ServingSecurityConfig)
 	// set the reconciliation interval to something ridiculous, so we can make sure the first
 	// batch does update all of them
 	caServer.SetRootReconciliationInterval(time.Hour)
