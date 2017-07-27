@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/containerd/containerd/api/types/event"
 	"github.com/containerd/containerd/namespaces"
 	goevents "github.com/docker/go-events"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 type sinkEvent struct {
