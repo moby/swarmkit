@@ -573,7 +573,7 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 			externalCertSignedBy: cert,
 		},
 	} {
-		require.NoError(t, tc.CAServer.UpdateRootCA(tc.Context, testCase.clusterObj))
+		require.NoError(t, tc.CAServer.UpdateRootCA(tc.Context, testCase.clusterObj, nil))
 
 		rootCA := tc.CAServer.RootCA()
 		require.Equal(t, testCase.rootCARoots, rootCA.Certs)
@@ -610,12 +610,6 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 			require.Equal(t, ca.ErrNoExternalCAURLs, err)
 		}
 	}
-
-	// If we can't save the root cert, we can't update the root CA even if it's completely valid
-	require.NoError(t, os.RemoveAll(tc.TempDir))
-	require.NoError(t, ioutil.WriteFile(tc.TempDir, []byte("cant create directory if this is file"), 0700))
-	tc.CAServer.UpdateRootCA(tc.Context, fakeClusterSpec(cautils.ECDSA256SHA256Cert, cautils.ECDSA256Key, nil, nil))
-	require.Equal(t, tc.RootCA.Certs, tc.ServingSecurityConfig.RootCA().Certs)
 }
 
 type rootRotationTester struct {
@@ -1044,7 +1038,7 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 }
 
 // These are the root rotation test cases where we expect there to be no changes made to either
-// the nodes or the root CA object
+// the nodes or the root CA object, although the server's signing root CA may change.
 func TestRootRotationReconciliationNoChanges(t *testing.T) {
 	t.Parallel()
 	if cautils.External {
@@ -1076,35 +1070,10 @@ func TestRootRotationReconciliationNoChanges(t *testing.T) {
 	require.NotNil(t, startCluster)
 
 	testcases := []struct {
-		nodes           map[string]*api.Node // what nodes we should start with
-		rootCA          *api.RootCA          // what root CA we should start with
-		descr           string
-		caServerStopped bool // if the server is running, only then will a reconciliation loop happen
+		nodes  map[string]*api.Node // what nodes we should start with
+		rootCA *api.RootCA          // what root CA we should start with
+		descr  string
 	}{
-		{
-			descr: ("If the CA server is not running no reconciliation happens even if a root rotation " +
-				"is in progress"),
-			caServerStopped: true,
-			nodes: map[string]*api.Node{
-				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
-				"1": getFakeAPINode(t, "1", api.IssuanceStateIssued, oldNodeTLSInfo, true),
-				"2": getFakeAPINode(t, "2", api.IssuanceStateRenew, nil, true),
-				"3": getFakeAPINode(t, "3", api.IssuanceStateRotate, nil, true),
-				"4": getFakeAPINode(t, "4", api.IssuanceStatePending, nil, true),
-				"5": getFakeAPINode(t, "5", api.IssuanceStateFailed, nil, true),
-				"6": getFakeAPINode(t, "6", api.IssuanceStateIssued, oldNodeTLSInfo, false),
-			},
-			rootCA: &api.RootCA{
-				CACert:     startCluster.RootCA.CACert,
-				CAKey:      startCluster.RootCA.CAKey,
-				CACertHash: startCluster.RootCA.CACertHash,
-				RootRotation: &api.RootRotation{
-					CACert:            rotationCert,
-					CAKey:             rotationKey,
-					CrossSignedCACert: rotationCrossSigned,
-				},
-			},
-		},
 		{
 			descr: ("If all nodes have the right TLS info or are already rotated, rotating, or pending, " +
 				"there will be no changes needed"),
@@ -1149,10 +1118,7 @@ func TestRootRotationReconciliationNoChanges(t *testing.T) {
 		rt.tc.CAServer.Stop()
 		rt.convergeWantedNodes(testcase.nodes, testcase.descr)
 		rt.convergeRootCA(&startCluster.RootCA, testcase.descr) // no root rotation
-
-		if !testcase.caServerStopped {
-			startCAServer(rt.tc.Context, rt.tc.CAServer)
-		}
+		startCAServer(rt.tc.Context, rt.tc.CAServer)
 		rt.convergeRootCA(testcase.rootCA, testcase.descr)
 
 		time.Sleep(500 * time.Millisecond)
@@ -1233,34 +1199,6 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 		startCAServer(serverContexts[i], otherServers[i])
 		defer otherServers[i].Stop()
 	}
-	clusterWatch, clusterWatchCancel, err := store.ViewAndWatch(
-		tc.MemoryStore, func(tx store.ReadTx) error {
-			// don't bother getting the cluster - the CA serverß have already done that when first running
-			return nil
-		},
-		api.EventUpdateCluster{
-			Cluster: &api.Cluster{ID: tc.Organization},
-			Checks:  []api.ClusterCheckFunc{api.ClusterCheckID},
-		},
-	)
-	require.NoError(t, err)
-	defer clusterWatchCancel()
-
-	done := make(chan struct{})
-	defer close(done)
-	go func() {
-		for {
-			select {
-			case event := <-clusterWatch:
-				clusterEvent := event.(api.EventUpdateCluster)
-				for _, s := range otherServers {
-					s.UpdateRootCA(tc.Context, clusterEvent.Cluster)
-				}
-			case <-done:
-				return
-			}
-		}
-	}()
 
 	oldNodeTLSInfo := &api.NodeTLSInfo{
 		TrustRoot:           tc.RootCA.Certs,
@@ -1326,13 +1264,13 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 		if !bytes.Equal(cluster.RootCA.CAKey, rotationKey) {
 			return errors.New("expected root key is wrong")
 		}
-		for _, server := range append(otherServers, tc.CAServer) {
+		for i, server := range append(otherServers) {
 			s, err := server.RootCA().Signer()
 			if err != nil {
 				return err
 			}
 			if !bytes.Equal(s.Key, rotationKey) {
-				return errors.New("all the sec configs haven't been updated yet")
+				return errors.Errorf("all the servers' root CAs haven't been updated yet: server %d", i)
 			}
 		}
 		return nil
@@ -1361,35 +1299,14 @@ func TestRootRotationReconciliationThrottled(t *testing.T) {
 	startCAServer(tc.Context, caServer)
 	defer caServer.Stop()
 
-	var nodes []*api.Node
-	clusterWatch, clusterWatchCancel, err := store.ViewAndWatch(
-		tc.MemoryStore, func(tx store.ReadTx) error {
-			// don't bother getting the cluster - the CA server has already done that when first running
-			var err error
-			nodes, err = store.FindNodes(tx, store.All)
-			return err
-		},
-		api.EventUpdateCluster{
-			Cluster: &api.Cluster{ID: tc.Organization},
-			Checks:  []api.ClusterCheckFunc{api.ClusterCheckID},
-		},
+	var (
+		nodes []*api.Node
+		err   error
 	)
+	tc.MemoryStore.View(func(tx store.ReadTx) {
+		nodes, err = store.FindNodes(tx, store.All)
+	})
 	require.NoError(t, err)
-	defer clusterWatchCancel()
-
-	done := make(chan struct{})
-	defer close(done)
-	go func() {
-		for {
-			select {
-			case event := <-clusterWatch:
-				clusterEvent := event.(api.EventUpdateCluster)
-				caServer.UpdateRootCA(tc.Context, clusterEvent.Cluster)
-			case <-done:
-				return
-			}
-		}
-	}()
 
 	// create twice the batch size of nodes
 	err = tc.MemoryStore.Batch(func(batch *store.Batch) error {

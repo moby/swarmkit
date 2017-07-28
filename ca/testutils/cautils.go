@@ -50,13 +50,12 @@ type TestCA struct {
 	ManagerToken                string
 	ConnBroker                  *connectionbroker.Broker
 	KeyReadWriter               *ca.KeyReadWriter
-	ctxCancel, watchCancel      func()
+	ctxCancel                   func()
 	securityConfigCleanups      []func() error
 }
 
 // Stop cleans up after TestCA
 func (tc *TestCA) Stop() {
-	tc.watchCancel()
 	tc.ctxCancel()
 	for _, qClose := range tc.securityConfigCleanups {
 		qClose()
@@ -223,33 +222,6 @@ func NewTestCAFromAPIRootCA(t *testing.T, tempBaseDir string, apiRootCA api.Root
 	}
 	ctx, ctxCancel := context.WithCancel(log.WithLogger(context.Background(), log.L.WithFields(fields)))
 
-	clusterWatch, clusterWatchCancel, err := store.ViewAndWatch(
-		s, func(tx store.ReadTx) error {
-			cluster := store.GetCluster(tx, organization)
-			caServer.UpdateRootCA(ctx, cluster)
-			return nil
-		},
-		api.EventUpdateCluster{
-			Cluster: &api.Cluster{ID: organization},
-			Checks:  []api.ClusterCheckFunc{api.ClusterCheckID},
-		},
-	)
-	assert.NoError(t, err)
-	go func() {
-		for {
-			select {
-			case event := <-clusterWatch:
-				clusterEvent := event.(api.EventUpdateCluster)
-				if err := caServer.UpdateRootCA(ctx, clusterEvent.Cluster); err != nil {
-					log.G(ctx).WithError(err).Error("ca utils CA server could not update root CA")
-				}
-			case <-ctx.Done():
-				clusterWatchCancel()
-				return
-			}
-		}
-	}()
-
 	go grpcServer.Serve(l)
 	go caServer.Run(ctx)
 
@@ -280,7 +252,6 @@ func NewTestCAFromAPIRootCA(t *testing.T, tempBaseDir string, apiRootCA api.Root
 		ManagerToken:           clusterObj.RootCA.JoinTokens.Manager,
 		ConnBroker:             connectionbroker.New(remotes),
 		KeyReadWriter:          krw,
-		watchCancel:            clusterWatchCancel,
 		ctxCancel:              ctxCancel,
 		securityConfigCleanups: []func() error{qClose1, qClose2, qClose3},
 	}

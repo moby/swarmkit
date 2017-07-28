@@ -25,13 +25,6 @@ const (
 	defaultRootReconciliationInterval  = 3 * time.Second
 )
 
-// APISecurityConfigUpdater knows how to update a SecurityConfig from an api.Cluster object
-type APISecurityConfigUpdater interface {
-	UpdateRootCA(ctx context.Context, cluster *api.Cluster) error
-}
-
-var _ APISecurityConfigUpdater = &Server{}
-
 // Server is the CA and NodeCA API gRPC server.
 // TODO(aaronl): At some point we may want to have separate implementations of
 // CA, NodeCA, and other hypothetical future CA services. At the moment,
@@ -88,13 +81,13 @@ func NewServer(store *store.MemoryStore, securityConfig *SecurityConfig) *Server
 	return &Server{
 		store:                           store,
 		securityConfig:                  securityConfig,
-		clusterID:                       securityConfig.ClientTLSCreds.Organization(),
 		localRootCA:                     securityConfig.RootCA(),
 		externalCA:                      NewExternalCA(nil, nil),
 		pending:                         make(map[string]*api.Node),
 		started:                         make(chan struct{}),
 		reconciliationRetryInterval:     defaultReconciliationRetryInterval,
 		rootReconciliationRetryInterval: defaultRootReconciliationInterval,
+		// clusterID will be set on every call to Run
 	}
 }
 
@@ -436,19 +429,10 @@ func (s *Server) Run(ctx context.Context) error {
 	s.wg.Add(1)
 	s.ctx, s.cancel = context.WithCancel(log.WithModule(ctx, "ca"))
 	ctx = s.ctx
-	// we need to set it on the server, because `Server.UpdateRootCA` can be called from outside the Run function
-	s.rootReconciler = &rootRotationReconciler{
-		ctx:                 log.WithField(ctx, "method", "(*Server).rootRotationReconciler"),
-		clusterID:           s.clusterID,
-		store:               s.store,
-		batchUpdateInterval: s.rootReconciliationRetryInterval,
-	}
-	rootReconciler := s.rootReconciler
 	s.mu.Unlock()
 	defer s.wg.Done()
 	defer func() {
 		s.mu.Lock()
-		s.rootReconciler = nil
 		s.mu.Unlock()
 	}()
 
@@ -475,10 +459,19 @@ func (s *Server) Run(ctx context.Context) error {
 		api.EventCreateNode{},
 		api.EventUpdateNode{},
 		api.EventDeleteNode{},
+		api.EventUpdateCluster{},
 	)
 
 	// call once to ensure that the join tokens and local/external CA signer are always set
-	s.UpdateRootCA(ctx, cluster)
+	s.clusterID = cluster.ID
+	rootReconciler := &rootRotationReconciler{
+		ctx:                 log.WithField(ctx, "method", "(*Server).rootRotationReconciler"),
+		clusterID:           s.clusterID,
+		store:               s.store,
+		batchUpdateInterval: s.rootReconciliationRetryInterval,
+	}
+
+	s.UpdateRootCA(ctx, cluster, rootReconciler)
 
 	// Do this after updateCluster has been called, so isRunning never returns true without
 	// the join tokens and external CA/security config's root CA being set correctly
@@ -534,6 +527,10 @@ func (s *Server) Run(ctx context.Context) error {
 				rootReconciler.UpdateNode(v.Node)
 			case api.EventDeleteNode:
 				rootReconciler.DeleteNode(v.Node)
+			case api.EventUpdateCluster:
+				if v.Cluster.ID == s.clusterID {
+					s.UpdateRootCA(ctx, v.Cluster, rootReconciler)
+				}
 			}
 		case <-externalTLSCredsChange:
 			// The TLS certificates can rotate independently of the root CA (and hence which roots the
@@ -647,10 +644,9 @@ func filterExternalCAURLS(ctx context.Context, desiredCert, defaultCert []byte, 
 // UpdateRootCA is called when there are cluster changes, and it ensures that the local RootCA is
 // always aware of changes in clusterExpiry and the Root CA key material - this can be called by
 // anything to update the root CA material
-func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) error {
+func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster, reconciler *rootRotationReconciler) error {
 	s.mu.Lock()
 	s.joinTokens = cluster.RootCA.JoinTokens.Copy()
-	reconciler := s.rootReconciler
 	s.mu.Unlock()
 	rCA := cluster.RootCA.Copy()
 	if reconciler != nil {
@@ -670,7 +666,7 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster) error {
 	if rootCAChanged {
 		setOrUpdate := "set"
 		if !firstSeenCluster {
-			log.G(ctx).Debug("Updating security config and external CA due to change in cluster Root CA")
+			log.G(ctx).Debug("Updating signing root CA and external CA due to change in cluster Root CA")
 			setOrUpdate = "updated"
 		}
 		expiry := DefaultNodeCertExpiration
