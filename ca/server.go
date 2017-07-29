@@ -239,7 +239,7 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 		return nil, grpc.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
-	if _, err := s.isRunningLocked(); err != nil {
+	if err := s.isReadyLocked(); err != nil {
 		return nil, err
 	}
 
@@ -250,8 +250,7 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 	)
 
 	s.store.View(func(readTx store.ReadTx) {
-		clusters, err = store.FindClusters(readTx, store.ByName("default"))
-
+		clusters, err = store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
 	})
 
 	// Not having a cluster object yet means we can't check
@@ -473,7 +472,7 @@ func (s *Server) Run(ctx context.Context) error {
 
 	s.UpdateRootCA(ctx, cluster, rootReconciler)
 
-	// Do this after updateCluster has been called, so isRunning never returns true without
+	// Do this after updateCluster has been called, so Ready() and isRunning never returns true without
 	// the join tokens and external CA/security config's root CA being set correctly
 	s.mu.Lock()
 	close(s.started)
@@ -576,6 +575,7 @@ func (s *Server) Stop() error {
 	}
 	s.cancel()
 	s.started = make(chan struct{})
+	s.joinTokens = nil
 	s.mu.Unlock()
 
 	// Wait for Run to complete
@@ -600,6 +600,18 @@ func (s *Server) isRunningLocked() (context.Context, error) {
 	ctx := s.ctx
 	s.mu.Unlock()
 	return ctx, nil
+}
+
+func (s *Server) isReadyLocked() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.isRunning() {
+		return grpc.Errorf(codes.Aborted, "CA signer is stopped")
+	}
+	if s.joinTokens == nil {
+		return grpc.Errorf(codes.Aborted, "CA signer is still starting")
+	}
+	return nil
 }
 
 func (s *Server) isRunning() bool {
@@ -684,27 +696,16 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster, reconci
 			log.G(ctx).Warn("no certificate expiration specified, using default")
 		}
 		// Attempt to update our local RootCA with the new parameters
-		var intermediates []byte
-		signingCert := rCA.CACert
-		signingKey := rCA.CAKey
-		externalCACert := rCA.CACert
-		if rCA.RootRotation != nil {
-			signingCert = rCA.RootRotation.CrossSignedCACert
-			signingKey = rCA.RootRotation.CAKey
-			intermediates = rCA.RootRotation.CrossSignedCACert
-			externalCACert = rCA.RootRotation.CACert
-		}
-		if signingKey == nil {
-			signingCert = nil
-		}
-		updatedRootCA, err := NewRootCA(rCA.CACert, signingCert, signingKey, expiry, intermediates)
+		updatedRootCA, err := RootCAFromAPI(ctx, rCA, expiry)
 		if err != nil {
 			return errors.Wrap(err, "invalid Root CA object in cluster")
 		}
 
 		s.localRootCA = &updatedRootCA
 		s.externalCAPool = updatedRootCA.Pool
+		externalCACert := rCA.CACert
 		if rCA.RootRotation != nil {
+			externalCACert = rCA.RootRotation.CACert
 			// the external CA has to trust the new CA cert
 			s.externalCAPool = x509.NewCertPool()
 			s.externalCAPool.AppendCertsFromPEM(rCA.CACert)
@@ -898,4 +899,20 @@ func isFinalState(status api.IssuanceStatus) bool {
 	}
 
 	return false
+}
+
+// RootCAFromAPI creates a RootCA object from an api.RootCA object
+func RootCAFromAPI(ctx context.Context, apiRootCA *api.RootCA, expiry time.Duration) (RootCA, error) {
+	var intermediates []byte
+	signingCert := apiRootCA.CACert
+	signingKey := apiRootCA.CAKey
+	if apiRootCA.RootRotation != nil {
+		signingCert = apiRootCA.RootRotation.CrossSignedCACert
+		signingKey = apiRootCA.RootRotation.CAKey
+		intermediates = apiRootCA.RootRotation.CrossSignedCACert
+	}
+	if signingKey == nil {
+		signingCert = nil
+	}
+	return NewRootCA(apiRootCA.CACert, signingCert, signingKey, expiry, intermediates)
 }

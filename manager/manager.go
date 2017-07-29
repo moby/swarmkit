@@ -224,7 +224,7 @@ func New(config *Config) (*Manager, error) {
 
 	m := &Manager{
 		config:          *config,
-		caserver:        ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig, config.RootCAPaths),
+		caserver:        ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig),
 		dispatcher:      dispatcher.New(raftNode, dispatcher.DefaultConfig(), drivers.New(config.PluginGetter), config.SecurityConfig),
 		logbroker:       logbroker.New(raftNode.MemoryStore()),
 		watchServer:     watchapi.NewServer(raftNode.MemoryStore()),
@@ -404,7 +404,7 @@ func (m *Manager) Run(parent context.Context) error {
 		return err
 	}
 
-	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode, m.config.SecurityConfig, m.caserver, m.config.PluginGetter)
+	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode, m.config.SecurityConfig, m.config.PluginGetter)
 	baseResourceAPI := resourceapi.New(m.raftNode.MemoryStore())
 	healthServer := health.NewHealthServer()
 	localHealthServer := health.NewHealthServer()
@@ -720,16 +720,14 @@ func (m *Manager) updateKEK(ctx context.Context, cluster *api.Cluster) error {
 
 func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 	clusterID := m.config.SecurityConfig.ClientTLSCreds.Organization()
+	var cluster *api.Cluster
 	clusterWatch, clusterWatchCancel, err := store.ViewAndWatch(m.raftNode.MemoryStore(),
 		func(tx store.ReadTx) error {
-			cluster := store.GetCluster(tx, clusterID)
+			cluster = store.GetCluster(tx, clusterID)
 			if cluster == nil {
 				return fmt.Errorf("unable to get current cluster")
 			}
-			if err := m.caserver.UpdateRootCA(ctx, cluster); err != nil {
-				log.G(ctx).WithError(err).Error("could not update security config")
-			}
-			return m.updateKEK(ctx, cluster)
+			return nil
 		},
 		api.EventUpdateCluster{
 			Cluster: &api.Cluster{ID: clusterID},
@@ -739,14 +737,15 @@ func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if err := m.updateKEK(ctx, cluster); err != nil {
+		return err
+	}
+
 	go func() {
 		for {
 			select {
 			case event := <-clusterWatch:
 				clusterEvent := event.(api.EventUpdateCluster)
-				if err := m.caserver.UpdateRootCA(ctx, clusterEvent.Cluster); err != nil {
-					log.G(ctx).WithError(err).Error("could not update security config")
-				}
 				m.updateKEK(ctx, clusterEvent.Cluster)
 			case <-ctx.Done():
 				clusterWatchCancel()

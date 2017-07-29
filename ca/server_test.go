@@ -1264,13 +1264,13 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 		if !bytes.Equal(cluster.RootCA.CAKey, rotationKey) {
 			return errors.New("expected root key is wrong")
 		}
-		for i, server := range append(otherServers) {
+		for i, server := range otherServers {
 			s, err := server.RootCA().Signer()
 			if err != nil {
 				return err
 			}
 			if !bytes.Equal(s.Key, rotationKey) {
-				return errors.Errorf("all the servers' root CAs haven't been updated yet: server %d", i)
+				return errors.Errorf("server %d's root CAs hasn't been updated yet", i)
 			}
 		}
 		return nil
