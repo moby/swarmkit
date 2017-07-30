@@ -77,3 +77,44 @@ func InvalidNode(n *api.Node) bool {
 		n.Status.State == api.NodeStatus_DOWN ||
 		n.Spec.Availability == api.NodeAvailabilityDrain
 }
+
+// TasksByTimestamp sorts tasks by applied timestamp if available, otherwise
+// status timestamp.
+type TasksByTimestamp []*api.Task
+
+// Len implements the Len method for sorting.
+func (t TasksByTimestamp) Len() int {
+	return len(t)
+}
+
+// Swap implements the Swap method for sorting.
+func (t TasksByTimestamp) Swap(i, j int) {
+	t[i], t[j] = t[j], t[i]
+}
+
+// Less implements the Less method for sorting.
+func (t TasksByTimestamp) Less(i, j int) bool {
+	iTimestamp := t[i].Status.Timestamp
+	if t[i].Status.AppliedAt != nil {
+		iTimestamp = t[i].Status.AppliedAt
+	}
+
+	jTimestamp := t[j].Status.Timestamp
+	if t[j].Status.AppliedAt != nil {
+		iTimestamp = t[j].Status.AppliedAt
+	}
+
+	if iTimestamp == nil {
+		return true
+	}
+	if jTimestamp == nil {
+		return false
+	}
+	if iTimestamp.Seconds < jTimestamp.Seconds {
+		return true
+	}
+	if iTimestamp.Seconds > jTimestamp.Seconds {
+		return false
+	}
+	return iTimestamp.Nanos < jTimestamp.Nanos
+}

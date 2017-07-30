@@ -155,7 +155,7 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	s := grpc.NewServer(serverOpts...)
 	tc := newTestCluster(l.Addr().String(), tca.MemoryStore)
 	driverGetter := &mockPluginGetter{}
-	d := New(tc, c, drivers.New(driverGetter))
+	d := New(tc, c, drivers.New(driverGetter), managerSecurityConfig)
 
 	authorize := func(ctx context.Context, roles []string) error {
 		_, err := ca.AuthorizeForwardedRoleAndOrg(ctx, roles, []string{ca.ManagerRole}, tca.Organization, nil)
@@ -421,10 +421,18 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 	t.Parallel()
 
 	const (
-		secretDriver       = "secret-driver"
-		existingSecretName = "existing-secret"
-		secretValue        = "custom-secret-value"
+		secretDriver        = "secret-driver"
+		existingSecretName  = "existing-secret"
+		serviceName         = "service-name"
+		serviceHostname     = "service-hostname"
+		serviceEndpointMode = 2
 	)
+	secretValue := []byte("custom-secret-value")
+	serviceLabels := map[string]string{
+		"label-name": "label-value",
+	}
+
+	portConfig := drivers.PortConfig{Name: "port", PublishMode: 5, TargetPort: 80, Protocol: 10, PublishedPort: 8080}
 
 	responses := map[string]*drivers.SecretsProviderResponse{
 		existingSecretName: {Value: secretValue},
@@ -437,7 +445,13 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 		var request drivers.SecretsProviderRequest
 		assert.NoError(t, err)
 		assert.NoError(t, json.Unmarshal(body, &request))
-		response := responses[request.Name]
+		response := responses[request.SecretName]
+		assert.Equal(t, serviceName, request.ServiceName)
+		assert.Equal(t, serviceHostname, request.ServiceHostname)
+		assert.Equal(t, int32(serviceEndpointMode), request.ServiceEndpointSpec.Mode)
+		assert.Len(t, request.ServiceEndpointSpec.Ports, 1)
+		assert.EqualValues(t, portConfig, request.ServiceEndpointSpec.Ports[0])
+		assert.EqualValues(t, serviceLabels, request.ServiceLabels)
 		assert.NotNil(t, response)
 		resp, err := json.Marshal(response)
 		assert.NoError(t, err)
@@ -465,12 +479,31 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 		},
 	}
 	spec := taskSpecFromDependencies(secret, config)
+	spec.GetContainer().Hostname = serviceHostname
 	task := &api.Task{
 		NodeID:       nodeID,
 		ID:           "secretTask",
 		Status:       api.TaskStatus{State: api.TaskStateReady},
 		DesiredState: api.TaskStateNew,
 		Spec:         spec,
+		Endpoint: &api.Endpoint{
+			Spec: &api.EndpointSpec{
+				Mode: serviceEndpointMode,
+				Ports: []*api.PortConfig{
+					{
+						Name:          portConfig.Name,
+						PublishedPort: portConfig.PublishedPort,
+						Protocol:      api.PortConfig_Protocol(portConfig.Protocol),
+						TargetPort:    portConfig.TargetPort,
+						PublishMode:   api.PortConfig_PublishMode(portConfig.PublishMode),
+					},
+				},
+			},
+		},
+		ServiceAnnotations: api.Annotations{
+			Name:   serviceName,
+			Labels: serviceLabels,
+		},
 	}
 
 	err = gd.Store.Update(func(tx store.Tx) error {
@@ -491,7 +524,7 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 	_, _, secretChanges := splitChanges(resp.Changes)
 	assert.Len(t, secretChanges, 1)
 	for _, s := range secretChanges {
-		assert.Equal(t, secretValue, string(s.Spec.Data))
+		assert.Equal(t, secretValue, s.Spec.Data)
 	}
 }
 
