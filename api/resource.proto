@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package docker.swarmkit.v1;
 
-import "types.proto";
+import "github.com/docker/swarmkit/api/types.proto";
 import "gogoproto/gogo.proto";
 import "plugin/plugin.proto";
 

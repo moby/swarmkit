@@ -48,10 +48,15 @@ setup: ## install dependencies
 	@go get -u github.com/gordonklaus/ineffassign
 	@go get -u github.com/client9/misspell/cmd/misspell
 	@go get -u github.com/lk4d4/vndr
+	@go get -u github.com/stevvooe/protobuild
 
-generate: bin/protoc-gen-gogoswarm ## generate protobuf
+generate: protos
 	@echo "🐳 $@"
 	@PATH=${ROOTDIR}/bin:${PATH} go generate -x ${PACKAGES}
+
+protos: bin/protoc-gen-gogoswarm ## generate protobuf
+	@echo "🐳 $@"
+	@PATH=${ROOTDIR}/bin:${PATH} protobuild ${PACKAGES}
 
 checkprotos: generate ## check if protobufs needs to be generated again
 	@echo "🐳 $@"
