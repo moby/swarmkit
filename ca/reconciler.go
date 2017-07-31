@@ -1,49 +1,56 @@
+// RootReconciler is a generic reconciliation loop for rotating a root CA object, and forcing all entities
+// that hold certificates issued by the root CA, to change certificates.  This can be used for both the swarm
+// cluster CA root rotation as well as generic PKI rotation.
+
 package ca
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"reflect"
 	"sync"
 	"time"
 
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/equality"
 	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/pkg/errors"
 )
 
-// IssuanceStateRotateMaxBatchSize is the maximum number of nodes we'll tell to rotate their certificates in any given update
-const IssuanceStateRotateMaxBatchSize = 30
+// ErrRootRotationChanged is to be returned by FinishRotation if the CA-to-be-rotated's target root for
+// rotation has changed in the middle of another root rotation.
+var ErrRootRotationChanged = errors.New("target root rotation has changed")
 
-func hasIssuer(n *api.Node, info *IssuerInfo) bool {
-	if n.Description == nil || n.Description.TLSInfo == nil {
-		return false
-	}
-	return bytes.Equal(info.Subject, n.Description.TLSInfo.CertIssuerSubject) && bytes.Equal(info.PublicKey, n.Description.TLSInfo.CertIssuerPublicKey)
+// A RootRotator encapsulates an interface for read/update operations on a collection of TLSTerminators,
+// as well as the CA root itself, whose certs will be rotated by a RotationReconciler.
+type RootRotator interface {
+	// GetAll returns all TLSTerminators who are supposed to hold certificates issued by the same CA
+	GetAllTerminators() ([]TLSTerminator, error)
+
+	// RotateCerts takes a list of TLSTerminators whose certs need to be rotated, and rotates them.
+	RotateCerts([]TLSTerminator) error
+
+	// FinishRotation is a callback that will let the caller know when root rotation is done.  It is called
+	// with the old root CA that is being rotated (so we make sure , as well as the new root CA.
+	FinishRotation(*api.RootCA, *api.RootCA) error
 }
 
-var errRootRotationChanged = errors.New("target root rotation has changed")
+// EntityID allows for identifying a TLSTerminator
+type EntityID struct {
+	ID   string
+	Type string
+}
 
-// rootRotationReconciler keeps track of all the nodes in the store so that we can determine which ones need reconciliation when nodes are updated
-// or the root CA is updated.  This is meant to be used with watches on nodes and the cluster, and provides functions to be called when the
-// cluster's RootCA has changed and when a node is added, updated, or removed.
-type rootRotationReconciler struct {
-	mu                  sync.Mutex
-	clusterID           string
-	batchUpdateInterval time.Duration
-	ctx                 context.Context
-	store               *store.MemoryStore
+// TLSTerminator is something that terminates a TLS connection (holds a certificate-key pair and uses it directly for
+// TLS communication).
+type TLSTerminator interface {
+	// TrustRoot returns the trust certificate(s) as PEM bytes
+	TrustRoot() []byte
 
-	currentRootCA    *api.RootCA
-	currentIssuer    IssuerInfo
-	unconvergedNodes map[string]*api.Node
+	// IssuerInfo returns the issuer for the leaf certificate held by the TLSTerminator
+	IssuerInfo() *IssuerInfo
 
-	wg     sync.WaitGroup
-	cancel func()
+	// Identifier returns a unique identifier for the TLSTerminator
+	Identifier() EntityID
 }
 
 // IssuerFromAPIRootCA returns the desired issuer given an API root CA object
@@ -65,13 +72,42 @@ func IssuerFromAPIRootCA(rootCA *api.RootCA) (*IssuerInfo, error) {
 	}, nil
 }
 
-// assumption:  UpdateRootCA will never be called with a `nil` root CA because the caller will be acting in response to
-// a store update event
-func (r *rootRotationReconciler) UpdateRootCA(newRootCA *api.RootCA) {
+// RotationReconciler keeps track of entities that use TLS certificates so that we can determine which ones need
+// reconciliation when they are updated or the root CA that issues the certificates are updated.  This object
+// provides functions to be called whenever the root CA changes or when an entity is added, updated, or removed.
+type RotationReconciler struct {
+	mu                sync.Mutex
+	rotator           RootRotator
+	reconcileInterval time.Duration
+	ctx               context.Context
+
+	currentRootCA *api.RootCA
+	currentIssuer IssuerInfo
+
+	// unconverged certs keeps a mapping of the objects which still need their leaf certificates rotated
+	unconvergedCerts map[EntityID]TLSTerminator
+
+	wg     sync.WaitGroup
+	cancel func()
+}
+
+// NewRotationReconciler constructs a rotation reconciler given a root rotator and other parameters.
+func NewRotationReconciler(ctx context.Context, r RootRotator, reconcileInterval time.Duration) *RotationReconciler {
+	return &RotationReconciler{
+		rotator:           r,
+		ctx:               ctx,
+		reconcileInterval: reconcileInterval,
+	}
+}
+
+// UpdateRootCA is meant to get called whenever the root CA is updated, so that the RotationReconciler
+func (r *RotationReconciler) UpdateRootCA(newRootCA *api.RootCA) error {
+	if newRootCA == nil {
+		return errors.New("root CA is nil")
+	}
 	issuerInfo, err := IssuerFromAPIRootCA(newRootCA)
 	if err != nil {
-		log.G(r.ctx).WithError(err).Error("unable to update process the current root CA")
-		return
+		return errors.Wrap(err, "unable to update process the new root CA")
 	}
 
 	var (
@@ -90,28 +126,24 @@ func (r *rootRotationReconciler) UpdateRootCA(newRootCA *api.RootCA) {
 		}
 	}()
 
-	// check if the issuer has changed, first
+	// check if the issuer has changed.  If it has, then we don't need to update anything.
 	if reflect.DeepEqual(&r.currentIssuer, issuerInfo) {
 		r.currentRootCA = newRootCA
-		return
+		return nil
 	}
 	// If the issuer has changed, iterate through all the nodes to figure out which ones need rotation
 	if newRootCA.RootRotation != nil {
-		var nodes []*api.Node
-		r.store.View(func(tx store.ReadTx) {
-			nodes, err = store.FindNodes(tx, store.All)
-		})
+		tts, err := r.rotator.GetAllTerminators()
 		if err != nil {
-			log.G(r.ctx).WithError(err).Error("unable to list nodes, so unable to process the current root CA")
-			return
+			return err
 		}
 
 		// from here on out, there will be no more errors that cause us to have to abandon updating the Root CA,
 		// so we can start making changes to r's fields
-		r.unconvergedNodes = make(map[string]*api.Node)
-		for _, n := range nodes {
-			if !hasIssuer(n, issuerInfo) {
-				r.unconvergedNodes[n.ID] = n
+		r.unconvergedCerts = make(map[EntityID]TLSTerminator)
+		for _, tt := range tts {
+			if !reflect.DeepEqual(tt.IssuerInfo(), issuerInfo) {
+				r.unconvergedCerts[tt.Identifier()] = tt
 			}
 		}
 		shouldStartNewLoop = true
@@ -121,139 +153,72 @@ func (r *rootRotationReconciler) UpdateRootCA(newRootCA *api.RootCA) {
 		}
 		loopCtx, r.cancel = context.WithCancel(r.ctx)
 	} else {
-		r.unconvergedNodes = nil
+		r.unconvergedCerts = nil
 	}
 	r.currentRootCA = newRootCA
 	r.currentIssuer = *issuerInfo
+	return nil
 }
 
-// assumption:  UpdateNode will never be called with a `nil` node because the caller will be acting in response to
-// a store update event
-func (r *rootRotationReconciler) UpdateNode(node *api.Node) {
+// UpdateTLSTerminator is meant to get called whenever a TLSTerminator object is updated, so the reconciler can
+// check its TLS certificate has the desired issuer.
+func (r *RotationReconciler) UpdateTLSTerminator(tt TLSTerminator) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
 	// if we're not in the middle of a root rotation ignore the update
 	if r.currentRootCA == nil || r.currentRootCA.RootRotation == nil {
 		return
 	}
-	if hasIssuer(node, &r.currentIssuer) {
-		delete(r.unconvergedNodes, node.ID)
+	if reflect.DeepEqual(tt.IssuerInfo(), &r.currentIssuer) {
+		delete(r.unconvergedCerts, tt.Identifier())
 	} else {
-		r.unconvergedNodes[node.ID] = node
+		r.unconvergedCerts[tt.Identifier()] = tt
 	}
 }
 
-// assumption:  DeleteNode will never be called with a `nil` node because the caller will be acting in response to
-// a store update event
-func (r *rootRotationReconciler) DeleteNode(node *api.Node) {
+// DeleteTLSTerminator is meant to get called whenever a TLSTerminator object is removed/no longer relevant, so the
+// reconciler can ignore it when determining whether a root rotation should bef inished.
+func (r *RotationReconciler) DeleteTLSTerminator(tt TLSTerminator) {
 	r.mu.Lock()
-	delete(r.unconvergedNodes, node.ID)
+	delete(r.unconvergedCerts, tt.Identifier())
 	r.mu.Unlock()
 }
 
-func (r *rootRotationReconciler) runReconcilerLoop(ctx context.Context, loopRootCA *api.RootCA) {
+// every `reconcileInterval`, try to force a root rotation on TLSTerminators that have not been updated, or finish
+// the root rotation if all TLSTerminators have desired certificates.
+func (r *RotationReconciler) runReconcilerLoop(ctx context.Context, loopRootCA *api.RootCA) {
 	defer r.wg.Done()
 	for {
 		r.mu.Lock()
-		if len(r.unconvergedNodes) == 0 {
+		if len(r.unconvergedCerts) == 0 {
 			r.mu.Unlock()
-
-			err := r.store.Update(func(tx store.Tx) error {
-				return r.finishRootRotation(tx, loopRootCA)
+			err := r.rotator.FinishRotation(loopRootCA, &api.RootCA{
+				CACert: loopRootCA.RootRotation.CACert,
+				CAKey:  loopRootCA.RootRotation.CAKey,
 			})
 			if err == nil {
 				log.G(r.ctx).Info("completed root rotation")
 				return
 			}
 			log.G(r.ctx).WithError(err).Error("could not complete root rotation")
-			if err == errRootRotationChanged {
+			if err == ErrRootRotationChanged {
 				// if the root rotation has changed, this loop will be cancelled anyway, so may as well abort early
 				return
 			}
 		} else {
-			var toUpdate []*api.Node
-			for _, n := range r.unconvergedNodes {
-				iState := n.Certificate.Status.State
-				if iState != api.IssuanceStateRenew && iState != api.IssuanceStatePending && iState != api.IssuanceStateRotate {
-					n = n.Copy()
-					n.Certificate.Status.State = api.IssuanceStateRotate
-					toUpdate = append(toUpdate, n)
-					if len(toUpdate) >= IssuanceStateRotateMaxBatchSize {
-						break
-					}
-				}
+			var toRotate []TLSTerminator
+			for _, tt := range r.unconvergedCerts {
+				toRotate = append(toRotate, tt)
 			}
 			r.mu.Unlock()
-
-			if err := r.batchUpdateNodes(toUpdate); err != nil {
-				log.G(r.ctx).WithError(err).Errorf("store error when trying to batch update %d nodes to request certificate rotation", len(toUpdate))
-			}
+			r.rotator.RotateCerts(toRotate) // ignore any errors
 		}
 
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(r.batchUpdateInterval):
+		case <-time.After(r.reconcileInterval):
 		}
 	}
-}
-
-// This function assumes that the expected root CA has root rotation.  This is intended to be used by
-// `reconcileNodeRootsAndCerts`, which uses the root CA from the `lastSeenClusterRootCA`, and checks
-// that it has a root rotation before calling this function.
-func (r *rootRotationReconciler) finishRootRotation(tx store.Tx, expectedRootCA *api.RootCA) error {
-	cluster := store.GetCluster(tx, r.clusterID)
-	if cluster == nil {
-		return fmt.Errorf("unable to get cluster %s", r.clusterID)
-	}
-
-	// If the RootCA object has changed (because another root rotation was started or because some other node
-	// had finished the root rotation), we cannot finish the root rotation that we were working on.
-	if !equality.RootCAEqualStable(expectedRootCA, &cluster.RootCA) {
-		return errRootRotationChanged
-	}
-
-	var signerCert []byte
-	if len(cluster.RootCA.RootRotation.CAKey) > 0 {
-		signerCert = cluster.RootCA.RootRotation.CACert
-	}
-	// we don't actually have to parse out the default node expiration from the cluster - we are just using
-	// the ca.RootCA object to generate new tokens and the digest
-	updatedRootCA, err := NewRootCA(cluster.RootCA.RootRotation.CACert, signerCert, cluster.RootCA.RootRotation.CAKey,
-		DefaultNodeCertExpiration, nil)
-	if err != nil {
-		return errors.Wrap(err, "invalid cluster root rotation object")
-	}
-	cluster.RootCA = api.RootCA{
-		CACert:     cluster.RootCA.RootRotation.CACert,
-		CAKey:      cluster.RootCA.RootRotation.CAKey,
-		CACertHash: updatedRootCA.Digest.String(),
-		JoinTokens: api.JoinTokens{
-			Worker:  GenerateJoinToken(&updatedRootCA),
-			Manager: GenerateJoinToken(&updatedRootCA),
-		},
-		LastForcedRotation: cluster.RootCA.LastForcedRotation,
-	}
-	return store.UpdateCluster(tx, cluster)
-}
-
-func (r *rootRotationReconciler) batchUpdateNodes(toUpdate []*api.Node) error {
-	if len(toUpdate) == 0 {
-		return nil
-	}
-	err := r.store.Batch(func(batch *store.Batch) error {
-		// Directly update the nodes rather than get + update, and ignore version errors.  Since
-		// `rootRotationReconciler` should be hooked up to all node update/delete/create events, we should have
-		// close to the latest versions of all the nodes.  If not, the node will updated later and the
-		// next batch of updates should catch it.
-		for _, n := range toUpdate {
-			if err := batch.Update(func(tx store.Tx) error {
-				return store.UpdateNode(tx, n)
-			}); err != nil && err != store.ErrSequenceConflict {
-				log.G(r.ctx).WithError(err).Errorf("unable to update node %s to request a certificate rotation", n.ID)
-			}
-		}
-		return nil
-	})
-	return err
 }
