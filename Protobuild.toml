@@ -7,7 +7,7 @@ plugins = ["grpc", "deepcopy", "storeobject", "raftproxy", "authenticatedwrapper
 [includes]
   # Include paths that will be added before all others. Typically, you want to
   # treat the root of the project as an include, but this may not be necessary.
-  before = [".", "./protobuf"]
+  before = ["."]
 
   # Paths that should be treated as include roots in relation to the vendor
   # directory. These will be calculated with the vendor directory nearest the
@@ -25,7 +25,6 @@ plugins = ["grpc", "deepcopy", "storeobject", "raftproxy", "authenticatedwrapper
 # `-M` directives in the call to the go protobuf generator.
 [packages]
   "gogoproto/gogo.proto" = "github.com/gogo/protobuf/gogoproto"
-  "plugin/plugin.proto" = "github.com/docker/swarmkit/protobuf/plugin"
   "google/protobuf/any.proto" = "github.com/gogo/protobuf/types"
   "google/protobuf/descriptor.proto" = "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
   "google/protobuf/field_mask.proto" = "github.com/gogo/protobuf/types"
