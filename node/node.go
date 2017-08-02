@@ -308,8 +308,6 @@ func (n *Node) run(ctx context.Context) (err error) {
 			case <-agentDone:
 				return
 			case nodeChanges := <-n.notifyNodeChange:
-				currentRole := n.currentRole()
-
 				if nodeChanges.Node != nil {
 					// This is a bit complex to be backward compatible with older CAs that
 					// don't support the Node.Role field. They only use what's presently
@@ -335,10 +333,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 				}
 
 				if nodeChanges.RootCert != nil {
-					// We only want to update the root CA if this is a worker node.  Manager nodes directly watch the raft
-					// store and update the root CA, with the necessary signer, from the raft store (since the managers
-					// need the CA key as well to potentially issue new TLS certificates).
-					if currentRole == api.NodeRoleManager || bytes.Equal(nodeChanges.RootCert, securityConfig.RootCA().Certs) {
+					if bytes.Equal(nodeChanges.RootCert, securityConfig.RootCA().Certs) {
 						continue
 					}
 					newRootCA, err := ca.NewRootCA(nodeChanges.RootCert, nil, nil, ca.DefaultNodeCertExpiration, nil)
