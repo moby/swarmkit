@@ -87,7 +87,7 @@ func NewServer(store *store.MemoryStore, securityConfig *SecurityConfig) *Server
 		started:                         make(chan struct{}),
 		reconciliationRetryInterval:     defaultReconciliationRetryInterval,
 		rootReconciliationRetryInterval: defaultRootReconciliationInterval,
-		// clusterID will be set on every call to Run
+		clusterID:                       securityConfig.ClientTLSCreds.Organization(),
 	}
 }
 
@@ -440,29 +440,28 @@ func (s *Server) Run(ctx context.Context) error {
 	var (
 		nodes   []*api.Node
 		cluster *api.Cluster
+		err     error
 	)
 	updates, cancel, err := store.ViewAndWatch(
 		s.store,
 		func(readTx store.ReadTx) error {
-			clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
-			if err != nil {
-				return err
-			}
-			if len(clusters) != 1 {
+			cluster = store.GetCluster(readTx, s.clusterID)
+			if cluster == nil {
 				return errors.New("could not find cluster object")
 			}
-			cluster = clusters[0]
 			nodes, err = store.FindNodes(readTx, store.All)
 			return err
 		},
 		api.EventCreateNode{},
 		api.EventUpdateNode{},
 		api.EventDeleteNode{},
-		api.EventUpdateCluster{},
+		api.EventUpdateCluster{
+			Cluster: &api.Cluster{ID: s.clusterID},
+			Checks:  []api.ClusterCheckFunc{api.ClusterCheckID},
+		},
 	)
 
 	// call once to ensure that the join tokens and local/external CA signer are always set
-	s.clusterID = cluster.ID
 	rootReconciler := &rootRotationReconciler{
 		ctx:                 log.WithField(ctx, "method", "(*Server).rootRotationReconciler"),
 		clusterID:           s.clusterID,
