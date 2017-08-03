@@ -5,8 +5,10 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/containerd/containerd/api/types/event"
+	"github.com/containerd/containerd/api/services/events/v1"
+	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/containerd/typeurl"
 	goevents "github.com/docker/go-events"
 	"github.com/pkg/errors"
 )
@@ -18,7 +20,7 @@ type sinkEvent struct {
 
 type eventSink struct {
 	ns string
-	ch chan *event.Envelope
+	ch chan *events.Envelope
 }
 
 func (s *eventSink) Write(evt goevents.Event) error {
@@ -26,7 +28,6 @@ func (s *eventSink) Write(evt goevents.Event) error {
 	if !ok {
 		return errors.New("event is not a sink event")
 	}
-	topic := getTopic(e.ctx)
 
 	ns, _ := namespaces.Namespace(e.ctx)
 	if ns != "" && ns != s.ns {
@@ -34,18 +35,24 @@ func (s *eventSink) Write(evt goevents.Event) error {
 		return nil
 	}
 
-	eventData, err := convertToAny(e.event)
+	if ev, ok := e.event.(*events.Envelope); ok {
+		s.ch <- ev
+		return nil
+	}
+	topic := getTopic(e.ctx)
+
+	eventData, err := typeurl.MarshalAny(e.event)
 	if err != nil {
 		return err
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.G(e.ctx).WithFields(logrus.Fields{
 		"topic": topic,
 		"type":  eventData.TypeUrl,
 		"ns":    ns,
 	}).Debug("event")
 
-	s.ch <- &event.Envelope{
+	s.ch <- &events.Envelope{
 		Timestamp: time.Now(),
 		Topic:     topic,
 		Event:     eventData,

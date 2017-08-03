@@ -11,6 +11,8 @@ import (
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/network/cni"
+	"github.com/docker/swarmkit/manager/network/cnm"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
@@ -22,12 +24,12 @@ func init() {
 	retryInterval = 5 * time.Millisecond
 }
 
-func TestAllocator(t *testing.T) {
+func TestCNMAllocator(t *testing.T) {
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
 	defer s.Close()
 
-	a, err := New(s, nil)
+	a, err := New(s, cnm.New(nil))
 	assert.NoError(t, err)
 	assert.NotNil(t, a)
 
@@ -202,12 +204,12 @@ func TestAllocator(t *testing.T) {
 		return nil
 	}))
 
-	netWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
-	defer cancel()
-	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
-	defer cancel()
-	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
-	defer cancel()
+	netWatch, netCancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
+	defer netCancel()
+	taskWatch, taskCancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
+	defer taskCancel()
+	serviceWatch, serviceCancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+	defer serviceCancel()
 
 	// Start allocator
 	go func() {
@@ -216,9 +218,9 @@ func TestAllocator(t *testing.T) {
 	defer a.Stop()
 
 	// Now verify if we get network and tasks updated properly
-	watchNetwork(t, netWatch, false, isValidNetwork)
-	watchTask(t, s, taskWatch, false, isValidTask) // t1
-	watchTask(t, s, taskWatch, false, isValidTask) // t2
+	watchNetwork(t, netWatch, false, isValidCNMNetwork)
+	watchTask(t, s, taskWatch, false, isValidCNMTask) // t1
+	watchTask(t, s, taskWatch, false, isValidCNMTask) // t2
 	watchService(t, serviceWatch, false, nil)
 
 	// Verify no allocation was done for the node-local networks
@@ -263,7 +265,7 @@ func TestAllocator(t *testing.T) {
 		return nil
 	}))
 
-	watchNetwork(t, netWatch, false, isValidNetwork)
+	watchNetwork(t, netWatch, false, isValidCNMNetwork)
 
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		s2 := &api.Service{
@@ -299,7 +301,7 @@ func TestAllocator(t *testing.T) {
 		return nil
 	}))
 
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchTask(t, s, taskWatch, false, isValidCNMTask)
 
 	// Now try adding a task which depends on a network before adding the network.
 	n3 := &api.Network{
@@ -338,14 +340,14 @@ func TestAllocator(t *testing.T) {
 		return nil
 	}))
 
-	watchNetwork(t, netWatch, false, isValidNetwork)
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchNetwork(t, netWatch, false, isValidCNMNetwork)
+	watchTask(t, s, taskWatch, false, isValidCNMTask)
 
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.DeleteTask(tx, "testTaskID3"))
 		return nil
 	}))
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchTask(t, s, taskWatch, false, isValidCNMTask)
 
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		t5 := &api.Task{
@@ -366,13 +368,13 @@ func TestAllocator(t *testing.T) {
 		assert.NoError(t, store.CreateTask(tx, t5))
 		return nil
 	}))
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchTask(t, s, taskWatch, false, isValidCNMTask)
 
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.DeleteNetwork(tx, "testID3"))
 		return nil
 	}))
-	watchNetwork(t, netWatch, false, isValidNetwork)
+	watchNetwork(t, netWatch, false, isValidCNMNetwork)
 
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.DeleteService(tx, "testServiceID2"))
@@ -393,7 +395,7 @@ func TestAllocator(t *testing.T) {
 		assert.NoError(t, store.CreateTask(tx, t4))
 		return nil
 	}))
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchTask(t, s, taskWatch, false, isValidCNMTask)
 
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		n2 := store.GetNetwork(tx, "testID2")
@@ -401,7 +403,7 @@ func TestAllocator(t *testing.T) {
 		assert.NoError(t, store.UpdateNetwork(tx, n2))
 		return nil
 	}))
-	watchNetwork(t, netWatch, false, isValidNetwork)
+	watchNetwork(t, netWatch, false, isValidCNMNetwork)
 	watchNetwork(t, netWatch, true, nil)
 
 	// Try updating service which is already allocated with no endpointSpec
@@ -421,7 +423,7 @@ func TestAllocator(t *testing.T) {
 		assert.NoError(t, store.UpdateTask(tx, t2))
 		return nil
 	}))
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchTask(t, s, taskWatch, false, isValidCNMTask)
 	watchTask(t, s, taskWatch, true, nil)
 
 	// Try adding networks with conflicting network resources and
@@ -449,7 +451,7 @@ func TestAllocator(t *testing.T) {
 		assert.NoError(t, store.CreateNetwork(tx, n4))
 		return nil
 	}))
-	watchNetwork(t, netWatch, false, isValidNetwork)
+	watchNetwork(t, netWatch, false, isValidCNMNetwork)
 
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateNetwork(tx, n5))
@@ -480,8 +482,8 @@ func TestAllocator(t *testing.T) {
 		assert.NoError(t, store.DeleteNetwork(tx, n4.ID))
 		return nil
 	}))
-	watchNetwork(t, netWatch, false, isValidNetwork)
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchNetwork(t, netWatch, false, isValidCNMNetwork)
+	watchTask(t, s, taskWatch, false, isValidCNMTask)
 
 	// Try adding services with conflicting port configs and add
 	// task which is part of the service whose allocation hasn't
@@ -544,7 +546,7 @@ func TestAllocator(t *testing.T) {
 		return nil
 	}))
 	watchService(t, serviceWatch, false, nil)
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchTask(t, s, taskWatch, false, isValidCNMTask)
 }
 
 func TestNoDuplicateIPs(t *testing.T) {
@@ -650,7 +652,7 @@ func TestNoDuplicateIPs(t *testing.T) {
 			return nil
 		}))
 
-		a, err := New(s, nil)
+		a, err := New(s, cnm.New(nil))
 		assert.NoError(t, err)
 		assert.NotNil(t, a)
 
@@ -666,7 +668,7 @@ func TestNoDuplicateIPs(t *testing.T) {
 	}
 }
 
-func isValidNetwork(t assert.TestingT, n *api.Network) bool {
+func isValidCNMNetwork(t assert.TestingT, n *api.Network) bool {
 	if _, ok := n.Spec.Annotations.Labels["com.docker.swarm.predefined"]; ok {
 		return true
 	}
@@ -678,13 +680,13 @@ func isValidNetwork(t assert.TestingT, n *api.Network) bool {
 		assert.NotEqual(t, net.ParseIP(n.IPAM.Configs[0].Gateway), nil)
 }
 
-func isValidTask(t assert.TestingT, s *store.MemoryStore, task *api.Task) bool {
-	return isValidNetworkAttachment(t, task) &&
+func isValidCNMTask(t assert.TestingT, s *store.MemoryStore, task *api.Task) bool {
+	return isValidCNMNetworkAttachment(t, task) &&
 		isValidEndpoint(t, s, task) &&
 		assert.Equal(t, task.Status.State, api.TaskStatePending)
 }
 
-func isValidNetworkAttachment(t assert.TestingT, task *api.Task) bool {
+func isValidCNMNetworkAttachment(t assert.TestingT, task *api.Task) bool {
 	if len(task.Networks) != 0 {
 		return assert.Equal(t, len(task.Networks[0].Addresses), 1) &&
 			isValidSubnet(t, task.Networks[0].Addresses[0])
@@ -714,6 +716,139 @@ func isValidEndpoint(t assert.TestingT, s *store.MemoryStore, task *api.Task) bo
 func isValidSubnet(t assert.TestingT, subnet string) bool {
 	_, _, err := net.ParseCIDR(subnet)
 	return assert.NoError(t, err)
+}
+
+func TestCNIAllocator(t *testing.T) {
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	a, err := New(s, cni.New())
+	assert.NoError(t, err)
+	assert.NotNil(t, a)
+
+	// Try adding some objects to store before allocator is started
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		n1 := &api.Network{
+			ID: "cniTestID1",
+			Spec: api.NetworkSpec{
+				DriverConfig: &api.Driver{
+					Name: "cni",
+					Options: map[string]string{
+						"Config": `{
+  "cniVersion": "0.3.0",
+  "name": "default",
+  "type": "bridge",
+  "bridge": "cni0",
+  "isGateway": true,
+  "ipam": {
+    "type": "host-local",
+    "subnet": "10.1.0.0/16",
+    "gateway": "10.1.0.1"
+  },
+  "dns": {
+    "nameservers": [ "10.1.0.1" ]
+  }
+}`},
+				},
+				Annotations: api.Annotations{
+					Name: "cniTest1",
+				},
+			},
+		}
+
+		assert.NoError(t, store.CreateNetwork(tx, n1))
+		s1 := &api.Service{
+			ID: "cniTestServiceID1",
+			Spec: api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "cniService1",
+				},
+				Task: api.TaskSpec{
+					Networks: []*api.NetworkAttachmentConfig{
+						{
+							Target: "cniTestID1",
+						},
+					},
+				},
+				//Endpoint: &api.EndpointSpec{
+				//	Mode: api.ResolutionModeVirtualIP,
+				//	Ports: []*api.PortConfig{
+				//		{
+				//			Name:          "portName",
+				//			Protocol:      api.ProtocolTCP,
+				//			TargetPort:    8000,
+				//			PublishedPort: 8001,
+				//		},
+				//	},
+				//},
+			},
+		}
+		assert.NoError(t, store.CreateService(tx, s1))
+
+		t1 := &api.Task{
+			ID: "cniTestTaskID1",
+			Status: api.TaskStatus{
+				State: api.TaskStateNew,
+			},
+			Networks: []*api.NetworkAttachment{
+				{
+					Network: n1,
+				},
+			},
+		}
+		assert.NoError(t, store.CreateTask(tx, t1))
+
+		t2 := &api.Task{
+			ID: "cniTestTaskIDPreInit",
+			Status: api.TaskStatus{
+				State: api.TaskStateNew,
+			},
+			ServiceID:    "cniTestServiceID1",
+			DesiredState: api.TaskStateRunning,
+		}
+		assert.NoError(t, store.CreateTask(tx, t2))
+		return nil
+	}))
+
+	netWatch, netCancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
+	defer netCancel()
+	taskWatch, taskCancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
+	defer taskCancel()
+
+	// Start allocator
+	go func() {
+		assert.NoError(t, a.Run(context.Background()))
+	}()
+
+	// Now verify if we get tasks and networks updated
+	// properly. Note that there is no service allocation in CNI
+	// mode, so no need to check that.
+	watchNetwork(t, netWatch, false, isValidCNINetwork)
+	watchTask(t, s, taskWatch, false, isValidCNITask) // t1
+	watchTask(t, s, taskWatch, false, isValidCNITask) // t2
+}
+
+func isValidCNINetwork(t assert.TestingT, n *api.Network) bool {
+	// IPAM should _not_ have been filed in, but we should have a DriverState.
+	return assert.Nil(t, n.IPAM) &&
+		assert.NotNil(t, n.DriverState, nil) &&
+		assert.Equal(t, n.DriverState.Name, "cni")
+}
+
+func isValidCNITask(t assert.TestingT, s *store.MemoryStore, task *api.Task) bool {
+	return isValidCNINetworkAttachment(t, task) &&
+		isValidEndpoint(t, s, task) &&
+		assert.Equal(t, task.Status.State, api.TaskStatePending)
+}
+
+func isValidCNINetworkAttachment(t assert.TestingT, task *api.Task) bool {
+	// No network address assignment should have occurred for a CNI network.
+	if len(task.Networks) != 0 {
+		return assert.Equal(t, len(task.Networks[0].Addresses), 0)
+	}
+
+	return true
 }
 
 type mockTester struct{}

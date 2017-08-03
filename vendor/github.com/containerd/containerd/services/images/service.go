@@ -2,8 +2,9 @@ package images
 
 import (
 	"github.com/boltdb/bolt"
-	imagesapi "github.com/containerd/containerd/api/services/images"
-	"github.com/containerd/containerd/api/types/event"
+	eventsapi "github.com/containerd/containerd/api/services/events/v1"
+	imagesapi "github.com/containerd/containerd/api/services/images/v1"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/events"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/metadata"
@@ -11,6 +12,8 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func init() {
@@ -51,59 +54,109 @@ func (s *Service) Register(server *grpc.Server) error {
 func (s *Service) Get(ctx context.Context, req *imagesapi.GetImageRequest) (*imagesapi.GetImageResponse, error) {
 	var resp imagesapi.GetImageResponse
 
-	return &resp, s.withStoreView(ctx, func(ctx context.Context, store images.Store) error {
+	return &resp, errdefs.ToGRPC(s.withStoreView(ctx, func(ctx context.Context, store images.Store) error {
 		image, err := store.Get(ctx, req.Name)
 		if err != nil {
-			return mapGRPCError(err, req.Name)
+			return err
 		}
 		imagepb := imageToProto(&image)
 		resp.Image = &imagepb
 		return nil
-	})
+	}))
 }
 
-func (s *Service) Update(ctx context.Context, req *imagesapi.UpdateImageRequest) (*imagesapi.UpdateImageResponse, error) {
-	if err := s.withStoreUpdate(ctx, func(ctx context.Context, store images.Store) error {
-		return mapGRPCError(store.Update(ctx, req.Image.Name, descFromProto(&req.Image.Target)), req.Image.Name)
-	}); err != nil {
-		return nil, err
-	}
-
-	if err := s.emit(ctx, "/images/update", event.ImageUpdate{
-		Name:   req.Image.Name,
-		Labels: req.Image.Labels,
-	}); err != nil {
-		return nil, err
-	}
-
-	// TODO: get image back out to return
-	return &imagesapi.UpdateImageResponse{
-	//Image: nil,
-	}, nil
-}
-
-func (s *Service) List(ctx context.Context, _ *imagesapi.ListImagesRequest) (*imagesapi.ListImagesResponse, error) {
+func (s *Service) List(ctx context.Context, req *imagesapi.ListImagesRequest) (*imagesapi.ListImagesResponse, error) {
 	var resp imagesapi.ListImagesResponse
 
-	return &resp, s.withStoreView(ctx, func(ctx context.Context, store images.Store) error {
-		images, err := store.List(ctx)
+	return &resp, errdefs.ToGRPC(s.withStoreView(ctx, func(ctx context.Context, store images.Store) error {
+		images, err := store.List(ctx, req.Filters...)
 		if err != nil {
-			return mapGRPCError(err, "")
+			return err
 		}
 
 		resp.Images = imagesToProto(images)
 		return nil
-	})
+	}))
 }
 
-func (s *Service) Delete(ctx context.Context, req *imagesapi.DeleteImageRequest) (*empty.Empty, error) {
+func (s *Service) Create(ctx context.Context, req *imagesapi.CreateImageRequest) (*imagesapi.CreateImageResponse, error) {
+	if req.Image.Name == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Image.Name required")
+	}
+
+	var (
+		image = imageFromProto(&req.Image)
+		resp  imagesapi.CreateImageResponse
+	)
 	if err := s.withStoreUpdate(ctx, func(ctx context.Context, store images.Store) error {
-		return mapGRPCError(store.Delete(ctx, req.Name), req.Name)
+		created, err := store.Create(ctx, image)
+		if err != nil {
+			return err
+		}
+
+		resp.Image = imageToProto(&created)
+		return nil
+	}); err != nil {
+		return nil, errdefs.ToGRPC(err)
+	}
+
+	if err := s.emit(ctx, "/images/create", &eventsapi.ImageCreate{
+		Name:   resp.Image.Name,
+		Labels: resp.Image.Labels,
 	}); err != nil {
 		return nil, err
 	}
 
-	if err := s.emit(ctx, "/images/delete", event.ImageDelete{
+	return &resp, nil
+
+}
+
+func (s *Service) Update(ctx context.Context, req *imagesapi.UpdateImageRequest) (*imagesapi.UpdateImageResponse, error) {
+	if req.Image.Name == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Image.Name required")
+	}
+
+	var (
+		image = imageFromProto(&req.Image)
+		resp  imagesapi.UpdateImageResponse
+	)
+	if err := s.withStoreUpdate(ctx, func(ctx context.Context, store images.Store) error {
+		var fieldpaths []string
+		if req.UpdateMask != nil && len(req.UpdateMask.Paths) > 0 {
+			for _, path := range req.UpdateMask.Paths {
+				fieldpaths = append(fieldpaths, path)
+			}
+		}
+
+		updated, err := store.Update(ctx, image, fieldpaths...)
+		if err != nil {
+			return err
+		}
+
+		resp.Image = imageToProto(&updated)
+		return nil
+	}); err != nil {
+		return nil, errdefs.ToGRPC(err)
+	}
+
+	if err := s.emit(ctx, "/images/update", &eventsapi.ImageUpdate{
+		Name:   resp.Image.Name,
+		Labels: resp.Image.Labels,
+	}); err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
+func (s *Service) Delete(ctx context.Context, req *imagesapi.DeleteImageRequest) (*empty.Empty, error) {
+	if err := s.withStoreUpdate(ctx, func(ctx context.Context, store images.Store) error {
+		return errdefs.ToGRPC(store.Delete(ctx, req.Name))
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := s.emit(ctx, "/images/delete", &eventsapi.ImageDelete{
 		Name: req.Name,
 	}); err != nil {
 		return nil, err

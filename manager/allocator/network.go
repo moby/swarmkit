@@ -7,8 +7,7 @@ import (
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/allocator/cnmallocator"
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
+	"github.com/docker/swarmkit/manager/network"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
@@ -23,8 +22,6 @@ const (
 )
 
 var (
-	// ErrNoIngress is returned when no ingress network is found in store
-	ErrNoIngress = errors.New("no ingress network found")
 	errNoChanges = errors.New("task unchanged")
 
 	retryInterval = 5 * time.Minute
@@ -35,7 +32,7 @@ type networkContext struct {
 	ingressNetwork *api.Network
 	// Instance of the low-level network allocator which performs
 	// the actual network allocation.
-	nwkAllocator networkallocator.NetworkAllocator
+	nwkAllocator network.Allocator
 
 	// A set of tasks which are ready to be allocated as a batch. This is
 	// distinct from "unallocatedTasks" which are tasks that failed to
@@ -68,7 +65,7 @@ type networkContext struct {
 }
 
 func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
-	na, err := cnmallocator.New(a.pluginGetter)
+	na, err := a.nm.NewAllocator()
 	if err != nil {
 		return err
 	}
@@ -93,7 +90,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 	// Check if we have the ingress network. If found, make sure it is
 	// allocated, before reading all network objects for allocation.
 	// If not found, it means it was removed by user, nothing to do here.
-	ingressNetwork, err := GetIngressNetwork(a.store)
+	ingressNetwork, err := network.GetIngressNetwork(a.store)
 	switch err {
 	case nil:
 		// Try to complete ingress network allocation before anything else so
@@ -111,7 +108,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 				log.G(ctx).WithError(err).Error("failed committing allocation of ingress network during init")
 			}
 		}
-	case ErrNoIngress:
+	case network.ErrNoIngress:
 		// Ingress network is not present in store, It means user removed it
 		// and did not create a new one.
 	default:
@@ -192,7 +189,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			break
 		}
 
-		if IsIngressNetwork(n) && nc.ingressNetwork != nil {
+		if network.IsIngressNetwork(n) && nc.ingressNetwork != nil {
 			log.G(ctx).Errorf("Cannot allocate ingress network %s (%s) because another ingress network is already present: %s (%s)",
 				n.ID, n.Spec.Annotations.Name, nc.ingressNetwork.ID, nc.ingressNetwork.Spec.Annotations)
 			break
@@ -209,7 +206,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			log.G(ctx).WithError(err).Errorf("Failed to commit allocation for network %s", n.ID)
 		}
 
-		if IsIngressNetwork(n) {
+		if network.IsIngressNetwork(n) {
 			nc.ingressNetwork = n
 			err := a.allocateNodes(ctx, false)
 			if err != nil {
@@ -219,7 +216,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 	case api.EventDeleteNetwork:
 		n := v.Network.Copy()
 
-		if IsIngressNetwork(n) && nc.ingressNetwork != nil && nc.ingressNetwork.ID == n.ID {
+		if network.IsIngressNetwork(n) && nc.ingressNetwork != nil && nc.ingressNetwork.ID == n.ID {
 			nc.ingressNetwork = nil
 			if err := a.deallocateNodes(ctx); err != nil {
 				log.G(ctx).WithError(err).Error(err)
@@ -492,7 +489,7 @@ func (a *Allocator) allocateServices(ctx context.Context, existingAddressesOnly 
 
 	var allocatedServices []*api.Service
 	for _, s := range services {
-		if nc.nwkAllocator.IsServiceAllocated(s, networkallocator.OnInit) {
+		if nc.nwkAllocator.IsServiceAllocated(s, network.OnInit) {
 			continue
 		}
 
@@ -633,11 +630,6 @@ func taskUpdateEndpoint(t *api.Task, endpoint *api.Endpoint) {
 	t.Endpoint = endpoint.Copy()
 }
 
-// IsIngressNetworkNeeded checks whether the service requires the routing-mesh
-func IsIngressNetworkNeeded(s *api.Service) bool {
-	return networkallocator.IsIngressNetworkNeeded(s)
-}
-
 func (a *Allocator) taskCreateNetworkAttachments(t *api.Task, s *api.Service) {
 	// If task network attachments have already been filled in no
 	// need to do anything else.
@@ -646,7 +638,7 @@ func (a *Allocator) taskCreateNetworkAttachments(t *api.Task, s *api.Service) {
 	}
 
 	var networks []*api.NetworkAttachment
-	if IsIngressNetworkNeeded(s) && a.netCtx.ingressNetwork != nil {
+	if network.IsIngressNetworkNeeded(s) && a.netCtx.ingressNetwork != nil {
 		networks = append(networks, &api.NetworkAttachment{Network: a.netCtx.ingressNetwork})
 	}
 
@@ -830,7 +822,7 @@ func (a *Allocator) allocateService(ctx context.Context, s *api.Service) error {
 		// The service is trying to expose ports to the external
 		// world. Automatically attach the service to the ingress
 		// network only if it is not already done.
-		if IsIngressNetworkNeeded(s) {
+		if network.IsIngressNetworkNeeded(s) {
 			if nc.ingressNetwork == nil {
 				return fmt.Errorf("ingress network is missing")
 			}
@@ -864,7 +856,7 @@ func (a *Allocator) allocateService(ctx context.Context, s *api.Service) error {
 	// If the service doesn't expose ports any more and if we have
 	// any lingering virtual IP references for ingress network
 	// clean them up here.
-	if !IsIngressNetworkNeeded(s) && nc.ingressNetwork != nil {
+	if !network.IsIngressNetworkNeeded(s) && nc.ingressNetwork != nil {
 		if s.Endpoint != nil {
 			for i, vip := range s.Endpoint.VirtualIPs {
 				if vip.NetworkID == nc.ingressNetwork.ID {
@@ -1147,47 +1139,9 @@ func (a *Allocator) procTasksNetwork(ctx context.Context, onRetry bool) {
 	}
 }
 
-// IsBuiltInNetworkDriver returns whether the passed driver is an internal network driver
-func IsBuiltInNetworkDriver(name string) bool {
-	return cnmallocator.IsBuiltInDriver(name)
-}
-
-// PredefinedNetworks returns the list of predefined network structures for a given network model
-func PredefinedNetworks() []networkallocator.PredefinedNetworkData {
-	return cnmallocator.PredefinedNetworks()
-}
-
 // updateTaskStatus sets TaskStatus and updates timestamp.
 func updateTaskStatus(t *api.Task, newStatus api.TaskState, message string) {
 	t.Status.State = newStatus
 	t.Status.Message = message
 	t.Status.Timestamp = ptypes.MustTimestampProto(time.Now())
-}
-
-// IsIngressNetwork returns whether the passed network is an ingress network.
-func IsIngressNetwork(nw *api.Network) bool {
-	return networkallocator.IsIngressNetwork(nw)
-}
-
-// GetIngressNetwork fetches the ingress network from store.
-// ErrNoIngress will be returned if the ingress network is not present,
-// nil otherwise. In case of any other failure in accessing the store,
-// the respective error will be reported as is.
-func GetIngressNetwork(s *store.MemoryStore) (*api.Network, error) {
-	var (
-		networks []*api.Network
-		err      error
-	)
-	s.View(func(tx store.ReadTx) {
-		networks, err = store.FindNetworks(tx, store.All)
-	})
-	if err != nil {
-		return nil, err
-	}
-	for _, n := range networks {
-		if IsIngressNetwork(n) {
-			return n, nil
-		}
-	}
-	return nil, ErrNoIngress
 }

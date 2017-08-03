@@ -18,6 +18,7 @@ import (
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/identity"
+	"github.com/docker/swarmkit/manager/network/cnm"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/testutils"
 	"github.com/pkg/errors"
@@ -38,6 +39,7 @@ func TestLoadSecurityConfigNewNode(t *testing.T) {
 		node, err := New(&Config{
 			StateDir:         tempdir,
 			AutoLockManagers: autoLockManagers,
+			NetworkModel:     cnm.New(nil),
 		})
 		require.NoError(t, err)
 		securityConfig, cancel, err := node.loadSecurityConfig(context.Background(), paths)
@@ -68,7 +70,8 @@ func TestLoadSecurityConfigPartialCertsOnDisk(t *testing.T) {
 	require.NoError(t, ca.SaveRootCA(rootCA, paths.RootCA))
 
 	node, err := New(&Config{
-		StateDir: tempdir,
+		StateDir:     tempdir,
+		NetworkModel: cnm.New(nil),
 	})
 	require.NoError(t, err)
 	securityConfig, cancel, err := node.loadSecurityConfig(context.Background(), paths)
@@ -87,7 +90,8 @@ func TestLoadSecurityConfigPartialCertsOnDisk(t *testing.T) {
 	require.NoError(t, os.RemoveAll(paths.RootCA.Cert))
 
 	node, err = New(&Config{
-		StateDir: tempdir,
+		StateDir:     tempdir,
+		NetworkModel: cnm.New(nil),
 	})
 	require.NoError(t, err)
 	securityConfig, cancel, err = node.loadSecurityConfig(context.Background(), paths)
@@ -126,10 +130,11 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 	require.NoError(t, err)
 
 	node, err := New(&Config{
-		StateDir:  tempdir,
-		JoinAddr:  peer.Addr,
-		JoinToken: tc.ManagerToken,
-		UnlockKey: []byte("passphrase"),
+		StateDir:     tempdir,
+		JoinAddr:     peer.Addr,
+		JoinToken:    tc.ManagerToken,
+		UnlockKey:    []byte("passphrase"),
+		NetworkModel: cnm.New(nil),
 	})
 	require.NoError(t, err)
 	securityConfig, cancel, err := node.loadSecurityConfig(context.Background(), paths)
@@ -139,9 +144,10 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 
 	// Invalid passphrase
 	node, err = New(&Config{
-		StateDir:  tempdir,
-		JoinAddr:  peer.Addr,
-		JoinToken: tc.ManagerToken,
+		StateDir:     tempdir,
+		JoinAddr:     peer.Addr,
+		JoinToken:    tc.ManagerToken,
+		NetworkModel: cnm.New(nil),
 	})
 	require.NoError(t, err)
 	_, _, err = node.loadSecurityConfig(context.Background(), paths)
@@ -152,10 +158,11 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, ca.SaveRootCA(rootCA, paths.RootCA))
 	node, err = New(&Config{
-		StateDir:  tempdir,
-		JoinAddr:  peer.Addr,
-		JoinToken: tc.ManagerToken,
-		UnlockKey: []byte("passphrase"),
+		StateDir:     tempdir,
+		JoinAddr:     peer.Addr,
+		JoinToken:    tc.ManagerToken,
+		UnlockKey:    []byte("passphrase"),
+		NetworkModel: cnm.New(nil),
 	})
 	require.NoError(t, err)
 	_, _, err = node.loadSecurityConfig(context.Background(), paths)
@@ -174,8 +181,9 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 
 	// join addr is invalid
 	node, err := New(&Config{
-		StateDir: tempdir,
-		JoinAddr: "127.0.0.1:12",
+		StateDir:     tempdir,
+		JoinAddr:     "127.0.0.1:12",
+		NetworkModel: cnm.New(nil),
 	})
 	require.NoError(t, err)
 	_, _, err = node.loadSecurityConfig(context.Background(), paths)
@@ -188,9 +196,10 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 	require.NoError(t, err)
 
 	node, err = New(&Config{
-		StateDir:  tempdir,
-		JoinAddr:  peer.Addr,
-		JoinToken: tc.ManagerToken,
+		StateDir:     tempdir,
+		JoinAddr:     peer.Addr,
+		JoinToken:    tc.ManagerToken,
+		NetworkModel: cnm.New(nil),
 	})
 	require.NoError(t, err)
 	_, cancel, err := node.loadSecurityConfig(context.Background(), paths)
@@ -233,9 +242,10 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 	// key is downloaded and then loaded just fine.  However, it *is* written
 	// to disk encrypted.
 	node, err = New(&Config{
-		StateDir:  tempdir,
-		JoinAddr:  peer.Addr,
-		JoinToken: tc.ManagerToken,
+		StateDir:     tempdir,
+		JoinAddr:     peer.Addr,
+		JoinToken:    tc.ManagerToken,
+		NetworkModel: cnm.New(nil),
 	})
 	require.NoError(t, err)
 	_, cancel, err = node.loadSecurityConfig(context.Background(), paths)
@@ -265,6 +275,7 @@ func TestManagerRespectsDispatcherRootCAUpdate(t *testing.T) {
 		ListenControlAPI: cAddr,
 		StateDir:         tmpDir,
 		Executor:         &agentutils.TestExecutor{},
+		NetworkModel:     cnm.New(nil),
 	}
 
 	node, err := New(cfg)
@@ -333,9 +344,10 @@ func TestAgentRespectsDispatcherRootCAUpdate(t *testing.T) {
 	defer cleanup()
 
 	cfg := &Config{
-		StateDir: tmpDir,
-		Executor: &agentutils.TestExecutor{},
-		JoinAddr: mockDispatcher.Addr,
+		StateDir:     tmpDir,
+		Executor:     &agentutils.TestExecutor{},
+		JoinAddr:     mockDispatcher.Addr,
+		NetworkModel: cnm.New(nil),
 	}
 	node, err := New(cfg)
 	require.NoError(t, err)
@@ -391,6 +403,7 @@ func TestCertRenewals(t *testing.T) {
 		ListenControlAPI: cAddr,
 		StateDir:         tmpDir,
 		Executor:         &agentutils.TestExecutor{},
+		NetworkModel:     cnm.New(nil),
 	}
 	node, err := New(cfg)
 	require.NoError(t, err)
@@ -472,6 +485,7 @@ func TestManagerFailedStartup(t *testing.T) {
 		StateDir:         tmpDir,
 		Executor:         &agentutils.TestExecutor{},
 		JoinAddr:         "127.0.0.1",
+		NetworkModel:     cnm.New(nil),
 	}
 
 	node, err := New(cfg)

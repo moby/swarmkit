@@ -57,6 +57,58 @@ func (r *controller) ContainerStatus(ctx context.Context) (*api.ContainerStatus,
 		status.ExitCode = int32(ec.ExitCode())
 	}
 
+	for _, n := range r.adapter.networks {
+		l := log.G(ctx).WithField("network.id", n.attachment.Network.ID)
+
+		ns := &api.ContainerNetworkStatus{
+			Network: n.attachment.Network.ID,
+		}
+
+		if n.cniErr != nil {
+			ns.Error = n.cniErr.Error()
+		} else if n.cni == nil {
+			ns.Error = "No CNI information available"
+		} else {
+			for _, iface := range n.cni.Interfaces {
+				ns.Interfaces = append(ns.Interfaces, &api.ContainerNetworkStatus_NetworkInterface{
+					Name: iface.Name,
+				})
+			}
+
+			// Now len(ns.Interfaces) == len(n.cni.Interfaces) by construction.
+
+			// Create a dummy interface if nothing
+			// provided, this has been seen in the wild
+			// (with at least the weave-net plugin, along
+			// with n.cni.IPs containing Interface == -1
+			// (handled below too)
+			if len(ns.Interfaces) == 0 {
+				l.Debugf("No interfaces, creating dummy %s", n.iface)
+				ns.Interfaces = append(ns.Interfaces, &api.ContainerNetworkStatus_NetworkInterface{
+					Name: n.iface,
+				})
+			}
+
+			for _, ip := range n.cni.IPs {
+				ifnum := ip.Interface
+				if ifnum < 0 || ifnum >= len(ns.Interfaces) {
+					if len(ns.Interfaces) > 0 {
+						l.Debugf("Interface index %d out of range [0-%d) assuming first", ip.Interface, len(ns.Interfaces))
+						ifnum = 0
+					} else {
+						// This cannot happen given the workaround above, but keep this check for future use.
+						l.Debugf("Interface index %d out of range, no fallback available", ip.Interface)
+						continue
+					}
+				}
+				ni := ns.Interfaces[ifnum]
+				ni.IP = append(ni.IP, ip.Address.String())
+			}
+		}
+
+		status.Networks = append(status.Networks, ns)
+	}
+
 	return status, nil
 }
 

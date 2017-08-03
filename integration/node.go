@@ -13,6 +13,7 @@ import (
 	agentutils "github.com/docker/swarmkit/agent/testutils"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/manager/network/cnm"
 	"github.com/docker/swarmkit/node"
 	"github.com/docker/swarmkit/testutils"
 	"golang.org/x/net/context"
@@ -67,6 +68,7 @@ func newTestNode(joinAddr, joinToken string, lateBind bool) (*testNode, error) {
 		StateDir:         tmpDir,
 		Executor:         &agentutils.TestExecutor{},
 		JoinToken:        joinToken,
+		NetworkModel:     cnm.New(nil),
 	}
 	if !lateBind {
 		cfg.ListenRemoteAPI = "127.0.0.1:0"

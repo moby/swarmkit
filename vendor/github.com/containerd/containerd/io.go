@@ -1,6 +1,7 @@
 package containerd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,7 +16,21 @@ type IO struct {
 	Stdout   string
 	Stderr   string
 
-	closer io.Closer
+	closer *wgCloser
+}
+
+func (i *IO) Cancel() {
+	if i.closer == nil {
+		return
+	}
+	i.closer.Cancel()
+}
+
+func (i *IO) Wait() {
+	if i.closer == nil {
+		return
+	}
+	i.closer.Wait()
 }
 
 func (i *IO) Close() error {
@@ -27,7 +42,7 @@ func (i *IO) Close() error {
 
 type IOCreation func() (*IO, error)
 
-type IOAttach func(*FifoSet) (*IO, error)
+type IOAttach func(*FIFOSet) (*IO, error)
 
 func NewIO(stdin io.Reader, stdout, stderr io.Writer) IOCreation {
 	return NewIOWithTerminal(stdin, stdout, stderr, false)
@@ -61,7 +76,7 @@ func NewIOWithTerminal(stdin io.Reader, stdout, stderr io.Writer, terminal bool)
 }
 
 func WithAttach(stdin io.Reader, stdout, stderr io.Writer) IOAttach {
-	return func(paths *FifoSet) (*IO, error) {
+	return func(paths *FIFOSet) (*IO, error) {
 		if paths == nil {
 			return nil, fmt.Errorf("cannot attach to existing fifos")
 		}
@@ -97,7 +112,7 @@ func StdioTerminal() (*IO, error) {
 }
 
 // NewFifos returns a new set of fifos for the task
-func NewFifos() (*FifoSet, error) {
+func NewFifos() (*FIFOSet, error) {
 	root := filepath.Join(os.TempDir(), "containerd")
 	if err := os.MkdirAll(root, 0700); err != nil {
 		return nil, err
@@ -106,7 +121,7 @@ func NewFifos() (*FifoSet, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &FifoSet{
+	return &FIFOSet{
 		Dir: dir,
 		In:  filepath.Join(dir, "stdin"),
 		Out: filepath.Join(dir, "stdout"),
@@ -114,7 +129,7 @@ func NewFifos() (*FifoSet, error) {
 	}, nil
 }
 
-type FifoSet struct {
+type FIFOSet struct {
 	// Dir is the directory holding the task fifos
 	Dir          string
 	In, Out, Err string
@@ -127,14 +142,26 @@ type ioSet struct {
 }
 
 type wgCloser struct {
-	wg  *sync.WaitGroup
-	dir string
+	wg     *sync.WaitGroup
+	dir    string
+	set    []io.Closer
+	cancel context.CancelFunc
+}
+
+func (g *wgCloser) Wait() {
+	g.wg.Wait()
 }
 
 func (g *wgCloser) Close() error {
-	g.wg.Wait()
+	for _, f := range g.set {
+		f.Close()
+	}
 	if g.dir != "" {
 		return os.RemoveAll(g.dir)
 	}
 	return nil
+}
+
+func (g *wgCloser) Cancel() {
+	g.cancel()
 }

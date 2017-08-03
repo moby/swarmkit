@@ -7,10 +7,11 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"time"
 
+	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/filters"
 	"github.com/containerd/containerd/log"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
@@ -40,7 +41,7 @@ func (s *store) Info(ctx context.Context, dgst digest.Digest) (Info, error) {
 	fi, err := os.Stat(p)
 	if err != nil {
 		if os.IsNotExist(err) {
-			err = ErrNotFound("")
+			err = errors.Wrapf(errdefs.ErrNotFound, "content %v", dgst)
 		}
 
 		return Info{}, err
@@ -51,9 +52,10 @@ func (s *store) Info(ctx context.Context, dgst digest.Digest) (Info, error) {
 
 func (s *store) info(dgst digest.Digest, fi os.FileInfo) Info {
 	return Info{
-		Digest:      dgst,
-		Size:        fi.Size(),
-		CommittedAt: fi.ModTime(),
+		Digest:    dgst,
+		Size:      fi.Size(),
+		CreatedAt: fi.ModTime(),
+		UpdatedAt: fi.ModTime(),
 	}
 }
 
@@ -62,7 +64,7 @@ func (s *store) Reader(ctx context.Context, dgst digest.Digest) (io.ReadCloser, 
 	fp, err := os.Open(s.blobPath(dgst))
 	if err != nil {
 		if os.IsNotExist(err) {
-			err = ErrNotFound("")
+			err = errors.Wrapf(errdefs.ErrNotFound, "content %v", dgst)
 		}
 		return nil, err
 	}
@@ -85,15 +87,19 @@ func (cs *store) Delete(ctx context.Context, dgst digest.Digest) error {
 			return err
 		}
 
-		return ErrNotFound("")
+		return errors.Wrapf(errdefs.ErrNotFound, "content %v", dgst)
 	}
 
 	return nil
 }
 
-// TODO(stevvooe): Allow querying the set of blobs in the blob store.
+func (cs *store) Update(ctx context.Context, info Info, fieldpaths ...string) (Info, error) {
+	// TODO: Support persisting and updating mutable content data
+	return Info{}, errors.Wrapf(errdefs.ErrFailedPrecondition, "update not supported on immutable content store")
+}
 
-func (cs *store) Walk(ctx context.Context, fn WalkFunc) error {
+func (cs *store) Walk(ctx context.Context, fn WalkFunc, filters ...string) error {
+	// TODO: Support filters
 	root := filepath.Join(cs.root, "blobs")
 	var alg digest.Algorithm
 	return filepath.Walk(root, func(path string, fi os.FileInfo, err error) error {
@@ -135,7 +141,11 @@ func (cs *store) Walk(ctx context.Context, fn WalkFunc) error {
 	})
 }
 
-func (s *store) Status(ctx context.Context, re string) ([]Status, error) {
+func (s *store) Status(ctx context.Context, ref string) (Status, error) {
+	return s.status(s.ingestRoot(ref))
+}
+
+func (s *store) ListStatuses(ctx context.Context, fs ...string) ([]Status, error) {
 	fp, err := os.Open(filepath.Join(s.root, "ingest"))
 	if err != nil {
 		return nil, err
@@ -148,7 +158,7 @@ func (s *store) Status(ctx context.Context, re string) ([]Status, error) {
 		return nil, err
 	}
 
-	rec, err := regexp.Compile(re)
+	filter, err := filters.ParseAll(fs...)
 	if err != nil {
 		return nil, err
 	}
@@ -173,11 +183,9 @@ func (s *store) Status(ctx context.Context, re string) ([]Status, error) {
 			continue
 		}
 
-		if !rec.MatchString(stat.Ref) {
-			continue
+		if filter.Match(adaptStatus(stat)) {
+			active = append(active, stat)
 		}
-
-		active = append(active, stat)
 	}
 
 	return active, nil
@@ -203,6 +211,20 @@ func (s *store) status(ingestPath string) (Status, error) {
 		UpdatedAt: fi.ModTime(),
 		StartedAt: getStartTime(fi),
 	}, nil
+}
+
+func adaptStatus(status Status) filters.Adaptor {
+	return filters.AdapterFunc(func(fieldpath []string) (string, bool) {
+		if len(fieldpath) == 0 {
+			return "", false
+		}
+		switch fieldpath[0] {
+		case "ref":
+			return status.Ref, true
+		}
+
+		return "", false
+	})
 }
 
 // total attempts to resolve the total expected size for the write.
@@ -232,7 +254,7 @@ func (s *store) Writer(ctx context.Context, ref string, total int64, expected di
 	if expected != "" {
 		p := s.blobPath(expected)
 		if _, err := os.Stat(p); err == nil {
-			return nil, ErrExists("")
+			return nil, errors.Wrapf(errdefs.ErrAlreadyExists, "content %v", expected)
 		}
 	}
 
@@ -329,7 +351,7 @@ func (s *store) Abort(ctx context.Context, ref string) error {
 	root := s.ingestRoot(ref)
 	if err := os.RemoveAll(root); err != nil {
 		if os.IsNotExist(err) {
-			return ErrNotFound("")
+			return errors.Wrapf(errdefs.ErrNotFound, "ingest ref %q", ref)
 		}
 
 		return err

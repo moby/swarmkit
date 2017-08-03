@@ -12,8 +12,8 @@ import (
 	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/api/naming"
 	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/allocator"
 	"github.com/docker/swarmkit/manager/constraint"
+	"github.com/docker/swarmkit/manager/network"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/docker/swarmkit/template"
@@ -435,16 +435,16 @@ func validateConfigRefsSpec(spec api.TaskSpec) error {
 
 func (s *Server) validateNetworks(networks []*api.NetworkAttachmentConfig) error {
 	for _, na := range networks {
-		var network *api.Network
+		var nw *api.Network
 		s.store.View(func(tx store.ReadTx) {
-			network = store.GetNetwork(tx, na.Target)
+			nw = store.GetNetwork(tx, na.Target)
 		})
-		if network == nil {
+		if nw == nil {
 			continue
 		}
-		if allocator.IsIngressNetwork(network) {
+		if network.IsIngressNetwork(nw) {
 			return grpc.Errorf(codes.InvalidArgument,
-				"Service cannot be explicitly attached to the ingress network %q", network.Spec.Annotations.Name)
+				"Service cannot be explicitly attached to the ingress network %q", nw.Spec.Annotations.Name)
 		}
 	}
 	return nil
@@ -671,8 +671,8 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 		SpecVersion: &api.Version{},
 	}
 
-	if allocator.IsIngressNetworkNeeded(service) {
-		if _, err := allocator.GetIngressNetwork(s.store); err == allocator.ErrNoIngress {
+	if network.IsIngressNetworkNeeded(service) {
+		if _, err := network.GetIngressNetwork(s.store); err == network.ErrNoIngress {
 			return nil, grpc.Errorf(codes.FailedPrecondition, "service needs ingress network, but no ingress network is present")
 		}
 	}
@@ -824,8 +824,8 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 			service.UpdateStatus = nil
 		}
 
-		if allocator.IsIngressNetworkNeeded(service) {
-			if _, err := allocator.GetIngressNetwork(s.store); err == allocator.ErrNoIngress {
+		if network.IsIngressNetworkNeeded(service) {
+			if _, err := network.GetIngressNetwork(s.store); err == network.ErrNoIngress {
 				return grpc.Errorf(codes.FailedPrecondition, "service needs ingress network, but no ingress network is present")
 			}
 		}

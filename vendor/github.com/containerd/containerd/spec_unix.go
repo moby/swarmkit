@@ -6,13 +6,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"runtime"
 	"strconv"
 	"strings"
 
-	"github.com/containerd/containerd/api/services/containers"
+	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/images"
-	protobuf "github.com/gogo/protobuf/types"
+	"github.com/containerd/containerd/typeurl"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 )
@@ -64,14 +63,10 @@ func defaultNamespaces() []specs.LinuxNamespace {
 func createDefaultSpec() (*specs.Spec, error) {
 	s := &specs.Spec{
 		Version: specs.Version,
-		Platform: specs.Platform{
-			OS:   runtime.GOOS,
-			Arch: runtime.GOARCH,
-		},
-		Root: specs.Root{
+		Root: &specs.Root{
 			Path: defaultRootfsPath,
 		},
-		Process: specs.Process{
+		Process: &specs.Process{
 			Cwd:             "/",
 			NoNewPrivileges: true,
 			User: specs.User{
@@ -85,7 +80,7 @@ func createDefaultSpec() (*specs.Spec, error) {
 				Effective:   defaltCaps(),
 				Ambient:     defaltCaps(),
 			},
-			Rlimits: []specs.LinuxRlimit{
+			Rlimits: []specs.POSIXRlimit{
 				{
 					Type: "RLIMIT_NOFILE",
 					Hard: uint64(1024),
@@ -279,14 +274,18 @@ func WithImageConfig(ctx context.Context, i Image) SpecOpts {
 
 func WithSpec(spec *specs.Spec) NewContainerOpts {
 	return func(ctx context.Context, client *Client, c *containers.Container) error {
-		data, err := json.Marshal(spec)
+		any, err := typeurl.MarshalAny(spec)
 		if err != nil {
 			return err
 		}
-		c.Spec = &protobuf.Any{
-			TypeUrl: spec.Version,
-			Value:   data,
-		}
+		c.Spec = any
+		return nil
+	}
+}
+
+func WithResources(resources *specs.LinuxResources) UpdateTaskOpts {
+	return func(ctx context.Context, client *Client, r *UpdateTaskInfo) error {
+		r.Resources = resources
 		return nil
 	}
 }

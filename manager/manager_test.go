@@ -23,6 +23,7 @@ import (
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/dispatcher"
 	"github.com/docker/swarmkit/manager/encryption"
+	"github.com/docker/swarmkit/manager/network/cnm"
 	"github.com/docker/swarmkit/manager/state/raft/storage"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/testutils"
@@ -62,6 +63,7 @@ func TestManager(t *testing.T) {
 		AutoLockManagers: true,
 		UnlockKey:        []byte("kek"),
 		RootCAPaths:      tc.Paths.RootCA,
+		NetworkModel:     cnm.New(nil),
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, m)
@@ -245,6 +247,7 @@ func TestManagerLockUnlock(t *testing.T) {
 		StateDir:       stateDir,
 		SecurityConfig: managerSecurityConfig,
 		RootCAPaths:    tc.Paths.RootCA,
+		NetworkModel:   cnm.New(nil),
 		// start off without any encryption
 	})
 	require.NoError(t, err)
@@ -452,6 +455,7 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 		StateDir:       stateDir,
 		SecurityConfig: managerSecurityConfig,
 		RootCAPaths:    tc.Paths.RootCA,
+		NetworkModel:   cnm.New(nil),
 	}
 	done := make(chan error)
 	defer close(done)

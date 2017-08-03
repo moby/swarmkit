@@ -41,6 +41,26 @@ func printTaskStatus(w io.Writer, t *api.Task) {
 		fmt.Fprintf(w, "  ExitCode\t: %d\n", ctnr.ExitCode)
 	}
 
+	if len(ctnr.Networks) > 0 {
+		fmt.Fprintf(w, "  Networks\n")
+		for _, n := range ctnr.Networks {
+			fmt.Fprintf(w, "    %s\n", n.Network)
+			if n.Error != "" {
+				fmt.Fprintf(w, "      \t: %s\n", n.Error)
+				continue
+			}
+
+			for _, iface := range n.Interfaces {
+				ifname := iface.Name
+				for _, ip := range iface.IP {
+					fmt.Fprintf(w, "      %s\t: %s\n", ifname, ip)
+					ifname = "" // Only for the first line for this interface
+				}
+
+			}
+		}
+	}
+
 	if t.Status.PortStatus != nil && len(t.Status.PortStatus.Ports) > 0 {
 		ports := []string{}
 		for _, port := range t.Status.PortStatus.Ports {

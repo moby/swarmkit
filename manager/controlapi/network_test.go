@@ -5,9 +5,6 @@ import (
 
 	"golang.org/x/net/context"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/state/store"
@@ -25,7 +22,7 @@ func createNetworkSpec(name string) *api.NetworkSpec {
 // createInternalNetwork creates an internal network for testing. it is the same
 // as Server.CreateNetwork except without the label check.
 func (s *Server) createInternalNetwork(ctx context.Context, request *api.CreateNetworkRequest) (*api.CreateNetworkResponse, error) {
-	if err := validateNetworkSpec(request.Spec, nil); err != nil {
+	if err := validateNetworkSpec(ctx, request.Spec, nil); err != nil {
 		return nil, err
 	}
 
@@ -82,65 +79,6 @@ func createServiceInNetwork(t *testing.T, ts *testServer, name, image string, nw
 	r, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
 	assert.NoError(t, err)
 	return r.Service
-}
-
-func TestValidateDriver(t *testing.T) {
-	assert.NoError(t, validateDriver(nil, nil, ""))
-
-	err := validateDriver(&api.Driver{Name: ""}, nil, "")
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-}
-
-func TestValidateIPAMConfiguration(t *testing.T) {
-	err := validateIPAMConfiguration(nil)
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-
-	IPAMConf := &api.IPAMConfig{
-		Subnet: "",
-	}
-
-	err = validateIPAMConfiguration(IPAMConf)
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-
-	IPAMConf.Subnet = "bad"
-	err = validateIPAMConfiguration(IPAMConf)
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-
-	IPAMConf.Subnet = "192.168.0.0/16"
-	err = validateIPAMConfiguration(IPAMConf)
-	assert.NoError(t, err)
-
-	IPAMConf.Range = "bad"
-	err = validateIPAMConfiguration(IPAMConf)
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-
-	IPAMConf.Range = "192.169.1.0/24"
-	err = validateIPAMConfiguration(IPAMConf)
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-
-	IPAMConf.Range = "192.168.1.0/24"
-	err = validateIPAMConfiguration(IPAMConf)
-	assert.NoError(t, err)
-
-	IPAMConf.Gateway = "bad"
-	err = validateIPAMConfiguration(IPAMConf)
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-
-	IPAMConf.Gateway = "192.169.1.1"
-	err = validateIPAMConfiguration(IPAMConf)
-	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-
-	IPAMConf.Gateway = "192.168.1.1"
-	err = validateIPAMConfiguration(IPAMConf)
-	assert.NoError(t, err)
 }
 
 func TestCreateNetwork(t *testing.T) {

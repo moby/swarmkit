@@ -20,6 +20,9 @@ import (
 	"github.com/docker/swarmkit/cmd/swarmd/defaults"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/encryption"
+	"github.com/docker/swarmkit/manager/network"
+	"github.com/docker/swarmkit/manager/network/cni"
+	"github.com/docker/swarmkit/manager/network/cnm"
 	"github.com/docker/swarmkit/node"
 	"github.com/docker/swarmkit/version"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -183,6 +186,7 @@ var (
 			}
 
 			var executor exec.Executor
+			var nm network.Model
 
 			if containerdAddr != "" {
 				logrus.Infof("Using containerd via %q with namespace %q", containerdAddr, containerdNamespace)
@@ -190,6 +194,7 @@ var (
 				if err != nil {
 					return err
 				}
+				nm = cni.New()
 			} else {
 				client, err := engineapi.NewClient(engineAddr, "", nil, nil)
 				if err != nil {
@@ -197,6 +202,7 @@ var (
 				}
 
 				executor = dockerapi.NewExecutor(client, resources)
+				nm = cnm.New(nil)
 			}
 
 			if debugAddr != "" {
@@ -241,6 +247,7 @@ var (
 				ElectionTick:       election,
 				AutoLockManagers:   autolockManagers,
 				UnlockKey:          unlockKey,
+				NetworkModel:       nm,
 			})
 			if err != nil {
 				return err

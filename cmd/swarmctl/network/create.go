@@ -21,18 +21,38 @@ var (
 			}
 
 			flags := cmd.Flags()
-			if !flags.Changed("name") {
-				return errors.New("--name is required")
-			}
-
-			name, err := flags.GetString("name")
-			if err != nil {
-				return err
+			var err error
+			name := ""
+			if flags.Changed("name") {
+				if name, err = flags.GetString("name"); err != nil {
+					return err
+				}
+			} else if !flags.Changed("cni") {
+				return errors.New("--name or --cni are required")
 			}
 
 			// Process driver configurations
 			var driver *api.Driver
-			if flags.Changed("driver") {
+			if flags.Changed("cni") {
+				if flags.Changed("driver") {
+					return fmt.Errorf("Malformed opts: Cannot use --driver with --cni")
+				}
+				if flags.Changed("opts") {
+					return fmt.Errorf("Malformed opts: Cannot use --opts with --cni")
+				}
+
+				config, err := flags.GetString("cni")
+				if err != nil {
+					return err
+				}
+
+				driver = &api.Driver{
+					Name: "cni",
+					Options: map[string]string{
+						"config": config,
+					},
+				}
+			} else if flags.Changed("driver") {
 				driver = new(api.Driver)
 
 				driverName, err := flags.GetString("driver")
@@ -175,6 +195,7 @@ func init() {
 	createCmd.Flags().String("name", "", "Network name")
 	createCmd.Flags().String("driver", "", "Network driver")
 	createCmd.Flags().String("ipam-driver", "", "IPAM driver")
+	createCmd.Flags().String("cni", "", "CNI network config")
 	createCmd.Flags().StringSlice("subnet", []string{}, "Subnets in CIDR format that represents a network segments")
 	createCmd.Flags().StringSlice("gateway", []string{}, "Gateway IP addresses for network segments")
 	createCmd.Flags().StringSlice("ip-range", []string{}, "IP ranges to allocate from within the subnets")
