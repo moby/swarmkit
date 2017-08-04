@@ -176,3 +176,23 @@ func TestInit(t *testing.T) {
 		t.Fatalf("expected &true, got %v", actual)
 	}
 }
+
+func TestIsolation(t *testing.T) {
+	c := containerConfig{
+		task: &api.Task{
+			Spec: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{
+						Isolation: "test",
+					},
+				},
+			},
+		},
+	}
+
+	expected := "test"
+	actual := string(c.hostConfig().Isolation)
+	if actual != expected {
+		t.Fatalf("expected %s, got %s", expected, actual)
+	}
+}

@@ -711,6 +711,13 @@ file {
       json_name: "swiftPrefix"
     }
     field {
+      name: "php_class_prefix"
+      number: 40
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "phpClassPrefix"
+    }
+    field {
       name: "uninterpreted_option"
       number: 999
       label: LABEL_REPEATED
@@ -790,6 +797,10 @@ file {
     reserved_range {
       start: 8
       end: 9
+    }
+    reserved_range {
+      start: 9
+      end: 10
     }
   }
   message_type {
@@ -933,6 +944,10 @@ file {
     extension_range {
       start: 1000
       end: 536870912
+    }
+    reserved_range {
+      start: 5
+      end: 6
     }
   }
   message_type {
@@ -4727,6 +4742,13 @@ file {
       type: TYPE_MESSAGE
       type_name: ".docker.swarmkit.v1.HealthConfig"
       json_name: "healthcheck"
+    }
+    field {
+      name: "isolation"
+      number: 24
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "isolation"
     }
     nested_type {
       name: "LabelsEntry"
