@@ -18,6 +18,7 @@ func init() {
 		createCmd,
 		updateCmd,
 		removeCmd,
+		removeReplicaCmd,
 		logsCmd,
 	)
 }

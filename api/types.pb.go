@@ -125,6 +125,8 @@
 		RemoveServiceResponse
 		ListServicesRequest
 		ListServicesResponse
+		RemoveReplicaRequest
+		RemoveReplicaResponse
 		CreateNetworkRequest
 		CreateNetworkResponse
 		GetNetworkRequest
