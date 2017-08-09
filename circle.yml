@@ -33,6 +33,8 @@ dependencies:
         # Install protoc
         - wget "$PROTOC"
         - unzip -o "$(basename $PROTOC)" -d "$HOME"
+        - sudo cp -R "$HOME/include/google" /usr/local/include
+        - sudo chmod 777 -R /usr/local/include/google
 
         # Setup the GOPATH
         - mkdir -p "$(dirname $WORKDIR)"
