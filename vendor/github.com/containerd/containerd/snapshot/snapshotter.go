@@ -2,25 +2,42 @@ package snapshot
 
 import (
 	"context"
+	"time"
 
 	"github.com/containerd/containerd/mount"
 )
 
 // Kind identifies the kind of snapshot.
-type Kind int
+type Kind uint8
 
 // definitions of snapshot kinds
 const (
-	KindActive Kind = iota
+	KindView Kind = iota + 1
+	KindActive
 	KindCommitted
 )
 
+func (k Kind) String() string {
+	switch k {
+	case KindView:
+		return "View"
+	case KindActive:
+		return "Active"
+	case KindCommitted:
+		return "Committed"
+	default:
+		return "Unknown"
+	}
+}
+
 // Info provides information about a particular snapshot.
 type Info struct {
-	Name     string // name or key of snapshot
-	Parent   string // name of parent snapshot
-	Kind     Kind   // active or committed snapshot
-	Readonly bool   // true if readonly, only valid for active
+	Kind    Kind              // active or committed snapshot
+	Name    string            // name or key of snapshot
+	Parent  string            // name of parent snapshot
+	Labels  map[string]string // Labels for snapshot
+	Created time.Time         // Created time
+	Updated time.Time         // Last update time
 }
 
 // Usage defines statistics for disk resources consumed by the snapshot.
@@ -36,7 +53,7 @@ func (u *Usage) Add(other Usage) {
 	u.Size += other.Size
 
 	// TODO(stevvooe): assumes independent inodes, but provides and upper
-	// bound. This should be pretty close, assumming the inodes for a
+	// bound. This should be pretty close, assuming the inodes for a
 	// snapshot are roughly unique to it. Don't trust this assumption.
 	u.Inodes += other.Inodes
 }
@@ -50,7 +67,7 @@ func (u *Usage) Add(other Usage) {
 // between a parent and its snapshot to generate a classic layer.
 //
 // An active snapshot is created by calling `Prepare`. After mounting, changes
-// can be made to the snapshot. The act of commiting creates a committed
+// can be made to the snapshot. The act of committing creates a committed
 // snapshot. The committed snapshot will get the parent of active snapshot. The
 // committed snapshot can then be used as a parent. Active snapshots can never
 // act as a parent.
@@ -164,6 +181,11 @@ type Snapshotter interface {
 	// the kind of snapshot.
 	Stat(ctx context.Context, key string) (Info, error)
 
+	// Update updates the infor for a snapshot.
+	//
+	// Only mutable properties of a snapshot may be updated.
+	Update(ctx context.Context, info Info, fieldpaths ...string) (Info, error)
+
 	// Usage returns the resource usage of an active or committed snapshot
 	// excluding the usage of parent snapshots.
 	//
@@ -195,7 +217,7 @@ type Snapshotter interface {
 	// one is done with the transaction, Remove should be called on the key.
 	//
 	// Multiple calls to Prepare or View with the same key should fail.
-	Prepare(ctx context.Context, key, parent string) ([]mount.Mount, error)
+	Prepare(ctx context.Context, key, parent string, opts ...Opt) ([]mount.Mount, error)
 
 	// View behaves identically to Prepare except the result may not be
 	// committed back to the snapshot snapshotter. View returns a readonly view on
@@ -210,7 +232,7 @@ type Snapshotter interface {
 	// Commit may not be called on the provided key and will return an error.
 	// To collect the resources associated with key, Remove must be called with
 	// key as the argument.
-	View(ctx context.Context, key, parent string) ([]mount.Mount, error)
+	View(ctx context.Context, key, parent string, opts ...Opt) ([]mount.Mount, error)
 
 	// Commit captures the changes between key and its parent into a snapshot
 	// identified by name.  The name can then be used with the snapshotter's other
@@ -222,7 +244,7 @@ type Snapshotter interface {
 	// Commit may be called multiple times on the same key. Snapshots created
 	// in this manner will all reference the parent used to start the
 	// transaction.
-	Commit(ctx context.Context, name, key string) error
+	Commit(ctx context.Context, name, key string, opts ...Opt) error
 
 	// Remove the committed or active snapshot by the provided key.
 	//
@@ -235,4 +257,15 @@ type Snapshotter interface {
 	// Walk all snapshots in the snapshotter. For each snapshot in the
 	// snapshotter, the function will be called.
 	Walk(ctx context.Context, fn func(context.Context, Info) error) error
+}
+
+// Opt allows setting mutable snapshot properties on creation
+type Opt func(info *Info) error
+
+// WithLabels adds labels to a created snapshot
+func WithLabels(labels map[string]string) Opt {
+	return func(info *Info) error {
+		info.Labels = labels
+		return nil
+	}
 }
