@@ -13,13 +13,17 @@ func newParseError(format string, args ...interface{}) error {
 	return fmt.Errorf("could not parse GenericResource: "+format, args...)
 }
 
-func namedResourceVal(res string) (int64, error) {
+// discreteResourceVal returns an int64 if the string is a discreteResource
+// and an error if it isn't
+func discreteResourceVal(res string) (int64, error) {
 	return strconv.ParseInt(res, 10, 64)
 }
 
+// allNamedResources returns true if the array of resources are all namedResources
+// e.g: res = [red, orange, green]
 func allNamedResources(res []string) bool {
 	for _, v := range res {
-		if _, err := namedResourceVal(v); err == nil {
+		if _, err := discreteResourceVal(v); err == nil {
 			return false
 		}
 	}
@@ -31,7 +35,7 @@ func allNamedResources(res []string) bool {
 // and returns a list of *api.GenericResource
 func ParseCmd(cmd string) ([]*api.GenericResource, error) {
 	if strings.Contains(cmd, "\n") {
-		return nil, newParseError("unexpected '\n' character")
+		return nil, newParseError("unexpected '\\n' character")
 	}
 
 	r := csv.NewReader(strings.NewReader(cmd))
@@ -56,7 +60,7 @@ func Parse(cmds []string) ([]*api.GenericResource, error) {
 		kva := strings.Split(term, "=")
 		if len(kva) != 2 {
 			return nil, newParseError("incorrect term %s, missing"+
-				"'=' or malformed expression", term)
+				" '=' or malformed expression", term)
 		}
 
 		key := strings.TrimSpace(kva[0])
@@ -67,29 +71,41 @@ func Parse(cmds []string) ([]*api.GenericResource, error) {
 
 	var rs []*api.GenericResource
 	for k, v := range tokens {
-		if len(v) == 1 {
-			u, err := namedResourceVal(v[0])
-			if err != nil {
-				goto ParseNamed
-			}
-
+		if u, ok := isDiscreteResource(v); ok {
 			if u < 0 {
 				return nil, newParseError("cannot ask for"+
-					"negative resource %s", k)
+					" negative resource %s", k)
 			}
 
 			rs = append(rs, NewDiscrete(k, u))
 			continue
 		}
 
-	ParseNamed:
 		if allNamedResources(v) {
 			rs = append(rs, NewSet(k, v...)...)
 			continue
 		}
 
-		return nil, newParseError("malformed expression '%s=%s'", k, v)
+		return nil, newParseError("mixed discrete and named resources"+
+			" in expression '%s=%s'", k, v)
 	}
 
 	return rs, nil
+}
+
+// isDiscreteResource returns true if the array of resources is a
+// Discrete Resource.
+// e.g: res = [1]
+func isDiscreteResource(values []string) (int64, bool) {
+	if len(values) != 1 {
+		return int64(0), false
+	}
+
+	u, err := discreteResourceVal(values[0])
+	if err != nil {
+		return int64(0), false
+	}
+
+	return u, true
+
 }
