@@ -24,7 +24,7 @@ VNDR=$(shell which vndr || echo '')
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
-.PHONY: clean all AUTHORS fmt vet lint build binaries test integration setup generate checkprotos coverage ci check help install uninstall dep-validate
+.PHONY: clean all AUTHORS fmt vet lint build binaries test integration setup generate protos checkprotos coverage ci check help install uninstall dep-validate
 .DEFAULT: default
 
 all: check binaries test integration ## run fmt, vet, lint, build the binaries and run the tests
@@ -48,10 +48,15 @@ setup: ## install dependencies
 	@go get -u github.com/gordonklaus/ineffassign
 	@go get -u github.com/client9/misspell/cmd/misspell
 	@go get -u github.com/lk4d4/vndr
+	@go get -u github.com/stevvooe/protobuild
 
-generate: bin/protoc-gen-gogoswarm ## generate protobuf
+generate: protos
 	@echo "🐳 $@"
 	@PATH=${ROOTDIR}/bin:${PATH} go generate -x ${PACKAGES}
+
+protos: bin/protoc-gen-gogoswarm ## generate protobuf
+	@echo "🐳 $@"
+	@PATH=${ROOTDIR}/bin:${PATH} protobuild ${PACKAGES}
 
 checkprotos: generate ## check if protobufs needs to be generated again
 	@echo "🐳 $@"
