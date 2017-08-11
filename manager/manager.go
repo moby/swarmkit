@@ -17,6 +17,7 @@ import (
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/go-events"
+	gmetrics "github.com/docker/go-metrics"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/connectionbroker"
@@ -162,6 +163,16 @@ type Manager struct {
 	remoteListener  chan net.Listener
 	controlListener chan net.Listener
 	errServe        chan error
+}
+
+var (
+	leaderMetric gmetrics.Gauge
+)
+
+func init() {
+	ns := gmetrics.NewNamespace("swarm", "manager", nil)
+	leaderMetric = ns.NewGauge("leader", "Indicates if this manager node is a leader", "")
+	gmetrics.Register(ns)
 }
 
 type closeOnceListener struct {
@@ -873,8 +884,10 @@ func (m *Manager) handleLeadershipEvents(ctx context.Context, leadershipCh chan 
 
 			if newState == raft.IsLeader {
 				m.becomeLeader(ctx)
+				leaderMetric.Set(1)
 			} else if newState == raft.IsFollower {
 				m.becomeFollower()
+				leaderMetric.Set(0)
 			}
 			m.mu.Unlock()
 		case <-ctx.Done():
