@@ -118,6 +118,7 @@ func TestUpdater(t *testing.T) {
 		},
 	}
 
+	// Create the cluster, service, and tasks for the service.
 	err := s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateCluster(tx, cluster))
 		assert.NoError(t, store.CreateService(tx, service))
@@ -136,6 +137,7 @@ func TestUpdater(t *testing.T) {
 		}
 	}
 
+	// Change the image and log driver to force an update.
 	service.Spec.Task.GetContainer().Image = "v:2"
 	service.Spec.Task.LogDriver = &api.Driver{Name: "tasklogdriver"}
 	updater := NewUpdater(s, restart.NewSupervisor(s), cluster, service)
@@ -148,6 +150,7 @@ func TestUpdater(t *testing.T) {
 		}
 	}
 
+	// Update the spec again to force an update.
 	service.Spec.Task.GetContainer().Image = "v:3"
 	cluster.Spec.TaskDefaults.LogDriver = &api.Driver{Name: "clusterlogdriver"} // make cluster default logdriver.
 	service.Spec.Update = &api.UpdateConfig{
@@ -197,6 +200,56 @@ func TestUpdater(t *testing.T) {
 			assert.Equal(t, "v:5", task.Spec.GetContainer().Image)
 		}
 	}
+
+	// Update pull options with new registry auth.
+	service.Spec.Task.GetContainer().PullOptions = &api.ContainerSpec_PullOptions{
+		RegistryAuth: "opaque-token-1",
+	}
+	originalTasks = getRunnableSlotSlice(t, s, service)
+	updater = NewUpdater(s, restart.NewSupervisor(s), cluster, service)
+	updater.Run(ctx, originalTasks)
+	updatedTasks = getRunnableSlotSlice(t, s, service)
+	assert.Len(t, updatedTasks, instances)
+
+	// Confirm that the original runnable tasks are all still there.
+	runnableTaskIDs := make(map[string]struct{}, len(updatedTasks))
+	for _, slot := range updatedTasks {
+		for _, task := range slot {
+			runnableTaskIDs[task.ID] = struct{}{}
+		}
+	}
+	assert.Len(t, runnableTaskIDs, instances)
+	for _, slot := range originalTasks {
+		for _, task := range slot {
+			assert.Contains(t, runnableTaskIDs, task.ID)
+		}
+	}
+
+	// Update the desired state of the tasks to SHUTDOWN to simulate the
+	// case where images failed to pull due to bad registry auth.
+	taskSlots := make([]orchestrator.Slot, len(updatedTasks))
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		for i, slot := range updatedTasks {
+			taskSlots[i] = make(orchestrator.Slot, len(slot))
+			for j, task := range slot {
+				task = store.GetTask(tx, task.ID)
+				task.DesiredState = api.TaskStateShutdown
+				task.Status.State = task.DesiredState
+				assert.NoError(t, store.UpdateTask(tx, task))
+				taskSlots[i][j] = task
+			}
+		}
+		return nil
+	}))
+
+	// Update pull options again with a different registry auth.
+	service.Spec.Task.GetContainer().PullOptions = &api.ContainerSpec_PullOptions{
+		RegistryAuth: "opaque-token-2",
+	}
+	updater = NewUpdater(s, restart.NewSupervisor(s), cluster, service)
+	updater.Run(ctx, taskSlots) // Note that these tasks are all shutdown.
+	updatedTasks = getRunnableSlotSlice(t, s, service)
+	assert.Len(t, updatedTasks, instances)
 }
 
 func TestUpdaterFailureAction(t *testing.T) {
