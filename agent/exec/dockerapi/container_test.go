@@ -152,3 +152,27 @@ func TestStopSignal(t *testing.T) {
 		t.Fatalf("expected %s, got %s", expected, actual)
 	}
 }
+
+func TestInit(t *testing.T) {
+	c := containerConfig{
+		task: &api.Task{
+			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					StopSignal: "SIGWINCH",
+				},
+			}},
+		},
+	}
+	expected := (*bool)(nil)
+	actual := c.hostConfig().Init
+	if actual != expected {
+		t.Fatalf("expected %v, got %v", expected, actual)
+	}
+	c.task.Spec.GetContainer().Init = &api.ContainerSpec_InitValue{
+		InitValue: true,
+	}
+	actual = c.hostConfig().Init
+	if actual == nil || !*actual {
+		t.Fatalf("expected &true, got %v", actual)
+	}
+}

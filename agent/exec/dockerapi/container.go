@@ -195,6 +195,7 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 		Tmpfs:        c.tmpfs(),
 		GroupAdd:     c.spec().Groups,
 		PortBindings: c.portBindings(),
+		Init:         c.init(),
 	}
 
 	// The format of extra hosts on swarmkit is specified in:
@@ -530,4 +531,13 @@ func (c containerConfig) eventFilter() filters.Args {
 	filter.Add("name", c.name())
 	filter.Add("label", fmt.Sprintf("%v.task.id=%v", systemLabelPrefix, c.task.ID))
 	return filter
+}
+
+func (c *containerConfig) init() *bool {
+	init := c.spec().GetInit()
+	if init != nil {
+		value := c.spec().GetInitValue()
+		return &value
+	}
+	return nil
 }
