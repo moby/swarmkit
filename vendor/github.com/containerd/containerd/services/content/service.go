@@ -4,24 +4,27 @@ import (
 	"io"
 	"sync"
 
-	"github.com/Sirupsen/logrus"
-	api "github.com/containerd/containerd/api/services/content"
-	"github.com/containerd/containerd/api/types/event"
+	"github.com/boltdb/bolt"
+	api "github.com/containerd/containerd/api/services/content/v1"
+	eventsapi "github.com/containerd/containerd/api/services/events/v1"
 	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/events"
 	"github.com/containerd/containerd/log"
+	"github.com/containerd/containerd/metadata"
 	"github.com/containerd/containerd/plugin"
 	"github.com/golang/protobuf/ptypes/empty"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
 type Service struct {
-	store   content.Store
-	emitter events.Poster
+	store     content.Store
+	publisher events.Publisher
 }
 
 var bufPool = sync.Pool{
@@ -38,6 +41,7 @@ func init() {
 		ID:   "content",
 		Requires: []plugin.PluginType{
 			plugin.ContentPlugin,
+			plugin.MetadataPlugin,
 		},
 		Init: NewService,
 	})
@@ -48,9 +52,14 @@ func NewService(ic *plugin.InitContext) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	m, err := ic.Get(plugin.MetadataPlugin)
+	if err != nil {
+		return nil, err
+	}
+	cs := metadata.NewContentStore(m.(*bolt.DB), c.(content.Store))
 	return &Service{
-		store:   c.(content.Store),
-		emitter: events.GetPoster(ic.Context),
+		store:     cs,
+		publisher: ic.Events,
 	}, nil
 }
 
@@ -66,15 +75,26 @@ func (s *Service) Info(ctx context.Context, req *api.InfoRequest) (*api.InfoResp
 
 	bi, err := s.store.Info(ctx, req.Digest)
 	if err != nil {
-		return nil, serverErrorToGRPC(err, req.Digest.String())
+		return nil, errdefs.ToGRPC(err)
 	}
 
 	return &api.InfoResponse{
-		Info: api.Info{
-			Digest:      bi.Digest,
-			Size_:       bi.Size,
-			CommittedAt: bi.CommittedAt,
-		},
+		Info: infoToGRPC(bi),
+	}, nil
+}
+
+func (s *Service) Update(ctx context.Context, req *api.UpdateRequest) (*api.UpdateResponse, error) {
+	if err := req.Info.Digest.Validate(); err != nil {
+		return nil, grpc.Errorf(codes.InvalidArgument, "%q failed validation", req.Info.Digest)
+	}
+
+	info, err := s.store.Update(ctx, infoFromGRPC(req.Info), req.UpdateMask.GetPaths()...)
+	if err != nil {
+		return nil, errdefs.ToGRPC(err)
+	}
+
+	return &api.UpdateResponse{
+		Info: infoToGRPC(info),
 	}, nil
 }
 
@@ -91,9 +111,10 @@ func (s *Service) List(req *api.ListContentRequest, session api.Content_ListServ
 
 	if err := s.store.Walk(session.Context(), func(info content.Info) error {
 		buffer = append(buffer, api.Info{
-			Digest:      info.Digest,
-			Size_:       info.Size,
-			CommittedAt: info.CommittedAt,
+			Digest:    info.Digest,
+			Size_:     info.Size,
+			CreatedAt: info.CreatedAt,
+			Labels:    info.Labels,
 		})
 
 		if len(buffer) >= 100 {
@@ -105,7 +126,7 @@ func (s *Service) List(req *api.ListContentRequest, session api.Content_ListServ
 		}
 
 		return nil
-	}); err != nil {
+	}, req.Filters...); err != nil {
 		return err
 	}
 
@@ -125,10 +146,10 @@ func (s *Service) Delete(ctx context.Context, req *api.DeleteContentRequest) (*e
 	}
 
 	if err := s.store.Delete(ctx, req.Digest); err != nil {
-		return nil, serverErrorToGRPC(err, req.Digest.String())
+		return nil, errdefs.ToGRPC(err)
 	}
 
-	if err := s.emit(ctx, "/content/delete", event.ContentDelete{
+	if err := s.publisher.Publish(ctx, "/content/delete", &eventsapi.ContentDelete{
 		Digest: req.Digest,
 	}); err != nil {
 		return nil, err
@@ -144,12 +165,12 @@ func (s *Service) Read(req *api.ReadContentRequest, session api.Content_ReadServ
 
 	oi, err := s.store.Info(session.Context(), req.Digest)
 	if err != nil {
-		return serverErrorToGRPC(err, req.Digest.String())
+		return errdefs.ToGRPC(err)
 	}
 
 	rc, err := s.store.Reader(session.Context(), req.Digest)
 	if err != nil {
-		return serverErrorToGRPC(err, req.Digest.String())
+		return errdefs.ToGRPC(err)
 	}
 	defer rc.Close() // TODO(stevvooe): Cache these file descriptors for performance.
 
@@ -215,12 +236,31 @@ func (rw *readResponseWriter) Write(p []byte) (n int, err error) {
 }
 
 func (s *Service) Status(ctx context.Context, req *api.StatusRequest) (*api.StatusResponse, error) {
-	statuses, err := s.store.Status(ctx, req.Filter)
+	status, err := s.store.Status(ctx, req.Ref)
 	if err != nil {
-		return nil, serverErrorToGRPC(err, req.Filter)
+		return nil, errdefs.ToGRPCf(err, "could not get status for ref %q", req.Ref)
 	}
 
 	var resp api.StatusResponse
+	resp.Status = &api.Status{
+		StartedAt: status.StartedAt,
+		UpdatedAt: status.UpdatedAt,
+		Ref:       status.Ref,
+		Offset:    status.Offset,
+		Total:     status.Total,
+		Expected:  status.Expected,
+	}
+
+	return &resp, nil
+}
+
+func (s *Service) ListStatuses(ctx context.Context, req *api.ListStatusesRequest) (*api.ListStatusesResponse, error) {
+	statuses, err := s.store.ListStatuses(ctx, req.Filters...)
+	if err != nil {
+		return nil, errdefs.ToGRPC(err)
+	}
+
+	var resp api.ListStatusesResponse
 	for _, status := range statuses {
 		resp.Statuses = append(resp.Statuses, api.Status{
 			StartedAt: status.StartedAt,
@@ -295,7 +335,7 @@ func (s *Service) Write(session api.Content_WriteServer) (err error) {
 	// this action locks the writer for the session.
 	wr, err := s.store.Writer(ctx, ref, total, expected)
 	if err != nil {
-		return serverErrorToGRPC(err, ref)
+		return errdefs.ToGRPC(err)
 	}
 	defer wr.Close()
 
@@ -303,7 +343,7 @@ func (s *Service) Write(session api.Content_WriteServer) (err error) {
 		msg.Action = req.Action
 		ws, err := wr.Status()
 		if err != nil {
-			return serverErrorToGRPC(err, ref)
+			return errdefs.ToGRPC(err)
 		}
 
 		msg.Offset = ws.Offset // always set the offset.
@@ -414,17 +454,8 @@ func (s *Service) Write(session api.Content_WriteServer) (err error) {
 
 func (s *Service) Abort(ctx context.Context, req *api.AbortRequest) (*empty.Empty, error) {
 	if err := s.store.Abort(ctx, req.Ref); err != nil {
-		return nil, serverErrorToGRPC(err, req.Ref)
+		return nil, errdefs.ToGRPC(err)
 	}
 
 	return &empty.Empty{}, nil
-}
-
-func (s *Service) emit(ctx context.Context, topic string, evt interface{}) error {
-	emitterCtx := events.WithTopic(ctx, topic)
-	if err := s.emitter.Post(emitterCtx, evt); err != nil {
-		return err
-	}
-
-	return nil
 }

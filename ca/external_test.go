@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/log"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 

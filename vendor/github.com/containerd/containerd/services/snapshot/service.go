@@ -3,19 +3,27 @@ package snapshot
 import (
 	gocontext "context"
 
-	snapshotapi "github.com/containerd/containerd/api/services/snapshot"
-	"github.com/containerd/containerd/api/types/event"
-	mounttypes "github.com/containerd/containerd/api/types/mount"
+	"github.com/boltdb/bolt"
+	eventsapi "github.com/containerd/containerd/api/services/events/v1"
+	snapshotapi "github.com/containerd/containerd/api/services/snapshot/v1"
+	"github.com/containerd/containerd/api/types"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/events"
 	"github.com/containerd/containerd/log"
+	"github.com/containerd/containerd/metadata"
 	"github.com/containerd/containerd/mount"
 	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/snapshot"
 	protoempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 )
+
+type config struct {
+	// Default is the default snapshotter to use for the service
+	Default string `toml:"default,omitempty"`
+}
 
 func init() {
 	plugin.Register(&plugin.Registration{
@@ -23,30 +31,59 @@ func init() {
 		ID:   "snapshots",
 		Requires: []plugin.PluginType{
 			plugin.SnapshotPlugin,
+			plugin.MetadataPlugin,
 		},
-		Init: func(ic *plugin.InitContext) (interface{}, error) {
-			e := events.GetPoster(ic.Context)
-			s, err := ic.Get(plugin.SnapshotPlugin)
-			if err != nil {
-				return nil, err
-			}
-			return newService(s.(snapshot.Snapshotter), e)
+		Config: &config{
+			Default: defaultSnapshotter,
 		},
+		Init: newService,
 	})
 }
 
 var empty = &protoempty.Empty{}
 
 type service struct {
-	snapshotter snapshot.Snapshotter
-	emitter     events.Poster
+	snapshotters           map[string]snapshot.Snapshotter
+	defaultSnapshotterName string
+	publisher              events.Publisher
 }
 
-func newService(snapshotter snapshot.Snapshotter, evts events.Poster) (*service, error) {
+func newService(ic *plugin.InitContext) (interface{}, error) {
+	rawSnapshotters, err := ic.GetAll(plugin.SnapshotPlugin)
+	if err != nil {
+		return nil, err
+	}
+	md, err := ic.Get(plugin.MetadataPlugin)
+	if err != nil {
+		return nil, err
+	}
+	snapshotters := make(map[string]snapshot.Snapshotter)
+	for name, sn := range rawSnapshotters {
+		snapshotters[name] = metadata.NewSnapshotter(md.(*bolt.DB), name, sn.(snapshot.Snapshotter))
+	}
+
+	cfg := ic.Config.(*config)
+	_, ok := snapshotters[cfg.Default]
+	if !ok {
+		return nil, errors.Errorf("default snapshotter not loaded: %s", cfg.Default)
+	}
+
 	return &service{
-		snapshotter: snapshotter,
-		emitter:     evts,
+		snapshotters:           snapshotters,
+		defaultSnapshotterName: cfg.Default,
+		publisher:              ic.Events,
 	}, nil
+}
+
+func (s *service) getSnapshotter(name string) (snapshot.Snapshotter, error) {
+	if name == "" {
+		name = s.defaultSnapshotterName
+	}
+	sn, ok := s.snapshotters[name]
+	if !ok {
+		return nil, errors.Errorf("snapshotter not loaded: %s", name)
+	}
+	return sn, nil
 }
 
 func (s *service) Register(gs *grpc.Server) error {
@@ -56,14 +93,21 @@ func (s *service) Register(gs *grpc.Server) error {
 
 func (s *service) Prepare(ctx context.Context, pr *snapshotapi.PrepareSnapshotRequest) (*snapshotapi.PrepareSnapshotResponse, error) {
 	log.G(ctx).WithField("parent", pr.Parent).WithField("key", pr.Key).Debugf("Preparing snapshot")
-	// TODO: Apply namespace
-	// TODO: Lookup snapshot id from metadata store
-	mounts, err := s.snapshotter.Prepare(ctx, pr.Key, pr.Parent)
+	sn, err := s.getSnapshotter(pr.Snapshotter)
 	if err != nil {
-		return nil, grpcError(err)
+		return nil, err
 	}
 
-	if err := s.emit(ctx, "/snapshot/prepare", event.SnapshotPrepare{
+	var opts []snapshot.Opt
+	if pr.Labels != nil {
+		opts = append(opts, snapshot.WithLabels(pr.Labels))
+	}
+	mounts, err := sn.Prepare(ctx, pr.Key, pr.Parent, opts...)
+	if err != nil {
+		return nil, errdefs.ToGRPC(err)
+	}
+
+	if err := s.publisher.Publish(ctx, "/snapshot/prepare", &eventsapi.SnapshotPrepare{
 		Key:    pr.Key,
 		Parent: pr.Parent,
 	}); err != nil {
@@ -76,11 +120,17 @@ func (s *service) Prepare(ctx context.Context, pr *snapshotapi.PrepareSnapshotRe
 
 func (s *service) View(ctx context.Context, pr *snapshotapi.ViewSnapshotRequest) (*snapshotapi.ViewSnapshotResponse, error) {
 	log.G(ctx).WithField("parent", pr.Parent).WithField("key", pr.Key).Debugf("Preparing view snapshot")
-	// TODO: Apply namespace
-	// TODO: Lookup snapshot id from metadata store
-	mounts, err := s.snapshotter.View(ctx, pr.Key, pr.Parent)
+	sn, err := s.getSnapshotter(pr.Snapshotter)
 	if err != nil {
-		return nil, grpcError(err)
+		return nil, err
+	}
+	var opts []snapshot.Opt
+	if pr.Labels != nil {
+		opts = append(opts, snapshot.WithLabels(pr.Labels))
+	}
+	mounts, err := sn.View(ctx, pr.Key, pr.Parent, opts...)
+	if err != nil {
+		return nil, errdefs.ToGRPC(err)
 	}
 	return &snapshotapi.ViewSnapshotResponse{
 		Mounts: fromMounts(mounts),
@@ -89,11 +139,14 @@ func (s *service) View(ctx context.Context, pr *snapshotapi.ViewSnapshotRequest)
 
 func (s *service) Mounts(ctx context.Context, mr *snapshotapi.MountsRequest) (*snapshotapi.MountsResponse, error) {
 	log.G(ctx).WithField("key", mr.Key).Debugf("Getting snapshot mounts")
-	// TODO: Apply namespace
-	// TODO: Lookup snapshot id from metadata store
-	mounts, err := s.snapshotter.Mounts(ctx, mr.Key)
+	sn, err := s.getSnapshotter(mr.Snapshotter)
 	if err != nil {
-		return nil, grpcError(err)
+		return nil, err
+	}
+
+	mounts, err := sn.Mounts(ctx, mr.Key)
+	if err != nil {
+		return nil, errdefs.ToGRPC(err)
 	}
 	return &snapshotapi.MountsResponse{
 		Mounts: fromMounts(mounts),
@@ -102,13 +155,20 @@ func (s *service) Mounts(ctx context.Context, mr *snapshotapi.MountsRequest) (*s
 
 func (s *service) Commit(ctx context.Context, cr *snapshotapi.CommitSnapshotRequest) (*protoempty.Empty, error) {
 	log.G(ctx).WithField("key", cr.Key).WithField("name", cr.Name).Debugf("Committing snapshot")
-	// TODO: Apply namespace
-	// TODO: Lookup snapshot id from metadata store
-	if err := s.snapshotter.Commit(ctx, cr.Name, cr.Key); err != nil {
-		return nil, grpcError(err)
+	sn, err := s.getSnapshotter(cr.Snapshotter)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := s.emit(ctx, "/snapshot/commit", event.SnapshotCommit{
+	var opts []snapshot.Opt
+	if cr.Labels != nil {
+		opts = append(opts, snapshot.WithLabels(cr.Labels))
+	}
+	if err := sn.Commit(ctx, cr.Name, cr.Key, opts...); err != nil {
+		return nil, errdefs.ToGRPC(err)
+	}
+
+	if err := s.publisher.Publish(ctx, "/snapshot/commit", &eventsapi.SnapshotCommit{
 		Key:  cr.Key,
 		Name: cr.Name,
 	}); err != nil {
@@ -119,13 +179,16 @@ func (s *service) Commit(ctx context.Context, cr *snapshotapi.CommitSnapshotRequ
 
 func (s *service) Remove(ctx context.Context, rr *snapshotapi.RemoveSnapshotRequest) (*protoempty.Empty, error) {
 	log.G(ctx).WithField("key", rr.Key).Debugf("Removing snapshot")
-	// TODO: Apply namespace
-	// TODO: Lookup snapshot id from metadata store
-	if err := s.snapshotter.Remove(ctx, rr.Key); err != nil {
-		return nil, grpcError(err)
+	sn, err := s.getSnapshotter(rr.Snapshotter)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := s.emit(ctx, "/snapshot/remove", event.SnapshotRemove{
+	if err := sn.Remove(ctx, rr.Key); err != nil {
+		return nil, errdefs.ToGRPC(err)
+	}
+
+	if err := s.publisher.Publish(ctx, "/snapshot/remove", &eventsapi.SnapshotRemove{
 		Key: rr.Key,
 	}); err != nil {
 		return nil, err
@@ -135,17 +198,40 @@ func (s *service) Remove(ctx context.Context, rr *snapshotapi.RemoveSnapshotRequ
 
 func (s *service) Stat(ctx context.Context, sr *snapshotapi.StatSnapshotRequest) (*snapshotapi.StatSnapshotResponse, error) {
 	log.G(ctx).WithField("key", sr.Key).Debugf("Statting snapshot")
-	// TODO: Apply namespace
-	info, err := s.snapshotter.Stat(ctx, sr.Key)
+	sn, err := s.getSnapshotter(sr.Snapshotter)
 	if err != nil {
-		return nil, grpcError(err)
+		return nil, err
+	}
+
+	info, err := sn.Stat(ctx, sr.Key)
+	if err != nil {
+		return nil, errdefs.ToGRPC(err)
 	}
 
 	return &snapshotapi.StatSnapshotResponse{Info: fromInfo(info)}, nil
 }
 
+func (s *service) Update(ctx context.Context, sr *snapshotapi.UpdateSnapshotRequest) (*snapshotapi.UpdateSnapshotResponse, error) {
+	log.G(ctx).WithField("key", sr.Info.Name).Debugf("Updating snapshot")
+	sn, err := s.getSnapshotter(sr.Snapshotter)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := sn.Update(ctx, toInfo(sr.Info), sr.UpdateMask.GetPaths()...)
+	if err != nil {
+		return nil, errdefs.ToGRPC(err)
+	}
+
+	return &snapshotapi.UpdateSnapshotResponse{Info: fromInfo(info)}, nil
+}
+
 func (s *service) List(sr *snapshotapi.ListSnapshotsRequest, ss snapshotapi.Snapshots_ListServer) error {
-	// TODO: Apply namespace
+	sn, err := s.getSnapshotter(sr.Snapshotter)
+	if err != nil {
+		return err
+	}
+
 	var (
 		buffer    []snapshotapi.Info
 		sendBlock = func(block []snapshotapi.Info) error {
@@ -154,7 +240,7 @@ func (s *service) List(sr *snapshotapi.ListSnapshotsRequest, ss snapshotapi.Snap
 			})
 		}
 	)
-	err := s.snapshotter.Walk(ss.Context(), func(ctx gocontext.Context, info snapshot.Info) error {
+	err = sn.Walk(ss.Context(), func(ctx gocontext.Context, info snapshot.Info) error {
 		buffer = append(buffer, fromInfo(info))
 
 		if len(buffer) >= 100 {
@@ -181,42 +267,37 @@ func (s *service) List(sr *snapshotapi.ListSnapshotsRequest, ss snapshotapi.Snap
 }
 
 func (s *service) Usage(ctx context.Context, ur *snapshotapi.UsageRequest) (*snapshotapi.UsageResponse, error) {
-	// TODO: Apply namespace
-	usage, err := s.snapshotter.Usage(ctx, ur.Key)
+	sn, err := s.getSnapshotter(ur.Snapshotter)
 	if err != nil {
-		return nil, grpcError(err)
+		return nil, err
+	}
+
+	usage, err := sn.Usage(ctx, ur.Key)
+	if err != nil {
+		return nil, errdefs.ToGRPC(err)
 	}
 
 	return fromUsage(usage), nil
-}
-
-func grpcError(err error) error {
-	if snapshot.IsNotExist(err) {
-		return grpc.Errorf(codes.NotFound, err.Error())
-	}
-	if snapshot.IsExist(err) {
-		return grpc.Errorf(codes.AlreadyExists, err.Error())
-	}
-	if snapshot.IsNotActive(err) || snapshot.IsNotCommitted(err) {
-		return grpc.Errorf(codes.FailedPrecondition, err.Error())
-	}
-
-	return err
 }
 
 func fromKind(kind snapshot.Kind) snapshotapi.Kind {
 	if kind == snapshot.KindActive {
 		return snapshotapi.KindActive
 	}
+	if kind == snapshot.KindView {
+		return snapshotapi.KindView
+	}
 	return snapshotapi.KindCommitted
 }
 
 func fromInfo(info snapshot.Info) snapshotapi.Info {
 	return snapshotapi.Info{
-		Name:     info.Name,
-		Parent:   info.Parent,
-		Kind:     fromKind(info.Kind),
-		Readonly: info.Readonly,
+		Name:      info.Name,
+		Parent:    info.Parent,
+		Kind:      fromKind(info.Kind),
+		CreatedAt: info.Created,
+		UpdatedAt: info.Updated,
+		Labels:    info.Labels,
 	}
 }
 
@@ -227,23 +308,14 @@ func fromUsage(usage snapshot.Usage) *snapshotapi.UsageResponse {
 	}
 }
 
-func fromMounts(mounts []mount.Mount) []*mounttypes.Mount {
-	out := make([]*mounttypes.Mount, len(mounts))
+func fromMounts(mounts []mount.Mount) []*types.Mount {
+	out := make([]*types.Mount, len(mounts))
 	for i, m := range mounts {
-		out[i] = &mounttypes.Mount{
+		out[i] = &types.Mount{
 			Type:    m.Type,
 			Source:  m.Source,
 			Options: m.Options,
 		}
 	}
 	return out
-}
-
-func (s *service) emit(ctx context.Context, topic string, evt interface{}) error {
-	emitterCtx := events.WithTopic(ctx, topic)
-	if err := s.emitter.Post(emitterCtx, evt); err != nil {
-		return err
-	}
-
-	return nil
 }

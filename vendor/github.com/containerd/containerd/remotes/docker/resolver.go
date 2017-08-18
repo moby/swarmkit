@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
 	"github.com/containerd/containerd/reference"
@@ -21,6 +20,7 @@ import (
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context/ctxhttp"
 )
 
@@ -109,12 +109,12 @@ func (r *dockerResolver) Resolve(ctx context.Context, ref string) (string, ocisp
 
 		// turns out, we have a valid digest, make a url.
 		urls = append(urls, fetcher.url("manifests", dgst.String()))
+
+		// fallback to blobs on not found.
+		urls = append(urls, fetcher.url("blobs", dgst.String()))
 	} else {
 		urls = append(urls, fetcher.url("manifests", refspec.Object))
 	}
-
-	// fallback to blobs on not found.
-	urls = append(urls, fetcher.url("blobs", dgst.String()))
 
 	for _, u := range urls {
 		req, err := http.NewRequest(http.MethodHead, u, nil)

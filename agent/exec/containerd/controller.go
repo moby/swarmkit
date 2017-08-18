@@ -161,7 +161,7 @@ func (r *controller) Start(ctx context.Context) error {
 	//
 	// TODO(stevvooe): This is very racy. While reading inspect, another could
 	// start the process and we could end up starting it twice.
-	if ctnr.Status != containerd.Created {
+	if ctnr.Status.Status != containerd.Created {
 		return exec.ErrTaskStarted
 	}
 

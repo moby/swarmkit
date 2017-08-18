@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/log"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/sirupsen/logrus"
 )
 
 // MakeRef returns a unique reference for the descriptor. This reference can be
@@ -69,9 +70,9 @@ func fetch(ctx context.Context, ingester content.Ingester, fetcher Fetcher, desc
 	for {
 		cw, err = ingester.Writer(ctx, ref, desc.Size, desc.Digest)
 		if err != nil {
-			if content.IsExists(err) {
+			if errdefs.IsAlreadyExists(err) {
 				return nil
-			} else if !content.IsLocked(err) {
+			} else if !errdefs.IsUnavailable(err) {
 				return err
 			}
 
@@ -122,7 +123,7 @@ func push(ctx context.Context, provider content.Provider, pusher Pusher, desc oc
 
 	cw, err := pusher.Push(ctx, desc)
 	if err != nil {
-		if !content.IsExists(err) {
+		if !errdefs.IsAlreadyExists(err) {
 			return err
 		}
 

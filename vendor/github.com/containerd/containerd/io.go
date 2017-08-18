@@ -1,23 +1,44 @@
 package containerd
 
 import (
+	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 	"sync"
 )
 
+// IO holds the io information for a task or process
 type IO struct {
+	// Terminal is true if one has been allocated
 	Terminal bool
-	Stdin    string
-	Stdout   string
-	Stderr   string
+	// Stdin path
+	Stdin string
+	// Stdout path
+	Stdout string
+	// Stderr path
+	Stderr string
 
-	closer io.Closer
+	closer *wgCloser
 }
 
+// Cancel aborts all current io operations
+func (i *IO) Cancel() {
+	if i.closer == nil {
+		return
+	}
+	i.closer.Cancel()
+}
+
+// Wait blocks until all io copy operations have completed
+func (i *IO) Wait() {
+	if i.closer == nil {
+		return
+	}
+	i.closer.Wait()
+}
+
+// Close cleans up all open io resources
 func (i *IO) Close() error {
 	if i.closer == nil {
 		return nil
@@ -25,20 +46,29 @@ func (i *IO) Close() error {
 	return i.closer.Close()
 }
 
-type IOCreation func() (*IO, error)
+// IOCreation creates new IO sets for a task
+type IOCreation func(id string) (*IO, error)
 
-type IOAttach func(*FifoSet) (*IO, error)
+// IOAttach allows callers to reattach to running tasks
+type IOAttach func(*FIFOSet) (*IO, error)
 
+// NewIO returns an IOCreation that will provide IO sets without a terminal
 func NewIO(stdin io.Reader, stdout, stderr io.Writer) IOCreation {
 	return NewIOWithTerminal(stdin, stdout, stderr, false)
 }
 
+// NewIOWithTerminal creates a new io set with the provied io.Reader/Writers for use with a terminal
 func NewIOWithTerminal(stdin io.Reader, stdout, stderr io.Writer, terminal bool) IOCreation {
-	return func() (*IO, error) {
-		paths, err := NewFifos()
+	return func(id string) (_ *IO, err error) {
+		paths, err := NewFifos(id)
 		if err != nil {
 			return nil, err
 		}
+		defer func() {
+			if err != nil && paths.Dir != "" {
+				os.RemoveAll(paths.Dir)
+			}
+		}()
 		i := &IO{
 			Terminal: terminal,
 			Stdout:   paths.Out,
@@ -57,11 +87,11 @@ func NewIOWithTerminal(stdin io.Reader, stdout, stderr io.Writer, terminal bool)
 		i.closer = closer
 		return i, nil
 	}
-
 }
 
+// WithAttach attaches the existing io for a task to the provided io.Reader/Writers
 func WithAttach(stdin io.Reader, stdout, stderr io.Writer) IOAttach {
-	return func(paths *FifoSet) (*IO, error) {
+	return func(paths *FIFOSet) (*IO, error) {
 		if paths == nil {
 			return nil, fmt.Errorf("cannot attach to existing fifos")
 		}
@@ -85,40 +115,25 @@ func WithAttach(stdin io.Reader, stdout, stderr io.Writer) IOAttach {
 	}
 }
 
-// Stdio returns an IO implementation to be used for a task
+// Stdio returns an IO set to be used for a task
 // that outputs the container's IO as the current processes Stdio
-func Stdio() (*IO, error) {
-	return NewIO(os.Stdin, os.Stdout, os.Stderr)()
+func Stdio(id string) (*IO, error) {
+	return NewIO(os.Stdin, os.Stdout, os.Stderr)(id)
 }
 
 // StdioTerminal will setup the IO for the task to use a terminal
-func StdioTerminal() (*IO, error) {
-	return NewIOWithTerminal(os.Stdin, os.Stdout, os.Stderr, true)()
+func StdioTerminal(id string) (*IO, error) {
+	return NewIOWithTerminal(os.Stdin, os.Stdout, os.Stderr, true)(id)
 }
 
-// NewFifos returns a new set of fifos for the task
-func NewFifos() (*FifoSet, error) {
-	root := filepath.Join(os.TempDir(), "containerd")
-	if err := os.MkdirAll(root, 0700); err != nil {
-		return nil, err
-	}
-	dir, err := ioutil.TempDir(root, "")
-	if err != nil {
-		return nil, err
-	}
-	return &FifoSet{
-		Dir: dir,
-		In:  filepath.Join(dir, "stdin"),
-		Out: filepath.Join(dir, "stdout"),
-		Err: filepath.Join(dir, "stderr"),
-	}, nil
-}
-
-type FifoSet struct {
+// FIFOSet is a set of fifos for use with tasks
+type FIFOSet struct {
 	// Dir is the directory holding the task fifos
-	Dir          string
+	Dir string
+	// In, Out, and Err fifo paths
 	In, Out, Err string
-	Terminal     bool
+	// Terminal returns true if a terminal is being used for the task
+	Terminal bool
 }
 
 type ioSet struct {
@@ -127,14 +142,26 @@ type ioSet struct {
 }
 
 type wgCloser struct {
-	wg  *sync.WaitGroup
-	dir string
+	wg     *sync.WaitGroup
+	dir    string
+	set    []io.Closer
+	cancel context.CancelFunc
+}
+
+func (g *wgCloser) Wait() {
+	g.wg.Wait()
 }
 
 func (g *wgCloser) Close() error {
-	g.wg.Wait()
+	for _, f := range g.set {
+		f.Close()
+	}
 	if g.dir != "" {
 		return os.RemoveAll(g.dir)
 	}
 	return nil
+}
+
+func (g *wgCloser) Cancel() {
+	g.cancel()
 }
