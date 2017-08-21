@@ -51,9 +51,20 @@ node's certificate, but the Raft ID is assigned arbitrarily and would change.
 
 It's important to note that a Raft ID can't be reused after a node that was
 using the ID leaves the consensus group. These Raft IDs of nodes that are no
-longer part of the cluster are saved in a list to make sure they aren't reused.
-If a node with a Raft ID on this list tries to use Raft RPCs, other nodes won't
-honor these requests.
+longer part of the cluster are saved (persisted on disk) in a list (a blacklist,
+if you will) to make sure they aren't reused. If a node with a Raft ID on this list
+tries to use Raft RPCs, other nodes won't honor these requests. etcd/raft doesn't allow
+reuse of raft Id, which is likely done to avoid ambiguity.
+
+The blacklist of demoted/removed nodes is used to restrict these nodes from
+communicating and affecting cluster state. A membership list is also persisted,
+however this does not restrict communication between nodes.
+This is done to favor stability (and availability, by enabling faster return to
+non-degraded state) over consistency, by allowing newly added nodes (which may not
+have propagated to all the raft group members) to join and communicate with the group
+even though the membership list may not consistent at the point in time (but eventually
+will be). In case of node demotion/removal from the group, the affected node may be able
+to communicate with the other members until the change is fully propagated.
 
 ## Logs and snapshots
 
