@@ -210,7 +210,7 @@ func (n *Node) doSnapshot(ctx context.Context, raftConfig api.RaftConfig) {
 		snap, err := n.raftStore.CreateSnapshot(appliedIndex, &n.confState, d)
 		if err == nil {
 			if err := n.raftLogger.SaveSnapshot(snap); err != nil {
-				log.G(ctx).WithError(err).Error("failed to save snapshot")
+				log.G(ctx).WithError(err).Error("failed to save periodic snapshot")
 				return
 			}
 			snapshotMeta = snap.Metadata
