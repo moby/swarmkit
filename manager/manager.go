@@ -541,10 +541,11 @@ func (m *Manager) Run(parent context.Context) error {
 
 	close(m.started)
 
+	raftErrCh := make(chan error, 1)
 	go func() {
-		err := m.raftNode.Run(ctx)
-		if err != nil {
+		if err := m.raftNode.Run(ctx); err != nil {
 			log.G(ctx).WithError(err).Error("raft node stopped")
+			raftErrCh <- err
 			m.Stop(ctx, false)
 		}
 	}()
@@ -573,9 +574,17 @@ func (m *Manager) Run(parent context.Context) error {
 	// wait for an error in serving.
 	err = <-m.errServe
 	m.mu.Lock()
+	// the only reasons the manager would be stopped already is because (1) something called stop
+	// on the manager, in which case there should be no error (raft would not have errored on stop), or
+	// (2) the raft node stopped unexpectedly and errored, in which case we want to propagate the error
 	if m.stopped {
 		m.mu.Unlock()
-		return nil
+		select {
+		case raftErr := <-raftErrCh:
+			return raftErr
+		default:
+			return nil
+		}
 	}
 	m.mu.Unlock()
 	m.Stop(ctx, false)
