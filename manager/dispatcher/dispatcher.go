@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
+	"github.com/docker/go-metrics"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/equality"
 	"github.com/docker/swarmkit/ca"
@@ -65,7 +66,17 @@ var (
 	ErrSessionInvalid = errors.New("session invalid")
 	// ErrNodeNotFound returned when the Node doesn't exist in raft.
 	ErrNodeNotFound = errors.New("node not found")
+
+	// Scheduling delay timer.
+	schedulingDelayTimer metrics.Timer
 )
+
+func init() {
+	ns := metrics.NewNamespace("swarm", "dispatcher", nil)
+	schedulingDelayTimer = ns.NewTimer("scheduling_delay",
+		"Scheduling delay is the time a task takes to go from NEW to RUNNING state.")
+	metrics.Register(ns)
+}
 
 // Config is configuration for Dispatcher. For default you should use
 // DefaultConfig.
@@ -629,6 +640,17 @@ func (d *Dispatcher) processUpdates(ctx context.Context) {
 				if task.Status.State > status.State {
 					logger.Debug("task status invalid transition")
 					return nil
+				}
+
+				// Update scheduling delay metric for running tasks.
+				// We use the status update time on the leader to calculate the scheduling delay.
+				// Because of this, the recorded scheduling delay will be an overestimate and include
+				// the network delay between the worker and the leader.
+				// This is not ideal, but its a known overestimation, rather than using the status update time
+				// from the worker node, which may cause unknown incorrect results due to possible clock skew.
+				if status.State == api.TaskStateRunning {
+					start := time.Unix(status.AppliedAt.GetSeconds(), int64(status.AppliedAt.GetNanos()))
+					schedulingDelayTimer.UpdateSince(start)
 				}
 
 				task.Status = *status

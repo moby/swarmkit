@@ -14,6 +14,7 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/docker/docker/pkg/signal"
 	"github.com/docker/go-events"
+	"github.com/docker/go-metrics"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/log"
@@ -63,6 +64,9 @@ var (
 	// work around lint
 	lostQuorumMessage = "The swarm does not have a leader. It's possible that too few managers are online. Make sure more than half of the managers are online."
 	errLostQuorum     = errors.New(lostQuorumMessage)
+
+	// Timer to capture ProposeValue() latency.
+	proposeLatencyTimer metrics.Timer
 )
 
 // LeadershipState indicates whether the node is a leader or follower.
@@ -194,6 +198,9 @@ type NodeOptions struct {
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
+	ns := metrics.NewNamespace("swarm", "raft", nil)
+	proposeLatencyTimer = ns.NewTimer("transaction_latency", "Raft transaction latency.")
+	metrics.Register(ns)
 }
 
 // NewNode generates a new Raft node
@@ -665,7 +672,7 @@ func (n *Node) Run(ctx context.Context) error {
 			if n.snapshotInProgress == nil &&
 				(n.needsSnapshot(ctx) || raftConfig.SnapshotInterval > 0 &&
 					n.appliedIndex-n.snapshotMeta.Index >= raftConfig.SnapshotInterval) {
-				n.doSnapshot(ctx, raftConfig)
+				n.triggerSnapshot(ctx, raftConfig)
 			}
 
 			if wasLeader && atomic.LoadUint32(&n.signalledLeadership) != 1 {
@@ -707,7 +714,7 @@ func (n *Node) Run(ctx context.Context) error {
 				// there was a key rotation that took place before while the snapshot
 				// was in progress - we have to take another snapshot and encrypt with the new key
 				n.rotationQueued = false
-				n.doSnapshot(ctx, raftConfig)
+				n.triggerSnapshot(ctx, raftConfig)
 			}
 		case <-n.keyRotator.RotationNotify():
 			// There are 2 separate checks:  rotationQueued, and n.needsSnapshot().
@@ -720,7 +727,7 @@ func (n *Node) Run(ctx context.Context) error {
 			case n.snapshotInProgress != nil:
 				n.rotationQueued = true
 			case n.needsSnapshot(ctx):
-				n.doSnapshot(ctx, n.getCurrentRaftConfig())
+				n.triggerSnapshot(ctx, n.getCurrentRaftConfig())
 			}
 		case <-ctx.Done():
 			return nil
@@ -1498,9 +1505,11 @@ func (n *Node) registerNode(node *api.RaftMember) error {
 // ProposeValue calls Propose on the underlying raft library(etcd/raft) and waits
 // on the commit log action before returning a result
 func (n *Node) ProposeValue(ctx context.Context, storeAction []api.StoreAction, cb func()) error {
+	defer metrics.StartTimer(proposeLatencyTimer)()
 	ctx, cancel := n.WithContext(ctx)
 	defer cancel()
 	_, err := n.processInternalRaftRequest(ctx, &api.InternalRaftRequest{Action: storeAction}, cb)
+
 	if err != nil {
 		return err
 	}
