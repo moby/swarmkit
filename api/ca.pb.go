@@ -28,6 +28,7 @@
 		GetRootCACertificateResponse
 		GetUnlockKeyRequest
 		GetUnlockKeyResponse
+		TaskExecStream
 		GetNodeRequest
 		GetNodeResponse
 		ListNodesRequest

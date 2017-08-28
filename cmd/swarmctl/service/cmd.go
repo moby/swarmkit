@@ -19,5 +19,6 @@ func init() {
 		updateCmd,
 		removeCmd,
 		logsCmd,
+		execCmd,
 	)
 }

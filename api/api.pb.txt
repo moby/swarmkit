@@ -4630,6 +4630,14 @@ file {
       type_name: ".docker.swarmkit.v1.HealthConfig"
       json_name: "healthcheck"
     }
+    field {
+      name: "init_value"
+      number: 23
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      oneof_index: 0
+      json_name: "initValue"
+    }
     nested_type {
       name: "LabelsEntry"
       field {
@@ -4683,6 +4691,9 @@ file {
         type: TYPE_STRING
         json_name: "options"
       }
+    }
+    oneof_decl {
+      name: "init"
     }
   }
   message_type {
@@ -6156,6 +6167,23 @@ file {
   dependency: "gogoproto/gogo.proto"
   dependency: "github.com/docker/swarmkit/protobuf/plugin/plugin.proto"
   message_type {
+    name: "TaskExecStream"
+    field {
+      name: "message"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_BYTES
+      json_name: "message"
+    }
+    field {
+      name: "containerid"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "containerid"
+    }
+  }
+  message_type {
     name: "GetNodeRequest"
     field {
       name: "node_id"
@@ -7322,6 +7350,21 @@ file {
     name: "RemoveConfigResponse"
   }
   service {
+    name: "TaskExec"
+    method {
+      name: "Attach"
+      input_type: ".docker.swarmkit.v1.TaskExecStream"
+      output_type: ".docker.swarmkit.v1.TaskExecStream"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+      client_streaming: true
+      server_streaming: true
+    }
+  }
+  service {
     name: "Control"
     method {
       name: "GetNode"
@@ -7382,6 +7425,18 @@ file {
           1: "swarm-manager"
         }
       }
+    }
+    method {
+      name: "Attach"
+      input_type: ".docker.swarmkit.v1.TaskExecStream"
+      output_type: ".docker.swarmkit.v1.TaskExecStream"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+      client_streaming: true
+      server_streaming: true
     }
     method {
       name: "RemoveTask"

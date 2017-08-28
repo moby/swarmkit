@@ -51,6 +51,35 @@ func (s *Server) RemoveTask(ctx context.Context, request *api.RemoveTaskRequest)
 	return &api.RemoveTaskResponse{}, nil
 }
 
+func (s *Server) Attach(server api.Control_AttachServer) error {
+
+	go func() {
+		for {
+			data, err := server.Recv()
+			if err != nil {
+				continue
+			}
+			ch := s.taskExecChs.In(data.Containerid)
+			ch <- data.Message
+		}
+	}()
+
+	for {
+		outs := s.taskExecChs.Outs()
+
+		for containerid, c := range outs {
+			select {
+			case data := <-c:
+				server.Send(&api.TaskExecStream{
+					Message:     data,
+					Containerid: containerid,
+				})
+			}
+		}
+	}
+	// TODO(fntlnz): handle all the closing contexts
+}
+
 func filterTasks(candidates []*api.Task, filters ...func(*api.Task) bool) []*api.Task {
 	result := []*api.Task{}
 

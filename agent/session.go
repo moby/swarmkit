@@ -1,10 +1,15 @@
 package agent
 
 import (
+	"bytes"
 	"errors"
+	"io"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/docker/docker/api/types"
+	engineapi "github.com/docker/docker/client"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/connectionbroker"
 	"github.com/docker/swarmkit/log"
@@ -99,6 +104,7 @@ func (s *session) run(ctx context.Context, delay time.Duration, description *api
 	go runctx(ctx, s.closed, s.errs, s.watch)
 	go runctx(ctx, s.closed, s.errs, s.listen)
 	go runctx(ctx, s.closed, s.errs, s.logSubscriptions)
+	go runctx(ctx, s.closed, s.errs, s.taskExecutions)
 
 	close(s.registered)
 }
@@ -215,6 +221,58 @@ func (s *session) handleSessionMessage(ctx context.Context, msg *api.SessionMess
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+func (s *session) taskExecutions(ctx context.Context) error {
+	// TODO(fntlnz): REMOVE THE CLIENT HERE find a way to have here the docker client instantiated in cmd/swarmd
+	// instead of creating a new one or at least use the same creation logic bcause the other spports containerd
+	dclient, err := engineapi.NewEnvClient()
+	client := api.NewTaskExecClient(s.conn.ClientConn)
+	attachment, err := client.Attach(ctx)
+	if err != nil {
+		return err
+	}
+
+	// TODO(fntlnz): rework this to support streaming over the same exec and not just sending/receiveing
+	// TODO(fntlnz): pass out errors instead of just conintuing
+
+	for {
+		data, err := attachment.Recv()
+
+		if err != nil {
+			return err
+		}
+		execCfg := types.ExecConfig{
+			User:         "root",
+			AttachStdout: true,
+			AttachStderr: true,
+			AttachStdin:  true,
+			Cmd:          strings.Split(string(data.Message), " "),
+		}
+
+		res, err := dclient.ContainerExecCreate(ctx, data.Containerid, execCfg)
+
+		if err != nil {
+			return err
+		}
+
+		resp, err := dclient.ContainerExecAttach(ctx, res.ID, execCfg)
+		if err != nil {
+			return err
+		}
+		defer resp.Close()
+
+		buf := new(bytes.Buffer)
+		io.Copy(buf, resp.Reader)
+
+		// sending the result back (in future we will have a tty)
+		attachment.Send(&api.TaskExecStream{
+			Message:     buf.Bytes(),
+			Containerid: data.Containerid,
+		})
+
+	}
+
 }
 
 func (s *session) logSubscriptions(ctx context.Context) error {
