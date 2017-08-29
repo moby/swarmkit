@@ -542,6 +542,9 @@ func (n *Node) Run(ctx context.Context) error {
 		n.done()
 	}()
 
+	// Flag to indicate if this manager node was the raft leader in the previous iteration of the loop.
+	// It is mainly used to cancel out proposals that this node might have made when it was the leader
+	// in the previous iteration. It not only needed to avoid deadlocking processCommitted().
 	wasLeader := false
 	transferLeadershipLimit := rate.NewLimiter(rate.Every(time.Minute), 1)
 
@@ -630,6 +633,8 @@ func (n *Node) Run(ctx context.Context) error {
 					// cancelAll, or by its own check of signalledLeadership.
 					n.wait.cancelAll()
 				} else if !wasLeader && rd.SoftState.RaftState == raft.StateLeader {
+					// If this node was the leader in the previous iteration,
+					// set wasLeader to make sure all outstanding proposals are cancelled.
 					wasLeader = true
 				}
 			}
