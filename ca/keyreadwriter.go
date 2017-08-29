@@ -13,6 +13,7 @@ import (
 	"crypto/tls"
 
 	"github.com/docker/swarmkit/ca/keyutils"
+	"github.com/docker/swarmkit/ca/pkcs8"
 	"github.com/docker/swarmkit/ioutils"
 	"github.com/pkg/errors"
 )
@@ -373,6 +374,48 @@ func (k *KeyReadWriter) writeKey(keyBlock *pem.Block, kekData KEKData, pkh PEMKe
 	k.kekData = kekData
 	k.headersObj = pkh
 	return nil
+}
+
+// DowngradeKey converts the PKCS#8 key to PKCS#1 format and save it
+func (k *KeyReadWriter) DowngradeKey() error {
+	_, key, err := k.Read()
+	if err != nil {
+		return err
+	}
+
+	oldBlock, _ := pem.Decode(key)
+	if oldBlock == nil {
+		return errors.New("invalid PEM-encoded private key")
+	}
+
+	// stop if the key is already downgraded to pkcs1
+	if !keyutils.IsPKCS8(oldBlock.Bytes) {
+		return errors.New("key is already downgraded to PKCS#1")
+	}
+
+	eckey, err := pkcs8.ConvertToECPrivateKeyPEM(key)
+	if err != nil {
+		return err
+	}
+
+	newBlock, _ := pem.Decode(eckey)
+	if newBlock == nil {
+		return errors.New("invalid PEM-encoded private key")
+	}
+
+	if k.kekData.KEK != nil {
+		newBlock, err = keyutils.EncryptPEMBlock(newBlock.Bytes, k.kekData.KEK)
+		if err != nil {
+			return err
+		}
+	}
+
+	// add kek-version header back to the new key
+	newBlock.Headers[versionHeader] = strconv.FormatUint(k.kekData.Version, 10)
+	mergePEMHeaders(newBlock.Headers, oldBlock.Headers)
+
+	// do not use krw.Write as it will convert the key to pkcs8
+	return ioutils.AtomicWriteFile(k.paths.Key, pem.EncodeToMemory(newBlock), keyPerms)
 }
 
 // merges one set of PEM headers onto another, excepting for key encryption value
