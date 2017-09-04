@@ -59,8 +59,11 @@ func (s *Server) Attach(server api.Control_AttachServer) error {
 			if err != nil {
 				continue
 			}
+
 			ch := s.taskExecChs.In(data.Containerid)
-			ch <- data.Message
+			ch <- ServerTaskExecMessage{
+				Message: data.Message,
+			}
 		}
 	}()
 
@@ -71,7 +74,7 @@ func (s *Server) Attach(server api.Control_AttachServer) error {
 			select {
 			case data := <-c:
 				server.Send(&api.TaskExecStream{
-					Message:     data,
+					Message:     data.Message,
 					Containerid: containerid,
 				})
 			}

@@ -23,7 +23,9 @@ func (tes *TaskExecServer) Attach(stream api.TaskExec_AttachServer) error {
 			if err != nil {
 				continue
 			}
-			tes.stream.Out(data.Containerid) <- data.Message
+			tes.stream.Out(data.Containerid) <- controlapi.ServerTaskExecMessage{
+				Message: data.Message,
+			}
 		}
 	}()
 
@@ -34,7 +36,7 @@ func (tes *TaskExecServer) Attach(stream api.TaskExec_AttachServer) error {
 			select {
 			case data := <-c:
 				stream.Send(&api.TaskExecStream{
-					Message:     data,
+					Message:     data.Message,
 					Containerid: containerid,
 				})
 			case <-stream.Context().Done():

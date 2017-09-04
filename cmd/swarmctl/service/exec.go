@@ -65,6 +65,7 @@ var (
 			go func() {
 				for {
 					data, err := attachCl.Recv()
+
 					if err != nil {
 						continue
 					}
@@ -72,15 +73,17 @@ var (
 				}
 			}()
 
-			s := bufio.NewScanner(os.Stdin)
-			for s.Scan() {
+			stdinr := bufio.NewReader(os.Stdin)
+
+			for {
+				curLine, _ := stdinr.ReadByte()
 				attachCl.Send(&api.TaskExecStream{
 					Containerid: containerId,
-					Message:     s.Bytes(),
+					Message:     []byte{curLine},
 				})
+
 			}
 
-			return nil
 		},
 	}
 )
