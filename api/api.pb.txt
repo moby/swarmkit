@@ -263,6 +263,14 @@ file {
         type: TYPE_INT32
         json_name: "end"
       }
+      field {
+        name: "options"
+        number: 3
+        label: LABEL_OPTIONAL
+        type: TYPE_MESSAGE
+        type_name: ".google.protobuf.ExtensionRangeOptions"
+        json_name: "options"
+      }
     }
     nested_type {
       name: "ReservedRange"
@@ -280,6 +288,21 @@ file {
         type: TYPE_INT32
         json_name: "end"
       }
+    }
+  }
+  message_type {
+    name: "ExtensionRangeOptions"
+    field {
+      name: "uninterpreted_option"
+      number: 999
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".google.protobuf.UninterpretedOption"
+      json_name: "uninterpretedOption"
+    }
+    extension_range {
+      start: 1000
+      end: 536870912
     }
   }
   message_type {
@@ -674,6 +697,14 @@ file {
       json_name: "pyGenericServices"
     }
     field {
+      name: "php_generic_services"
+      number: 19
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      default_value: "false"
+      json_name: "phpGenericServices"
+    }
+    field {
       name: "deprecated"
       number: 23
       label: LABEL_OPTIONAL
@@ -716,6 +747,13 @@ file {
       label: LABEL_OPTIONAL
       type: TYPE_STRING
       json_name: "phpClassPrefix"
+    }
+    field {
+      name: "php_namespace"
+      number: 41
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "phpNamespace"
     }
     field {
       name: "uninterpreted_option"
@@ -4630,6 +4668,24 @@ file {
       type_name: ".docker.swarmkit.v1.HealthConfig"
       json_name: "healthcheck"
     }
+    field {
+      name: "init_value"
+      number: 23
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      oneof_index: 0
+      json_name: "initValue"
+    }
+    field {
+      name: "oom_score_adj"
+      number: 24
+      label: LABEL_OPTIONAL
+      type: TYPE_INT64
+      options {
+        65004: "OOMScoreAdj"
+      }
+      json_name: "oomScoreAdj"
+    }
     nested_type {
       name: "LabelsEntry"
       field {
@@ -4683,6 +4739,9 @@ file {
         type: TYPE_STRING
         json_name: "options"
       }
+    }
+    oneof_decl {
+      name: "init"
     }
   }
   message_type {

@@ -298,6 +298,9 @@ message ContainerSpec {
 	oneof init {
 		bool init_value = 23;
 	}
+
+	// OOMScoreAdj allows tuning host's OOM preferences (-1000 to 1000)
+	int64 oom_score_adj = 24 [(gogoproto.customname) = "OOMScoreAdj"];
 }
 
 // EndpointSpec defines the properties that can be configured to

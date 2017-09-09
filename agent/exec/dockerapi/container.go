@@ -196,6 +196,7 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 		GroupAdd:     c.spec().Groups,
 		PortBindings: c.portBindings(),
 		Init:         c.init(),
+		OomScoreAdj:  int(c.spec().OOMScoreAdj),
 	}
 
 	// The format of extra hosts on swarmkit is specified in:
