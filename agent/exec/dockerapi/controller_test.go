@@ -417,6 +417,11 @@ func genTestControllerEnv(t *testing.T, task *api.Task) (context.Context, *StubA
 			OS:           "linux",
 			Architecture: "x86_64",
 		},
+		Engine: &api.EngineDescription{
+			Labels: map[string]string{
+				"EngineLabelKey": "engine-label-value",
+			},
+		},
 	}
 
 	client := NewStubAPIClient()
