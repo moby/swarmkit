@@ -37,6 +37,8 @@ type Config struct {
 	SendTimeout       time.Duration
 	Credentials       credentials.TransportCredentials
 	RaftID            string
+	OurAddr           string
+	UpdateOwnAddr     bool
 
 	Raft
 }
@@ -166,7 +168,7 @@ func (t *Transport) AddPeer(id uint64, addr string) error {
 		return errors.Errorf("peer %x already added with addr %s", id, ep.addr)
 	}
 	log.G(t.ctx).Debugf("transport: add peer %x with address %s", id, addr)
-	p, err := newPeer(id, addr, t)
+	p, err := newPeer(id, addr, t.config.OurAddr, t.config.UpdateOwnAddr, t)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create peer %x with addr %s", id, addr)
 	}
@@ -382,7 +384,7 @@ func (t *Transport) resolvePeer(ctx context.Context, id uint64) (*peer, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newPeer(id, addr, t)
+	return newPeer(id, addr, t.config.OurAddr, t.config.UpdateOwnAddr, t)
 }
 
 func (t *Transport) sendUnknownMessage(ctx context.Context, m raftpb.Message) error {
