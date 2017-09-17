@@ -5564,6 +5564,14 @@ file {
       type_name: ".docker.swarmkit.v1.NetworkAttachment"
       json_name: "attachments"
     }
+    field {
+      name: "available_resources"
+      number: 11
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Resources"
+      json_name: "availableResources"
+    }
     options {
       70001 {
         1 {
@@ -6315,6 +6323,13 @@ file {
       type: TYPE_STRING
       json_name: "nodeId"
     }
+    field {
+      name: "available_resources"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      json_name: "availableResources"
+    }
   }
   message_type {
     name: "GetNodeResponse"
@@ -6336,6 +6351,13 @@ file {
       type: TYPE_MESSAGE
       type_name: ".docker.swarmkit.v1.ListNodesRequest.Filters"
       json_name: "filters"
+    }
+    field {
+      name: "available_resources"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      json_name: "availableResources"
     }
     nested_type {
       name: "Filters"

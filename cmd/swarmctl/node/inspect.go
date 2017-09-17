@@ -68,14 +68,12 @@ func printNodeSummary(node *api.Node) {
 
 	if desc.Resources != nil {
 		fmt.Fprintln(w, "Resources:\t")
-		fmt.Fprintf(w, "  CPUs\t: %d\n", desc.Resources.NanoCPUs/1e9)
-		fmt.Fprintf(w, "  Memory\t: %s\n", humanize.IBytes(uint64(desc.Resources.MemoryBytes)))
-		fmt.Fprintln(w, "  Generic Resources:\t")
-		for _, r := range desc.Resources.Generic {
-			k := genericresource.Kind(r)
-			v := genericresource.Value(r)
-			fmt.Fprintf(w, "    %s\t: %s\n", k, v)
-		}
+		printResources(w, desc.Resources)
+	}
+
+	if node.AvailableResources != nil {
+		fmt.Fprintln(w, "Available Resources:\t")
+		printResources(w, node.AvailableResources)
 	}
 
 	if desc.Engine != nil {
@@ -114,6 +112,17 @@ func printNodeSummary(node *api.Node) {
 	}
 }
 
+func printResources(w *tabwriter.Writer, resources *api.Resources) {
+	fmt.Fprintf(w, "  CPUs\t: %d\n", resources.NanoCPUs/1e9)
+	fmt.Fprintf(w, "  Memory\t: %s\n", humanize.IBytes(uint64(resources.MemoryBytes)))
+	fmt.Fprintln(w, "  Generic Resources:\t")
+	for _, r := range resources.Generic {
+		k := genericresource.Kind(r)
+		v := genericresource.Value(r)
+		fmt.Fprintf(w, "    %s\t: %s\n", k, v)
+	}
+}
+
 var (
 	inspectCmd = &cobra.Command{
 		Use:   "inspect <node ID>",
@@ -133,6 +142,10 @@ var (
 			if err != nil {
 				return err
 			}
+			availableResourcesFlag, err := flags.GetBool("available-resources")
+			if err != nil {
+				return err
+			}
 
 			c, err := common.Dial(cmd)
 			if err != nil {
@@ -142,6 +155,17 @@ var (
 			node, err := getNode(common.Context(cmd), c, args[0])
 			if err != nil {
 				return err
+			}
+
+			if availableResourcesFlag {
+				gnr, err := c.GetNode(common.Context(cmd), &api.GetNodeRequest{
+					NodeID:             node.ID,
+					AvailableResources: availableResourcesFlag,
+				})
+				if err != nil {
+					return err
+				}
+				node = gnr.Node
 			}
 
 			r, err := c.ListTasks(common.Context(cmd),
@@ -167,4 +191,5 @@ var (
 
 func init() {
 	inspectCmd.Flags().BoolP("all", "a", false, "Show all tasks (default shows just running)")
+	inspectCmd.Flags().BoolP("available-resources", "r", false, "Show available resources")
 }
