@@ -1663,10 +1663,7 @@ func (n *Node) applyAddNode(cc raftpb.ConfChange) error {
 		return nil
 	}
 
-	if err = n.registerNode(member); err != nil {
-		return err
-	}
-	return nil
+	return n.registerNode(member)
 }
 
 // applyUpdateNode is called when we receive a ConfChange from a member in the

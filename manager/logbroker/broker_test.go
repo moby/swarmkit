@@ -399,15 +399,11 @@ func TestLogBrokerNoFollow(t *testing.T) {
 			return err
 		}
 
-		if err := store.CreateTask(tx, &api.Task{
+		return store.CreateTask(tx, &api.Task{
 			ID:        "task2",
 			ServiceID: "service",
 			NodeID:    agent2Security.ServerTLSCreds.NodeID(),
-		}); err != nil {
-			return err
-		}
-
-		return nil
+		})
 	}))
 
 	// Subscribe to logs in no follow mode
@@ -503,15 +499,11 @@ func TestLogBrokerNoFollowMissingNode(t *testing.T) {
 			return err
 		}
 
-		if err := store.CreateTask(tx, &api.Task{
+		return store.CreateTask(tx, &api.Task{
 			ID:        "task2",
 			ServiceID: "service",
 			NodeID:    "node-2",
-		}); err != nil {
-			return err
-		}
-
-		return nil
+		})
 	}))
 
 	// Subscribe to logs in no follow mode
@@ -613,15 +605,11 @@ func TestLogBrokerNoFollowDisconnect(t *testing.T) {
 			return err
 		}
 
-		if err := store.CreateTask(tx, &api.Task{
+		return store.CreateTask(tx, &api.Task{
 			ID:        "task2",
 			ServiceID: "service",
 			NodeID:    agent2Security.ServerTLSCreds.NodeID(),
-		}); err != nil {
-			return err
-		}
-
-		return nil
+		})
 	}))
 
 	// Subscribe to logs in no follow mode
