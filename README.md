@@ -325,3 +325,4 @@ drzndxnjz3c8iujdewzaplgr6    redis      5       redis:3.0.7    RUNNING          
 ```
 
 As you can see, every Task running on `node-1` was rebalanced to either `node-2` or `node-3` by the reconciliation loop.
+
