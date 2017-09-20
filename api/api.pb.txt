@@ -4406,6 +4406,14 @@ file {
       }
       json_name: "resourceReferences"
     }
+    field {
+      name: "secrets"
+      number: 12
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.SecretReference"
+      json_name: "secrets"
+    }
     oneof_decl {
       name: "runtime"
     }
@@ -4630,6 +4638,14 @@ file {
       type_name: ".docker.swarmkit.v1.HealthConfig"
       json_name: "healthcheck"
     }
+    field {
+      name: "init_value"
+      number: 23
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      oneof_index: 0
+      json_name: "initValue"
+    }
     nested_type {
       name: "LabelsEntry"
       field {
@@ -4683,6 +4699,9 @@ file {
         type: TYPE_STRING
         json_name: "options"
       }
+    }
+    oneof_decl {
+      name: "init"
     }
   }
   message_type {
@@ -5392,6 +5411,9 @@ file {
       label: LABEL_OPTIONAL
       type: TYPE_MESSAGE
       type_name: ".docker.swarmkit.v1.NetworkAttachment"
+      options {
+        deprecated: true
+      }
       json_name: "attachment"
     }
     field {
@@ -5412,6 +5434,14 @@ file {
       type: TYPE_ENUM
       type_name: ".docker.swarmkit.v1.NodeRole"
       json_name: "role"
+    }
+    field {
+      name: "lb_attachments"
+      number: 10
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.NetworkAttachment"
+      json_name: "lbAttachments"
     }
     options {
       70001 {

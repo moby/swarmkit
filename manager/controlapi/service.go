@@ -578,13 +578,14 @@ func (s *Server) checkPortConflicts(spec *api.ServiceSpec, serviceID string) err
 
 // checkSecretExistence finds if the secret exists
 func (s *Server) checkSecretExistence(tx store.Tx, spec *api.ServiceSpec) error {
+	var secrets []*api.SecretReference
 	container := spec.Task.GetContainer()
-	if container == nil {
-		return nil
+	if container != nil {
+		secrets = container.Secrets
 	}
-
+	secrets = append(secrets, spec.Task.Secrets...)
 	var failedSecrets []string
-	for _, secretRef := range container.Secrets {
+	for _, secretRef := range secrets {
 		secret := store.GetSecret(tx, secretRef.SecretID)
 		// Check to see if the secret exists and secretRef.SecretName matches the actual secretName
 		if secret == nil || secret.Spec.Annotations.Name != secretRef.SecretName {
@@ -599,7 +600,6 @@ func (s *Server) checkSecretExistence(tx store.Tx, spec *api.ServiceSpec) error 
 		}
 
 		return grpc.Errorf(codes.InvalidArgument, "%s not found: %v", secretStr, strings.Join(failedSecrets, ", "))
-
 	}
 
 	return nil

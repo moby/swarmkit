@@ -275,14 +275,16 @@ func (ti taskIndexerBySecret) FromArgs(args ...interface{}) ([]byte, error) {
 func (ti taskIndexerBySecret) FromObject(obj interface{}) (bool, [][]byte, error) {
 	t := obj.(*api.Task)
 
+	var secrets []*api.SecretReference
 	container := t.Spec.GetContainer()
 	if container == nil {
-		return false, nil, nil
+		secrets = container.Secrets
 	}
+	secrets = append(secrets, t.Spec.Secrets...)
 
 	var secretIDs [][]byte
 
-	for _, secretRef := range container.Secrets {
+	for _, secretRef := range secrets {
 		// Add the null character as a terminator
 		secretIDs = append(secretIDs, []byte(secretRef.SecretID+"\x00"))
 	}

@@ -195,14 +195,16 @@ func (si serviceIndexerBySecret) FromArgs(args ...interface{}) ([]byte, error) {
 func (si serviceIndexerBySecret) FromObject(obj interface{}) (bool, [][]byte, error) {
 	s := obj.(*api.Service)
 
+	var secrets []*api.SecretReference
 	container := s.Spec.Task.GetContainer()
 	if container == nil {
-		return false, nil, nil
+		secrets = container.Secrets
 	}
+	secrets = append(secrets, s.Spec.Task.Secrets...)
 
 	var secretIDs [][]byte
 
-	for _, secretRef := range container.Secrets {
+	for _, secretRef := range secrets {
 		// Add the null character as a terminator
 		secretIDs = append(secretIDs, []byte(secretRef.SecretID+"\x00"))
 	}
