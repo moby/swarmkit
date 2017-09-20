@@ -99,6 +99,8 @@ func (a *assignmentSet) addTaskDependencies(readTx store.ReadTx, t *api.Task) {
 	if container != nil {
 		secrets = container.Secrets
 	}
+	// Append secrets from spec (support for generic tasks)
+	secrets = append(secrets, t.Spec.Secrets...)
 
 	for _, secretRef := range secrets {
 		secretID := secretRef.SecretID
@@ -176,6 +178,7 @@ func (a *assignmentSet) releaseTaskDependencies(t *api.Task) bool {
 	if container != nil {
 		secrets = container.Secrets
 	}
+	secrets = append(secrets, t.Spec.Secrets...)
 
 	for _, secretRef := range secrets {
 		secretID := secretRef.SecretID

@@ -116,11 +116,13 @@ func (ctx *PayloadContext) secretGetter(target string) (string, error) {
 	}
 
 	container := ctx.t.Spec.GetContainer()
+	var secrets []*api.SecretReference
 	if container == nil {
-		return "", errors.New("task is not a container")
+		secrets = container.Secrets
 	}
+	secrets = append(secrets, ctx.t.Spec.Secrets...)
 
-	for _, secretRef := range container.Secrets {
+	for _, secretRef := range secrets {
 		file := secretRef.GetFile()
 		if file != nil && file.Name == target {
 			secret, err := ctx.restrictedSecrets.Get(secretRef.SecretID)

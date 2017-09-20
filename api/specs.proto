@@ -138,6 +138,10 @@ message TaskSpec {
 	//
 	// ResourceReferences is a list of ResourceReferences used by the task.
 	repeated ResourceReference resource_references = 11 [(gogoproto.nullable) = false];
+
+	// SecretReference contains references to zero or more secrets that
+	// will be exposed to the task
+	repeated SecretReference secrets = 12;
 }
 
 message ResourceReference {

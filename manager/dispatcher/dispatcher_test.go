@@ -417,6 +417,85 @@ func TestAssignmentsErrorsIfNoSessionID(t *testing.T) {
 	assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
 }
 
+func TestAssignmentsGenericTask(t *testing.T) {
+	t.Parallel()
+	gd, err := startDispatcher(DefaultConfig())
+	defer gd.Close()
+
+	expectedSessionID, nodeID := getSessionAndNodeID(t, gd.Clients[0])
+	secret := &api.Secret{
+		ID: "secret",
+		Spec: api.SecretSpec{
+			Annotations: api.Annotations{Name: "secret"},
+		},
+	}
+	spec := api.TaskSpec{
+		ResourceReferences: nil,
+		Secrets: []*api.SecretReference{&api.SecretReference{
+			SecretName: secret.Spec.Annotations.Name,
+			SecretID:   secret.ID,
+			Target: &api.SecretReference_File{
+				File: &api.FileTarget{
+					Name: "target.txt",
+					UID:  "0",
+					GID:  "0",
+					Mode: 0666,
+				},
+			}}},
+		Runtime: &api.TaskSpec_Generic{
+			Generic: &api.GenericRuntimeSpec{},
+		},
+	}
+	portConfig := drivers.PortConfig{Name: "port", PublishMode: 5, TargetPort: 80, Protocol: 10, PublishedPort: 8080}
+
+	task := &api.Task{
+		NodeID:       nodeID,
+		ID:           "secretTask",
+		Status:       api.TaskStatus{State: api.TaskStateReady},
+		DesiredState: api.TaskStateNew,
+		Spec:         spec,
+		Endpoint: &api.Endpoint{
+			Spec: &api.EndpointSpec{
+				Mode: 2,
+				Ports: []*api.PortConfig{
+					{
+						Name:          portConfig.Name,
+						PublishedPort: portConfig.PublishedPort,
+						Protocol:      api.PortConfig_Protocol(portConfig.Protocol),
+						TargetPort:    portConfig.TargetPort,
+						PublishMode:   api.PortConfig_PublishMode(portConfig.PublishMode),
+					},
+				},
+			},
+		},
+		ServiceAnnotations: api.Annotations{
+			Name: "service",
+		},
+	}
+
+	err = gd.Store.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateSecret(tx, secret))
+		assert.NoError(t, store.CreateTask(tx, task))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{SessionID: expectedSessionID})
+	assert.NoError(t, err)
+	defer stream.CloseSend()
+
+	resp, err := stream.Recv()
+	assert.NoError(t, err)
+
+	verifyChanges(t, resp.Changes, []changeExpectations{
+		{
+			action:  api.AssignmentChange_AssignmentActionUpdate,
+			tasks:   []*api.Task{task},
+			secrets: []*api.Secret{secret},
+		},
+	})
+}
+
 func TestAssignmentsSecretDriver(t *testing.T) {
 	t.Parallel()
 
