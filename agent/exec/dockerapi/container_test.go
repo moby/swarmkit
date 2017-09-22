@@ -183,14 +183,14 @@ func TestIsolation(t *testing.T) {
 			Spec: api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
-						Isolation: "test",
+						Isolation: api.ContainerIsolationHyperV,
 					},
 				},
 			},
 		},
 	}
 
-	expected := "test"
+	expected := "hyperv"
 	actual := string(c.hostConfig().Isolation)
 	if actual != expected {
 		t.Fatalf("expected %s, got %s", expected, actual)

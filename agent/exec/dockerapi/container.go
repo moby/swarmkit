@@ -121,7 +121,15 @@ func (c *containerConfig) portBindings() nat.PortMap {
 }
 
 func (c *containerConfig) isolation() enginecontainer.Isolation {
-	return enginecontainer.Isolation(c.spec().Isolation)
+	switch c.spec().Isolation {
+	case api.ContainerIsolationDefault:
+		return enginecontainer.Isolation("default")
+	case api.ContainerIsolationHyperV:
+		return enginecontainer.Isolation("hyperv")
+	case api.ContainerIsolationProcess:
+		return enginecontainer.Isolation("process")
+	}
+	return enginecontainer.Isolation("")
 }
 
 func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {

@@ -4747,7 +4747,8 @@ file {
       name: "isolation"
       number: 24
       label: LABEL_OPTIONAL
-      type: TYPE_STRING
+      type: TYPE_ENUM
+      type_name: ".docker.swarmkit.v1.ContainerSpec.Isolation"
       json_name: "isolation"
     }
     nested_type {
@@ -4802,6 +4803,33 @@ file {
         label: LABEL_REPEATED
         type: TYPE_STRING
         json_name: "options"
+      }
+    }
+    enum_type {
+      name: "Isolation"
+      value {
+        name: "ISOLATION_DEFAULT"
+        number: 0
+        options {
+          66001: "ContainerIsolationDefault"
+        }
+      }
+      value {
+        name: "ISOLATION_PROCESS"
+        number: 1
+        options {
+          66001: "ContainerIsolationProcess"
+        }
+      }
+      value {
+        name: "ISOLATION_HYPERV"
+        number: 2
+        options {
+          66001: "ContainerIsolationHyperV"
+        }
+      }
+      options {
+        62001: 0
       }
     }
   }

@@ -298,10 +298,22 @@ message ContainerSpec {
 	// is considered unhealthy after `Retries` number of consecutive failures.
 	HealthConfig healthcheck = 16;
 
-	// Isolation defines the isolation level for engines supporting multiple isolation modes
-	// ie: docker on windows server supports "process" or "hyperv"
-	// on engines that does not support it, value should be either "" or "default"
-	string isolation = 24;
+	enum Isolation {
+		option (gogoproto.goproto_enum_prefix) = false;
+
+		// ISOLATION_DEFAULT uses whatever default value from the container runtime
+		ISOLATION_DEFAULT = 0 [(gogoproto.enumvalue_customname) = "ContainerIsolationDefault"];
+
+		// ISOLATION_PROCESS forces windows container isolation
+		ISOLATION_PROCESS = 1 [(gogoproto.enumvalue_customname) = "ContainerIsolationProcess"];
+
+		// ISOLATION_HYPERV forces Hyper-V isolation
+		ISOLATION_HYPERV = 2 [(gogoproto.enumvalue_customname) = "ContainerIsolationHyperV"];
+	}
+
+	// Isolation defines the isolation level for windows containers (default, process, hyperv).
+	// Runtimes that don't support it ignore that field
+	Isolation isolation = 24;
 }
 
 // EndpointSpec defines the properties that can be configured to
