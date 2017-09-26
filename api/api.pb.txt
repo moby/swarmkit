@@ -5392,6 +5392,9 @@ file {
       label: LABEL_OPTIONAL
       type: TYPE_MESSAGE
       type_name: ".docker.swarmkit.v1.NetworkAttachment"
+      options {
+        deprecated: true
+      }
       json_name: "attachment"
     }
     field {
@@ -5412,6 +5415,14 @@ file {
       type: TYPE_ENUM
       type_name: ".docker.swarmkit.v1.NodeRole"
       json_name: "role"
+    }
+    field {
+      name: "attachments"
+      number: 10
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.NetworkAttachment"
+      json_name: "attachments"
     }
     options {
       70001 {
