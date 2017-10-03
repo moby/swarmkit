@@ -584,7 +584,8 @@ func (na *cnmNetworkAllocator) allocateVIP(vip *api.Endpoint_VirtualIP) error {
 		}
 	}
 	if localNet.nw.IPAM != nil && localNet.nw.IPAM.Driver != nil {
-		opts = localNet.nw.IPAM.Driver.Options
+		// set ipam allocation method to serial
+		opts = setIPAMSerialAlloc(localNet.nw.IPAM.Driver.Options)
 	}
 
 	for _, poolID := range localNet.pools {
@@ -670,9 +671,10 @@ func (na *cnmNetworkAllocator) allocateNetworkIPs(nAttach *api.NetworkAttachment
 				}
 			}
 		}
-
+		// Set the ipam options if the network has an ipam driver.
 		if localNet.nw.IPAM != nil && localNet.nw.IPAM.Driver != nil {
-			opts = localNet.nw.IPAM.Driver.Options
+			// set ipam allocation method to serial
+			opts = setIPAMSerialAlloc(localNet.nw.IPAM.Driver.Options)
 		}
 
 		for _, poolID := range localNet.pools {
@@ -910,6 +912,8 @@ func (na *cnmNetworkAllocator) allocatePools(n *api.Network) (map[string]string,
 			dOptions = make(map[string]string)
 		}
 		dOptions[ipamapi.RequestAddressType] = netlabel.Gateway
+		// set ipam allocation method to serial
+		dOptions = setIPAMSerialAlloc(dOptions)
 		defer delete(dOptions, ipamapi.RequestAddressType)
 
 		if ic.Gateway != "" || gwIP == nil {
@@ -973,4 +977,15 @@ func IsBuiltInDriver(name string) bool {
 		}
 	}
 	return false
+}
+
+// setIPAMSerialAlloc sets the ipam allocation method to serial
+func setIPAMSerialAlloc(opts map[string]string) map[string]string {
+	if opts == nil {
+		opts = make(map[string]string)
+	}
+	if _, ok := opts[ipamapi.AllocSerialPrefix]; !ok {
+		opts[ipamapi.AllocSerialPrefix] = "true"
+	}
+	return opts
 }
