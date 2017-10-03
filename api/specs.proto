@@ -139,6 +139,13 @@ message TaskSpec {
 	//
 	// ResourceReferences is a list of ResourceReferences used by the task.
 	repeated ResourceReference resource_references = 11 [(gogoproto.nullable) = false];
+
+	// Entitlements are the high-level permissions to give to a service
+	repeated string entitlements = 12;
+}
+
+message Entitlement {
+	repeated string full_name = 1;
 }
 
 message ResourceReference {
