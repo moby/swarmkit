@@ -8,6 +8,18 @@ import "github.com/docker/swarmkit/api/types.proto";
 import "gogoproto/gogo.proto";
 import "github.com/docker/swarmkit/protobuf/plugin/plugin.proto";
 
+message TaskExecStream {
+	bytes message = 1;
+	string containerid = 2;
+}
+
+service TaskExec {
+	rpc Attach(stream TaskExecStream) returns (stream TaskExecStream) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	}
+}
+
+
 // Control defines the RPC methods for controlling a cluster.
 service Control {
 	rpc GetNode(GetNodeRequest) returns (GetNodeResponse) {
@@ -29,6 +41,9 @@ service Control {
 	rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	};
+	rpc Attach(stream TaskExecStream) returns (stream TaskExecStream) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager"};
+	}
 	rpc RemoveTask(RemoveTaskRequest) returns (RemoveTaskResponse) {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	};

@@ -39,6 +39,7 @@ import (
 	"github.com/docker/swarmkit/manager/scheduler"
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/manager/taskexecutor"
 	"github.com/docker/swarmkit/manager/watchapi"
 	"github.com/docker/swarmkit/remotes"
 	"github.com/docker/swarmkit/xnet"
@@ -151,6 +152,7 @@ type Manager struct {
 	raftNode               *raft.Node
 	dekRotator             *RaftDEKManager
 	roleManager            *roleManager
+	taskexecutor           func(chs *controlapi.ServerTaskExecChannels) *taskexecutor.TaskExecServer
 
 	cancelFunc context.CancelFunc
 
@@ -238,10 +240,13 @@ func New(config *Config) (*Manager, error) {
 	}
 
 	m := &Manager{
-		config:          *config,
-		caserver:        ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig),
-		dispatcher:      dispatcher.New(raftNode, dispatcher.DefaultConfig(), drivers.New(config.PluginGetter), config.SecurityConfig),
-		logbroker:       logbroker.New(raftNode.MemoryStore()),
+		config:     *config,
+		caserver:   ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig),
+		dispatcher: dispatcher.New(raftNode, dispatcher.DefaultConfig(), drivers.New(config.PluginGetter), config.SecurityConfig),
+		logbroker:  logbroker.New(raftNode.MemoryStore()),
+		taskexecutor: func(chs *controlapi.ServerTaskExecChannels) *taskexecutor.TaskExecServer {
+			return taskexecutor.New(chs)
+		},
 		watchServer:     watchapi.NewServer(raftNode.MemoryStore()),
 		server:          grpc.NewServer(opts...),
 		localserver:     grpc.NewServer(opts...),
@@ -419,7 +424,9 @@ func (m *Manager) Run(parent context.Context) error {
 		return err
 	}
 
-	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode, m.config.SecurityConfig, m.config.PluginGetter, drivers.New(m.config.PluginGetter))
+	taskExecChs := controlapi.NewServerTaskExecChannels()
+
+	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode, m.config.SecurityConfig, m.config.PluginGetter, drivers.New(m.config.PluginGetter), taskExecChs)
 	baseResourceAPI := resourceapi.New(m.raftNode.MemoryStore())
 	healthServer := health.NewHealthServer()
 	localHealthServer := health.NewHealthServer()
@@ -435,6 +442,7 @@ func (m *Manager) Run(parent context.Context) error {
 	authenticatedRaftAPI := api.NewAuthenticatedWrapperRaftServer(m.raftNode, authorize)
 	authenticatedHealthAPI := api.NewAuthenticatedWrapperHealthServer(healthServer, authorize)
 	authenticatedRaftMembershipAPI := api.NewAuthenticatedWrapperRaftMembershipServer(m.raftNode, authorize)
+	authenticatedTaskExecutorAPI := api.NewAuthenticatedWrapperTaskExecServer(m.taskexecutor(taskExecChs), authorize)
 
 	proxyDispatcherAPI := api.NewRaftProxyDispatcherServer(authenticatedDispatcherAPI, m.raftNode, nil, ca.WithMetadataForwardTLSInfo)
 	proxyCAAPI := api.NewRaftProxyCAServer(authenticatedCAAPI, m.raftNode, nil, ca.WithMetadataForwardTLSInfo)
@@ -481,6 +489,7 @@ func (m *Manager) Run(parent context.Context) error {
 	localProxyNodeCAAPI := api.NewRaftProxyNodeCAServer(m.caserver, m.raftNode, handleRequestLocally, forwardAsOwnRequest)
 	localProxyResourceAPI := api.NewRaftProxyResourceAllocatorServer(baseResourceAPI, m.raftNode, handleRequestLocally, forwardAsOwnRequest)
 	localProxyLogBrokerAPI := api.NewRaftProxyLogBrokerServer(m.logbroker, m.raftNode, handleRequestLocally, forwardAsOwnRequest)
+	localProxyTaskExecAPI := api.NewRaftProxyTaskExecServer(m.taskexecutor(taskExecChs), m.raftNode, handleRequestLocally, forwardAsOwnRequest)
 
 	// Everything registered on m.server should be an authenticated
 	// wrapper, or a proxy wrapping an authenticated wrapper!
@@ -492,6 +501,7 @@ func (m *Manager) Run(parent context.Context) error {
 	api.RegisterControlServer(m.server, authenticatedControlAPI)
 	api.RegisterWatchServer(m.server, authenticatedWatchAPI)
 	api.RegisterLogsServer(m.server, authenticatedLogsServerAPI)
+	api.RegisterTaskExecServer(m.server, authenticatedTaskExecutorAPI)
 	api.RegisterLogBrokerServer(m.server, proxyLogBrokerAPI)
 	api.RegisterResourceAllocatorServer(m.server, proxyResourceAPI)
 	api.RegisterDispatcherServer(m.server, proxyDispatcherAPI)
@@ -500,6 +510,7 @@ func (m *Manager) Run(parent context.Context) error {
 	api.RegisterControlServer(m.localserver, localProxyControlAPI)
 	api.RegisterWatchServer(m.localserver, m.watchServer)
 	api.RegisterLogsServer(m.localserver, localProxyLogsAPI)
+	api.RegisterTaskExecServer(m.localserver, localProxyTaskExecAPI)
 	api.RegisterHealthServer(m.localserver, localHealthServer)
 	api.RegisterDispatcherServer(m.localserver, localProxyDispatcherAPI)
 	api.RegisterCAServer(m.localserver, localProxyCAAPI)

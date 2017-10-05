@@ -1,10 +1,15 @@
 package agent
 
 import (
+	"bytes"
 	"errors"
+	"io"
+	"io/ioutil"
 	"sync"
 	"time"
 
+	"github.com/docker/docker/api/types"
+	engineapi "github.com/docker/docker/client"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/connectionbroker"
 	"github.com/docker/swarmkit/log"
@@ -99,6 +104,7 @@ func (s *session) run(ctx context.Context, delay time.Duration, description *api
 	go runctx(ctx, s.closed, s.errs, s.watch)
 	go runctx(ctx, s.closed, s.errs, s.listen)
 	go runctx(ctx, s.closed, s.errs, s.logSubscriptions)
+	go runctx(ctx, s.closed, s.errs, s.taskExecutions)
 
 	close(s.registered)
 }
@@ -215,6 +221,93 @@ func (s *session) handleSessionMessage(ctx context.Context, msg *api.SessionMess
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+//TODO(fntlnz): cancel with context
+func handleExecutions(ctx context.Context, attachment api.TaskExec_AttachClient, containerID string, commands chan []byte) error {
+	// TODO(fntlnz): REMOVE THE CLIENT HERE find a way to have here the docker client instantiated in cmd/swarmd
+	// instead of creating a new one or at least use the same creation logic bcause the other spports containerd
+	dclient, err := engineapi.NewEnvClient()
+
+	if err != nil {
+		return err
+	}
+
+	execCfg := types.ExecConfig{
+		User:         "root",
+		AttachStdout: true,
+		AttachStderr: true,
+		AttachStdin:  true,
+		Cmd:          []string{"/bin/sh"},
+	}
+
+	res, err := dclient.ContainerExecCreate(ctx, containerID, execCfg)
+	if err != nil {
+		return err
+	}
+	resp, err := dclient.ContainerExecAttach(ctx, res.ID, execCfg)
+
+	if err != nil {
+		return err
+	}
+	defer resp.Close()
+
+	// Send the output back to the client
+	go func(resp types.HijackedResponse, containerID string) {
+		for {
+			curLine, _ := resp.Reader.ReadByte() // TODO(fntlnz): It is ok to send byte by byte?
+
+			// sending the result back (in future we will have a tty)
+			attachment.Send(&api.TaskExecStream{
+				Message:     []byte{curLine},
+				Containerid: containerID,
+			})
+
+		}
+	}(resp, containerID)
+
+	for {
+		select {
+		case cmd := <-commands:
+			in := ioutil.NopCloser(bytes.NewReader(cmd))
+			io.Copy(resp.Conn, in)
+		}
+	}
+
+}
+
+func (s *session) taskExecutions(ctx context.Context) error {
+	// TODO(fntlnz): rework this to support streaming over the same exec and not just sending/receiveing
+	// TODO(fntlnz): pass out errors instead of just conintuing
+
+	commandsReader := map[string]chan []byte{}
+	client := api.NewTaskExecClient(s.conn.ClientConn)
+	attachment, err := client.Attach(ctx)
+	if err != nil {
+		return err
+	}
+
+	for {
+		data, err := attachment.Recv()
+		if err != nil {
+			continue
+		}
+
+		if len(data.Containerid) == 0 {
+			continue
+		}
+
+		if _, ok := commandsReader[data.Containerid]; !ok {
+			logrus.Infof("current: %s", data.Containerid)
+			commandsReader[data.Containerid] = make(chan []byte)
+			go handleExecutions(ctx, attachment, data.Containerid, commandsReader[data.Containerid])
+			commandsReader[data.Containerid] <- data.Message
+		} else {
+			commandsReader[data.Containerid] <- data.Message
+		}
+
+	}
+
 }
 
 func (s *session) logSubscriptions(ctx context.Context) error {
