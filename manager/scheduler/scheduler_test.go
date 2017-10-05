@@ -2565,6 +2565,24 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 		},
 	}
 
+	// no logging
+	t6 := &api.Task{
+		ID:           "task6_ID",
+		DesiredState: api.TaskStateRunning,
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{},
+			},
+			LogDriver: &api.Driver{Name: "none"},
+		},
+		ServiceAnnotations: api.Annotations{
+			Name: "task6",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+	}
+
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
 	defer s.Close()
@@ -2668,6 +2686,15 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	assignment4 := watchAssignment(t, watch)
 	assert.Equal(t, assignment4.ID, "task5_ID")
 	assert.Equal(t, assignment4.NodeID, "node4_ID")
+
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, t6))
+		return nil
+	})
+	assert.NoError(t, err)
+	assignment5 := watchAssignment(t, watch)
+	assert.Equal(t, assignment5.ID, "task6_ID")
+	assert.NotEqual(t, assignment5.NodeID, "")
 }
 
 func BenchmarkScheduler1kNodes1kTasks(b *testing.B) {
