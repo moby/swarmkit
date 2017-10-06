@@ -711,6 +711,13 @@ file {
       json_name: "swiftPrefix"
     }
     field {
+      name: "php_class_prefix"
+      number: 40
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "phpClassPrefix"
+    }
+    field {
       name: "uninterpreted_option"
       number: 999
       label: LABEL_REPEATED
@@ -790,6 +797,10 @@ file {
     reserved_range {
       start: 8
       end: 9
+    }
+    reserved_range {
+      start: 9
+      end: 10
     }
   }
   message_type {
@@ -933,6 +944,10 @@ file {
     extension_range {
       start: 1000
       end: 536870912
+    }
+    reserved_range {
+      start: 5
+      end: 6
     }
   }
   message_type {
@@ -4728,6 +4743,14 @@ file {
       type_name: ".docker.swarmkit.v1.HealthConfig"
       json_name: "healthcheck"
     }
+    field {
+      name: "isolation"
+      number: 24
+      label: LABEL_OPTIONAL
+      type: TYPE_ENUM
+      type_name: ".docker.swarmkit.v1.ContainerSpec.Isolation"
+      json_name: "isolation"
+    }
     nested_type {
       name: "LabelsEntry"
       field {
@@ -4780,6 +4803,33 @@ file {
         label: LABEL_REPEATED
         type: TYPE_STRING
         json_name: "options"
+      }
+    }
+    enum_type {
+      name: "Isolation"
+      value {
+        name: "ISOLATION_DEFAULT"
+        number: 0
+        options {
+          66001: "ContainerIsolationDefault"
+        }
+      }
+      value {
+        name: "ISOLATION_PROCESS"
+        number: 1
+        options {
+          66001: "ContainerIsolationProcess"
+        }
+      }
+      value {
+        name: "ISOLATION_HYPERV"
+        number: 2
+        options {
+          66001: "ContainerIsolationHyperV"
+        }
+      }
+      options {
+        62001: 0
       }
     }
   }

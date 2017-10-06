@@ -120,6 +120,18 @@ func (c *containerConfig) portBindings() nat.PortMap {
 	return portBindings
 }
 
+func (c *containerConfig) isolation() enginecontainer.Isolation {
+	switch c.spec().Isolation {
+	case api.ContainerIsolationDefault:
+		return enginecontainer.Isolation("default")
+	case api.ContainerIsolationHyperV:
+		return enginecontainer.Isolation("hyperv")
+	case api.ContainerIsolationProcess:
+		return enginecontainer.Isolation("process")
+	}
+	return enginecontainer.Isolation("")
+}
+
 func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
 	exposedPorts := make(map[nat.Port]struct{})
 	if c.task.Endpoint == nil {
@@ -196,6 +208,7 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 		GroupAdd:     c.spec().Groups,
 		PortBindings: c.portBindings(),
 		Init:         c.init(),
+		Isolation:    c.isolation(),
 	}
 
 	// The format of extra hosts on swarmkit is specified in:
