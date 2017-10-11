@@ -3,6 +3,7 @@ package raft_test
 import (
 	"errors"
 	"fmt"
+	"google.golang.org/grpc/codes"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -15,6 +16,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/status"
 
 	"golang.org/x/net/context"
 
@@ -24,6 +26,7 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/raft"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
+	"github.com/docker/swarmkit/manager/state/raft/transport"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/testutils"
 	"github.com/pivotal-golang/clock/fakeclock"
@@ -948,4 +951,39 @@ func TestStress(t *testing.T) {
 		}
 		assert.True(t, find)
 	}
+}
+
+// Test the server side code for raft snapshot streaming.
+func TestStreamRaftMessage(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	nodes, _ := raftutils.NewRaftCluster(t, tc)
+	defer raftutils.TeardownCluster(nodes)
+
+	cc, err := dial(nodes[1], nodes[1].Address)
+	assert.NoError(t, err)
+
+	stream, err := api.NewRaftClient(cc).StreamRaftMessage(ctx)
+	assert.NoError(t, err)
+
+	err = stream.Send(&api.StreamRaftMessageRequest{Message: raftutils.GetSnapshotMessage(2, 1, transport.GrpcMaxMsgSize/2)})
+	assert.NoError(t, err)
+	_, err = stream.CloseAndRecv()
+	assert.NoError(t, err)
+
+	stream, err = api.NewRaftClient(cc).StreamRaftMessage(ctx)
+	assert.NoError(t, err)
+
+	msg := raftutils.GetSnapshotMessage(2, 1, transport.GrpcMaxMsgSize)
+
+	raftMsg := &api.StreamRaftMessageRequest{Message: msg}
+	err = stream.Send(raftMsg)
+	assert.Error(t, err, "Received unexpected error EOF")
+
+	_, err = stream.CloseAndRecv()
+	errStr := fmt.Sprintf("grpc: received message length %d exceeding the max size %d", raftMsg.Size(), transport.GrpcMaxMsgSize)
+	s, _ := status.FromError(err)
+	assert.Equal(t, s.Code(), codes.Internal)
+	assert.Equal(t, errStr, s.Message())
 }

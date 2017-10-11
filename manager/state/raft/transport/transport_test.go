@@ -7,19 +7,57 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/raft"
+
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+// Build a snapshot message where each byte in the data is of the value (index % sizeof(byte))
+func getSnapshotMessage(from uint64, to uint64) raftpb.Message {
+	data := make([]byte, GrpcMaxMsgSize)
+	for i := 0; i < GrpcMaxMsgSize; i++ {
+		data[i] = byte(i % (1 << 8))
+	}
+
+	return raftpb.Message{
+		Type: raftpb.MsgSnap,
+		From: from,
+		To:   to,
+		Snapshot: raftpb.Snapshot{
+			Data: data,
+			// Include the snapshot size in the Index field for testing.
+			Metadata: raftpb.SnapshotMetadata{
+				Index: uint64(len(data)),
+			},
+		},
+	}
+}
+
+// Verify that the snapshot data where each byte is of the value (index % sizeof(byte)).
+func verifySnapshot(raftMsg *raftpb.Message) bool {
+	for i, b := range raftMsg.Snapshot.Data {
+		if int(b) != i%(1<<8) {
+			return false
+		}
+	}
+
+	return len(raftMsg.Snapshot.Data) == int(raftMsg.Snapshot.Metadata.Index)
+}
+
 func sendMessages(ctx context.Context, c *mockCluster, from uint64, to []uint64, msgType raftpb.MessageType) error {
 	var firstErr error
 	for _, id := range to {
-		err := c.Get(from).tr.Send(raftpb.Message{
-			Type: msgType,
-			From: from,
-			To:   id,
-		})
+		var err error
+		if msgType == raftpb.MsgSnap {
+			err = c.Get(from).tr.Send(getSnapshotMessage(from, id))
+		} else {
+			err = c.Get(from).tr.Send(raftpb.Message{
+				Type: msgType,
+				From: from,
+				To:   id,
+			})
+		}
 		if firstErr == nil {
 			firstErr = err
 		}
