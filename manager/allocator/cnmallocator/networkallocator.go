@@ -439,7 +439,10 @@ func (na *cnmNetworkAllocator) AllocateTask(t *api.Task) error {
 		if localNet := na.getNetwork(nAttach.Network.ID); localNet != nil && localNet.isNodeLocal {
 			continue
 		}
-		if err := na.allocateNetworkIPs(nAttach); err != nil {
+		if err := na.allocateNetworkIPs(nAttach, map[string]string{
+			ipamapi.RequestAddressType: netlabel.Prefix + ".task",
+			"com.docker.task.slot":     fmt.Sprintf("%d", t.Slot),
+		}); err != nil {
 			if err := na.releaseEndpoints(t.Networks[:i]); err != nil {
 				log.G(context.TODO()).WithError(err).Errorf("failed to release IP addresses while rolling back allocation for task %s network %s", t.ID, nAttach.Network.ID)
 			}
@@ -504,7 +507,7 @@ func (na *cnmNetworkAllocator) IsAttachmentAllocated(node *api.Node, networkAtta
 // on a given node
 func (na *cnmNetworkAllocator) AllocateAttachment(node *api.Node, networkAttachment *api.NetworkAttachment) error {
 
-	if err := na.allocateNetworkIPs(networkAttachment); err != nil {
+	if err := na.allocateNetworkIPs(networkAttachment, map[string]string{}); err != nil {
 		return err
 	}
 
@@ -607,6 +610,8 @@ func (na *cnmNetworkAllocator) allocateVIP(vip *api.Endpoint_VirtualIP) error {
 	if localNet.nw.IPAM != nil && localNet.nw.IPAM.Driver != nil {
 		// set ipam allocation method to serial
 		opts = setIPAMSerialAlloc(localNet.nw.IPAM.Driver.Options)
+		opts[ipamapi.RequestAddressType] = netlabel.Prefix + ".vip"
+		defer delete(opts, ipamapi.RequestAddressType)
 	}
 
 	for _, poolID := range localNet.pools {
@@ -660,9 +665,8 @@ func (na *cnmNetworkAllocator) deallocateVIP(vip *api.Endpoint_VirtualIP) error 
 }
 
 // allocate the IP addresses for a single network attachment of the task.
-func (na *cnmNetworkAllocator) allocateNetworkIPs(nAttach *api.NetworkAttachment) error {
+func (na *cnmNetworkAllocator) allocateNetworkIPs(nAttach *api.NetworkAttachment, opts map[string]string) error {
 	var ip *net.IPNet
-	var opts map[string]string
 
 	ipam, _, _, err := na.resolveIPAM(nAttach.Network)
 	if err != nil {
