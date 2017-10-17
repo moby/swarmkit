@@ -44,7 +44,7 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				common.PrintHeader(w, "ID", "Name", "Membership", "Status", "Availability", "Manager Status")
+				common.PrintHeader(w, "ID", "Name", "Membership", "Worker Status", "Available to Scheduler", "Manager Status")
 				output = func(n *api.Node) {
 					spec := &n.Spec
 					name := spec.Annotations.Name
