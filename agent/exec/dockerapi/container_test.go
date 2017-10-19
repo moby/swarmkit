@@ -135,6 +135,26 @@ func TestExtraHosts(t *testing.T) {
 	}
 }
 
+func TestPidLimit(t *testing.T) {
+	c := containerConfig{
+		task: &api.Task{
+			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					PidsLimit: 10,
+				},
+			}},
+		},
+	}
+
+	hostConfig := c.hostConfig()
+	expected := int64(10)
+	actual := hostConfig.PidsLimit
+
+	if expected != actual {
+		t.Fatalf("expected %d, got %d", expected, actual)
+	}
+}
+
 func TestStopSignal(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
