@@ -165,8 +165,11 @@ type NodeOptions struct {
 	ClockSource clock.Clock
 	// SendTimeout is the timeout on the sending messages to other raft
 	// nodes. Leave this as 0 to get the default value.
-	SendTimeout    time.Duration
-	TLSCredentials credentials.TransportCredentials
+	SendTimeout time.Duration
+	// LargeSendTimeout is the timeout on the sending snapshots to other raft
+	// nodes. Leave this as 0 to get the default value.
+	LargeSendTimeout time.Duration
+	TLSCredentials   credentials.TransportCredentials
 
 	KeyRotator EncryptionKeyRotator
 }
@@ -186,6 +189,11 @@ func NewNode(opts NodeOptions) *Node {
 	}
 	if opts.SendTimeout == 0 {
 		opts.SendTimeout = 2 * time.Second
+	}
+	if opts.LargeSendTimeout == 0 {
+		// a "slow" 100Mbps connection can send over 240MB data in 20 seconds
+		// which is well over the gRPC message limit of 128MB allowed by SwarmKit
+		opts.LargeSendTimeout = 20 * time.Second
 	}
 
 	raftStore := raft.NewMemoryStorage()
@@ -1334,7 +1342,14 @@ func (n *Node) sendToMember(ctx context.Context, members map[uint64]*membership.
 	defer close(thisSend)
 
 	if lastSend != nil {
-		waitCtx, waitCancel := context.WithTimeout(ctx, n.opts.SendTimeout)
+		timeout := n.opts.SendTimeout
+		// if a snapshot is being sent, set timeout to LargeSendTimeout because
+		// sending snapshots can take more time than other messages sent between peers.
+		// The same applies to AppendEntries as well, where messages can get large.
+		if m.Type == raftpb.MsgSnap || m.Type == raftpb.MsgApp {
+			timeout = n.opts.LargeSendTimeout
+		}
+		waitCtx, waitCancel := context.WithTimeout(ctx, timeout)
 		defer waitCancel()
 
 		select {
