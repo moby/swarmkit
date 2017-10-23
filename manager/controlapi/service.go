@@ -46,10 +46,7 @@ func validateResourceRequirements(r *api.ResourceRequirements) error {
 	if err := validateResources(r.Limits); err != nil {
 		return err
 	}
-	if err := validateResources(r.Reservations); err != nil {
-		return err
-	}
-	return nil
+	return validateResources(r.Reservations)
 }
 
 func validateRestartPolicy(rp *api.RestartPolicy) error {
@@ -172,11 +169,7 @@ func validateTask(taskSpec api.TaskSpec) error {
 	if err != nil {
 		return grpc.Errorf(codes.InvalidArgument, err.Error())
 	}
-	if err := validateContainerSpec(preparedSpec); err != nil {
-		return err
-	}
-
-	return nil
+	return validateContainerSpec(preparedSpec)
 }
 
 func validateEndpointSpec(epSpec *api.EndpointSpec) error {
@@ -296,11 +289,7 @@ func validateServiceSpec(spec *api.ServiceSpec) error {
 		return err
 	}
 	// Check to see if the Secret Reference portion of the spec is valid
-	if err := validateSecretRefsSpec(spec); err != nil {
-		return err
-	}
-
-	return nil
+	return validateSecretRefsSpec(spec)
 }
 
 // checkPortConflicts does a best effort to find if the passed in spec has port
