@@ -166,6 +166,7 @@ func (c *containerConfig) config() *enginecontainer.Config {
 		Image:        c.image(),
 		ExposedPorts: c.exposedPorts(),
 		Healthcheck:  c.healthcheck(),
+		Entitlements: c.task.Spec.Entitlements,
 	}
 
 	if len(c.spec().Command) > 0 {
