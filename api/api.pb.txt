@@ -4496,8 +4496,25 @@ file {
       }
       json_name: "resourceReferences"
     }
+    field {
+      name: "entitlements"
+      number: 12
+      label: LABEL_REPEATED
+      type: TYPE_STRING
+      json_name: "entitlements"
+    }
     oneof_decl {
       name: "runtime"
+    }
+  }
+  message_type {
+    name: "Entitlement"
+    field {
+      name: "full_name"
+      number: 1
+      label: LABEL_REPEATED
+      type: TYPE_STRING
+      json_name: "fullName"
     }
   }
   message_type {

@@ -339,6 +339,7 @@ type HostConfig struct {
 	AutoRemove      bool          // Automatically remove container when it exits
 	VolumeDriver    string        // Name of the volume driver used to mount volumes
 	VolumesFrom     []string      // List of volumes to take from other container
+	Entitlements    strslice.StrSlice // List of entitlements to allow to the the container
 
 	// Applicable to UNIX platforms
 	CapAdd          strslice.StrSlice // List of kernel capabilities to add to the container
