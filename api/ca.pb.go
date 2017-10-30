@@ -147,7 +147,6 @@
 		ReplicatedService
 		GlobalService
 		TaskSpec
-		Entitlement
 		ResourceReference
 		GenericRuntimeSpec
 		NetworkAttachmentSpec

@@ -4508,16 +4508,6 @@ file {
     }
   }
   message_type {
-    name: "Entitlement"
-    field {
-      name: "full_name"
-      number: 1
-      label: LABEL_REPEATED
-      type: TYPE_STRING
-      json_name: "fullName"
-    }
-  }
-  message_type {
     name: "ResourceReference"
     field {
       name: "resource_id"

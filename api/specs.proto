@@ -144,10 +144,6 @@ message TaskSpec {
 	repeated string entitlements = 12;
 }
 
-message Entitlement {
-	repeated string full_name = 1;
-}
-
 message ResourceReference {
 	string resource_id = 1;
 	ResourceType resource_type = 2;
