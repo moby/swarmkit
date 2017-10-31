@@ -1808,12 +1808,13 @@ func (n *Node) processEntry(ctx context.Context, entry raftpb.Entry) error {
 	}
 
 	if !n.wait.trigger(r.ID, r) {
-		log.G(ctx).Errorf("wait not found for raft request id %x", r.ID)
-
 		// There was no wait on this ID, meaning we don't have a
 		// transaction in progress that would be committed to the
-		// memory store by the "trigger" call. Either a different node
-		// wrote this to raft, or we wrote it before losing the leader
+		// memory store by the "trigger" call. This could mean that:
+		// 1. Startup is in progress, and the raft WAL is being parsed,
+		// processed and applied to the store, or
+		// 2. Either a different node wrote this to raft,
+		// or we wrote it before losing the leader
 		// position and cancelling the transaction. This entry still needs
 		// to be committed since other nodes have already committed it.
 		// Create a new transaction to commit this entry.
@@ -1827,7 +1828,6 @@ func (n *Node) processEntry(ctx context.Context, entry raftpb.Entry) error {
 		err := n.memoryStore.ApplyStoreActions(r.Action)
 		if err != nil {
 			log.G(ctx).WithError(err).Error("failed to apply actions from raft")
-			// TODO(anshul) return err here ?
 		}
 	}
 	return nil

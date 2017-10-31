@@ -954,13 +954,18 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		// store. Don't check the error because
 		// we expect this to fail unless this
 		// is a brand new cluster.
-		store.CreateCluster(tx, defaultClusterObject(
+		err := store.CreateCluster(tx, defaultClusterObject(
 			clusterID,
 			initialCAConfig,
 			raftCfg,
 			api.EncryptionConfig{AutoLockManagers: m.config.AutoLockManagers},
 			unlockKeys,
 			rootCA))
+
+		if err != nil && err != store.ErrExist {
+			log.G(ctx).WithError(err).Errorf("error creating cluster object")
+		}
+
 		// Add Node entry for ourself, if one
 		// doesn't exist already.
 		freshCluster := nil == store.CreateNode(tx, managerNode(nodeID, m.config.Availability))
