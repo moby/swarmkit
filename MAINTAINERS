@@ -10,6 +10,7 @@
 			"aaronlehmann",
 			"aluzzardi",
 			"amitshukla",
+			"anshulpundir",
 			"cyli",
 			"diogomonica",
 			"dongluochen",
@@ -67,6 +68,11 @@
 	Name = "Amit Shukla"
 	Email = "amit.shukla@docker.com"
 	GitHub = "amitshukla"
+
+	[people.anshulpundir]
+	Name = "Anshul Pundir"
+	Email = "anshul.x.pundir@gmail.com"
+	GitHub = "anshulpundir"
 
 	[people.cyli]
 	Name = "Ying Li"
