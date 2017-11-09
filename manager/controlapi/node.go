@@ -276,7 +276,7 @@ func (s *Server) RemoveNode(ctx context.Context, request *api.RemoveNodeRequest)
 		}
 
 		// lookup the cluster
-		clusters, err := store.FindClusters(tx, store.ByName("default"))
+		clusters, err := store.FindClusters(tx, store.ByName(store.DefaultClusterName))
 		if err != nil {
 			return err
 		}
