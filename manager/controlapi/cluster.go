@@ -85,6 +85,20 @@ func (s *Server) GetCluster(ctx context.Context, request *api.GetClusterRequest)
 	}, nil
 }
 
+// Merge the updated ClusterSpec to the current ClusterSpec.
+// Ignores updates to the Annotations.Name field since that should not
+// change for a cluster object.
+func merge(current *api.ClusterSpec, update *api.ClusterSpec) {
+
+	if update == nil {
+		return
+	}
+
+	name := current.Annotations.Name
+	current = update.Copy()
+	current.Annotations.Name = name
+}
+
 // UpdateCluster updates a Cluster referenced by ClusterID with the given ClusterSpec.
 // - Returns `NotFound` if the Cluster is not found.
 // - Returns `InvalidArgument` if the ClusterSpec is malformed.
@@ -114,7 +128,7 @@ func (s *Server) UpdateCluster(ctx context.Context, request *api.UpdateClusterRe
 		}
 
 		cluster.Meta.Version = *request.ClusterVersion
-		cluster.Spec = *request.Spec.Copy()
+		merge(&cluster.Spec, request.Spec)
 
 		expireBlacklistedCerts(cluster)
 
