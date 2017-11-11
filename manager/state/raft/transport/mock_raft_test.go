@@ -4,16 +4,15 @@ import (
 	"net"
 	"time"
 
-	"golang.org/x/net/context"
-
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/health"
 	"github.com/docker/swarmkit/manager/state/raft/membership"
-
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type snapshotReport struct {
@@ -89,7 +88,7 @@ func (r *mockRaft) RemovePeer(id uint64) error {
 
 func (r *mockRaft) ProcessRaftMessage(ctx context.Context, req *api.ProcessRaftMessageRequest) (*api.ProcessRaftMessageResponse, error) {
 	if r.removed[req.Message.From] {
-		return nil, grpc.Errorf(codes.NotFound, "%s", membership.ErrMemberRemoved.Error())
+		return nil, status.Errorf(codes.NotFound, "%s", membership.ErrMemberRemoved.Error())
 	}
 	r.processedMessages <- req.Message
 	return &api.ProcessRaftMessageResponse{}, nil
