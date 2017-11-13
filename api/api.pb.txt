@@ -4140,6 +4140,13 @@ file {
       }
     }
     value {
+      name: "REMOVE"
+      number: 800
+      options {
+        66001: "TaskStateRemove"
+      }
+    }
+    value {
       name: "ORPHANED"
       number: 832
       options {
