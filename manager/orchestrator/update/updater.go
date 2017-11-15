@@ -427,7 +427,7 @@ func (u *Updater) updateTask(ctx context.Context, slot orchestrator.Slot, update
 				u.updatedTasks[updated.ID] = time.Now()
 				u.updatedTasksMu.Unlock()
 
-				if startThenStop {
+				if startThenStop && updated.Status.State == api.TaskStateRunning {
 					err := u.store.Batch(func(batch *store.Batch) error {
 						_, err := u.removeOldTasks(ctx, batch, slot)
 						if err != nil {
