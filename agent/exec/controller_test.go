@@ -368,6 +368,29 @@ func TestShutdown(t *testing.T) {
 	})
 }
 
+// TestDesiredStateRemove checks that the agent maintains SHUTDOWN as the
+// maximum state in the agent. This is particularly relevant for the case
+// where a service scale down or deletion sets the desired state of tasks
+// that are supposed to be removed to REMOVE.
+func TestDesiredStateRemove(t *testing.T) {
+	var (
+		task              = newTestTask(t, api.TaskStateNew, api.TaskStateRemove)
+		ctx, ctlr, finish = buildTestEnv(t, task)
+	)
+	defer func() {
+		finish()
+		assert.Equal(t, 1, ctlr.calls["Shutdown"])
+	}()
+	ctlr.ShutdownFn = func(_ context.Context) error {
+		return nil
+	}
+
+	checkDo(ctx, t, task, ctlr, &api.TaskStatus{
+		State:   api.TaskStateShutdown,
+		Message: "shutdown",
+	})
+}
+
 // StatuserController is used to create a new Controller, which is also a ContainerStatuser.
 // We cannot add ContainerStatus() to the Controller, due to the check in controller.go:242
 type StatuserController struct {
