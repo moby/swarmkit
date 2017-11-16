@@ -681,7 +681,7 @@ func (na *NetworkAllocator) loadDriver(name string) error {
 	if pg == nil {
 		return fmt.Errorf("plugin store is unintialized")
 	}
-	_, err := pg.Get(name, driverapi.NetworkPluginEndpointType, plugingetter.LOOKUP)
+	_, err := pg.Get(name, driverapi.NetworkPluginEndpointType, plugingetter.Lookup)
 	return err
 }
 
