@@ -25,10 +25,6 @@ type Plugin struct {
 	// settings
 	// Required: true
 	Settings PluginSettings `json:"Settings"`
-
-	// tag
-	// Required: true
-	Tag string `json:"Tag"`
 }
 
 // PluginConfig The config of a plugin.
@@ -71,12 +67,19 @@ type PluginConfig struct {
 	// Required: true
 	Network PluginConfigNetwork `json:"Network"`
 
+	// propagated mount
+	// Required: true
+	PropagatedMount string `json:"PropagatedMount"`
+
 	// user
 	User PluginConfigUser `json:"User,omitempty"`
 
-	// workdir
+	// work dir
 	// Required: true
-	Workdir string `json:"Workdir"`
+	WorkDir string `json:"WorkDir"`
+
+	// rootfs
+	Rootfs *PluginConfigRootfs `json:"rootfs,omitempty"`
 }
 
 // PluginConfigArgs plugin config args
@@ -137,6 +140,17 @@ type PluginConfigNetwork struct {
 	// type
 	// Required: true
 	Type string `json:"Type"`
+}
+
+// PluginConfigRootfs plugin config rootfs
+// swagger:model PluginConfigRootfs
+type PluginConfigRootfs struct {
+
+	// diff ids
+	DiffIds []string `json:"diff_ids"`
+
+	// type
+	Type string `json:"type,omitempty"`
 }
 
 // PluginConfigUser plugin config user

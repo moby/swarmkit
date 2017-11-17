@@ -9,6 +9,7 @@ import (
 	"github.com/docker/libnetwork/driverapi"
 	"github.com/docker/libnetwork/drvregistry"
 	"github.com/docker/libnetwork/ipamapi"
+	"github.com/docker/libnetwork/netlabel"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/pkg/errors"
@@ -435,6 +436,7 @@ func (na *NetworkAllocator) releaseEndpoints(networks []*api.NetworkAttachment) 
 
 // allocate virtual IP for a single endpoint attachment of the service.
 func (na *NetworkAllocator) allocateVIP(vip *api.Endpoint_VirtualIP) error {
+	var opts map[string]string
 	localNet := na.getNetwork(vip.NetworkID)
 	if localNet == nil {
 		return fmt.Errorf("networkallocator: could not find local network state")
@@ -461,8 +463,13 @@ func (na *NetworkAllocator) allocateVIP(vip *api.Endpoint_VirtualIP) error {
 		}
 	}
 
+	if localNet.nw.IPAM != nil && localNet.nw.IPAM.Driver != nil {
+		// set ipam allocation method to serial
+		opts = setIPAMSerialAlloc(localNet.nw.IPAM.Driver.Options)
+	}
+
 	for _, poolID := range localNet.pools {
-		ip, _, err := ipam.RequestAddress(poolID, addr, nil)
+		ip, _, err := ipam.RequestAddress(poolID, addr, opts)
 		if err != nil && err != ipamapi.ErrNoAvailableIPs && err != ipamapi.ErrIPOutOfRange {
 			return errors.Wrap(err, "could not allocate VIP from IPAM")
 		}
@@ -511,6 +518,7 @@ func (na *NetworkAllocator) deallocateVIP(vip *api.Endpoint_VirtualIP) error {
 
 // allocate the IP addresses for a single network attachment of the task.
 func (na *NetworkAllocator) allocateNetworkIPs(nAttach *api.NetworkAttachment) error {
+	var opts map[string]string
 	var ip *net.IPNet
 
 	ipam, _, _, err := na.resolveIPAM(nAttach.Network)
@@ -542,10 +550,16 @@ func (na *NetworkAllocator) allocateNetworkIPs(nAttach *api.NetworkAttachment) e
 			}
 		}
 
+		// Set the ipam options if the network has an ipam driver.
+		if localNet.nw.IPAM != nil && localNet.nw.IPAM.Driver != nil {
+			// set ipam allocation method to serial
+			opts = setIPAMSerialAlloc(localNet.nw.IPAM.Driver.Options)
+		}
+
 		for _, poolID := range localNet.pools {
 			var err error
 
-			ip, _, err = ipam.RequestAddress(poolID, addr, nil)
+			ip, _, err = ipam.RequestAddress(poolID, addr, opts)
 			if err != nil && err != ipamapi.ErrNoAvailableIPs && err != ipamapi.ErrIPOutOfRange {
 				return errors.Wrap(err, "could not allocate IP from IPAM")
 			}
@@ -667,7 +681,7 @@ func (na *NetworkAllocator) loadDriver(name string) error {
 	if pg == nil {
 		return fmt.Errorf("plugin store is unintialized")
 	}
-	_, err := pg.Get(name, driverapi.NetworkPluginEndpointType, plugingetter.LOOKUP)
+	_, err := pg.Get(name, driverapi.NetworkPluginEndpointType, plugingetter.Lookup)
 	return err
 }
 
@@ -764,7 +778,21 @@ func (na *NetworkAllocator) allocatePools(n *api.Network) (map[string]string, er
 		}
 		pools[poolIP.String()] = poolID
 
-		gwIP, _, err := ipam.RequestAddress(poolID, net.ParseIP(ic.Gateway), nil)
+		// This change is a backport that leverage a new allocation policy offered by the libnetwork IPAM
+		// This will let the ipam driver allocate IP sequentially differently from before that was the leftmost free bit of the pool.
+		// The objective is to reduce the occurrence of address already in use error that is due to a non synchronous handling
+		// of resources made by swarmkit, where the state of container is deleted from raft and
+		// the resources (like IP) is made available for other tasks to use immediately while the previous owner is
+		// still shutting down
+		if dOptions == nil {
+			dOptions = make(map[string]string)
+		}
+		dOptions[ipamapi.RequestAddressType] = netlabel.Gateway
+		// set ipam allocation method to serial
+		dOptions = setIPAMSerialAlloc(dOptions)
+		defer delete(dOptions, ipamapi.RequestAddressType)
+
+		gwIP, _, err := ipam.RequestAddress(poolID, net.ParseIP(ic.Gateway), dOptions)
 		if err != nil {
 			// Rollback by releasing all the resources allocated so far.
 			releasePools(ipam, ipamConfigs[:i], pools)
@@ -791,4 +819,15 @@ func initializeDrivers(reg *drvregistry.DrvRegistry) error {
 		}
 	}
 	return nil
+}
+
+// setIPAMSerialAlloc sets the ipam allocation method to serial
+func setIPAMSerialAlloc(opts map[string]string) map[string]string {
+	if opts == nil {
+		opts = make(map[string]string)
+	}
+	if _, ok := opts[ipamapi.AllocSerialPrefix]; !ok {
+		opts[ipamapi.AllocSerialPrefix] = "true"
+	}
+	return opts
 }
