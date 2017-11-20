@@ -131,6 +131,8 @@
 		LeaveResponse
 		ProcessRaftMessageRequest
 		ProcessRaftMessageResponse
+		StreamRaftMessageRequest
+		StreamRaftMessageResponse
 		ResolveAddressRequest
 		ResolveAddressResponse
 		InternalRaftRequest

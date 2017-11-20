@@ -514,38 +514,6 @@ file {
       type_name: ".google.protobuf.EnumOptions"
       json_name: "options"
     }
-    field {
-      name: "reserved_range"
-      number: 4
-      label: LABEL_REPEATED
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.EnumDescriptorProto.EnumReservedRange"
-      json_name: "reservedRange"
-    }
-    field {
-      name: "reserved_name"
-      number: 5
-      label: LABEL_REPEATED
-      type: TYPE_STRING
-      json_name: "reservedName"
-    }
-    nested_type {
-      name: "EnumReservedRange"
-      field {
-        name: "start"
-        number: 1
-        label: LABEL_OPTIONAL
-        type: TYPE_INT32
-        json_name: "start"
-      }
-      field {
-        name: "end"
-        number: 2
-        label: LABEL_OPTIONAL
-        type: TYPE_INT32
-        json_name: "end"
-      }
-    }
   }
   message_type {
     name: "EnumValueDescriptorProto"
@@ -730,7 +698,7 @@ file {
     }
     field {
       name: "php_generic_services"
-      number: 42
+      number: 19
       label: LABEL_OPTIONAL
       type: TYPE_BOOL
       default_value: "false"
@@ -1288,7 +1256,6 @@ file {
     java_outer_classname: "DescriptorProtos"
     optimize_for: SPEED
     go_package: "github.com/golang/protobuf/protoc-gen-go/descriptor;descriptor"
-    cc_enable_arenas: true
     objc_class_prefix: "GPB"
     csharp_namespace: "Google.Protobuf.Reflection"
   }
@@ -9114,6 +9081,23 @@ file {
     name: "ProcessRaftMessageResponse"
   }
   message_type {
+    name: "StreamRaftMessageRequest"
+    field {
+      name: "message"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".raftpb.Message"
+      json_name: "message"
+    }
+    options {
+      70000: 0
+    }
+  }
+  message_type {
+    name: "StreamRaftMessageResponse"
+  }
+  message_type {
     name: "ResolveAddressRequest"
     field {
       name: "raft_id"
@@ -9295,6 +9279,17 @@ file {
           1: "swarm-manager"
         }
       }
+    }
+    method {
+      name: "StreamRaftMessage"
+      input_type: ".docker.swarmkit.v1.StreamRaftMessageRequest"
+      output_type: ".docker.swarmkit.v1.StreamRaftMessageResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+      client_streaming: true
     }
     method {
       name: "ResolveAddress"
