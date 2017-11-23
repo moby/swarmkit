@@ -34,6 +34,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -929,11 +930,11 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 	defer n.membershipLock.Unlock()
 
 	if !n.IsMember() {
-		return nil, grpc.Errorf(codes.FailedPrecondition, "%s", ErrNoRaftMember.Error())
+		return nil, status.Errorf(codes.FailedPrecondition, "%s", ErrNoRaftMember.Error())
 	}
 
 	if !n.isLeader() {
-		return nil, grpc.Errorf(codes.FailedPrecondition, "%s", ErrLostLeadership.Error())
+		return nil, status.Errorf(codes.FailedPrecondition, "%s", ErrLostLeadership.Error())
 	}
 
 	remoteAddr := req.Addr
@@ -944,7 +945,7 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 
 	requestHost, requestPort, err := net.SplitHostPort(remoteAddr)
 	if err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "invalid address %s in raft join request", remoteAddr)
+		return nil, status.Errorf(codes.InvalidArgument, "invalid address %s in raft join request", remoteAddr)
 	}
 
 	requestIP := net.ParseIP(requestHost)
@@ -1118,7 +1119,7 @@ func (n *Node) UpdateNode(id uint64, addr string) {
 // membership to an active member of the raft
 func (n *Node) Leave(ctx context.Context, req *api.LeaveRequest) (*api.LeaveResponse, error) {
 	if req.Node == nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "no node information provided")
+		return nil, status.Errorf(codes.InvalidArgument, "no node information provided")
 	}
 
 	nodeInfo, err := ca.RemoteNode(ctx)
@@ -1315,7 +1316,7 @@ func (n *Node) ProcessRaftMessage(ctx context.Context, msg *api.ProcessRaftMessa
 	// a node in the remove set
 	if n.cluster.IsIDRemoved(msg.Message.From) {
 		n.processRaftMessageLogger(ctx, msg).Debug("received message from removed member")
-		return nil, grpc.Errorf(codes.NotFound, "%s", membership.ErrMemberRemoved.Error())
+		return nil, status.Errorf(codes.NotFound, "%s", membership.ErrMemberRemoved.Error())
 	}
 
 	ctx, cancel := n.WithContext(ctx)
@@ -1393,7 +1394,7 @@ func (n *Node) ResolveAddress(ctx context.Context, msg *api.ResolveAddressReques
 
 	member := n.cluster.GetMember(msg.RaftID)
 	if member == nil {
-		return nil, grpc.Errorf(codes.NotFound, "member %x not found", msg.RaftID)
+		return nil, status.Errorf(codes.NotFound, "member %x not found", msg.RaftID)
 	}
 	return &api.ResolveAddressResponse{Addr: member.Addr}, nil
 }

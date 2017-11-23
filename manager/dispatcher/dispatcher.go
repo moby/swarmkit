@@ -7,10 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/transport"
-
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/equality"
@@ -25,6 +21,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/transport"
 )
 
 const (
@@ -322,7 +321,7 @@ func (d *Dispatcher) isRunningLocked() (context.Context, error) {
 	d.mu.Lock()
 	if !d.isRunning() {
 		d.mu.Unlock()
-		return nil, grpc.Errorf(codes.Aborted, "dispatcher is stopped")
+		return nil, status.Errorf(codes.Aborted, "dispatcher is stopped")
 	}
 	ctx := d.ctx
 	d.mu.Unlock()
@@ -556,7 +555,7 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 		}
 
 		if t.NodeID != nodeID {
-			err := grpc.Errorf(codes.PermissionDenied, "cannot update a task not assigned this node")
+			err := status.Errorf(codes.PermissionDenied, "cannot update a task not assigned this node")
 			log.WithField("task.id", u.TaskID).Error(err)
 			return nil, err
 		}
@@ -1189,7 +1188,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			log.WithError(err).Error("failed to remove node")
 		}
 		// still return an abort if the transport closure was ineffective.
-		return grpc.Errorf(codes.Aborted, "node must disconnect")
+		return status.Errorf(codes.Aborted, "node must disconnect")
 	}
 
 	for {
