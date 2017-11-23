@@ -30,8 +30,10 @@ type TaskReaper struct {
 	// List of slot tubles to be inspected for task history cleanup.
 	dirty map[orchestrator.SlotTuple]struct{}
 
-	// List of serviceless orphaned tasks collected for cleanup.
-	orphaned []string
+	// List of tasks collected for cleanup, which includes two kinds of tasks
+	// - serviceless orphaned tasks
+	// - tasks with desired state REMOVE that have already been shut down
+	cleanup  []string
 	stopChan chan struct{}
 	doneChan chan struct{}
 }
@@ -50,7 +52,9 @@ func New(store *store.MemoryStore) *TaskReaper {
 // Task history is mainly used in task restarts but is also available for administrative purposes.
 // Note that the task history is stored per-slot-per-service for replicated services
 // and per-node-per-service for global services. History does not apply to serviceless
-// since they are not attached to a service.
+// since they are not attached to a service. In addition, the TaskReaper watch loop is also
+// responsible for cleaning up tasks associated with slots that were removed as part of
+// service scale down or service removal.
 func (tr *TaskReaper) Run(ctx context.Context) {
 	watcher, watchCancel := state.Watch(tr.store.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventUpdateCluster{})
 
@@ -59,7 +63,8 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 		watchCancel()
 	}()
 
-	var tasks []*api.Task
+	var orphanedTasks []*api.Task
+	var removeTasks []*api.Task
 	tr.store.View(func(readTx store.ReadTx) {
 		var err error
 
@@ -69,14 +74,18 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 		}
 
 		// On startup, scan the entire store and inspect orphaned tasks from previous life.
-		tasks, err = store.FindTasks(readTx, store.ByTaskState(api.TaskStateOrphaned))
+		orphanedTasks, err = store.FindTasks(readTx, store.ByTaskState(api.TaskStateOrphaned))
 		if err != nil {
 			log.G(ctx).WithError(err).Error("failed to find Orphaned tasks in task reaper init")
 		}
+		removeTasks, err = store.FindTasks(readTx, store.ByDesiredState(api.TaskStateRemove))
+		if err != nil {
+			log.G(ctx).WithError(err).Error("failed to find tasks with desired state REMOVE in task reaper init")
+		}
 	})
 
-	if len(tasks) > 0 {
-		for _, t := range tasks {
+	if len(orphanedTasks)+len(removeTasks) > 0 {
+		for _, t := range orphanedTasks {
 			// Do not reap service tasks immediately.
 			// Let them go through the regular history cleanup process
 			// of checking TaskHistoryRetentionLimit.
@@ -85,11 +94,17 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 			}
 
 			// Serviceless tasks can be cleaned up right away since they are not attached to a service.
-			tr.orphaned = append(tr.orphaned, t.ID)
+			tr.cleanup = append(tr.cleanup, t.ID)
 		}
-
-		// Clean up orphaned serviceless tasks right away.
-		if len(tr.orphaned) > 0 {
+		// tasks with desired state REMOVE that have progressed beyond SHUTDOWN can be cleaned up
+		// right away
+		for _, t := range removeTasks {
+			if t.Status.State >= api.TaskStateShutdown {
+				tr.cleanup = append(tr.cleanup, t.ID)
+			}
+		}
+		// Clean up tasks in 'cleanup' right away
+		if len(tr.cleanup) > 0 {
 			tr.tick()
 		}
 	}
@@ -100,7 +115,11 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 
 	// Watch for:
 	// 1. EventCreateTask for cleaning slots, which is the best time to cleanup that node/slot.
-	// 2. EventUpdateTask for cleaning serviceless orphaned tasks (when orchestrator updates the task status to ORPHANED).
+	// 2. EventUpdateTask for cleaning
+	//    - serviceless orphaned tasks (when orchestrator updates the task status to ORPHANED)
+	//    - tasks which have desired state REMOVE and have been shut down by the agent
+	//      (these are tasks which are associated with slots removed as part of service
+	//       remove or scale down)
 	// 3. EventUpdateCluster for TaskHistoryRetentionLimit update.
 	for {
 		select {
@@ -115,14 +134,21 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 				}] = struct{}{}
 			case api.EventUpdateTask:
 				t := v.Task
+				// add serviceless orphaned tasks
 				if t.Status.State >= api.TaskStateOrphaned && t.ServiceID == "" {
-					tr.orphaned = append(tr.orphaned, t.ID)
+					tr.cleanup = append(tr.cleanup, t.ID)
+				}
+				// add tasks that have progressed beyond SHUTDOWN and have desired state REMOVE. These
+				// tasks are associated with slots that were removed as part of a service scale down
+				// or service removal.
+				if t.DesiredState == api.TaskStateRemove && t.Status.State >= api.TaskStateShutdown {
+					tr.cleanup = append(tr.cleanup, t.ID)
 				}
 			case api.EventUpdateCluster:
 				tr.taskHistory = v.Cluster.Spec.Orchestration.TaskHistoryRetentionLimit
 			}
 
-			if len(tr.dirty)+len(tr.orphaned) > maxDirty {
+			if len(tr.dirty)+len(tr.cleanup) > maxDirty {
 				timer.Stop()
 				tr.tick()
 			} else {
@@ -140,16 +166,16 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 
 // tick performs task history cleanup.
 func (tr *TaskReaper) tick() {
-	if len(tr.dirty) == 0 && len(tr.orphaned) == 0 {
+	if len(tr.dirty) == 0 && len(tr.cleanup) == 0 {
 		return
 	}
 
 	defer func() {
-		tr.orphaned = nil
+		tr.cleanup = nil
 	}()
 
 	deleteTasks := make(map[string]struct{})
-	for _, tID := range tr.orphaned {
+	for _, tID := range tr.cleanup {
 		deleteTasks[tID] = struct{}{}
 	}
 
