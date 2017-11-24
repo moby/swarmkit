@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/wal"
+
 	"golang.org/x/net/context"
 
 	"google.golang.org/grpc"
@@ -23,6 +25,7 @@ import (
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/dispatcher"
 	"github.com/docker/swarmkit/manager/encryption"
+	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/raft/storage"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/testutils"
@@ -30,18 +33,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestManager(t *testing.T) {
+func newManagerConfig(t *testing.T, tc *cautils.TestCA) (*Config, func()) {
 	temp, err := ioutil.TempFile("", "test-socket")
-	assert.NoError(t, err)
-	assert.NoError(t, temp.Close())
-	assert.NoError(t, os.Remove(temp.Name()))
-
-	defer os.RemoveAll(temp.Name())
+	require.NoError(t, err)
+	require.NoError(t, temp.Close())
+	require.NoError(t, os.Remove(temp.Name()))
 
 	stateDir, err := ioutil.TempDir("", "test-raft")
-	assert.NoError(t, err)
-	defer os.RemoveAll(stateDir)
+	require.NoError(t, err)
 
+	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
+	require.NoError(t, err)
+	_, _, err = managerSecurityConfig.KeyReader().Read()
+	require.NoError(t, err)
+
+	return &Config{
+			RemoteAPI:      &RemoteAddrs{ListenAddr: "127.0.0.1:0"},
+			ControlAPI:     temp.Name(),
+			StateDir:       stateDir,
+			SecurityConfig: managerSecurityConfig,
+			RootCAPaths:    tc.Paths.RootCA,
+		}, func() {
+			os.RemoveAll(temp.Name())
+			os.RemoveAll(stateDir)
+		}
+}
+
+func TestManager(t *testing.T) {
 	tc := cautils.NewTestCA(t, func(p ca.CertPaths) *ca.KeyReadWriter {
 		return ca.NewKeyReadWriter(p, []byte("kek"), nil)
 	})
@@ -51,18 +69,13 @@ func TestManager(t *testing.T) {
 	assert.NoError(t, err)
 	agentDiffOrgSecurityConfig, err := tc.NewNodeConfigOrg(ca.WorkerRole, "another-org")
 	assert.NoError(t, err)
-	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
-	assert.NoError(t, err)
 
-	m, err := New(&Config{
-		RemoteAPI:        &RemoteAddrs{ListenAddr: "127.0.0.1:0"},
-		ControlAPI:       temp.Name(),
-		StateDir:         stateDir,
-		SecurityConfig:   managerSecurityConfig,
-		AutoLockManagers: true,
-		UnlockKey:        []byte("kek"),
-		RootCAPaths:      tc.Paths.RootCA,
-	})
+	config, cleanup := newManagerConfig(t, tc)
+	defer cleanup()
+	config.AutoLockManagers = true
+	config.UnlockKey = []byte("kek")
+
+	m, err := New(config)
 	assert.NoError(t, err)
 	assert.NotNil(t, m)
 
@@ -135,7 +148,7 @@ func TestManager(t *testing.T) {
 
 	opts = []grpc.DialOption{
 		grpc.WithTimeout(10 * time.Second),
-		grpc.WithTransportCredentials(managerSecurityConfig.ClientTLSCreds),
+		grpc.WithTransportCredentials(config.SecurityConfig.ClientTLSCreds),
 	}
 
 	controlConn, err := grpc.Dial(tcpAddr, opts...)
@@ -219,34 +232,14 @@ func TestManager(t *testing.T) {
 
 // Tests locking and unlocking the manager and key rotations
 func TestManagerLockUnlock(t *testing.T) {
-	temp, err := ioutil.TempFile("", "test-manager-lock")
-	require.NoError(t, err)
-	require.NoError(t, temp.Close())
-	require.NoError(t, os.Remove(temp.Name()))
-
-	defer os.RemoveAll(temp.Name())
-
-	stateDir, err := ioutil.TempDir("", "test-raft")
-	require.NoError(t, err)
-	defer os.RemoveAll(stateDir)
-
 	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
-	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
-	require.NoError(t, err)
+	config, cleanup := newManagerConfig(t, tc)
+	defer cleanup()
+	// start off without any encryption
 
-	_, _, err = managerSecurityConfig.KeyReader().Read()
-	require.NoError(t, err)
-
-	m, err := New(&Config{
-		RemoteAPI:      &RemoteAddrs{ListenAddr: "127.0.0.1:0"},
-		ControlAPI:     temp.Name(),
-		StateDir:       stateDir,
-		SecurityConfig: managerSecurityConfig,
-		RootCAPaths:    tc.Paths.RootCA,
-		// start off without any encryption
-	})
+	m, err := New(config)
 	require.NoError(t, err)
 	require.NotNil(t, m)
 
@@ -258,7 +251,7 @@ func TestManagerLockUnlock(t *testing.T) {
 
 	opts := []grpc.DialOption{
 		grpc.WithTimeout(10 * time.Second),
-		grpc.WithTransportCredentials(managerSecurityConfig.ClientTLSCreds),
+		grpc.WithTransportCredentials(config.SecurityConfig.ClientTLSCreds),
 	}
 
 	conn, err := grpc.Dial(m.Addr(), opts...)
@@ -367,7 +360,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	encrypter, decrypter := encryption.Defaults(currentDEK)
 	// we can't use the raftLogger, because the WALs are still locked while the raft node is up.  And once we remove
 	// the manager, they'll be deleted.
-	snapshot, err := storage.NewSnapFactory(encrypter, decrypter).New(filepath.Join(stateDir, "raft", "snap-v3-encrypted")).Load()
+	snapshot, err := storage.NewSnapFactory(encrypter, decrypter).New(filepath.Join(config.StateDir, "raft", "snap-v3-encrypted")).Load()
 	require.NoError(t, err)
 	require.NotNil(t, snapshot)
 
@@ -578,4 +571,98 @@ G80TfNRRr/qdB9hLwfyOyk2tBipkAgs6cl+CZAaqx3k=
 
 	m.Stop(tc.Context, false)
 	<-done
+}
+
+// If the raft node stops with an error, then the manager also stops with an error.
+func TestManagerErrorsWhenRaftNodeErrors(t *testing.T) {
+	// Set a smaller segment size so we can trigger a raft write failure.
+	oldSegmentSize := wal.SegmentSizeBytes
+	wal.SegmentSizeBytes = 64 * 1024
+	defer func() {
+		wal.SegmentSizeBytes = oldSegmentSize
+	}()
+
+	tc := cautils.NewTestCA(t)
+	defer tc.Stop()
+
+	config, cleanup := newManagerConfig(t, tc)
+	defer cleanup()
+
+	m, err := New(config)
+	require.NoError(t, err)
+	require.NotNil(t, m)
+
+	tcpAddr := m.Addr()
+
+	done := make(chan error)
+	defer close(done)
+	go func() {
+		done <- m.Run(tc.Context)
+	}()
+
+	opts := []grpc.DialOption{
+		grpc.WithTimeout(10 * time.Second),
+		grpc.WithTransportCredentials(config.SecurityConfig.ClientTLSCreds),
+	}
+
+	conn, err := grpc.Dial(tcpAddr, opts...)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, conn.Close())
+	}()
+	client := api.NewControlClient(conn)
+
+	var cluster *api.Cluster
+
+	// verify the node is up by updating the config
+	require.NoError(t, testutils.PollFunc(nil, func() error {
+		resp, err := client.ListClusters(tc.Context, &api.ListClustersRequest{})
+		require.NoError(t, err)
+		if len(resp.Clusters) == 0 {
+			return errors.New("no cluster yet")
+		}
+		cluster = resp.Clusters[0]
+
+		spec := cluster.Spec.Copy()
+		spec.Orchestration.TaskHistoryRetentionLimit = 5
+		_, err = client.UpdateCluster(tc.Context, &api.UpdateClusterRequest{
+			ClusterID:      cluster.ID,
+			ClusterVersion: &cluster.Meta.Version,
+			Spec:           spec,
+		})
+		return err
+	}))
+	// delete the raft directory
+	require.NoError(t, os.RemoveAll(filepath.Join(config.StateDir, "raft")))
+
+	// keep updating the config until we hit the WAL rotation limit - it should take way
+	// less than 100 tries
+	for i := int64(0); i < 100; i++ {
+		resp, err := client.GetCluster(tc.Context, &api.GetClusterRequest{ClusterID: cluster.ID})
+		require.NoError(t, err)
+
+		spec := resp.Cluster.Spec.Copy()
+		spec.Orchestration.TaskHistoryRetentionLimit = i
+		_, err = client.UpdateCluster(tc.Context, &api.UpdateClusterRequest{
+			ClusterID:      cluster.ID,
+			ClusterVersion: &resp.Cluster.Meta.Version,
+			Spec:           spec,
+		})
+
+		if grpc.ErrorDesc(err) == "update out of sequence" {
+			continue
+		}
+
+		if err != nil {
+			break // we want an error because we want the manager to shut down
+		}
+	}
+
+	select {
+	case err := <-done:
+		require.Error(t, err)
+		require.IsType(t, &raft.StorageError{}, err, err.Error())
+	case <-time.After(1 * time.Second):
+		require.FailNow(t, "manager has not stopped")
+	}
 }

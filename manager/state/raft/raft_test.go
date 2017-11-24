@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"testing"
@@ -947,5 +948,167 @@ func TestStress(t *testing.T) {
 			}
 		}
 		assert.True(t, find)
+	}
+}
+
+// If node cannot persist WALs to disk, the node will stop with an error.  This is the same behavior as in
+// etcdserver's code - if it can't persist to disk, it shouldn't be allowed to continue as if it had committed
+// the log.
+func TestWALWriteFailureStopsRaftNode(t *testing.T) {
+	node, clockSource := raftutils.NewInitNode(t, tc, nil)
+	defer raftutils.ShutdownNode(node)
+
+	// start node and make sure we can propose values
+	value, err := raftutils.ProposeValue(t, node, DefaultProposalTime, "1")
+	require.NoError(t, err, "failed to propose value")
+	raftutils.CheckValue(t, clockSource, node, value)
+
+	// Delete the state directory, and propose values until a WAL rotation which
+	// should cause a write error.  Because deleting a directory just deletes the
+	// mapping between the inode and the path, and because the WAL module already
+	// has an open file descriptor that it is writing to until it needs to rotate,
+	// a write error will not occur until the WAL rotation, unless perhaps the
+	// underlying device is removed.
+	require.NoError(t, os.RemoveAll(filepath.Join(node.StateDir, "wal-v3-encrypted")))
+
+	for i := 2; i < 1000; i++ { // it should take less than 1k proposed values
+		raftutils.AdvanceTicks(clockSource, 5)
+		_, err = raftutils.ProposeValue(t, node, DefaultProposalTime, fmt.Sprintf("%d", i))
+		if err != nil {
+			break
+		}
+	}
+	require.Error(t, err)
+
+	// raft node should have stopped with an error
+	errCh := make(chan error)
+	go func() {
+		errCh <- node.RunError()
+	}()
+	select {
+	case err := <-errCh:
+		require.IsType(t, &raft.StorageError{}, err)
+	case <-time.After(1 * time.Second):
+		require.FailNow(t, "The node has not shut down yet")
+	}
+}
+
+// If node cannot persist catch-up snapshots to disk, the node will stop with an error.  This is the same
+// behavior as in etcdserver's code - if it can't persist to disk, it shouldn't be allowed to continue as if
+// it had committed the log.  However, if it cannot take a periodic snapshot, that should be fine and the
+// node should be able to continue.
+func TestSnapshotPropagationRaftFailureStopsRaftNode(t *testing.T) {
+	// Bring up a 3 node cluster
+	nodes, clockSource := raftutils.NewRaftCluster(t, tc, &api.RaftConfig{SnapshotInterval: 7, LogEntriesForSlowFollowers: 0})
+	defer raftutils.TeardownCluster(nodes)
+
+	// This should start out with 5 log entries - 2 more and a snapshot will be taken.
+	var values []*api.Node
+	ids := []string{"1", "2", "3"}
+	val, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, ids[0])
+	raftutils.AdvanceTicks(clockSource, 1)
+	require.NoError(t, err)
+	values = append(values, val)
+	raftutils.CheckValuesOnNodes(t, clockSource, nodes, ids[:1], values)
+	// none of the nodes should have a snapshot yet
+	for _, node := range nodes {
+		dirents, err := ioutil.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
+		assert.NoError(t, err)
+		assert.Len(t, dirents, 0)
+	}
+
+	// We'll simulate a network partition for node 3, so it won't get the other values, and will
+	// have to be caught up.  We don't want to shut down the node, because we want to ensure that
+	// it's running ok before it gets the snapshot.
+	nodes[3].Server.Stop()
+	nodes[3].Listener.Close()
+	raftutils.AdvanceTicks(clockSource, 1)
+
+	// delete the encrypted snapshot directory on the node 2 so it can't make a periodic snapshot.
+	require.NoError(t, os.RemoveAll(filepath.Join(nodes[2].StateDir, "snap-v3-encrypted")))
+
+	proposeNewVal := func(ids []string) {
+		val, err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, ids[len(ids)-1])
+		require.NoError(t, err)
+
+		// nodes 1 and 2 should have all the values, node 3 should just have the first
+		values = append(values, val)
+		raftutils.CheckValuesOnNodes(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]},
+			ids, values)
+
+		node3IDs, node3Values := raftutils.GetAllValuesOnNode(t, clockSource, nodes[3])
+		require.Len(t, node3IDs, 1)
+		require.Equal(t, node3Values, values[:1])
+	}
+	proposeNewVal(ids[:2])
+
+	// node 1 should have a snapshot, node 3 should not because node 3 never received the second value
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
+		dirents, err := ioutil.ReadDir(filepath.Join(nodes[1].StateDir, "snap-v3-encrypted"))
+		if err != nil {
+			return err
+		}
+		if len(dirents) != 1 {
+			return fmt.Errorf("expected 1 snapshot, found %d on node 1", len(dirents))
+		}
+		return nil
+	}))
+
+	dirents, err := ioutil.ReadDir(filepath.Join(nodes[3].StateDir, "snap-v3-encrypted"))
+	require.NoError(t, err)
+	require.Len(t, dirents, 0)
+
+	// restore node 2's snapshot dir and propose a new value; now nodes 1 and 2 should both have snapshots
+	// (if we don't do this, and node 2 becomes leader, it can't try to catch up node 3 later with a snapshot,
+	// just WALs)
+	require.NoError(t, os.Mkdir(filepath.Join(nodes[2].StateDir, "snap-v3-encrypted"), 0755))
+	proposeNewVal(ids[:3])
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
+		dirents, err := ioutil.ReadDir(filepath.Join(nodes[2].StateDir, "snap-v3-encrypted"))
+		if err != nil {
+			return err
+		}
+		if len(dirents) != 1 {
+			return fmt.Errorf("expected 1 snapshot, found %d on node 2", len(dirents))
+		}
+		return nil
+	}))
+
+	// delete the encrypted snapshot directory on node 3 so it can't persist any snapshots when the
+	// leader tries to catch it up
+	require.NoError(t, os.RemoveAll(filepath.Join(nodes[3].StateDir, "snap-v3-encrypted")))
+
+	// bring nodes3 back online
+	wrappedListener := raftutils.RecycleWrappedListener(nodes[3].Listener)
+	serverOpts := []grpc.ServerOption{grpc.Creds(nodes[3].SecurityConfig.ServerTLSCreds)}
+	nodes[3].Server = grpc.NewServer(serverOpts...)
+	raft.Register(nodes[3].Server, nodes[3].Node)
+
+	go nodes[3].Server.Serve(wrappedListener)
+	raftutils.AdvanceTicks(clockSource, 1)
+
+	// node 3 should stop with an error because it tried to persist the snapshot and
+	// failed, so it can't be caught up
+	errCh := make(chan error)
+	go func() {
+		errCh <- nodes[3].RunError()
+	}()
+
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
+		select {
+		case err := <-errCh:
+			require.IsType(t, &raft.StorageError{}, err)
+		default:
+			raftutils.AdvanceTicks(clockSource, 1)
+			return errors.New("The node has not shut down yet")
+		}
+		return nil
+	}))
+
+	// nodes 2 should still be running
+	select {
+	case <-nodes[2].Done():
+		require.FailNow(t, "nodes[2] should not have stopped")
+	default:
 	}
 }

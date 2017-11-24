@@ -94,6 +94,22 @@ type EncryptionKeyRotator interface {
 	RotationNotify() chan struct{}
 }
 
+// StorageError is the only type of non-nil error that gets returned from Run, because failure to
+// save a write ahead log or a snapshot that is being propagated via raft should cause the node to fail.
+type StorageError struct {
+	cause error
+}
+
+// Cause returns the cause of the storage error
+func (s *StorageError) Cause() error {
+	return s.cause
+}
+
+// Error prints out the original error, along with the message
+func (s *StorageError) Error() string {
+	return s.cause.Error()
+}
+
 // Node represents the Raft Node useful
 // configuration.
 type Node struct {
@@ -571,7 +587,7 @@ func (n *Node) Run(ctx context.Context) error {
 
 			// Save entries to storage
 			if err := n.saveToStorage(ctx, &raftConfig, rd.HardState, rd.Entries, rd.Snapshot); err != nil {
-				return errors.Wrap(err, "failed to save entries to storage")
+				return &StorageError{cause: err}
 			}
 
 			// If the memory store lock has been held for too long,

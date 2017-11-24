@@ -26,6 +26,7 @@ import (
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager"
 	"github.com/docker/swarmkit/manager/encryption"
+	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/remotes"
 	"github.com/docker/swarmkit/xnet"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -909,8 +910,14 @@ func (n *Node) superviseManager(ctx context.Context, securityConfig *ca.Security
 			}
 		}()
 
+		var restartableRaftError bool
 		wasRemoved, err := n.runManager(ctx, securityConfig, rootPaths, ready, workerRole)
-		if err != nil {
+
+		switch err.(type) {
+		case *raft.StorageError:
+			restartableRaftError = true
+		case nil:
+		default:
 			waitRoleCancel()
 			return errors.Wrap(err, "manager stopped")
 		}
@@ -919,6 +926,8 @@ func (n *Node) superviseManager(ctx context.Context, securityConfig *ca.Security
 		// "manager", it's possible that the manager was demoted and
 		// the agent hasn't realized this yet. We should wait for the
 		// role to change instead of restarting the manager immediately.
+		// Alternately, if there was a raft storage error, it could be transient,
+		// so we can try restarting the manager after some time also.
 		err = func() error {
 			timer := time.NewTimer(roleChangeTimeout)
 			defer timer.Stop()
@@ -933,7 +942,11 @@ func (n *Node) superviseManager(ctx context.Context, securityConfig *ca.Security
 			}
 
 			if !wasRemoved {
-				log.G(ctx).Warn("failed to get worker role after manager stop, restarting manager")
+				msg := "failed to get worker role after manager stop, restarting manager"
+				if restartableRaftError {
+					msg = "restarting manager after a possibly transient raft write error"
+				}
+				log.G(ctx).Warn(msg)
 				return nil
 			}
 			// We need to be extra careful about restarting the

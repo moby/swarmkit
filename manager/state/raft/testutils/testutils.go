@@ -38,6 +38,8 @@ type TestNode struct {
 	StateDir       string
 	cancel         context.CancelFunc
 	KeyRotator     *SimpleKeyRotator
+	runError       error
+	errorMu        sync.Mutex
 }
 
 // Leader is wrapper around real Leader method to suppress error.
@@ -45,6 +47,13 @@ type TestNode struct {
 func (n *TestNode) Leader() uint64 {
 	id, _ := n.Node.Leader()
 	return id
+}
+
+// RunError blocks until an error is returned from running the node
+func (n *TestNode) RunError() error {
+	n.errorMu.Lock()
+	defer n.errorMu.Unlock()
+	return n.runError
 }
 
 // AdvanceTicks advances the raft state machine fake clock
@@ -325,7 +334,11 @@ func NewInitNode(t *testing.T, tc *cautils.TestCA, raftConfig *api.RaftConfig, o
 	leadershipCh, cancel := n.SubscribeLeadership()
 	defer cancel()
 
-	go n.Run(ctx)
+	go func() {
+		n.errorMu.Lock()
+		n.runError = n.Run(ctx)
+		n.errorMu.Unlock()
+	}()
 
 	// Wait for the node to become the leader.
 	<-leadershipCh
@@ -361,7 +374,11 @@ func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, tc
 	err := n.Node.JoinAndStart(ctx)
 	require.NoError(t, err, "can't join cluster")
 
-	go n.Run(ctx)
+	go func() {
+		n.errorMu.Lock()
+		n.runError = n.Run(ctx)
+		n.errorMu.Unlock()
+	}()
 
 	return n
 }
