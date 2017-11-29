@@ -147,7 +147,7 @@ func (g *Orchestrator) Run(ctx context.Context) error {
 				if !orchestrator.IsGlobalService(v.Service) {
 					continue
 				}
-				orchestrator.DeleteServiceTasks(ctx, g.store, v.Service)
+				orchestrator.SetServiceTasksRemove(ctx, g.store, v.Service)
 				// delete the service from service map
 				delete(g.globalServices, v.Service.ID)
 				g.restarts.ClearServiceHistory(v.Service.ID)
