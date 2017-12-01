@@ -1,7 +1,6 @@
 package transport
 
 import (
-	"github.com/docker/swarmkit/log"
 	"io"
 	"net"
 	"time"
@@ -9,6 +8,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/health"
 	"github.com/docker/swarmkit/manager/state/raft/membership"
 	"golang.org/x/net/context"
@@ -41,6 +41,8 @@ type mockRaft struct {
 
 	reportedUnreachables chan uint64
 	updatedNodes         chan updateInfo
+
+	forceErrorStream bool
 }
 
 func newMockRaft() (*mockRaft, error) {
@@ -98,6 +100,9 @@ func (r *mockRaft) ProcessRaftMessage(ctx context.Context, req *api.ProcessRaftM
 
 // StreamRaftMessage is the mock server endpoint for streaming messages of type StreamRaftMessageRequest.
 func (r *mockRaft) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) error {
+	if r.forceErrorStream {
+		return grpc.Errorf(codes.Unimplemented, "streaming not supported")
+	}
 	var recvdMsg, assembledMessage *api.StreamRaftMessageRequest
 	var err error
 	for {
@@ -109,27 +114,37 @@ func (r *mockRaft) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) er
 			return err
 		}
 
+		if r.removed[recvdMsg.Message.From] {
+			return status.Errorf(codes.NotFound, "%s", membership.ErrMemberRemoved.Error())
+		}
+
 		if assembledMessage == nil {
 			assembledMessage = recvdMsg
 			continue
 		}
 
-		// Append received snapshot chunk to the chunk that was already received.
-		if recvdMsg.Message.Type == raftpb.MsgSnap {
-			assembledMessage.Message.Snapshot.Data = append(assembledMessage.Message.Snapshot.Data, recvdMsg.Message.Snapshot.Data...)
-		} else {
+		// For all message types except raftpb.MsgSnap,
+		// we don't expect more than a single message
+		// on the stream.
+		if recvdMsg.Message.Type != raftpb.MsgSnap {
 			panic("Unexpected message type received on stream: " + string(recvdMsg.Message.Type))
 		}
+
+		// Append received snapshot chunk to the chunk that was already received.
+		assembledMessage.Message.Snapshot.Data = append(assembledMessage.Message.Snapshot.Data, recvdMsg.Message.Snapshot.Data...)
 	}
 
 	// We should have the complete snapshot. Verify and process.
 	if err == io.EOF {
-		if !verifySnapshot(assembledMessage.Message) {
-			log.G(context.Background()).Error("snapshot data mismatch")
-			panic("invalid snapshot data")
+		if assembledMessage.Message.Type == raftpb.MsgSnap {
+			if !verifySnapshot(assembledMessage.Message) {
+				log.G(context.Background()).Error("snapshot data mismatch")
+				panic("invalid snapshot data")
+			}
 		}
 
 		r.processedMessages <- assembledMessage.Message
+
 		return stream.SendAndClose(&api.StreamRaftMessageResponse{})
 	}
 

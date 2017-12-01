@@ -3,7 +3,6 @@ package raft_test
 import (
 	"errors"
 	"fmt"
-	"google.golang.org/grpc/codes"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -15,11 +14,13 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/status"
 
 	"golang.org/x/net/context"
 
+	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/wal"
 	"github.com/docker/swarmkit/api"
 	cautils "github.com/docker/swarmkit/ca/testutils"
@@ -967,7 +968,7 @@ func TestStreamRaftMessage(t *testing.T) {
 	stream, err := api.NewRaftClient(cc).StreamRaftMessage(ctx)
 	assert.NoError(t, err)
 
-	err = stream.Send(&api.StreamRaftMessageRequest{Message: raftutils.GetSnapshotMessage(2, 1, transport.GrpcMaxMsgSize/2)})
+	err = stream.Send(&api.StreamRaftMessageRequest{Message: raftutils.NewSnapshotMessage(2, 1, transport.GRPCMaxMsgSize/2)})
 	assert.NoError(t, err)
 	_, err = stream.CloseAndRecv()
 	assert.NoError(t, err)
@@ -975,15 +976,51 @@ func TestStreamRaftMessage(t *testing.T) {
 	stream, err = api.NewRaftClient(cc).StreamRaftMessage(ctx)
 	assert.NoError(t, err)
 
-	msg := raftutils.GetSnapshotMessage(2, 1, transport.GrpcMaxMsgSize)
+	msg := raftutils.NewSnapshotMessage(2, 1, transport.GRPCMaxMsgSize)
 
 	raftMsg := &api.StreamRaftMessageRequest{Message: msg}
 	err = stream.Send(raftMsg)
 	assert.Error(t, err, "Received unexpected error EOF")
 
 	_, err = stream.CloseAndRecv()
-	errStr := fmt.Sprintf("grpc: received message length %d exceeding the max size %d", raftMsg.Size(), transport.GrpcMaxMsgSize)
+	errStr := fmt.Sprintf("grpc: received message length %d exceeding the max size %d", raftMsg.Size(), transport.GRPCMaxMsgSize)
 	s, _ := status.FromError(err)
-	assert.Equal(t, s.Code(), codes.Internal)
+	assert.Equal(t, codes.Internal, s.Code())
+	assert.Equal(t, errStr, s.Message())
+
+	// Sending multiple snap messages with different indexes
+	// should return an error.
+	stream, err = api.NewRaftClient(cc).StreamRaftMessage(ctx)
+	assert.NoError(t, err)
+	msg = raftutils.NewSnapshotMessage(2, 1, 10)
+	raftMsg = &api.StreamRaftMessageRequest{Message: msg}
+	err = stream.Send(raftMsg)
+	assert.NoError(t, err)
+	msg = raftutils.NewSnapshotMessage(2, 1, 10)
+	msg.Index++
+	raftMsg = &api.StreamRaftMessageRequest{Message: msg}
+	err = stream.Send(raftMsg)
+	assert.NoError(t, err)
+	_, err = stream.CloseAndRecv()
+	s, _ = status.FromError(err)
+	assert.Equal(t, codes.InvalidArgument, s.Code())
+	errStr = "Raft message chunk with index 1 is different from the previously received raft message index 0"
+	assert.Equal(t, errStr, s.Message())
+
+	// Sending multiple of type != MsgSnap should return an error.
+	stream, err = api.NewRaftClient(cc).StreamRaftMessage(ctx)
+	assert.NoError(t, err)
+	msg = raftutils.NewSnapshotMessage(2, 1, 10)
+	msg.Type = raftpb.MsgApp
+	raftMsg = &api.StreamRaftMessageRequest{Message: msg}
+	err = stream.Send(raftMsg)
+	assert.NoError(t, err)
+	// Send same message again.
+	err = stream.Send(raftMsg)
+	assert.NoError(t, err)
+	_, err = stream.CloseAndRecv()
+	s, _ = status.FromError(err)
+	assert.Equal(t, codes.InvalidArgument, s.Code())
+	errStr = fmt.Sprintf("Raft message chunk is not of type %d", raftpb.MsgSnap)
 	assert.Equal(t, errStr, s.Message())
 }

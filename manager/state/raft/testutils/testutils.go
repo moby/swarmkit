@@ -639,10 +639,10 @@ func GetAllValuesOnNode(t *testing.T, clockSource *fakeclock.FakeClock, raftNode
 	return ids, values
 }
 
-// GetSnapshotMessage creates and returns a raftpb.Message of type MsgSnap
+// NewSnapshotMessage creates and returns a raftpb.Message of type MsgSnap
 // where the snapshot data is of the given size and the value of each byte
 // is (index of the byte) % 256.
-func GetSnapshotMessage(from, to uint64, size int) *raftpb.Message {
+func NewSnapshotMessage(from, to uint64, size int) *raftpb.Message {
 	data := make([]byte, size)
 	for i := 0; i < size; i++ {
 		data[i] = byte(i % (1 << 8))

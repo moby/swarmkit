@@ -7,16 +7,15 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/raft"
-
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // Build a snapshot message where each byte in the data is of the value (index % sizeof(byte))
-func getSnapshotMessage(from uint64, to uint64) raftpb.Message {
-	data := make([]byte, GrpcMaxMsgSize)
-	for i := 0; i < GrpcMaxMsgSize; i++ {
+func newSnapshotMessage(from uint64, to uint64) raftpb.Message {
+	data := make([]byte, GRPCMaxMsgSize)
+	for i := 0; i < GRPCMaxMsgSize; i++ {
 		data[i] = byte(i % (1 << 8))
 	}
 
@@ -50,7 +49,7 @@ func sendMessages(ctx context.Context, c *mockCluster, from uint64, to []uint64,
 	for _, id := range to {
 		var err error
 		if msgType == raftpb.MsgSnap {
-			err = c.Get(from).tr.Send(getSnapshotMessage(from, id))
+			err = c.Get(from).tr.Send(newSnapshotMessage(from, id))
 		} else {
 			err = c.Get(from).tr.Send(raftpb.Message{
 				Type: msgType,
@@ -118,6 +117,14 @@ func TestSend(t *testing.T) {
 
 	t.Run("Send Message", testSend(ctx, c, 1, []uint64{2, 3}, raftpb.MsgHup))
 	t.Run("Send_Snapshot_Message", testSend(ctx, c, 1, []uint64{2, 3}, raftpb.MsgSnap))
+
+	// Return error on streaming.
+	for _, raft := range c.rafts {
+		raft.forceErrorStream = true
+	}
+
+	// Messages should still be delivered.
+	t.Run("Send Message", testSend(ctx, c, 1, []uint64{2, 3}, raftpb.MsgHup))
 }
 
 func TestSendRemoved(t *testing.T) {

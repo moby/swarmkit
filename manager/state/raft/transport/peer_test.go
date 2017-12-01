@@ -21,27 +21,18 @@ func TestSplitSnapshot(t *testing.T) {
 
 	raftMessagePayloadSize := raftMessagePayloadSize(&raftMsg)
 
-	numMsgs := int(math.Ceil(float64(snaphotSize) / float64(raftMessagePayloadSize)))
-	msgs := splitSnapshotData(ctx, &raftMsg)
-	assert.Equal(t, numMsgs, len(msgs), "unexpected number of messages")
+	check := func(size, expectedNumMsgs int) {
+		raftMsg.Snapshot.Data = make([]byte, size)
+		msgs := splitSnapshotData(ctx, &raftMsg)
+		assert.Equal(t, expectedNumMsgs, len(msgs), "unexpected number of messages")
+	}
 
-	raftMsg.Snapshot.Data = make([]byte, raftMessagePayloadSize)
-	msgs = splitSnapshotData(ctx, &raftMsg)
-	assert.Equal(t, 1, len(msgs), "unexpected number of messages")
-
-	raftMsg.Snapshot.Data = make([]byte, raftMessagePayloadSize-1)
-	msgs = splitSnapshotData(ctx, &raftMsg)
-	assert.Equal(t, 1, len(msgs), "unexpected number of messages")
-
-	raftMsg.Snapshot.Data = make([]byte, raftMessagePayloadSize*2)
-	msgs = splitSnapshotData(ctx, &raftMsg)
-	assert.Equal(t, 2, len(msgs), "unexpected number of messages")
-
-	raftMsg.Snapshot.Data = make([]byte, 0)
-	msgs = splitSnapshotData(ctx, &raftMsg)
-	assert.Equal(t, len(msgs), 0, "unexpected number of messages")
+	check(snaphotSize, int(math.Ceil(float64(snaphotSize)/float64(raftMessagePayloadSize))))
+	check(raftMessagePayloadSize, 1)
+	check(raftMessagePayloadSize-1, 1)
+	check(raftMessagePayloadSize*2, 2)
+	check(0, 0)
 
 	raftMsg.Type = raftpb.MsgApp
-	msgs = splitSnapshotData(ctx, &raftMsg)
-	assert.Equal(t, len(msgs), 0, "unexpected number of messages")
+	check(0, 0)
 }
