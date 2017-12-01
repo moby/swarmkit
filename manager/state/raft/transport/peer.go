@@ -211,10 +211,6 @@ func (p *peer) sendProcessMessage(ctx context.Context, m raftpb.Message) error {
 	var stream api.Raft_StreamRaftMessageClient
 	stream, err = api.NewRaftClient(p.conn()).StreamRaftMessage(ctx)
 
-	if err != nil {
-
-	}
-
 	if err == nil {
 		// Split the message if needed.
 		// Currently only supported for MsgSnap.
