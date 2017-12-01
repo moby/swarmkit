@@ -2,6 +2,7 @@ package raft
 
 import (
 	"fmt"
+	"io"
 	"math"
 	"math/rand"
 	"net"
@@ -1301,6 +1302,82 @@ func (n *Node) reportNewAddress(ctx context.Context, id uint64) error {
 	}
 	newAddr := net.JoinHostPort(newHost, officialPort)
 	return n.transport.UpdatePeerAddr(id, newAddr)
+}
+
+// StreamRaftMessage is the server endpoint for streaming Raft messages.
+// It accepts a stream of raft messages to be processed on this raft member,
+// returning a StreamRaftMessageResponse when processing of the streamed
+// messages is complete.
+// It is called from the Raft leader, which uses it to stream messages
+// to this raft member.
+// A single stream corresponds to a single raft message,
+// which may be disassembled and streamed by the sender
+// as individual messages. Therefore, each of the messages
+// received by the stream will have the same raft message type and index.
+// Currently, only messages of type raftpb.MsgSnap can be disassembled, sent
+// and received on the stream.
+func (n *Node) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) error {
+	// recvdMsg is the current messasge received from the stream.
+	// assembledMessage is where the data from recvdMsg is appended to.
+	var recvdMsg, assembledMessage *api.StreamRaftMessageRequest
+	var err error
+
+	// First message index.
+	var raftMsgIndex uint64
+
+	for {
+		recvdMsg, err = stream.Recv()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			log.G(stream.Context()).WithError(err).Error("error while reading from stream")
+			return err
+		}
+
+		// Initialized the message to be used for assembling
+		// the raft message.
+		if assembledMessage == nil {
+			// For all message types except raftpb.MsgSnap,
+			// we don't expect more than a single message
+			// on the stream so we'll get an EOF on the next Recv()
+			// and go on to process the received message.
+			assembledMessage = recvdMsg
+			raftMsgIndex = recvdMsg.Message.Index
+			continue
+		}
+
+		// Verify raft message index.
+		if recvdMsg.Message.Index != raftMsgIndex {
+			errMsg := fmt.Sprintf("Raft message chunk with index %d is different from the previously received raft message index %d",
+				recvdMsg.Message.Index, raftMsgIndex)
+			log.G(stream.Context()).Errorf(errMsg)
+			return status.Errorf(codes.InvalidArgument, "%s", errMsg)
+		}
+
+		// Verify that multiple message received on a stream
+		// can only be of type raftpb.MsgSnap.
+		if recvdMsg.Message.Type != raftpb.MsgSnap {
+			errMsg := fmt.Sprintf("Raft message chunk is not of type %d",
+				raftpb.MsgSnap)
+			log.G(stream.Context()).Errorf(errMsg)
+			return status.Errorf(codes.InvalidArgument, "%s", errMsg)
+		}
+
+		// Append the received snapshot data.
+		assembledMessage.Message.Snapshot.Data = append(assembledMessage.Message.Snapshot.Data, recvdMsg.Message.Snapshot.Data...)
+	}
+
+	// We should have the complete snapshot. Verify and process.
+	if err == io.EOF {
+		_, err = n.ProcessRaftMessage(stream.Context(), &api.ProcessRaftMessageRequest{Message: assembledMessage.Message})
+		if err == nil {
+			// Translate the response of ProcessRaftMessage() from
+			// ProcessRaftMessageResponse to StreamRaftMessageResponse if needed.
+			return stream.SendAndClose(&api.StreamRaftMessageResponse{})
+		}
+	}
+
+	return err
 }
 
 // ProcessRaftMessage calls 'Step' which advances the

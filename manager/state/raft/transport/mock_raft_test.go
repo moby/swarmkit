@@ -1,12 +1,14 @@
 package transport
 
 import (
+	"io"
 	"net"
 	"time"
 
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/health"
 	"github.com/docker/swarmkit/manager/state/raft/membership"
 	"golang.org/x/net/context"
@@ -39,6 +41,8 @@ type mockRaft struct {
 
 	reportedUnreachables chan uint64
 	updatedNodes         chan updateInfo
+
+	forceErrorStream bool
 }
 
 func newMockRaft() (*mockRaft, error) {
@@ -92,6 +96,59 @@ func (r *mockRaft) ProcessRaftMessage(ctx context.Context, req *api.ProcessRaftM
 	}
 	r.processedMessages <- req.Message
 	return &api.ProcessRaftMessageResponse{}, nil
+}
+
+// StreamRaftMessage is the mock server endpoint for streaming messages of type StreamRaftMessageRequest.
+func (r *mockRaft) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) error {
+	if r.forceErrorStream {
+		return grpc.Errorf(codes.Unimplemented, "streaming not supported")
+	}
+	var recvdMsg, assembledMessage *api.StreamRaftMessageRequest
+	var err error
+	for {
+		recvdMsg, err = stream.Recv()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			log.G(context.Background()).WithError(err).Error("error while reading from stream")
+			return err
+		}
+
+		if r.removed[recvdMsg.Message.From] {
+			return status.Errorf(codes.NotFound, "%s", membership.ErrMemberRemoved.Error())
+		}
+
+		if assembledMessage == nil {
+			assembledMessage = recvdMsg
+			continue
+		}
+
+		// For all message types except raftpb.MsgSnap,
+		// we don't expect more than a single message
+		// on the stream.
+		if recvdMsg.Message.Type != raftpb.MsgSnap {
+			panic("Unexpected message type received on stream: " + string(recvdMsg.Message.Type))
+		}
+
+		// Append received snapshot chunk to the chunk that was already received.
+		assembledMessage.Message.Snapshot.Data = append(assembledMessage.Message.Snapshot.Data, recvdMsg.Message.Snapshot.Data...)
+	}
+
+	// We should have the complete snapshot. Verify and process.
+	if err == io.EOF {
+		if assembledMessage.Message.Type == raftpb.MsgSnap {
+			if !verifySnapshot(assembledMessage.Message) {
+				log.G(context.Background()).Error("snapshot data mismatch")
+				panic("invalid snapshot data")
+			}
+		}
+
+		r.processedMessages <- assembledMessage.Message
+
+		return stream.SendAndClose(&api.StreamRaftMessageResponse{})
+	}
+
+	return nil
 }
 
 func (r *mockRaft) ResolveAddress(ctx context.Context, req *api.ResolveAddressRequest) (*api.ResolveAddressResponse, error) {
