@@ -196,15 +196,7 @@ func needsSplitting(m *raftpb.Message) bool {
 }
 
 func (p *peer) sendProcessMessage(ctx context.Context, m raftpb.Message) error {
-	timeout := p.tr.config.SendTimeout
-	// if a snapshot is being sent, set timeout to LargeSendTimeout because
-	// sending snapshots can take more time than other messages sent between peers.
-	// The same applies to AppendEntries as well, where messages can get large.
-	// TODO(anshul) remove when streaming change ready to merge.
-	if m.Type == raftpb.MsgSnap || m.Type == raftpb.MsgApp {
-		timeout = p.tr.config.LargeSendTimeout
-	}
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(ctx, p.tr.config.SendTimeout)
 	defer cancel()
 
 	var err error
