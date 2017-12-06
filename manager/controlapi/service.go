@@ -84,6 +84,41 @@ func validateRestartPolicy(rp *api.RestartPolicy) error {
 		}
 	}
 
+	return validateBackoffPolicy(rp.Backoff)
+}
+
+// Returns an error if bp contains negative values
+func validateBackoffPolicy(bp *api.BackoffPolicy) error {
+	if bp == nil {
+		return nil
+	}
+	if bp.Factor != nil {
+		factor, err := gogotypes.DurationFromProto(bp.Factor)
+		if err != nil {
+			return err
+		}
+		if factor < 0 {
+			return status.Errorf(codes.InvalidArgument, "TaskSpec: backoff-factor cannot be negative")
+		}
+	}
+	if bp.Max != nil {
+		max, err := gogotypes.DurationFromProto(bp.Max)
+		if err != nil {
+			return err
+		}
+		if max < 0 {
+			return status.Errorf(codes.InvalidArgument, "TaskSpec: backoff-Max cannot be negative")
+		}
+	}
+	if bp.Monitor != nil {
+		monitor, err := gogotypes.DurationFromProto(bp.Monitor)
+		if err != nil {
+			return err
+		}
+		if monitor < 0 {
+			return status.Errorf(codes.InvalidArgument, "TaskSpec: backoff-Monitor cannot be negative")
+		}
+	}
 	return nil
 }
 

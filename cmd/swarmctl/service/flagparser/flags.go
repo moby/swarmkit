@@ -45,7 +45,9 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.String("rollback-order", "stop-first", "order of shutting down old task and starting rolled-back task (stop-first|start-first)")
 
 	flags.String("restart-condition", "any", "condition to restart the task (any, failure, none)")
-	flags.String("restart-delay", "5s", "delay between task restarts")
+	flags.String("restart-delay", "", "base delay between task restarts/ if used without one of the restart-backoff flags delay will be fixed")
+	flags.String("restart-backoff-factor", "5s", "initial delay for exponential backoff on task restarts")
+	flags.String("restart-backoff-max", "30m", "max delay between task restarts")
 	flags.Uint64("restart-max-attempts", 0, "maximum number of restart attempts (0 = unlimited)")
 	flags.String("restart-window", "0s", "time window to evaluate restart attempts (0 = unbound)")
 

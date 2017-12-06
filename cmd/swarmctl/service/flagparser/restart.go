@@ -49,6 +49,42 @@ func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		spec.Task.Restart.Delay = gogotypes.DurationProto(delayDuration)
 	}
 
+	if flags.Changed("restart-backoff-factor") {
+		delay, err := flags.GetString("restart-backoff-factor")
+		if err != nil {
+			return err
+		}
+
+		delayDuration, err := time.ParseDuration(delay)
+		if err != nil {
+			return err
+		}
+
+		if spec.Task.Restart.Backoff == nil {
+			spec.Task.Restart.Backoff = &api.BackoffPolicy{}
+		}
+
+		spec.Task.Restart.Backoff.Factor = gogotypes.DurationProto(delayDuration)
+	}
+
+	if flags.Changed("restart-backoff-max") {
+		delay, err := flags.GetString("restart-backoff-max")
+		if err != nil {
+			return err
+		}
+
+		delayDuration, err := time.ParseDuration(delay)
+		if err != nil {
+			return err
+		}
+
+		if spec.Task.Restart.Backoff == nil {
+			spec.Task.Restart.Backoff = &api.BackoffPolicy{}
+		}
+
+		spec.Task.Restart.Backoff.Max = gogotypes.DurationProto(delayDuration)
+	}
+
 	if flags.Changed("restart-max-attempts") {
 		attempts, err := flags.GetUint64("restart-max-attempts")
 		if err != nil {

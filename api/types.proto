@@ -329,6 +329,8 @@ message RestartPolicy {
 
 	// Delay between restart attempts
 	// Note: can't use stdduration because this field needs to be nullable.
+	// Note: If backoff is non null then Delay will be added to the calculated
+	// exponential backoff.
 	google.protobuf.Duration delay = 2;
 
 	// MaxAttempts is the maximum number of restarts to attempt on an
@@ -339,6 +341,26 @@ message RestartPolicy {
 	// The time window is unbounded if this is 0.
 	// Note: can't use stdduration because this field needs to be nullable.
 	google.protobuf.Duration window = 4;
+
+	// Defines the backoff policy used when restarting this task.
+	// The calculated backoff will be a random value from 0 to
+	// min(Backoff.Max, Delay + Backoff.Factor * (2 ** failures))
+	BackoffPolicy backoff = 5;
+}
+
+message BackoffPolicy {
+	// Amount backoff grows per failure
+	google.protobuf.Duration factor = 1;
+
+	// Maximum duration for a single delay to last
+	google.protobuf.Duration max = 2;
+
+	// Monitor indicates how long a task must run before it is considred
+	// to have started successfully. If it is restarted within Monitor of
+	// its creation this is counted as a failure.  If it fails after Monitor,
+	// it does not.  Defaults to 5 seconds.
+	// Note: can't use stdduration because this field needs to be nullable.
+	google.protobuf.Duration monitor = 3;
 }
 
 // UpdateConfig specifies the rate and policy of updates.

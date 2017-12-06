@@ -3,6 +3,7 @@ package restart
 import (
 	"container/list"
 	"errors"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -23,9 +24,18 @@ type restartedInstance struct {
 	timestamp time.Time
 }
 
+// instanceRestartInfo represents the restart history of a
+// single running task.
 type instanceRestartInfo struct {
-	// counter of restarts for this instance.
+	// Counter of restarts for this instance.  Used with Restart.MaxAttempts
+	// to determine if a task should be restarted.
 	totalRestarts uint64
+	// Counter of failures since the last call of Success.  Used with
+	// Restart.Backoff to calculate the exponential backoff if applicable.
+	failuresSinceSuccess uint64
+	// Timestamp of the last restart.  Used with Restart.Backoff.Monitor
+	// to determine when to reset failuresSinceSuccess.
+	lastRestart time.Time
 	// Linked list of restartedInstance structs. Only used when
 	// Restart.MaxAttempts and Restart.Window are both
 	// nonzero.
@@ -154,15 +164,16 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 	var restartDelay time.Duration
 	// Restart delay is not applied to drained nodes
 	if n == nil || n.Spec.Availability != api.NodeAvailabilityDrain {
-		if t.Spec.Restart != nil && t.Spec.Restart.Delay != nil {
-			var err error
-			restartDelay, err = gogotypes.DurationFromProto(t.Spec.Restart.Delay)
-			if err != nil {
-				log.G(ctx).WithError(err).Error("invalid restart delay; using default")
-				restartDelay, _ = gogotypes.DurationFromProto(defaults.Service.Task.Restart.Delay)
+		r.checkForSuccess(&t)
+		if ret, randomize, err := r.TaskRestartDelay(ctx, &t); err == nil {
+			// Choose a uniformly distributed value from [0, backoffDuration).
+			if randomize && ret > 0 {
+				restartDelay = time.Duration(rand.Int63n(int64(ret)))
+			} else {
+				restartDelay = ret
 			}
 		} else {
-			restartDelay, _ = gogotypes.DurationFromProto(defaults.Service.Task.Restart.Delay)
+			return err
 		}
 	}
 
@@ -188,6 +199,92 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 
 	r.DelayStart(ctx, tx, &t, restartTask.ID, restartDelay, waitStop)
 	return nil
+}
+
+// TaskRestartDelay calculates and returns the next delay based on t's RestartPolicy.
+// randomize is true if a backoff policy is being used,  false if the RestartPolicy
+// is configured for a fixed restart delay
+func (r *Supervisor) TaskRestartDelay(ctx context.Context, t *api.Task) (restartDelay time.Duration,
+	randomize bool, parseError error) {
+	restartDelay = 0
+	backoff := &api.BackoffPolicy{
+		Factor: defaults.Service.Task.Restart.Backoff.Factor,
+		Max:    defaults.Service.Task.Restart.Backoff.Max,
+	}
+	// If no restart is defined we use the default exponential backoff configuration
+	if t.Spec.Restart != nil {
+		var delayErr error
+		if delay, delayErr := gogotypes.DurationFromProto(t.Spec.Restart.Delay); delayErr == nil {
+			restartDelay = delay
+		}
+		if t.Spec.Restart.Backoff == nil && t.Spec.Restart.Delay != nil {
+			// Use fixed restart delay instead of exponential
+			if delayErr != nil {
+				log.G(ctx).WithError(delayErr).Error("invalid restart delay; using default")
+				// We only use this default if the user has configured for fixed restart delay
+				restartDelay, delayErr = gogotypes.DurationFromProto(defaults.Service.Task.Restart.Delay)
+
+				// If user defined a delay without a backoff, but that delay and the
+				// default delay can't be read we fail fast instead of defaulting to
+				// a randomized exponential backoff.
+				if delayErr != nil {
+					return 0, false, errors.New("error parsing RestartPolicy")
+				}
+			}
+			return restartDelay, false, nil
+		}
+		// If the user defined backoff can be read we override default values
+		if _, err := gogotypes.DurationFromProto(t.Spec.Restart.Backoff.Factor); err == nil {
+			backoff.Factor = t.Spec.Restart.Backoff.Factor
+		}
+		if _, err := gogotypes.DurationFromProto(t.Spec.Restart.Backoff.Max); err == nil {
+			backoff.Max = t.Spec.Restart.Backoff.Max
+		}
+	}
+
+	// Use jittered binary exponential backoff delay
+	var factor, max time.Duration
+	var err error
+	if factor, err = gogotypes.DurationFromProto(backoff.Factor); err != nil {
+		return 0, false, errors.New("error parsing backoff Factor")
+	}
+	if max, err = gogotypes.DurationFromProto(backoff.Max); err != nil {
+		return 0, false, errors.New("error parsing backoff Max")
+	}
+
+	// Get the failure count from history
+	var failures uint64
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	serviceID := t.ServiceID
+	tuple := orchestrator.SlotTuple{
+		Slot:      t.Slot,
+		ServiceID: t.ServiceID,
+		NodeID:    t.NodeID,
+	}
+	if r.historyByService[serviceID] != nil &&
+		r.historyByService[serviceID][tuple] != nil {
+		restartInfo := r.historyByService[serviceID][tuple]
+		failures = restartInfo.failuresSinceSuccess
+	} else {
+		// History is not set on the first run of a task
+		failures = 0
+	}
+
+	var backoffDuration time.Duration
+	// Use Restart.Delay on first run or when the factor is 0.
+	if failures == 0 || factor == 0 {
+		backoffDuration = restartDelay
+		// Check for values greater than Restart.Max  We use failures-1 so that on the first failure
+		// delay will be restartDelay+factor on second failure +2*factor on third +4*factor etc.
+		// Note: A 1 nanosecond factor with 62 failures would give over a 146 year restart delay.
+	} else if failures < 63 && (max-restartDelay)/factor > 1<<(failures-1) {
+		backoffDuration = restartDelay + factor*time.Duration(1<<(failures-1))
+	} else {
+		backoffDuration = max
+	}
+
+	return backoffDuration, true, nil
 }
 
 // shouldRestart returns true if a task should be restarted according to the
@@ -336,9 +433,10 @@ func (r *Supervisor) UpdatableTasksInSlot(ctx context.Context, slot orchestrator
 // RecordRestartHistory updates the historyByService map to reflect the restart
 // of restartedTask.
 func (r *Supervisor) RecordRestartHistory(tuple orchestrator.SlotTuple, replacementTask *api.Task) {
-	if replacementTask.Spec.Restart == nil || replacementTask.Spec.Restart.MaxAttempts == 0 {
-		// No limit on the number of restarts, so no need to record
-		// history.
+	if spec := replacementTask.Spec.Restart; spec != nil && spec.Backoff == nil &&
+		spec.Delay != nil && spec.MaxAttempts == 0 {
+		// No need to record history if we are using fixed restart delay
+		// with unlimited attempts.
 		return
 	}
 
@@ -366,16 +464,22 @@ func (r *Supervisor) RecordRestartHistory(tuple orchestrator.SlotTuple, replacem
 	}
 
 	restartInfo.totalRestarts++
+	restartInfo.failuresSinceSuccess++
+
+	// it's okay to call TimestampFromProto with a nil argument
+	timestamp, err := gogotypes.TimestampFromProto(replacementTask.Meta.CreatedAt)
+	if replacementTask.Meta.CreatedAt == nil || err != nil {
+		timestamp = time.Now()
+	}
+	restartInfo.lastRestart = timestamp
+
+	if replacementTask.Spec.Restart == nil || replacementTask.Spec.Restart.MaxAttempts == 0 {
+		return
+	}
 
 	if replacementTask.Spec.Restart.Window != nil && (replacementTask.Spec.Restart.Window.Seconds != 0 || replacementTask.Spec.Restart.Window.Nanos != 0) {
 		if restartInfo.restartedInstances == nil {
 			restartInfo.restartedInstances = list.New()
-		}
-
-		// it's okay to call TimestampFromProto with a nil argument
-		timestamp, err := gogotypes.TimestampFromProto(replacementTask.Meta.CreatedAt)
-		if replacementTask.Meta.CreatedAt == nil || err != nil {
-			timestamp = time.Now()
 		}
 
 		restartedInstance := restartedInstance{
@@ -384,6 +488,60 @@ func (r *Supervisor) RecordRestartHistory(tuple orchestrator.SlotTuple, replacem
 
 		restartInfo.restartedInstances.PushBack(restartedInstance)
 	}
+}
+
+// checkForSuccess resets the failuresSinceSuccess count if the duration since
+// the last restart is more than the monitoring period
+func (r *Supervisor) checkForSuccess(task *api.Task) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	monitor, err := gogotypes.DurationFromProto(defaults.Service.Task.Restart.Backoff.Monitor)
+	if err != nil {
+		return
+	}
+	if task.Spec.Restart != nil && task.Spec.Restart.Backoff != nil &&
+		task.Spec.Restart.Backoff.Monitor != nil {
+		if m, err := gogotypes.DurationFromProto(task.Spec.Restart.Backoff.Monitor); err != nil {
+			monitor = m
+		}
+	}
+	serviceID := task.ServiceID
+	tuple := orchestrator.SlotTuple{
+		Slot:      task.Slot,
+		ServiceID: task.ServiceID,
+		NodeID:    task.NodeID,
+	}
+	if r.historyByService[serviceID] != nil &&
+		r.historyByService[serviceID][tuple] != nil {
+		restartInfo := r.historyByService[serviceID][tuple]
+
+		if time.Since(restartInfo.lastRestart) > monitor {
+			restartInfo.failuresSinceSuccess = 0
+		}
+	}
+}
+
+// GetFailuresSinceSuccess returns failuresSinceSuccess of the given task
+func (r *Supervisor) GetFailuresSinceSuccess(task *api.Task) uint64 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	serviceID := task.ServiceID
+	tuple := orchestrator.SlotTuple{
+		Slot:      task.Slot,
+		ServiceID: task.ServiceID,
+		NodeID:    task.NodeID,
+	}
+
+	if r.historyByService[serviceID] != nil &&
+		r.historyByService[serviceID][tuple] != nil {
+		restartInfo := r.historyByService[serviceID][tuple]
+
+		return restartInfo.failuresSinceSuccess
+	}
+	// restartInfo.failuresSinceSuccess should be zero on first run of task
+	return 0
 }
 
 // DelayStart starts a timer that moves the task from READY to RUNNING once:

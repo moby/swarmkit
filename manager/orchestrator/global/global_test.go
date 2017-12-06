@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/defaults"
 	"github.com/docker/swarmkit/manager/orchestrator/testutils"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
@@ -82,6 +83,11 @@ var (
 			Task: api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
+				},
+				//  Use default fixed delay time instead of exponential backoff
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartOnAny,
+					Delay:     defaults.Service.Task.Restart.Delay,
 				},
 			},
 			Mode: &api.ServiceSpec_Global{
