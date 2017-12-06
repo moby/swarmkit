@@ -23,6 +23,11 @@ var Service = api.ServiceSpec{
 		Restart: &api.RestartPolicy{
 			Condition: api.RestartOnAny,
 			Delay:     gogotypes.DurationProto(5 * time.Second),
+            Backoff:   &api.BackoffPolicy{
+                Base:    gogotypes.DurationProto(0 * time.Second),
+                Factor:  gogotypes.DurationProto(5 * time.Second),
+                Max:     gogotypes.DurationProto(30 * time.Minute),
+            }
 		},
 		Placement: &api.Placement{},
 	},

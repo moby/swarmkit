@@ -71,6 +71,7 @@ func CheckTasks(ctx context.Context, s *store.MemoryStore, readTx store.ReadTx, 
 					restartDelay, _ = gogotypes.DurationFromProto(defaults.Service.Task.Restart.Delay)
 				}
 			}
+            //TODO
 			if restartDelay != 0 {
 				var timestamp time.Time
 				if t.Status.AppliedAt != nil {
