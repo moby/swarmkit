@@ -445,6 +445,8 @@ func (u *Updater) updateTask(ctx context.Context, slot orchestrator.Slot, update
 	}
 }
 
+// useExistingTask shuts down all the tasks in slot except for existing and
+// moves exisiting to the RUNNING state.
 func (u *Updater) useExistingTask(ctx context.Context, slot orchestrator.Slot, existing *api.Task) error {
 	var removeTasks []*api.Task
 	for _, t := range slot {

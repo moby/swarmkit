@@ -592,3 +592,197 @@ func TestUpdaterOrder(t *testing.T) {
 		}
 	}
 }
+
+//  Tests special cases of Run() where slots contain multiple tasks.
+//  These cases are handled by the useExistingTask() function.
+func TestUpdaterUseExistingTask(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	// Move tasks to their desired state.
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
+	defer cancel()
+	go func() {
+		for e := range watch {
+			task := e.(api.EventUpdateTask).Task
+			if task.Status.State == task.DesiredState {
+				continue
+			}
+			err := s.Update(func(tx store.Tx) error {
+				task = store.GetTask(tx, task.ID)
+				task.Status.State = task.DesiredState
+				return store.UpdateTask(tx, task)
+			})
+			assert.NoError(t, err)
+		}
+	}()
+
+	instances := 2
+	cluster := &api.Cluster{
+		// test cluster configuration propagation to task creation.
+		Spec: api.ClusterSpec{
+			Annotations: api.Annotations{
+				Name: store.DefaultClusterName,
+			},
+		},
+	}
+
+	service := &api.Service{
+		ID: "id1",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+			Mode: &api.ServiceSpec_Replicated{
+				Replicated: &api.ReplicatedService{
+					Replicas: uint64(instances),
+				},
+			},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{
+						Image: "v:1",
+					},
+				},
+			},
+			Update: &api.UpdateConfig{
+				// avoid having Run block for a long time to watch for failures
+				Monitor: gogotypes.DurationProto(50 * time.Millisecond),
+			},
+		},
+	}
+
+	// 1: First test calls Run with one slot of two running tasks and
+	// expects one task to be running and one to be shutdown
+	var (
+		firstTask  *api.Task
+		secondTask *api.Task
+	)
+	err := s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateCluster(tx, cluster))
+		assert.NoError(t, store.CreateService(tx, service))
+		firstTask = orchestrator.NewTask(cluster, service, 0, "")
+		assert.NoError(t, store.CreateTask(tx, firstTask))
+		secondTask = orchestrator.NewTask(cluster, service, 0, "")
+		assert.NoError(t, store.CreateTask(tx, secondTask))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	updater := NewUpdater(s, restart.NewSupervisor(s), cluster, service)
+	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
+
+	var tasks []*api.Task
+	s.View(func(tx store.ReadTx) {
+		tasks, _ = store.FindTasks(tx, store.ByServiceID(service.ID))
+	})
+	assert.True(t, (tasks[0].DesiredState == api.TaskStateRunning &&
+		tasks[1].DesiredState == api.TaskStateShutdown) ||
+		(tasks[1].DesiredState == api.TaskStateRunning &&
+			tasks[0].DesiredState == api.TaskStateShutdown))
+
+	// 2: Next we set the second task to ready and expect the same results
+	err = s.Update(func(tx store.Tx) error {
+		firstTask.DesiredState = api.TaskStateRunning
+		secondTask.DesiredState = api.TaskStateReady
+		assert.NoError(t, store.UpdateTask(tx, firstTask))
+		assert.NoError(t, store.UpdateTask(tx, secondTask))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	updater = NewUpdater(s, restart.NewSupervisor(s), cluster, service)
+	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
+
+	s.View(func(tx store.ReadTx) {
+		tasks, _ = store.FindTasks(tx, store.ByServiceID(service.ID))
+	})
+	for _, task := range tasks {
+		if task.ID == firstTask.ID {
+			assert.Equal(t, task.DesiredState, api.TaskStateRunning)
+		} else if task.ID == secondTask.ID {
+			assert.Equal(t, task.DesiredState, api.TaskStateShutdown)
+		} else {
+			assert.True(t, false)
+		}
+	}
+
+	//  3: We create another slot of 2 tasks that desire to be ready and expect
+	//  one to be shutdown and one to be running. The two previously created tasks
+	//  should be shutdown.
+	err = s.Update(func(tx store.Tx) error {
+		// Change the old task's states so that they aren't runnable
+		firstTask.DesiredState = api.TaskStateShutdown
+		secondTask.DesiredState = api.TaskStateShutdown
+		assert.NoError(t, store.UpdateTask(tx, firstTask))
+		assert.NoError(t, store.UpdateTask(tx, secondTask))
+
+		// Create new tasks
+		firstTask = orchestrator.NewTask(cluster, service, 1, "")
+		firstTask.DesiredState = api.TaskStateReady
+		assert.NoError(t, store.CreateTask(tx, firstTask))
+
+		secondTask = orchestrator.NewTask(cluster, service, 1, "")
+		secondTask.DesiredState = api.TaskStateReady
+		assert.NoError(t, store.CreateTask(tx, secondTask))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	updater = NewUpdater(s, restart.NewSupervisor(s), cluster, service)
+	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
+
+	s.View(func(tx store.ReadTx) {
+		tasks, _ = store.FindTasks(tx, store.ByServiceID(service.ID))
+	})
+	firstTaskIndex := 0
+	secondTaskIndex := 0
+	for i, task := range tasks {
+		if task.ID == firstTask.ID {
+			firstTaskIndex = i
+		} else if task.ID == secondTask.ID {
+			secondTaskIndex = i
+		}
+	}
+	assert.True(t, (tasks[firstTaskIndex].DesiredState == api.TaskStateRunning &&
+		tasks[secondTaskIndex].DesiredState == api.TaskStateShutdown) ||
+		(tasks[secondTaskIndex].DesiredState == api.TaskStateRunning &&
+			tasks[firstTaskIndex].DesiredState == api.TaskStateShutdown))
+
+	//  4: We run with two ready tasks where the second is dirty
+	//  and expect the first to run and the second to shutdown
+	err = s.Update(func(tx store.Tx) error {
+		firstTask.DesiredState = api.TaskStateShutdown
+		secondTask.DesiredState = api.TaskStateShutdown
+		assert.NoError(t, store.UpdateTask(tx, firstTask))
+		assert.NoError(t, store.UpdateTask(tx, secondTask))
+
+		service.Spec.Task.GetContainer().Image = "v:1"
+		firstTask = orchestrator.NewTask(cluster, service, 2, "")
+		assert.NoError(t, store.CreateTask(tx, firstTask))
+
+		service.Spec.Task.GetContainer().Image = "v:2"
+		secondTask = orchestrator.NewTask(cluster, service, 2, "")
+		assert.NoError(t, store.CreateTask(tx, secondTask))
+
+		return nil
+	})
+	assert.NoError(t, err)
+
+	updater = NewUpdater(s, restart.NewSupervisor(s), cluster, service)
+	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
+
+	s.View(func(tx store.ReadTx) {
+		tasks, _ = store.FindTasks(tx, store.ByServiceID(service.ID))
+	})
+
+	for _, task := range tasks {
+		if task.ID == secondTask.ID {
+			assert.Equal(t, task.DesiredState, api.TaskStateRunning)
+		} else if task.ID == firstTask.ID {
+			assert.Equal(t, task.DesiredState, api.TaskStateShutdown)
+		}
+	}
+}
