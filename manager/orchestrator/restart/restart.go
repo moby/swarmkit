@@ -104,6 +104,7 @@ func (r *Supervisor) waitRestart(ctx context.Context, oldDelay *delayedStart, cl
 // Restart initiates a new task to replace t if appropriate under the service's
 // restart policy.
 func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Cluster, service *api.Service, t api.Task) error {
+
 	// TODO(aluzzardi): This function should not depend on `service`.
 
 	// Is the old task still in the process of restarting? If so, wait for
@@ -188,7 +189,8 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 	return nil
 }
 
-// TaskRestartDelay calculates and returns the next delay based on exponential backoff for "t"
+// TaskRestartDelay calculates and returns the next delay based t's RestartPolicy
+// Returns nil on error parsing the RestartPolicy
 func (r *Supervisor) TaskRestartDelay(ctx context.Context, t *api.Task) *time.Duration {
 	var restartDelay time.Duration
 	backoff := &api.BackoffPolicy{
@@ -213,10 +215,12 @@ func (r *Supervisor) TaskRestartDelay(ctx context.Context, t *api.Task) *time.Du
 			restartDelay, err = gogotypes.DurationFromProto(t.Spec.Restart.Delay)
 			if err != nil {
 				log.G(ctx).WithError(err).Error("invalid restart delay; using default")
-				restartDelay, _ = gogotypes.DurationFromProto(defaults.Service.Task.Restart.Delay)
-				return &restartDelay
+				restartDelay, err = gogotypes.DurationFromProto(defaults.Service.Task.Restart.Delay)
+				if err != nil {
+					return nil
+				}
 			}
-			return nil
+			return &restartDelay
 		}
 	}
 
@@ -246,15 +250,16 @@ func (r *Supervisor) TaskRestartDelay(ctx context.Context, t *api.Task) *time.Du
 		r.historyByService[serviceID][tuple] != nil {
 		restartInfo := r.historyByService[serviceID][tuple]
 		failures = restartInfo.failuresSinceSuccess
+		if failures < 0 {
+			// This should never happen
+			return nil
+		}
 	} else {
-		return nil
+		// History is not set on the first run of a task
+		failures = 0
 	}
 
-	if failures <= 0 {
-		return nil
-	}
-
-	backoffDuration := base + factor*time.Duration(1<<(failures-1))
+	backoffDuration := base + factor*time.Duration(1<<(failures))
 
 	if backoffDuration > max || backoffDuration < 0 {
 		backoffDuration = max
