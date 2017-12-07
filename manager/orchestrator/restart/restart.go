@@ -3,6 +3,7 @@ package restart
 import (
 	"container/list"
 	"errors"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -156,7 +157,11 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 	var restartDelay time.Duration
 	// Restart delay is not applied to drained nodes
 	if n == nil || n.Spec.Availability != api.NodeAvailabilityDrain {
-		restartDelay = r.TaskRestartDelay(ctx, t)
+		ret := r.TaskRestartDelay(ctx, &t)
+		if ret == nil {
+			return nil
+		}
+		restartDelay = *ret
 	}
 
 	waitStop := true
@@ -183,26 +188,24 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 	return nil
 }
 
-func (r *Supervisor) TaskRestartDelay(ctx context.Context, t *api.Task) time.Duration {
+// TaskRestartDelay calculates and returns the next delay based on exponential backoff for "t"
+func (r *Supervisor) TaskRestartDelay(ctx context.Context, t *api.Task) *time.Duration {
 	var restartDelay time.Duration
-	backoff := &api.BackoffConfig{
-		Base:   defaults.Service.Task.Restart.BackoffConfig.Base,
-		Factor: defaults.Service.Task.Restart.BackoffConfig.Factor,
-		Max:    defaults.Service.Task.Restart.BackoffConfig.Max,
+	backoff := &api.BackoffPolicy{
+		Base:   defaults.Service.Task.Restart.Backoff.Base,
+		Factor: defaults.Service.Task.Restart.Backoff.Factor,
+		Max:    defaults.Service.Task.Restart.Backoff.Max,
 	}
 	if t.Spec.Restart != nil {
-		if t.Spec.Restart.BackoffConfig != nil {
-			if t.Spec.Restart.BackoffConfig.Base != nil &&
-				t.Spec.Restart.BackoffConfig.Base >= 0 {
-				backoff.Base = t.Spec.Restart.BackoffConfig.Base
+		if t.Spec.Restart.Backoff != nil {
+			if a, b := gogotypes.DurationFromProto(t.Spec.Restart.Backoff.Base); b != nil && a >= 0 {
+				backoff.Base = t.Spec.Restart.Backoff.Base
 			}
-			if t.Spec.Restart.BackoffConfig.Factor != nil &&
-				t.Spec.Restart.BackoffConfig.Factor >= 0 {
-				backoff.Factor = t.Spec.Restart.BackoffConfig.Factor
+			if a, b := gogotypes.DurationFromProto(t.Spec.Restart.Backoff.Factor); b != nil && a >= 0 {
+				backoff.Factor = t.Spec.Restart.Backoff.Factor
 			}
-			if t.Spec.Restart.BackoffConfig.Max != nil &&
-				t.Spec.Restart.BackoffConfig.Max >= 0 {
-				backoff.Max = t.Spec.Restart.BackoffConfig.Max
+			if a, b := gogotypes.DurationFromProto(t.Spec.Restart.Backoff.Max); b != nil && a >= 0 {
+				backoff.Max = t.Spec.Restart.Backoff.Max
 			}
 		} else if t.Spec.Restart.Delay != nil {
 			// Use fixed restart delay
@@ -211,26 +214,33 @@ func (r *Supervisor) TaskRestartDelay(ctx context.Context, t *api.Task) time.Dur
 			if err != nil {
 				log.G(ctx).WithError(err).Error("invalid restart delay; using default")
 				restartDelay, _ = gogotypes.DurationFromProto(defaults.Service.Task.Restart.Delay)
-				return restartDelay
-			} else {
-				return nil
+				return &restartDelay
 			}
+			return nil
 		}
 	}
 
-	// Use jittered Binary exponential backoff delay
-	base := gogotypes.DurationFromProto(backoff.Base)
-	factor := gogotypes.DurationFromProto(backoff.Factor)
-	max := gogotypes.DurationFromProto(backoff.Max)
+	// Use jittered binary exponential backoff delay
+	var base, factor, max time.Duration
+	var err error
+	if base, err = gogotypes.DurationFromProto(backoff.Base); err != nil {
+		return nil
+	}
+	if factor, err = gogotypes.DurationFromProto(backoff.Factor); err != nil {
+		return nil
+	}
+	if max, err = gogotypes.DurationFromProto(backoff.Max); err != nil {
+		return nil
+	}
 
 	var failures uint64
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	serviceID := task.ServiceID
+	serviceID := t.ServiceID
 	tuple := orchestrator.SlotTuple{
-		Slot:      task.Slot,
-		ServiceID: task.ServiceID,
-		NodeID:    task.NodeID,
+		Slot:      t.Slot,
+		ServiceID: t.ServiceID,
+		NodeID:    t.NodeID,
 	}
 	if r.historyByService[serviceID] != nil &&
 		r.historyByService[serviceID][tuple] != nil {
@@ -244,14 +254,15 @@ func (r *Supervisor) TaskRestartDelay(ctx context.Context, t *api.Task) time.Dur
 		return nil
 	}
 
-	backoff := base + factor*time.Duration(1<<(failures-1))
+	backoffDuration := base + factor*time.Duration(1<<(failures-1))
 
-	if backoff > max || backoff < 0 {
-		backoff = max
+	if backoffDuration > max || backoffDuration < 0 {
+		backoffDuration = max
 	}
 
-	// Choose a uniformly distributed value from [0, backoff).
-	return time.Duration(rand.Int63n(int64(backoff)))
+	// Choose a uniformly distributed value from [0, backoffDuration).
+	result := time.Duration(rand.Int63n(int64(backoffDuration)))
+	return &result
 }
 
 // shouldRestart returns true if a task should be restarted according to the
@@ -451,8 +462,8 @@ func (r *Supervisor) RecordRestartHistory(tuple orchestrator.SlotTuple, replacem
 	}
 }
 
-// Called when a task successfully runs.  Resets the failuresSinceSuccess count
-// for that task.
+// Success is called when a task successfully runs. Resets the
+// failuresSinceSuccess count for that task.
 func (r *Supervisor) Success(task *api.Task) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

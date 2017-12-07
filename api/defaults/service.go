@@ -76,7 +76,7 @@ func InterpolateService(origSpec *api.ServiceSpec) *api.ServiceSpec {
 			spec.Task.Restart.Delay = &gogotypes.Duration{}
 			deepcopy.Copy(spec.Task.Restart.Delay, Service.Task.Restart.Delay)
 		}
-		if spec.Task.Backoff == nil {
+		if spec.Task.Restart.Backoff == nil {
 			spec.Task.Restart.Backoff = Service.Task.Restart.Backoff.Copy()
 		} else {
 			if spec.Task.Restart.Backoff.Base == nil {

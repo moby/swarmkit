@@ -141,12 +141,7 @@ func (r *Orchestrator) handleTaskChange(ctx context.Context, t *api.Task) {
 
 	// Notify the restart supervisor when a task runs
 	if t.Status.State == api.TaskStateRunning {
-		tuple := orchestrator.SlotTuple{
-			Slot:      t.Slot,
-			ServiceID: t.ServiceID,
-			NodeID:    t.NodeID,
-		}
-		r.restarts.Success(tuple, t)
+		r.restarts.Success(t)
 	}
 
 	// Otherwise we mark the task for restart

@@ -329,7 +329,7 @@ message RestartPolicy {
 
 	// Delay between restart attempts
 	// Note: can't use stdduration because this field needs to be nullable.
-    // Note: ingored if backoff is non null
+	// Note: ingored if backoff is non null
 	google.protobuf.Duration delay = 2;
 
 	// MaxAttempts is the maximum number of restarts to attempt on an
@@ -341,18 +341,18 @@ message RestartPolicy {
 	// Note: can't use stdduration because this field needs to be nullable.
 	google.protobuf.Duration window = 4;
 
-    // Defines the backoff policy for this task.
-    BackoffPolicy backoff = 5;
+		// Defines the backoff policy for this task.
+		BackoffPolicy backoff = 5;
 }
 
 message BackoffPolicy {
-    // Base amout of backoff to use. Defaults to 0.
+	// Base amout of backoff to use. Defaults to 0.
 	google.protobuf.Duration base = 1;
 
-    // Amount backoff grows per failure
+	// Amount backoff grows per failure
 	google.protobuf.Duration factor = 2;
 
-    // Maximum bound for single backoff
+	// Maximum bound for single backoff
 	google.protobuf.Duration max = 3;
 }
 
