@@ -3,6 +3,7 @@ package flagparser
 import (
 	"fmt"
 	"time"
+	"errors"
 
 	"github.com/docker/swarmkit/api"
 	gogotypes "github.com/gogo/protobuf/types"
@@ -35,7 +36,8 @@ func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		}
 	}
 
-	if flags.Changed("restart-delay") {
+	var restartDelay bool
+	if restartDelay := flags.Changed("restart-delay"); restartDelay {
 		delay, err := flags.GetString("restart-delay")
 		if err != nil {
 			return err
@@ -47,6 +49,69 @@ func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		}
 
 		spec.Task.Restart.Delay = gogotypes.DurationProto(delayDuration)
+	}
+
+	if flags.Changed("restart-backoff-base") {
+		if restartDelay {
+			return errors.New("restart-backoff-base is not compatible with restart-delay")
+		}
+		delay, err := flags.GetString("restart-backoff-base")
+		if err != nil {
+			return err
+		}
+
+		delayDuration, err := time.ParseDuration(delay)
+		if err != nil {
+			return err
+		}
+
+		if spec.Task.Restart.Backoff == nil {
+			spec.Task.Restart.Backoff = &api.BackoffPolicy{}
+		}
+
+		spec.Task.Restart.Backoff.Base = gogotypes.DurationProto(delayDuration)
+	}
+
+	if flags.Changed("restart-backoff-factor") {
+		if restartDelay {
+			return errors.New("restart-backoff-factor is not compatible with restart-delay")
+		}
+		delay, err := flags.GetString("restart-backoff-factor")
+		if err != nil {
+			return err
+		}
+
+		delayDuration, err := time.ParseDuration(delay)
+		if err != nil {
+			return err
+		}
+
+		if spec.Task.Restart.Backoff == nil {
+			spec.Task.Restart.Backoff = &api.BackoffPolicy{}
+		}
+
+		spec.Task.Restart.Backoff.Factor = gogotypes.DurationProto(delayDuration)
+	}
+
+	if flags.Changed("restart-backoff-max") {
+		if restartDelay {
+			return errors.New("restart-backoff-max is not compatible with restart-delay")
+		}
+		delay, err := flags.GetString("restart-backoff-max")
+		if err != nil {
+			return err
+		}
+
+		delayDuration, err := time.ParseDuration(delay)
+		if err != nil {
+			return err
+		}
+
+		if spec.Task.Restart.Backoff == nil {
+			spec.Task.Restart.Backoff = &api.BackoffPolicy{}
+		}
+
+		spec.Task.Restart.Backoff.Max = gogotypes.DurationProto(delayDuration)
 	}
 
 	if flags.Changed("restart-max-attempts") {
