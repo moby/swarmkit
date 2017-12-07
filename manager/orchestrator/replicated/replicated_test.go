@@ -389,6 +389,44 @@ func TestReplicatedScaleDown(t *testing.T) {
 	assert.Equal(t, api.TaskStateRemove, observedUpdateRemove.DesiredState)
 	assert.Equal(t, "task7", observedUpdateRemove.ID)
 
+	// Now scale down to 4 instances.
+	err = s.Update(func(tx store.Tx) error {
+		s1.Spec.Mode = &api.ServiceSpec_Replicated{
+			Replicated: &api.ReplicatedService{
+				Replicas: 4,
+			},
+		}
+		assert.NoError(t, store.UpdateService(tx, s1))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	// Tasks should be shut down in a way that balances the remaining tasks.
+	// node2 should be preferred over node3 because node2's tasks have
+	// lower Slot numbers than node3's tasks.
+
+	shutdowns := make(map[string]int)
+	for i := 0; i != 2; i++ {
+		observedUpdateDesiredRemove := testutils.WatchTaskUpdate(t, watch)
+		assert.Equal(t, api.TaskStateRemove, observedUpdateDesiredRemove.DesiredState)
+		shutdowns[observedUpdateDesiredRemove.NodeID]++
+	}
+
+	assert.Equal(t, 0, shutdowns["node1"])
+	assert.Equal(t, 0, shutdowns["node2"])
+	assert.Equal(t, 2, shutdowns["node3"])
+
+	// task4 should be preferred over task5 and task6.
+	s.View(func(readTx store.ReadTx) {
+		tasks, err := store.FindTasks(readTx, store.ByNodeID("node3"))
+		require.NoError(t, err)
+		for _, task := range tasks {
+			if task.DesiredState == api.TaskStateRunning {
+				assert.Equal(t, "task4", task.ID)
+			}
+		}
+	})
+
 	// Now scale down to 2 instances.
 	err = s.Update(func(tx store.Tx) error {
 		s1.Spec.Mode = &api.ServiceSpec_Replicated{
@@ -405,8 +443,8 @@ func TestReplicatedScaleDown(t *testing.T) {
 	// node2 and node3 should be preferred over node1 because node1's task
 	// is not running yet.
 
-	shutdowns := make(map[string]int)
-	for i := 0; i != 4; i++ {
+	shutdowns = make(map[string]int)
+	for i := 0; i != 2; i++ {
 		observedUpdateDesiredRemove := testutils.WatchTaskUpdate(t, watch)
 		assert.Equal(t, api.TaskStateRemove, observedUpdateDesiredRemove.DesiredState)
 		shutdowns[observedUpdateDesiredRemove.NodeID]++
@@ -414,18 +452,21 @@ func TestReplicatedScaleDown(t *testing.T) {
 
 	assert.Equal(t, 1, shutdowns["node1"])
 	assert.Equal(t, 1, shutdowns["node2"])
-	assert.Equal(t, 2, shutdowns["node3"])
+	assert.Equal(t, 0, shutdowns["node3"])
 
-	// There should be remaining tasks on node2 and node3.
+	// There should be remaining tasks on node2 and node3. task2 should be
+	// preferred over task3 on node2.
 	s.View(func(readTx store.ReadTx) {
 		tasks, err := store.FindTasks(readTx, store.ByDesiredState(api.TaskStateRunning))
 		require.NoError(t, err)
 		require.Len(t, tasks, 2)
 		if tasks[0].NodeID == "node2" {
+			assert.Equal(t, "task2", tasks[0].ID)
 			assert.Equal(t, "node3", tasks[1].NodeID)
 		} else {
 			assert.Equal(t, "node3", tasks[0].NodeID)
 			assert.Equal(t, "node2", tasks[1].NodeID)
+			assert.Equal(t, "task2", tasks[1].ID)
 		}
 	})
 }
