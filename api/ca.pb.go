@@ -176,6 +176,7 @@
 		Image
 		Mount
 		RestartPolicy
+		BackoffPolicy
 		UpdateConfig
 		UpdateStatus
 		ContainerStatus
