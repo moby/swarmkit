@@ -601,7 +601,7 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 	assert.NotNil(t, s)
 	defer s.Close()
 
-	// Move tasks to their desired state.
+	// Setup simple watcher which moves tasks to their desired state.
 	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 	go func() {
@@ -654,8 +654,8 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 		},
 	}
 
-	// 1: First test calls Run with one slot of two running tasks and
-	// expects one task to be running and one to be shutdown
+	// 1: First test creates two tasks for the same slot and calls updater.Run()
+	// and expects one task to be running and one to be shutdown.
 	var (
 		firstTask  *api.Task
 		secondTask *api.Task
@@ -683,7 +683,7 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 		(tasks[1].DesiredState == api.TaskStateRunning &&
 			tasks[0].DesiredState == api.TaskStateShutdown))
 
-	// 2: Next we set the second task to ready and expect the same results
+	// 2: Next we set the second task to ready and expect the same results.
 	err = s.Update(func(tx store.Tx) error {
 		firstTask.DesiredState = api.TaskStateRunning
 		secondTask.DesiredState = api.TaskStateReady
@@ -709,9 +709,9 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 		}
 	}
 
-	//  3: We create another slot of 2 tasks that desire to be ready and expect
-	//  one to be shutdown and one to be running. The two previously created tasks
-	//  should be shutdown.
+	//  3: We create another slot with 2 tasks with desired state READY and expect
+	//  one to be shutdown and one to run. The two previously created tasks should
+	//  be shutdown.
 	err = s.Update(func(tx store.Tx) error {
 		// Change the old task's states so that they aren't runnable
 		firstTask.DesiredState = api.TaskStateShutdown
@@ -751,8 +751,9 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 		(tasks[secondTaskIndex].DesiredState == api.TaskStateRunning &&
 			tasks[firstTaskIndex].DesiredState == api.TaskStateShutdown))
 
-	//  4: We run with two ready tasks where the second is dirty
-	//  and expect the first to run and the second to shutdown
+	//  4: We create another slot with a dirty task and a clean
+	//  task with desired state READY and expect the first to shutdown
+	//  and the second to be run.
 	err = s.Update(func(tx store.Tx) error {
 		firstTask.DesiredState = api.TaskStateShutdown
 		secondTask.DesiredState = api.TaskStateShutdown
@@ -765,6 +766,7 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 
 		service.Spec.Task.GetContainer().Image = "v:2"
 		secondTask = orchestrator.NewTask(cluster, service, 2, "")
+		secondTask.DesiredState = api.TaskStateReady
 		assert.NoError(t, store.CreateTask(tx, secondTask))
 
 		return nil
@@ -779,10 +781,10 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 	})
 
 	for _, task := range tasks {
-		if task.ID == secondTask.ID {
-			assert.Equal(t, task.DesiredState, api.TaskStateRunning)
-		} else if task.ID == firstTask.ID {
+		if task.ID == firstTask.ID {
 			assert.Equal(t, task.DesiredState, api.TaskStateShutdown)
+		} else if task.ID == secondTask.ID {
+			assert.Equal(t, task.DesiredState, api.TaskStateRunning)
 		}
 	}
 }

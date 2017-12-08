@@ -445,8 +445,9 @@ func (u *Updater) updateTask(ctx context.Context, slot orchestrator.Slot, update
 	}
 }
 
-// useExistingTask shuts down all the tasks in slot except for existing and
-// moves exisiting to the RUNNING state.
+// useExistingTask shuts down all the tasks in slot except for the given existing task.
+// Moves the given existing task to RUNNING state. This is used by updater to redeploy
+// tasks after service spec updates.
 func (u *Updater) useExistingTask(ctx context.Context, slot orchestrator.Slot, existing *api.Task) error {
 	var removeTasks []*api.Task
 	for _, t := range slot {
