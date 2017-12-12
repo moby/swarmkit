@@ -598,7 +598,7 @@ func TestUpdaterOrder(t *testing.T) {
 func TestUpdaterUseExistingTask(t *testing.T) {
 	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
-	assert.NotNil(t, s)
+	require.NotNil(t, s)
 	defer s.Close()
 
 	// Setup simple watcher which moves tasks to their desired state.
@@ -615,7 +615,7 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 				task.Status.State = task.DesiredState
 				return store.UpdateTask(tx, task)
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 	}()
 
@@ -661,15 +661,15 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 		secondTask *api.Task
 	)
 	err := s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateCluster(tx, cluster))
-		assert.NoError(t, store.CreateService(tx, service))
+		require.NoError(t, store.CreateCluster(tx, cluster))
+		require.NoError(t, store.CreateService(tx, service))
 		firstTask = orchestrator.NewTask(cluster, service, 0, "")
-		assert.NoError(t, store.CreateTask(tx, firstTask))
+		require.NoError(t, store.CreateTask(tx, firstTask))
 		secondTask = orchestrator.NewTask(cluster, service, 0, "")
-		assert.NoError(t, store.CreateTask(tx, secondTask))
+		require.NoError(t, store.CreateTask(tx, secondTask))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	updater := NewUpdater(s, restart.NewSupervisor(s), cluster, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
@@ -681,17 +681,19 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 	assert.True(t, (tasks[0].DesiredState == api.TaskStateRunning &&
 		tasks[1].DesiredState == api.TaskStateShutdown) ||
 		(tasks[1].DesiredState == api.TaskStateRunning &&
-			tasks[0].DesiredState == api.TaskStateShutdown))
+			tasks[0].DesiredState == api.TaskStateShutdown),
+		"Expected one task to be desired RUNNING and the other to be desired SHUTDOWN, but they were in %v and %v",
+		tasks[0].DesiredState, tasks[1].DesiredState)
 
 	// 2: Next we set the second task to ready and expect the same results.
 	err = s.Update(func(tx store.Tx) error {
 		firstTask.DesiredState = api.TaskStateRunning
 		secondTask.DesiredState = api.TaskStateReady
-		assert.NoError(t, store.UpdateTask(tx, firstTask))
-		assert.NoError(t, store.UpdateTask(tx, secondTask))
+		require.NoError(t, store.UpdateTask(tx, firstTask))
+		require.NoError(t, store.UpdateTask(tx, secondTask))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	updater = NewUpdater(s, restart.NewSupervisor(s), cluster, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
@@ -705,7 +707,8 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 		} else if task.ID == secondTask.ID {
 			assert.Equal(t, task.DesiredState, api.TaskStateShutdown)
 		} else {
-			assert.True(t, false)
+			t.Errorf("Got unexpected task %v in the task listing, should only have gotten %v or %v",
+				task.ID, firstTask.ID, secondTask.ID)
 		}
 	}
 
@@ -716,20 +719,20 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 		// Change the old task's states so that they aren't runnable
 		firstTask.DesiredState = api.TaskStateShutdown
 		secondTask.DesiredState = api.TaskStateShutdown
-		assert.NoError(t, store.UpdateTask(tx, firstTask))
-		assert.NoError(t, store.UpdateTask(tx, secondTask))
+		require.NoError(t, store.UpdateTask(tx, firstTask))
+		require.NoError(t, store.UpdateTask(tx, secondTask))
 
 		// Create new tasks
 		firstTask = orchestrator.NewTask(cluster, service, 1, "")
 		firstTask.DesiredState = api.TaskStateReady
-		assert.NoError(t, store.CreateTask(tx, firstTask))
+		require.NoError(t, store.CreateTask(tx, firstTask))
 
 		secondTask = orchestrator.NewTask(cluster, service, 1, "")
 		secondTask.DesiredState = api.TaskStateReady
-		assert.NoError(t, store.CreateTask(tx, secondTask))
+		require.NoError(t, store.CreateTask(tx, secondTask))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	updater = NewUpdater(s, restart.NewSupervisor(s), cluster, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
@@ -744,12 +747,17 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 			firstTaskIndex = i
 		} else if task.ID == secondTask.ID {
 			secondTaskIndex = i
+		} else {
+			t.Errorf("Got unexpected task %v in the task listing, should only have gotten %v or %v",
+				task.ID, firstTask.ID, secondTask.ID)
 		}
 	}
 	assert.True(t, (tasks[firstTaskIndex].DesiredState == api.TaskStateRunning &&
 		tasks[secondTaskIndex].DesiredState == api.TaskStateShutdown) ||
 		(tasks[secondTaskIndex].DesiredState == api.TaskStateRunning &&
-			tasks[firstTaskIndex].DesiredState == api.TaskStateShutdown))
+			tasks[firstTaskIndex].DesiredState == api.TaskStateShutdown),
+		"Expected one task to be desired RUNNING and the other to be desired SHUTDOWN, but they were in %v and %v",
+		tasks[0].DesiredState, tasks[1].DesiredState)
 
 	//  4: We create another slot with a dirty task and a clean
 	//  task with desired state READY and expect the first to shutdown
@@ -757,21 +765,21 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 	err = s.Update(func(tx store.Tx) error {
 		firstTask.DesiredState = api.TaskStateShutdown
 		secondTask.DesiredState = api.TaskStateShutdown
-		assert.NoError(t, store.UpdateTask(tx, firstTask))
-		assert.NoError(t, store.UpdateTask(tx, secondTask))
+		require.NoError(t, store.UpdateTask(tx, firstTask))
+		require.NoError(t, store.UpdateTask(tx, secondTask))
 
 		service.Spec.Task.GetContainer().Image = "v:1"
 		firstTask = orchestrator.NewTask(cluster, service, 2, "")
-		assert.NoError(t, store.CreateTask(tx, firstTask))
+		require.NoError(t, store.CreateTask(tx, firstTask))
 
 		service.Spec.Task.GetContainer().Image = "v:2"
 		secondTask = orchestrator.NewTask(cluster, service, 2, "")
 		secondTask.DesiredState = api.TaskStateReady
-		assert.NoError(t, store.CreateTask(tx, secondTask))
+		require.NoError(t, store.CreateTask(tx, secondTask))
 
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	updater = NewUpdater(s, restart.NewSupervisor(s), cluster, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
@@ -785,6 +793,9 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 			assert.Equal(t, task.DesiredState, api.TaskStateShutdown)
 		} else if task.ID == secondTask.ID {
 			assert.Equal(t, task.DesiredState, api.TaskStateRunning)
+		} else {
+			t.Errorf("Got unexpected task %v in the task listing, should only have gotten %v or %v",
+				task.ID, firstTask.ID, secondTask.ID)
 		}
 	}
 }
