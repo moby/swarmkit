@@ -747,9 +747,6 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 			firstTaskIndex = i
 		} else if task.ID == secondTask.ID {
 			secondTaskIndex = i
-		} else {
-			t.Errorf("Got unexpected task %v in the task listing, should only have gotten %v or %v",
-				task.ID, firstTask.ID, secondTask.ID)
 		}
 	}
 	assert.True(t, (tasks[firstTaskIndex].DesiredState == api.TaskStateRunning &&
@@ -793,9 +790,6 @@ func TestUpdaterUseExistingTask(t *testing.T) {
 			assert.Equal(t, task.DesiredState, api.TaskStateShutdown)
 		} else if task.ID == secondTask.ID {
 			assert.Equal(t, task.DesiredState, api.TaskStateRunning)
-		} else {
-			t.Errorf("Got unexpected task %v in the task listing, should only have gotten %v or %v",
-				task.ID, firstTask.ID, secondTask.ID)
 		}
 	}
 }
