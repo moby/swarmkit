@@ -94,10 +94,10 @@ func (tr *TaskReaper) Run() {
 			// Serviceless tasks can be cleaned up right away since they are not attached to a service.
 			tr.cleanup = append(tr.cleanup, t.ID)
 		}
-		// tasks with desired state REMOVE that have progressed beyond SHUTDOWN can be cleaned up
+		// tasks with desired state REMOVE that have progressed beyond COMPLETE can be cleaned up
 		// right away
 		for _, t := range removeTasks {
-			if t.Status.State >= api.TaskStateShutdown {
+			if t.Status.State >= api.TaskStateCompleted {
 				tr.cleanup = append(tr.cleanup, t.ID)
 			}
 		}
@@ -134,10 +134,10 @@ func (tr *TaskReaper) Run() {
 				if t.Status.State >= api.TaskStateOrphaned && t.ServiceID == "" {
 					tr.cleanup = append(tr.cleanup, t.ID)
 				}
-				// add tasks that have progressed beyond SHUTDOWN and have desired state REMOVE. These
+				// add tasks that have progressed beyond COMPLETE and have desired state REMOVE. These
 				// tasks are associated with slots that were removed as part of a service scale down
 				// or service removal.
-				if t.DesiredState == api.TaskStateRemove && t.Status.State >= api.TaskStateShutdown {
+				if t.DesiredState == api.TaskStateRemove && t.Status.State >= api.TaskStateCompleted {
 					tr.cleanup = append(tr.cleanup, t.ID)
 				}
 			case api.EventUpdateCluster:
@@ -254,6 +254,8 @@ func (tr *TaskReaper) tick() {
 // Stop stops the TaskReaper and waits for the main loop to exit.
 func (tr *TaskReaper) Stop() {
 	tr.cancelWatch()
+	// TODO(dperny) calling stop on the task reaper twice will cause a panic
+	// because we try to close a channel that will already have been closed.
 	close(tr.stopChan)
 	<-tr.doneChan
 }
