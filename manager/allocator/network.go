@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/go-events"
+	events "github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/allocator/cnmallocator"
@@ -614,6 +614,7 @@ func (a *Allocator) allocateTasks(ctx context.Context, existingAddressesOnly boo
 		nc             = a.netCtx
 		tasks          []*api.Task
 		allocatedTasks []*api.Task
+		errorTasks     []*api.Task
 		err            error
 	)
 	a.store.View(func(tx store.ReadTx) {
@@ -672,14 +673,16 @@ func (a *Allocator) allocateTasks(ctx context.Context, existingAddressesOnly boo
 		if err == nil {
 			allocatedTasks = append(allocatedTasks, t)
 		} else if err != errNoChanges {
+			errorTasks = append(errorTasks, t)
 			log.G(ctx).WithError(err).Errorf("failed allocating task %s during init", t.ID)
+			updateTaskError(t, fmt.Sprintf("failed allocating task during init: %s", err))
 			nc.unallocatedTasks[t.ID] = t
 		}
 	}
 
 	if err := a.store.Batch(func(batch *store.Batch) error {
-		for _, t := range allocatedTasks {
-			if err := a.commitAllocatedTask(ctx, batch, t); err != nil {
+		for _, t := range append(allocatedTasks, errorTasks...) {
+			if err := a.commitTask(ctx, batch, t); err != nil {
 				log.G(ctx).WithError(err).Errorf("failed committing allocation of task %s during init", t.ID)
 			}
 		}
@@ -1126,7 +1129,7 @@ func (a *Allocator) allocateTask(ctx context.Context, t *api.Task) (err error) {
 	return nil
 }
 
-func (a *Allocator) commitAllocatedTask(ctx context.Context, batch *store.Batch, t *api.Task) error {
+func (a *Allocator) commitTask(ctx context.Context, batch *store.Batch, t *api.Task) error {
 	return batch.Update(func(tx store.Tx) error {
 		err := store.UpdateTask(tx, t)
 
@@ -1231,26 +1234,29 @@ func (a *Allocator) procTasksNetwork(ctx context.Context, onRetry bool) {
 		quiet = true
 	}
 	allocatedTasks := make([]*api.Task, 0, len(toAllocate))
+	errorTasks := make([]*api.Task, 0, len(toAllocate))
 
 	for _, t := range toAllocate {
 		if err := a.allocateTask(ctx, t); err == nil {
 			allocatedTasks = append(allocatedTasks, t)
 		} else if err != errNoChanges {
+			errorTasks = append(errorTasks, t)
 			if quiet {
 				log.G(ctx).WithError(err).Debug("task allocation failure")
 			} else {
 				log.G(ctx).WithError(err).Error("task allocation failure")
 			}
+			updateTaskError(t, fmt.Sprintf("task allocation failure: %s", err))
 		}
 	}
 
-	if len(allocatedTasks) == 0 {
+	if len(allocatedTasks) == 0 && len(errorTasks) == 0 {
 		return
 	}
 
 	err := a.store.Batch(func(batch *store.Batch) error {
-		for _, t := range allocatedTasks {
-			err := a.commitAllocatedTask(ctx, batch, t)
+		for _, t := range append(allocatedTasks, errorTasks...) {
+			err := a.commitTask(ctx, batch, t)
 			if err != nil {
 				log.G(ctx).WithError(err).Error("task allocation commit failure")
 				continue
@@ -1282,13 +1288,19 @@ func PredefinedNetworks() []networkallocator.PredefinedNetworkData {
 	return cnmallocator.PredefinedNetworks()
 }
 
-// updateTaskStatus sets TaskStatus and updates timestamp.
+// updateTaskStatus sets TaskStatus and message and updates timestamp.
 func updateTaskStatus(t *api.Task, newStatus api.TaskState, message string) {
 	t.Status = api.TaskStatus{
 		State:     newStatus,
 		Message:   message,
 		Timestamp: ptypes.MustTimestampProto(time.Now()),
 	}
+}
+
+// updateTaskError sets the task error and updates timestamp.
+func updateTaskError(t *api.Task, message string) {
+	t.Status.Err = message
+	t.Status.Timestamp = ptypes.MustTimestampProto(time.Now())
 }
 
 // IsIngressNetwork returns whether the passed network is an ingress network.
