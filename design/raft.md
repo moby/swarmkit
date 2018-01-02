@@ -115,7 +115,7 @@ token, or promoting a worker node to a manager. If successful, `Join` returns a
 Raft ID for the new node and a list of other members of the consensus group.
 
 On the leader side, `Join` tries to append a configuration change entry to the
-Raft log, and waits until that entry becomes committted.
+Raft log, and waits until that entry becomes committed.
 
 A new node creates an empty Raft log with its own node information in the
 metadata field. Then it starts the state machine. By running the Raft consensus
@@ -226,7 +226,7 @@ store inconsistent with what's actually in the Raft log, which would be very
 bad.
 
 When the log entry successfully becomes committed, `processEntry` triggers the
-wait associatd with this entry, which allows `processInternalRaftRequest` to
+wait associated with this entry, which allows `processInternalRaftRequest` to
 return. On a leadership change, all outstanding waits get cancelled.
 
 ## The Raft RPC proxy

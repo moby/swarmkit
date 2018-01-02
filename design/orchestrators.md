@@ -74,7 +74,7 @@ difference, assigning them slot numbers that don't conflict with any runnable
 slots.
 
 If there are more runnable slots than the number of replicas specified in the
-serivce spec, the orchestrator deletes extra tasks. It attempts to remove tasks
+service spec, the orchestrator deletes extra tasks. It attempts to remove tasks
 on nodes that have the most instances of this service running, to maintain
 balance in the way tasks are assigned to nodes. When there's a tie between the
 number of tasks running on multiple nodes, it prefers to remove tasks that
