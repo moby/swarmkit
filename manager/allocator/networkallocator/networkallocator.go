@@ -422,6 +422,11 @@ func (na *NetworkAllocator) ServiceNeedsAllocation(s *api.Service, flags ...func
 	vipLoop:
 		for _, vip := range s.Endpoint.VirtualIPs {
 			if na.IsVIPOnIngressNetwork(vip) && IsIngressNetworkNeeded(s) {
+				// This checks the condition when ingress network is needed
+				// but allocation has not been done.
+				if _, ok := na.services[s.ID]; !ok {
+					return true
+				}
 				continue vipLoop
 			}
 			for _, net := range specNetworks {
