@@ -252,6 +252,116 @@ func TestUpdater(t *testing.T) {
 	assert.Len(t, updatedTasks, instances)
 }
 
+func TestUpdaterPlacement(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	// Move tasks to their desired state.
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
+	defer cancel()
+	go func() {
+		for e := range watch {
+			task := e.(api.EventUpdateTask).Task
+			if task.Status.State == task.DesiredState {
+				continue
+			}
+			err := s.Update(func(tx store.Tx) error {
+				task = store.GetTask(tx, task.ID)
+				task.Status.State = task.DesiredState
+				return store.UpdateTask(tx, task)
+			})
+			assert.NoError(t, err)
+		}
+	}()
+
+	instances := 3
+	cluster := &api.Cluster{
+		// test cluster configuration propagation to task creation.
+		Spec: api.ClusterSpec{
+			Annotations: api.Annotations{
+				Name: store.DefaultClusterName,
+			},
+		},
+	}
+
+	service := &api.Service{
+		ID:          "id1",
+		SpecVersion: &api.Version{Index: 1},
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+			Mode: &api.ServiceSpec_Replicated{
+				Replicated: &api.ReplicatedService{
+					Replicas: uint64(instances),
+				},
+			},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{
+						Image: "v:1",
+					},
+				},
+			},
+			Update: &api.UpdateConfig{
+				// avoid having Run block for a long time to watch for failures
+				Monitor: gogotypes.DurationProto(50 * time.Millisecond),
+			},
+		},
+	}
+
+	node := &api.Node{ID: "node1"}
+
+	// Create the cluster, service, and tasks for the service.
+	err := s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateCluster(tx, cluster))
+		assert.NoError(t, store.CreateService(tx, service))
+		store.CreateNode(tx, node)
+		for i := 0; i < instances; i++ {
+			assert.NoError(t, store.CreateTask(tx, orchestrator.NewTask(cluster, service, uint64(i), "node1")))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	originalTasks := getRunnableSlotSlice(t, s, service)
+	originalTasksMaps := make([]map[string]*api.Task, len(originalTasks))
+	originalTaskCount := 0
+	for i, slot := range originalTasks {
+		originalTasksMaps[i] = make(map[string]*api.Task)
+		for _, task := range slot {
+			originalTasksMaps[i][task.GetID()] = task
+			assert.Equal(t, "v:1", task.Spec.GetContainer().Image)
+			assert.Nil(t, task.Spec.Placement)
+			originalTaskCount++
+		}
+	}
+
+	// Change the placement constraints
+	service.SpecVersion.Index++
+	service.Spec.Task.Placement = &api.Placement{}
+	service.Spec.Task.Placement.Constraints = append(service.Spec.Task.Placement.Constraints, "node.name=*")
+	updater := NewUpdater(s, restart.NewSupervisor(s), cluster, service)
+	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
+	updatedTasks := getRunnableSlotSlice(t, s, service)
+	updatedTaskCount := 0
+	for _, slot := range updatedTasks {
+		for _, task := range slot {
+			for i, slot := range originalTasks {
+				originalTasksMaps[i] = make(map[string]*api.Task)
+				for _, tasko := range slot {
+					if task.GetID() == tasko.GetID() {
+						updatedTaskCount++
+					}
+				}
+			}
+		}
+	}
+	assert.Equal(t, originalTaskCount, updatedTaskCount)
+}
+
 func TestUpdaterFailureAction(t *testing.T) {
 	t.Parallel()
 
