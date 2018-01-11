@@ -32,8 +32,9 @@ type ServiceSpec struct {
 
 // ServiceMode represents the mode of a service.
 type ServiceMode struct {
-	Replicated *ReplicatedService `json:",omitempty"`
-	Global     *GlobalService     `json:",omitempty"`
+	Replicated 		*ReplicatedService 		`json:",omitempty"`
+	Global     		*GlobalService     		`json:",omitempty"`
+	SwarmManager	*SwarmManagerService	`json:",omitempty"`
 }
 
 // UpdateState is the state of a service update.
@@ -69,6 +70,11 @@ type ReplicatedService struct {
 
 // GlobalService is a kind of ServiceMode.
 type GlobalService struct{}
+
+// SwarmService is a kind of ServiceMode to maintain a user-defined set of ManagerRole Nodes.
+type SwarmManagerService struct {
+	Replicas *uint64 `json:",omitempty"`
+}
 
 const (
 	// UpdateFailureActionPause PAUSE

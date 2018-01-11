@@ -27,6 +27,17 @@ func IsGlobalService(service *api.Service) bool {
 	return ok
 }
 
+// IsSwarmManagerService checks if a service is a swarmManager service.
+func IsSwarmManagerService(service *api.Service) bool {
+	// service nil validation is required as there are scenarios
+	// where service is removed from store
+	if service == nil {
+		return false
+	}
+	_, ok := service.Spec.GetMode().(*api.ServiceSpec_Manager)
+	return ok
+}
+
 // SetServiceTasksRemove sets the desired state of tasks associated with a service
 // to REMOVE, so that they can be properly shut down by the agent and later removed
 // by the task reaper.
