@@ -74,7 +74,7 @@ func loadData(swarmdir, unlockKey string) (*storage.WALData, *raftpb.Snapshot, e
 	return &walData, snapshot, nil
 }
 
-func dumpWAL(swarmdir, unlockKey string, start, end uint64) error {
+func dumpWAL(swarmdir, unlockKey string, start, end uint64, redact bool) error {
 	walData, _, err := loadData(swarmdir, unlockKey)
 	if err != nil {
 		return err
@@ -101,6 +101,32 @@ func dumpWAL(swarmdir, unlockKey string, start, end uint64) error {
 					return err
 				}
 
+				if redact {
+					// redact sensitive information
+					for _, act := range r.Action {
+						target := act.GetTarget()
+						switch actype := target.(type) {
+						case *api.StoreAction_Cluster:
+							actype.Cluster.UnlockKeys = []*api.EncryptionKey{}
+							actype.Cluster.NetworkBootstrapKeys = []*api.EncryptionKey{}
+							actype.Cluster.RootCA = api.RootCA{}
+							actype.Cluster.Spec.CAConfig = api.CAConfig{}
+						case *api.StoreAction_Secret:
+							actype.Secret.Spec.Data = []byte("SECRET REDACTED")
+						case *api.StoreAction_Config:
+							actype.Config.Spec.Data = []byte("CONFIG REDACTED")
+						case *api.StoreAction_Task:
+							if container := actype.Task.Spec.GetContainer(); container != nil {
+								container.Env = []string{"ENVVARS REDACTED"}
+							}
+						case *api.StoreAction_Service:
+							if container := actype.Service.Spec.Task.GetContainer(); container != nil {
+								container.Env = []string{"ENVVARS REDACTED"}
+							}
+						}
+					}
+				}
+
 				if err := proto.MarshalText(os.Stdout, r); err != nil {
 					return err
 				}
@@ -112,7 +138,7 @@ func dumpWAL(swarmdir, unlockKey string, start, end uint64) error {
 	return nil
 }
 
-func dumpSnapshot(swarmdir, unlockKey string) error {
+func dumpSnapshot(swarmdir, unlockKey string, redact bool) error {
 	_, snapshot, err := loadData(swarmdir, unlockKey)
 	if err != nil {
 		return err
@@ -141,6 +167,42 @@ func dumpSnapshot(swarmdir, unlockKey string) error {
 		fmt.Printf(" RaftID=%x\n", member)
 	}
 	fmt.Println()
+
+	if redact {
+		for _, cluster := range s.Store.Clusters {
+			if cluster != nil {
+				// expunge everything that may have key material
+				cluster.RootCA = api.RootCA{}
+				cluster.NetworkBootstrapKeys = []*api.EncryptionKey{}
+				cluster.UnlockKeys = []*api.EncryptionKey{}
+				cluster.Spec.CAConfig = api.CAConfig{}
+			}
+		}
+		for _, secret := range s.Store.Secrets {
+			if secret != nil {
+				secret.Spec.Data = []byte("SECRET REDACTED")
+			}
+		}
+		for _, config := range s.Store.Configs {
+			if config != nil {
+				config.Spec.Data = []byte("CONFIG REDACTED")
+			}
+		}
+		for _, task := range s.Store.Tasks {
+			if task != nil {
+				if container := task.Spec.GetContainer(); container != nil {
+					container.Env = []string{"ENVVARS REDACTED"}
+				}
+			}
+		}
+		for _, service := range s.Store.Services {
+			if service != nil {
+				if container := service.Spec.Task.GetContainer(); container != nil {
+					container.Env = []string{"ENVVARS REDACTED"}
+				}
+			}
+		}
+	}
 
 	fmt.Println("Objects:")
 	if err := proto.MarshalText(os.Stdout, &s.Store); err != nil {

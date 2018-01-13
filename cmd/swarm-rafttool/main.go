@@ -66,7 +66,12 @@ var (
 				return err
 			}
 
-			return dumpWAL(stateDir, unlockKey, start, end)
+			redact, err := cmd.Flags().GetBool("redact")
+			if err != nil {
+				return err
+			}
+
+			return dumpWAL(stateDir, unlockKey, start, end, redact)
 		},
 	}
 
@@ -84,7 +89,12 @@ var (
 				return err
 			}
 
-			return dumpSnapshot(stateDir, unlockKey)
+			redact, err := cmd.Flags().GetBool("redact")
+			if err != nil {
+				return err
+			}
+
+			return dumpSnapshot(stateDir, unlockKey, redact)
 		},
 	}
 
@@ -142,8 +152,11 @@ func init() {
 		dumpObjectCmd,
 	)
 
+	dumpSnapshotCmd.Flags().Bool("redact", false, "Redact the values of secrets, configs, and environment variables")
+
 	dumpWALCmd.Flags().Uint64("start", 0, "Start of index range to dump")
 	dumpWALCmd.Flags().Uint64("end", 0, "End of index range to dump")
+	dumpWALCmd.Flags().Bool("redact", false, "Redact the values of secrets, configs, and environment variables")
 
 	dumpObjectCmd.Flags().String("id", "", "Look up object by ID")
 	dumpObjectCmd.Flags().String("name", "", "Look up object by name")
