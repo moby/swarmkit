@@ -34,7 +34,7 @@ type ServiceSpec struct {
 type ServiceMode struct {
 	Replicated 		*ReplicatedService 		`json:",omitempty"`
 	Global     		*GlobalService     		`json:",omitempty"`
-	SwarmManager	*SwarmManagerService	`json:",omitempty"`
+	SwarmManager	*RoleManagerService	`json:",omitempty"`
 }
 
 // UpdateState is the state of a service update.
@@ -71,8 +71,8 @@ type ReplicatedService struct {
 // GlobalService is a kind of ServiceMode.
 type GlobalService struct{}
 
-// SwarmService is a kind of ServiceMode to maintain a user-defined set of ManagerRole Nodes.
-type SwarmManagerService struct {
+// RoleManagerService is a kind of ServiceMode to maintain a user-defined number of ManagerRole Nodes.
+type RoleManagerService struct {
 	Replicas *uint64 `json:",omitempty"`
 }
 

@@ -27,8 +27,8 @@ func IsGlobalService(service *api.Service) bool {
 	return ok
 }
 
-// IsSwarmManagerService checks if a service is a swarmManager service.
-func IsSwarmManagerService(service *api.Service) bool {
+// IsRoleManagerService checks if a service is a swarmManager service.
+func IsRoleManagerService(service *api.Service) bool {
 	// service nil validation is required as there are scenarios
 	// where service is removed from store
 	if service == nil {

@@ -69,7 +69,7 @@ message ServiceSpec {
 	oneof mode {
 		ReplicatedService replicated = 3;
 		GlobalService global = 4;
-		SwarmManagerService manager = 5;
+		RoleManagerService manager = 5;
 	}
 
 	// Update contains settings which affect updates.
@@ -100,8 +100,8 @@ message GlobalService {
 	// Empty message for now.
 }
 
-// SwarmManagerService sets the reconciliation target for the number of ManagerRole Nodes.
-message SwarmManagerService {
+// RoleManagerService sets the reconciliation target for the number of ManagerRole Nodes.
+message RoleManagerService {
 	uint64 replicas = 1;
 }
 
@@ -321,7 +321,7 @@ message ContainerSpec {
 	// Runtimes that don't support it ignore that field
 	Isolation isolation = 24;
 
-	// PidsLimit prevents from OS resource damage by applications inside the container 
+	// PidsLimit prevents from OS resource damage by applications inside the container
 	// PidsLimit prevents from OS resource damage by applications inside the container
 	// using fork bomb attack.
 	int64 pidsLimit = 25;
