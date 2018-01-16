@@ -31,7 +31,7 @@ func PollFuncWithTimeout(clockSource *fakeclock.FakeClock, f func() error, timeo
 	}
 }
 
-// PollFunc is like PollFuncWithTimeout with timeout=10s.
+// PollFunc is like PollFuncWithTimeout with timeout=20s.
 func PollFunc(clockSource *fakeclock.FakeClock, f func() error) error {
-	return PollFuncWithTimeout(clockSource, f, 10*time.Second)
+	return PollFuncWithTimeout(clockSource, f, 20*time.Second)
 }
