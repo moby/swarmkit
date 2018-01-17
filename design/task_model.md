@@ -132,9 +132,18 @@ way to `RUNNING`. If a task exits without an error code, it moves to the
 `COMPLETE` state. If it fails, it moves to the `FAILED` state instead.
 
 A task may alternatively end up in the `SHUTDOWN` state if its shutdown was
-requested by the orchestrator, the `REJECTED` state if the agent rejected the
+requested by the orchestrator (by setting desired state to `SHUTDOWN`),
+the `REJECTED` state if the agent rejected the
 task, or the `ORPHANED` state if the node on which the task is scheduled is
-down for too long.
+down for too long. The orchestrator will also set desired state for a task not
+already in a terminal state to
+`REMOVE` when the service associated with the task was removed or scaled down
+by the user. When this happens, the agent proceeds to shut the task down.
+The task is removed from the store by the task reaper only after the shutdown succeeds.
+This ensures that resources associated with the task are not released before
+the task has shut down.
+Tasks that were removed becacuse of service removal or scale down
+are not kept around in task history.
 
 The task state can never move backwards - it only increases monotonically.
 
