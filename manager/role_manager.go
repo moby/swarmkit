@@ -2,6 +2,7 @@ package manager
 
 import (
 	"time"
+	"sort"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
@@ -15,6 +16,7 @@ import (
 const roleReconcileInterval = 5 * time.Second
 
 // roleManager reconciles the raft member list with desired role changes.
+
 type roleManager struct {
 	ctx    context.Context
 	cancel func()
@@ -27,10 +29,12 @@ type roleManager struct {
 	// the raft member list.
 	pending map[string]*api.Node
 	// autoswarmServices has all the global services in the cluster, indexed by ServiceID
-	roleManagerServices map[string]roleManagerService
+	roleManagerServices map[string]*api.Service
+	serviceHistory	[]string
 	nodes map[string]*api.Node
 	managers map[string]*api.Node
 	workers map[string]*api.Node
+	specifiedManagers	int
 
 }
 
@@ -44,10 +48,12 @@ func newRoleManager(store *store.MemoryStore, raftNode *raft.Node) *roleManager 
 		raft:     raftNode,
 		doneChan: make(chan struct{}),
 		pending:  make(map[string]*api.Node),
-		roleManagerServices: make(map[string]roleManagerService),
+		roleManagerServices: make(map[string]*api.Service),
+		serviceHistory:	make([]string)
 		nodes:    make(map[string]*api.Node),
 		managers: make(map[string]*api.Node),
 		workers:  make(map[string]*api.Node),
+		specifiedManagers:	1,
 	}
 }
 
@@ -104,11 +110,9 @@ func (rm *roleManager) Run(ctx context.Context) {
 	for _, s := range existingServices {
 		if orchestrator.IsRoleManagerService(s) {
 			rm.updateService(s)
-			reconcileServiceIDs = append(reconcileServices, s)
 		}
 	}
 
-	rm.reconcileServices(ctx, reconcileServices)
 
 	for {
 		select {
@@ -116,26 +120,34 @@ func (rm *roleManager) Run(ctx context.Context) {
 				// TODO(stevvooe): Use ctx to limit running time of operation.
 				switch v := event.(type) {
 				case api.EventCreateService:
-					if !orchestrator.IsRoleManagerService(v.Service) {
-						continue
-					}
-					rm.updateService(v.Service)
-					rm.reconcileServices(ctx, []string{v.Service.ID})
+					rm.updateService(ctx, v.Service)
 				case api.EventUpdateService:
-					if !orchestrator.IsRoleManagerService(v.Service) {
-						continue
-					}
-					rm.updateService(v.Service)
-					rm.reconcileServices(ctx, []string{v.Service.ID})
+					rm.updateService(ctx, v.Service)
 				case api.EventDeleteService:
-					if !orchestrator.IsRoleManagerService(v.Service) {
-						continue
-					}
-					orchestrator.SetServiceTasksRemove(ctx, rm.store, rm.Service)
-					// delete the service from service map
-					delete(rm.roleManagerServices, v.Service.ID)
-
+					rm.deleteService()
 				}
+
+		case rm.specifiedManagers > uint64(len(rm.managers)):
+			// TODO check for quorum loss, timeout wait for manager restart/rejoin to maintain quorum integrity
+
+			log.G(ctx).Debugf("Manager Nodes were scaled up from %d to %d instances", rm.managers, rm.specifiedManagers)
+			managerScheduler = scheduler.New(store)
+			managerScheduler.ScheduleManager(ctx, service.Task, rm.managers, rm.workers)
+
+		case rm.specifiedManagers < uint64(len(rm.managers)):
+			// Remove Leader from demote list and demote random Manager to Worker Role.
+			// TODO sort demote list by Preferences, health, raft consistency, etc. to favor demoting weaker nodes.
+			log.G(ctx).Debugf("Manager Nodes were scaled down from %d to %d instances", rm.managers, rm.specifiedManagers)
+			for _, m := range managers {
+				if !m.ManagerStatus.Leader {
+					err := store.Update(func(tx store.Tx) error {
+								demotedNode := store.GetNode(tx, m.ID)
+								demotedNode.Spec.DesiredRole = api.NodeRoleWorker
+								return store.UpdateNode(tx, demotedNode)
+					}
+					break
+				}
+			}
 
 		case event := <-nodeWatcher:
 			node := event.(api.EventUpdateNode).Node
@@ -233,63 +245,38 @@ func (rm *roleManager) reconcileRole(ctx context.Context, node *api.Node) {
 	}
 }
 
-func (rm *roleManager) reconcileServices(ctx context.Context, services []*api.Service) {
-		numSlots := len(rm.managers)
-
-		if len(services) > 1 {
-			log.G(ctx).WithError(err).Errorf("excessive autoswarm service declarations, only one should be defined")
-			return
-		}
-
-		// Pick a random service, there should only be one, but this will enforce
-		for _, service = range services {
-			break
-		}
-
+func (rm *roleManager) reconcileServices(ctx context.Context) {
+		latest := serviceHistory[len(serviceHistory)-1]
+		service := rm.roleManagerServices[latest]
 		deploy := service.Spec.GetMode().(*api.ServiceSpec_Manager)
-		specifiedManagers := deploy.Replicated.Replicas
-
-	switch {
-	case specifiedManagers > uint64(numSlots):
-		// TODO check for quorum loss, timeout wait for manager restart/rejoin to maintain quorum integrity
-
-		log.G(ctx).Debugf("Service %s was scaled up from %d to %d instances", service.ID, numSlots, specifiedSlots)
-		managerScheduler = scheduler.New(store)
-		managerScheduler.ScheduleManager(ctx, service.Task, rm.managers, rm.workers)
-
-	case specifiedManagers < uint64(numSlots):
-		// Update up to N tasks then remove the extra
-		log.G(ctx).Debugf("Service %s was scaled down from %d to %d instances", service.ID, numSlots, specifiedSlots)
-		for _, m := range managers {
-			if !m.ManagerStatus.Leader {
-				err := store.Update(func(tx store.Tx) error {
-
-				      updatedNode := store.GetNode(tx, targetNodeID)
-				      if updatedNode == nil || updatedNode.Spec.DesiredRole != node.Spec.DesiredRole || updatedNode.Role != node.Role {
-				        return nil
-				      }
-				      updatedNode.Spec.DesiredRole = api.NodeRoleWorker
-				      return store.UpdateNode(tx, updatedNode)
-
-				}
-				break
-			}
-		}
-	}
+		rm.specifiedManagers := deploy.Replicated.Replicas
 }
 
-func (rm *roleManager) updateService(service *api.Service) {
-		var constraints []constraint.Constraint
-
-		if service.Spec.Task.Placement != nil && len(service.Spec.Task.Placement.Constraints) != 0 {
-			constraints, _ = constraint.Parse(service.Spec.Task.Placement.Constraints)
+func (rm *roleManager) updateService(ctx context.Context, service *api.Service) {
+	if !orchestrator.IsRoleManagerService(v.Service) {
+		continue
+	}
+	rm.roleManagerServices[service.ID] = service
+	for h := range serviceHistory {
+		if h == service.ID {
+			serviceHistory = append(serviceHistory[:h], serviceHistory[h+1:]...)
 		}
+	}
+	serviceHistory = append(serviceHistory, service.ID)
+	rm.reconcileServices(ctx)
+}
 
-		rm.roleManagerServices[service.ID] = roleManagerService{
-			Service:     service,
-			constraints: constraints,
+func (rm *roleManager) deleteService(ctx context.Context, service *api.Service) {
+	if !orchestrator.IsRoleManagerService(v.Service) {
+		continue
+	}
+	rm.roleManagerServices[service.ID] = nil
+	for h := range serviceHistory {
+		if h == service.ID {
+			serviceHistory = append(serviceHistory[:h], serviceHistory[h+1:]...)
 		}
-
+	}
+	rm.reconcileServices(ctx)
 }
 
 // Stop stops the roleManager and waits for the main loop to exit.
