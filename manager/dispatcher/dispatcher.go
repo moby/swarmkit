@@ -368,6 +368,7 @@ func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
 						d.downNodes.Delete(nodeCopy.ID)
 					}
 
+					log.Infof(`node %s was found to be down`, node.ID)
 					d.downNodes.Add(nodeCopy, expireFunc)
 					return nil
 				}
@@ -499,13 +500,17 @@ func (d *Dispatcher) register(ctx context.Context, nodeID string, description *a
 	}
 
 	expireFunc := func() {
-		log.G(ctx).Debug("heartbeat expiration")
+		log.G(ctx).Debug("heartbeat expiration for worker %s", nodeID)
+		if rn := d.nodes.Delete(nodeID); rn == nil {
+			log.G(ctx).Errorf("node %s is not found in local storage", nodeID)
+		}
 		if err := d.markNodeNotReady(nodeID, api.NodeStatus_DOWN, "heartbeat failure"); err != nil {
 			log.G(ctx).WithError(err).Errorf("failed deregistering node after heartbeat expiration")
 		}
 	}
 
 	rn := d.nodes.Add(node, expireFunc)
+	log.G(ctx).Infof("node %s registered", nodeID)
 
 	// NOTE(stevvooe): We need be a little careful with re-registration. The
 	// current implementation just matches the node id and then gives away the
@@ -1048,6 +1053,7 @@ func (d *Dispatcher) markNodeNotReady(id string, state api.NodeStatus_State, mes
 	}
 
 	expireFunc := func() {
+		log.G(dctx).Debugf(`moving all tasks to "ORPHANED" state for worker %s`, id)
 		if err := d.moveTasksToOrphaned(id); err != nil {
 			log.G(dctx).WithError(err).Error(`failed to move all tasks to "ORPHANED" state`)
 		}
@@ -1077,10 +1083,6 @@ func (d *Dispatcher) markNodeNotReady(id string, state api.NodeStatus_State, mes
 		}
 	}
 
-	if rn := d.nodes.Delete(id); rn == nil {
-		return errors.Errorf("node %s is not found in local storage", id)
-	}
-
 	return nil
 }
 
@@ -1094,6 +1096,8 @@ func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*a
 	}
 
 	period, err := d.nodes.Heartbeat(nodeInfo.NodeID, r.SessionID)
+
+	log.G(ctx).WithField("method", "(*Dispatcher).markNodeNotReady").Infof("agent heartbeat period %v", period)
 	return &api.HeartbeatResponse{Period: period}, err
 }
 
@@ -1205,6 +1209,8 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 				log.WithError(err).Error("session end")
 			}
 		}
+
+		log.Infof("node %s is currently trying to find a new manager", nodeID)
 
 		if err := d.markNodeNotReady(nodeID, api.NodeStatus_DISCONNECTED, "node is currently trying to find new manager"); err != nil {
 			log.WithError(err).Error("failed to remove node")
