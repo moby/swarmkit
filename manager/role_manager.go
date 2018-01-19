@@ -2,13 +2,12 @@ package manager
 
 import (
 	"time"
-	"sort"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/orchestrator"
-	"github.com/docker/swarmkit/manager/scheduler"
 	"github.com/docker/swarmkit/manager/state/raft"
+	"github.com/docker/swarmkit/manager/scheduler"
 	"github.com/docker/swarmkit/manager/state/store"
 	"golang.org/x/net/context"
 )
@@ -16,7 +15,6 @@ import (
 const roleReconcileInterval = 5 * time.Second
 
 // roleManager reconciles the raft member list with desired role changes.
-
 type roleManager struct {
 	ctx    context.Context
 	cancel func()
@@ -28,14 +26,8 @@ type roleManager struct {
 	// pending contains changed nodes that have not yet been reconciled in
 	// the raft member list.
 	pending map[string]*api.Node
-	// autoswarmServices has all the global services in the cluster, indexed by ServiceID
-	roleManagerServices map[string]*api.Service
+	services map[string]*api.Service
 	serviceHistory	[]string
-	nodes map[string]*api.Node
-	managers map[string]*api.Node
-	workers map[string]*api.Node
-	specifiedManagers	int
-
 }
 
 // newRoleManager creates a new roleManager.
@@ -48,12 +40,8 @@ func newRoleManager(store *store.MemoryStore, raftNode *raft.Node) *roleManager 
 		raft:     raftNode,
 		doneChan: make(chan struct{}),
 		pending:  make(map[string]*api.Node),
-		roleManagerServices: make(map[string]*api.Service),
-		serviceHistory:	make([]string)
-		nodes:    make(map[string]*api.Node),
-		managers: make(map[string]*api.Node),
-		workers:  make(map[string]*api.Node),
-		specifiedManagers:	1,
+		services:	make(map[string]*api.Service),
+		serviceHistory:		make([]string),
 	}
 }
 
@@ -62,27 +50,41 @@ func newRoleManager(store *store.MemoryStore, raftNode *raft.Node) *roleManager 
 func (rm *roleManager) Run(ctx context.Context) {
 	defer close(rm.doneChan)
 
-	var (
-		nodes    []*api.Node
-		ticker   *time.Ticker
-		tickerCh <-chan time.Time
+	// Init tickerCh
+	ticker = time.NewTicker(roleReconcileInterval)
+	tickerCh = ticker.C
+
+	// Init serviceWatcher
+	var existingServices []*api.Service
+	serviceWatcher, cancelServiceWatcher, err := store.ViewAndWatch(rm.store,
+		func(readTx store.ReadTx) error {
+			var err error
+			existingServices, err = store.FindServices(readTx, store.All)
+			}
+			return err
+		}
 	)
+	defer cancelServiceWatcher()
 
-	// Watch changes to services and tasks
-	queue := rm.store.WatchQueue()
-	serviceWatcher, cancel := queue.Watch()
-	defer cancel()
+	if err != nil {
+		log.G(ctx).WithError(err).Error("failed to check services for role changes")
+	} else {
+		for _, service := range existingServices {
+			if orchestrator.IsRoleManagerService(service) {
+				rm.updateService(service)
+			}
+	}
 
-	nodeWatcher, cancelWatch, err := store.ViewAndWatch(rm.store,
+	// Init nodeWatcher
+	var existingNodes []*api.Node
+	nodeWatcher, cancelNodeWatcher, err := store.ViewAndWatch(rm.store,
 		func(readTx store.ReadTx) error {
 			var err error
 			nodes, err = store.FindNodes(readTx, store.All)
-			managers, err = store.FindNodes(readTx, store.ByRole(api.NodeRoleManager))
-			workers, err = store.FindNodes(readTx, store.ByRole(api.NodeRoleWorker))
 			return err
-		},
-		api.EventUpdateNode{})
-	defer cancelWatch()
+		}
+	)
+	defer cancelNodeWatcher()
 
 	if err != nil {
 		log.G(ctx).WithError(err).Error("failed to check nodes for role changes")
@@ -91,86 +93,63 @@ func (rm *roleManager) Run(ctx context.Context) {
 			rm.pending[node.ID] = node
 			rm.reconcileRole(ctx, node)
 		}
-		if len(rm.pending) != 0 {
-			ticker = time.NewTicker(roleReconcileInterval)
-			tickerCh = ticker.C
-		}
 	}
 
-	// Lookup autoswarm services
-	var existingServices []*api.Service
-	rm.store.View(func(readTx store.ReadTx) {
-		existingServices, err = store.FindServices(readTx, store.All)
-	})
-	if err != nil {
-		return err
-	}
-
-	var reconcileServices []*api.Service
-	for _, s := range existingServices {
-		if orchestrator.IsRoleManagerService(s) {
-			rm.updateService(s)
-		}
-	}
-
-
+// main loop
 	for {
 		select {
 		case event := <-serviceWatcher:
-				// TODO(stevvooe): Use ctx to limit running time of operation.
-				switch v := event.(type) {
-				case api.EventCreateService:
-					rm.updateService(ctx, v.Service)
-				case api.EventUpdateService:
-					rm.updateService(ctx, v.Service)
-				case api.EventDeleteService:
-					rm.deleteService()
+			if event.(type) != api.EventDeleteService {
+				rm.updateService(event.Service)
+				} else {
+					rm.deleteService(event.Service)
 				}
-
-		case rm.specifiedManagers > uint64(len(rm.managers)):
-			// TODO check for quorum loss, timeout wait for manager restart/rejoin to maintain quorum integrity
-
-			log.G(ctx).Debugf("Manager Nodes were scaled up from %d to %d instances", rm.managers, rm.specifiedManagers)
-			managerScheduler = scheduler.New(store)
-			managerScheduler.ScheduleManager(ctx, service.Task, rm.managers, rm.workers)
-
-		case rm.specifiedManagers < uint64(len(rm.managers)):
-			// Remove Leader from demote list and demote random Manager to Worker Role.
-			// TODO sort demote list by Preferences, health, raft consistency, etc. to favor demoting weaker nodes.
-			log.G(ctx).Debugf("Manager Nodes were scaled down from %d to %d instances", rm.managers, rm.specifiedManagers)
-			for _, m := range managers {
-				if !m.ManagerStatus.Leader {
-					err := store.Update(func(tx store.Tx) error {
-								demotedNode := store.GetNode(tx, m.ID)
-								demotedNode.Spec.DesiredRole = api.NodeRoleWorker
-								return store.UpdateNode(tx, demotedNode)
-					}
-					break
-				}
-			}
-
+				rm.reconcileManagers(ctx)
 		case event := <-nodeWatcher:
 			node := event.(api.EventUpdateNode).Node
 			rm.pending[node.ID] = node
 			rm.reconcileRole(ctx, node)
-			if len(rm.pending) != 0 && ticker == nil {
-				ticker = time.NewTicker(roleReconcileInterval)
-				tickerCh = ticker.C
-			}
+			rm.reconcileManagers(ctx)
 		case <-tickerCh:
+			rm.reconcileManagers(ctx)
 			for _, node := range rm.pending {
 				rm.reconcileRole(ctx, node)
 			}
-			if len(rm.pending) == 0 {
-				ticker.Stop()
-				ticker = nil
-				tickerCh = nil
-			}
 		case <-rm.ctx.Done():
-			if ticker != nil {
-				ticker.Stop()
-			}
+			ticker.Stop()
 			return
+		}
+	}
+}
+
+func rm *roleManager() reconcileManagers(ctx context.Context) {
+	managers, err = store.FindNodes(readTx, store.ByRole(api.NodeRoleManager))
+	latest := serviceHistory[len(serviceHistory)-1]
+	service := rm.services[latest.ID]
+	deploy := service.Spec.GetMode().(*api.ServiceSpec_Manager)
+	specifiedManagers := deploy.Replicated.Replicas
+
+	select {
+	case specifiedManagers > uint64(len(managers)):
+		// TODO check for quorum loss, timeout wait for manager restart/rejoin to maintain quorum integrity
+
+		log.G(ctx).Debugf("Manager Nodes were scaled up from %d to %d instances", rm.managers, rm.specifiedManagers)
+		managerScheduler = scheduler.New(store)
+		managerScheduler.ScheduleManager(ctx, service.Task, rm.managers, rm.workers)
+
+	case specifiedManagers < uint64(len(managers)):
+		// Remove Leader from demote list and demote random Manager to Worker Role.
+		// TODO sort demote list by Preferences, health, raft consistency, etc. to favor demoting weaker nodes.
+		log.G(ctx).Debugf("Manager Nodes were scaled down from %d to %d instances", rm.managers, rm.specifiedManagers)
+		for _, m := range managers {
+			if !m.ManagerStatus.Leader {
+				err := store.Update(func(tx store.Tx) error {
+							demotedNode := store.GetNode(tx, m.ID)
+							demotedNode.Spec.DesiredRole = api.NodeRoleWorker
+							return store.UpdateNode(tx, demotedNode)
+				}
+				break
+			}
 		}
 	}
 }
@@ -245,15 +224,8 @@ func (rm *roleManager) reconcileRole(ctx context.Context, node *api.Node) {
 	}
 }
 
-func (rm *roleManager) reconcileServices(ctx context.Context) {
-		latest := serviceHistory[len(serviceHistory)-1]
-		service := rm.roleManagerServices[latest]
-		deploy := service.Spec.GetMode().(*api.ServiceSpec_Manager)
-		rm.specifiedManagers := deploy.Replicated.Replicas
-}
-
-func (rm *roleManager) updateService(ctx context.Context, service *api.Service) {
-	if !orchestrator.IsRoleManagerService(v.Service) {
+func (rm *roleManager) updateService(service *api.Service) {
+	if orchestrator.IsRoleManagerService(service) {
 		continue
 	}
 	rm.roleManagerServices[service.ID] = service
@@ -263,11 +235,10 @@ func (rm *roleManager) updateService(ctx context.Context, service *api.Service) 
 		}
 	}
 	serviceHistory = append(serviceHistory, service.ID)
-	rm.reconcileServices(ctx)
 }
 
-func (rm *roleManager) deleteService(ctx context.Context, service *api.Service) {
-	if !orchestrator.IsRoleManagerService(v.Service) {
+func (rm *roleManager) deleteService(service *api.Service) {
+	if orchestrator.IsRoleManagerService(service) {
 		continue
 	}
 	rm.roleManagerServices[service.ID] = nil
@@ -276,7 +247,6 @@ func (rm *roleManager) deleteService(ctx context.Context, service *api.Service) 
 			serviceHistory = append(serviceHistory[:h], serviceHistory[h+1:]...)
 		}
 	}
-	rm.reconcileServices(ctx)
 }
 
 // Stop stops the roleManager and waits for the main loop to exit.
