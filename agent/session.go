@@ -66,6 +66,9 @@ func newSession(ctx context.Context, agent *Agent, delay time.Duration, sessionI
 		s.errs <- err
 		return s
 	}
+
+	log.G(context.Background()).WithField("grep", "forme99").Infof("manager selected by agent for new session: %v", peer)
+
 	cc, err := grpc.Dial(peer.Addr,
 		grpc.WithTransportCredentials(agent.config.Credentials),
 		grpc.WithTimeout(dispatcherRPCTimeout),
@@ -83,6 +86,7 @@ func newSession(ctx context.Context, agent *Agent, delay time.Duration, sessionI
 
 func (s *session) run(ctx context.Context, delay time.Duration, description *api.NodeDescription) {
 	timer := time.NewTimer(delay) // delay before registering.
+	log.G(ctx).WithField("grep", "forme99").Infof("waiting %v before registering session", delay)
 	defer timer.Stop()
 	select {
 	case <-timer.C:
@@ -167,12 +171,19 @@ func (s *session) heartbeat(ctx context.Context) error {
 	for {
 		select {
 		case <-heartbeat.C:
+			fields := logrus.Fields{
+				"sessionID": s.sessionID,
+				"method":    "(*session).heartbeat",
+			}
+
+			log.G(ctx).WithField("grep", "forme99").WithFields(fields).Debugf("sending heartbeat with timeout %ds to %s", dispatcherRPCTimeout, s.addr)
 			heartbeatCtx, cancel := context.WithTimeout(ctx, dispatcherRPCTimeout)
 			resp, err := client.Heartbeat(heartbeatCtx, &api.HeartbeatRequest{
 				SessionID: s.sessionID,
 			})
 			cancel()
 			if err != nil {
+				log.G(ctx).WithField("grep", "forme99").WithFields(fields).Debugf("heartbeat to %s failed with err:%v", s.addr, err)
 				if grpc.Code(err) == codes.NotFound {
 					err = errNodeNotRegistered
 				}
@@ -184,6 +195,8 @@ func (s *session) heartbeat(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
+
+			log.G(ctx).WithField("grep", "forme99").WithFields(fields).Debugf("heartbeat to %s ok, next beat period: %v", s.addr, resp.Period)
 
 			heartbeat.Reset(period)
 		case <-s.closed:
