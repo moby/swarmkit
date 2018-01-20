@@ -7,43 +7,36 @@ import (
 	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state"
+	"github.com/docker/swarmkit/manager/state/raft"
+	"github.com/docker/swarmkit/manager/state/raft/membership"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
 
-func (s *Scheduler) ScheduleManager(ctx context.Context, t *api.Task, managers *api.Node, workers *api.Node) {
-  s.setupTasksList()
-	s.nodeSet.alloc((len(workers))+(len(managers)))
+func (s *Scheduler) setupManagerList(tx store.ReadTx) error {
+	// spoof running managers as running tasks
+	tasksByNode := make(map[string]map[string]*api.Task)
+  for _, m := range s.raft.cluster.members {
+    // task spoof
+    t.Status.State := api.TaskStateRunning
+    tasksByNode[m.NodeID][t.ID] = t
+    }
+		return s.buildNodeSet(tx, tasksByNode)
+}
+
+func (s *Scheduler) ScheduleManager(ctx context.Context, t *api.Task, raftNode *raft.Node) {
+	s.raft := raftNode
+	updates, cancel, err := store.ViewAndWatch(s.store, s.setupManagerList)
+	if err != nil {
+		log.G(ctx).WithError(err).Errorf("snapshot store update failed")
+		return err
+	}
+	defer cancel()
+
   schedulingDecisions := map[string]schedulingDecision
   taskGroup := map[string]*api.Task
   taskGroup[0] = t
-
-
-  // spoof running managers as running tasks
-  for _, n := range managers {
-		var resources api.Resources
-		if n.Description != nil && n.Description.Resources != nil {
-			resources = *n.Description.Resources
-		}
-    // task spoof
-    ts := t
-    ts.NodeID := n.ID
-    ts.Status.State := api.TaskStateRunning
-    tasksByNode[ts.NodeID][ts.ID] = ts
-    }
-
-
-    s.nodeSet.addOrUpdateNode(newNodeInfo(n, tasksByNode[n.ID], resources))
-
-
-  for _, n := range workers {
-    var resources api.Resources
-    if n.Description != nil && n.Description.Resources != nil {
-      resources = *n.Description.Resources
-    }
-    s.nodeSet.addOrUpdateNode(newNodeInfo(n, tasksByNode[n.ID], resources))
-  }
 
 	s.pipeline.SetTask(t)
 
@@ -66,18 +59,15 @@ func (s *Scheduler) ScheduleManager(ctx context.Context, t *api.Task, managers *
 		s.noSuitableNode(ctx, taskGroup, schedulingDecisions)
 	}
 
-  targetNodeID := schedulingDecisions[0].new.NodeID
-
-  err := s.store.Update(func(tx store.Tx) error {
-
-      updatedNode := store.GetNode(tx, targetNodeID)
-      if updatedNode == nil || updatedNode.Spec.DesiredRole != node.Spec.DesiredRole || updatedNode.Role != node.Role {
-        return nil
-      }
-      updatedNode.Spec.DesiredRole = api.NodeRoleManager
-      return store.UpdateNode(tx, updatedNode)
-
-  }
-
-
+	for _, n := range schedulingDecisions {
+		err := s.store.Update(func(tx store.Tx) error {
+				updatedNode := store.GetNode(tx, n.new.NodeID)
+				if updatedNode == nil || updatedNode.Role == api.NodeRoleManager {
+					return nil
+				}
+				updatedNode.Spec.DesiredRole = api.NodeRoleManager
+				store.UpdateNode(tx, updatedNode)
+				break
+		}
+	}
 }
