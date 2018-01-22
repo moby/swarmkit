@@ -31,7 +31,7 @@ var (
 // agent through errs, messages and tasks.
 type session struct {
 	conn *grpc.ClientConn
-	addr string
+	peer api.Peer
 
 	agent         *Agent
 	sessionID     string
@@ -82,7 +82,7 @@ func newSession(ctx context.Context, agent *Agent, delay time.Duration, sessionI
 		s.errs <- err
 		return s
 	}
-	s.addr = peer.Addr
+	s.peer = peer
 	s.conn = cc
 
 	go s.run(ctx, delay, description)
@@ -181,14 +181,14 @@ func (s *session) heartbeat(ctx context.Context) error {
 				"method":    "(*session).heartbeat",
 			}
 
-			log.G(ctx).WithField("grep", "forme99").WithFields(fields).Debugf("sending heartbeat with timeout %ds to %s", dispatcherRPCTimeout, s.addr)
+			log.G(ctx).WithField("grep", "forme99").WithFields(fields).Debugf("sending heartbeat with timeout %ds to %v", dispatcherRPCTimeout, s.peer)
 			heartbeatCtx, cancel := context.WithTimeout(ctx, dispatcherRPCTimeout)
 			resp, err := client.Heartbeat(heartbeatCtx, &api.HeartbeatRequest{
 				SessionID: s.sessionID,
 			})
 			cancel()
 			if err != nil {
-				log.G(ctx).WithField("grep", "forme99").WithFields(fields).Debugf("heartbeat to %s failed with err:%v", s.addr, err)
+				log.G(ctx).WithField("grep", "forme99").WithFields(fields).Debugf("heartbeat to %v failed with err:%v", s.peer, err)
 				if grpc.Code(err) == codes.NotFound {
 					err = errNodeNotRegistered
 				}
@@ -201,7 +201,7 @@ func (s *session) heartbeat(ctx context.Context) error {
 				return err
 			}
 
-			log.G(ctx).WithField("grep", "forme99").WithFields(fields).Debugf("heartbeat to %s ok, next beat period: %v", s.addr, resp.Period)
+			log.G(ctx).WithField("grep", "forme99").WithFields(fields).Debugf("heartbeat to %v ok, next beat period: %v", s.peer, resp.Period)
 
 			heartbeat.Reset(period)
 		case <-s.closed:
@@ -432,11 +432,11 @@ func (s *session) sendError(err error) {
 // close closing session. It should be called only in <-session.errs branch
 // of event loop.
 func (s *session) close() error {
-	log.G(context.Background()).Errorf("Closing session with %s", s.addr)
+	log.G(context.Background()).Errorf("Closing session with %v", s.peer)
 	s.closeOnce.Do(func() {
 		if s.conn != nil {
-			log.G(context.Background()).Errorf("Trying to downgrade %s", s.addr)
-			s.agent.config.Managers.ObserveIfExists(api.Peer{Addr: s.addr}, -remotes.DefaultObservationWeight)
+			log.G(context.Background()).Errorf("Trying to downgrade %v", s.peer)
+			s.agent.config.Managers.ObserveIfExists(s.peer, -remotes.DefaultObservationWeight)
 			s.conn.Close()
 		}
 
