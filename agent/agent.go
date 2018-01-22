@@ -272,6 +272,7 @@ func (a *Agent) run(ctx context.Context) {
 				if backoff > maxSessionFailureBackoff {
 					backoff = maxSessionFailureBackoff
 				}
+				log.G(ctx).WithField("grep", "forme99").WithError(err).WithField("backoff", backoff).Error("agent: session failed")
 			}
 
 			if err := session.close(); err != nil {

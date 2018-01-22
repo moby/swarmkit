@@ -1,6 +1,8 @@
 package dispatcher
 
 import (
+	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -9,6 +11,7 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
+	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/dispatcher/heartbeat"
 )
 
@@ -75,14 +78,17 @@ func (s *nodeStore) Len() int {
 	return len(s.nodes)
 }
 
-func (s *nodeStore) AddUnknown(n *api.Node, expireFunc func()) error {
+func (s *nodeStore) AddUnknown(n *api.Node, expireFunc func(string)) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	rn := &registeredNode{
 		Node: n,
 	}
 	s.nodes[n.ID] = rn
-	rn.Heartbeat = heartbeat.New(s.periodChooser.Choose()*s.gracePeriodMultiplierUnknown, expireFunc)
+	transaction := fmt.Sprintf("%d", time.Now().UnixNano())
+	timeout := s.periodChooser.Choose() * s.gracePeriodMultiplierUnknown
+	log.G(context.Background()).WithField("grep", "forme99").Debugf("Add node %s to store as Unknown, timeout:%v, transaction:%s", n.ID, timeout, transaction)
+	rn.Heartbeat = heartbeat.New(transaction, timeout, expireFunc)
 	return nil
 }
 
@@ -105,7 +111,7 @@ func (s *nodeStore) CheckRateLimit(id string) error {
 }
 
 // Add adds new node and returns it, it replaces existing without notification.
-func (s *nodeStore) Add(n *api.Node, expireFunc func()) *registeredNode {
+func (s *nodeStore) Add(n *api.Node, expireFunc func(string), transaction string) *registeredNode {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var attempts int
@@ -113,7 +119,7 @@ func (s *nodeStore) Add(n *api.Node, expireFunc func()) *registeredNode {
 	if existRn, ok := s.nodes[n.ID]; ok {
 		attempts = existRn.Attempts
 		registered = existRn.Registered
-		existRn.Heartbeat.Stop()
+		existRn.Heartbeat.Stop("Add")
 		delete(s.nodes, n.ID)
 	}
 	if registered.IsZero() {
@@ -127,7 +133,9 @@ func (s *nodeStore) Add(n *api.Node, expireFunc func()) *registeredNode {
 		Disconnect: make(chan struct{}),
 	}
 	s.nodes[n.ID] = rn
-	rn.Heartbeat = heartbeat.New(s.periodChooser.Choose()*s.gracePeriodMultiplierNormal, expireFunc)
+	timeout := s.periodChooser.Choose() * s.gracePeriodMultiplierNormal * 2
+	log.G(context.Background()).WithField("grep", "forme99").Debugf("Add node %s to store, timeout:%v, transaction:%s", n.ID, timeout, transaction)
+	rn.Heartbeat = heartbeat.New(transaction, timeout, expireFunc)
 	return rn
 }
 
@@ -165,12 +173,12 @@ func (s *nodeStore) Heartbeat(id, sid string) (time.Duration, error) {
 	return period, nil
 }
 
-func (s *nodeStore) Delete(id string) *registeredNode {
+func (s *nodeStore) Delete(id, txid string) *registeredNode {
 	s.mu.Lock()
 	var node *registeredNode
 	if rn, ok := s.nodes[id]; ok {
 		delete(s.nodes, id)
-		rn.Heartbeat.Stop()
+		rn.Heartbeat.Stop("Delete txid:" + txid)
 		node = rn
 	}
 	s.mu.Unlock()
@@ -181,17 +189,17 @@ func (s *nodeStore) Disconnect(id string) {
 	s.mu.Lock()
 	if rn, ok := s.nodes[id]; ok {
 		close(rn.Disconnect)
-		rn.Heartbeat.Stop()
+		rn.Heartbeat.Stop("Disconnect")
 	}
 	s.mu.Unlock()
 }
 
 // Clean removes all nodes and stops their heartbeats.
 // It's equivalent to invalidate all sessions.
-func (s *nodeStore) Clean() {
+func (s *nodeStore) Clean(method string) {
 	s.mu.Lock()
 	for _, rn := range s.nodes {
-		rn.Heartbeat.Stop()
+		rn.Heartbeat.Stop("Clean + " + method)
 	}
 	s.nodes = make(map[string]*registeredNode)
 	s.mu.Unlock()
