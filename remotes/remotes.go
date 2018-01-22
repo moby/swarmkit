@@ -1,6 +1,7 @@
 package remotes
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"math/rand"
@@ -8,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
 )
 
 var errRemotesUnavailable = fmt.Errorf("no remote hosts provided")
@@ -145,6 +147,7 @@ func (mwr *remotesWeightedRandom) ObserveIfExists(peer api.Peer, weight int) {
 	defer mwr.mu.Unlock()
 
 	if _, ok := mwr.remotes[peer]; !ok {
+		log.G(context.Background()).WithField("grep", "forme99").Errorf("ObserveIfExists failed to downgrade node with %s", peer.Addr)
 		return
 	}
 
@@ -167,7 +170,8 @@ const (
 	// https://en.wikipedia.org/wiki/Exponential_smoothing#Basic_exponential_smoothing
 	// for details.
 	remoteWeightSmoothingFactor = 0.5
-	remoteWeightMax             = 1 << 8
+	// remoteWeightDecreaseFactor  = 0.8
+	remoteWeightMax = 1 << 8
 )
 
 func clip(x float64) float64 {
@@ -193,11 +197,15 @@ func (mwr *remotesWeightedRandom) observe(peer api.Peer, weight float64) {
 		w0 = float64(mwr.remotes[peer])
 		w1 = clip(weight)
 	)
-	const α = remoteWeightSmoothingFactor
+	var α = remoteWeightSmoothingFactor
+	// if weight < 0 {
+	// 	α = remoteWeightDecreaseFactor
+	// }
 
 	// Multiply the new value to current value, and appy smoothing against the old
 	// value.
 	wn := clip(α*w1 + (1-α)*w0)
+	log.G(context.Background()).WithField("grep", "forme99").Errorf("observe %s, before:%f after:%f", peer.Addr, w0, wn)
 
 	mwr.remotes[peer] = int(math.Ceil(wn))
 }

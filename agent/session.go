@@ -61,6 +61,11 @@ func newSession(ctx context.Context, agent *Agent, delay time.Duration, sessionI
 	// TODO(stevvooe): Need to move connection management up a level or create
 	// independent connection for log broker client.
 
+	peers := agent.config.Managers.Weights()
+	for m, v := range peers {
+		log.G(context.Background()).WithField("grep", "forme99").Infof("new session managers weights: %v-->%d", m, v)
+	}
+
 	peer, err := agent.config.Managers.Select()
 	if err != nil {
 		s.errs <- err
@@ -427,8 +432,10 @@ func (s *session) sendError(err error) {
 // close closing session. It should be called only in <-session.errs branch
 // of event loop.
 func (s *session) close() error {
+	log.G(context.Background()).Errorf("Closing session with %s", s.addr)
 	s.closeOnce.Do(func() {
 		if s.conn != nil {
+			log.G(context.Background()).Errorf("Trying to downgrade %s", s.addr)
 			s.agent.config.Managers.ObserveIfExists(api.Peer{Addr: s.addr}, -remotes.DefaultObservationWeight)
 			s.conn.Close()
 		}
