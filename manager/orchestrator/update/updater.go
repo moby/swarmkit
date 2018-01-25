@@ -13,6 +13,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/defaults"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/manager/constraint"
 	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/orchestrator/restart"
 	"github.com/docker/swarmkit/manager/state"
@@ -320,7 +321,18 @@ func (u *Updater) worker(ctx context.Context, queue <-chan orchestrator.Slot, up
 			cleanTask   *api.Task
 		)
 		for _, t := range slot {
-			if !u.isTaskDirty(t) {
+			// Don't need a new task if:
+			// 1. Either the task spec didn't change at all, or
+			// 2. The placement constraints alone changed and the node currently assigned
+			// can satisfy the changed constraints.
+			placementSatisfied := u.isTaskPlacementConstraintsOnlyDirty(t) && u.nodeMatches(t)
+			if placementSatisfied || !u.isTaskDirty(t) {
+				if placementSatisfied {
+					if err := u.updateTaskServiceSpec(t); err != nil {
+						log.G(ctx).WithError(err).Error("task service spec update failed")
+					}
+				}
+
 				if t.DesiredState == api.TaskStateRunning {
 					runningTask = t
 					break
@@ -520,8 +532,43 @@ func (u *Updater) removeOldTasks(ctx context.Context, batch *store.Batch, remove
 	return removedTask, nil
 }
 
+// Checks if the current assigned node matches the Placement.Constraints
+// specified in the task spec for Updater.newService.
+func (u *Updater) nodeMatches(t *api.Task) bool {
+	if t.Spec.Placement == nil {
+		return true
+	}
+
+	constraints, _ := constraint.Parse(u.newService.Spec.Task.Placement.Constraints)
+
+	match := false
+	u.store.Update(func(tx store.Tx) error {
+		n := store.GetNode(tx, t.NodeID)
+		match = constraint.NodeMatches(constraints, n)
+		return nil
+	})
+
+	return match
+}
+
+// Update the task spec for the given task with the one
+// specified in Updater.newService
+func (u *Updater) updateTaskServiceSpec(t *api.Task) error {
+	return u.store.Update(func(tx store.Tx) error {
+		if t.Spec.Placement == nil {
+			t.Spec.Placement = &api.Placement{}
+		}
+		t.Spec.Placement.Constraints = u.newService.Spec.Task.Placement.Constraints
+		return store.UpdateTask(tx, t)
+	})
+}
+
 func (u *Updater) isTaskDirty(t *api.Task) bool {
 	return orchestrator.IsTaskDirty(u.newService, t)
+}
+
+func (u *Updater) isTaskPlacementConstraintsOnlyDirty(t *api.Task) bool {
+	return orchestrator.IsTaskPlacementConstraintsOnlyDirty(u.newService, t)
 }
 
 func (u *Updater) isSlotDirty(slot orchestrator.Slot) bool {

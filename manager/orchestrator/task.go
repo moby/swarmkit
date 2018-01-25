@@ -93,6 +93,32 @@ func IsTaskDirty(s *api.Service, t *api.Task) bool {
 		(t.Endpoint != nil && !reflect.DeepEqual(s.Spec.Endpoint, t.Endpoint.Spec))
 }
 
+// IsTaskPlacementConstraintsOnlyDirty checks if the Placement field alone
+// in the spec has changed.
+func IsTaskPlacementConstraintsOnlyDirty(s *api.Service, t *api.Task) bool {
+	if s.Spec.Task.Placement == nil && t.Spec.Placement == nil {
+		return false
+	}
+
+	// Make a deep copy of the service and task spec for the comparison.
+	serviceTaskSpec := *s.Spec.Task.Copy()
+
+	// Compare the task placement constraints.
+	var placementConstraintsChanged bool
+	if (s.Spec.Task.Placement != nil && t.Spec.Placement == nil) ||
+		(s.Spec.Task.Placement == nil && t.Spec.Placement != nil) ||
+		!reflect.DeepEqual(serviceTaskSpec.Placement, t.Spec.Placement) {
+		placementConstraintsChanged = true
+	}
+
+	// Update spec placement to only the fields
+	// other than the placement constraints in the spec.
+	serviceTaskSpec.Placement = t.Spec.Placement
+	specChanged := !reflect.DeepEqual(serviceTaskSpec, t.Spec)
+
+	return !specChanged && placementConstraintsChanged
+}
+
 // InvalidNode is true if the node is nil, down, or drained
 func InvalidNode(n *api.Node) bool {
 	return n == nil ||
