@@ -65,12 +65,14 @@ func newSession(ctx context.Context, agent *Agent, delay time.Duration, sessionI
 		grpc.WithTransportCredentials(agent.config.Credentials),
 		grpc.WithTimeout(dispatcherRPCTimeout),
 	)
-	log.G(ctx).Infof("manager selected by agent for new session: %v", cc.Peer())
 
 	if err != nil {
 		s.errs <- err
 		return s
 	}
+
+	log.G(ctx).Infof("manager selected by agent for new session: %v", cc.Peer())
+
 	s.conn = cc
 
 	go s.run(sessionCtx, delay, description)
