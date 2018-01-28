@@ -29,6 +29,9 @@ type schedulingDecision struct {
 
 // Scheduler assigns tasks to nodes.
 type Scheduler struct {
+	ctx    context.Context
+	cancel func()
+
 	store           *store.MemoryStore
 	unassignedTasks map[string]*api.Task
 	// pendingPreassignedTasks already have NodeID, need resource validation
@@ -48,15 +51,18 @@ type Scheduler struct {
 
 // New creates a new scheduler.
 func New(store *store.MemoryStore) *Scheduler {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Scheduler{
-		store:                   store,
-		unassignedTasks:         make(map[string]*api.Task),
-		pendingPreassignedTasks: make(map[string]*api.Task),
-		preassignedTasks:        make(map[string]struct{}),
-		allTasks:                make(map[string]*api.Task),
-		stopChan:                make(chan struct{}),
-		doneChan:                make(chan struct{}),
-		pipeline:                NewPipeline(),
+		ctx:											ctx,
+		cancel:										cancel,
+		store:                 	  store,
+		unassignedTasks:      	  make(map[string]*api.Task),
+		pendingPreassignedTasks: 	make(map[string]*api.Task),
+		preassignedTasks:        	make(map[string]struct{}),
+		allTasks:                	make(map[string]*api.Task),
+		stopChan:                	make(chan struct{}),
+		doneChan:                	make(chan struct{}),
+		pipeline:                	NewPipeline(),
 	}
 }
 
@@ -193,6 +199,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 
 // Stop causes the scheduler event loop to stop running.
 func (s *Scheduler) Stop() {
+	s.cancel()
 	close(s.stopChan)
 	<-s.doneChan
 }
