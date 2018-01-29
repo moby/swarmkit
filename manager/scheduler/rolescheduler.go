@@ -310,18 +310,20 @@ func (rs *roleScheduler) scheduleNRolesOnTree(rolesRequested int, setRole *api.D
 				 return true
 			 }
 		 }
-		
+		robinCh = make(chan int len(leaves))
 		for robin, branch := range leaves {
 			go func() {
-				for _, leaf := range leaves; round(robin) {
+				for _, leaf := range leaves; rolesRemaining() > 0 && round(robin) {
 					if leaf.Node.Spec.DesiredRole != setRole {
 						leaf.Node.Spec.DesiredRole = setRole
 						rolesScheduled++
 						i++
 					}
 				}
+				robinCh <- 0
 			} ()
 		}
+		for ch := 0; rolesRemaining() > 0 || ch < len(leaves); ch++ { <- robinCh }
 		// populate branches in next level
 		if rolesRemaining() > 0 {
 			for _, branch := range levelMap[level] {
