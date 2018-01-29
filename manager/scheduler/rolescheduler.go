@@ -298,30 +298,29 @@ func (rs *roleScheduler) scheduleNRolesOnTree(rolesRequested int, setRole *api.D
 
 	// climb tree one level at a time
 	for rolesRemaining() > 0 && len(levelMap) => level; level++ {
-		var leaves map[int][]NodeInfo
+		var leaves [][]NodeInfo
 		var i 0
-
 		// populate leaves on branches
 		for _, branch := range levelMap[level]; i++ {
 			leaves[i] := branch.orderedNodes(s.pipeline.Process, nodeLess)
 		}
-		// bookmark ordered leaves
-		var leafIterator [len(leaves)]int
-		// round-robin through the branches
-		for rolesRemaining() > 0 && len(leaves) > 0; i++ {
-			branch := i % len(leaves)
-			for n := leaves[branch][leafIterator[branch]] {
-				leafIterator[branch]++
-				// execute role change on eligible leaves, or skip others & continue search on branch
-				if n.Spec.DesiredRole != setRole {
-					n.Spec.DesiredRole = setRole
-					rolesScheduled++
-					if len(leaves[branch]) == leafIterator[branch] {
-						delete(leaves[branch])
+		// round-robin iterator
+		func round(robin int) bool {
+			 if robin == i % len(leaves) {
+				 return true
+			 }
+		 }
+		
+		for robin, branch := range leaves {
+			go func() {
+				for _, leaf := range leaves; round(robin) {
+					if leaf.Node.Spec.DesiredRole != setRole {
+						leaf.Node.Spec.DesiredRole = setRole
+						rolesScheduled++
+						i++
 					}
-					break
 				}
-			}
+			} ()
 		}
 		// populate branches in next level
 		if rolesRemaining() > 0 {
