@@ -73,11 +73,7 @@ func newRoleScheduler(ctx context.Context, store *store.MemoryStore, nodeSet *no
 		config:						config,
 		services:					make(map[string]*api.Service),
 		serviceHistory:		make([]string, 1),
-		managers:					managerSet{
-			active:						make(map[string]NodeInfo),
-			failed:						make(map[string]NodeInfo),
-			pending:					make(map[string]NodeInfo),
-		},
+
 		nodeSet:					nodeSet,
 		healthTicker:			time.NewTicker(config.healthHeartbeat),
 		upgradeTicker:		time.NewTicker(config.upgradeInterval),
@@ -156,11 +152,11 @@ func (rs *roleScheduler) init(tx store.ReadTx) error {
 }
 
 func (rs *roleScheduler) createOrUpdateService(service *api.Service) {
-	if orchestrator.IsRoleSchedulerService(service) {
+	if service.Spec.GetMode().(*api.ServiceSpec_Manager) {
 		rs.services[service.ID] = service
-		for _, h := range rs.serviceHistory {
+		for s, h := range rs.serviceHistory {
 			if h == service.ID {
-				rs.serviceHistory = append(rs.serviceHistory[:h], rs.serviceHistory[h+1:]...)
+				rs.serviceHistory = append(rs.serviceHistory[:s], rs.serviceHistory[s+1:]...)
 			}
 		}
 		rs.serviceHistory = append(serviceHistory, service.ID)
@@ -168,11 +164,11 @@ func (rs *roleScheduler) createOrUpdateService(service *api.Service) {
 }
 
 func (rs *roleScheduler) deleteService(service *api.Service) {
-	if orchestrator.IsRoleSchedulerService(service) {
+	if service.Spec.GetMode().(*api.ServiceSpec_Manager) {
 		delete(rs.services, service.ID)
-		for _, h := range serviceHistory {
+		for s, h := range rs.serviceHistory {
 			if h == service.ID {
-				serviceHistory = append(serviceHistory[:h], serviceHistory[h+1:]...)
+				rs.serviceHistory = append(rs.serviceHistory[:s], rs.serviceHistory[s+1:]...)
 			}
 		}
 	}
