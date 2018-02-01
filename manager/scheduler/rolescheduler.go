@@ -262,7 +262,7 @@ func (rs *roleScheduler) specifiedManagers() uint32 {
 }
 
 func (rs *roleScheduler) activeManagers() uint32 {
-	var active 0
+	active := 0
 	for ID, m := range rs.managers.active {
 		if m.Status.State == NodeStatus_READY {
 			active++
@@ -391,40 +391,36 @@ func (rs *roleScheduler) proposeNRolesOnNodes(rolesRequested int, searchRole *ap
 	rolesRemaining := func() int {
 		return rolesRequested - rolesScheduled
 	}
-	var level int 0
-	var treeMap []map[string]*decisionTree
+	level := 0
+	treeMap := make([]map[string]*decisionTree)
 	treeMap[level]["root"] = tree
 
 	// climb tree one level at a time
-	for rolesRemaining() > 0 && len(treeMap) >= level; level++ {
-		var leaves [][]NodeInfo
-		var i int 0
+	for level := 0; rolesRemaining() > 0 && len(treeMap) >= level; level++ {
+		leaves := make([][]NodeInfo)
+		leafIterator := make([]int)
+		levelLeaves := 0
+		i := 0
 		// populate leaves on branches
 		for _, branch := range treeMap[level] {
 			leaves[i] := branch.orderedNodes(s.pipeline.Process, nodeLess)
+			leafIterator[i] = len(leaves[i])
+			levelLeaves = levelLeaves + len(leaves[i])
 			i++
 		}
 		// round-robin iterator
-		round := func(robin int) bool {
-			 if robin == i % len(leaves) {
-				 return true
-			 }
-		 }
-		robinCh := make(chan int, len(leaves))
-		for robin, branch := range leaves {
-			go func(robin int, branch []NodeInfo) {
-				for _, leaf := range leaves[branch]; rolesRemaining() > 0 && round(robin) {
-					if leaf.Spec.DesiredRole != searchRole {
-						append(rolesScheduled, leaf)
-						i++
-					}
-				}
-				robinCh <- 0
-			}(robin, branch)
+		round := func(robin int) int {
+			 return robin % len(leaves)
 		}
-		for ch := range robinCh; rolesRemaining() > 0 || ch < len(leaves) {
-			<-robinCh
+		for robin := 0; rolesRemaining() > 0 && robin < levelLeaves; robin++ {
+			leaf := leaves[round(robin)][leafIterator[round(robin)]]
+			if leaf.Spec.DesiredRole != searchRole {
+				append(rolesScheduled, leaf)
+				leafIterator[round(robin)]++
+				i++
+			}
 		}
+		 
 		// populate branches in next level
 		if rolesRemaining() > 0 {
 			for _, branch := range treeMap[level] {
