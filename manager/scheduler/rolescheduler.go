@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/state/store"
 	"golang.org/x/net/context"
 )
@@ -91,7 +92,6 @@ func newRoleScheduler(ctx context.Context, store *store.MemoryStore, nodeSet *no
 // Role scheduling is handled by RunRoleScheduler changing the DesiredRole of a Node,
 // and reconciliation is handled by role_manager.go as any other API or CLI role change request.
 func (rs *roleScheduler) Run(ctx context.Context) error {
-	defer close(rs.doneChan)
 
 	// Watch for updates
 	updates, cancel, err := store.ViewAndWatch(rs.store, rs.init)
@@ -117,9 +117,9 @@ func (rs *roleScheduler) Run(ctx context.Context) error {
 			case api.EventDeleteService:
 				rs.deleteService(v.Service)
 			case api.EventCreateNode:
-				rs.createOrUpdateNode(v.Node.ID)
+				rs.createOrUpdateNode(v.Node)
 			case api.EventUpdateNode:
-				rs.createOrUpdateNode(v.Node.ID)
+				rs.createOrUpdateNode(v.Node)
 			case api.EventDeleteNode:
 				rs.removeManager(v.Node.ID)
 			}
@@ -136,7 +136,7 @@ func (rs *roleScheduler) init(tx store.ReadTx) error {
 		return err
 	}
 	for _, s := range services {
-			rs.updateService(s)
+			rs.createOrUpdateService(s)
 		}
 
 	nodes, err := store.FindNodes(tx, store.All)
@@ -158,12 +158,12 @@ func (rs *roleScheduler) init(tx store.ReadTx) error {
 func (rs *roleScheduler) createOrUpdateService(service *api.Service) {
 	if orchestrator.IsRoleSchedulerService(service) {
 		rs.services[service.ID] = service
-		for _, h := range serviceHistory {
+		for _, h := range rs.serviceHistory {
 			if h == service.ID {
-				serviceHistory = append(serviceHistory[:h], serviceHistory[h+1:]...)
+				rs.serviceHistory = append(rs.serviceHistory[:h], rs.serviceHistory[h+1:]...)
 			}
 		}
-		serviceHistory = append(serviceHistory, service.ID)
+		rs.serviceHistory = append(serviceHistory, service.ID)
 	}
 }
 
