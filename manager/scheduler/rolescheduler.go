@@ -7,52 +7,77 @@ import (
 	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state"
-	"github.com/docker/swarmkit/manager/state/raft/"
-	"github.com/docker/swarmkit/manager/state/raft/transport"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
 
+// TODO add RoleSchedulerConfig to special RoleScheduler api.Service type
 const (
-	// monitorFailures is the lookback period for counting failures of
-	// a task to determine if a node is faulty for a particular service.
-	monitorFailures = 5 * time.Minute
-
-	// maxFailures is the number of failures within monitorFailures that
-	// triggers downweighting of a node in the sorting function.
-	maxFailures = 5
+	// how often to check for manager failures
+	defaultHealthHeartbeat = 15 * time.Second
+	// how long to wait for pending managers to become active
+	defaultPendingTimeout = 1 * time.Minute
+	// how long to wait for a failed manager to recover to prevent quorum loss
+	defaultRecoveryTimeout = 1 * time.Minute
+	// how often to add an extra manager so force demotion/replacement of lower ranked nodes
+	defaultUpgradeInterval = 5 * time.Minute
 )
 
-// roleScheduler holds nodeSet, services, and healthWathcers to schedule node role changes.
+type RoleSchedulerConfig struct {
+	healthHeartbeat		time.Duration
+	pendingTimeout		time.Duration
+	recoveryTimeout		time.Duration
+	upgradeInterval		time.Duration
+}
+
+// DefaultRoleSchedulerConfig returns default config for RoleScheduler.
+func DefaultRoleSchedulerConfig() *RoleSchedulerConfig {
+	return &RoleSchedulerConfig{
+		healthHeartbeat: defaultHealthHeartbeat,
+		pendingTimeout:  defaultPendingTimeout,
+		recoveryTimeout: defaultRecoveryTimeout,
+		upgradeInterval: defaultUpgradeInterval,
+	}
+}
+
+// roleScheduler holds nodeSets, services, and Transport to check health and schedule node role changes.
 type roleScheduler struct {
 	ctx    						context.Context
 	cancel						func()
 	store           	*store.MemoryStore
+	config						*RoleSchedulerConfig
 	services					map[string]*api.Service
 	serviceHistory		[]string
-	// Pass *raftNode of Leader in manager.go through the parent *Scheduler to use .Transport for healthCheck.
-	healthChecker				healthChecker
-	managers					map[]*api.Node
-	pendingManagers		map[]*api.Node
+
+	managers					struct {
+		active					nodeSet
+		failed					nodeSet
+		pending					nodeSet
+	}
 	// nodeSet from parent Scheduler, use task-driven resources data for role scheduling
 	nodeSet        	  *nodeSet
-	transport					*transport.Transport
+
+	healthTicker			time.Ticker
+	upgradeTicker			time.Ticker
 }
 
 // New creates a new scheduler.
-func newRoleScheduler(ctx context.Context, store *store.MemoryStore, nodeSet *nodeSet, raftNode *raft.Node) *roleScheduler {
+func newRoleScheduler(ctx context.Context, store *store.MemoryStore, nodeSet *nodeSet) *roleScheduler {
 	ctx, cancel := context.WithCancel(ctx)
-	healthChecker := newhealthChecker(ctx, raftNode)
 	return &roleScheduler{
 		store:						store,
+		config:						DefaultRoleSchedulerConfig(),
 		services:					make(map[string]*api.Service),
 		serviceHistory:		make([]string),
-		managers:					make(map[string]*api.Node),
-		pendingManagers:	make(map[string]*api.Node),
-		healthChecker:		healthChecker,
+		managers:					{
+			active:						make(map[string]NodeInfo),
+			failed:						make(map[string]NodeInfo),
+			pending:					make(map[string]NodeInfo),
+		},
 		nodeSet:					nodeSet,
-		transport:				raftNode.transport,
+		healthTicker:			time.NewTicker(rs.config.healthHeartbeat),
+		upgradeTicker:		time.NewTicker(rs.config.upgradeInterval),
 	}
 }
 
@@ -74,12 +99,13 @@ func (rs *RoleScheduler) Run(ctx context.Context) error {
 	}
 	defer cancel()
 
+	go scheduleRoles()
+
 	// Watch for changes.
 	for {
-		if rs.currentService() != nil {
-			rs.scheduleRoles()
-		}
 		select {
+		case <-upgradeTicker.C:
+			rs.promoteWorkers(1)
 		case event := <-updates:
 			switch v := event.(type) {
 			case api.EventCreateService:
@@ -96,6 +122,7 @@ func (rs *RoleScheduler) Run(ctx context.Context) error {
 				rs.removeManager(v.Node)
 			}
 		case <-rs.ctx.Done():
+			rs.upgradeTicker.Stop()
 			return nil
 		}
 	}
@@ -116,8 +143,12 @@ func (rs *roleScheduler) init(tx store.ReadTx) error {
 		return err
 	}
 	for _, n := range nodes {
-		if n.Role == api.NodeRoleManager {
-			rs.managers[node.ID] = node
+		if n.Spec.DesiredRole == api.NodeRoleManager {
+			if n.Role == api.NodeRoleManager {
+				rs.markActive(n.ID)
+			} else {
+				rs.markPending(n.ID)
+			}
 		}
 	}
 	return nil
@@ -151,81 +182,129 @@ func (rs *roleScheduler) deleteService(service *api.Service) {
 func (rs *roleScheduler) currentService(service *api.Service) (service *api.Service){
 	if len(rs.services) != 0 {
 		return rs.services[len(rs.services)-1]
+	} else {
+		return nil
 	}
-	return nil
 }
 
 func (rs *roleScheduler) createOrUpdateNode(n *api.Node) {
-	switch n.Role {
-	case api.NodeRoleManager:
-		rs.managers[n.ID] = n
+	switch n.Spec.DesiredRole {
 	case api.NodeRoleWorker:
-		rs.removeManager(n)
-		switch n.Spec.DesiredRole {
+		rs.removeManager(n.ID)
+	case api.NodeRoleManager:
+		switch n.Role {
 		case api.NodeRoleManager:
-			rs.markPending(n)
+			rs.markActive(n.ID)
 		case api.NodeRoleWorker:
-			rs.removePending(n)
+			rs.markPending(n.ID)
 		}
 	}
 }
 
-func (rs *roleScheduler) markManager(n *api.Node) {
-	rs.managers[n.ID] = n
-	rs.removePending(n)
-	rs.nodeSet[n.ID].ActiveTasksCountByService[rs.currentService.ID] = 1
+func (rs *roleScheduler) removeManager(n string) {
+	rs.unmarkActive(n)
+	rs.unmarkFailed(n)
+	rs.unmarkPending(n)
 }
 
-func (rs *roleScheduler) markPending(n *api.Node) {
-	rs.pendingManagers[n.ID] = n
-	rs.removeManager(n)
+func (rs *roleScheduler) markActive(n string) {
+	rs.managers.active.addOrUpdateNode(rs.nodeSet[n])
+	rs.nodeSet[n].ActiveTasksCountByService[rs.currentService().ID] = 1
+	rs.unmarkFailed(n)
+	rs.unmarkPending(n)
 }
 
-func (rs *roleScheduler) removeManager(n *api.Node) {
-	if rs.managers[n.ID] != nil {
-		rs.managers.remove(n.ID)
-	}
-	for _, s := range rs.services {
-		if rs.nodeSet[n.ID].ActiveTasksCountByService[s.ID] != nil {
-			delete(rs.nodeSet[n.ID].ActiveTasksCountByService, s.ID)
+func (rs *roleScheduler) unmarkActive(n string) {
+	if rs.managers.active[n] != nil {
+		rs.managers.active.remove(n)
+		for _, s := range rs.services {
+			if rs.nodeSet[n].ActiveTasksCountByService[s.ID] != nil {
+				delete(rs.nodeSet[n].ActiveTasksCountByService, s.ID)
+			}
 		}
+		rs.healthTicker.C <- time.Now()
 	}
 }
 
-func (rs *roleScheduler) removePending(n *api.Node) {
-	if rs.pendingManagers[n.ID] != nil {
-		delete(rs.pendingManagers, n.ID)
-	}
+func (rs *roleScheduler) markFailed(n string) {
+	rs.unmarkActive(n)
+	rs.managers.failed.addOrUpdateNode(rs.nodeSet[n])
+	rs.nodeSet[n].taskFailed(currentService().Spec.Task)
+	rs.unmarkPending(n)
 }
 
-func (rs *roleScheduler) clearPending() {
-	for _, p := range rs.pendingManagers {
-		rs.removePending(p)
+func (rs *roleScheduler) unmarkFailed(n string) {
+	rs.managers.failed.remove(n)
+}
+
+func (rs *roleScheduler) markPending(n string) {
+	rs.unmarkActive(n)
+	rs.unmarkFailed(n)
+	rs.managers.pending.addOrUpdateNode(rs.nodeSet[n])
+	go func timeoutPending(n string) {
+		time.Sleep(rs.config.pendingTimeout)
+		rs.unmarkPending(n)
+	} timeoutPending(n)
+}
+
+func (rs *roleScheduler) unmarkPending(n string) {
+	rs.managers.pending.remove(n)
+}
+
+func (rs *roleScheduler) clearReserves() {
+	for _, f := range rs.managers.failed {
+		rs.unmarkFailed(f)
+	}
+	for _, p := range rs.managers.pending {
+		rs.unmarkPending(p)
 	}
 }
 
 func (rs *roleScheduler) specifiedManagers() uint32 {
-	return rs.currentService().Spec.GetMode().(*api.ServiceSpec_Manager).Replicated.Replicas
+	return rs.currentService().Spec.GetMode().(*api.ServiceSpec_Manager).RoleManager.Replicas
 }
 
 func (rs *roleScheduler) activeManagers() uint32 {
 	var active := 0
-	for _, m := rs.managers {
-		if rs.healthCheck.Active(m.ID) {
+	for ID, m := range rs.managers.active {
+		if m.Status.State == NodeStatus_READY {
 			active++
-			continue
+		} else {
+			rs.markFailed(ID)
 		}
-		rs.nodeSet[m.ID].taskFailed(rs.ctx, rs.currentService().Spec.Task)
 	}
 	return active
 }
 
+func (rs *roleScheduler) scheduledManagers() uint32 {
+	return rs.activeManagers + len(rs.managers.pending)
+}
+
 func (rs *roleScheduler) scheduleRoles() {
-	switch {
-	case rs.activeManagers() < rs.specifiedManagers():
-		rs.promoteWorkers(rs.specifiedManagers()-rs.activeManagers())
-	case rs.activeManagers() > rs.specifiedManagers():
-		rs.demoteManagers(rs.activeManagers()-rs.specifiedManagers())
+	for rs.currentService() != nil {
+		select {
+		case <-rs.healthTicker.C:
+			switch {
+			case rs.activeManagers() < rs.specifiedManagers():
+				switch {
+				case rs.scheduledManagers() =< rs.specifiedManagers():
+					rs.promoteWorkers(rs.specifiedManagers()-rs.activeManagers())
+				case rs.scheduledManagers() < rs.specifiedManagers():
+					time.Sleep(rs.config.pendingTimeout)
+					rs.promoteWorkers(rs.specifiedManagers()-rs.activeManagers())
+				case rs.activeManagers() < (rs.specifiedManagers()/2):
+					time.Sleep(rs.config.recoveryTimeout)
+					rs.promoteWorkers(rs.specifiedManagers()-rs.activeManagers())
+				}
+			case rs.activeManagers() > rs.specifiedManagers():
+				rs.demoteManagers(rs.activeManagers()-rs.specifiedManagers())
+			case rs.activeManagers() == rs.specifiedManagers():
+				rs.clearReserves()
+			}
+			case <-rs.ctx.Done():
+				rs.healthTicker.Stop()
+				return nil
+		}
 	}
 }
 
@@ -235,12 +314,17 @@ func (rs *roleScheduler) promoteWorkers(rolesRequested uint32) {
 		prefs = t.Spec.Placement.Preferences
 	}
 
-	tree := rs.createDecisionTree(prefs)
+	searchRole := api.NodeRoleManager
 	setRole := api.NodeRoleManager
-	try := rs.scheduleNRolesOnTree(rolesRequested, setRole, &tree)
+	proposed := rs.proposeNRolesOnNodes(rolesRequested, searchRole, prefs, rs.nodeSet)
+	for _, n := range proposed {
+		rs.updateDesiredRole(n, searchRole)
+		rs.markPending(n)
+	}
+
 // TODO (foxxxyben) change Task to ignore resource reservations so that first try pass
 // prefers nodes with fewer running Tasks to be drained, but retry pass doesn't care
-// retry := rs.scheduleNRolesOnTree(rolesRequested, setRole, &tree)
+// retry := rs.scheduleNRolesOnTree(rolesRequested, searchRole, &tree)
 // TODO report, explain failed attempts
 }
 
@@ -254,15 +338,33 @@ func (rs *roleScheduler) demoteManagers(rolesRequested uint32) {
 			prefs[i], prefs[j] = prefs[j], prefs[i]
 		}
 
-	tree := rs.createDecisionTree(prefs)
-	setRole := api.NodeRoleManager
-	retry := rs.scheduleNRolesOnTree(rolesRequested, setRole, &tree)
+	searchRole := api.NodeRoleManager
+	setRole := api.NodeRoleWorker
+	proposed := rs.proposeNRolesOnNodes(rolesRequested, searchRole, prefs, rs.nodeSet)
+	for _, n := range proposed {
+		rs.updateDesiredRole(n, setRole)
+		rs.removeManager(n)
+	}
 	// TODO report, explain failed attempts
 }
 
-func (rs *roleScheduler) createDecisionTree(prefs []*api.PlacementPreference) tree *decisionTree {
-	rs.pipeline.SetTask(rs.currentService().Spec.Task)
+func (rs *roleScheduler) updateDesiredRole(n string, role *api.NodeRole) error {
+	err := rm.store.Update(func(tx store.Tx) error {
+		updatedNode := rs.store.GetNode(tx, n)
+		if updatedNode == nil || updatedNode.Spec.DesiredRole != node.Spec.DesiredRole || updatedNode.Role != node.Role {
+			return nil
+		}
+		updatedNode.Spec.DesiredRoleRole = role
+		return rs.store.UpdateNode(tx, updatedNode)
+	})
+	if err != nil {
+		log.G(ctx).WithError(err).Errorf("failed to set desired node role %s", n)
+		return err
+	}
+}
 
+func (rs *roleScheduler) proposeNRolesOnNodes(rolesRequested int, searchRole *api.DesiredRole, prefs []*api.PlacementPreference, nodeSet *nodeSet) (rolesScheduled nodeSet) {
+	rs.pipeline.SetTask(rs.currentService().Spec.Task)
 	now := time.Now()
 
 	nodeLess := func(a *NodeInfo, b *NodeInfo) bool {
@@ -286,22 +388,20 @@ func (rs *roleScheduler) createDecisionTree(prefs []*api.PlacementPreference) tr
 		return a.ActiveTasksCount < b.ActiveTasksCount
 	}
 
-	return s.nodeSet.tree(t.ServiceID, prefs, rolesRequested, s.pipeline.Process, nodeLess)
-}
+	tree := nodeSet.tree(t.ServiceID, prefs, rolesRequested, s.pipeline.Process, nodeLess)
 
-func (rs *roleScheduler) scheduleNRolesOnTree(rolesRequested int, setRole *api.DesiredRole, tree *decisionTree) int {
-	rolesScheduled := 0
+	var rolesScheduled nodeSet
 	func rolesRemaining() {return rolesRequested - rolesScheduled}
-	level := 0
-	var levelMap []map[string]*decisionTree
-	levelMap[level]["root"] = tree
+	var level 0
+	var treeMap []map[string]*decisionTree
+	treeMap[level]["root"] = tree
 
 	// climb tree one level at a time
-	for rolesRemaining() > 0 && len(levelMap) => level; level++ {
+	for rolesRemaining() > 0 && len(treeMap) => level; level++ {
 		var leaves [][]NodeInfo
 		var i 0
 		// populate leaves on branches
-		for _, branch := range levelMap[level]; i++ {
+		for _, branch := range treeMap[level]; i++ {
 			leaves[i] := branch.orderedNodes(s.pipeline.Process, nodeLess)
 		}
 		// round-robin iterator
@@ -314,21 +414,20 @@ func (rs *roleScheduler) scheduleNRolesOnTree(rolesRequested int, setRole *api.D
 		for robin, branch := range leaves {
 			go func() {
 				for _, leaf := range leaves; rolesRemaining() > 0 && round(robin) {
-					if leaf.Node.Spec.DesiredRole != setRole {
-						leaf.Node.Spec.DesiredRole = setRole
-						rolesScheduled++
+					if leaf.Spec.DesiredRole != searchRole {
+						append(rolesScheduled, leaf)
 						i++
 					}
 				}
 				robinCh <- 0
 			} ()
 		}
-		for ch := 0; rolesRemaining() > 0 || ch < len(leaves); ch++ { <- robinCh }
+		for ch := 0; rolesRemaining() > 0 || ch < len(leaves); ch++ {<-robinCh}
 		// populate branches in next level
 		if rolesRemaining() > 0 {
-			for _, branch := range levelMap[level] {
+			for _, branch := range treeMap[level] {
 				for _, next := range branch.next {
-					append(levelMap[level + 1], next)
+					append(treeMap[level + 1], next)
 				}
 			}
 		}
@@ -338,6 +437,5 @@ func (rs *roleScheduler) scheduleNRolesOnTree(rolesRequested int, setRole *api.D
 
 // Stop causes the scheduler event loop to stop running.
 func (rs *roleScheduler) Stop() {
-	close(rs.stopChan)
-	<-rs.doneChan
+	rs.cancel()
 }

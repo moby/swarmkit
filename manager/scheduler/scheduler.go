@@ -50,7 +50,7 @@ type Scheduler struct {
 }
 
 // New creates a new scheduler.
-func New(store *store.MemoryStore) *Scheduler {
+func New(store *store.MemoryStore, raftNode	*raftNode) *Scheduler {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Scheduler{
 		ctx:											ctx,
@@ -144,6 +144,11 @@ func (s *Scheduler) Run(ctx context.Context) error {
 			tickRequired = false
 		}
 	}
+
+	// setup and run RoleScheduler
+	roleScheduler := newRoleScheduler(s.ctx, s.store, s.nodeSet)
+	defer roleScheduler.cancel()
+	go roleScheduler.Run(s.ctx)
 
 	// Watch for changes.
 	for {

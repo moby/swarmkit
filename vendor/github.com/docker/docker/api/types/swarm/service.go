@@ -34,7 +34,7 @@ type ServiceSpec struct {
 type ServiceMode struct {
 	Replicated 		*ReplicatedService 		`json:",omitempty"`
 	Global     		*GlobalService     		`json:",omitempty"`
-	SwarmManager	*RoleManagerService	`json:",omitempty"`
+	RoleManager		*RoleManagerService		`json:",omitempty"`
 }
 
 // UpdateState is the state of a service update.
