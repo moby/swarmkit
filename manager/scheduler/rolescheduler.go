@@ -110,7 +110,7 @@ func (rs *RoleScheduler) Run(ctx context.Context) error {
 			switch v := event.(type) {
 			case api.EventCreateService:
 				rs.createOrUpdateService(v.Service)
-			case api.EventUpdateService
+			case api.EventUpdateService:
 				rs.createOrUpdateService(v.Service)
 			case api.EventDeleteService:
 				rs.deleteService(v.Service)
@@ -136,7 +136,6 @@ func (rs *roleScheduler) init(tx store.ReadTx) error {
 	for _, s := range services {
 			rs.updateService(s)
 		}
-	}
 
 	nodes, err := store.FindNodes(tx, store.All)
 	if err != nil {
@@ -156,25 +155,23 @@ func (rs *roleScheduler) init(tx store.ReadTx) error {
 
 func (rs *roleScheduler) createOrUpdateService(service *api.Service) {
 	if orchestrator.IsRoleSchedulerService(service) {
-		continue
-	}
-	rs.services[service.ID] = service
-	for _, h := range serviceHistory {
-		if h == service.ID {
-			serviceHistory = append(serviceHistory[:h], serviceHistory[h+1:]...)
+		rs.services[service.ID] = service
+		for _, h := range serviceHistory {
+			if h == service.ID {
+				serviceHistory = append(serviceHistory[:h], serviceHistory[h+1:]...)
+			}
 		}
+		serviceHistory = append(serviceHistory, service.ID)
 	}
-	serviceHistory = append(serviceHistory, service.ID)
 }
 
 func (rs *roleScheduler) deleteService(service *api.Service) {
 	if orchestrator.IsRoleSchedulerService(service) {
-		continue
-	}
-	delete(rs.services, service.ID)
-	for _, h := range serviceHistory {
-		if h == service.ID {
-			serviceHistory = append(serviceHistory[:h], serviceHistory[h+1:]...)
+		delete(rs.services, service.ID)
+		for _, h := range serviceHistory {
+			if h == service.ID {
+				serviceHistory = append(serviceHistory[:h], serviceHistory[h+1:]...)
+			}
 		}
 	}
 }
@@ -244,7 +241,7 @@ func (rs *roleScheduler) markPending(n string) {
 	go func timeoutPending(n string) {
 		time.Sleep(rs.config.pendingTimeout)
 		rs.unmarkPending(n)
-	} timeoutPending(n)
+	}(n)
 }
 
 func (rs *roleScheduler) unmarkPending(n string) {
