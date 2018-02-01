@@ -238,7 +238,7 @@ func (rs *roleScheduler) markPending(n string) {
 	rs.unmarkActive(n)
 	rs.unmarkFailed(n)
 	rs.managers.pending.addOrUpdateNode(rs.nodeSet[n])
-	go func timeoutPending(n string) {
+	go func (n string) {
 		time.Sleep(rs.config.pendingTimeout)
 		rs.unmarkPending(n)
 	}(n)
@@ -262,7 +262,7 @@ func (rs *roleScheduler) specifiedManagers() uint32 {
 }
 
 func (rs *roleScheduler) activeManagers() uint32 {
-	var active := 0
+	var active 0
 	for ID, m := range rs.managers.active {
 		if m.Status.State == NodeStatus_READY {
 			active++
@@ -284,7 +284,7 @@ func (rs *roleScheduler) scheduleRoles() {
 			switch {
 			case rs.activeManagers() < rs.specifiedManagers():
 				switch {
-				case rs.scheduledManagers() =< rs.specifiedManagers():
+				case rs.scheduledManagers() <= rs.specifiedManagers():
 					rs.promoteWorkers(rs.specifiedManagers()-rs.activeManagers())
 				case rs.scheduledManagers() < rs.specifiedManagers():
 					time.Sleep(rs.config.pendingTimeout)
@@ -388,38 +388,43 @@ func (rs *roleScheduler) proposeNRolesOnNodes(rolesRequested int, searchRole *ap
 	tree := nodeSet.tree(t.ServiceID, prefs, rolesRequested, s.pipeline.Process, nodeLess)
 
 	var rolesScheduled nodeSet
-	func rolesRemaining() {return rolesRequested - rolesScheduled}
-	var level 0
+	rolesRemaining := func() int {
+		return rolesRequested - rolesScheduled
+	}
+	var level int 0
 	var treeMap []map[string]*decisionTree
 	treeMap[level]["root"] = tree
 
 	// climb tree one level at a time
-	for rolesRemaining() > 0 && len(treeMap) => level; level++ {
+	for rolesRemaining() > 0 && len(treeMap) >= level; level++ {
 		var leaves [][]NodeInfo
-		var i 0
+		var i int 0
 		// populate leaves on branches
-		for _, branch := range treeMap[level]; i++ {
+		for _, branch := range treeMap[level] {
 			leaves[i] := branch.orderedNodes(s.pipeline.Process, nodeLess)
+			i++
 		}
 		// round-robin iterator
-		func round(robin int) bool {
+		round := func(robin int) bool {
 			 if robin == i % len(leaves) {
 				 return true
 			 }
 		 }
-		robinCh = make(chan int len(leaves))
+		robinCh := make(chan int, len(leaves))
 		for robin, branch := range leaves {
-			go func() {
-				for _, leaf := range leaves; rolesRemaining() > 0 && round(robin) {
+			go func(robin int, branch []NodeInfo) {
+				for _, leaf := range leaves[branch]; rolesRemaining() > 0 && round(robin) {
 					if leaf.Spec.DesiredRole != searchRole {
 						append(rolesScheduled, leaf)
 						i++
 					}
 				}
 				robinCh <- 0
-			} ()
+			}(robin, branch)
 		}
-		for ch := 0; rolesRemaining() > 0 || ch < len(leaves); ch++ {<-robinCh}
+		for ch := range robinCh; rolesRemaining() > 0 || ch < len(leaves) {
+			<-robinCh
+		}
 		// populate branches in next level
 		if rolesRemaining() > 0 {
 			for _, branch := range treeMap[level] {
