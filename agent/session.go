@@ -271,7 +271,7 @@ func (s *session) logSubscriptions(ctx context.Context) error {
 
 func (s *session) watch(ctx context.Context) error {
 	log := log.G(ctx).WithFields(logrus.Fields{"method": "(*session).watch"})
-	log.Debugf("")
+	log.Debug("started session watch")
 	var (
 		resp            *api.AssignmentsMessage
 		assignmentWatch api.Dispatcher_AssignmentsClient
@@ -356,6 +356,7 @@ func (s *session) watch(ctx context.Context) error {
 
 // sendTaskStatus uses the current session to send the status of a single task.
 func (s *session) sendTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error {
+	ctx = log.WithField(ctx, "method", "(*session).sendTaskStatus")
 	client := api.NewDispatcherClient(s.conn.ClientConn)
 	if _, err := client.UpdateTaskStatus(ctx, &api.UpdateTaskStatusRequest{
 		SessionID: s.sessionID,
@@ -379,6 +380,8 @@ func (s *session) sendTaskStatus(ctx context.Context, taskID string, status *api
 }
 
 func (s *session) sendTaskStatuses(ctx context.Context, updates ...*api.UpdateTaskStatusRequest_TaskStatusUpdate) ([]*api.UpdateTaskStatusRequest_TaskStatusUpdate, error) {
+	ctx = log.WithField(ctx, "method", "(*session).sendTaskStatuses)")
+	log.G(ctx).Debugf("sending batch of %v task statuses", len(updates))
 	if len(updates) < 1 {
 		return nil, nil
 	}
