@@ -127,7 +127,7 @@ func testRoleScheduler(t *testing.T) {
 					Replicas: 3,
 				},
 			},
-		}
+		},
 	}
 
 	s := store.NewMemoryStore(nil)
