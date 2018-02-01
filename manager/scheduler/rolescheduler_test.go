@@ -1,20 +1,11 @@
 package scheduler
 
 import (
-	"time"
-	"fmt"
-	"runtime"
-	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/genericresource"
-	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
 
