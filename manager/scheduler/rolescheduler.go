@@ -55,26 +55,29 @@ type roleScheduler struct {
 	// nodeSet from parent Scheduler, use task-driven resources data for role scheduling
 	nodeSet        	  *nodeSet
 
-	healthTicker			time.Ticker
-	upgradeTicker			time.Ticker
+	healthTicker			*time.Ticker
+	upgradeTicker			*time.Ticker
 }
 
 // New creates a new scheduler.
 func newRoleScheduler(ctx context.Context, store *store.MemoryStore, nodeSet *nodeSet) *roleScheduler {
 	ctx, cancel := context.WithCancel(ctx)
+	config := DefaultRoleSchedulerConfig()
 	return &roleScheduler{
+		ctx:							ctx,
+		cancel:						cancel,
 		store:						store,
-		config:						DefaultRoleSchedulerConfig(),
+		config:						config,
 		services:					make(map[string]*api.Service),
-		serviceHistory:		make([]string),
-		managers:					{
+		serviceHistory:		make([]string, 1),
+		managers:					managers{
 			active:						make(map[string]NodeInfo),
 			failed:						make(map[string]NodeInfo),
 			pending:					make(map[string]NodeInfo),
 		},
 		nodeSet:					nodeSet,
-		healthTicker:			time.NewTicker(rs.config.healthHeartbeat),
-		upgradeTicker:		time.NewTicker(rs.config.upgradeInterval),
+		healthTicker:			time.NewTicker(config.healthHeartbeat),
+		upgradeTicker:		time.NewTicker(config.upgradeInterval),
 	}
 }
 
@@ -173,7 +176,7 @@ func (rs *roleScheduler) deleteService(service *api.Service) {
 	}
 }
 
-func (rs *roleScheduler) currentService(service *api.Service) (service *api.Service){
+func (rs *roleScheduler) currentService() (service *api.Service){
 	if len(rs.services) != 0 {
 		return rs.services[len(rs.services)-1]
 	} else {
@@ -357,7 +360,7 @@ func (rs *roleScheduler) updateDesiredRole(n string, role *api.NodeRole) error {
 	}
 }
 
-func (rs *roleScheduler) proposeNRolesOnNodes(rolesRequested int, searchRole *api.DesiredRole, prefs []*api.PlacementPreference, nodeSet *nodeSet) (rolesScheduled nodeSet) {
+func (rs *roleScheduler) proposeNRolesOnNodes(rolesRequested int, searchRole *api.NodeRole, prefs []*api.PlacementPreference, nodeSet *nodeSet) (rolesScheduled nodeSet) {
 	rs.pipeline.SetTask(rs.currentService().Spec.Task)
 	now := time.Now()
 	rolesScheduled.alloc(rolesRequested)
