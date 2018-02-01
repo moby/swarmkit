@@ -50,7 +50,7 @@ type Scheduler struct {
 }
 
 // New creates a new scheduler.
-func New(store *store.MemoryStore, raftNode	*raftNode) *Scheduler {
+func New(store *store.MemoryStore) *Scheduler {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Scheduler{
 		ctx:											ctx,

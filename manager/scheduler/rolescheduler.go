@@ -47,17 +47,19 @@ type roleScheduler struct {
 	services					map[string]*api.Service
 	serviceHistory		[]string
 
-	managers					struct {
-		active					nodeSet
-		failed					nodeSet
-		pending					nodeSet
-	}
+	managers					managerSet
 	// nodeSet from parent Scheduler, use task-driven resources data for role scheduling
 	nodeSet        	  *nodeSet
 
 	healthTicker			*time.Ticker
 	upgradeTicker			*time.Ticker
 }
+
+	type managerSet struct {
+		active					nodeSet
+		failed					nodeSet
+		pending					nodeSet
+	}
 
 // New creates a new scheduler.
 func newRoleScheduler(ctx context.Context, store *store.MemoryStore, nodeSet *nodeSet) *roleScheduler {
@@ -70,7 +72,7 @@ func newRoleScheduler(ctx context.Context, store *store.MemoryStore, nodeSet *no
 		config:						config,
 		services:					make(map[string]*api.Service),
 		serviceHistory:		make([]string, 1),
-		managers:					managers{
+		managers:					managerSet{
 			active:						make(map[string]NodeInfo),
 			failed:						make(map[string]NodeInfo),
 			pending:					make(map[string]NodeInfo),
@@ -89,7 +91,7 @@ func newRoleScheduler(ctx context.Context, store *store.MemoryStore, nodeSet *no
 // Role scheduling is handled by RunRoleScheduler changing the DesiredRole of a Node,
 // and reconciliation is handled by role_manager.go as any other API or CLI role change request.
 func (rs *roleScheduler) Run(ctx context.Context) error {
-	defer close(s.doneChan)
+	defer close(rs.doneChan)
 
 	// Watch for updates
 	updates, cancel, err := store.ViewAndWatch(rs.store, rs.init)
@@ -99,12 +101,12 @@ func (rs *roleScheduler) Run(ctx context.Context) error {
 	}
 	defer cancel()
 
-	go scheduleRoles()
+	go rs.scheduleRoles()
 
 	// Watch for changes.
 	for {
 		select {
-		case <-upgradeTicker.C:
+		case <-rs.upgradeTicker.C:
 			rs.promoteWorkers(1)
 		case event := <-updates:
 			switch v := event.(type) {
@@ -115,11 +117,11 @@ func (rs *roleScheduler) Run(ctx context.Context) error {
 			case api.EventDeleteService:
 				rs.deleteService(v.Service)
 			case api.EventCreateNode:
-				rs.createOrUpdateNode(v.Node)
+				rs.createOrUpdateNode(v.Node.ID)
 			case api.EventUpdateNode:
-				rs.createOrUpdateNode(v.Node)
+				rs.createOrUpdateNode(v.Node.ID)
 			case api.EventDeleteNode:
-				rs.removeManager(v.Node)
+				rs.removeManager(v.Node.ID)
 			}
 		case <-rs.ctx.Done():
 			rs.upgradeTicker.Stop()
@@ -129,7 +131,7 @@ func (rs *roleScheduler) Run(ctx context.Context) error {
 }
 
 func (rs *roleScheduler) init(tx store.ReadTx) error {
-	services, err = store.FindServices(tx, store.All)
+	services, err := store.FindServices(tx, store.All)
 	if err != nil {
 		return err
 	}
