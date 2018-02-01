@@ -85,7 +85,7 @@ func newRoleScheduler(ctx context.Context, store *store.MemoryStore, nodeSet *no
 // passing around Tasks between functions would not do.
 // Role scheduling is handled by RunRoleScheduler changing the DesiredRole of a Node,
 // and reconciliation is handled by role_manager.go as any other API or CLI role change request.
-func (rs *RoleScheduler) Run(ctx context.Context) error {
+func (rs *roleScheduler) Run(ctx context.Context) error {
 	defer close(s.doneChan)
 
 	// Watch for updates
@@ -399,7 +399,7 @@ func (rs *roleScheduler) proposeNRolesOnNodes(rolesRequested int, searchRole *ap
 		i := 0
 		// populate leaves on branches
 		for _, branch := range treeMap[level] {
-			leaves[i] := branch.orderedNodes(s.pipeline.Process, nodeLess)
+			leaves[i] = branch.orderedNodes(s.pipeline.Process, nodeLess)
 			leafIterator[i] = len(leaves[i])
 			levelLeaves = levelLeaves + len(leaves[i])
 			i++
