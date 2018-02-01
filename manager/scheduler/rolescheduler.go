@@ -4,11 +4,8 @@ import (
 	"time"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
 
@@ -363,7 +360,7 @@ func (rs *roleScheduler) updateDesiredRole(n string, role *api.NodeRole) error {
 func (rs *roleScheduler) proposeNRolesOnNodes(rolesRequested int, searchRole *api.DesiredRole, prefs []*api.PlacementPreference, nodeSet *nodeSet) (rolesScheduled nodeSet) {
 	rs.pipeline.SetTask(rs.currentService().Spec.Task)
 	now := time.Now()
-
+	rolesScheduled.alloc(rolesRequested)
 	nodeLess := func(a *NodeInfo, b *NodeInfo) bool {
 		// If either node has at least maxFailures recent failures,
 		// that's the deciding factor.
@@ -387,7 +384,6 @@ func (rs *roleScheduler) proposeNRolesOnNodes(rolesRequested int, searchRole *ap
 
 	tree := nodeSet.tree(t.ServiceID, prefs, rolesRequested, s.pipeline.Process, nodeLess)
 
-	var rolesScheduled nodeSet
 	rolesRemaining := func() int {
 		return rolesRequested - rolesScheduled
 	}
@@ -420,7 +416,7 @@ func (rs *roleScheduler) proposeNRolesOnNodes(rolesRequested int, searchRole *ap
 				i++
 			}
 		}
-		 
+
 		// populate branches in next level
 		if rolesRemaining() > 0 {
 			for _, branch := range treeMap[level] {

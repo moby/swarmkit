@@ -185,11 +185,11 @@ func testRoleScheduler(t *testing.T) {
 		}
 	}
 	failManager.Status.State = NodeStatus_DOWN
-	err := s.Update(func(tx store.Tx) error {
+	failManagerUpdater := s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateNode(tx, failManager))
 		return nil
 	})
-	assert.NoError(t, err)
+	assert.NoError(t, failManagerUpdater)
 	for _, pending := range rs.managers.pending {
 		assert.Equal(t, pending.Spec.Annotations.Labels.az, az2)
 	}
@@ -199,10 +199,11 @@ func testRoleScheduler(t *testing.T) {
 	// test service definition update
 	updateService := rs.currentService
 	updateService.Spec.Mode.RoleManager.Replicas = 5
-	err := s.Update(func(tx store.Tx) error {
+	serviceUpdater := s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateService(tx, updateService))
 		return nil
 	})
+	assert.NoError(t, serviceUpdater)
 	assert.Equal(t, rs.scheduledManagers(), rs.specifiedManagers())
 
 }
