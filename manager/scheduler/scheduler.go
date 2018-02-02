@@ -146,7 +146,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 	}
 
 	// setup and run RoleScheduler
-	roleScheduler := newRoleScheduler(s.ctx, s.store, s.nodeSet)
+	roleScheduler := newRoleScheduler(s.ctx, s.store, &s.nodeSet)
 	defer roleScheduler.cancel()
 	go roleScheduler.Run(s.ctx)
 

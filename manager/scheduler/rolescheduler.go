@@ -5,8 +5,10 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/protobuf/ptypes"
 	"golang.org/x/net/context"
 )
 
@@ -45,12 +47,13 @@ type roleScheduler struct {
 	cancel						func()
 	store           	*store.MemoryStore
 	config						*RoleSchedulerConfig
-	services					map[string]*api.Service
-	serviceHistory		[]string
+	taskID						string
+	services					[]*api.Service
 
 	managers					managerSet
 	// nodeSet from parent Scheduler, use task-driven resources data for role scheduling
 	nodeSet        	  *nodeSet
+	pipeline					*Pipeline
 
 	healthTicker			*time.Ticker
 	upgradeTicker			*time.Ticker
@@ -71,12 +74,12 @@ func newRoleScheduler(ctx context.Context, store *store.MemoryStore, nodeSet *no
 		cancel:						cancel,
 		store:						store,
 		config:						config,
-		services:					make(map[string]*api.Service),
-		serviceHistory:		make([]string, 1),
-
+		taskID:						identity.NewID(),
 		nodeSet:					nodeSet,
 		healthTicker:			time.NewTicker(config.healthHeartbeat),
 		upgradeTicker:		time.NewTicker(config.upgradeInterval),
+		pipeline:         NewPipeline(),
+
 	}
 }
 
@@ -152,25 +155,38 @@ func (rs *roleScheduler) init(tx store.ReadTx) error {
 }
 
 func (rs *roleScheduler) createOrUpdateService(service *api.Service) {
-	if service.Spec.GetMode().(*api.ServiceSpec_Manager) {
-		rs.services[service.ID] = service
-		for s, h := range rs.serviceHistory {
-			if h == service.ID {
-				rs.serviceHistory = append(rs.serviceHistory[:s], rs.serviceHistory[s+1:]...)
-			}
-		}
-		rs.serviceHistory = append(serviceHistory, service.ID)
+	if orchestrator.IsRoleSchedulerService(service) {
+		rs.deleteService(service)
+		rs.services = append(rs.services, service)
 	}
 }
 
 func (rs *roleScheduler) deleteService(service *api.Service) {
-	if service.Spec.GetMode().(*api.ServiceSpec_Manager) {
-		delete(rs.services, service.ID)
-		for s, h := range rs.serviceHistory {
-			if h == service.ID {
-				rs.serviceHistory = append(rs.serviceHistory[:s], rs.serviceHistory[s+1:]...)
+	if orchestrator.IsRoleSchedulerService(service) {
+		for h, s := range rs.services {
+			if s == service {
+				rs.services = append(rs.services[:h], rs.services[h+1:]...)
 			}
 		}
+	}
+}
+
+func (rs *roleScheduler) currentTask() *api.Task {
+		return &api.Task{
+		ID:                 rs.taskID,
+		ServiceAnnotations: rs.currentService().Spec.Annotations,
+		Spec:               rs.currentService().Spec.Task,
+		SpecVersion:        rs.currentService().SpecVersion,
+		ServiceID:          rs.currentService().ID,
+		Status: api.TaskStatus{
+			State:     api.TaskStateNew,
+			Timestamp: ptypes.MustTimestampProto(time.Now()),
+			Message:   "created",
+		},
+		Endpoint: &api.Endpoint{
+			Spec: rs.currentService().Spec.Endpoint.Copy(),
+		},
+		DesiredState: api.TaskStateRunning,
 	}
 }
 
@@ -203,28 +219,33 @@ func (rs *roleScheduler) removeManager(n string) {
 }
 
 func (rs *roleScheduler) markActive(n string) {
-	rs.managers.active.addOrUpdateNode(rs.nodeSet[n])
-	rs.nodeSet[n].ActiveTasksCountByService[rs.currentService().ID] = 1
+	nodeInfo, err := rs.nodeSet.nodeInfo(n)
+	if err == nil {
+		rs.managers.active.addOrUpdateNode(nodeInfo)
+	}
+	nodeInfo.ActiveTasksCountByService[rs.currentService().ID] = 1
 	rs.unmarkFailed(n)
 	rs.unmarkPending(n)
 }
 
 func (rs *roleScheduler) unmarkActive(n string) {
-	if rs.managers.active[n] != nil {
+	nodeInfo, err := rs.nodeSet.nodeInfo(n)
+	if err == nil {
 		rs.managers.active.remove(n)
 		for _, s := range rs.services {
-			if rs.nodeSet[n].ActiveTasksCountByService[s.ID] != nil {
-				delete(rs.nodeSet[n].ActiveTasksCountByService, s.ID)
-			}
+			delete(nodeInfo.ActiveTasksCountByService, s.ID)
 		}
-		rs.healthTicker.C <- time.Now()
+		// rs.healthTicker.C <- time.Now()
 	}
 }
 
 func (rs *roleScheduler) markFailed(n string) {
+	nodeInfo, err := rs.nodeSet.nodeInfo(n)
+	if err == nil {
+		rs.managers.failed.addOrUpdateNode(nodeInfo)
+	}
+	nodeInfo.taskFailed(rs.ctx, rs.currentTask())
 	rs.unmarkActive(n)
-	rs.managers.failed.addOrUpdateNode(rs.nodeSet[n])
-	rs.nodeSet[n].taskFailed(currentService().Spec.Task)
 	rs.unmarkPending(n)
 }
 
@@ -233,13 +254,16 @@ func (rs *roleScheduler) unmarkFailed(n string) {
 }
 
 func (rs *roleScheduler) markPending(n string) {
+	nodeInfo, err := rs.nodeSet.nodeInfo(n)
+	if err == nil {
+		rs.managers.pending.addOrUpdateNode(nodeInfo)
+		go func (n string) {
+			time.Sleep(rs.config.pendingTimeout)
+			rs.unmarkPending(n)
+		}(n)
+	}
 	rs.unmarkActive(n)
 	rs.unmarkFailed(n)
-	rs.managers.pending.addOrUpdateNode(rs.nodeSet[n])
-	go func (n string) {
-		time.Sleep(rs.config.pendingTimeout)
-		rs.unmarkPending(n)
-	}(n)
 }
 
 func (rs *roleScheduler) unmarkPending(n string) {
@@ -247,22 +271,22 @@ func (rs *roleScheduler) unmarkPending(n string) {
 }
 
 func (rs *roleScheduler) clearReserves() {
-	for _, f := range rs.managers.failed {
-		rs.unmarkFailed(f)
+	for _, f := range rs.managers.failed.nodes {
+		rs.unmarkFailed(f.ID)
 	}
-	for _, p := range rs.managers.pending {
-		rs.unmarkPending(p)
+	for _, p := range rs.managers.pending.nodes {
+		rs.unmarkPending(p.ID)
 	}
 }
 
-func (rs *roleScheduler) specifiedManagers() uint32 {
-	return rs.currentService().Spec.GetMode().(*api.ServiceSpec_Manager).RoleManager.Replicas
+func (rs *roleScheduler) specifiedManagers() int {
+	return int(rs.currentService().Spec.GetMode().(*api.ServiceSpec_Manager).Manager.Replicas)
 }
 
-func (rs *roleScheduler) activeManagers() uint32 {
+func (rs *roleScheduler) activeManagers() int {
 	active := 0
-	for ID, m := range rs.managers.active {
-		if m.Status.State == NodeStatus_READY {
+	for ID, m := range rs.managers.active.nodes {
+		if m.Status.State == api.NodeStatus_READY {
 			active++
 		} else {
 			rs.markFailed(ID)
@@ -271,8 +295,8 @@ func (rs *roleScheduler) activeManagers() uint32 {
 	return active
 }
 
-func (rs *roleScheduler) scheduledManagers() uint32 {
-	return rs.activeManagers + len(rs.managers.pending)
+func (rs *roleScheduler) scheduledManagers() int {
+	return rs.activeManagers() + len(rs.managers.pending.nodes)
 }
 
 func (rs *roleScheduler) scheduleRoles() {
@@ -298,22 +322,36 @@ func (rs *roleScheduler) scheduleRoles() {
 			}
 			case <-rs.ctx.Done():
 				rs.healthTicker.Stop()
-				return nil
+				return
 		}
 	}
 }
 
-func (rs *roleScheduler) promoteWorkers(rolesRequested uint32) {
+type roleRequest struct {
+	count			int
+	search 		api.NodeRole
+	set				api.NodeRole
+	prefs			[]*api.PlacementPreference
+	searchSet	*nodeSet
+	proposed	nodeSet
+}
+
+func (rs *roleScheduler) promoteWorkers(rolesRequested int) {
 	var prefs []*api.PlacementPreference
-	if t.Spec.Placement != nil {
-		prefs = t.Spec.Placement.Preferences
+	if rs.currentTask().Spec.Placement != nil {
+		prefs = rs.currentTask().Spec.Placement.Preferences
 	}
 
-	searchRole := api.NodeRoleManager
-	setRole := api.NodeRoleManager
-	proposed := rs.proposeNRolesOnNodes(rolesRequested, searchRole, prefs, rs.nodeSet)
-	for _, n := range proposed {
-		rs.updateDesiredRole(n, searchRole)
+	request := &roleRequest{
+		count:			rolesRequested,
+		search:			api.NodeRoleManager,
+		set:				api.NodeRoleManager,
+		searchSet:	rs.nodeSet,
+		prefs:			prefs,
+	}
+	response := rs.proposeNRolesOnNodes(request)
+	for n, _ := range response.proposed.nodes {
+		rs.updateDesiredRole(rs.nodeSet.nodes[n], request.set)
 		rs.markPending(n)
 	}
 
@@ -323,45 +361,53 @@ func (rs *roleScheduler) promoteWorkers(rolesRequested uint32) {
 // TODO report, explain failed attempts
 }
 
-func (rs *roleScheduler) demoteManagers(rolesRequested uint32) {
+func (rs *roleScheduler) demoteManagers(rolesRequested int) {
 	var prefs []*api.PlacementPreference
-	if t.Spec.Placement != nil {
-		prefs = t.Spec.Placement.Preferences
+	if rs.currentTask().Spec.Placement != nil {
+		prefs = rs.currentTask().Spec.Placement.Preferences
 	}
 	for i := 0; i < len(prefs)/2; i++ {
 			j := len(prefs) - i - 1
 			prefs[i], prefs[j] = prefs[j], prefs[i]
 		}
 
-	searchRole := api.NodeRoleManager
-	setRole := api.NodeRoleWorker
-	proposed := rs.proposeNRolesOnNodes(rolesRequested, searchRole, prefs, rs.nodeSet)
-	for _, n := range proposed {
-		rs.updateDesiredRole(n, setRole)
+	request := &roleRequest{
+		count:			rolesRequested,
+		search:			api.NodeRoleManager,
+		set:				api.NodeRoleWorker,
+		searchSet:	rs.nodeSet,
+		prefs:			prefs,
+	}
+
+	response := rs.proposeNRolesOnNodes(request)
+	for n, _ := range response.proposed.nodes {
+		rs.updateDesiredRole(rs.nodeSet.nodes[n], request.set)
 		rs.removeManager(n)
 	}
 	// TODO report, explain failed attempts
 }
 
-func (rs *roleScheduler) updateDesiredRole(n string, role *api.NodeRole) error {
-	err := rm.store.Update(func(tx store.Tx) error {
-		updatedNode := rs.store.GetNode(tx, n)
+func (rs *roleScheduler) updateDesiredRole(node NodeInfo, role api.NodeRole) error {
+	err := rs.store.Update(func(tx store.Tx) error {
+		updatedNode := store.GetNode(tx, node.ID)
 		if updatedNode == nil || updatedNode.Spec.DesiredRole != node.Spec.DesiredRole || updatedNode.Role != node.Role {
 			return nil
 		}
-		updatedNode.Spec.DesiredRoleRole = role
-		return rs.store.UpdateNode(tx, updatedNode)
+		updatedNode.Spec.DesiredRole = role
+		return store.UpdateNode(tx, updatedNode)
 	})
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("failed to set desired node role %s", n)
+		log.G(rs.ctx).WithError(err).Errorf("failed to set desired node role %s", node.ID)
 		return err
 	}
+	return nil
 }
 
-func (rs *roleScheduler) proposeNRolesOnNodes(rolesRequested int, searchRole *api.NodeRole, prefs []*api.PlacementPreference, nodeSet *nodeSet) (rolesScheduled nodeSet) {
-	rs.pipeline.SetTask(rs.currentService().Spec.Task)
+func (rs *roleScheduler) proposeNRolesOnNodes(req *roleRequest) (res *roleRequest) {
+	t := rs.currentTask()
+	rs.pipeline.SetTask(t)
 	now := time.Now()
-	rolesScheduled.alloc(rolesRequested)
+	req.proposed.alloc(req.count)
 	nodeLess := func(a *NodeInfo, b *NodeInfo) bool {
 		// If either node has at least maxFailures recent failures,
 		// that's the deciding factor.
@@ -383,24 +429,24 @@ func (rs *roleScheduler) proposeNRolesOnNodes(rolesRequested int, searchRole *ap
 		return a.ActiveTasksCount < b.ActiveTasksCount
 	}
 
-	tree := nodeSet.tree(t.ServiceID, prefs, rolesRequested, s.pipeline.Process, nodeLess)
+	tree := req.searchSet.tree(rs.currentService().ID, req.prefs, req.count, rs.pipeline.Process, nodeLess)
 
 	rolesRemaining := func() int {
-		return rolesRequested - rolesScheduled
+		return req.count - len(req.proposed.nodes)
 	}
-	level := 0
-	treeMap := make([]map[string]*decisionTree)
-	treeMap[level]["root"] = tree
+
+	treeSlice := make([][]*decisionTree, 1)
+	treeSlice[0][0] = &tree
 
 	// climb tree one level at a time
-	for level := 0; rolesRemaining() > 0 && len(treeMap) >= level; level++ {
-		leaves := make([][]NodeInfo)
-		leafIterator := make([]int)
+	for level := 0; rolesRemaining() > 0 && len(treeSlice) >= level; level++ {
+		leaves := make([][]NodeInfo, len(treeSlice[level]))
+		leafIterator := make([]int, len(treeSlice[level]))
 		levelLeaves := 0
 		i := 0
 		// populate leaves on branches
-		for _, branch := range treeMap[level] {
-			leaves[i] = branch.orderedNodes(s.pipeline.Process, nodeLess)
+		for _, branch := range treeSlice[level] {
+			leaves[i] = branch.orderedNodes(rs.pipeline.Process, nodeLess)
 			leafIterator[i] = len(leaves[i])
 			levelLeaves = levelLeaves + len(leaves[i])
 			i++
@@ -410,24 +456,31 @@ func (rs *roleScheduler) proposeNRolesOnNodes(rolesRequested int, searchRole *ap
 			 return robin % len(leaves)
 		}
 		for robin := 0; rolesRemaining() > 0 && robin < levelLeaves; robin++ {
-			leaf := leaves[round(robin)][leafIterator[round(robin)]]
-			if leaf.Spec.DesiredRole != searchRole {
-				append(rolesScheduled, leaf)
-				leafIterator[round(robin)]++
+			branch := round(robin)
+			leaf := leaves[branch][leafIterator[branch]]
+			if len(leaves[branch]) > leafIterator[branch] {
+				if leaf.Spec.DesiredRole != req.search {
+					req.proposed.addOrUpdateNode(leaf)
+					i++
+				}
+				leafIterator[branch]++
+			} else {
 				i++
 			}
 		}
 
 		// populate branches in next level
 		if rolesRemaining() > 0 {
-			for _, branch := range treeMap[level] {
+			branchSlice := make([]*decisionTree, 1)
+			for _, branch := range treeSlice[level] {
 				for _, next := range branch.next {
-					append(treeMap[level + 1], next)
+					branchSlice = append(branchSlice, next)
 				}
 			}
+			treeSlice = append(treeSlice, branchSlice)
 		}
 	}
-	return rolesScheduled
+	return req
 }
 
 // Stop causes the scheduler event loop to stop running.
