@@ -3044,6 +3044,13 @@ file {
           66001: "ProtocolUDP"
         }
       }
+      value {
+        name: "SCTP"
+        number: 2
+        options {
+          66001: "ProtocolSCTP"
+        }
+      }
       options {
         62001: 0
       }
