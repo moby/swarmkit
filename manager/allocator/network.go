@@ -927,7 +927,8 @@ func updatePortsInHostPublishMode(s *api.Service) {
 	}
 
 	// Add back all host-mode ports
-	if s.Spec.Endpoint != nil {
+	// TODO can this if be removed?
+	if len(s.Spec.Endpoint.Ports) > 0 {
 		if s.Endpoint == nil {
 			s.Endpoint = &api.Endpoint{}
 		}
@@ -946,7 +947,7 @@ func updatePortsInHostPublishMode(s *api.Service) {
 func (a *Allocator) allocateService(ctx context.Context, s *api.Service, existingAddressesOnly bool) error {
 	nc := a.netCtx
 
-	if s.Spec.Endpoint != nil {
+	if len(s.Spec.Endpoint.Ports) > 0 {
 		// service has user-defined endpoint
 		if s.Endpoint == nil {
 			// service currently has no allocated endpoint, need allocated.

@@ -212,7 +212,7 @@ func (na *cnmNetworkAllocator) AllocateService(s *api.Service) (err error) {
 
 	// If ResolutionMode is DNSRR do not try allocating VIPs, but
 	// free any VIP from previous state.
-	if s.Spec.Endpoint != nil && s.Spec.Endpoint.Mode == api.ResolutionModeDNSRoundRobin {
+	if s.Spec.Endpoint.Mode == api.ResolutionModeDNSRoundRobin {
 		for _, vip := range s.Endpoint.VirtualIPs {
 			if err := na.deallocateVIP(vip); err != nil {
 				// don't bail here, deallocate as many as possible.
@@ -376,8 +376,7 @@ func (na *cnmNetworkAllocator) IsServiceAllocated(s *api.Service, flags ...func(
 	// If endpoint mode is VIP and allocator does not have the
 	// service in VIP allocated set then it needs to be allocated.
 	if len(specNetworks) != 0 &&
-		(s.Spec.Endpoint == nil ||
-			s.Spec.Endpoint.Mode == api.ResolutionModeVirtualIP) {
+		s.Spec.Endpoint.Mode == api.ResolutionModeVirtualIP {
 
 		if _, ok := na.services[s.ID]; !ok {
 			return false
@@ -426,13 +425,13 @@ func (na *cnmNetworkAllocator) IsServiceAllocated(s *api.Service, flags ...func(
 	// in VIP allocated set then we return to be allocated to make
 	// sure the allocator triggers networkallocator to free up the
 	// resources if any.
-	if s.Spec.Endpoint != nil && s.Spec.Endpoint.Mode == api.ResolutionModeDNSRoundRobin {
+	if s.Spec.Endpoint.Mode == api.ResolutionModeDNSRoundRobin {
 		if _, ok := na.services[s.ID]; ok {
 			return false
 		}
 	}
 
-	if (s.Spec.Endpoint != nil && len(s.Spec.Endpoint.Ports) != 0) ||
+	if len(s.Spec.Endpoint.Ports) != 0 ||
 		(s.Endpoint != nil && len(s.Endpoint.Ports) != 0) {
 		return na.portAllocator.isPortsAllocatedOnInit(s, options.OnInit)
 	}

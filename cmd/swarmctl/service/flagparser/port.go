@@ -36,7 +36,7 @@ func parsePorts(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		})
 	}
 
-	spec.Endpoint = &api.EndpointSpec{
+	spec.Endpoint = api.EndpointSpec{
 		Ports: ports,
 	}
 

@@ -531,7 +531,7 @@ func TestAllocateService(t *testing.T) {
 					},
 				},
 			},
-			Endpoint: &api.EndpointSpec{
+			Endpoint: api.EndpointSpec{
 				Ports: []*api.PortConfig{
 					{
 						Name:       "http",
@@ -569,7 +569,7 @@ func TestAllocateService(t *testing.T) {
 
 	assert.Equal(t, 1, len(s.Endpoint.VirtualIPs))
 
-	assert.Equal(t, s.Endpoint.Spec, s.Spec.Endpoint)
+	assert.Equal(t, *s.Endpoint.Spec, s.Spec.Endpoint)
 
 	ip, _, err := net.ParseCIDR(s.Endpoint.VirtualIPs[0].Addr)
 	assert.NoError(t, err)
@@ -582,7 +582,7 @@ func TestAllocateServiceUserDefinedPorts(t *testing.T) {
 	s := &api.Service{
 		ID: "testID1",
 		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{
+			Endpoint: api.EndpointSpec{
 				Ports: []*api.PortConfig{
 					{
 						Name:          "some_tcp",
@@ -612,7 +612,7 @@ func TestAllocateServiceConflictingUserDefinedPorts(t *testing.T) {
 	s := &api.Service{
 		ID: "testID1",
 		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{
+			Endpoint: api.EndpointSpec{
 				Ports: []*api.PortConfig{
 					{
 						Name:          "some_tcp",
@@ -638,7 +638,7 @@ func TestDeallocateServiceAllocate(t *testing.T) {
 	s := &api.Service{
 		ID: "testID1",
 		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{
+			Endpoint: api.EndpointSpec{
 				Ports: []*api.PortConfig{
 					{
 						Name:          "some_tcp",
@@ -684,7 +684,7 @@ func TestDeallocateServiceAllocateIngressMode(t *testing.T) {
 	s := &api.Service{
 		ID: "testID1",
 		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{
+			Endpoint: api.EndpointSpec{
 				Ports: []*api.PortConfig{
 					{
 						Name:          "some_tcp",
@@ -741,7 +741,7 @@ func TestServiceAddRemovePortsIngressMode(t *testing.T) {
 	s := &api.Service{
 		ID: "testID1",
 		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{
+			Endpoint: api.EndpointSpec{
 				Ports: []*api.PortConfig{
 					{
 						Name:          "some_tcp",
@@ -795,7 +795,7 @@ func TestServiceUpdate(t *testing.T) {
 	s := &api.Service{
 		ID: "testID1",
 		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{
+			Endpoint: api.EndpointSpec{
 				Ports: []*api.PortConfig{
 					{
 						Name:          "some_tcp",
@@ -881,7 +881,7 @@ func TestServiceNetworkUpdate(t *testing.T) {
 					},
 				},
 			},
-			Endpoint: &api.EndpointSpec{
+			Endpoint: api.EndpointSpec{
 				Mode: api.ResolutionModeVirtualIP,
 			},
 		},

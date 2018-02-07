@@ -17,7 +17,7 @@ func TestReconcilePortConfigs(t *testing.T) {
 		{
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:          "test1",
@@ -42,7 +42,7 @@ func TestReconcilePortConfigs(t *testing.T) {
 		{
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:          "test1",
@@ -88,7 +88,7 @@ func TestReconcilePortConfigs(t *testing.T) {
 		{
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:          "test1",
@@ -122,7 +122,7 @@ func TestReconcilePortConfigs(t *testing.T) {
 		{
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:          "test1",
@@ -185,9 +185,7 @@ func TestAllocateServicePorts(t *testing.T) {
 
 	// Service has no endpoint in ServiceSpec
 	s := &api.Service{
-		Spec: api.ServiceSpec{
-			Endpoint: nil,
-		},
+		Spec: api.ServiceSpec{},
 		Endpoint: &api.Endpoint{
 			Ports: []*api.PortConfig{
 				{
@@ -206,7 +204,7 @@ func TestAllocateServicePorts(t *testing.T) {
 	// Service has a published port 10001 in ServiceSpec
 	s = &api.Service{
 		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{
+			Endpoint: api.EndpointSpec{
 				Ports: []*api.PortConfig{
 					{
 						Name:          "test1",
@@ -236,7 +234,7 @@ func TestAllocateServicePorts(t *testing.T) {
 	// which is already allocated on host
 	s = &api.Service{
 		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{
+			Endpoint: api.EndpointSpec{
 				Ports: []*api.PortConfig{
 					{
 						Name:          "test1",
@@ -276,12 +274,10 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 
 	testCases := []Data{
 		{
-			// both Endpoint and Spec.Endpoint are nil
+			// Endpoint is nil
 			name: "NilEndpointAndSpec",
 			input: &api.Service{
-				Spec: api.ServiceSpec{
-					Endpoint: nil,
-				},
+				Spec:     api.ServiceSpec{},
 				Endpoint: nil,
 			},
 			expect: false,
@@ -291,7 +287,7 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 			name: "NonHostModePort",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:          "test1",
@@ -311,7 +307,7 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 			name: "PublishModeDifferent",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:          "test1",
@@ -340,7 +336,7 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 			name: "NothingChanged",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:          "test1",
@@ -373,7 +369,7 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 			name: "PublishPortNotSpecified",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:        "test4",
@@ -403,7 +399,7 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 			name: "OnePublishPortSpecifiedButDone",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:        "test5",
@@ -446,7 +442,7 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 			name: "OnePublishPortSpecifiedButDone",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:        "test6",
@@ -505,22 +501,20 @@ func TestIsPortsAllocated(t *testing.T) {
 
 	testCases := []Data{
 		{
-			// both Endpoint and Spec.Endpoint are nil
+			// Endpoint is nil
 			name: "BothNil",
 			input: &api.Service{
-				Spec: api.ServiceSpec{
-					Endpoint: nil,
-				},
+				Spec:     api.ServiceSpec{},
 				Endpoint: nil,
 			},
 			expect: true,
 		},
 		{
-			// Endpoint is non-nil and Spec.Endpoint is nil
+			// Endpoint is non-nil and Spec.Endpoint is not nil
 			name: "NilSpec",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:          "test1",
@@ -539,9 +533,7 @@ func TestIsPortsAllocated(t *testing.T) {
 			// Endpoint is nil and Spec.Endpoint is non-nil
 			name: "NilEndpoint",
 			input: &api.Service{
-				Spec: api.ServiceSpec{
-					Endpoint: nil,
-				},
+				Spec: api.ServiceSpec{},
 				Endpoint: &api.Endpoint{
 					Ports: []*api.PortConfig{
 						{
@@ -560,7 +552,7 @@ func TestIsPortsAllocated(t *testing.T) {
 			name: "DifferentLengths",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:          "test1",
@@ -595,7 +587,7 @@ func TestIsPortsAllocated(t *testing.T) {
 			name: "DifferentTargetPort",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:          "test1",
@@ -624,7 +616,7 @@ func TestIsPortsAllocated(t *testing.T) {
 			name: "DifferentPublishedPort",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:          "test1",
@@ -653,7 +645,7 @@ func TestIsPortsAllocated(t *testing.T) {
 			name: "NotYetAssignedPublishedPort",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:          "test1",
@@ -682,7 +674,7 @@ func TestIsPortsAllocated(t *testing.T) {
 			name: "NonzeroPublishedPort",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:          "test1",
@@ -711,7 +703,7 @@ func TestIsPortsAllocated(t *testing.T) {
 			name: "AlreadyAssignedPublishedPort",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:          "test1",
@@ -740,7 +732,7 @@ func TestIsPortsAllocated(t *testing.T) {
 			name: "DifferentOrders",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Name:          "test1",
@@ -796,7 +788,7 @@ func TestIsPortsAllocated(t *testing.T) {
 			name: "MultiplePublishedPort",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Protocol:      api.ProtocolTCP,
@@ -853,7 +845,7 @@ func TestIsPortsAllocated(t *testing.T) {
 			name: "DifferentTargetPortHostMode",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Ports: []*api.PortConfig{
 							{
 								Protocol:    api.ProtocolTCP,

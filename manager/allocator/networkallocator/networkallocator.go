@@ -107,10 +107,6 @@ func IsIngressNetworkNeeded(s *api.Service) bool {
 		return false
 	}
 
-	if s.Spec.Endpoint == nil {
-		return false
-	}
-
 	for _, p := range s.Spec.Endpoint.Ports {
 		// The service to which this task belongs is trying to
 		// expose ports with PublishMode as Ingress to the

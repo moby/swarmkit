@@ -501,7 +501,7 @@ func TestCreateService(t *testing.T) {
 
 	// test port conflicts
 	spec = createSpec("name2", "image", 1)
-	spec.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+	spec.Endpoint = api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
@@ -509,7 +509,7 @@ func TestCreateService(t *testing.T) {
 	assert.NotEmpty(t, r.Service.ID)
 
 	spec2 := createSpec("name3", "image", 1)
-	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+	spec2.Endpoint = api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
@@ -518,14 +518,14 @@ func TestCreateService(t *testing.T) {
 
 	// test no port conflicts when no publish port is specified
 	spec3 := createSpec("name4", "image", 1)
-	spec3.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+	spec3.Endpoint = api.EndpointSpec{Ports: []*api.PortConfig{
 		{TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec3})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, r.Service.ID)
 	spec4 := createSpec("name5", "image", 1)
-	spec4.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+	spec4.Endpoint = api.EndpointSpec{Ports: []*api.PortConfig{
 		{TargetPort: uint32(9001), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec4})
@@ -533,7 +533,7 @@ func TestCreateService(t *testing.T) {
 
 	// ensure no port conflict when different protocols are used
 	spec = createSpec("name6", "image", 1)
-	spec.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+	spec.Endpoint = api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishedPort: uint32(9100), TargetPort: uint32(9100), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
@@ -541,7 +541,7 @@ func TestCreateService(t *testing.T) {
 	assert.NotEmpty(t, r.Service.ID)
 
 	spec2 = createSpec("name7", "image", 1)
-	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+	spec2.Endpoint = api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishedPort: uint32(9100), TargetPort: uint32(9100), Protocol: api.PortConfig_Protocol(api.ProtocolUDP)},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
@@ -549,7 +549,7 @@ func TestCreateService(t *testing.T) {
 
 	// ensure no port conflict when host ports overlap
 	spec = createSpec("name8", "image", 1)
-	spec.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+	spec.Endpoint = api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9101), TargetPort: uint32(9101), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
@@ -557,7 +557,7 @@ func TestCreateService(t *testing.T) {
 	assert.NotEmpty(t, r.Service.ID)
 
 	spec2 = createSpec("name9", "image", 1)
-	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+	spec2.Endpoint = api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9101), TargetPort: uint32(9101), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
@@ -565,7 +565,7 @@ func TestCreateService(t *testing.T) {
 
 	// ensure port conflict when host ports overlaps with ingress port (host port first)
 	spec = createSpec("name10", "image", 1)
-	spec.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+	spec.Endpoint = api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9102), TargetPort: uint32(9102), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
@@ -573,7 +573,7 @@ func TestCreateService(t *testing.T) {
 	assert.NotEmpty(t, r.Service.ID)
 
 	spec2 = createSpec("name11", "image", 1)
-	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+	spec2.Endpoint = api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishMode: api.PublishModeIngress, PublishedPort: uint32(9102), TargetPort: uint32(9102), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
@@ -582,7 +582,7 @@ func TestCreateService(t *testing.T) {
 
 	// ensure port conflict when host ports overlaps with ingress port (ingress port first)
 	spec = createSpec("name12", "image", 1)
-	spec.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+	spec.Endpoint = api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishMode: api.PublishModeIngress, PublishedPort: uint32(9103), TargetPort: uint32(9103), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
@@ -590,7 +590,7 @@ func TestCreateService(t *testing.T) {
 	assert.NotEmpty(t, r.Service.ID)
 
 	spec2 = createSpec("name13", "image", 1)
-	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+	spec2.Endpoint = api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9103), TargetPort: uint32(9103), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
@@ -853,7 +853,7 @@ func TestUpdateService(t *testing.T) {
 
 	// test port conflicts
 	spec2 := createSpec("name2", "image", 1)
-	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+	spec2.Endpoint = api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
@@ -863,7 +863,7 @@ func TestUpdateService(t *testing.T) {
 	rs, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec3})
 	assert.NoError(t, err)
 
-	spec3.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+	spec3.Endpoint = api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
@@ -873,7 +873,7 @@ func TestUpdateService(t *testing.T) {
 	})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
-	spec3.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
+	spec3.Endpoint = api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishedPort: uint32(9001), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
@@ -973,7 +973,7 @@ func TestRemoveService(t *testing.T) {
 }
 
 func TestValidateEndpointSpec(t *testing.T) {
-	endPointSpec1 := &api.EndpointSpec{
+	endPointSpec1 := api.EndpointSpec{
 		Mode: api.ResolutionModeDNSRoundRobin,
 		Ports: []*api.PortConfig{
 			{
@@ -983,7 +983,7 @@ func TestValidateEndpointSpec(t *testing.T) {
 		},
 	}
 
-	endPointSpec2 := &api.EndpointSpec{
+	endPointSpec2 := api.EndpointSpec{
 		Mode: api.ResolutionModeVirtualIP,
 		Ports: []*api.PortConfig{
 			{
@@ -1000,7 +1000,7 @@ func TestValidateEndpointSpec(t *testing.T) {
 	}
 
 	// has duplicated published port, invalid
-	endPointSpec3 := &api.EndpointSpec{
+	endPointSpec3 := api.EndpointSpec{
 		Mode: api.ResolutionModeVirtualIP,
 		Ports: []*api.PortConfig{
 			{
@@ -1017,7 +1017,7 @@ func TestValidateEndpointSpec(t *testing.T) {
 	}
 
 	// duplicated published port but different protocols, valid
-	endPointSpec4 := &api.EndpointSpec{
+	endPointSpec4 := api.EndpointSpec{
 		Mode: api.ResolutionModeVirtualIP,
 		Ports: []*api.PortConfig{
 			{
@@ -1036,7 +1036,7 @@ func TestValidateEndpointSpec(t *testing.T) {
 	}
 
 	// multiple randomly assigned published ports
-	endPointSpec5 := &api.EndpointSpec{
+	endPointSpec5 := api.EndpointSpec{
 		Mode: api.ResolutionModeVirtualIP,
 		Ports: []*api.PortConfig{
 			{
@@ -1094,7 +1094,7 @@ func TestServiceEndpointSpecUpdate(t *testing.T) {
 				Replicas: 1,
 			},
 		},
-		Endpoint: &api.EndpointSpec{
+		Endpoint: api.EndpointSpec{
 			Ports: []*api.PortConfig{
 				{
 					Name:       "http",
