@@ -190,7 +190,9 @@ func TestReplicatedOrchestrator(t *testing.T) {
 
 	// Delete the service. Its remaining task should go away.
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteService(tx, "id2"))
+		service1 := store.GetService(tx, "id2")
+		service1.MarkedForRemoval = true
+		assert.NoError(t, store.UpdateService(tx, service1))
 		return nil
 	})
 	assert.NoError(t, err)

@@ -123,6 +123,63 @@ func TestTaskReaperInit(t *testing.T) {
 		ServiceID: "goneservice",
 	}
 
+	// this service is marked for removal and has zero tasks in the store
+	serviceMarkedForRemovalNoTasks := &api.Service{
+		ID: "serviceMarkedForRemovalNoTasks",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "serviceMarkedForRemovalNoTasks",
+			},
+			Task: api.TaskSpec{
+				// the runtime spec isn't looked at and doesn't really need to
+				// be filled in
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+			},
+			Mode: &api.ServiceSpec_Replicated{
+				Replicated: &api.ReplicatedService{
+					Replicas: 0,
+				},
+			},
+		},
+		MarkedForRemoval: true,
+	}
+
+	// this service is marked for removal and has non-zero tasks in the store
+	serviceMarkedForRemoval := &api.Service{
+		ID: "serviceMarkedForRemoval",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "serviceMarkedForRemoval",
+			},
+			Task: api.TaskSpec{
+				// the runtime spec isn't looked at and doesn't really need to
+				// be filled in
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+			},
+			Mode: &api.ServiceSpec_Replicated{
+				Replicated: &api.ReplicatedService{
+					Replicas: 2,
+				},
+			},
+		},
+		MarkedForRemoval: true,
+	}
+
+	// This is a removed task after its service was marked for removal
+	removedTaskForRemovedService := &api.Task{
+		ID:           "removedTaskForRemovedService",
+		Slot:         1,
+		DesiredState: api.TaskStateRemove,
+		Status: api.TaskStatus{
+			State: api.TaskStateShutdown,
+		},
+		ServiceID: "serviceMarkedForRemoval",
+	}
+
 	err := s.Update(func(tx store.Tx) error {
 		require.NoError(t, store.CreateCluster(tx, cluster))
 		require.NoError(t, store.CreateService(tx, service))
@@ -132,6 +189,9 @@ func TestTaskReaperInit(t *testing.T) {
 		require.NoError(t, store.CreateTask(tx, removedtask))
 		require.NoError(t, store.CreateTask(tx, terminaltask1))
 		require.NoError(t, store.CreateTask(tx, terminaltask2))
+		require.NoError(t, store.CreateService(tx, serviceMarkedForRemovalNoTasks))
+		require.NoError(t, store.CreateService(tx, serviceMarkedForRemoval))
+		require.NoError(t, store.CreateTask(tx, removedTaskForRemovedService))
 		return nil
 	})
 	require.NoError(t, err, "Error setting up test fixtures")
@@ -161,5 +221,11 @@ func TestTaskReaperInit(t *testing.T) {
 		assert.NotNil(t, store.GetTask(tx, "terminaltask1"))
 		// and the second terminal task should have been removed
 		assert.Nil(t, store.GetTask(tx, "terminaltask2"))
+		// the service with one task that was marked for removal should be gone
+		assert.Nil(t, store.GetService(tx, "serviceMarkedForRemoval"))
+		// and its task also
+		assert.Nil(t, store.GetTask(tx, "removedTaskForRemovedService"))
+		// the service with no tasks that was marked for removal should be gone
+		assert.Nil(t, store.GetService(tx, "serviceMarkedForRemovalNoTasks"))
 	})
 }

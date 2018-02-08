@@ -451,7 +451,11 @@ func TestTaskFailure(t *testing.T) {
 
 func addService(t *testing.T, s *store.MemoryStore, service *api.Service) {
 	s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateService(tx, service.Copy()))
+		newService := service.Copy()
+		// ensure that the service we're copying from wasn't already set to be removed
+		// by some other test
+		newService.MarkedForRemoval = false
+		assert.NoError(t, store.CreateService(tx, newService))
 		return nil
 	})
 }
@@ -470,7 +474,8 @@ func updateService(t *testing.T, s *store.MemoryStore, service *api.Service, for
 
 func deleteService(t *testing.T, s *store.MemoryStore, service *api.Service) {
 	s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteService(tx, service.ID))
+		service.MarkedForRemoval = true
+		assert.NoError(t, store.UpdateService(tx, service))
 		return nil
 	})
 }

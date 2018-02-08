@@ -23,6 +23,9 @@ func printServiceSummary(service *api.Service, running int) {
 	defer w.Flush()
 
 	task := service.Spec.Task
+	if service.MarkedForRemoval {
+		common.FprintfIfNotEmpty(w, "[Service %s marked for removal]\n", service.Spec.Annotations.Name)
+	}
 	common.FprintfIfNotEmpty(w, "ID\t: %s\n", service.ID)
 	common.FprintfIfNotEmpty(w, "Name\t: %s\n", service.Spec.Annotations.Name)
 	if len(service.Spec.Annotations.Labels) > 0 {

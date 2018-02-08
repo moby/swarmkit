@@ -1,8 +1,9 @@
 package replicated
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
@@ -371,9 +372,10 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
 
-	// Delete the service. This should trigger both the task desired statuses to be set to REMOVE.
+	// Delete the service. This should trigger both the task desired states to be set to REMOVE.
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteService(tx, service1.ID))
+		service1.MarkedForRemoval = true
+		assert.NoError(t, store.UpdateService(tx, service1))
 		return nil
 	})
 
@@ -514,10 +516,14 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 
 	// Set both tasks to COMPLETED.
 	updatedTask3 := observedTask1.Copy()
+	// we must not leave the desired state at RUNNING, otherwise the orchestrator will
+	// try to restart these tasks causing race conditions
 	updatedTask3.DesiredState = api.TaskStateCompleted
 	updatedTask3.Status.State = api.TaskStateCompleted
 	updatedTask3.ServiceAnnotations = api.Annotations{Name: "original"}
 	updatedTask4 := observedTask2.Copy()
+	// we must not leave the desired state at RUNNING, otherwise the orchestrator will
+	// try to restart these tasks causing race conditions
 	updatedTask4.DesiredState = api.TaskStateCompleted
 	updatedTask4.Status.State = api.TaskStateCompleted
 	updatedTask4.ServiceAnnotations = api.Annotations{Name: "original"}
@@ -538,10 +544,14 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 
 	// Delete the service.
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteService(tx, service1.ID))
+		service1.MarkedForRemoval = true
+		assert.NoError(t, store.UpdateService(tx, service1))
 		return nil
 	})
 
+	// We expect the following two events because a service update is happening here
+	testutils.Expect(t, watch, state.EventCommit{})
+	testutils.Expect(t, watch, api.EventUpdateService{})
 	// Service delete should trigger both the task desired statuses
 	// to be set to REMOVE.
 	observedTask3 = testutils.WatchTaskUpdate(t, watch)

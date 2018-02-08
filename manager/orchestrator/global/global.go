@@ -141,16 +141,19 @@ func (g *Orchestrator) Run(ctx context.Context) error {
 				if !orchestrator.IsGlobalService(v.Service) {
 					continue
 				}
+				// If an updated service was marked for removal, then start
+				// steps to shut it down
+				if v.Service.MarkedForRemoval {
+					orchestrator.SetServiceTasksRemove(ctx, g.store, v.Service)
+					// delete the service from service map
+					delete(g.globalServices, v.Service.ID)
+					g.restarts.ClearServiceHistory(v.Service.ID)
+					break
+				}
 				g.updateService(v.Service)
 				g.reconcileServices(ctx, []string{v.Service.ID})
 			case api.EventDeleteService:
-				if !orchestrator.IsGlobalService(v.Service) {
-					continue
-				}
-				orchestrator.SetServiceTasksRemove(ctx, g.store, v.Service)
-				// delete the service from service map
-				delete(g.globalServices, v.Service.ID)
-				g.restarts.ClearServiceHistory(v.Service.ID)
+				log.G(ctx).Infof("service %s successfully deleted", v.Service.ID)
 			case api.EventCreateNode:
 				g.updateNode(v.Node)
 				g.reconcileOneNode(ctx, v.Node)

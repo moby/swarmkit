@@ -37,18 +37,23 @@ type TaskReaper struct {
 	// List of tasks collected for cleanup, which includes two kinds of tasks
 	// - serviceless orphaned tasks
 	// - tasks with desired state REMOVE that have already been shut down
-	cleanup  []string
-	stopChan chan struct{}
-	doneChan chan struct{}
+	cleanup []string
+	// Map of services marked for removal. These are services that have
+	// been marked for removal, and have tasks that are in the process of
+	// shutting down - specifically tasks with desired state REMOVE.
+	cleanupServices map[string]struct{}
+	stopChan        chan struct{}
+	doneChan        chan struct{}
 }
 
 // New creates a new TaskReaper.
 func New(store *store.MemoryStore) *TaskReaper {
 	return &TaskReaper{
-		store:    store,
-		dirty:    make(map[orchestrator.SlotTuple]struct{}),
-		stopChan: make(chan struct{}),
-		doneChan: make(chan struct{}),
+		store:           store,
+		dirty:           make(map[orchestrator.SlotTuple]struct{}),
+		stopChan:        make(chan struct{}),
+		doneChan:        make(chan struct{}),
+		cleanupServices: make(map[string]struct{}),
 	}
 }
 
@@ -60,7 +65,7 @@ func New(store *store.MemoryStore) *TaskReaper {
 // responsible for cleaning up tasks associated with slots that were removed as part of
 // service scale down or service removal.
 func (tr *TaskReaper) Run(ctx context.Context) {
-	watcher, watchCancel := state.Watch(tr.store.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventUpdateCluster{})
+	watcher, watchCancel := state.Watch(tr.store.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventUpdateCluster{}, api.EventUpdateService{})
 
 	defer func() {
 		close(tr.doneChan)
@@ -69,6 +74,8 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 
 	var orphanedTasks []*api.Task
 	var removeTasks []*api.Task
+	var allServices []*api.Service
+
 	tr.store.View(func(readTx store.ReadTx) {
 		var err error
 
@@ -86,8 +93,22 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 		if err != nil {
 			log.G(ctx).WithError(err).Error("failed to find tasks with desired state REMOVE in task reaper init")
 		}
+		allServices, err = store.FindServices(readTx, store.All)
+		if err != nil {
+			log.G(ctx).WithError(err).Error("failed to find services")
+		}
 	})
 
+	// consider services that need to be cleaned up. Later, we track services to clean up
+	// based on service udpate events.
+	for _, s := range allServices {
+		if s.MarkedForRemoval {
+			tr.cleanupServices[s.ID] = struct{}{}
+		}
+	}
+
+	// consider tasks that need to be cleaned up. Later, we track tasks to clean up based
+	// on task update events.
 	if len(orphanedTasks)+len(removeTasks) > 0 {
 		for _, t := range orphanedTasks {
 			// Do not reap service tasks immediately.
@@ -108,8 +129,8 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 			}
 		}
 		// Clean up tasks in 'cleanup' right away
-		if len(tr.cleanup) > 0 {
-			tr.tick()
+		if len(tr.cleanup) > 0 || len(tr.cleanupServices) > 0 {
+			tr.tick(ctx)
 		}
 	}
 
@@ -150,17 +171,21 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 				}
 			case api.EventUpdateCluster:
 				tr.taskHistory = v.Cluster.Spec.Orchestration.TaskHistoryRetentionLimit
+			case api.EventUpdateService:
+				if v.Service.MarkedForRemoval {
+					tr.cleanupServices[v.Service.ID] = struct{}{}
+				}
 			}
 
 			if len(tr.dirty)+len(tr.cleanup) > maxDirty {
 				timer.Stop()
-				tr.tick()
+				tr.tick(ctx)
 			} else {
 				timer.Reset(reaperBatchingInterval)
 			}
 		case <-timer.C:
 			timer.Stop()
-			tr.tick()
+			tr.tick(ctx)
 		case <-tr.stopChan:
 			timer.Stop()
 			return
@@ -169,7 +194,7 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 }
 
 // tick performs task history cleanup.
-func (tr *TaskReaper) tick() {
+func (tr *TaskReaper) tick(ctx context.Context) {
 	if len(tr.dirty) == 0 && len(tr.cleanup) == 0 {
 		return
 	}
@@ -271,12 +296,54 @@ func (tr *TaskReaper) tick() {
 		}
 	})
 
-	// Perform cleanup.
+	// Perform task cleanup
 	if len(deleteTasks) > 0 {
 		tr.store.Batch(func(batch *store.Batch) error {
 			for taskID := range deleteTasks {
 				batch.Update(func(tx store.Tx) error {
 					return store.DeleteTask(tx, taskID)
+				})
+			}
+			return nil
+		})
+	}
+
+	// Perform service cleanup for services that were marked for removal.
+
+	// The idea is that if all tasks of such a service are shut down or have been
+	// removed from the store, then it's safe to remove the service. To remove
+	// the service, we add it to a map deleteServices. All services that make it into
+	// this map are later removed via a batch update.
+
+	// Notice that we also add all tasks of such a service to tr.cleanup so that they
+	// can be removed soon after. This is required because if the tasks had shut down
+	// before the service removal was initiated, there will be no task events for these
+	// tasks, and they may stick around forever. If a leadership change occurred after
+	// the service object was removed but before the tasks were deleted, then the
+	// task reaper starting up on the new leader will track and delete these tasks.
+	deleteServices := make(map[string]struct{})
+	// figure out which services need to be cleaned up
+	if len(tr.cleanupServices) > 0 {
+		tr.store.View(func(tx store.ReadTx) {
+			for svc := range tr.cleanupServices {
+				tasks, err := store.FindTasks(tx, store.ByServiceID(svc))
+				if err != nil {
+					log.G(ctx).WithError(err).Errorf("error in task reaper while looking up tasks for service %s", svc)
+					continue
+				}
+				if len(tasks) == 0 {
+					deleteServices[svc] = struct{}{}
+					delete(tr.cleanupServices, svc)
+				}
+			}
+		})
+	}
+
+	if len(deleteServices) > 0 {
+		tr.store.Batch(func(batch *store.Batch) error {
+			for svc := range deleteServices {
+				batch.Update(func(tx store.Tx) error {
+					return store.DeleteService(tx, svc)
 				})
 			}
 			return nil

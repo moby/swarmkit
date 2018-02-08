@@ -156,7 +156,6 @@ func (a *Allocator) init(ctx context.Context, aa *allocActor) (<-chan events.Eve
 		api.EventDeleteNetwork{},
 		api.EventCreateService{},
 		api.EventUpdateService{},
-		api.EventDeleteService{},
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},

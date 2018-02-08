@@ -255,6 +255,22 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			log.G(ctx).WithError(err).Errorf("Failed to commit allocation for service %s", s.ID)
 		}
 	case api.EventUpdateService:
+		// If an updated service was marked for removal, then start
+		// steps to shut it down
+		if v.Service.MarkedForRemoval {
+			s := v.Service.Copy()
+
+			if err := nc.nwkAllocator.DeallocateService(s); err != nil {
+				log.G(ctx).WithError(err).Errorf("Failed deallocation during delete of service %s", s.ID)
+			} else {
+				nc.somethingWasDeallocated = true
+			}
+
+			// Remove it from unallocatedServices just in case
+			// it's still there.
+			delete(nc.unallocatedServices, s.ID)
+			break
+		}
 		// We may have already allocated this service. If a create or
 		// update event is older than the current version in the store,
 		// we run the risk of allocating the service a second time.
@@ -288,18 +304,6 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 		} else {
 			delete(nc.unallocatedServices, s.ID)
 		}
-	case api.EventDeleteService:
-		s := v.Service.Copy()
-
-		if err := nc.nwkAllocator.DeallocateService(s); err != nil {
-			log.G(ctx).WithError(err).Errorf("Failed deallocation during delete of service %s", s.ID)
-		} else {
-			nc.somethingWasDeallocated = true
-		}
-
-		// Remove it from unallocatedServices just in case
-		// it's still there.
-		delete(nc.unallocatedServices, s.ID)
 	case api.EventCreateNode, api.EventUpdateNode, api.EventDeleteNode:
 		a.doNodeAlloc(ctx, ev)
 	case api.EventCreateTask, api.EventUpdateTask, api.EventDeleteTask:

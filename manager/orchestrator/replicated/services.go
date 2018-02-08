@@ -47,12 +47,7 @@ func (r *Orchestrator) initServices(readTx store.ReadTx) error {
 func (r *Orchestrator) handleServiceEvent(ctx context.Context, event events.Event) {
 	switch v := event.(type) {
 	case api.EventDeleteService:
-		if !orchestrator.IsReplicatedService(v.Service) {
-			return
-		}
-		orchestrator.SetServiceTasksRemove(ctx, r.store, v.Service)
-		r.restarts.ClearServiceHistory(v.Service.ID)
-		delete(r.reconcileServices, v.Service.ID)
+		log.G(ctx).Infof("service %s successfully deleted", v.Service.ID)
 	case api.EventCreateService:
 		if !orchestrator.IsReplicatedService(v.Service) {
 			return
@@ -61,6 +56,14 @@ func (r *Orchestrator) handleServiceEvent(ctx context.Context, event events.Even
 	case api.EventUpdateService:
 		if !orchestrator.IsReplicatedService(v.Service) {
 			return
+		}
+		// If an updated service was marked for removal, then start
+		// steps to shut it down
+		if v.Service.MarkedForRemoval {
+			orchestrator.SetServiceTasksRemove(ctx, r.store, v.Service)
+			r.restarts.ClearServiceHistory(v.Service.ID)
+			delete(r.reconcileServices, v.Service.ID)
+			break
 		}
 		r.reconcileServices[v.Service.ID] = v.Service
 	}

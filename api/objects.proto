@@ -122,6 +122,13 @@ message Service {
 	// UpdateStatus contains the status of an update, if one is in
 	// progress.
 	UpdateStatus update_status = 5;
+
+	// MarkedForRemoval indicates whether a service has been marked for
+	// removal. This happens when a service rm comes in from the
+	// API, and the orchestrator is waiting for all the tasks to
+	// be properly shut down before removing the service object
+	// from the store.
+	bool marked_for_removal = 7;
 }
 
 // Endpoint specified all the network parameters required to

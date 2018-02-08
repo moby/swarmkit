@@ -844,7 +844,14 @@ func (s *Server) RemoveService(ctx context.Context, request *api.RemoveServiceRe
 	}
 
 	err := s.store.Update(func(tx store.Tx) error {
-		return store.DeleteService(tx, request.ServiceID)
+		service := store.GetService(tx, request.ServiceID)
+		if service == nil {
+			return status.Errorf(codes.NotFound, "service %s not found", request.ServiceID)
+		}
+
+		// mark service for removal
+		service.MarkedForRemoval = true
+		return store.UpdateService(tx, service)
 	})
 	if err != nil {
 		if err == store.ErrNotExist {
