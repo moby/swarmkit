@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/ca/keyutils"
+	"github.com/docker/swarmkit/ca/pkcs8"
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/stretchr/testify/require"
 )
@@ -411,4 +413,107 @@ func TestKeyReadWriterMigrate(t *testing.T) {
 	require.Equal(t, dirList, dirList2)
 	_, _, err = krw.Read()
 	require.NoError(t, err)
+}
+
+type downgradeTestCase struct {
+	encrypted bool
+	pkcs8     bool
+	errorStr  string
+}
+
+func testKeyReadWriterDowngradeKeyCase(t *testing.T, tc downgradeTestCase) error {
+	cert, key, err := testutils.CreateRootCertAndKey("cn")
+	require.NoError(t, err)
+
+	if !tc.pkcs8 {
+		key, err = pkcs8.ConvertToECPrivateKeyPEM(key)
+		require.NoError(t, err)
+	}
+
+	var kek []byte
+	if tc.encrypted {
+		block, _ := pem.Decode(key)
+		require.NotNil(t, block)
+
+		kek = []byte("kek")
+		block, err = keyutils.EncryptPEMBlock(block.Bytes, kek)
+		require.NoError(t, err)
+
+		key = pem.EncodeToMemory(block)
+	}
+
+	tempdir, err := ioutil.TempDir("", "KeyReadWriterDowngrade")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+
+	path := ca.NewConfigPaths(filepath.Join(tempdir))
+
+	block, _ := pem.Decode(key)
+	require.NotNil(t, block)
+
+	// add kek-version to later check if it is still there
+	block.Headers["kek-version"] = "5"
+
+	key = pem.EncodeToMemory(block)
+	require.NoError(t, ioutil.WriteFile(path.Node.Cert, cert, 0644))
+	require.NoError(t, ioutil.WriteFile(path.Node.Key, key, 0600))
+
+	// if the update headers callback function fails, updating headers fails
+	k := ca.NewKeyReadWriter(path.Node, kek, nil)
+	if err := k.DowngradeKey(); err != nil {
+		return err
+	}
+
+	// read the key directly from fs so we can check if key
+	key, err = ioutil.ReadFile(path.Node.Key)
+	require.NoError(t, err)
+
+	keyBlock, _ := pem.Decode(key)
+	require.NotNil(t, block)
+	require.False(t, keyutils.IsPKCS8(keyBlock.Bytes))
+
+	if tc.encrypted {
+		require.True(t, keyutils.IsEncryptedPEMBlock(keyBlock))
+	}
+	require.Equal(t, "5", keyBlock.Headers["kek-version"])
+
+	// check if KeyReaderWriter can read the key
+	_, _, err = k.Read()
+	require.NoError(t, err)
+	return nil
+}
+
+func TestKeyReadWriterDowngradeKey(t *testing.T) {
+	invalid := []downgradeTestCase{
+		{
+			encrypted: false,
+			pkcs8:     false,
+			errorStr:  "key is already downgraded to PKCS#1",
+		}, {
+			encrypted: true,
+			pkcs8:     false,
+			errorStr:  "key is already downgraded to PKCS#1",
+		},
+	}
+
+	for _, c := range invalid {
+		err := testKeyReadWriterDowngradeKeyCase(t, c)
+		require.Error(t, err)
+		require.EqualError(t, err, c.errorStr)
+	}
+
+	valid := []downgradeTestCase{
+		{
+			encrypted: false,
+			pkcs8:     true,
+		}, {
+			encrypted: true,
+			pkcs8:     true,
+		},
+	}
+
+	for _, c := range valid {
+		err := testKeyReadWriterDowngradeKeyCase(t, c)
+		require.NoError(t, err)
+	}
 }

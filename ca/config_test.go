@@ -164,6 +164,27 @@ func TestCreateSecurityConfigNoCerts(t *testing.T) {
 	validateNodeConfig(&rootCA)
 }
 
+func testGRPCConnection(t *testing.T, secConfig *ca.SecurityConfig) {
+	// set up a GRPC server using these credentials
+	secConfig.ServerTLSCreds.Config().ClientAuth = tls.RequireAndVerifyClientCert
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	serverOpts := []grpc.ServerOption{grpc.Creds(secConfig.ServerTLSCreds)}
+	grpcServer := grpc.NewServer(serverOpts...)
+	go grpcServer.Serve(l)
+	defer grpcServer.Stop()
+
+	// we should be able to connect to the server using the client credentials
+	dialOpts := []grpc.DialOption{
+		grpc.WithBlock(),
+		grpc.WithTimeout(10 * time.Second),
+		grpc.WithTransportCredentials(secConfig.ClientTLSCreds),
+	}
+	conn, err := grpc.Dial(l.Addr().String(), dialOpts...)
+	require.NoError(t, err)
+	conn.Close()
+}
+
 func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 	if cautils.External {
 		return // this doesn't require any servers at all
@@ -233,9 +254,9 @@ func TestLoadSecurityConfigInvalidKey(t *testing.T) {
 	defer tc.Stop()
 
 	// Write some garbage to the Key
-	ioutil.WriteFile(tc.Paths.Node.Key, []byte(`-----BEGIN EC PRIVATE KEY-----\n
+	ioutil.WriteFile(tc.Paths.Node.Key, []byte(`-----BEGIN PRIVATE KEY-----\n
 some random garbage\n
------END EC PRIVATE KEY-----`), 0644)
+-----END PRIVATE KEY-----`), 0644)
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 
@@ -296,24 +317,44 @@ func TestLoadSecurityConfigIntermediates(t *testing.T) {
 	require.Equal(t, intermediate.RawSubjectPublicKeyInfo, issuerInfo.PublicKey)
 	require.Equal(t, intermediate.RawSubject, issuerInfo.Subject)
 
-	// set up a GRPC server using these credentials
-	secConfig.ServerTLSCreds.Config().ClientAuth = tls.RequireAndVerifyClientCert
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	serverOpts := []grpc.ServerOption{grpc.Creds(secConfig.ServerTLSCreds)}
-	grpcServer := grpc.NewServer(serverOpts...)
-	go grpcServer.Serve(l)
-	defer grpcServer.Stop()
+	testGRPCConnection(t, secConfig)
+}
 
-	// we should be able to connect to the server using the client credentials
-	dialOpts := []grpc.DialOption{
-		grpc.WithBlock(),
-		grpc.WithTimeout(10 * time.Second),
-		grpc.WithTransportCredentials(secConfig.ClientTLSCreds),
+func TestLoadSecurityConfigKeyFormat(t *testing.T) {
+	if cautils.External {
+		return // this doesn't require any servers at all
 	}
-	conn, err := grpc.Dial(l.Addr().String(), dialOpts...)
+	tempdir, err := ioutil.TempDir("", "test-load-config")
 	require.NoError(t, err)
-	conn.Close()
+	defer os.RemoveAll(tempdir)
+	paths := ca.NewConfigPaths(tempdir)
+	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
+
+	rootCA, err := ca.NewRootCA(cautils.ECDSACertChain[1], nil, nil, ca.DefaultNodeCertExpiration, nil)
+	require.NoError(t, err)
+
+	ctx := log.WithLogger(context.Background(), log.L.WithFields(logrus.Fields{
+		"testname":          t.Name(),
+		"testHasExternalCA": false,
+	}))
+
+	// load leaf cert with its PKCS#1 format key
+	require.NoError(t, krw.Write(cautils.ECDSACertChain[0], cautils.ECDSACertChainKeys[0], nil))
+	secConfig, cancel, err := ca.LoadSecurityConfig(ctx, rootCA, krw, false)
+	require.NoError(t, err)
+	defer cancel()
+	require.NotNil(t, secConfig)
+
+	testGRPCConnection(t, secConfig)
+
+	// load leaf cert with its PKCS#8 format key
+	require.NoError(t, krw.Write(cautils.ECDSACertChain[0], cautils.ECDSACertChainPKCS8Keys[0], nil))
+	secConfig, cancel, err = ca.LoadSecurityConfig(ctx, rootCA, krw, false)
+	require.NoError(t, err)
+	defer cancel()
+	require.NotNil(t, secConfig)
+
+	testGRPCConnection(t, secConfig)
 }
 
 // When the root CA is updated on the security config, the root pools are updated

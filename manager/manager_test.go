@@ -3,7 +3,6 @@ package manager
 import (
 	"bytes"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/ca/keyutils"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/dispatcher"
 	"github.com/docker/swarmkit/manager/encryption"
@@ -291,7 +291,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	require.NoError(t, err)
 	keyBlock, _ := pem.Decode(key)
 	require.NotNil(t, keyBlock)
-	require.False(t, x509.IsEncryptedPEMBlock(keyBlock))
+	require.False(t, keyutils.IsEncryptedPEMBlock(keyBlock))
 	require.Len(t, keyBlock.Headers, 2)
 	currentDEK, err := decodePEMHeaderValue(keyBlock.Headers[pemHeaderRaftDEK], nil)
 	require.NoError(t, err)
@@ -338,7 +338,7 @@ func TestManagerLockUnlock(t *testing.T) {
 		keyBlock, _ = pem.Decode(updatedKey)
 		require.NotNil(t, keyBlock) // this should never error due to atomic writes
 
-		if !x509.IsEncryptedPEMBlock(keyBlock) {
+		if !keyutils.IsEncryptedPEMBlock(keyBlock) {
 			return fmt.Errorf("Key not encrypted")
 		}
 
@@ -409,7 +409,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	// but not rotated
 	keyBlock, _ = pem.Decode(unlockedKey)
 	require.NotNil(t, keyBlock)
-	require.False(t, x509.IsEncryptedPEMBlock(keyBlock))
+	require.False(t, keyutils.IsEncryptedPEMBlock(keyBlock))
 
 	unencryptedDEK, err := decodePEMHeaderValue(keyBlock.Headers[pemHeaderRaftDEK], nil)
 	require.NoError(t, err)
@@ -505,10 +505,10 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 			if keyBlock == nil {
 				return fmt.Errorf("could not pem decode root key")
 			}
-			if !x509.IsEncryptedPEMBlock(keyBlock) {
+			if !keyutils.IsEncryptedPEMBlock(keyBlock) {
 				return fmt.Errorf("root key material not encrypted yet")
 			}
-			_, err = x509.DecryptPEMBlock(keyBlock, []byte("kek"))
+			_, err = keyutils.DecryptPEMBlock(keyBlock, []byte("kek"))
 			return err
 		})
 	})
@@ -540,7 +540,7 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 				if keyBlock == nil {
 					return fmt.Errorf("could not pem decode root key")
 				}
-				if x509.IsEncryptedPEMBlock(keyBlock) {
+				if keyutils.IsEncryptedPEMBlock(keyBlock) {
 					return fmt.Errorf("root key material not decrypted yet")
 				}
 				return nil
@@ -558,14 +558,13 @@ func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
 			return fmt.Errorf("cluster gone")
 		}
 		cluster.RootCA.CAKey = []byte(`
------BEGIN EC PRIVATE KEY-----
-Proc-Type: 4,ENCRYPTED
-DEK-Info: AES-256-CBC,fcc97c79c251d2fedeab96a19f3b826e
-
-8IHMsMKfCMWXDpBNLp7tyuwUQ1FmisiPyDZg9UvoX4RvIDUxj7sIiw4lsP+EgnKG
-09oKeXHSYRpawB58dvLqxPtjnrEj1jLqoMydTrhRDJ+zBMxPxpTJh/BASADhMOmf
-G80TfNRRr/qdB9hLwfyOyk2tBipkAgs6cl+CZAaqx3k=
------END EC PRIVATE KEY-----
+-----BEGIN ENCRYPTED PRIVATE KEY-----
+MIHeMEkGCSqGSIb3DQEFDTA8MBsGCSqGSIb3DQEFDDAOBAiLGJtiTmJ3rQICCAAw
+HQYJYIZIAWUDBAEqBBBeDoliB0Qe73DdcMeFCuRzBIGQP/iFMPj9BJ/81GV//fMp
+KPozbY0EWodXt7KArbeROd5+uWw1muLANUa3KkkXyQhmzlR2Zv3Y/kBuPay9RweU
+md94ZD/HY9K+ISv4tIA7u8gp2Hqr0elfG0QqBuwrh688ZF5jii6umZzXtLVVMvWd
+NF7w1CA6b8w1aTIklVjv0AJ9tgtGQb9phVigPAdyyw6v
+-----END ENCRYPTED PRIVATE KEY-----
 `)
 		return store.UpdateCluster(tx, cluster)
 	}))

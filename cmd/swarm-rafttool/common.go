@@ -14,6 +14,7 @@ import (
 	"github.com/docker/swarmkit/manager"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/docker/swarmkit/manager/state/raft/storage"
+	"github.com/docker/swarmkit/node"
 )
 
 func certPaths(swarmdir string) *ca.SecurityConfigPaths {
@@ -107,4 +108,27 @@ func decryptRaftData(swarmdir, outdir, unlockKey string) error {
 	return storage.MigrateWALs(context.Background(),
 		filepath.Join(swarmdir, "raft", "wal-v3-encrypted"), walDir,
 		storage.NewWALFactory(encryption.NoopCrypter, d), storage.OriginalWAL, walsnap)
+}
+
+func downgradeKey(swarmdir, unlockKey string) error {
+	var (
+		kek []byte
+		err error
+	)
+	if unlockKey != "" {
+		kek, err = encryption.ParseHumanReadableKey(unlockKey)
+		if err != nil {
+			return err
+		}
+	}
+
+	n, err := node.New(&node.Config{
+		StateDir:  swarmdir,
+		UnlockKey: kek,
+	})
+	if err != nil {
+		return err
+	}
+
+	return n.DowngradeKey()
 }

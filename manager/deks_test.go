@@ -406,16 +406,15 @@ func TestRaftDEKManagerMaybeUpdateKEK(t *testing.T) {
 // determine if the KEK is valid.
 func TestDecryptTLSKeyFalsePositive(t *testing.T) {
 	badKey := []byte(`
------BEGIN EC PRIVATE KEY-----
-Proc-Type: 4,ENCRYPTED
-DEK-Info: AES-256-CBC,e7927e79e748233776c03c2eb7275f09
+-----BEGIN ENCRYPTED PRIVATE KEY-----
 kek-version: 392
 raft-dek: CAESMBrzZ0gNVPe3FRs42743q8RtkUBrK1ICQpHWX2vdQ8iqSKt1WoKdFDFD2r28LYAVLxoYQguwHbijMx9k+BALUNBAI3s199S5tvnr
 
-JfGenNvzm++AvsOh+UmcBY+JgI6lnfzaCB68agmlmEZYLYi5tqtAU7gif6VIJpCW
-+Pj23Fzkw8sKKOOBeapSC5lp+Cjx9OsCci/R9xrdx+uxnnzKJNxOB/qzqcQfZDMh
-id2LxdliFcPEk/Yj5gNGpT0UMFJ4G52enbOwOru46f0=
------END EC PRIVATE KEY-----
+MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQge1soOUock01aIHDn
+QGz2uSNlS0fFdTIYmqKkzjefLNWgCgYIKoZIzj0DAQehRANCAARjorw9uRP83LqU
+RUHSjimzx0vTMeyZVIZVp5dIkdCuVYVSFF41B7ffBrl+oA47OMlMxCkhsWD7EmJZ
+xvc0Km0E
+-----END ENCRYPTED PRIVATE KEY-----
 `)
 
 	// not actually a real swarm cert - generated a cert corresponding to the key that expires in 20 years

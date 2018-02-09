@@ -361,4 +361,27 @@ ru3FP92pSYiJZkJemN593BYYkFdnbpvlFA==
 -----END EC PRIVATE KEY-----
 `),
 	}
+
+	// ECDSACertChainPKCS8Keys contains 3 SHA256 curve P-256 keys in PKCS#8 format:
+	// corresponding, respectively, to the certificates in ECDSACertChain
+	ECDSACertChainPKCS8Keys = [][]byte{
+		[]byte(`-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg34FobLEYtKAQMuOZ
+AEd0vsm64AhiVIYLBhLYIJTEwQ6hRANCAATCVPwZBGYQ0SpeXahXzU8BB+ZBjdw9
+WsKBa03qSic4O0qtUrLTQSvg2bWoKlo2fVe5g6Sl29gMm0912fTG5nHr
+-----END PRIVATE KEY-----
+  `),
+		[]byte(`-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg/vI19pQiYPvqrWl+
+DH7w9hKrnTMrWKaHjVIoU/NHl+KhRANCAAQviDj/BaFkz9h8KT/MRduZMiBqI1Sx
+eup7FcauwV6jF+iMAS4Dy3KAjya7jlV82TXqfM7gB9cwUGIKEH188TV0
+-----END PRIVATE KEY-----
+  `),
+		[]byte(`-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgMiASkKmfvAQRi3+E
+tP417A7SWAE8FGTcDmdTgBI5KEOhRANCAAT6NjQeSstS/gi2wN+AoWnMZaLfiBjp
+NSqryqEiPH03viwbtWMG9aCu7cU/3alJiIlmQl6Y3n3cFhiQV2dum+UU
+-----END PRIVATE KEY-----
+  `),
+	}
 )

@@ -139,6 +139,24 @@ var (
 			return dumpObject(stateDir, unlockKey, args[0], selector)
 		},
 	}
+
+	downgradeKeyCmd = &cobra.Command{
+		Use:   "downgrade-key",
+		Short: "Downgrade swarm node key from PKCS8 to PKCS1",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			stateDir, err := cmd.Flags().GetString("state-dir")
+			if err != nil {
+				return err
+			}
+
+			unlockKey, err := cmd.Flags().GetString("unlock-key")
+			if err != nil {
+				return err
+			}
+
+			return downgradeKey(stateDir, unlockKey)
+		},
+	}
 )
 
 func init() {
@@ -150,6 +168,7 @@ func init() {
 		dumpWALCmd,
 		dumpSnapshotCmd,
 		dumpObjectCmd,
+		downgradeKeyCmd,
 	)
 
 	dumpSnapshotCmd.Flags().Bool("redact", false, "Redact the values of secrets, configs, and environment variables")
