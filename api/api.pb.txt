@@ -3928,6 +3928,13 @@ file {
           66001: "NACLSecretboxSalsa20Poly1305"
         }
       }
+      value {
+        name: "FERNET_AES_128_CBC"
+        number: 2
+        options {
+          66001: "FernetAES128CBC"
+        }
+      }
     }
   }
   message_type {
