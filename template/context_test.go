@@ -68,6 +68,9 @@ func TestTemplateContext(t *testing.T) {
 								"TASK_NAME={{.Task.Name}}",
 								"NODE_ID={{.Node.ID}}",
 								"SERVICE_LABELS={{range $k, $v := .Service.Labels}}{{$k}}={{$v}},{{end}}",
+								"RACK_ID={{index .Node.Engine.Labels `RackID`}}",
+								"AVAILABILITY_ZONE_ID={{index .Node.Engine.Labels `AvailabilityZoneID`}}",
+								"DATACENTER_ID={{index .Node.Engine.Labels `com.example.DatacenterID`}}",
 							},
 						},
 					},
@@ -88,6 +91,9 @@ func TestTemplateContext(t *testing.T) {
 					"TASK_NAME=serviceName.10.taskID",
 					"NODE_ID=nodeID",
 					"SERVICE_LABELS=ServiceLabelOneKey=service-label-one-value,ServiceLabelTwoKey=service-label-two-value,com.example.ServiceLabelThreeKey=service-label-three-value,",
+					"RACK_ID=rack-ID",
+					"AVAILABILITY_ZONE_ID=availability-zone-ID",
+					"DATACENTER_ID=datacenter-ID",
 				},
 			},
 		},
@@ -249,6 +255,13 @@ func modifyNode(fn func(n *api.NodeDescription)) *api.NodeDescription {
 		Platform: &api.Platform{
 			Architecture: "x86_64",
 			OS:           "linux",
+		},
+		Engine: &api.EngineDescription{
+			Labels: map[string]string{
+				"RackID":                   "rack-ID",
+				"AvailabilityZoneID":       "availability-zone-ID",
+				"com.example.DatacenterID": "datacenter-ID",
+			},
 		},
 	}
 

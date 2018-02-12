@@ -20,6 +20,11 @@ type Platform struct {
 	OS           string
 }
 
+// Engine holds information about the Docker Engine on the node.
+type Engine struct {
+	Labels map[string]string
+}
+
 // Context defines the strict set of values that can be injected into a
 // template expression in SwarmKit data structure.
 // NOTE: Be very careful adding any fields to this structure with types
@@ -36,6 +41,7 @@ type Context struct {
 		ID       string
 		Hostname string
 		Platform Platform
+		Engine   Engine
 	}
 
 	Task struct {
@@ -66,6 +72,9 @@ func NewContext(n *api.NodeDescription, t *api.Task) (ctx Context) {
 		ctx.Node.Platform = Platform{
 			Architecture: n.Platform.Architecture,
 			OS:           n.Platform.OS,
+		}
+		ctx.Node.Engine = Engine{
+			Labels: n.Engine.Labels,
 		}
 	}
 	ctx.Task.ID = t.ID
