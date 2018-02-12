@@ -118,10 +118,16 @@ func dumpWAL(swarmdir, unlockKey string, start, end uint64, redact bool) error {
 						case *api.StoreAction_Task:
 							if container := actype.Task.Spec.GetContainer(); container != nil {
 								container.Env = []string{"ENVVARS REDACTED"}
+								if container.PullOptions != nil {
+									container.PullOptions.RegistryAuth = "REDACTED"
+								}
 							}
 						case *api.StoreAction_Service:
 							if container := actype.Service.Spec.Task.GetContainer(); container != nil {
 								container.Env = []string{"ENVVARS REDACTED"}
+								if container.PullOptions != nil {
+									container.PullOptions.RegistryAuth = "REDACTED"
+								}
 							}
 						}
 					}
@@ -192,6 +198,7 @@ func dumpSnapshot(swarmdir, unlockKey string, redact bool) error {
 			if task != nil {
 				if container := task.Spec.GetContainer(); container != nil {
 					container.Env = []string{"ENVVARS REDACTED"}
+					container.PullOptions.RegistryAuth = "REDACTED"
 				}
 			}
 		}
@@ -199,6 +206,7 @@ func dumpSnapshot(swarmdir, unlockKey string, redact bool) error {
 			if service != nil {
 				if container := service.Spec.Task.GetContainer(); container != nil {
 					container.Env = []string{"ENVVARS REDACTED"}
+					container.PullOptions.RegistryAuth = "REDACTED"
 				}
 			}
 		}
