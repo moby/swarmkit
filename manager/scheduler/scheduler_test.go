@@ -2432,6 +2432,31 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 		}
 	}
 
+	// Task0: bind mount
+	t0 := &api.Task{
+		ID:           "task0_ID",
+		DesiredState: api.TaskStateRunning,
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Mounts: []api.Mount{
+						{
+							Source: "/src",
+							Target: "/foo",
+							Type:   api.MountTypeBind,
+						},
+					},
+				},
+			},
+		},
+		ServiceAnnotations: api.Annotations{
+			Name: "task0",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+	}
+
 	// Task1: vol plugin1
 	t1 := &api.Task{
 		ID:           "task1_ID",
@@ -2630,6 +2655,18 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	// t1 should get assigned
 	assignment := watchAssignment(t, watch)
 	assert.Equal(t, assignment.NodeID, "node1_ID")
+
+	// Create t0; it should get assigned because the plugin filter shouldn't
+	// be enabled for tasks that have bind mounts
+	err = s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateTask(tx, t0))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	assignment0 := watchAssignment(t, watch)
+	assert.Equal(t, assignment0.ID, "task0_ID")
+	assert.Equal(t, assignment0.NodeID, "node1_ID")
 
 	// Create t2; it should stay in the pending state because there is
 	// no node that with volume plugin `plugin2`
