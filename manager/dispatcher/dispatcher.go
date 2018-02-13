@@ -545,6 +545,7 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 	// which ensures that Stop() will wait for this rpc to complete.
 	// Note that Stop() first does Dispatcher.ctx.cancel() followed by
 	// shutdownWait.Wait() to make sure new rpc's don't start before waiting
+
 	// for existing ones to finish.
 	d.shutdownWait.Add(1)
 	defer d.shutdownWait.Done()
