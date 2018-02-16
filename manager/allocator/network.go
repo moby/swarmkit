@@ -17,8 +17,6 @@ import (
 )
 
 const (
-	// Network allocator Voter ID for task allocation vote.
-	networkVoter           = "network"
 	allocatedStatusMessage = "pending task scheduling"
 )
 
@@ -652,19 +650,15 @@ func (a *Allocator) allocateTasks(ctx context.Context, existingAddressesOnly boo
 		// based on service spec.
 		a.taskCreateNetworkAttachments(t, s)
 
-		if taskReadyForNetworkVote(t, s, nc) {
+		if taskReady(t, s, nc) {
 			if t.Status.State >= api.TaskStatePending {
 				continue
 			}
 
-			if a.taskAllocateVote(networkVoter, t.ID) {
-				// If the task is not attached to any network, network
-				// allocators job is done. Immediately cast a vote so
-				// that the task can be moved to the PENDING state as
-				// soon as possible.
-				updateTaskStatus(t, api.TaskStatePending, allocatedStatusMessage)
-				allocatedTasks = append(allocatedTasks, t)
-			}
+			// If the task is not attached to any network, network
+			// allocators job is done. Immediately move the state to PENDING
+			updateTaskStatus(t, api.TaskStatePending, allocatedStatusMessage)
+			allocatedTasks = append(allocatedTasks, t)
 			continue
 		}
 
@@ -692,10 +686,9 @@ func (a *Allocator) allocateTasks(ctx context.Context, existingAddressesOnly boo
 	return nil
 }
 
-// taskReadyForNetworkVote checks if the task is ready for a network
-// vote to move it to PENDING state.
-func taskReadyForNetworkVote(t *api.Task, s *api.Service, nc *networkContext) bool {
-	// Task is ready for vote if the following is true:
+// taskReady checks if the task is ready to move to PENDING state.
+func taskReady(t *api.Task, s *api.Service, nc *networkContext) bool {
+	// Task is ready if the following is true:
 	//
 	// Task has no network attached or networks attached but all
 	// of them allocated AND Task's service has no endpoint or
@@ -1115,13 +1108,9 @@ func (a *Allocator) allocateTask(ctx context.Context, t *api.Task) (err error) {
 		}
 	}
 
-	// Update the network allocations and moving to
-	// PENDING state on top of the latest store state.
-	if a.taskAllocateVote(networkVoter, t.ID) {
-		if t.Status.State < api.TaskStatePending {
-			updateTaskStatus(t, api.TaskStatePending, allocatedStatusMessage)
-			taskUpdated = true
-		}
+	if t.Status.State < api.TaskStatePending {
+		updateTaskStatus(t, api.TaskStatePending, allocatedStatusMessage)
+		taskUpdated = true
 	}
 
 	if !taskUpdated {
