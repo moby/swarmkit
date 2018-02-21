@@ -92,8 +92,12 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 	// allocated, before reading all network objects for allocation.
 	// If not found, it means it was removed by user, nothing to do here.
 	ingressNetwork, err := GetIngressNetwork(a.store)
-	switch err {
-	case nil:
+	if err != nil && err != ErrNoIngress {
+		// If we get ErrNoIngress, then ingress network is not present in
+		// store. This means the user removed it and did not create a new one.
+		// if that is the case, return no error
+		return errors.Wrap(err, "failure while looking for ingress network during init")
+	} else {
 		// Try to complete ingress network allocation before anything else so
 		// that the we can get the preferred subnet for ingress network.
 		nc.ingressNetwork = ingressNetwork
@@ -109,11 +113,6 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 				log.G(ctx).WithError(err).Error("failed committing allocation of ingress network during init")
 			}
 		}
-	case ErrNoIngress:
-		// Ingress network is not present in store, It means user removed it
-		// and did not create a new one.
-	default:
-		return errors.Wrap(err, "failure while looking for ingress network during init")
 	}
 
 	// Allocate networks in the store so far before we started
