@@ -91,7 +91,7 @@ func TestReporter(t *testing.T) {
 
 			// simulate pounding this with a bunch of goroutines
 			go func() {
-				if err := reporter.UpdateTaskStatus(ctx, taskID, status); err != nil {
+				if err := reporter.UpdateTaskStatus(ctx, map[string]*api.TaskStatus{taskID: status}); err != nil {
 					assert.NoError(t, err, "sending should not fail")
 				}
 			}()

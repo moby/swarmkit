@@ -12,17 +12,12 @@ import (
 // StatusReporter receives updates to task status. Method may be called
 // concurrently, so implementations should be goroutine-safe.
 type StatusReporter interface {
-	UpdateTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error
-	UpdateTaskStatuses(ctx context.Context, statuses map[string]*api.TaskStatus) error
+	UpdateTaskStatus(ctx context.Context, statuses map[string]*api.TaskStatus) error
 }
 
 type statusReporterFunc func(ctx context.Context, taskID string, status *api.TaskStatus) error
 
-func (fn statusReporterFunc) UpdateTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error {
-	return fn(ctx, taskID, status)
-}
-
-func (fn statusReporterFunc) UpdateTaskStatuses(ctx context.Context, statuses map[string]*api.TaskStatus) error {
+func (fn statusReporterFunc) UpdateTaskStatus(ctx context.Context, statuses map[string]*api.TaskStatus) error {
 	for taskID, status := range statuses {
 		if err := fn(ctx, taskID, status); err != nil {
 			return err
@@ -58,24 +53,9 @@ func newStatusReporter(ctx context.Context, upstream StatusReporter) *statusRepo
 	return r
 }
 
-// UpdateTaskStatuses adds a single status update to the reporter
-func (sr *statusReporter) UpdateTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error {
-	sr.mu.Lock()
-	defer sr.mu.Unlock()
-
-	sr.addStatus(taskID, status)
-	// signal the waiting loop in run, so that this update will fire quickly
-	sr.cond.Signal()
-
-	return nil
-}
-
-// UpdateTaskStatuses updates all of the task statuses at once. The key
-// difference between this and calling UpdateTaskStatus repeatedly is that this
-// hold the lock until all updates are queued, meaning no update will happen
-// until all updates are ready
-func (sr *statusReporter) UpdateTaskStatuses(ctx context.Context, statuses map[string]*api.TaskStatus) error {
-	ctx = log.WithField(ctx, "method", "(*statusReporter).UpdateTaskStatuses")
+// UpdateTaskStatus updates the provided task statuses
+func (sr *statusReporter) UpdateTaskStatus(ctx context.Context, statuses map[string]*api.TaskStatus) error {
+	ctx = log.WithField(ctx, "method", "(*statusReporter).UpdateTaskStatus")
 	log.G(ctx).Debugf("Updating %v task statuses", len(statuses))
 	sr.mu.Lock()
 	defer sr.mu.Unlock()
@@ -117,7 +97,7 @@ func (sr *statusReporter) Close() error {
 }
 
 func (sr *statusReporter) run(ctx context.Context) {
-	ctx = log.WithModule(ctx, "statusReporter")
+	ctx = log.WithModule(ctx, "reporter")
 	done := make(chan struct{})
 	defer close(done)
 
@@ -151,7 +131,7 @@ func (sr *statusReporter) run(ctx context.Context) {
 		// unlock the map so new statuses can be added while we process the
 		// current ones
 		sr.mu.Unlock()
-		err := sr.reporter.UpdateTaskStatuses(ctx, statuses)
+		err := sr.reporter.UpdateTaskStatus(ctx, statuses)
 		// re-lock the map so we can add statuses back if we need to.
 		sr.mu.Lock()
 		// it's possible that the status reporter may have closed while the

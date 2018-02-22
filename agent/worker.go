@@ -451,7 +451,7 @@ func (w *worker) updateAllTasks(ctx context.Context, reporter StatusReporter) er
 			return err
 		}
 		// and then send all of the statuses to the reporter.
-		return reporter.UpdateTaskStatuses(ctx, statuses)
+		return reporter.UpdateTaskStatus(ctx, statuses)
 	})
 }
 
@@ -522,7 +522,7 @@ func (w *worker) updateTaskStatus(ctx context.Context, tx *bolt.Tx, taskID strin
 
 	// broadcast the task status out.
 	for key := range w.listeners {
-		if err := key.StatusReporter.UpdateTaskStatus(ctx, taskID, status); err != nil {
+		if err := key.StatusReporter.UpdateTaskStatus(ctx, map[string]*api.TaskStatus{taskID: status}); err != nil {
 			log.G(ctx).WithError(err).Errorf("failed updating status for reporter %v", key.StatusReporter)
 		}
 	}

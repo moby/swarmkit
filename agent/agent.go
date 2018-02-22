@@ -481,51 +481,9 @@ func (a *Agent) withSession(ctx context.Context, fn func(session *session) error
 	}
 }
 
-// UpdateTaskStatus attempts to send a task status update over the current session,
-// blocking until the operation is completed.
-//
-// If an error is returned, the operation should be retried.
-func (a *Agent) UpdateTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error {
-	// nesting calls to avoiding importing logrus
-	ctx = log.WithField(log.WithField(ctx, "task.id", taskID), "method", "(*Agent).UpdateTaskStatus")
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	errs := make(chan error, 1)
-	if err := a.withSession(ctx, func(session *session) error {
-		go func() {
-			err := session.sendTaskStatus(ctx, taskID, status)
-			if err != nil {
-				if err == errTaskUnknown {
-					err = nil // dispatcher no longer cares about this task.
-				} else {
-					log.G(ctx).WithError(err).Error("closing session after fatal error")
-					session.sendError(err)
-				}
-			} else {
-				log.G(ctx).Debug("task status reported")
-			}
-
-			errs <- err
-		}()
-
-		return nil
-	}); err != nil {
-		log.G(ctx).Debug("failed to send task status")
-		return err
-	}
-
-	select {
-	case err := <-errs:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-}
-
-// UpdateTaskStatuses performs a batch update of the task statuses provided.
-func (a *Agent) UpdateTaskStatuses(ctx context.Context, statuses map[string]*api.TaskStatus) error {
-	ctx = log.WithField(ctx, "method", "(*Agent).UpdateTaskStatuses")
+// UpdateTaskStatus performs a batch update of the task statuses provided.
+func (a *Agent) UpdateTaskStatus(ctx context.Context, statuses map[string]*api.TaskStatus) error {
+	ctx = log.WithField(ctx, "method", "(*Agent).UpdateTaskStatus")
 	log.G(ctx).Debugf("Updating %v task statuses", len(statuses))
 
 	ctx, cancel := context.WithCancel(ctx)
