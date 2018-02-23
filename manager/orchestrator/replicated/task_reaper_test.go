@@ -493,9 +493,11 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 
 	// Set both task states to RUNNING.
 	updatedTask1 := observedTask1.Copy()
+	updatedTask1.DesiredState = api.TaskStateRunning
 	updatedTask1.Status.State = api.TaskStateRunning
 	updatedTask1.ServiceAnnotations = api.Annotations{Name: "original"}
 	updatedTask2 := observedTask2.Copy()
+	updatedTask2.DesiredState = api.TaskStateRunning
 	updatedTask2.Status.State = api.TaskStateRunning
 	updatedTask2.ServiceAnnotations = api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
@@ -512,9 +514,11 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 
 	// Set both tasks to COMPLETED.
 	updatedTask3 := observedTask1.Copy()
+	updatedTask3.DesiredState = api.TaskStateCompleted
 	updatedTask3.Status.State = api.TaskStateCompleted
 	updatedTask3.ServiceAnnotations = api.Annotations{Name: "original"}
 	updatedTask4 := observedTask2.Copy()
+	updatedTask4.DesiredState = api.TaskStateCompleted
 	updatedTask4.Status.State = api.TaskStateCompleted
 	updatedTask4.ServiceAnnotations = api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
