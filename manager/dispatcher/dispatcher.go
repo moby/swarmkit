@@ -125,10 +125,6 @@ type clusterUpdate struct {
 
 // Dispatcher is responsible for dispatching tasks and tracking agent health.
 type Dispatcher struct {
-	// Mutex to synchronize access to dispatcher shared state e.g. nodes,
-	// lastSeenManagers, networkBootstrapKeys etc.
-	// TODO(anshul): This can potentially be removed and rpcRW used in its place.
-	mu sync.Mutex
 	// WaitGroup to handle the case when Stop() gets called before Run()
 	// has finished initializing the dispatcher.
 	wg sync.WaitGroup
@@ -215,9 +211,9 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 	d.nodeUpdates = make(map[string]nodeUpdate)
 	d.nodeUpdatesLock.Unlock()
 
-	d.mu.Lock()
+	d.rpcRW.Lock()
 	if d.isRunning() {
-		d.mu.Unlock()
+		d.rpcRW.Unlock()
 		return errors.New("dispatcher is already running")
 	}
 	if err := d.markNodesUnknown(ctx); err != nil {
@@ -245,7 +241,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 		api.EventUpdateCluster{},
 	)
 	if err != nil {
-		d.mu.Unlock()
+		d.rpcRW.Unlock()
 		return err
 	}
 	// set queue here to guarantee that Close will close it
@@ -260,7 +256,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 	ctx = d.ctx
 	d.wg.Add(1)
 	defer d.wg.Done()
-	d.mu.Unlock()
+	d.rpcRW.Unlock()
 
 	publishManagers := func(peers []*api.Peer) {
 		var mgrs []*api.WeightedPeer
@@ -270,9 +266,9 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 				Weight: remotes.DefaultObservationWeight,
 			})
 		}
-		d.mu.Lock()
+		d.rpcRW.Lock()
 		d.lastSeenManagers = mgrs
-		d.mu.Unlock()
+		d.rpcRW.Unlock()
 		d.clusterUpdateQueue.Publish(clusterUpdate{managerUpdate: &mgrs})
 	}
 
@@ -291,7 +287,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			batchTimer.Reset(maxBatchInterval)
 		case v := <-configWatcher:
 			cluster := v.(api.EventUpdateCluster)
-			d.mu.Lock()
+			d.rpcRW.Lock()
 			if cluster.Cluster.Spec.Dispatcher.HeartbeatPeriod != nil {
 				// ignore error, since Spec has passed validation before
 				heartbeatPeriod, _ := gogotypes.DurationFromProto(cluster.Cluster.Spec.Dispatcher.HeartbeatPeriod)
@@ -303,7 +299,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			}
 			d.lastSeenRootCert = cluster.Cluster.RootCA.CACert
 			d.networkBootstrapKeys = cluster.Cluster.NetworkBootstrapKeys
-			d.mu.Unlock()
+			d.rpcRW.Unlock()
 			d.clusterUpdateQueue.Publish(clusterUpdate{
 				bootstrapKeyUpdate: &cluster.Cluster.NetworkBootstrapKeys,
 				rootCAUpdate:       &cluster.Cluster.RootCA.CACert,
@@ -316,22 +312,20 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 
 // Stop stops dispatcher and closes all grpc streams.
 func (d *Dispatcher) Stop() error {
-	d.mu.Lock()
+	d.rpcRW.Lock()
 	if !d.isRunning() {
-		d.mu.Unlock()
+		d.rpcRW.Unlock()
 		return errors.New("dispatcher is already stopped")
 	}
 
 	log := log.G(d.ctx).WithField("method", "(*Dispatcher).Stop")
 	log.Info("dispatcher stopping")
 	d.cancel()
-	d.mu.Unlock()
 
 	// The active nodes list can be cleaned out only when all
 	// existing RPCs have finished.
 	// RPCs that start after rpcRW.Unlock() should find the context
 	// cancelled and should fail organically.
-	d.rpcRW.Lock()
 	d.nodes.Clean()
 	d.rpcRW.Unlock()
 
@@ -354,14 +348,13 @@ func (d *Dispatcher) Stop() error {
 	return nil
 }
 
-func (d *Dispatcher) isRunningLocked() (context.Context, error) {
-	d.mu.Lock()
+// getContext returns the current dispatcher context, if running.
+// Returns a nil and an error otherwise.
+func (d *Dispatcher) getContext() (context.Context, error) {
 	if !d.isRunning() {
-		d.mu.Unlock()
 		return nil, status.Errorf(codes.Aborted, "dispatcher is stopped")
 	}
 	ctx := d.ctx
-	d.mu.Unlock()
 	return ctx, nil
 }
 
@@ -500,7 +493,7 @@ func nodeIPFromContext(ctx context.Context) (string, error) {
 func (d *Dispatcher) register(ctx context.Context, nodeID string, description *api.NodeDescription) (string, error) {
 	logLocal := log.G(ctx).WithField("method", "(*Dispatcher).register")
 	// prevent register until we're ready to accept it
-	dctx, err := d.isRunningLocked()
+	dctx, err := d.getContext()
 	if err != nil {
 		return "", err
 	}
@@ -555,7 +548,7 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 	d.rpcRW.RLock()
 	defer d.rpcRW.RUnlock()
 
-	dctx, err := d.isRunningLocked()
+	dctx, err := d.getContext()
 	if err != nil {
 		return nil, err
 	}
@@ -749,7 +742,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	d.rpcRW.RLock()
 	defer d.rpcRW.RUnlock()
 
-	dctx, err := d.isRunningLocked()
+	dctx, err := d.getContext()
 	if err != nil {
 		return err
 	}
@@ -875,7 +868,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 	d.rpcRW.RLock()
 	defer d.rpcRW.RUnlock()
 
-	dctx, err := d.isRunningLocked()
+	dctx, err := d.getContext()
 	if err != nil {
 		return err
 	}
@@ -1070,7 +1063,7 @@ func (d *Dispatcher) moveTasksToOrphaned(nodeID string) error {
 func (d *Dispatcher) markNodeNotReady(id string, state api.NodeStatus_State, message string) error {
 	logLocal := log.G(d.ctx).WithField("method", "(*Dispatcher).markNodeNotReady")
 
-	dctx, err := d.isRunningLocked()
+	dctx, err := d.getContext()
 	if err != nil {
 		return err
 	}
@@ -1155,20 +1148,16 @@ func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*a
 }
 
 func (d *Dispatcher) getManagers() []*api.WeightedPeer {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	d.rpcRW.RLock()
+	defer d.rpcRW.RUnlock()
 	return d.lastSeenManagers
 }
 
 func (d *Dispatcher) getNetworkBootstrapKeys() []*api.EncryptionKey {
-	d.mu.Lock()
-	defer d.mu.Unlock()
 	return d.networkBootstrapKeys
 }
 
 func (d *Dispatcher) getRootCACert() []byte {
-	d.mu.Lock()
-	defer d.mu.Unlock()
 	return d.lastSeenRootCert
 }
 
@@ -1180,7 +1169,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 	d.rpcRW.RLock()
 	defer d.rpcRW.RUnlock()
 
-	dctx, err := d.isRunningLocked()
+	dctx, err := d.getContext()
 	if err != nil {
 		return err
 	}
