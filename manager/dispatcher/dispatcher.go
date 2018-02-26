@@ -316,7 +316,6 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 
 // Stop stops dispatcher and closes all grpc streams.
 func (d *Dispatcher) Stop() error {
-	d.mu.Lock()
 	if !d.isRunning() {
 		d.mu.Unlock()
 		return errors.New("dispatcher is already stopped")
@@ -325,7 +324,6 @@ func (d *Dispatcher) Stop() error {
 	log := log.G(d.ctx).WithField("method", "(*Dispatcher).Stop")
 	log.Info("dispatcher stopping")
 	d.cancel()
-	d.mu.Unlock()
 
 	// The active nodes list can be cleaned out only when all
 	// existing RPCs have finished.
