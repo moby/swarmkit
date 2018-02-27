@@ -237,7 +237,6 @@ func New(config *Config) (*Manager, error) {
 	m := &Manager{
 		config:          *config,
 		caserver:        ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig),
-		dispatcher:      dispatcher.New(raftNode, dispatcher.DefaultConfig(), drivers.New(config.PluginGetter), config.SecurityConfig),
 		logbroker:       logbroker.New(raftNode.MemoryStore()),
 		watchServer:     watchapi.NewServer(raftNode.MemoryStore()),
 		server:          grpc.NewServer(opts...),
@@ -997,6 +996,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		log.G(ctx).WithError(err).Error("root key-encrypting-key rotation failed")
 	}
 
+	m.dispatcher = dispatcher.New(m.raftNode, dispatcher.DefaultConfig(), drivers.New(m.config.PluginGetter), m.config.SecurityConfig)
 	m.replicatedOrchestrator = replicated.NewReplicatedOrchestrator(s)
 	m.constraintEnforcer = constraintenforcer.New(s)
 	m.globalOrchestrator = global.NewGlobalOrchestrator(s)
@@ -1085,6 +1085,8 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 // becomeFollower shuts down the subsystems that are only run by the leader.
 func (m *Manager) becomeFollower() {
 	m.dispatcher.Stop()
+	m.dispatcher = nil
+
 	m.logbroker.Stop()
 	m.caserver.Stop()
 

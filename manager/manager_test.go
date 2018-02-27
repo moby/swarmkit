@@ -87,10 +87,12 @@ func TestManager(t *testing.T) {
 
 	// We have to send a dummy request to verify if the connection is actually up.
 	client := api.NewDispatcherClient(conn)
-	_, err = client.Heartbeat(tc.Context, &api.HeartbeatRequest{})
-	assert.Equal(t, dispatcher.ErrNodeNotRegistered.Error(), grpc.ErrorDesc(err))
-	_, err = client.Session(tc.Context, &api.SessionRequest{})
-	assert.NoError(t, err)
+	if m.dispatcher != nil {
+		_, err = client.Heartbeat(tc.Context, &api.HeartbeatRequest{})
+		assert.Equal(t, dispatcher.ErrNodeNotRegistered.Error(), grpc.ErrorDesc(err))
+		_, err = client.Session(tc.Context, &api.SessionRequest{})
+		assert.NoError(t, err)
+	}
 
 	// Try to have a client in a different org access this manager
 	opts = []grpc.DialOption{
