@@ -78,7 +78,7 @@ func decryptRaftData(swarmdir, outdir, unlockKey string) error {
 	_, d := encryption.Defaults(deks.CurrentDEK)
 	if deks.PendingDEK == nil {
 		_, d2 := encryption.Defaults(deks.PendingDEK)
-		d = storage.MultiDecrypter{d, d2}
+		d = encryption.NewMultiDecrypter(d, d2)
 	}
 
 	snapDir := filepath.Join(outdir, "snap-decrypted")

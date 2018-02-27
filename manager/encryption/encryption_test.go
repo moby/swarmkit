@@ -1,6 +1,7 @@
 package encryption
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -68,4 +69,42 @@ func TestHumanReadable(t *testing.T) {
 	// Extra padding also fails
 	_, err = ParseHumanReadableKey(keyString + "=")
 	require.Error(t, err)
+}
+
+type bothCrypter interface {
+	Decrypter
+	Encrypter
+}
+
+func TestMultiDecryptor(t *testing.T) {
+	crypters := []bothCrypter{
+		noopCrypter{},
+		NewNACLSecretbox([]byte("key1")),
+		NewNACLSecretbox([]byte("key2")),
+		NewNACLSecretbox([]byte("key3")),
+		NewFernet([]byte("key1")),
+		NewFernet([]byte("key2")),
+	}
+	m := NewMultiDecrypter(
+		crypters[0], crypters[1], crypters[2], crypters[4],
+		NewMultiDecrypter(crypters[3], crypters[5]),
+	)
+
+	for i, c := range crypters {
+		plaintext := []byte(fmt.Sprintf("message %d", i))
+		ciphertext, err := Encrypt(plaintext, c)
+		require.NoError(t, err)
+		decrypted, err := Decrypt(ciphertext, m)
+		require.NoError(t, err)
+		require.Equal(t, plaintext, decrypted)
+
+		// for sanity, make sure the other crypters can't decrypt
+		for j, o := range crypters {
+			if j == i {
+				continue
+			}
+			_, err := Decrypt(ciphertext, o)
+			require.IsType(t, ErrCannotDecrypt{}, err)
+		}
+	}
 }
