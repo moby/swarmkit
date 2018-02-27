@@ -39,6 +39,9 @@ type Worker interface {
 	// The listener will be removed if the context is cancelled.
 	Listen(ctx context.Context, reporter StatusReporter)
 
+	// Report send the status of all tasks to the provided reporter.
+	Report(ctx context.Context, reporter StatusReporter) error
+
 	// Subscribe to log messages matching the subscription.
 	Subscribe(ctx context.Context, subscription *api.SubscriptionMessage) error
 
@@ -402,12 +405,13 @@ func reconcileConfigs(ctx context.Context, w *worker, assignments []*api.Assignm
 }
 
 func (w *worker) Listen(ctx context.Context, reporter StatusReporter) {
+	ctx = log.WithField(ctx, "method", "(*worker).Listen")
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	log.G(ctx).Debug("listening with new reporter")
 
 	key := &statusReporterKey{reporter}
 	w.listeners[key] = struct{}{}
-
 	go func() {
 		<-ctx.Done()
 		w.mu.Lock()
@@ -416,13 +420,39 @@ func (w *worker) Listen(ctx context.Context, reporter StatusReporter) {
 	}()
 
 	// report the current statuses to the new listener
-	if err := w.db.View(func(tx *bolt.Tx) error {
-		return WalkTaskStatus(tx, func(id string, status *api.TaskStatus) error {
-			return reporter.UpdateTaskStatus(ctx, id, status)
-		})
-	}); err != nil {
+	if err := w.updateAllTasks(ctx, reporter); err != nil {
 		log.G(ctx).WithError(err).Errorf("failed reporting initial statuses to registered listener %v", reporter)
 	}
+}
+
+// Report walks all task statuses and reports them with the provided
+// StatusReporter
+func (w *worker) Report(ctx context.Context, reporter StatusReporter) error {
+	ctx = log.WithField(ctx, "method", "(*worker).Report")
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.updateAllTasks(ctx, reporter)
+}
+
+// updateAllTasks is the common functionality of Report and Listen. The
+// behavior of Listen is a superset of the behavior of report, but we can't
+// call into Report from Listen because both methods acquire the lock and that
+// case would obviously deadlock. Instead, the common functionality is in this
+// method, sans lock, to avoid that case while still not duplicating code.
+func (w *worker) updateAllTasks(ctx context.Context, reporter StatusReporter) error {
+	return w.db.View(func(tx *bolt.Tx) error {
+		statuses := map[string]*api.TaskStatus{}
+		log.G(ctx).Debug("Walking task statuses")
+		if err := WalkTaskStatus(tx, func(id string, status *api.TaskStatus) error {
+			// build a map of the statuses to send in a batch update
+			statuses[id] = status
+			return nil
+		}); err != nil {
+			return err
+		}
+		// and then send all of the statuses to the reporter.
+		return reporter.UpdateTaskStatus(ctx, statuses)
+	})
 }
 
 func (w *worker) startTask(ctx context.Context, tx *bolt.Tx, task *api.Task) error {
@@ -492,7 +522,7 @@ func (w *worker) updateTaskStatus(ctx context.Context, tx *bolt.Tx, taskID strin
 
 	// broadcast the task status out.
 	for key := range w.listeners {
-		if err := key.StatusReporter.UpdateTaskStatus(ctx, taskID, status); err != nil {
+		if err := key.StatusReporter.UpdateTaskStatus(ctx, map[string]*api.TaskStatus{taskID: status}); err != nil {
 			log.G(ctx).WithError(err).Errorf("failed updating status for reporter %v", key.StatusReporter)
 		}
 	}

@@ -607,6 +607,25 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 		validTaskUpdates = append(validTaskUpdates, u)
 	}
 
+	// NOTE(dperny): So, there is an issue here, a bad design decision. We add
+	// the task update to a map for batching, which is, as far as I can tell, a
+	// pretty important performance optimization. Ideally, the agent would rely
+	// on this RPC returning successfully to indicate that the update has been
+	// committed.
+	//
+	// The problem is that this RPC completing successfully doesn't guarantee
+	// that a task update has actually been committed to the store. There
+	// exists a possibility that, between the time that this RPC completes and
+	// the time that the update gets committed to the store, this dispatcher
+	// might stop, and the updates that haven't been committed will drop.
+	//
+	// To get around this, the agent does not treat the successful return of
+	// this RPC as authoritative information that the update has been
+	// committed. Instead, whenever the agent reestablishes a session, it sends
+	// updates of all of its tasks to the dispatcher again. This guarantees
+	// that the task status in the store will never be out of date with the
+	// task status on the agent if the cluster is running; any update that gets
+	// dropped will get sent up the next time the agent connects anyway.
 	d.taskUpdatesLock.Lock()
 	// Enqueue task updates
 	for _, u := range validTaskUpdates {
@@ -652,6 +671,13 @@ func (d *Dispatcher) processUpdates(ctx context.Context) {
 		"method": "(*Dispatcher).processUpdates",
 	})
 
+	// NOTE(dperny) we assume that if the batch fails, it means that the
+	// dispatcher has also failed, so the session will get reestablished, and
+	// the agent will send up it's updates again. But if there is a case where
+	// the batch fails and the dispatcher DOESN'T, then we end up dropping all
+	// of these updates. If there is a case in the future where task updates
+	// are being lost, it may be the case that the batch can fail without
+	// taking the dispatcher with it.
 	err := d.store.Batch(func(batch *store.Batch) error {
 		for taskID, status := range taskUpdates {
 			err := batch.Update(func(tx store.Tx) error {

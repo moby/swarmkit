@@ -88,6 +88,10 @@ func (tm *taskManager) run(ctx context.Context) {
 		errs     = make(chan error)
 		shutdown = tm.shutdown
 		updated  bool // true if the task was updated.
+
+		// statusMap is a map for this task status which can be reused for
+		// every status update, to avoid allocation.
+		statusMap = map[string]*api.TaskStatus{}
 	)
 
 	defer func() {
@@ -141,7 +145,8 @@ func (tm *taskManager) run(ctx context.Context) {
 					case <-ctx.Done(): // not opctx, since that may have been cancelled.
 					}
 
-					if err := tm.reporter.UpdateTaskStatus(ctx, running.ID, status); err != nil {
+					statusMap[running.ID] = status
+					if err := tm.reporter.UpdateTaskStatus(ctx, statusMap); err != nil {
 						log.G(ctx).WithError(err).Error("task manager failed to report status to agent")
 					}
 				}

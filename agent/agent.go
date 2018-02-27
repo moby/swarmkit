@@ -285,6 +285,9 @@ func (a *Agent) run(ctx context.Context) {
 				if err := a.worker.Assign(ctx, msg.Changes); err != nil {
 					log.G(ctx).WithError(err).Error("failed to synchronize worker assignments")
 				}
+				// then, call Report on the worker again to update all of the
+				// task statuses. do this in a goroutine so it doesn't block.
+				go a.worker.Report(ctx, reporter)
 			case api.AssignmentsMessage_INCREMENTAL:
 				if err := a.worker.Update(ctx, msg.Changes); err != nil {
 					log.G(ctx).WithError(err).Error("failed to update worker assignments")
@@ -478,35 +481,51 @@ func (a *Agent) withSession(ctx context.Context, fn func(session *session) error
 	}
 }
 
-// UpdateTaskStatus attempts to send a task status update over the current session,
-// blocking until the operation is completed.
-//
-// If an error is returned, the operation should be retried.
-func (a *Agent) UpdateTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error {
-	log.G(ctx).WithField("task.id", taskID).Debug("(*Agent).UpdateTaskStatus")
+// UpdateTaskStatus performs a batch update of the task statuses provided.
+func (a *Agent) UpdateTaskStatus(ctx context.Context, statuses map[string]*api.TaskStatus) error {
+	ctx = log.WithField(ctx, "method", "(*Agent).UpdateTaskStatus")
+	log.G(ctx).Debugf("Updating %v task statuses", len(statuses))
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	errs := make(chan error, 1)
 	if err := a.withSession(ctx, func(session *session) error {
 		go func() {
-			err := session.sendTaskStatus(ctx, taskID, status)
-			if err != nil {
-				if err == errTaskUnknown {
-					err = nil // dispatcher no longer cares about this task.
-				} else {
-					log.G(ctx).WithError(err).Error("closing session after fatal error")
-					session.sendError(err)
-				}
-			} else {
-				log.G(ctx).Debug("task status reported")
+			// convert statuses into the actual API object we need
+			updates := make([]*api.UpdateTaskStatusRequest_TaskStatusUpdate, 0, len(statuses))
+			for id, status := range statuses {
+				updates = append(updates, &api.UpdateTaskStatusRequest_TaskStatusUpdate{
+					TaskID: id,
+					Status: status,
+				})
 			}
 
+			var err error
+			for len(updates) > 0 {
+				// session.sendTaskStatuses can only send a limited number of
+				// updates at a time.  if our batch size exceeds that, it will
+				// give us back the updates it didn't process so we can call
+				// this loop again
+				updates, err = session.sendTaskStatuses(ctx, updates...)
+				if err != nil {
+					// in the a.UpdateTaskStatus(), we skip the task unknown
+					// error, because we know we shouldn't get it. we can't do
+					// that here, because we won't know WHICH task is unknown.
+					// so our only option is to fail in either case
+					log.G(ctx).WithError(err).Error("closing session after fatal error")
+					session.sendError(err)
+					break
+				}
+				log.G(ctx).Debugf("Updated batch, %v updates to go", len(updates))
+			}
+			log.G(ctx).Debug("Finished updating batch")
 			errs <- err
 		}()
 
 		return nil
 	}); err != nil {
+		log.G(ctx).Debug("failed to send task statuses")
 		return err
 	}
 
