@@ -41,7 +41,7 @@ func loadData(swarmdir, unlockKey string) (*storage.WALData, *raftpb.Snapshot, e
 		_, d := encryption.Defaults(deks.CurrentDEK)
 		if deks.PendingDEK == nil {
 			_, d2 := encryption.Defaults(deks.PendingDEK)
-			d = storage.MultiDecrypter{d, d2}
+			d = encryption.NewMultiDecrypter(d, d2)
 		}
 
 		walFactory = storage.NewWALFactory(encryption.NoopCrypter, d)
