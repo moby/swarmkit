@@ -237,7 +237,7 @@ func New(config *Config) (*Manager, error) {
 	m := &Manager{
 		config:          *config,
 		caserver:        ca.NewServer(raftNode.MemoryStore(), config.SecurityConfig),
-		dispatcher:      dispatcher.New(raftNode, dispatcher.DefaultConfig(), drivers.New(config.PluginGetter), config.SecurityConfig),
+		dispatcher:      dispatcher.New(),
 		logbroker:       logbroker.New(raftNode.MemoryStore()),
 		watchServer:     watchapi.NewServer(raftNode.MemoryStore()),
 		server:          grpc.NewServer(opts...),
@@ -620,6 +620,10 @@ func (m *Manager) Stop(ctx context.Context, clearData bool) {
 		m.collector.Stop()
 	}
 
+	// The following components are gRPC services that are
+	// registered when creating the manager and will need
+	// to be re-registered if they are recreated.
+	// For simplicity, they are not nilled out.
 	m.dispatcher.Stop()
 	m.logbroker.Stop()
 	m.watchServer.Stop()
@@ -1025,6 +1029,8 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	}
 
 	go func(d *dispatcher.Dispatcher) {
+		// Initialize the dispatcher.
+		d.Init(m.raftNode, dispatcher.DefaultConfig(), drivers.New(m.config.PluginGetter), m.config.SecurityConfig)
 		if err := d.Run(ctx); err != nil {
 			log.G(ctx).WithError(err).Error("Dispatcher exited with an error")
 		}
@@ -1084,6 +1090,10 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 
 // becomeFollower shuts down the subsystems that are only run by the leader.
 func (m *Manager) becomeFollower() {
+	// The following components are gRPC services that are
+	// registered when creating the manager and will need
+	// to be re-registered if they are recreated.
+	// For simplicity, they are not nilled out.
 	m.dispatcher.Stop()
 	m.logbroker.Stop()
 	m.caserver.Stop()
