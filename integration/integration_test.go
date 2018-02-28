@@ -20,8 +20,8 @@ import (
 	events "github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/keyutils"
 	cautils "github.com/docker/swarmkit/ca/testutils"
+	"github.com/docker/swarmkit/fips"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager"
 	"github.com/docker/swarmkit/testutils"
@@ -269,12 +269,12 @@ func TestAutolockManagers(t *testing.T) {
 	t.Parallel()
 
 	// run this twice, once with root ca with pkcs1 key and then pkcs8 key
-	defer os.Unsetenv(keyutils.FIPSEnvVar)
+	defer os.Unsetenv(fips.EnvVar)
 	for _, pkcs1 := range []bool{true, false} {
 		if pkcs1 {
-			os.Unsetenv(keyutils.FIPSEnvVar)
+			os.Unsetenv(fips.EnvVar)
 		} else {
-			os.Setenv(keyutils.FIPSEnvVar, "1")
+			os.Setenv(fips.EnvVar, "1")
 		}
 
 		rootCA, err := ca.CreateRootCA("rootCN")
@@ -622,12 +622,12 @@ func TestSuccessfulRootRotation(t *testing.T) {
 	t.Parallel()
 
 	// run this twice, once with root ca with pkcs1 key and then pkcs8 key
-	defer os.Unsetenv(keyutils.FIPSEnvVar)
+	defer os.Unsetenv(fips.EnvVar)
 	for _, pkcs1 := range []bool{true, false} {
 		if pkcs1 {
-			os.Unsetenv(keyutils.FIPSEnvVar)
+			os.Unsetenv(fips.EnvVar)
 		} else {
-			os.Setenv(keyutils.FIPSEnvVar, "1")
+			os.Setenv(fips.EnvVar, "1")
 		}
 
 		rootCA, err := ca.CreateRootCA("rootCN")
