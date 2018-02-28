@@ -29,6 +29,7 @@ import (
 	"github.com/docker/swarmkit/ca/keyutils"
 	"github.com/docker/swarmkit/ca/pkcs8"
 	"github.com/docker/swarmkit/connectionbroker"
+	"github.com/docker/swarmkit/fips"
 	"github.com/docker/swarmkit/ioutils"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
@@ -818,7 +819,7 @@ func CreateRootCA(rootCN string) (RootCA, error) {
 	}
 
 	// Convert key to PKCS#8 in FIPS mode
-	if keyutils.FIPSEnabled() {
+	if fips.Enabled() {
 		key, err = pkcs8.ConvertECPrivateKeyPEM(key)
 		if err != nil {
 			return RootCA{}, err

@@ -31,6 +31,7 @@ import (
 	"github.com/docker/swarmkit/ca/pkcs8"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/connectionbroker"
+	"github.com/docker/swarmkit/fips"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
@@ -94,8 +95,8 @@ func TestCreateRootCAKeyFormat(t *testing.T) {
 	require.Equal(t, "EC PRIVATE KEY", block.Type)
 
 	// Check if the CA key generated is PKCS#8 when FIPS-mode is on
-	os.Setenv(keyutils.FIPSEnvVar, "1")
-	defer os.Unsetenv(keyutils.FIPSEnvVar)
+	os.Setenv(fips.EnvVar, "1")
+	defer os.Unsetenv(fips.EnvVar)
 
 	rootCA, err = ca.CreateRootCA("rootCA")
 	require.NoError(t, err)

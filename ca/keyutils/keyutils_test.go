@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/docker/swarmkit/fips"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,12 +51,12 @@ aMbljbOLAjpZS3/VnQteab4=
 )
 
 func TestFIPSEnabled(t *testing.T) {
-	os.Unsetenv(FIPSEnvVar)
-	assert.False(t, FIPSEnabled())
+	os.Unsetenv(fips.EnvVar)
+	assert.False(t, fips.Enabled())
 
-	os.Setenv(FIPSEnvVar, "1")
-	defer os.Unsetenv(FIPSEnvVar)
-	assert.True(t, FIPSEnabled())
+	os.Setenv(fips.EnvVar, "1")
+	defer os.Unsetenv(fips.EnvVar)
+	assert.True(t, fips.Enabled())
 }
 
 func TestIsPKCS8(t *testing.T) {
@@ -70,7 +71,7 @@ func TestIsPKCS8(t *testing.T) {
 
 func TestIsEncryptedPEMBlock(t *testing.T) {
 	// Disable FIPS mode
-	os.Unsetenv(FIPSEnvVar)
+	os.Unsetenv(fips.EnvVar)
 
 	// Check PKCS8 keys
 	assert.False(t, IsEncryptedPEMBlock(decryptedPKCS8Block))
@@ -81,8 +82,8 @@ func TestIsEncryptedPEMBlock(t *testing.T) {
 	assert.True(t, IsEncryptedPEMBlock(encryptedPKCS1Block))
 
 	// Enable FIPS mode
-	os.Setenv(FIPSEnvVar, "1")
-	defer os.Unsetenv(FIPSEnvVar)
+	os.Setenv(fips.EnvVar, "1")
+	defer os.Unsetenv(fips.EnvVar)
 
 	// Check PKCS8 keys again
 	assert.False(t, IsEncryptedPEMBlock(decryptedPKCS8Block))
@@ -95,7 +96,7 @@ func TestIsEncryptedPEMBlock(t *testing.T) {
 
 func TestDecryptPEMBlock(t *testing.T) {
 	// Disable FIPS mode
-	os.Unsetenv(FIPSEnvVar)
+	os.Unsetenv(fips.EnvVar)
 
 	// Check PKCS8 keys
 	_, err := DecryptPEMBlock(encryptedPKCS8Block, []byte("pony"))
@@ -114,8 +115,8 @@ func TestDecryptPEMBlock(t *testing.T) {
 	require.Equal(t, decryptedPKCS1Block.Bytes, decryptedDer)
 
 	// Enable FIPS mode
-	os.Setenv(FIPSEnvVar, "1")
-	defer os.Unsetenv(FIPSEnvVar)
+	os.Setenv(fips.EnvVar, "1")
+	defer os.Unsetenv(fips.EnvVar)
 
 	// Try to decrypt PKCS1
 	_, err = DecryptPEMBlock(encryptedPKCS1Block, []byte("ponies"))
@@ -124,7 +125,7 @@ func TestDecryptPEMBlock(t *testing.T) {
 
 func TestEncryptPEMBlock(t *testing.T) {
 	// Disable FIPS mode
-	os.Unsetenv(FIPSEnvVar)
+	os.Unsetenv(fips.EnvVar)
 
 	// Check PKCS8 keys
 	encryptedBlock, err := EncryptPEMBlock(decryptedPKCS8Block.Bytes, []byte("knock knock"))
@@ -151,8 +152,8 @@ func TestEncryptPEMBlock(t *testing.T) {
 	require.Equal(t, decryptedPKCS1Block.Bytes, decryptedDer)
 
 	// Enable FIPS mode
-	os.Setenv(FIPSEnvVar, "1")
-	defer os.Unsetenv(FIPSEnvVar)
+	os.Setenv(fips.EnvVar, "1")
+	defer os.Unsetenv(fips.EnvVar)
 
 	// Try to encrypt PKCS1
 	_, err = EncryptPEMBlock(decryptedPKCS1Block.Bytes, []byte("knock knock"))
@@ -161,7 +162,7 @@ func TestEncryptPEMBlock(t *testing.T) {
 
 func TestParsePrivateKeyPEMWithPassword(t *testing.T) {
 	// Disable FIPS mode
-	os.Unsetenv(FIPSEnvVar)
+	os.Unsetenv(fips.EnvVar)
 
 	// Check PKCS8 keys
 	_, err := ParsePrivateKeyPEMWithPassword([]byte(encryptedPKCS8), []byte("pony"))
@@ -184,8 +185,8 @@ func TestParsePrivateKeyPEMWithPassword(t *testing.T) {
 	require.NoError(t, err)
 
 	// Enable FIPS mode
-	os.Setenv(FIPSEnvVar, "1")
-	defer os.Unsetenv(FIPSEnvVar)
+	os.Setenv(fips.EnvVar, "1")
+	defer os.Unsetenv(fips.EnvVar)
 
 	// Try to parse PKCS1
 	_, err = ParsePrivateKeyPEMWithPassword([]byte(encryptedPKCS1), []byte("ponies"))
