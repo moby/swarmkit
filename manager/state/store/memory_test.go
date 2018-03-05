@@ -2035,7 +2035,7 @@ func BenchmarkNodeConcurrency(b *testing.B) {
 	var wg sync.WaitGroup
 	for c := 0; c != 5; c++ {
 		wg.Add(1)
-		go func() {
+		go func(c int) {
 			defer wg.Done()
 			for i := 0; i < b.N; i++ {
 				_ = s.Update(func(tx1 Tx) error {
@@ -2050,7 +2050,7 @@ func BenchmarkNodeConcurrency(b *testing.B) {
 					return nil
 				})
 			}
-		}()
+		}(c)
 	}
 
 	for c := 0; c != 5; c++ {
