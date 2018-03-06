@@ -474,7 +474,7 @@ func (d *Dispatcher) markNodeReady(ctx context.Context, nodeID string, descripti
 		select {
 		case d.processUpdatesTrigger <- struct{}{}:
 		case <-ctx.Done():
-			return ctx.Err()
+			return errors.Wrap(ctx.Err(), "context canceled while waiting to trigger updates in markNodeReady")
 		}
 
 	}
@@ -485,7 +485,7 @@ func (d *Dispatcher) markNodeReady(ctx context.Context, nodeID string, descripti
 
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return errors.Wrap(ctx.Err(), "context canceled before waiting for processUpdates to complete")
 	default:
 	}
 	d.processUpdatesCond.Wait()
@@ -867,9 +867,9 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 			case <-batchingTimeout:
 				break batchingLoop
 			case <-stream.Context().Done():
-				return stream.Context().Err()
+				return errors.Wrap(stream.Context().Err(), "stream context done while waiting for tasks batching")
 			case <-dctx.Done():
-				return dctx.Err()
+				return errors.Wrap(dctx.Err(), "dispatcher context done while waiting for tasks batching")
 			}
 		}
 
@@ -1011,9 +1011,9 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 			case <-batchingTimeout:
 				break batchingLoop
 			case <-stream.Context().Done():
-				return stream.Context().Err()
+				return errors.Wrap(stream.Context().Err(), "stream context done while waiting for assignment batching")
 			case <-dctx.Done():
-				return dctx.Err()
+				return errors.Wrap(dctx.Err(), "dispatcher context done while waiting for assignment batching")
 			}
 		}
 
@@ -1316,7 +1316,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		case ev := <-nodeUpdates:
 			nodeObj = ev.(api.EventUpdateNode).Node
 		case <-stream.Context().Done():
-			return stream.Context().Err()
+			return errors.Wrap(stream.Context().Err(), "stream context canceled while in session loop")
 		case <-node.Disconnect:
 			disconnect = true
 		case <-dctx.Done():

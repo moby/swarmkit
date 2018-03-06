@@ -350,7 +350,7 @@ func (g *raftProxyGen) genPollNewLeaderConn(s *descriptor.ServiceDescriptorProto
 				}
 				return conn, nil
 			case <-ctx.Done():
-				return nil, ctx.Err()
+				return nil, errors.Wrap(ctx.Err(), "context canceled while waiting for new leader connection")
 			}
 		}
 	}`)
@@ -381,4 +381,6 @@ func (g *raftProxyGen) GenerateImports(file *generator.FileDescriptor) {
 	g.gen.P("import transport \"google.golang.org/grpc/transport\"")
 	// don't conflict with import added by ptypes
 	g.gen.P("import rafttime \"time\"")
+	// import errors to annotate context deadline exceeded errors
+	g.gen.P("import \"github.com/pkg/errors\"")
 }

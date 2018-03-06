@@ -11,6 +11,7 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/watch"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -224,7 +225,7 @@ func (s *subscription) watch(ch <-chan events.Event) error {
 		var t *api.Task
 		select {
 		case <-s.ctx.Done():
-			return s.ctx.Err()
+			return errors.Wrap(s.ctx.Err(), "context done while watching log subscriptions")
 		case event := <-ch:
 			switch v := event.(type) {
 			case api.EventCreateTask:

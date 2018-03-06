@@ -23,6 +23,7 @@ import status "google.golang.org/grpc/status"
 import metadata "google.golang.org/grpc/metadata"
 import transport "google.golang.org/grpc/transport"
 import rafttime "time"
+import "github.com/pkg/errors"
 
 import strings "strings"
 import reflect "reflect"
@@ -461,7 +462,7 @@ func (p *raftProxyResourceAllocatorServer) pollNewLeaderConn(ctx context.Context
 			}
 			return conn, nil
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, errors.Wrap(ctx.Err(), "context canceled while waiting for new leader connection")
 		}
 	}
 }

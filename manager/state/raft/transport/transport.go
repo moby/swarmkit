@@ -139,7 +139,7 @@ func (t *Transport) Send(m raftpb.Message) error {
 		// to not block sender
 		case t.unknownc <- m:
 		case <-t.ctx.Done():
-			return t.ctx.Err()
+			return errors.Wrap(t.ctx.Err(), "context done while sending raft message")
 		default:
 			return errors.New("unknown messages queue is full")
 		}

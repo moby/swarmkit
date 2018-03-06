@@ -98,7 +98,7 @@ func (c *MutableTLSCreds) ClientHandshake(ctx context.Context, addr string, rawC
 	select {
 	case err = <-errChannel:
 	case <-ctx.Done():
-		err = ctx.Err()
+		err = errors.Wrap(ctx.Err(), "context canceled while waiting for client handshake")
 	}
 	if err != nil {
 		rawConn.Close()

@@ -9,6 +9,7 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -48,7 +49,7 @@ func WaitForLeader(ctx context.Context, n *Node) error {
 		select {
 		case <-ticker.C:
 		case <-ctx.Done():
-			return ctx.Err()
+			return errors.Wrap(ctx.Err(), "context done while waiting for leader")
 		}
 		_, err = n.Leader()
 	}
@@ -78,7 +79,7 @@ func WaitForCluster(ctx context.Context, n *Node) (cluster *api.Cluster, err err
 		case e := <-watch:
 			cluster = e.(api.EventCreateCluster).Cluster
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, errors.Wrap(ctx.Err(), "context done while waiting for cluster")
 		}
 	}
 

@@ -8,6 +8,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/equality"
 	"github.com/docker/swarmkit/log"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -47,7 +48,7 @@ func (tm *taskManager) Update(ctx context.Context, task *api.Task) error {
 	case <-tm.closed:
 		return ErrClosed
 	case <-ctx.Done():
-		return ctx.Err()
+		return errors.Wrap(ctx.Err(), "context done while updating task")
 	}
 }
 

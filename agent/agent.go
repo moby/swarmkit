@@ -12,6 +12,8 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"golang.org/x/net/context"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -109,7 +111,7 @@ func (a *Agent) Leave(ctx context.Context) error {
 	case <-a.closed:
 		return ErrClosed
 	case <-ctx.Done():
-		return ctx.Err()
+		return errors.Wrap(ctx.Err(), "context done while waiting for agent to leave")
 	}
 
 	// agent could be closed while Leave is in progress
@@ -144,7 +146,7 @@ func (a *Agent) Stop(ctx context.Context) error {
 	case <-a.closed:
 		return nil
 	case <-ctx.Done():
-		return ctx.Err()
+		return errors.Wrap(ctx.Err(), "context done while waiting for agent to stop")
 	}
 }
 
@@ -167,7 +169,7 @@ func (a *Agent) Err(ctx context.Context) error {
 	case <-a.closed:
 		return a.err
 	case <-ctx.Done():
-		return ctx.Err()
+		return errors.Wrap(ctx.Err(), "context done while waiting for agent to finish")
 	}
 }
 
@@ -383,7 +385,7 @@ func (a *Agent) run(ctx context.Context) {
 			return
 		case <-ctx.Done():
 			if a.err == nil {
-				a.err = ctx.Err()
+				a.err = errors.Wrap(ctx.Err(), "run context canceled")
 			}
 			return
 		}
@@ -471,12 +473,12 @@ func (a *Agent) withSession(ctx context.Context, fn func(session *session) error
 		case <-a.closed:
 			return ErrClosed
 		case <-ctx.Done():
-			return ctx.Err()
+			return errors.Wrap(ctx.Err(), "context done while waiting for session operation response")
 		}
 	case <-a.closed:
 		return ErrClosed
 	case <-ctx.Done():
-		return ctx.Err()
+		return errors.Wrap(ctx.Err(), "context done while waiting to send session operation")
 	}
 }
 
@@ -516,7 +518,7 @@ func (a *Agent) UpdateTaskStatus(ctx context.Context, taskID string, status *api
 	case err := <-errs:
 		return err
 	case <-ctx.Done():
-		return ctx.Err()
+		return errors.Wrap(ctx.Err(), "context done while waiting for UpdateTaskStatus")
 	}
 }
 
@@ -556,7 +558,7 @@ func (a *Agent) Publisher(ctx context.Context, subscriptionID string) (exec.LogP
 			select {
 			case <-ctx.Done():
 				sendCloseMsg()
-				return ctx.Err()
+				return errors.Wrap(ctx.Err(), "context canceled for log publisher")
 			default:
 			}
 

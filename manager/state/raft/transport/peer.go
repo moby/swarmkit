@@ -75,13 +75,13 @@ func (p *peer) send(m raftpb.Message) (err error) {
 	}()
 	select {
 	case <-p.ctx.Done():
-		return p.ctx.Err()
+		return errors.Wrap(p.ctx.Err(), "peer context done before trying to send a message")
 	default:
 	}
 	select {
 	case p.msgc <- m:
 	case <-p.ctx.Done():
-		return p.ctx.Err()
+		return errors.Wrap(p.ctx.Err(), "peer context done while trying to send a message")
 	default:
 		p.tr.config.ReportUnreachable(p.id)
 		return errors.Errorf("peer is unreachable")
@@ -314,7 +314,7 @@ func (p *peer) drain() error {
 				return errors.Wrap(err, "send drain message")
 			}
 		case <-ctx.Done():
-			return ctx.Err()
+			return errors.Wrap(ctx.Err(), "sending drain message timed out")
 		}
 	}
 }

@@ -1,7 +1,6 @@
 package logbroker
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -13,6 +12,7 @@ import (
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/watch"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -257,9 +257,9 @@ func (lb *LogBroker) SubscribeLogs(request *api.SubscribeLogsRequest, stream api
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return errors.Wrap(ctx.Err(), "context done while waiting for subscription to finish")
 		case <-pctx.Done():
-			return pctx.Err()
+			return errors.Wrap(pctx.Err(), "broker context done while handling log subscription")
 		case event := <-publishCh:
 			publish := event.(*logMessage)
 			if publish.completed {
@@ -336,7 +336,7 @@ func (lb *LogBroker) ListenSubscriptions(request *api.ListenSubscriptionsRequest
 	for _, subscription := range subscriptions {
 		select {
 		case <-stream.Context().Done():
-			return stream.Context().Err()
+			return errors.Wrap(stream.Context().Err(), "context done while listening for subscriptions")
 		case <-pctx.Done():
 			return nil
 		default:
@@ -369,7 +369,7 @@ func (lb *LogBroker) ListenSubscriptions(request *api.ListenSubscriptionsRequest
 				return err
 			}
 		case <-stream.Context().Done():
-			return stream.Context().Err()
+			return errors.Wrap(stream.Context().Err(), "context done while sending down subscriptions")
 		case <-pctx.Done():
 			return nil
 		}

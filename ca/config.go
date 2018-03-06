@@ -332,7 +332,7 @@ func DownloadRootCA(ctx context.Context, paths CertPaths, token string, connBrok
 		select {
 		case <-time.After(GetCertRetryInterval):
 		case <-ctx.Done():
-			return RootCA{}, ctx.Err()
+			return RootCA{}, errors.Wrap(ctx.Err(), "context done while trying to get remote CA")
 		}
 	}
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/watch"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
@@ -572,7 +573,7 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return errors.Wrap(ctx.Err(), "context done while outputing logs")
 		case <-waitCh:
 			return nil
 		}
@@ -597,7 +598,7 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 				go tm.Logs(ctx, *subscription.Options, publisher)
 			}
 		case <-ctx.Done():
-			return ctx.Err()
+			return errors.Wrap(ctx.Err(), "context done while following logs")
 		}
 	}
 }
@@ -613,6 +614,6 @@ func (w *worker) Wait(ctx context.Context) error {
 	case <-ch:
 		return nil
 	case <-ctx.Done():
-		return ctx.Err()
+		return errors.Wrap(ctx.Err(), "context done while waiting for worker")
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -44,9 +45,9 @@ func (s *Server) Watch(request *api.WatchRequest, stream api.Watch_WatchServer) 
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return errors.Wrap(ctx.Err(), "context done while watching for events")
 		case <-pctx.Done():
-			return pctx.Err()
+			return errors.Wrap(pctx.Err(), "server context done while watching for events")
 		case event := <-watch:
 			if commitEvent, ok := event.(state.EventCommit); ok && len(events) > 0 {
 				if err := stream.Send(&api.WatchMessage{Events: events, Version: commitEvent.Version}); err != nil {
