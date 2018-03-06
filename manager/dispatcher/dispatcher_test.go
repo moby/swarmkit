@@ -171,8 +171,8 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	}()
 	go d.Run(context.Background())
 	if err := testutils.PollFuncWithTimeout(nil, func() error {
-		d.mu.Lock()
-		defer d.mu.Unlock()
+		d.rpcRW.Lock()
+		defer d.rpcRW.Unlock()
 		if !d.isRunning() {
 			return fmt.Errorf("dispatcher is not running")
 		}
