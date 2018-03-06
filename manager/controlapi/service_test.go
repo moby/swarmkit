@@ -155,6 +155,18 @@ func createGenericService(t *testing.T, ts *testServer, name, runtime string) *a
 	return r.Service
 }
 
+func getIngressTargetID(t *testing.T, ts *testServer) string {
+	rsp, err := ts.Client.ListNetworks(context.Background(), &api.ListNetworksRequest{})
+	assert.NoError(t, err)
+	for _, n := range rsp.Networks {
+		if n.Spec.Ingress {
+			return n.ID
+		}
+	}
+	t.Fatal("unable to find ingress")
+	return ""
+}
+
 func TestValidateResources(t *testing.T) {
 	bad := []*api.Resources{
 		{MemoryBytes: 1},
@@ -596,6 +608,13 @@ func TestCreateService(t *testing.T) {
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+
+	// ingress network cannot be attached explicitly
+	spec = createSpec("name14", "image", 1)
+	spec.Task.Networks = []*api.NetworkAttachmentConfig{{Target: getIngressTargetID(t, ts)}}
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 }
 
 func TestSecretValidation(t *testing.T) {
@@ -883,6 +902,18 @@ func TestUpdateService(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
+	// ingress network cannot be attached explicitly
+	spec4 := createSpec("name4", "image", 1)
+	rs, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec4})
+	assert.NoError(t, err)
+	spec4.Task.Networks = []*api.NetworkAttachmentConfig{{Target: getIngressTargetID(t, ts)}}
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+		ServiceID:      rs.Service.ID,
+		Spec:           spec4,
+		ServiceVersion: &rs.Service.Meta.Version,
+	})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
 }
 
 func TestServiceUpdateRejectNetworkChange(t *testing.T) {

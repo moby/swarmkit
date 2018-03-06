@@ -638,6 +638,10 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 		return nil, err
 	}
 
+	if err := s.validateNetworks(request.Spec.Task.Networks); err != nil {
+		return nil, err
+	}
+
 	if err := s.checkPortConflicts(request.Spec, ""); err != nil {
 		return nil, err
 	}
@@ -713,7 +717,16 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 	if request.ServiceID == "" || request.ServiceVersion == nil {
 		return nil, grpc.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
+
+	if err := s.validateNetworks(request.Spec.Networks); err != nil {
+		return nil, err
+	}
+
 	if err := validateServiceSpec(request.Spec); err != nil {
+		return nil, err
+	}
+
+	if err := s.validateNetworks(request.Spec.Task.Networks); err != nil {
 		return nil, err
 	}
 
