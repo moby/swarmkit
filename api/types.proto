@@ -125,6 +125,9 @@ message NodeDescription {
 
 	// Information on the node's TLS setup
 	NodeTLSInfo tls_info = 5 [(gogoproto.customname) = "TLSInfo"];
+
+	// FIPS indicates whether the node has FIPS-enabled
+	bool fips = 6 [(gogoproto.customname) = "FIPS"];
 }
 
 message NodeTLSInfo {

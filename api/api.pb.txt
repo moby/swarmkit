@@ -2171,6 +2171,16 @@ file {
       }
       json_name: "tlsInfo"
     }
+    field {
+      name: "fips"
+      number: 6
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      options {
+        65004: "FIPS"
+      }
+      json_name: "fips"
+    }
   }
   message_type {
     name: "NodeTLSInfo"

@@ -528,6 +528,7 @@ waitPeer:
 			CertIssuerPublicKey: issuer.PublicKey,
 			CertIssuerSubject:   issuer.Subject,
 		},
+		FIPS: n.config.FIPS,
 	}
 	// if a join address has been specified, then if the agent fails to connect due to a TLS error, fail fast - don't
 	// keep re-trying to join
