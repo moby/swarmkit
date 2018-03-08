@@ -736,13 +736,7 @@ func (a *Allocator) taskCreateNetworkAttachments(t *api.Task, s *api.Service) {
 	}
 
 	a.store.View(func(tx store.ReadTx) {
-		// Always prefer NetworkAttachmentConfig in the TaskSpec
-		specNetworks := t.Spec.Networks
-		if len(specNetworks) == 0 && s != nil && len(s.Spec.Networks) != 0 {
-			specNetworks = s.Spec.Networks
-		}
-
-		for _, na := range specNetworks {
+		for _, na := range t.Spec.Networks {
 			n := store.GetNetwork(tx, na.Target)
 			if n == nil {
 				continue
