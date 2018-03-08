@@ -1024,3 +1024,42 @@ func TestStreamRaftMessage(t *testing.T) {
 	errStr = fmt.Sprintf("Raft message chunk is not of type %d", raftpb.MsgSnap)
 	assert.Equal(t, errStr, s.Message())
 }
+
+// TestGetNodeIDByRaftID tests the GetNodeIDByRaftID function. It's a very
+// simple test but those are the kind that make a difference over time
+func TestGetNodeIDByRaftID(t *testing.T) {
+	t.Parallel()
+
+	nodes, _ := raftutils.NewRaftCluster(t, tc)
+	defer raftutils.TeardownCluster(nodes)
+
+	// get the member list
+	members := nodes[1].GetMemberlist()
+	// get all of the raft ids
+	raftIDs := make([]uint64, 0, len(members))
+	for _, member := range members {
+		raftIDs = append(raftIDs, member.RaftID)
+	}
+
+	// now go and get the nodeID of every raftID
+	for _, id := range raftIDs {
+		nodeid, err := nodes[1].GetNodeIDByRaftID(id)
+		assert.NoError(t, err, "raft ID %v should give us a node ID", id)
+		// now go through the member manually list and make sure this is
+		// correct
+		for _, member := range members {
+			assert.True(t,
+				// either both should match, or both should not match. if they
+				// are different, then there is an error
+				(member.RaftID == id) == (member.NodeID == nodeid),
+				"member with id %v has node id %v, but we expected member with id %v to have node id %v",
+				member.RaftID, member.NodeID, id, nodeid,
+			)
+		}
+	}
+
+	// now expect a nonexistent raft member to return ErrNoMember
+	id, err := nodes[1].GetNodeIDByRaftID(8675309)
+	assert.Equal(t, err, raft.ErrMemberUnknown)
+	assert.Empty(t, id)
+}

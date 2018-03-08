@@ -1703,6 +1703,18 @@ func (n *Node) GetMemberByNodeID(nodeID string) *membership.Member {
 	return nil
 }
 
+// GetNodeIDByRaftID returns the generic Node ID of a member given its raft ID.
+// It returns ErrMemberUnknown if the raft ID is unknown.
+func (n *Node) GetNodeIDByRaftID(raftID uint64) (string, error) {
+	if member, ok := n.cluster.Members()[raftID]; ok {
+		return member.NodeID, nil
+	}
+	// this is the only possible error value that should be returned; the
+	// manager code depends on this. if you need to add more errors later, make
+	// sure that you update the callers of this method accordingly
+	return "", ErrMemberUnknown
+}
+
 // IsMember checks if the raft node has effectively joined
 // a cluster of existing members.
 func (n *Node) IsMember() bool {

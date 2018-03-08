@@ -909,8 +909,39 @@ func (m *Manager) rotateRootCAKEK(ctx context.Context, clusterID string) error {
 	})
 }
 
+// getLeaderNodeID is a small helper function returning a string with the
+// leader's node ID. it is only used for logging, and should not be relied on
+// to give a node ID for actual operational purposes (because it returns errors
+// as nicely decorated strings)
+func (m *Manager) getLeaderNodeID() string {
+	// get the current leader ID. this variable tracks the leader *only* for
+	// the purposes of logging leadership changes, and should not be relied on
+	// for other purposes
+	leader, leaderErr := m.raftNode.Leader()
+	switch leaderErr {
+	case raft.ErrNoRaftMember:
+		// this is an unlikely case, but we have to handle it. this means this
+		// node is not a member of the raft quorum. this won't look very pretty
+		// in logs ("leadership changed from aslkdjfa to ErrNoRaftMember") but
+		// it also won't be very common
+		return "not yet part of a raft cluster"
+	case raft.ErrNoClusterLeader:
+		return "no cluster leader"
+	default:
+		id, err := m.raftNode.GetNodeIDByRaftID(leader)
+		// the only possible error here is "ErrMemberUnknown"
+		if err != nil {
+			return "an unknown node"
+		}
+		return id
+	}
+}
+
 // handleLeadershipEvents handles the is leader event or is follower event.
 func (m *Manager) handleLeadershipEvents(ctx context.Context, leadershipCh chan events.Event) {
+	// get the current leader and save it for logging leadership changes in
+	// this loop
+	oldLeader := m.getLeaderNodeID()
 	for {
 		select {
 		case leadershipEvent := <-leadershipCh:
@@ -929,6 +960,12 @@ func (m *Manager) handleLeadershipEvents(ctx context.Context, leadershipCh chan 
 				leaderMetric.Set(0)
 			}
 			m.mu.Unlock()
+
+			newLeader := m.getLeaderNodeID()
+			// maybe we should use logrus fields for old and new leader, so
+			// that users are better able to ingest leadership changes into log
+			// aggregators?
+			log.G(ctx).Infof("leadership changed from %v to %v", oldLeader, newLeader)
 		case <-ctx.Done():
 			return
 		}
