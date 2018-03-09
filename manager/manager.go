@@ -983,7 +983,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	m.taskReaper = taskreaper.New(s)
 	m.scheduler = scheduler.New(s)
 	m.keyManager = keymanager.New(s, keymanager.DefaultConfig())
-	m.roleManager = newRoleManager(s, m.raftNode)
+	m.roleManager = newRoleManager(s, m.raftNode, nil)
 
 	// TODO(stevvooe): Allocate a context that can be used to
 	// shutdown underlying manager processes when leadership is

@@ -7,6 +7,7 @@ import (
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/pivotal-golang/clock"
 	"golang.org/x/net/context"
 )
 
@@ -24,19 +25,32 @@ type roleManager struct {
 	// pending contains changed nodes that have not yet been reconciled in
 	// the raft member list.
 	pending map[string]*api.Node
+
+	// leave this nil except for tests which need to inject a fake time source
+	clocksource clock.Clock
 }
 
 // newRoleManager creates a new roleManager.
-func newRoleManager(store *store.MemoryStore, raftNode *raft.Node) *roleManager {
+func newRoleManager(store *store.MemoryStore, raftNode *raft.Node, clocksource clock.Clock) *roleManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &roleManager{
-		ctx:      ctx,
-		cancel:   cancel,
-		store:    store,
-		raft:     raftNode,
-		doneChan: make(chan struct{}),
-		pending:  make(map[string]*api.Node),
+		ctx:         ctx,
+		cancel:      cancel,
+		store:       store,
+		raft:        raftNode,
+		doneChan:    make(chan struct{}),
+		pending:     make(map[string]*api.Node),
+		clocksource: clocksource,
 	}
+}
+
+// getTicker returns a ticker based on the configured clock source
+func (rm *roleManager) getTicker(interval time.Duration) clock.Ticker {
+	if rm.clocksource == nil {
+		return clock.NewClock().NewTicker(interval)
+	}
+	return rm.clocksource.NewTicker(interval)
+
 }
 
 // Run is roleManager's main loop.
@@ -46,7 +60,7 @@ func (rm *roleManager) Run(ctx context.Context) {
 
 	var (
 		nodes    []*api.Node
-		ticker   *time.Ticker
+		ticker   clock.Ticker
 		tickerCh <-chan time.Time
 	)
 
@@ -67,8 +81,8 @@ func (rm *roleManager) Run(ctx context.Context) {
 			rm.reconcileRole(ctx, node)
 		}
 		if len(rm.pending) != 0 {
-			ticker = time.NewTicker(roleReconcileInterval)
-			tickerCh = ticker.C
+			ticker = rm.getTicker(roleReconcileInterval)
+			tickerCh = ticker.C()
 		}
 	}
 
@@ -79,8 +93,8 @@ func (rm *roleManager) Run(ctx context.Context) {
 			rm.pending[node.ID] = node
 			rm.reconcileRole(ctx, node)
 			if len(rm.pending) != 0 && ticker == nil {
-				ticker = time.NewTicker(roleReconcileInterval)
-				tickerCh = ticker.C
+				ticker = rm.getTicker(roleReconcileInterval)
+				tickerCh = ticker.C()
 			}
 		case <-tickerCh:
 			for _, node := range rm.pending {
