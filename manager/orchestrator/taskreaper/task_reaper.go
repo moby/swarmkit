@@ -199,10 +199,6 @@ func (tr *TaskReaper) tick(ctx context.Context) {
 		return
 	}
 
-	defer func() {
-		tr.cleanup = nil
-	}()
-
 	deleteTasks := make(map[string]struct{})
 	for _, tID := range tr.cleanup {
 		deleteTasks[tID] = struct{}{}
@@ -322,7 +318,11 @@ func (tr *TaskReaper) tick(ctx context.Context) {
 	// the service object was removed but before the tasks were deleted, then the
 	// task reaper starting up on the new leader will track and delete these tasks.
 	deleteServices := make(map[string]struct{})
-	// figure out which services need to be cleaned up
+
+	// reset tr.cleanup so that it can contain any tasks of these services that will
+	// be marked for removal.
+	tr.cleanup = nil
+
 	if len(tr.cleanupServices) > 0 {
 		tr.store.View(func(tx store.ReadTx) {
 			for svc := range tr.cleanupServices {
@@ -331,9 +331,26 @@ func (tr *TaskReaper) tick(ctx context.Context) {
 					log.G(ctx).WithError(err).Errorf("error in task reaper while looking up tasks for service %s", svc)
 					continue
 				}
-				if len(tasks) == 0 {
+
+				serviceReadyForRemoval := true
+
+				for _, t := range tasks {
+					// all tasks of the service need to have progressed beyond COMPLETED
+					// in order for the service to be considered for removal.
+					if t.Status.State < api.TaskStateCompleted {
+						serviceReadyForRemoval = false
+						break
+					}
+				}
+
+				if serviceReadyForRemoval {
 					deleteServices[svc] = struct{}{}
 					delete(tr.cleanupServices, svc)
+
+					// refresh tr.cleanup to contain all tasks of this service
+					for _, t := range tasks {
+						tr.cleanup = append(tr.cleanup, t.ID)
+					}
 				}
 			}
 		})
