@@ -67,7 +67,8 @@ func TestRoleManagerRemovesDemotedNodesAndAddsPromotedNodes(t *testing.T) {
 			break
 		}
 	}
-	rm := newRoleManager(lead.MemoryStore(), lead.Node, fc)
+	rm := newRoleManager(lead.MemoryStore(), lead.Node)
+	rm.clocksource = fc
 	go rm.Run(tc.Context)
 	defer rm.Stop()
 
@@ -147,7 +148,8 @@ func TestRoleManagerRemovesDemotedNodesOnStartup(t *testing.T) {
 	demoted := nodes[3]
 
 	lead := raftutils.Leader(nodes)
-	rm := newRoleManager(lead.MemoryStore(), lead.Node, fc)
+	rm := newRoleManager(lead.MemoryStore(), lead.Node)
+	rm.clocksource = fc
 	go rm.Run(tc.Context)
 	defer rm.Stop()
 
@@ -200,7 +202,8 @@ func TestRoleManagerRemovesDeletedNodesOnStartup(t *testing.T) {
 	}
 
 	lead := raftutils.Leader(nodes)
-	rm := newRoleManager(lead.MemoryStore(), lead.Node, fc)
+	rm := newRoleManager(lead.MemoryStore(), lead.Node)
+	rm.clocksource = fc
 	go rm.Run(tc.Context)
 	defer rm.Stop()
 
