@@ -286,9 +286,7 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 		status.PortStatus = portStatus
 	}()
 
-	// this branch bounds the largest state achievable in the agent as SHUTDOWN, which
-	// is exactly the correct behavior for the agent.
-	if task.DesiredState >= api.TaskStateShutdown {
+	if task.DesiredState == api.TaskStateShutdown {
 		if status.State >= api.TaskStateCompleted {
 			return noop()
 		}
