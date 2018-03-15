@@ -29,7 +29,6 @@ import (
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/connectionbroker"
-	"github.com/docker/swarmkit/fips"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
@@ -76,31 +75,6 @@ func TestMain(m *testing.M) {
 
 	cautils.External = true
 	os.Exit(m.Run())
-}
-
-func TestCreateRootCAKeyFormat(t *testing.T) {
-	// Check if the CA key generated is PKCS#1 when FIPS-mode is off
-	rootCA, err := ca.CreateRootCA("rootCA")
-	require.NoError(t, err)
-
-	s, err := rootCA.Signer()
-	require.NoError(t, err)
-	block, _ := pem.Decode(s.Key)
-	require.NotNil(t, block)
-	require.Equal(t, "EC PRIVATE KEY", block.Type)
-
-	// Check if the CA key generated is PKCS#8 when FIPS-mode is on
-	os.Setenv(fips.EnvVar, "1")
-	defer os.Unsetenv(fips.EnvVar)
-
-	rootCA, err = ca.CreateRootCA("rootCA")
-	require.NoError(t, err)
-
-	s, err = rootCA.Signer()
-	require.NoError(t, err)
-	block, _ = pem.Decode(s.Key)
-	require.NotNil(t, block)
-	require.Equal(t, "PRIVATE KEY", block.Type)
 }
 
 func TestCreateRootCASaveRootCA(t *testing.T) {
