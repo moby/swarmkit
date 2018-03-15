@@ -98,7 +98,7 @@ func (c *containerAdapter) reattach(ctx context.Context) error {
 		}
 	}
 
-	task, err := container.Task(ctx, cio.WithAttach(devNull, os.Stdout, os.Stderr))
+	task, err := container.Task(ctx, cio.NewAttach(cio.WithStreams(devNull, os.Stdout, os.Stderr)))
 	if err != nil {
 		if errdefs.IsNotFound(err) {
 			c.log(ctx).WithError(err).Info("reattach: no running task")
@@ -246,9 +246,11 @@ func (c *containerAdapter) prepare(ctx context.Context) error {
 	}
 
 	// TODO(ijc) support ControllerLogs interface.
-	io := cio.NewIOWithTerminal(devNull, os.Stdout, os.Stderr, spec.Process.Terminal)
-
-	c.task, err = c.container.NewTask(ctx, io)
+	opts := []cio.Opt{cio.WithStreams(devNull, os.Stdout, os.Stderr)}
+	if spec.Process.Terminal {
+		opts = append(opts, cio.WithTerminal)
+	}
+	c.task, err = c.container.NewTask(ctx, cio.NewCreator(opts...))
 	if err != nil {
 		// Destroy the container we created above, but
 		// propagate the original error.
