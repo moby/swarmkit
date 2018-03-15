@@ -74,7 +74,7 @@ func TestDecrypt(t *testing.T) {
 			Term:  1,
 		},
 	}
-	e, d := encryption.Defaults(dek)
+	e, d := encryption.Defaults(dek, false)
 	writeFakeRaftData(t, tempdir, &origSnapshot, storage.NewWALFactory(e, d), storage.NewSnapFactory(e, d))
 
 	outdir := filepath.Join(tempdir, "outdir")
