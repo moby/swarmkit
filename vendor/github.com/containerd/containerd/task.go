@@ -8,18 +8,21 @@ import (
 	"io"
 	goruntime "runtime"
 	"strings"
-	"sync"
 	"syscall"
+	"time"
 
-	eventsapi "github.com/containerd/containerd/api/services/events/v1"
 	"github.com/containerd/containerd/api/services/tasks/v1"
 	"github.com/containerd/containerd/api/types"
+	"github.com/containerd/containerd/cio"
 	"github.com/containerd/containerd/content"
+	"github.com/containerd/containerd/diff"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/images"
 	"github.com/containerd/containerd/mount"
+	"github.com/containerd/containerd/plugin"
 	"github.com/containerd/containerd/rootfs"
-	"github.com/containerd/containerd/runtime"
-	"github.com/containerd/containerd/typeurl"
+	"github.com/containerd/typeurl"
+	google_protobuf "github.com/gogo/protobuf/types"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
@@ -31,14 +34,31 @@ import (
 // or if an error was encountered when obtaining the exit status, it is set to 255.
 const UnknownExitStatus = 255
 
+const (
+	checkpointDateFormat = "01-02-2006-15:04:05"
+	checkpointNameFormat = "containerd.io/checkpoint/%s:%s"
+)
+
 // Status returns process status and exit information
 type Status struct {
 	// Status of the process
 	Status ProcessStatus
 	// ExitStatus returned by the process
 	ExitStatus uint32
+	// ExitedTime is the time at which the process died
+	ExitTime time.Time
 }
 
+// ProcessInfo provides platform specific process information
+type ProcessInfo struct {
+	// Pid is the process ID
+	Pid uint32
+	// Info includes additional process information
+	// Info varies by platform
+	Info *google_protobuf.Any
+}
+
+// ProcessStatus returns a human readable status for the Process representing its current status
 type ProcessStatus string
 
 const (
@@ -73,6 +93,7 @@ func WithStdinCloser(r *IOCloseInfo) {
 
 // CheckpointTaskInfo allows specific checkpoint information to be set for the task
 type CheckpointTaskInfo struct {
+	Name string
 	// ParentCheckpoint is the digest of a parent checkpoint
 	ParentCheckpoint digest.Digest
 	// Options hold runtime specific settings for checkpointing a task
@@ -102,16 +123,24 @@ type Task interface {
 	// Resume the execution of the task
 	Resume(context.Context) error
 	// Exec creates a new process inside the task
-	Exec(context.Context, string, *specs.Process, IOCreation) (Process, error)
+	Exec(context.Context, string, *specs.Process, cio.Creation) (Process, error)
 	// Pids returns a list of system specific process ids inside the task
-	Pids(context.Context) ([]uint32, error)
+	Pids(context.Context) ([]ProcessInfo, error)
 	// Checkpoint serializes the runtime and memory information of a task into an
 	// OCI Index that can be push and pulled from a remote resource.
 	//
 	// Additional software like CRIU maybe required to checkpoint and restore tasks
-	Checkpoint(context.Context, ...CheckpointTaskOpts) (v1.Descriptor, error)
+	Checkpoint(context.Context, ...CheckpointTaskOpts) (Image, error)
 	// Update modifies executing tasks with updated settings
 	Update(context.Context, ...UpdateTaskOpts) error
+	// LoadProcess loads a previously created exec'd process
+	LoadProcess(context.Context, string, cio.Attach) (Process, error)
+	// Metrics returns task metrics for runtime specific metrics
+	//
+	// The metric types are generic to containerd and change depending on the runtime
+	// For the built in Linux runtime, github.com/containerd/cgroups.Metrics
+	// are returned in protobuf format
+	Metrics(context.Context) (*types.Metric, error)
 }
 
 var _ = (Task)(&task{})
@@ -119,12 +148,9 @@ var _ = (Task)(&task{})
 type task struct {
 	client *Client
 
-	io  *IO
+	io  cio.IO
 	id  string
 	pid uint32
-
-	mu       sync.Mutex
-	deferred *tasks.CreateTaskRequest
 }
 
 // Pid returns the pid or process id for the task
@@ -133,34 +159,29 @@ func (t *task) Pid() uint32 {
 }
 
 func (t *task) Start(ctx context.Context) error {
-	t.mu.Lock()
-	deferred := t.deferred
-	t.mu.Unlock()
-	if deferred != nil {
-		response, err := t.client.TaskService().Create(ctx, deferred)
-		t.mu.Lock()
-		t.deferred = nil
-		t.mu.Unlock()
-		if err != nil {
-			t.io.closer.Close()
-			return err
-		}
-		t.pid = response.Pid
-		return nil
-	}
-	_, err := t.client.TaskService().Start(ctx, &tasks.StartRequest{
+	r, err := t.client.TaskService().Start(ctx, &tasks.StartRequest{
 		ContainerID: t.id,
 	})
 	if err != nil {
-		t.io.closer.Close()
+		t.io.Close()
+		return errdefs.FromGRPC(err)
 	}
-	return err
+	t.pid = r.Pid
+	return nil
 }
 
-func (t *task) Kill(ctx context.Context, s syscall.Signal) error {
+func (t *task) Kill(ctx context.Context, s syscall.Signal, opts ...KillOpts) error {
+	var i KillInfo
+	for _, o := range opts {
+		if err := o(ctx, &i); err != nil {
+			return err
+		}
+	}
 	_, err := t.client.TaskService().Kill(ctx, &tasks.KillRequest{
 		Signal:      uint32(s),
 		ContainerID: t.id,
+		ExecID:      i.ExecID,
+		All:         i.All,
 	})
 	if err != nil {
 		return errdefs.FromGRPC(err)
@@ -192,66 +213,55 @@ func (t *task) Status(ctx context.Context) (Status, error) {
 	return Status{
 		Status:     ProcessStatus(strings.ToLower(r.Process.Status.String())),
 		ExitStatus: r.Process.ExitStatus,
+		ExitTime:   r.Process.ExitedAt,
 	}, nil
 }
 
-func (t *task) Wait(ctx context.Context) (uint32, error) {
-	cancellable, cancel := context.WithCancel(ctx)
-	defer cancel()
-	eventstream, err := t.client.EventService().Subscribe(cancellable, &eventsapi.SubscribeRequest{
-		Filters: []string{"topic==" + runtime.TaskExitEventTopic},
-	})
-	if err != nil {
-		return UnknownExitStatus, errdefs.FromGRPC(err)
-	}
-	t.mu.Lock()
-	checkpoint := t.deferred != nil
-	t.mu.Unlock()
-	if !checkpoint {
-		// first check if the task has exited
-		status, err := t.Status(ctx)
+func (t *task) Wait(ctx context.Context) (<-chan ExitStatus, error) {
+	c := make(chan ExitStatus, 1)
+	go func() {
+		defer close(c)
+		r, err := t.client.TaskService().Wait(ctx, &tasks.WaitRequest{
+			ContainerID: t.id,
+		})
 		if err != nil {
-			return UnknownExitStatus, errdefs.FromGRPC(err)
-		}
-		if status.Status == Stopped {
-			return status.ExitStatus, nil
-		}
-	}
-	for {
-		evt, err := eventstream.Recv()
-		if err != nil {
-			return UnknownExitStatus, err
-		}
-		if typeurl.Is(evt.Event, &eventsapi.TaskExit{}) {
-			v, err := typeurl.UnmarshalAny(evt.Event)
-			if err != nil {
-				return UnknownExitStatus, err
+			c <- ExitStatus{
+				code: UnknownExitStatus,
+				err:  err,
 			}
-			e := v.(*eventsapi.TaskExit)
-			if e.ContainerID == t.id && e.Pid == t.pid {
-				return e.ExitStatus, nil
-			}
+			return
 		}
-	}
+		c <- ExitStatus{
+			code:     r.ExitStatus,
+			exitedAt: r.ExitedAt,
+		}
+	}()
+	return c, nil
 }
 
 // Delete deletes the task and its runtime state
 // it returns the exit status of the task and any errors that were encountered
 // during cleanup
-func (t *task) Delete(ctx context.Context, opts ...ProcessDeleteOpts) (uint32, error) {
+func (t *task) Delete(ctx context.Context, opts ...ProcessDeleteOpts) (*ExitStatus, error) {
 	for _, o := range opts {
 		if err := o(ctx, t); err != nil {
-			return UnknownExitStatus, err
+			return nil, err
 		}
 	}
 	status, err := t.Status(ctx)
 	if err != nil && errdefs.IsNotFound(err) {
-		return UnknownExitStatus, err
+		return nil, err
 	}
 	switch status.Status {
 	case Stopped, Unknown, "":
+	case Created:
+		if t.client.runtime == fmt.Sprintf("%s.%s", plugin.RuntimePlugin, "windows") {
+			// On windows Created is akin to Stopped
+			break
+		}
+		fallthrough
 	default:
-		return UnknownExitStatus, errors.Wrapf(errdefs.ErrFailedPrecondition, "task must be stopped before deletion: %s", status.Status)
+		return nil, errors.Wrapf(errdefs.ErrFailedPrecondition, "task must be stopped before deletion: %s", status.Status)
 	}
 	if t.io != nil {
 		t.io.Cancel()
@@ -262,12 +272,12 @@ func (t *task) Delete(ctx context.Context, opts ...ProcessDeleteOpts) (uint32, e
 		ContainerID: t.id,
 	})
 	if err != nil {
-		return UnknownExitStatus, err
+		return nil, errdefs.FromGRPC(err)
 	}
-	return r.ExitStatus, nil
+	return &ExitStatus{code: r.ExitStatus, exitedAt: r.ExitedAt}, nil
 }
 
-func (t *task) Exec(ctx context.Context, id string, spec *specs.Process, ioCreate IOCreation) (Process, error) {
+func (t *task) Exec(ctx context.Context, id string, spec *specs.Process, ioCreate cio.Creation) (_ Process, err error) {
 	if id == "" {
 		return nil, errors.Wrapf(errdefs.ErrInvalidArgument, "exec id must not be empty")
 	}
@@ -275,41 +285,54 @@ func (t *task) Exec(ctx context.Context, id string, spec *specs.Process, ioCreat
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if err != nil && i != nil {
+			i.Cancel()
+			i.Close()
+		}
+	}()
 	any, err := typeurl.MarshalAny(spec)
 	if err != nil {
 		return nil, err
 	}
+	cfg := i.Config()
 	request := &tasks.ExecProcessRequest{
 		ContainerID: t.id,
 		ExecID:      id,
-		Terminal:    i.Terminal,
-		Stdin:       i.Stdin,
-		Stdout:      i.Stdout,
-		Stderr:      i.Stderr,
+		Terminal:    cfg.Terminal,
+		Stdin:       cfg.Stdin,
+		Stdout:      cfg.Stdout,
+		Stderr:      cfg.Stderr,
 		Spec:        any,
 	}
 	if _, err := t.client.TaskService().Exec(ctx, request); err != nil {
 		i.Cancel()
 		i.Wait()
 		i.Close()
-		return nil, err
+		return nil, errdefs.FromGRPC(err)
 	}
 	return &process{
 		id:   id,
 		task: t,
 		io:   i,
-		spec: spec,
 	}, nil
 }
 
-func (t *task) Pids(ctx context.Context) ([]uint32, error) {
+func (t *task) Pids(ctx context.Context) ([]ProcessInfo, error) {
 	response, err := t.client.TaskService().ListPids(ctx, &tasks.ListPidsRequest{
 		ContainerID: t.id,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errdefs.FromGRPC(err)
 	}
-	return response.Pids, nil
+	var processList []ProcessInfo
+	for _, p := range response.Processes {
+		processList = append(processList, ProcessInfo{
+			Pid:  p.Pid,
+			Info: p.Info,
+		})
+	}
+	return processList, nil
 }
 
 func (t *task) CloseIO(ctx context.Context, opts ...IOCloserOpts) error {
@@ -322,10 +345,10 @@ func (t *task) CloseIO(ctx context.Context, opts ...IOCloserOpts) error {
 	}
 	r.Stdin = i.Stdin
 	_, err := t.client.TaskService().CloseIO(ctx, r)
-	return err
+	return errdefs.FromGRPC(err)
 }
 
-func (t *task) IO() *IO {
+func (t *task) IO() cio.IO {
 	return t.io
 }
 
@@ -335,49 +358,81 @@ func (t *task) Resize(ctx context.Context, w, h uint32) error {
 		Width:       w,
 		Height:      h,
 	})
-	return err
+	return errdefs.FromGRPC(err)
 }
 
-func (t *task) Checkpoint(ctx context.Context, opts ...CheckpointTaskOpts) (d v1.Descriptor, err error) {
+func (t *task) Checkpoint(ctx context.Context, opts ...CheckpointTaskOpts) (Image, error) {
+	ctx, done, err := t.client.WithLease(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer done()
+
 	request := &tasks.CheckpointTaskRequest{
 		ContainerID: t.id,
 	}
 	var i CheckpointTaskInfo
 	for _, o := range opts {
 		if err := o(&i); err != nil {
-			return d, err
+			return nil, err
 		}
+	}
+	// set a default name
+	if i.Name == "" {
+		i.Name = fmt.Sprintf(checkpointNameFormat, t.id, time.Now().Format(checkpointDateFormat))
 	}
 	request.ParentCheckpoint = i.ParentCheckpoint
 	if i.Options != nil {
 		any, err := typeurl.MarshalAny(i.Options)
 		if err != nil {
-			return d, err
+			return nil, err
 		}
 		request.Options = any
 	}
 	// make sure we pause it and resume after all other filesystem operations are completed
 	if err := t.Pause(ctx); err != nil {
-		return d, err
+		return nil, err
 	}
 	defer t.Resume(ctx)
 	cr, err := t.client.ContainerService().Get(ctx, t.id)
 	if err != nil {
-		return d, err
+		return nil, err
 	}
-	var index v1.Index
+	index := v1.Index{
+		Annotations: make(map[string]string),
+	}
 	if err := t.checkpointTask(ctx, &index, request); err != nil {
-		return d, err
+		return nil, err
 	}
-	if err := t.checkpointImage(ctx, &index, cr.Image); err != nil {
-		return d, err
+	if cr.Image != "" {
+		if err := t.checkpointImage(ctx, &index, cr.Image); err != nil {
+			return nil, err
+		}
+		index.Annotations["image.name"] = cr.Image
 	}
-	if err := t.checkpointRWSnapshot(ctx, &index, cr.Snapshotter, cr.RootFS); err != nil {
-		return d, err
+	if cr.SnapshotKey != "" {
+		if err := t.checkpointRWSnapshot(ctx, &index, cr.Snapshotter, cr.SnapshotKey); err != nil {
+			return nil, err
+		}
 	}
-	index.Annotations = make(map[string]string)
-	index.Annotations["image.name"] = cr.Image
-	return t.writeIndex(ctx, &index)
+	desc, err := t.writeIndex(ctx, &index)
+	if err != nil {
+		return nil, err
+	}
+	im := images.Image{
+		Name:   i.Name,
+		Target: desc,
+		Labels: map[string]string{
+			"containerd.io/checkpoint": "true",
+		},
+	}
+	if im, err = t.client.ImageService().Create(ctx, im); err != nil {
+		return nil, err
+	}
+	return &image{
+		client: t.client,
+		i:      im,
+	}, nil
 }
 
 // UpdateTaskInfo allows updated specific settings to be changed on a task
@@ -407,13 +462,59 @@ func (t *task) Update(ctx context.Context, opts ...UpdateTaskOpts) error {
 		request.Resources = any
 	}
 	_, err := t.client.TaskService().Update(ctx, request)
-	return err
+	return errdefs.FromGRPC(err)
+}
+
+func (t *task) LoadProcess(ctx context.Context, id string, ioAttach cio.Attach) (Process, error) {
+	response, err := t.client.TaskService().Get(ctx, &tasks.GetRequest{
+		ContainerID: t.id,
+		ExecID:      id,
+	})
+	if err != nil {
+		err = errdefs.FromGRPC(err)
+		if errdefs.IsNotFound(err) {
+			return nil, errors.Wrapf(err, "no running process found")
+		}
+		return nil, err
+	}
+	var i cio.IO
+	if ioAttach != nil {
+		if i, err = attachExistingIO(response, ioAttach); err != nil {
+			return nil, err
+		}
+	}
+	return &process{
+		id:   id,
+		task: t,
+		io:   i,
+	}, nil
+}
+
+func (t *task) Metrics(ctx context.Context) (*types.Metric, error) {
+	response, err := t.client.TaskService().Metrics(ctx, &tasks.MetricsRequest{
+		Filters: []string{
+			"id==" + t.id,
+		},
+	})
+	if err != nil {
+		return nil, errdefs.FromGRPC(err)
+	}
+
+	if response.Metrics == nil {
+		_, err := t.Status(ctx)
+		if err != nil && errdefs.IsNotFound(err) {
+			return nil, err
+		}
+		return nil, errors.New("no metrics received")
+	}
+
+	return response.Metrics[0], nil
 }
 
 func (t *task) checkpointTask(ctx context.Context, index *v1.Index, request *tasks.CheckpointTaskRequest) error {
 	response, err := t.client.TaskService().Checkpoint(ctx, request)
 	if err != nil {
-		return err
+		return errdefs.FromGRPC(err)
 	}
 	// add the checkpoint descriptors to the index
 	for _, d := range response.Descriptors {
@@ -431,7 +532,10 @@ func (t *task) checkpointTask(ctx context.Context, index *v1.Index, request *tas
 }
 
 func (t *task) checkpointRWSnapshot(ctx context.Context, index *v1.Index, snapshotterName string, id string) error {
-	rw, err := rootfs.Diff(ctx, id, fmt.Sprintf("checkpoint-rw-%s", id), t.client.SnapshotService(snapshotterName), t.client.DiffService())
+	opts := []diff.Opt{
+		diff.WithReference(fmt.Sprintf("checkpoint-rw-%s", id)),
+	}
+	rw, err := rootfs.Diff(ctx, id, t.client.SnapshotService(snapshotterName), t.client.DiffService(), opts...)
 	if err != nil {
 		return err
 	}
@@ -455,15 +559,19 @@ func (t *task) checkpointImage(ctx context.Context, index *v1.Index, image strin
 	return nil
 }
 
-func (t *task) writeIndex(ctx context.Context, index *v1.Index) (v1.Descriptor, error) {
+func (t *task) writeIndex(ctx context.Context, index *v1.Index) (d v1.Descriptor, err error) {
+	labels := map[string]string{}
+	for i, m := range index.Manifests {
+		labels[fmt.Sprintf("containerd.io/gc.ref.content.%d", i)] = m.Digest.String()
+	}
 	buf := bytes.NewBuffer(nil)
 	if err := json.NewEncoder(buf).Encode(index); err != nil {
 		return v1.Descriptor{}, err
 	}
-	return writeContent(ctx, t.client.ContentStore(), v1.MediaTypeImageIndex, t.id, buf)
+	return writeContent(ctx, t.client.ContentStore(), v1.MediaTypeImageIndex, t.id, buf, content.WithLabels(labels))
 }
 
-func writeContent(ctx context.Context, store content.Store, mediaType, ref string, r io.Reader) (d v1.Descriptor, err error) {
+func writeContent(ctx context.Context, store content.Store, mediaType, ref string, r io.Reader, opts ...content.Opt) (d v1.Descriptor, err error) {
 	writer, err := store.Writer(ctx, ref, 0, "")
 	if err != nil {
 		return d, err
@@ -473,7 +581,7 @@ func writeContent(ctx context.Context, store content.Store, mediaType, ref strin
 	if err != nil {
 		return d, err
 	}
-	if err := writer.Commit(size, ""); err != nil {
+	if err := writer.Commit(ctx, size, "", opts...); err != nil {
 		return d, err
 	}
 	return v1.Descriptor{

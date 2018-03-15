@@ -2,17 +2,69 @@ package mount
 
 import (
 	"strings"
+	"time"
 
+	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
+// Mount to the provided target path
 func (m *Mount) Mount(target string) error {
 	flags, data := parseMountOptions(m.Options)
-	return unix.Mount(m.Source, target, m.Type, uintptr(flags), data)
+
+	// propagation types.
+	const ptypes = unix.MS_SHARED | unix.MS_PRIVATE | unix.MS_SLAVE | unix.MS_UNBINDABLE
+
+	// Ensure propagation type change flags aren't included in other calls.
+	oflags := flags &^ ptypes
+
+	// In the case of remounting with changed data (data != ""), need to call mount (moby/moby#34077).
+	if flags&unix.MS_REMOUNT == 0 || data != "" {
+		// Initial call applying all non-propagation flags for mount
+		// or remount with changed data
+		if err := unix.Mount(m.Source, target, m.Type, uintptr(oflags), data); err != nil {
+			return err
+		}
+	}
+
+	if flags&ptypes != 0 {
+		// Change the propagation type.
+		const pflags = ptypes | unix.MS_REC | unix.MS_SILENT
+		if err := unix.Mount("", target, "", uintptr(flags&pflags), ""); err != nil {
+			return err
+		}
+	}
+
+	const broflags = unix.MS_BIND | unix.MS_RDONLY
+	if oflags&broflags == broflags {
+		// Remount the bind to apply read only.
+		return unix.Mount("", target, "", uintptr(oflags|unix.MS_REMOUNT), "")
+	}
+	return nil
 }
 
-func Unmount(mount string, flags int) error {
-	return unix.Unmount(mount, flags)
+// Unmount the provided mount path with the flags
+func Unmount(target string, flags int) error {
+	if err := unmount(target, flags); err != nil && err != unix.EINVAL {
+		return err
+	}
+	return nil
+}
+
+func unmount(target string, flags int) error {
+	for i := 0; i < 50; i++ {
+		if err := unix.Unmount(target, flags); err != nil {
+			switch err {
+			case unix.EBUSY:
+				time.Sleep(50 * time.Millisecond)
+				continue
+			default:
+				return err
+			}
+		}
+		return nil
+	}
+	return errors.Wrapf(unix.EBUSY, "failed to unmount target %s", target)
 }
 
 // UnmountAll repeatedly unmounts the given mount point until there
@@ -20,7 +72,7 @@ func Unmount(mount string, flags int) error {
 // useful for undoing a stack of mounts on the same mount point.
 func UnmountAll(mount string, flags int) error {
 	for {
-		if err := Unmount(mount, flags); err != nil {
+		if err := unmount(mount, flags); err != nil {
 			// EINVAL is returned if the target is not a
 			// mount point, indicating that we are
 			// done. It can also indicate a few other

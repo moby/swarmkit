@@ -4,8 +4,9 @@ package containerd.services.tasks.v1;
 
 import "google/protobuf/empty.proto";
 import "google/protobuf/any.proto";
-import "gogoproto/gogo.proto";
+import weak "gogoproto/gogo.proto";
 import "github.com/containerd/containerd/api/types/mount.proto";
+import "github.com/containerd/containerd/api/types/metrics.proto";
 import "github.com/containerd/containerd/api/types/descriptor.proto";
 import "github.com/containerd/containerd/api/types/task/task.proto";
 import "google/protobuf/timestamp.proto";
@@ -46,6 +47,10 @@ service Tasks {
 	rpc Checkpoint(CheckpointTaskRequest) returns (CheckpointTaskResponse);
 
 	rpc Update(UpdateTaskRequest) returns (google.protobuf.Empty);
+
+	rpc Metrics(MetricsRequest) returns (MetricsResponse);
+
+	rpc Wait(WaitRequest) returns (WaitResponse);
 }
 
 message CreateTaskRequest {
@@ -165,8 +170,9 @@ message ListPidsRequest {
 	string container_id = 1;
 }
 
-message ListPidsResponse{
-	repeated uint32 pids = 1;
+message ListPidsResponse {
+	// Processes includes the process ID and additional process information
+	repeated containerd.v1.types.ProcessInfo processes = 1;
 }
 
 message CheckpointTaskRequest {
@@ -182,4 +188,22 @@ message CheckpointTaskResponse {
 message UpdateTaskRequest {
 	string container_id = 1;
 	google.protobuf.Any resources = 2;
+}
+
+message MetricsRequest {
+	repeated string filters = 1;
+}
+
+message MetricsResponse {
+	repeated types.Metric metrics = 1;
+}
+
+message WaitRequest {
+	string container_id = 1;
+	string exec_id = 2;
+}
+
+message WaitResponse {
+	uint32 exit_status = 1;
+	google.protobuf.Timestamp exited_at = 2 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
 }
