@@ -1,9 +1,14 @@
-## OSX Builds Now Use GClient ##
+OS X Specific Instructions
+==========================
 
-We recommend that you use GClient to build on OSX. Please follow the 
+Builds
+------
+
+We recommend that you use GClient to build on OSX. Please follow the
 instructions in the [main readme](README.md) file.
 
-## Trusted root certificates ##
+Trusted root certificates
+-------------------------
 
 The CT code requires a set of trusted root certificates in order to:
    1. Validate outbound HTTPS connections
@@ -16,17 +21,8 @@ them using roots obtained from the system keychain. Since we use a much more
 recent (and unpatched) version of OpenSSL this behaviour is unsupported and so
 a PEM file containing the trusted root certs must be used.
 
-## Specifying root certificates to be used
-
 To use a certificate PEM bundle file with the CT C++ code, the following
-methods may be used:
-
-### For verifying outbound HTTPS connections:
-
-Either set the
-`--trusted_roots_certs' flag, or the `SSL_CERT_FILE` environment variable, to
-point to the location of the PEM file containing the root certificates to be
-used to verify the outbound HTTPS connection.
+methods may be used.
 
 ### Incoming inclusion requests (ct-server only)
 
@@ -34,7 +30,14 @@ Set the `--trusted_cert_file` flag to point to the location of the PEM file
 containing the set of root certificates whose chains should be accepted for
 inclusion into the log.
 
-## Sources of trusted roots
+### For verifying outbound HTTPS connections (ct-mirror)
+
+Either set the `--trusted_roots_certs` flag, or the `SSL_CERT_FILE`
+environment variable, to point to the location of the PEM file containing the
+root certificates to be used to verify the outbound HTTPS connection.
+
+Sources of trusted roots
+------------------------
 
 Obviously the choice of root certificates to trust for outbound HTTPS
 connections and incoming inclusion requests are a matter of operating policy,
@@ -50,8 +53,3 @@ security find-certificates -a -p /Library/Keychains/System.keychain > certs.pem
 security find-certificates -a -p /System/Library/Keychains/SystemRootCertificates.keychain >> certs.pem
 ```
 
-## Deprecated Build Process ##
-
-This may be out of date and is not guaranteed to work.
-
-gtest: install from source.
