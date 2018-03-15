@@ -15,11 +15,11 @@ and setting values. That's it.
 
 ## Project Status
 
-Bolt is stable and the API is fixed. Full unit test coverage and randomized
-black box testing are used to ensure database consistency and thread safety.
-Bolt is currently in high-load production environments serving databases as
-large as 1TB. Many companies such as Shopify and Heroku use Bolt-backed
-services every day.
+Bolt is stable, the API is fixed, and the file format is fixed. Full unit
+test coverage and randomized black box testing are used to ensure database
+consistency and thread safety. Bolt is currently in high-load production
+environments serving databases as large as 1TB. Many companies such as
+Shopify and Heroku use Bolt-backed services every day.
 
 ## Table of Contents
 
@@ -448,6 +448,10 @@ db.View(func(tx *bolt.Tx) error {
 })
 ```
 
+Please note that keys and values in `ForEach()` are only valid while
+the transaction is open. If you need to use a key or value outside of
+the transaction, you must use `copy()` to copy it to another byte
+slice.
 
 ### Nested buckets
 
@@ -848,5 +852,6 @@ Below is a list of public, open source projects that use Bolt:
 * [Algernon](https://github.com/xyproto/algernon) - A HTTP/2 web server with built-in support for Lua. Uses BoltDB as the default database backend.
 * [MuLiFS](https://github.com/dankomiocevic/mulifs) - Music Library Filesystem creates a filesystem to organise your music files.
 * [GoShort](https://github.com/pankajkhairnar/goShort) - GoShort is a URL shortener written in Golang and BoltDB for persistent key/value storage and for routing it's using high performent HTTPRouter.
+* [torrent](https://github.com/anacrolix/torrent) - Full-featured BitTorrent client package and utilities in Go. BoltDB is a storage backend in development.
 
 If you are using Bolt in a project please send a pull request to add it to the list.
