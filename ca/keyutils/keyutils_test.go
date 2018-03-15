@@ -2,10 +2,8 @@ package keyutils
 
 import (
 	"encoding/pem"
-	"os"
 	"testing"
 
-	"github.com/docker/swarmkit/fips"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,15 +48,6 @@ aMbljbOLAjpZS3/VnQteab4=
 	encryptedPKCS1Block, _ = pem.Decode([]byte(encryptedPKCS1))
 )
 
-func TestFIPSEnabled(t *testing.T) {
-	os.Unsetenv(fips.EnvVar)
-	assert.False(t, fips.Enabled())
-
-	os.Setenv(fips.EnvVar, "1")
-	defer os.Unsetenv(fips.EnvVar)
-	assert.True(t, fips.Enabled())
-}
-
 func TestIsPKCS8(t *testing.T) {
 	// Check PKCS8 keys
 	assert.True(t, IsPKCS8([]byte(decryptedPKCS8Block.Bytes)))
@@ -70,125 +59,95 @@ func TestIsPKCS8(t *testing.T) {
 }
 
 func TestIsEncryptedPEMBlock(t *testing.T) {
-	// Disable FIPS mode
-	os.Unsetenv(fips.EnvVar)
-
-	// Check PKCS8 keys
+	// Check PKCS8
 	assert.False(t, IsEncryptedPEMBlock(decryptedPKCS8Block))
 	assert.True(t, IsEncryptedPEMBlock(encryptedPKCS8Block))
 
-	// Check PKCS1 keys
+	// Check PKCS1
 	assert.False(t, IsEncryptedPEMBlock(decryptedPKCS1Block))
 	assert.True(t, IsEncryptedPEMBlock(encryptedPKCS1Block))
-
-	// Enable FIPS mode
-	os.Setenv(fips.EnvVar, "1")
-	defer os.Unsetenv(fips.EnvVar)
-
-	// Check PKCS8 keys again
-	assert.False(t, IsEncryptedPEMBlock(decryptedPKCS8Block))
-	assert.True(t, IsEncryptedPEMBlock(encryptedPKCS8Block))
-
-	// Check PKCS1 keys again
-	assert.False(t, IsEncryptedPEMBlock(decryptedPKCS1Block))
-	assert.False(t, IsEncryptedPEMBlock(encryptedPKCS1Block))
 }
 
 func TestDecryptPEMBlock(t *testing.T) {
-	// Disable FIPS mode
-	os.Unsetenv(fips.EnvVar)
+	// Check PKCS8 keys in both FIPS and non-FIPS mode
+	for _, util := range []Formatter{Default, FIPS} {
+		_, err := util.DecryptPEMBlock(encryptedPKCS8Block, []byte("pony"))
+		require.Error(t, err)
 
-	// Check PKCS8 keys
-	_, err := DecryptPEMBlock(encryptedPKCS8Block, []byte("pony"))
+		decryptedDer, err := util.DecryptPEMBlock(encryptedPKCS8Block, []byte("ponies"))
+		require.NoError(t, err)
+		require.Equal(t, decryptedPKCS8Block.Bytes, decryptedDer)
+	}
+
+	// Check PKCS1 keys in non-FIPS mode
+	_, err := Default.DecryptPEMBlock(encryptedPKCS1Block, []byte("pony"))
 	require.Error(t, err)
 
-	decryptedDer, err := DecryptPEMBlock(encryptedPKCS8Block, []byte("ponies"))
-	require.NoError(t, err)
-	require.Equal(t, decryptedPKCS8Block.Bytes, decryptedDer)
-
-	// Check PKCS1 keys
-	_, err = DecryptPEMBlock(encryptedPKCS1Block, []byte("pony"))
-	require.Error(t, err)
-
-	decryptedDer, err = DecryptPEMBlock(encryptedPKCS1Block, []byte("ponies"))
+	decryptedDer, err := Default.DecryptPEMBlock(encryptedPKCS1Block, []byte("ponies"))
 	require.NoError(t, err)
 	require.Equal(t, decryptedPKCS1Block.Bytes, decryptedDer)
 
-	// Enable FIPS mode
-	os.Setenv(fips.EnvVar, "1")
-	defer os.Unsetenv(fips.EnvVar)
-
-	// Try to decrypt PKCS1
-	_, err = DecryptPEMBlock(encryptedPKCS1Block, []byte("ponies"))
+	// Try to decrypt PKCS1 in FIPS
+	_, err = FIPS.DecryptPEMBlock(encryptedPKCS1Block, []byte("ponies"))
 	require.Error(t, err)
 }
 
 func TestEncryptPEMBlock(t *testing.T) {
-	// Disable FIPS mode
-	os.Unsetenv(fips.EnvVar)
+	// Check PKCS8 keys in both FIPS and non-FIPS mode
+	for _, util := range []Formatter{Default, FIPS} {
+		encryptedBlock, err := util.EncryptPEMBlock(decryptedPKCS8Block.Bytes, []byte("knock knock"))
+		require.NoError(t, err)
 
-	// Check PKCS8 keys
-	encryptedBlock, err := EncryptPEMBlock(decryptedPKCS8Block.Bytes, []byte("knock knock"))
+		// Try to decrypt the same encrypted block
+		_, err = util.DecryptPEMBlock(encryptedBlock, []byte("hey there"))
+		require.Error(t, err)
+
+		decryptedDer, err := Default.DecryptPEMBlock(encryptedBlock, []byte("knock knock"))
+		require.NoError(t, err)
+		require.Equal(t, decryptedPKCS8Block.Bytes, decryptedDer)
+	}
+
+	// Check PKCS1 keys in non FIPS mode
+	encryptedBlock, err := Default.EncryptPEMBlock(decryptedPKCS1Block.Bytes, []byte("knock knock"))
 	require.NoError(t, err)
 
 	// Try to decrypt the same encrypted block
-	_, err = DecryptPEMBlock(encryptedBlock, []byte("hey there"))
+	_, err = Default.DecryptPEMBlock(encryptedBlock, []byte("hey there"))
 	require.Error(t, err)
 
-	decryptedDer, err := DecryptPEMBlock(encryptedBlock, []byte("knock knock"))
-	require.NoError(t, err)
-	require.Equal(t, decryptedPKCS8Block.Bytes, decryptedDer)
-
-	// Check PKCS1 keys
-	encryptedBlock, err = EncryptPEMBlock(decryptedPKCS1Block.Bytes, []byte("knock knock"))
-	require.NoError(t, err)
-
-	// Try to decrypt the same encrypted block
-	_, err = DecryptPEMBlock(encryptedBlock, []byte("hey there"))
-	require.Error(t, err)
-
-	decryptedDer, err = DecryptPEMBlock(encryptedBlock, []byte("knock knock"))
+	decryptedDer, err := Default.DecryptPEMBlock(encryptedBlock, []byte("knock knock"))
 	require.NoError(t, err)
 	require.Equal(t, decryptedPKCS1Block.Bytes, decryptedDer)
 
-	// Enable FIPS mode
-	os.Setenv(fips.EnvVar, "1")
-	defer os.Unsetenv(fips.EnvVar)
-
 	// Try to encrypt PKCS1
-	_, err = EncryptPEMBlock(decryptedPKCS1Block.Bytes, []byte("knock knock"))
+	_, err = FIPS.EncryptPEMBlock(decryptedPKCS1Block.Bytes, []byte("knock knock"))
 	require.Error(t, err)
 }
 
 func TestParsePrivateKeyPEMWithPassword(t *testing.T) {
-	// Disable FIPS mode
-	os.Unsetenv(fips.EnvVar)
+	// Check PKCS8 keys in both FIPS and non-FIPS mode
+	for _, util := range []Formatter{Default, FIPS} {
+		_, err := util.ParsePrivateKeyPEMWithPassword([]byte(encryptedPKCS8), []byte("pony"))
+		require.Error(t, err)
 
-	// Check PKCS8 keys
-	_, err := ParsePrivateKeyPEMWithPassword([]byte(encryptedPKCS8), []byte("pony"))
+		_, err = util.ParsePrivateKeyPEMWithPassword([]byte(encryptedPKCS8), []byte("ponies"))
+		require.NoError(t, err)
+
+		_, err = util.ParsePrivateKeyPEMWithPassword([]byte(decryptedPKCS8), nil)
+		require.NoError(t, err)
+	}
+
+	// Check PKCS1 keys in non-FIPS mode
+	_, err := Default.ParsePrivateKeyPEMWithPassword([]byte(encryptedPKCS1), []byte("pony"))
 	require.Error(t, err)
 
-	_, err = ParsePrivateKeyPEMWithPassword([]byte(encryptedPKCS8), []byte("ponies"))
+	_, err = Default.ParsePrivateKeyPEMWithPassword([]byte(encryptedPKCS1), []byte("ponies"))
 	require.NoError(t, err)
 
-	_, err = ParsePrivateKeyPEMWithPassword([]byte(decryptedPKCS8), nil)
+	_, err = Default.ParsePrivateKeyPEMWithPassword([]byte(decryptedPKCS1), nil)
 	require.NoError(t, err)
 
-	// Check PKCS1 keys
-	_, err = ParsePrivateKeyPEMWithPassword([]byte(encryptedPKCS1), []byte("pony"))
-	require.Error(t, err)
-
-	_, err = ParsePrivateKeyPEMWithPassword([]byte(encryptedPKCS1), []byte("ponies"))
-	require.NoError(t, err)
-
-	_, err = ParsePrivateKeyPEMWithPassword([]byte(decryptedPKCS1), nil)
-	require.NoError(t, err)
-
-	// Enable FIPS mode
-	os.Setenv(fips.EnvVar, "1")
-	defer os.Unsetenv(fips.EnvVar)
-
-	// Try to parse PKCS1
-	_, err = ParsePrivateKeyPEMWithPassword([]byte(encryptedPKCS1), []byte("ponies"))
+	// Try to parse PKCS1 in FIPS mode
+	_, err = FIPS.ParsePrivateKeyPEMWithPassword([]byte(encryptedPKCS1), []byte("ponies"))
 	require.Error(t, err)
 }

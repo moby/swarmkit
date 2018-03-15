@@ -75,9 +75,11 @@ func decryptRaftData(swarmdir, outdir, unlockKey string) error {
 		return err
 	}
 
-	_, d := encryption.Defaults(deks.CurrentDEK)
+	// always use false for FIPS, since we want to be able to decrypt logs written using
+	// any algorithm (not just FIPS-compatible ones)
+	_, d := encryption.Defaults(deks.CurrentDEK, false)
 	if deks.PendingDEK == nil {
-		_, d2 := encryption.Defaults(deks.PendingDEK)
+		_, d2 := encryption.Defaults(deks.PendingDEK, false)
 		d = encryption.NewMultiDecrypter(d, d2)
 	}
 
