@@ -39,7 +39,7 @@ func Diff(ctx context.Context, snapshotID string, sn snapshots.Snapshotter, d di
 		if err != nil {
 			return ocispec.Descriptor{}, err
 		}
-		defer sn.Remove(ctx, upperKey)
+		defer sn.Remove(ctx, lowerKey)
 	}
 
 	return d.DiffMounts(ctx, lower, upper, opts...)
