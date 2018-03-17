@@ -318,9 +318,9 @@ func TestNewNodeCertificateRequiresToken(t *testing.T) {
 	)
 	assert.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
 		clusters, _ := store.FindClusters(tx, store.ByName(store.DefaultClusterName))
-		newWorkerToken = ca.GenerateJoinToken(&tc.RootCA)
+		newWorkerToken = ca.GenerateJoinToken(&tc.RootCA, false)
 		clusters[0].RootCA.JoinTokens.Worker = newWorkerToken
-		newManagerToken = ca.GenerateJoinToken(&tc.RootCA)
+		newManagerToken = ca.GenerateJoinToken(&tc.RootCA, false)
 		clusters[0].RootCA.JoinTokens.Manager = newManagerToken
 		return store.UpdateCluster(tx, clusters[0])
 	}))

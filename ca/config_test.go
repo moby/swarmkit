@@ -33,13 +33,33 @@ import (
 )
 
 func TestDownloadRootCASuccess(t *testing.T) {
-	tc := cautils.NewTestCA(t)
+	for _, fips := range []bool{true, false} {
+		testDownloadRootCASuccess(t, fips)
+	}
+}
+func testDownloadRootCASuccess(t *testing.T, fips bool) {
+	var tc *cautils.TestCA
+	if fips {
+		tc = cautils.NewFIPSTestCA(t)
+	} else {
+		tc = cautils.NewTestCA(t)
+	}
 	defer tc.Stop()
+
+	token := ca.GenerateJoinToken(&tc.RootCA, fips)
+
+	// if we require mandatory FIPS, the join token uses a new format.  otherwise
+	// the join token should use the old format.
+	prefix := "SWMTKN-1-"
+	if fips {
+		prefix = "SWMTKN-2-1-"
+	}
+	require.True(t, strings.HasPrefix(token, prefix))
 
 	// Remove the CA cert
 	os.RemoveAll(tc.Paths.RootCA.Cert)
 
-	rootCA, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, tc.WorkerToken, tc.ConnBroker)
+	rootCA, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, token, tc.ConnBroker)
 	require.NoError(t, err)
 	require.NotNil(t, rootCA.Pool)
 	require.NotNil(t, rootCA.Certs)
@@ -70,23 +90,24 @@ func TestDownloadRootCAWrongCAHash(t *testing.T) {
 	// invalid token
 	for _, invalid := range []string{
 		"invalidtoken", // completely invalid
-		"SWMTKN-1-3wkodtpeoipd1u1hi0ykdcdwhw16dk73ulqqtn14b3indz68rf-4myj5xihyto11dg1cn55w8p6", // mistyped
+		"SWMTKN-1-3wkodtpeoipd1u1hi0ykdcdwhw16dk73ulqqtn14b3indz68rf-4myj5xihyto11dg1cn55w8p6",  // mistyped
+		"SWMTKN-2-1fhvpatk6ms36i3uc64tsv1ybyuxkb899zbjpq4ib64qwbibz4-1g3as27iwmko5yqh1byv868hx", // version 2 should have 5 tokens
+		"SWMTKN-0-1fhvpatk6ms36i3uc64tsv1ybyuxkb899zbjpq4ib64qwbibz4-1g3as27iwmko5yqh1byv868hx", // invalid version
 	} {
 		_, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, invalid, tc.ConnBroker)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "invalid join token")
 	}
 
-	// invalid hash token
-	splitToken := strings.Split(tc.ManagerToken, "-")
-	splitToken[2] = "1kxftv4ofnc6mt30lmgipg6ngf9luhwqopfk1tz6bdmnkubg0e"
-	replacementToken := strings.Join(splitToken, "-")
-
-	os.RemoveAll(tc.Paths.RootCA.Cert)
-
-	_, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, replacementToken, tc.ConnBroker)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "remote CA does not match fingerprint.")
+	// invalid hash token - can get the wrong hash from both version 1 and version 2
+	for _, wrongToken := range []string{
+		"SWMTKN-1-1kxftv4ofnc6mt30lmgipg6ngf9luhwqopfk1tz6bdmnkubg0e-4myj5xihyto11dg1cn55w8p61",
+		"SWMTKN-2-0-1kxftv4ofnc6mt30lmgipg6ngf9luhwqopfk1tz6bdmnkubg0e-4myj5xihyto11dg1cn55w8p61",
+	} {
+		_, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, wrongToken, tc.ConnBroker)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "remote CA does not match fingerprint.")
+	}
 }
 
 func TestCreateSecurityConfigEmptyDir(t *testing.T) {
@@ -98,27 +119,36 @@ func TestCreateSecurityConfigEmptyDir(t *testing.T) {
 	assert.NoError(t, tc.CAServer.Stop())
 
 	// Remove all the contents from the temp dir and try again with a new node
-	os.RemoveAll(tc.TempDir)
-	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
-	nodeConfig, cancel, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
-		ca.CertificateRequestConfig{
-			Token:      tc.WorkerToken,
-			ConnBroker: tc.ConnBroker,
-		})
-	assert.NoError(t, err)
-	cancel()
-	assert.NotNil(t, nodeConfig)
-	assert.NotNil(t, nodeConfig.ClientTLSCreds)
-	assert.NotNil(t, nodeConfig.ServerTLSCreds)
-	assert.Equal(t, tc.RootCA, *nodeConfig.RootCA())
+	for _, org := range []string{
+		"",
+		"my_org",
+	} {
+		os.RemoveAll(tc.TempDir)
+		krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
+		nodeConfig, cancel, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
+			ca.CertificateRequestConfig{
+				Token:        tc.WorkerToken,
+				ConnBroker:   tc.ConnBroker,
+				Organization: org,
+			})
+		assert.NoError(t, err)
+		cancel()
+		assert.NotNil(t, nodeConfig)
+		assert.NotNil(t, nodeConfig.ClientTLSCreds)
+		assert.NotNil(t, nodeConfig.ServerTLSCreds)
+		assert.Equal(t, tc.RootCA, *nodeConfig.RootCA())
+		if org != "" {
+			assert.Equal(t, org, nodeConfig.ClientTLSCreds.Organization())
+		}
 
-	root, err := helpers.ParseCertificatePEM(tc.RootCA.Certs)
-	assert.NoError(t, err)
+		root, err := helpers.ParseCertificatePEM(tc.RootCA.Certs)
+		assert.NoError(t, err)
 
-	issuerInfo := nodeConfig.IssuerInfo()
-	assert.NotNil(t, issuerInfo)
-	assert.Equal(t, root.RawSubjectPublicKeyInfo, issuerInfo.PublicKey)
-	assert.Equal(t, root.RawSubject, issuerInfo.Subject)
+		issuerInfo := nodeConfig.IssuerInfo()
+		assert.NotNil(t, issuerInfo)
+		assert.Equal(t, root.RawSubjectPublicKeyInfo, issuerInfo.PublicKey)
+		assert.Equal(t, root.RawSubject, issuerInfo.Subject)
+	}
 }
 
 func TestCreateSecurityConfigNoCerts(t *testing.T) {
