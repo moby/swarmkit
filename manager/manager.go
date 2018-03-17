@@ -1129,8 +1129,8 @@ func defaultClusterObject(
 			CACert:     rootCA.Certs,
 			CACertHash: rootCA.Digest.String(),
 			JoinTokens: api.JoinTokens{
-				Worker:  ca.GenerateJoinToken(rootCA),
-				Manager: ca.GenerateJoinToken(rootCA),
+				Worker:  ca.GenerateJoinToken(rootCA, fips),
+				Manager: ca.GenerateJoinToken(rootCA, fips),
 			},
 		},
 		UnlockKeys: initialUnlockKeys,
