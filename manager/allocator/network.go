@@ -17,8 +17,6 @@ import (
 )
 
 const (
-	// Network allocator Voter ID for task allocation vote.
-	networkVoter           = "network"
 	allocatedStatusMessage = "pending task scheduling"
 )
 
@@ -94,8 +92,12 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 	// allocated, before reading all network objects for allocation.
 	// If not found, it means it was removed by user, nothing to do here.
 	ingressNetwork, err := GetIngressNetwork(a.store)
-	switch err {
-	case nil:
+	if err != nil && err != ErrNoIngress {
+		// If we get ErrNoIngress, then ingress network is not present in
+		// store. This means the user removed it and did not create a new one.
+		// if that is the case, return no error
+		return errors.Wrap(err, "failure while looking for ingress network during init")
+	} else {
 		// Try to complete ingress network allocation before anything else so
 		// that the we can get the preferred subnet for ingress network.
 		nc.ingressNetwork = ingressNetwork
@@ -111,11 +113,6 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 				log.G(ctx).WithError(err).Error("failed committing allocation of ingress network during init")
 			}
 		}
-	case ErrNoIngress:
-		// Ingress network is not present in store, It means user removed it
-		// and did not create a new one.
-	default:
-		return errors.Wrap(err, "failure while looking for ingress network during init")
 	}
 
 	// Allocate networks in the store so far before we started
@@ -652,19 +649,15 @@ func (a *Allocator) allocateTasks(ctx context.Context, existingAddressesOnly boo
 		// based on service spec.
 		a.taskCreateNetworkAttachments(t, s)
 
-		if taskReadyForNetworkVote(t, s, nc) {
+		if taskReady(t, s, nc) {
 			if t.Status.State >= api.TaskStatePending {
 				continue
 			}
 
-			if a.taskAllocateVote(networkVoter, t.ID) {
-				// If the task is not attached to any network, network
-				// allocators job is done. Immediately cast a vote so
-				// that the task can be moved to the PENDING state as
-				// soon as possible.
-				updateTaskStatus(t, api.TaskStatePending, allocatedStatusMessage)
-				allocatedTasks = append(allocatedTasks, t)
-			}
+			// If the task is not attached to any network, network
+			// allocators job is done. Immediately move the state to PENDING
+			updateTaskStatus(t, api.TaskStatePending, allocatedStatusMessage)
+			allocatedTasks = append(allocatedTasks, t)
 			continue
 		}
 
@@ -692,10 +685,9 @@ func (a *Allocator) allocateTasks(ctx context.Context, existingAddressesOnly boo
 	return nil
 }
 
-// taskReadyForNetworkVote checks if the task is ready for a network
-// vote to move it to PENDING state.
-func taskReadyForNetworkVote(t *api.Task, s *api.Service, nc *networkContext) bool {
-	// Task is ready for vote if the following is true:
+// taskReady checks if the task is ready to move to PENDING state.
+func taskReady(t *api.Task, s *api.Service, nc *networkContext) bool {
+	// Task is ready if the following is true:
 	//
 	// Task has no network attached or networks attached but all
 	// of them allocated AND Task's service has no endpoint or
@@ -1115,13 +1107,9 @@ func (a *Allocator) allocateTask(ctx context.Context, t *api.Task) (err error) {
 		}
 	}
 
-	// Update the network allocations and moving to
-	// PENDING state on top of the latest store state.
-	if a.taskAllocateVote(networkVoter, t.ID) {
-		if t.Status.State < api.TaskStatePending {
-			updateTaskStatus(t, api.TaskStatePending, allocatedStatusMessage)
-			taskUpdated = true
-		}
+	if t.Status.State < api.TaskStatePending {
+		updateTaskStatus(t, api.TaskStatePending, allocatedStatusMessage)
+		taskUpdated = true
 	}
 
 	if !taskUpdated {
