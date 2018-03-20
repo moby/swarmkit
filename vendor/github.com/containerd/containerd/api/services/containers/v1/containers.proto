@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package containerd.services.containers.v1;
 
-import "gogoproto/gogo.proto";
+import weak "gogoproto/gogo.proto";
 import "google/protobuf/any.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/field_mask.proto";
@@ -42,6 +42,8 @@ message Container {
 
 	// Labels provides an area to include arbitrary data on containers.
 	//
+	// The combined size of a key/value pair cannot exceed 4096 bytes.
+	//
 	// Note that to add a new value to this field, read the existing set and
 	// include the entire result in the update call.
 	map<string, string> labels  = 2;
@@ -67,21 +69,34 @@ message Container {
 	// Snapshotter specifies the snapshotter name used for rootfs
 	string snapshotter = 6;
 
-	// RootFS specifies the snapshot key to use for the container's root
+	// SnapshotKey specifies the snapshot key to use for the container's root
 	// filesystem. When starting a task from this container, a caller should
 	// look up the mounts from the snapshot service and include those on the
 	// task create request.
 	//
 	// Snapshots referenced in this field will not be garbage collected.
 	//
+	// This field is set to empty when the rootfs is not a snapshot.
+	//
 	// This field may be updated.
-	string rootfs = 7 [(gogoproto.customname) = "RootFS"];
+	string snapshot_key = 7;
 
 	// CreatedAt is the time the container was first created.
 	google.protobuf.Timestamp created_at = 8 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
 
 	// UpdatedAt is the last time the container was mutated.
 	google.protobuf.Timestamp updated_at = 9 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+
+	// Extensions allow clients to provide zero or more blobs that are directly
+	// associated with the container. One may provide protobuf, json, or other
+	// encoding formats. The primary use of this is to further decorate the
+	// container object with fields that may be specific to a client integration.
+	//
+	// The key portion of this map should identify a "name" for the extension
+	// that should be unique against other extensions. When updating extension
+	// data, one should only update the specified extension using field paths
+	// to select a specific map key.
+	map<string, google.protobuf.Any> extensions = 10 [(gogoproto.nullable) = false];
 }
 
 message GetContainerRequest {

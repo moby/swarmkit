@@ -28,11 +28,15 @@ type dockerPusher struct {
 }
 
 func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (content.Writer, error) {
+	ctx, err := contextWithRepositoryScope(ctx, p.refspec, true)
+	if err != nil {
+		return nil, err
+	}
 	ref := remotes.MakeRefKey(ctx, desc)
 	status, err := p.tracker.GetStatus(ref)
 	if err == nil {
 		if status.Offset == status.Total {
-			return nil, errors.Wrapf(errdefs.ErrAlreadyExists, "ref %v already exists", ref)
+			return nil, errors.Wrapf(errdefs.ErrAlreadyExists, "ref %v", ref)
 		}
 		// TODO: Handle incomplete status
 	} else if !errdefs.IsNotFound(err) {
@@ -48,7 +52,11 @@ func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (conten
 	case images.MediaTypeDockerSchema2Manifest, images.MediaTypeDockerSchema2ManifestList,
 		ocispec.MediaTypeImageManifest, ocispec.MediaTypeImageIndex:
 		isManifest = true
-		existCheck = path.Join("manifests", desc.Digest.String())
+		if p.tag == "" {
+			existCheck = path.Join("manifests", desc.Digest.String())
+		} else {
+			existCheck = path.Join("manifests", p.tag)
+		}
 	default:
 		existCheck = path.Join("blobs", desc.Digest.String())
 	}
@@ -67,15 +75,26 @@ func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (conten
 		log.G(ctx).WithError(err).Debugf("Unable to check existence, continuing with push")
 	} else {
 		if resp.StatusCode == http.StatusOK {
-			p.tracker.SetStatus(ref, Status{
-				Status: content.Status{
-					Ref: ref,
-					// TODO: Set updated time?
-				},
-			})
-			return nil, errors.Wrapf(errdefs.ErrAlreadyExists, "content %v on remote", desc.Digest)
-		}
-		if resp.StatusCode != http.StatusNotFound {
+			var exists bool
+			if isManifest && p.tag != "" {
+				dgstHeader := digest.Digest(resp.Header.Get("Docker-Content-Digest"))
+				if dgstHeader == desc.Digest {
+					exists = true
+				}
+			} else {
+				exists = true
+			}
+
+			if exists {
+				p.tracker.SetStatus(ref, Status{
+					Status: content.Status{
+						Ref: ref,
+						// TODO: Set updated time?
+					},
+				})
+				return nil, errors.Wrapf(errdefs.ErrAlreadyExists, "content %v on remote", desc.Digest)
+			}
+		} else if resp.StatusCode != http.StatusNotFound {
 			// TODO: log error
 			return nil, errors.Errorf("unexpected response: %s", resp.Status)
 		}
@@ -109,7 +128,10 @@ func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (conten
 		if err != nil {
 			return nil, err
 		}
-		if resp.StatusCode != http.StatusAccepted {
+
+		switch resp.StatusCode {
+		case http.StatusOK, http.StatusAccepted, http.StatusNoContent:
+		default:
 			// TODO: log error
 			return nil, errors.Errorf("unexpected response: %s", resp.Status)
 		}
@@ -155,7 +177,10 @@ func (p dockerPusher) Push(ctx context.Context, desc ocispec.Descriptor) (conten
 			pr.CloseWithError(err)
 			return
 		}
-		if resp.StatusCode != http.StatusCreated {
+
+		switch resp.StatusCode {
+		case http.StatusOK, http.StatusCreated, http.StatusNoContent:
+		default:
 			// TODO: log error
 			pr.CloseWithError(errors.Errorf("unexpected response: %s", resp.Status))
 		}
@@ -215,7 +240,7 @@ func (pw *pushWriter) Digest() digest.Digest {
 	return pw.expected
 }
 
-func (pw *pushWriter) Commit(size int64, expected digest.Digest) error {
+func (pw *pushWriter) Commit(ctx context.Context, size int64, expected digest.Digest, opts ...content.Opt) error {
 	// Check whether read has already thrown an error
 	if _, err := pw.pipe.Write([]byte{}); err != nil && err != io.ErrClosedPipe {
 		return errors.Wrap(err, "pipe error before commit")
@@ -230,6 +255,14 @@ func (pw *pushWriter) Commit(size int64, expected digest.Digest) error {
 	resp := <-pw.responseC
 	if resp == nil {
 		return errors.New("no response")
+	}
+
+	// 201 is specified return status, some registries return
+	// 200 or 204.
+	switch resp.StatusCode {
+	case http.StatusOK, http.StatusCreated, http.StatusNoContent:
+	default:
+		return errors.Errorf("unexpected status: %s", resp.Status)
 	}
 
 	status, err := pw.tracker.GetStatus(pw.ref)

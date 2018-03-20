@@ -4,7 +4,8 @@ import (
 	"context"
 	"syscall"
 
-	"github.com/containerd/containerd/linux/runcopts"
+	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/linux/runctypes"
 	"github.com/containerd/containerd/mount"
 )
 
@@ -21,10 +22,18 @@ func WithRootFS(mounts []mount.Mount) NewTaskOpts {
 
 // WithExit causes the task to exit after a successful checkpoint
 func WithExit(r *CheckpointTaskInfo) error {
-	r.Options = &runcopts.CheckpointOptions{
+	r.Options = &runctypes.CheckpointOptions{
 		Exit: true,
 	}
 	return nil
+}
+
+// WithCheckpointName sets the image name for the checkpoint
+func WithCheckpointName(name string) CheckpointTaskOpts {
+	return func(r *CheckpointTaskInfo) error {
+		r.Name = name
+		return nil
+	}
 }
 
 // ProcessDeleteOpts allows the caller to set options for the deletion of a task
@@ -32,15 +41,47 @@ type ProcessDeleteOpts func(context.Context, Process) error
 
 // WithProcessKill will forcefully kill and delete a process
 func WithProcessKill(ctx context.Context, p Process) error {
-	s := make(chan struct{}, 1)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	// ignore errors to wait and kill as we are forcefully killing
 	// the process and don't care about the exit status
-	go func() {
-		p.Wait(ctx)
-		close(s)
-	}()
-	p.Kill(ctx, syscall.SIGKILL)
+	s, err := p.Wait(ctx)
+	if err != nil {
+		return err
+	}
+	if err := p.Kill(ctx, syscall.SIGKILL, WithKillAll); err != nil {
+		if errdefs.IsFailedPrecondition(err) || errdefs.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
 	// wait for the process to fully stop before letting the rest of the deletion complete
 	<-s
 	return nil
+}
+
+// KillInfo contains information on how to process a Kill action
+type KillInfo struct {
+	// All kills all processes inside the task
+	// only valid on tasks, ignored on processes
+	All bool
+	// ExecID is the ID of a process to kill
+	ExecID string
+}
+
+// KillOpts allows options to be set for the killing of a process
+type KillOpts func(context.Context, *KillInfo) error
+
+// WithKillAll kills all processes for a task
+func WithKillAll(ctx context.Context, i *KillInfo) error {
+	i.All = true
+	return nil
+}
+
+// WithKillExecID specifies the process ID
+func WithKillExecID(execID string) KillOpts {
+	return func(ctx context.Context, i *KillInfo) error {
+		i.ExecID = execID
+		return nil
+	}
 }

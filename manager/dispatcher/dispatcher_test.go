@@ -2108,6 +2108,9 @@ func (m *MockPlugin) Client() *plugins.Client {
 func (m *MockPlugin) Name() string {
 	return m.name
 }
+func (m *MockPlugin) ScopedPath(_ string) string {
+	return ""
+}
 func (m *MockPlugin) BasePath() string {
 	return ""
 

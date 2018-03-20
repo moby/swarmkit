@@ -1,6 +1,7 @@
 package containerd
 
 import (
+	gocontext "context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,7 +11,10 @@ import (
 	"time"
 
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/cio"
+	"github.com/containerd/containerd/containers"
 	"github.com/containerd/containerd/errdefs"
+	"github.com/containerd/containerd/oci"
 	"github.com/docker/docker/pkg/signal"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
@@ -94,7 +98,7 @@ func (c *containerAdapter) reattach(ctx context.Context) error {
 		}
 	}
 
-	task, err := container.Task(ctx, containerd.WithAttach(devNull, os.Stdout, os.Stderr))
+	task, err := container.Task(ctx, cio.NewAttach(cio.WithStreams(devNull, os.Stdout, os.Stderr)))
 	if err != nil {
 		if errdefs.IsNotFound(err) {
 			c.log(ctx).WithError(err).Info("reattach: no running task")
@@ -123,10 +127,10 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 	return nil
 }
 
-func withMounts(ctx context.Context, ms []api.Mount) containerd.SpecOpts {
+func withMounts(ctx context.Context, ms []api.Mount) oci.SpecOpts {
 	sort.Sort(mounts(ms))
 
-	return func(s *specs.Spec) error {
+	return func(_ gocontext.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {
 		for _, m := range ms {
 			if !filepath.IsAbs(m.Target) {
 				return errors.Errorf("mount %s is not absolute", m.Target)
@@ -200,8 +204,8 @@ func (c *containerAdapter) prepare(ctx context.Context) error {
 		return errors.New("image has not been pulled")
 	}
 
-	specOpts := []containerd.SpecOpts{
-		containerd.WithImageConfig(ctx, c.image),
+	specOpts := []oci.SpecOpts{
+		oci.WithImageConfig(c.image),
 		withMounts(ctx, c.spec.Mounts),
 	}
 
@@ -213,15 +217,15 @@ func (c *containerAdapter) prepare(ctx context.Context) error {
 	// TODO(ijc) Improve this
 	if len(c.spec.Command) > 0 {
 		args := append(c.spec.Command, c.spec.Args...)
-		specOpts = append(specOpts, containerd.WithProcessArgs(args...))
+		specOpts = append(specOpts, oci.WithProcessArgs(args...))
 	} else {
-		specOpts = append(specOpts, func(s *specs.Spec) error {
+		specOpts = append(specOpts, func(_ gocontext.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {
 			s.Process.Args = append(s.Process.Args, c.spec.Args...)
 			return nil
 		})
 	}
 
-	spec, err := containerd.GenerateSpec(specOpts...)
+	spec, err := oci.GenerateSpec(ctx, c.client, &containers.Container{}, specOpts...)
 	if err != nil {
 		return err
 	}
@@ -242,9 +246,11 @@ func (c *containerAdapter) prepare(ctx context.Context) error {
 	}
 
 	// TODO(ijc) support ControllerLogs interface.
-	io := containerd.NewIOWithTerminal(devNull, os.Stdout, os.Stderr, spec.Process.Terminal)
-
-	c.task, err = c.container.NewTask(ctx, io)
+	opts := []cio.Opt{cio.WithStreams(devNull, os.Stdout, os.Stderr)}
+	if spec.Process.Terminal {
+		opts = append(opts, cio.WithTerminal)
+	}
+	c.task, err = c.container.NewTask(ctx, cio.NewCreator(opts...))
 	if err != nil {
 		// Destroy the container we created above, but
 		// propagate the original error.
@@ -275,7 +281,11 @@ func (c *containerAdapter) wait(ctx context.Context) error {
 		return errors.Wrap(err, "waiting")
 	}
 	// Should update c.exitStatus or not?
-	return makeExitError(status, "")
+	ec := <-status
+	if ec.Error() != nil {
+		return err
+	}
+	return makeExitError(ec.ExitCode(), "")
 }
 
 type status struct {
@@ -339,7 +349,7 @@ func (c *containerAdapter) shutdown(ctx context.Context) error {
 			ch <- err
 		}
 		c.log(ctx).Debugf("Task.Delete success, status=%d", status)
-		ch <- makeExitError(status, "")
+		ch <- makeExitError(status.ExitCode(), "")
 	}(deleteCtx, deleteErr)
 
 	c.log(ctx).Debugf("Killing task with %q signal", sig)

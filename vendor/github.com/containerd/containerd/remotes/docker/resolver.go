@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
-	"net/textproto"
 	"net/url"
 	"path"
 	"strconv"
@@ -116,6 +116,10 @@ func (r *dockerResolver) Resolve(ctx context.Context, ref string) (string, ocisp
 		urls = append(urls, fetcher.url("manifests", refspec.Object))
 	}
 
+	ctx, err = contextWithRepositoryScope(ctx, refspec, false)
+	if err != nil {
+		return "", ocispec.Descriptor{}, err
+	}
 	for _, u := range urls {
 		req, err := http.NewRequest(http.MethodHead, u, nil)
 		if err != nil {
@@ -228,8 +232,9 @@ func (r *dockerResolver) Pusher(ctx context.Context, ref string) (remotes.Pusher
 }
 
 type dockerBase struct {
-	base  url.URL
-	token string
+	refspec reference.Spec
+	base    url.URL
+	token   string
 
 	client   *http.Client
 	useBasic bool
@@ -268,6 +273,7 @@ func (r *dockerResolver) base(refspec reference.Spec) (*dockerBase, error) {
 	base.Path = path.Join("/v2", prefix)
 
 	return &dockerBase{
+		refspec:  refspec,
 		base:     base,
 		client:   r.client,
 		username: username,
@@ -291,7 +297,7 @@ func (r *dockerBase) authorize(req *http.Request) {
 
 func (r *dockerBase) doRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
 	ctx = log.WithLogger(ctx, log.G(ctx).WithField("url", req.URL.String()))
-	log.G(ctx).WithField("request.headers", req.Header).WithField("request.method", req.Method).Debug("Do request")
+	log.G(ctx).WithField("request.headers", req.Header).WithField("request.method", req.Method).Debug("do request")
 	r.authorize(req)
 	resp, err := ctxhttp.Do(ctx, r.client, req)
 	if err != nil {
@@ -313,9 +319,11 @@ func (r *dockerBase) doRequestWithRetries(ctx context.Context, req *http.Request
 	responses = append(responses, resp)
 	req, err = r.retryRequest(ctx, req, responses)
 	if err != nil {
+		resp.Body.Close()
 		return nil, err
 	}
 	if req != nil {
+		resp.Body.Close()
 		return r.doRequestWithRetries(ctx, req, responses)
 	}
 	return resp, err
@@ -396,22 +404,6 @@ func copyRequest(req *http.Request) (*http.Request, error) {
 	return &ireq, nil
 }
 
-func isManifestAccept(h http.Header) bool {
-	for _, ah := range h[textproto.CanonicalMIMEHeaderKey("Accept")] {
-		switch ah {
-		case images.MediaTypeDockerSchema2Manifest:
-			fallthrough
-		case images.MediaTypeDockerSchema2ManifestList:
-			fallthrough
-		case ocispec.MediaTypeImageManifest:
-			fallthrough
-		case ocispec.MediaTypeImageIndex:
-			return true
-		}
-	}
-	return false
-}
-
 func (r *dockerBase) setTokenAuth(ctx context.Context, params map[string]string) error {
 	realm, ok := params["realm"]
 	if !ok {
@@ -428,14 +420,10 @@ func (r *dockerBase) setTokenAuth(ctx context.Context, params map[string]string)
 		service: params["service"],
 	}
 
-	scope, ok := params["scope"]
-	if !ok {
+	to.scopes = getTokenScopes(ctx, params)
+	if len(to.scopes) == 0 {
 		return errors.Errorf("no scope specified for token auth challenge")
 	}
-
-	// TODO: Get added scopes from context
-	to.scopes = []string{scope}
-
 	if r.secret != "" {
 		// Credential information is provided, use oauth POST endpoint
 		r.token, err = r.fetchTokenWithOAuth(ctx, to)
@@ -489,11 +477,12 @@ func (r *dockerBase) fetchTokenWithOAuth(ctx context.Context, to tokenOptions) (
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 405 && r.username != "" {
-		// It would be nice if registries would implement the specifications
+	// Registries without support for POST may return 404 for POST /v2/token.
+	// As of September 2017, GCR is known to return 404.
+	if (resp.StatusCode == 405 && r.username != "") || resp.StatusCode == 404 {
 		return r.getToken(ctx, to)
 	} else if resp.StatusCode < 200 || resp.StatusCode >= 400 {
-		b, _ := ioutil.ReadAll(resp.Body)
+		b, _ := ioutil.ReadAll(io.LimitReader(resp.Body, 64000)) // 64KB
 		log.G(ctx).WithFields(logrus.Fields{
 			"status": resp.Status,
 			"body":   string(b),

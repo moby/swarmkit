@@ -1,4 +1,4 @@
-package client
+package client // import "github.com/docker/docker/client"
 
 import (
 	"bytes"
@@ -123,10 +123,7 @@ func (cli *Client) sendRequest(ctx context.Context, method, path string, query u
 	if err != nil {
 		return resp, err
 	}
-	if err := cli.checkResponseErr(resp); err != nil {
-		return resp, err
-	}
-	return resp, nil
+	return resp, cli.checkResponseErr(resp)
 }
 
 func (cli *Client) doRequest(ctx context.Context, req *http.Request) (serverResponse, error) {
@@ -203,7 +200,7 @@ func (cli *Client) checkResponseErr(serverResp serverResponse) error {
 		return err
 	}
 	if len(body) == 0 {
-		return fmt.Errorf("Error: request returned %s for API route and version %s, check if the server supports the requested API version", http.StatusText(serverResp.statusCode), serverResp.reqURL)
+		return fmt.Errorf("request returned %s for API route and version %s, check if the server supports the requested API version", http.StatusText(serverResp.statusCode), serverResp.reqURL)
 	}
 
 	var ct string

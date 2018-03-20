@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -29,15 +28,17 @@ func ToGRPC(err error) error {
 
 	switch {
 	case IsInvalidArgument(err):
-		return grpc.Errorf(codes.InvalidArgument, err.Error())
+		return status.Errorf(codes.InvalidArgument, err.Error())
 	case IsNotFound(err):
-		return grpc.Errorf(codes.NotFound, err.Error())
+		return status.Errorf(codes.NotFound, err.Error())
 	case IsAlreadyExists(err):
-		return grpc.Errorf(codes.AlreadyExists, err.Error())
+		return status.Errorf(codes.AlreadyExists, err.Error())
 	case IsFailedPrecondition(err):
-		return grpc.Errorf(codes.FailedPrecondition, err.Error())
+		return status.Errorf(codes.FailedPrecondition, err.Error())
 	case IsUnavailable(err):
-		return grpc.Errorf(codes.Unavailable, err.Error())
+		return status.Errorf(codes.Unavailable, err.Error())
+	case IsNotImplemented(err):
+		return status.Errorf(codes.Unimplemented, err.Error())
 	}
 
 	return err
@@ -51,6 +52,7 @@ func ToGRPCf(err error, format string, args ...interface{}) error {
 	return ToGRPC(errors.Wrapf(err, format, args...))
 }
 
+// FromGRPC returns the underlying error from a grpc service based on the grpc error code
 func FromGRPC(err error) error {
 	if err == nil {
 		return nil
@@ -58,7 +60,7 @@ func FromGRPC(err error) error {
 
 	var cls error // divide these into error classes, becomes the cause
 
-	switch grpc.Code(err) {
+	switch code(err) {
 	case codes.InvalidArgument:
 		cls = ErrInvalidArgument
 	case codes.AlreadyExists:
@@ -69,17 +71,17 @@ func FromGRPC(err error) error {
 		cls = ErrUnavailable
 	case codes.FailedPrecondition:
 		cls = ErrFailedPrecondition
+	case codes.Unimplemented:
+		cls = ErrNotImplemented
 	default:
 		cls = ErrUnknown
 	}
 
-	if cls != nil {
-		msg := rebaseMessage(cls, err)
-		if msg != "" {
-			err = errors.Wrapf(cls, msg)
-		} else {
-			err = cls
-		}
+	msg := rebaseMessage(cls, err)
+	if msg != "" {
+		err = errors.Wrapf(cls, msg)
+	} else {
+		err = errors.WithStack(cls)
 	}
 
 	return err
@@ -91,7 +93,7 @@ func FromGRPC(err error) error {
 // Effectively, we just remove the string of cls from the end of err if it
 // appears there.
 func rebaseMessage(cls error, err error) string {
-	desc := grpc.ErrorDesc(err)
+	desc := errDesc(err)
 	clss := cls.Error()
 	if desc == clss {
 		return ""
@@ -103,4 +105,18 @@ func rebaseMessage(cls error, err error) string {
 func isGRPCError(err error) bool {
 	_, ok := status.FromError(err)
 	return ok
+}
+
+func code(err error) codes.Code {
+	if s, ok := status.FromError(err); ok {
+		return s.Code()
+	}
+	return codes.Unknown
+}
+
+func errDesc(err error) string {
+	if s, ok := status.FromError(err); ok {
+		return s.Message()
+	}
+	return err.Error()
 }

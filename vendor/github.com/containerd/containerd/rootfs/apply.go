@@ -1,23 +1,21 @@
 package rootfs
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
+	"time"
 
+	"github.com/containerd/containerd/diff"
 	"github.com/containerd/containerd/errdefs"
 	"github.com/containerd/containerd/log"
-	"github.com/containerd/containerd/mount"
-	"github.com/containerd/containerd/snapshot"
+	"github.com/containerd/containerd/snapshots"
 	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
-
-// Applier is used to apply a descriptor of a layer diff on top of mounts.
-type Applier interface {
-	Apply(context.Context, ocispec.Descriptor, []mount.Mount) (ocispec.Descriptor, error)
-}
 
 // Layer represents the descriptors for a layer diff. These descriptions
 // include the descriptor for the uncompressed tar diff as well as a blob
@@ -32,7 +30,7 @@ type Layer struct {
 // The returned result is a chain id digest representing all the applied layers.
 // Layers are applied in order they are given, making the first layer the
 // bottom-most layer in the layer chain.
-func ApplyLayers(ctx context.Context, layers []Layer, sn snapshot.Snapshotter, a Applier) (digest.Digest, error) {
+func ApplyLayers(ctx context.Context, layers []Layer, sn snapshots.Snapshotter, a diff.Differ) (digest.Digest, error) {
 	var chain []digest.Digest
 	for _, layer := range layers {
 		if _, err := ApplyLayer(ctx, layer, chain, sn, a); err != nil {
@@ -48,7 +46,7 @@ func ApplyLayers(ctx context.Context, layers []Layer, sn snapshot.Snapshotter, a
 // ApplyLayer applies a single layer on top of the given provided layer chain,
 // using the provided snapshotter and applier. If the layer was unpacked true
 // is returned, if the layer already exists false is returned.
-func ApplyLayer(ctx context.Context, layer Layer, chain []digest.Digest, sn snapshot.Snapshotter, a Applier) (bool, error) {
+func ApplyLayer(ctx context.Context, layer Layer, chain []digest.Digest, sn snapshots.Snapshotter, a diff.Differ, opts ...snapshots.Opt) (bool, error) {
 	var (
 		parent  = identity.ChainID(chain)
 		chainID = identity.ChainID(append(chain, layer.Diff.Digest))
@@ -57,19 +55,19 @@ func ApplyLayer(ctx context.Context, layer Layer, chain []digest.Digest, sn snap
 
 	_, err := sn.Stat(ctx, chainID.String())
 	if err == nil {
-		log.G(ctx).Debugf("Extraction not needed, layer snapshot exists")
+		log.G(ctx).Debugf("Extraction not needed, layer snapshot %s exists", chainID)
 		return false, nil
 	} else if !errdefs.IsNotFound(err) {
-		return false, errors.Wrap(err, "failed to stat snapshot")
+		return false, errors.Wrapf(err, "failed to stat snapshot %s", chainID)
 	}
 
-	key := fmt.Sprintf("extract %s", chainID)
+	key := fmt.Sprintf("extract-%s %s", uniquePart(), chainID)
 
-	// Prepare snapshot with from parent
-	mounts, err := sn.Prepare(ctx, key, parent.String())
+	// Prepare snapshot with from parent, label as root
+	mounts, err := sn.Prepare(ctx, key, parent.String(), opts...)
 	if err != nil {
 		//TODO: If is snapshot exists error, retry
-		return false, errors.Wrap(err, "failed to prepare extraction layer")
+		return false, errors.Wrapf(err, "failed to prepare extraction snapshot %q", key)
 	}
 	defer func() {
 		if err != nil {
@@ -89,9 +87,26 @@ func ApplyLayer(ctx context.Context, layer Layer, chain []digest.Digest, sn snap
 		return false, err
 	}
 
-	if err = sn.Commit(ctx, chainID.String(), key); err != nil {
-		return false, errors.Wrapf(err, "failed to commit snapshot %s", parent)
+	if err = sn.Commit(ctx, chainID.String(), key, opts...); err != nil {
+		if !errdefs.IsAlreadyExists(err) {
+			return false, errors.Wrapf(err, "failed to commit snapshot %s", key)
+		}
+
+		// Destination already exists, cleanup key and return without error
+		err = nil
+		if err := sn.Remove(ctx, key); err != nil {
+			return false, errors.Wrapf(err, "failed to cleanup aborted apply %s", key)
+		}
+		return false, nil
 	}
 
 	return true, nil
+}
+
+func uniquePart() string {
+	t := time.Now()
+	var b [3]byte
+	// Ignore read failures, just decreases uniqueness
+	rand.Read(b[:])
+	return fmt.Sprintf("%d-%s", t.Nanosecond(), base64.URLEncoding.EncodeToString(b[:]))
 }

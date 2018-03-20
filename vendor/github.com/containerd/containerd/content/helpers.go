@@ -2,9 +2,7 @@ package content
 
 import (
 	"context"
-	"fmt"
 	"io"
-	"io/ioutil"
 	"sync"
 
 	"github.com/containerd/containerd/errdefs"
@@ -12,25 +10,33 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	bufPool = sync.Pool{
-		New: func() interface{} {
-			return make([]byte, 1<<20)
-		},
-	}
-)
+var bufPool = sync.Pool{
+	New: func() interface{} {
+		buffer := make([]byte, 1<<20)
+		return &buffer
+	},
+}
+
+// NewReader returns a io.Reader from a ReaderAt
+func NewReader(ra ReaderAt) io.Reader {
+	rd := io.NewSectionReader(ra, 0, ra.Size())
+	return rd
+}
 
 // ReadBlob retrieves the entire contents of the blob from the provider.
 //
 // Avoid using this for large blobs, such as layers.
 func ReadBlob(ctx context.Context, provider Provider, dgst digest.Digest) ([]byte, error) {
-	rc, err := provider.Reader(ctx, dgst)
+	ra, err := provider.ReaderAt(ctx, dgst)
 	if err != nil {
 		return nil, err
 	}
-	defer rc.Close()
+	defer ra.Close()
 
-	return ioutil.ReadAll(rc)
+	p := make([]byte, ra.Size())
+
+	_, err = ra.ReadAt(p, 0)
+	return p, err
 }
 
 // WriteBlob writes data with the expected digest into the content store. If
@@ -40,7 +46,7 @@ func ReadBlob(ctx context.Context, provider Provider, dgst digest.Digest) ([]byt
 // This is useful when the digest and size are known beforehand.
 //
 // Copy is buffered, so no need to wrap reader in buffered io.
-func WriteBlob(ctx context.Context, cs Ingester, ref string, r io.Reader, size int64, expected digest.Digest) error {
+func WriteBlob(ctx context.Context, cs Ingester, ref string, r io.Reader, size int64, expected digest.Digest, opts ...Opt) error {
 	cw, err := cs.Writer(ctx, ref, size, expected)
 	if err != nil {
 		if !errdefs.IsAlreadyExists(err) {
@@ -51,7 +57,7 @@ func WriteBlob(ctx context.Context, cs Ingester, ref string, r io.Reader, size i
 	}
 	defer cw.Close()
 
-	return Copy(cw, r, size, expected)
+	return Copy(ctx, cw, r, size, expected, opts...)
 }
 
 // Copy copies data with the expected digest from the reader into the
@@ -61,7 +67,7 @@ func WriteBlob(ctx context.Context, cs Ingester, ref string, r io.Reader, size i
 // the size or digest is unknown, these values may be empty.
 //
 // Copy is buffered, so no need to wrap reader in buffered io.
-func Copy(cw Writer, r io.Reader, size int64, expected digest.Digest) error {
+func Copy(ctx context.Context, cw Writer, r io.Reader, size int64, expected digest.Digest, opts ...Opt) error {
 	ws, err := cw.Status()
 	if err != nil {
 		return err
@@ -71,7 +77,7 @@ func Copy(cw Writer, r io.Reader, size int64, expected digest.Digest) error {
 		r, err = seekReader(r, ws.Offset, size)
 		if err != nil {
 			if !isUnseekable(err) {
-				return errors.Wrapf(err, "unabled to resume write to %v", ws.Ref)
+				return errors.Wrapf(err, "unable to resume write to %v", ws.Ref)
 			}
 
 			// reader is unseekable, try to move the writer back to the start.
@@ -81,14 +87,14 @@ func Copy(cw Writer, r io.Reader, size int64, expected digest.Digest) error {
 		}
 	}
 
-	buf := bufPool.Get().([]byte)
+	buf := bufPool.Get().(*[]byte)
 	defer bufPool.Put(buf)
 
-	if _, err := io.CopyBuffer(cw, r, buf); err != nil {
+	if _, err := io.CopyBuffer(cw, r, *buf); err != nil {
 		return err
 	}
 
-	if err := cw.Commit(size, expected); err != nil {
+	if err := cw.Commit(ctx, size, expected, opts...); err != nil {
 		if !errdefs.IsAlreadyExists(err) {
 			return errors.Wrapf(err, "failed commit on ref %q", ws.Ref)
 		}
@@ -111,7 +117,7 @@ func seekReader(r io.Reader, offset, size int64) (io.Reader, error) {
 	if ok {
 		nn, err := seeker.Seek(offset, io.SeekStart)
 		if nn != offset {
-			return nil, fmt.Errorf("failed to seek to offset %v", offset)
+			return nil, errors.Wrapf(err, "failed to seek to offset %v", offset)
 		}
 
 		if err != nil {
