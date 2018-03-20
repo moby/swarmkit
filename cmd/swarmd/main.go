@@ -290,7 +290,7 @@ func init() {
 	mainCmd.Flags().String("generic-node-resources", "", "user defined resources (e.g. fpga=2,gpu=UUID1,gpu=UUID2,gpu=UUID3)")
 	mainCmd.Flags().Bool("force-new-cluster", false, "Force the creation of a new cluster from data directory")
 	mainCmd.Flags().Uint32("heartbeat-tick", 1, "Defines the heartbeat interval (in seconds) for raft member health-check")
-	mainCmd.Flags().Uint32("election-tick", 3, "Defines the amount of ticks (in seconds) needed without a Leader to trigger a new election")
+	mainCmd.Flags().Uint32("election-tick", 10, "Defines the amount of ticks (in seconds) needed without a Leader to trigger a new election")
 	mainCmd.Flags().Var(&externalCAOpt, "external-ca", "Specifications of one or more certificate signing endpoints")
 	mainCmd.Flags().Bool("autolock", false, "Require an unlock key in order to start a manager once it's been stopped")
 	mainCmd.Flags().String("unlock-key", "", "Unlock this manager using this key")
