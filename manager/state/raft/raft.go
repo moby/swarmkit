@@ -474,8 +474,11 @@ func (n *Node) joinCluster(ctx context.Context) error {
 // raft node that can be modified and customized
 func DefaultNodeConfig() *raft.Config {
 	return &raft.Config{
-		HeartbeatTick:   1,
-		ElectionTick:    3,
+		HeartbeatTick: 1,
+		// Recommended value in etcd/raft is 10 x (HeartbeatTick).
+		// Lower values were seen to have caused instability because of
+		// frequent leader elections when running on flakey networks.
+		ElectionTick:    10,
 		MaxSizePerMsg:   math.MaxUint16,
 		MaxInflightMsgs: 256,
 		Logger:          log.L,
@@ -489,8 +492,11 @@ func DefaultRaftConfig() api.RaftConfig {
 		KeepOldSnapshots:           0,
 		SnapshotInterval:           10000,
 		LogEntriesForSlowFollowers: 500,
-		ElectionTick:               3,
-		HeartbeatTick:              1,
+		// Recommended value in etcd/raft is 10 x (HeartbeatTick).
+		// Lower values were seen to have caused instability because of
+		// frequent leader elections when running on flakey networks.
+		HeartbeatTick: 1,
+		ElectionTick:  10,
 	}
 }
 
