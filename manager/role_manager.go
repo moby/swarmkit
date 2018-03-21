@@ -35,9 +35,9 @@ type roleManager struct {
 	// the raft member list.
 	pendingReconciliation map[string]*api.Node
 
-	// pendingRemoval contains raft members, indexed by node ID, whose nodes have since
-	// been deleted - these members need to be removed from raft
-	pendingRemoval map[string]*api.RaftMember
+	// pendingRemoval contains the IDs of nodes that have been deleted - if these correspond
+	// to members in the raft cluster, those members need to be removed from raft
+	pendingRemoval map[string]struct{}
 
 	// leave this nil except for tests which need to inject a fake time source
 	clocksource clock.Clock
@@ -53,7 +53,7 @@ func newRoleManager(store *store.MemoryStore, raftNode *raft.Node) *roleManager 
 		raft:                  raftNode,
 		doneChan:              make(chan struct{}),
 		pendingReconciliation: make(map[string]*api.Node),
-		pendingRemoval:        make(map[string]*api.RaftMember),
+		pendingRemoval:        make(map[string]struct{}),
 	}
 }
 
@@ -74,11 +74,12 @@ func (rm *roleManager) getTicker(interval time.Duration) clock.Ticker {
 // These queues are processed immediately, and any nodes that failed to be processed are
 // processed again in the next reconciliation interval, so that nodes will hopefully eventually
 // be reconciled.  As node updates come in, any promotions or demotions are also added to the
-// reconciliation queue and reconciled.
+// reconciliation queue and reconciled.  As node removals come in, they are added to the removal
+// queue to be removed from the raft cluster.
 
-// The removal queue is never added to beyond the startup of the loop, because
-// before a node can be removed, it must be demoted, so the demotion should be sufficient to
-// get it removed from the cluster membership.
+// Removal from a raft cluster is idempotent (and it's the only raft cluster change that will occur
+// during reconciliation or removal), so it's fine if a node is in both the removal and reconciliation
+// queues.
 
 // The ctx param is only used for logging.
 func (rm *roleManager) Run(ctx context.Context) {
@@ -100,7 +101,8 @@ func (rm *roleManager) Run(ctx context.Context) {
 			nodes, err = store.FindNodes(readTx, store.All)
 			return err
 		},
-		api.EventUpdateNode{})
+		api.EventUpdateNode{},
+		api.EventDeleteNode{})
 	defer cancelWatch()
 
 	if err != nil {
@@ -117,7 +119,7 @@ func (rm *roleManager) Run(ctx context.Context) {
 		// it can contact the other nodes, and makes an RPC call to request to join the
 		// raft cluster.  The node it contacts will add the node to the raft membership.
 		for _, member := range rm.raft.GetMemberlist() {
-			rm.pendingRemoval[member.NodeID] = member
+			rm.pendingRemoval[member.NodeID] = struct{}{}
 		}
 		for _, node := range nodes {
 			// if the node exists, we don't want it removed from the raft membership cluster
@@ -128,8 +130,8 @@ func (rm *roleManager) Run(ctx context.Context) {
 			rm.pendingReconciliation[node.ID] = node
 			rm.reconcileRole(ctx, node)
 		}
-		for _, removed := range rm.pendingRemoval {
-			rm.evictRemovedNode(ctx, removed)
+		for nodeID := range rm.pendingRemoval {
+			rm.evictRemovedNode(ctx, nodeID)
 		}
 		// If any reconciliations or member removals failed, we want to try again, so
 		// make sure that we start the ticker so we can try again and again every
@@ -143,10 +145,18 @@ func (rm *roleManager) Run(ctx context.Context) {
 	for {
 		select {
 		case event := <-watcher:
-			node := event.(api.EventUpdateNode).Node
-			rm.pendingReconciliation[node.ID] = node
-			rm.reconcileRole(ctx, node)
-			if len(rm.pendingReconciliation) != 0 && ticker == nil {
+			switch ev := event.(type) {
+			case api.EventUpdateNode:
+				rm.pendingReconciliation[ev.Node.ID] = ev.Node
+				rm.reconcileRole(ctx, ev.Node)
+			case api.EventDeleteNode:
+				rm.pendingRemoval[ev.Node.ID] = struct{}{}
+				rm.evictRemovedNode(ctx, ev.Node.ID)
+			}
+			// If any reconciliations or member removals failed, we want to try again, so
+			// make sure that we start the ticker so we can try again and again every
+			// roleReconciliationInterval seconds until the queues are both empty.
+			if (len(rm.pendingReconciliation) != 0 || len(rm.pendingRemoval) != 0) && ticker == nil {
 				ticker = rm.getTicker(roleReconcileInterval)
 				tickerCh = ticker.C()
 			}
@@ -154,8 +164,8 @@ func (rm *roleManager) Run(ctx context.Context) {
 			for _, node := range rm.pendingReconciliation {
 				rm.reconcileRole(ctx, node)
 			}
-			for _, node := range rm.pendingRemoval {
-				rm.evictRemovedNode(ctx, node)
+			for nodeID := range rm.pendingRemoval {
+				rm.evictRemovedNode(ctx, nodeID)
 			}
 			if len(rm.pendingReconciliation) == 0 && len(rm.pendingRemoval) == 0 {
 				ticker.Stop()
@@ -174,16 +184,16 @@ func (rm *roleManager) Run(ctx context.Context) {
 // evictRemovedNode evicts a removed node from the raft cluster membership.  This is to cover an edge case in which
 // a node might have been removed, but somehow the role was not reconciled (possibly a demotion and a removal happened
 // in rapid succession before the raft membership configuration went through).
-func (rm *roleManager) evictRemovedNode(ctx context.Context, raftMember *api.RaftMember) {
+func (rm *roleManager) evictRemovedNode(ctx context.Context, nodeID string) {
 	// Check if the member still exists in the membership
-	member := rm.raft.GetMemberByNodeID(raftMember.NodeID)
+	member := rm.raft.GetMemberByNodeID(nodeID)
 	if member != nil {
 		// We first try to remove the raft node from the raft cluster.  On the next tick, if the node
 		// has been removed from the cluster membership, we then delete it from the removed list
 		rm.removeMember(ctx, member)
 		return
 	}
-	delete(rm.pendingRemoval, raftMember.NodeID)
+	delete(rm.pendingRemoval, nodeID)
 }
 
 // removeMember removes a member from the raft cluster membership
