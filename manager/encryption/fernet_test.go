@@ -10,79 +10,68 @@ import (
 )
 
 // Using the same key to encrypt the same message, this encrypter produces two
-// different ciphertexts because it produces two different nonces.  Both
-// of these can be decrypted into the same data though.
-func TestNACLSecretbox(t *testing.T) {
+// different ciphertexts because the underlying algorithm uses different IVs.
+// Both of these can be decrypted into the same data though.
+func TestFernet(t *testing.T) {
 	key := make([]byte, 32)
 	_, err := io.ReadFull(cryptorand.Reader, key)
 	require.NoError(t, err)
 	keyCopy := make([]byte, 32)
 	copy(key, keyCopy)
 
-	crypter1 := NewNACLSecretbox(key)
-	crypter2 := NewNACLSecretbox(keyCopy)
+	crypter1 := NewFernet(key)
+	crypter2 := NewFernet(keyCopy)
 	data := []byte("Hello again world")
 
 	er1, err := crypter1.Encrypt(data)
 	require.NoError(t, err)
 
-	er2, err := crypter1.Encrypt(data)
+	er2, err := crypter2.Encrypt(data)
 	require.NoError(t, err)
 
 	require.NotEqual(t, er1.Data, er2.Data)
-	require.NotEmpty(t, er1.Nonce)
-	require.NotEmpty(t, er2.Nonce)
+	require.Empty(t, er1.Nonce)
+	require.Empty(t, er2.Nonce)
+
+	// it doesn't matter what the nonce is, it's ignored
+	_, err = io.ReadFull(cryptorand.Reader, er1.Nonce)
+	require.NoError(t, err)
 
 	// both crypters can decrypt the other's text
-	for _, decrypter := range []Decrypter{crypter1, crypter2} {
-		for _, record := range []*api.MaybeEncryptedRecord{er1, er2} {
+	for i, decrypter := range []Decrypter{crypter1, crypter2} {
+		for j, record := range []*api.MaybeEncryptedRecord{er1, er2} {
 			result, err := decrypter.Decrypt(*record)
-			require.NoError(t, err)
+			require.NoError(t, err, "error decrypting ciphertext produced by cryptor %d using cryptor %d", j+1, i+1)
 			require.Equal(t, data, result)
 		}
 	}
 }
 
-func TestNACLSecretboxInvalidAlgorithm(t *testing.T) {
+func TestFernetInvalidAlgorithm(t *testing.T) {
 	key := make([]byte, 32)
 	_, err := io.ReadFull(cryptorand.Reader, key)
 	require.NoError(t, err)
 
-	crypter := NewNACLSecretbox(key)
+	crypter := NewFernet(key)
 	er, err := crypter.Encrypt([]byte("Hello again world"))
 	require.NoError(t, err)
 	er.Algorithm = api.MaybeEncryptedRecord_NotEncrypted
 
 	_, err = crypter.Decrypt(*er)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "not a NACL secretbox")
+	require.Contains(t, err.Error(), "not a Fernet message")
 }
 
-func TestNACLSecretboxCannotDecryptWithoutRightKey(t *testing.T) {
+func TestFernetCannotDecryptWithoutRightKey(t *testing.T) {
 	key := make([]byte, 32)
 	_, err := io.ReadFull(cryptorand.Reader, key)
 	require.NoError(t, err)
 
-	crypter := NewNACLSecretbox(key)
+	crypter := NewFernet(key)
 	er, err := crypter.Encrypt([]byte("Hello again world"))
 	require.NoError(t, err)
 
-	crypter = NewNACLSecretbox([]byte{})
+	crypter = NewFernet([]byte{})
 	_, err = crypter.Decrypt(*er)
 	require.Error(t, err)
-}
-
-func TestNACLSecretboxInvalidNonce(t *testing.T) {
-	key := make([]byte, 32)
-	_, err := io.ReadFull(cryptorand.Reader, key)
-	require.NoError(t, err)
-
-	crypter := NewNACLSecretbox(key)
-	er, err := crypter.Encrypt([]byte("Hello again world"))
-	require.NoError(t, err)
-	er.Nonce = er.Nonce[:20]
-
-	_, err = crypter.Decrypt(*er)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "invalid nonce size")
 }
