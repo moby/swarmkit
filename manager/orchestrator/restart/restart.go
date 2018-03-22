@@ -152,8 +152,8 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 	restartTask.DesiredState = api.TaskStateReady
 
 	var restartDelay time.Duration
-	// Restart delay is not applied to drained nodes
-	if n == nil || n.Spec.Availability != api.NodeAvailabilityDrain {
+	// Restart delay is only applied to non-drained nodes or to system services on drained nodes.
+	if n == nil || service.Spec.SystemService || n.Spec.Availability != api.NodeAvailabilityDrain {
 		if t.Spec.Restart != nil && t.Spec.Restart.Delay != nil {
 			var err error
 			restartDelay, err = gogotypes.DurationFromProto(t.Spec.Restart.Delay)

@@ -25,6 +25,10 @@ type Orchestrator struct {
 	store *store.MemoryStore
 	// nodes is the set of non-drained nodes in the cluster, indexed by node ID
 	nodes map[string]*api.Node
+
+	// drainedNodes is the list of drained nodes in the cluster, indexed by node ID
+	drainedNodes map[string]*api.Node
+
 	// globalServices has all the global services in the cluster, indexed by ServiceID
 	globalServices map[string]globalService
 	restartTasks   map[string]struct{}
@@ -47,6 +51,7 @@ func NewGlobalOrchestrator(store *store.MemoryStore) *Orchestrator {
 	return &Orchestrator{
 		store:          store,
 		nodes:          make(map[string]*api.Node),
+		drainedNodes:   make(map[string]*api.Node),
 		globalServices: make(map[string]globalService),
 		stopChan:       make(chan struct{}),
 		doneChan:       make(chan struct{}),
@@ -238,7 +243,7 @@ func (g *Orchestrator) foreachTaskFromNode(ctx context.Context, node *api.Node, 
 
 	err = g.store.Batch(func(batch *store.Batch) error {
 		for _, t := range tasks {
-			// Global orchestrator only removes tasks from globalServices
+			// Global orchestrator only handles tasks from globalServices
 			if _, exists := g.globalServices[t.ServiceID]; exists {
 				cb(ctx, batch, t)
 			}
@@ -311,9 +316,9 @@ func (g *Orchestrator) reconcileServices(ctx context.Context, serviceIDs []strin
 					continue
 				}
 
-				if node.Spec.Availability == api.NodeAvailabilityPause {
-					// the node is paused, so we won't add or update
-					// any tasks
+				if node.Spec.Availability == api.NodeAvailabilityPause && !service.Spec.SystemService {
+					// the node is paused and this service is a non-system service,
+					// so we won't add or update any tasks
 					continue
 				}
 
@@ -351,6 +356,10 @@ func (g *Orchestrator) reconcileServices(ctx context.Context, serviceIDs []strin
 // updateNode updates g.nodes based on the current node value
 func (g *Orchestrator) updateNode(node *api.Node) {
 	if node.Spec.Availability == api.NodeAvailabilityDrain || node.Status.State == api.NodeStatus_DOWN {
+		if node.Spec.Availability == api.NodeAvailabilityDrain {
+			g.drainedNodes[node.ID] = g.nodes[node.ID]
+			g.drainedNodes[node.ID].Spec.Availability = api.NodeAvailabilityDrain
+		}
 		delete(g.nodes, node.ID)
 	} else {
 		g.nodes[node.ID] = node
@@ -373,12 +382,6 @@ func (g *Orchestrator) updateService(service *api.Service) {
 
 // reconcileOneNode checks all global services on one node
 func (g *Orchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
-	if node.Spec.Availability == api.NodeAvailabilityDrain {
-		log.G(ctx).Debugf("global orchestrator: node %s in drain state, shutting down its tasks", node.ID)
-		g.foreachTaskFromNode(ctx, node, g.shutdownTask)
-		return
-	}
-
 	if node.Status.State == api.NodeStatus_DOWN {
 		log.G(ctx).Debugf("global orchestrator: node %s is down, shutting down its tasks", node.ID)
 		g.foreachTaskFromNode(ctx, node, g.shutdownTask)
@@ -390,7 +393,13 @@ func (g *Orchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
 		return
 	}
 
-	node, exists := g.nodes[node.ID]
+	var exists bool
+	if node.Spec.Availability == api.NodeAvailabilityDrain {
+		node, exists = g.drainedNodes[node.ID]
+	} else {
+		node, exists = g.nodes[node.ID]
+	}
+
 	if !exists {
 		return
 	}
@@ -411,12 +420,23 @@ func (g *Orchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
 		return
 	}
 
+	var shutdownTasks []*api.Task
 	for serviceID, service := range g.globalServices {
 		for _, t := range tasksOnNode {
 			if t.ServiceID != serviceID {
 				continue
 			}
-			tasks[serviceID] = append(tasks[serviceID], t)
+
+			if node.Spec.Availability == api.NodeAvailabilityDrain {
+				if service.Spec.SystemService {
+					// System service tasks will still be reconciled.
+					tasks[serviceID] = append(tasks[serviceID], t)
+				} else {
+					log.G(ctx).Infof("adding task to be shutdown")
+					// Add non-system service tasks to shutdown list.
+					shutdownTasks = append(shutdownTasks, t)
+				}
+			}
 		}
 
 		// Keep all runnable instances of this service,
@@ -434,9 +454,25 @@ func (g *Orchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
 		}
 	}
 
+	log.G(ctx).Infof("len tasks: %v", len(tasks))
+
 	err = g.store.Batch(func(batch *store.Batch) error {
+		// Shutdown non-system service tasks if the node is in drain mode.
+		if node.Spec.Availability == api.NodeAvailabilityDrain {
+			log.G(ctx).Infof("global orchestrator: node %s in drain state, will shut down %x non-system tasks", node.ID, len(shutdownTasks))
+			g.shutdownTasks(ctx, batch, shutdownTasks)
+
+			if len(tasks) == 0 {
+				return nil
+			}
+		}
+
 		for serviceID, service := range g.globalServices {
 			if !constraint.NodeMatches(service.constraints, node) {
+				continue
+			}
+
+			if node.Spec.Availability == api.NodeAvailabilityDrain && !service.Spec.SystemService {
 				continue
 			}
 
@@ -470,9 +506,15 @@ func (g *Orchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
 					}
 				}
 
+				log.G(ctx).Infof("sercice id: %v", service.GetID())
+
 				if len(cleanTasks) == 0 {
+					log.G(ctx).Infof("create a new task for serfice %v node in state: %v", service.GetID(), node.Spec.Availability)
+					// Create a new tasks if one wasn't already created.
 					g.addTask(ctx, batch, service.Service, node.ID)
 				} else {
+					log.G(ctx).Infof("clean task: %v", cleanTasks[0].DesiredState)
+					// If there's more than one clean tasks, shutdown all but one.
 					dirtyTasks = append(dirtyTasks, cleanTasks[1:]...)
 				}
 				g.shutdownTasks(ctx, batch, dirtyTasks)
@@ -508,7 +550,8 @@ func (g *Orchestrator) tickTasks(ctx context.Context) {
 					return nil
 				}
 
-				if node.Spec.Availability == api.NodeAvailabilityPause ||
+				// Only shutdown non-system service tasks on node pause.
+				if (node.Spec.Availability == api.NodeAvailabilityPause && !service.Spec.SystemService) ||
 					!constraint.NodeMatches(serviceEntry.constraints, node) {
 					t.DesiredState = api.TaskStateShutdown
 					return store.UpdateTask(tx, t)

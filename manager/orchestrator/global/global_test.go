@@ -109,6 +109,28 @@ var (
 			},
 		},
 	}
+
+	systemService = &api.Service{
+		ID: "systemService",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "systemServiceName",
+			},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+				Restart: &api.RestartPolicy{
+					Condition: api.RestartOnAny,
+					Delay:     gogotypes.DurationProto(restartDelay),
+				},
+			},
+			Mode: &api.ServiceSpec_Global{
+				Global: &api.GlobalService{},
+			},
+			SystemService: true,
+		},
+	}
 )
 
 func setup(t *testing.T, store *store.MemoryStore, watch chan events.Event) *Orchestrator {
@@ -201,13 +223,13 @@ func TestNodeAvailability(t *testing.T) {
 	orchestrator := setup(t, store, watch)
 	defer orchestrator.Stop()
 
-	testutils.WatchTaskCreate(t, watch)
+	observedTask1 := testutils.WatchTaskCreate(t, watch)
 
 	// set node1 to drain
 	updateNodeAvailability(t, store, node1, api.NodeAvailabilityDrain)
 
 	// task should be set to dead
-	observedTask1 := testutils.WatchShutdownTask(t, watch)
+	observedTask1 = testutils.WatchShutdownTask(t, watch)
 	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
 	assert.Equal(t, observedTask1.NodeID, "nodeid1")
 	testutils.Expect(t, watch, state.EventCommit{})
@@ -249,7 +271,90 @@ func TestNodeAvailability(t *testing.T) {
 		t.Fatalf("got unexpected event %T: %+v", event, event)
 	case <-time.After(100 * time.Millisecond):
 	}
+}
 
+func TestNodeAvailabilitySystemServices(t *testing.T) {
+	t.Parallel()
+
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	watch, cancel := state.Watch(s.WatchQueue())
+	defer cancel()
+
+	orchestrator := setup(t, s, watch)
+	defer orchestrator.Stop()
+
+	observedTask1 := testutils.WatchTaskCreate(t, watch)
+	testutils.Expect(t, watch, state.EventCommit{})
+
+	// Add a system service.
+	addService(t, s, systemService)
+	testutils.Expect(t, watch, api.EventCreateService{})
+	testutils.Expect(t, watch, state.EventCommit{})
+	observedTask2 := testutils.WatchTaskCreate(t, watch)
+	assert.Equal(t, api.TaskStateRunning, observedTask2.DesiredState)
+
+	// set node1 to drain
+	updateNodeAvailability(t, s, node1, api.NodeAvailabilityDrain)
+
+	// 1 task should be set to shutdown
+	observedTask1 = testutils.WatchShutdownTask(t, watch)
+	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, observedTask1.NodeID, "nodeid1")
+	testutils.Expect(t, watch, state.EventCommit{})
+
+	var tasks []*api.Task
+	var err error
+	s.View(func(readTx store.ReadTx) {
+		tasks, err = store.FindTasks(readTx, store.ByServiceID("systemService"))
+	})
+
+	assert.Equal(t, 1, len(tasks))
+	assert.Equal(t, api.TaskStateRunning, tasks[0].DesiredState)
+
+	// updating the system service should restart the task
+	updateService(t, s, systemService, true)
+	testutils.Expect(t, watch, api.EventUpdateService{})
+	testutils.Expect(t, watch, state.EventCommit{})
+	observedTask2 = testutils.WatchShutdownTask(t, watch)
+	assert.Equal(t, systemService.GetID(), observedTask2.ServiceID)
+	observedTask2 = testutils.WatchTaskCreate(t, watch)
+	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
+
+	assert.Equal(t, api.TaskStateRunning, observedTask2.DesiredState)
+	testutils.Expect(t, watch, state.EventCommit{})
+
+	/*
+		// set node1 to active
+		updateNodeAvailability(t, store, node1, api.NodeAvailabilityActive)
+		// task should be added back
+		observedTask2 := testutils.WatchTaskCreate(t, watch)
+		assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
+		assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
+		assert.Equal(t, observedTask2.NodeID, "nodeid1")
+		testutils.Expect(t, watch, state.EventCommit{})
+
+		// set node1 to pause
+		updateNodeAvailability(t, store, node1, api.NodeAvailabilityPause)
+
+		failTask(t, store, observedTask2)
+		observedTask3 := testutils.WatchShutdownTask(t, watch)
+		assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
+		assert.Equal(t, observedTask3.NodeID, "nodeid1")
+		testutils.Expect(t, watch, state.EventCommit{})
+
+		// updating the service shouldn't restart the task
+		updateService(t, store, service1, true)
+		testutils.Expect(t, watch, api.EventUpdateService{})
+		testutils.Expect(t, watch, state.EventCommit{})
+		select {
+		case event := <-watch:
+			t.Fatalf("got unexpected event %T: %+v", event, event)
+		case <-time.After(100 * time.Millisecond):
+		}
+	*/
 }
 
 func TestNodeState(t *testing.T) {
