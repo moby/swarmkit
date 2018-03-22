@@ -4492,6 +4492,13 @@ file {
       type_name: ".docker.swarmkit.v1.EndpointSpec"
       json_name: "endpoint"
     }
+    field {
+      name: "system_service"
+      number: 10
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      json_name: "systemService"
+    }
     oneof_decl {
       name: "mode"
     }

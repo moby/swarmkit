@@ -87,6 +87,13 @@ message ServiceSpec {
 	// Service endpoint specifies the user provided configuration
 	// to properly discover and load balance a service.
 	EndpointSpec endpoint = 8;
+
+	// system_service specifies if the service should be treated as a system service.
+	// In practice this means that it is not drained or paused when those operations
+	// happen on a node.
+	// Note that this only applies to a global service, since a typical use-case would 
+	// require these services to run on all nodes.
+	bool system_service = 10;
 }
 
 // ReplicatedService sets the reconciliation target to certain number of replicas.
