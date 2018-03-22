@@ -6,6 +6,8 @@ import (
 	"math"
 	"math/rand"
 	"net"
+	"os"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -40,6 +42,14 @@ import (
 )
 
 var (
+	// EnvRaftHeartbeatTick is the env to set to customize the Raft heartbeat tick
+	EnvRaftHeartbeatTick = "SWARMKIT_X_RAFT_HEARTBEAT_TICK"
+
+	// EnvRaftElectionTick is the env to set to customize the Raft leader election delay
+	// when a follower does not hear from the leader for this many ticks.  Typically
+	// set it to be 10x the HeartbeatTick
+	EnvRaftElectionTick = "SWARMKIT_X_RAFT_ELECTION_TICK"
+
 	// ErrNoRaftMember is thrown when the node is not yet part of a raft cluster
 	ErrNoRaftMember = errors.New("raft: node is not yet part of a raft cluster")
 	// ErrConfChangeRefused is returned when there is an issue with the configuration change
@@ -470,15 +480,30 @@ func (n *Node) joinCluster(ctx context.Context) error {
 	return nil
 }
 
+func intFromEnv(key string, defaultValue int) int {
+	env := os.Getenv(key)
+	if env == "" {
+		return defaultValue
+	}
+
+	value, err := strconv.Atoi(env)
+	if err != nil {
+		// This is for initialization.  If the env is set incorrectly panic and exit
+		// the process now.
+		panic(err)
+	}
+	return value
+}
+
 // DefaultNodeConfig returns the default config for a
 // raft node that can be modified and customized
 func DefaultNodeConfig() *raft.Config {
 	return &raft.Config{
-		HeartbeatTick: 1,
+		HeartbeatTick: intFromEnv(EnvRaftHeartbeatTick, 1),
 		// Recommended value in etcd/raft is 10 x (HeartbeatTick).
 		// Lower values were seen to have caused instability because of
 		// frequent leader elections when running on flakey networks.
-		ElectionTick:    10,
+		ElectionTick:    intFromEnv(EnvRaftElectionTick, 10),
 		MaxSizePerMsg:   math.MaxUint16,
 		MaxInflightMsgs: 256,
 		Logger:          log.L,
@@ -495,8 +520,8 @@ func DefaultRaftConfig() api.RaftConfig {
 		// Recommended value in etcd/raft is 10 x (HeartbeatTick).
 		// Lower values were seen to have caused instability because of
 		// frequent leader elections when running on flakey networks.
-		HeartbeatTick: 1,
-		ElectionTick:  10,
+		HeartbeatTick: uint32(intFromEnv(EnvRaftHeartbeatTick, 1)),
+		ElectionTick:  uint32(intFromEnv(EnvRaftElectionTick, 10)),
 	}
 }
 
