@@ -10,8 +10,6 @@ import (
 	"os/signal"
 
 	engineapi "github.com/docker/docker/client"
-	"github.com/docker/swarmkit/agent/exec"
-	"github.com/docker/swarmkit/agent/exec/containerd"
 	"github.com/docker/swarmkit/agent/exec/dockerapi"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/genericresource"
@@ -136,15 +134,6 @@ var (
 				return err
 			}
 
-			containerdAddr, err := cmd.Flags().GetString("containerd-addr")
-			if err != nil {
-				return err
-			}
-			containerdNamespace, err := cmd.Flags().GetString("containerd-namespace")
-			if err != nil {
-				return err
-			}
-
 			autolockManagers, err := cmd.Flags().GetBool("autolock")
 			if err != nil {
 				return err
@@ -182,22 +171,12 @@ var (
 				return err
 			}
 
-			var executor exec.Executor
-
-			if containerdAddr != "" {
-				logrus.Infof("Using containerd via %q with namespace %q", containerdAddr, containerdNamespace)
-				executor, err = containerd.NewExecutor(containerdAddr, containerdNamespace, resources)
-				if err != nil {
-					return err
-				}
-			} else {
-				client, err := engineapi.NewClient(engineAddr, "", nil, nil)
-				if err != nil {
-					return err
-				}
-
-				executor = dockerapi.NewExecutor(client, resources)
+			client, err := engineapi.NewClient(engineAddr, "", nil, nil)
+			if err != nil {
+				return err
 			}
+
+			executor := dockerapi.NewExecutor(client, resources)
 
 			if debugAddr != "" {
 				go func() {
