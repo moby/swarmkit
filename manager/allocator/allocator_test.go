@@ -563,9 +563,18 @@ func TestNoDuplicateIPs(t *testing.T) {
 				},
 				Ingress: true,
 			},
+			IPAM: &api.IPAMOptions{
+				Driver: &api.Driver{},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet:  "10.0.0.0/24",
+						Gateway: "10.0.0.1",
+					},
+				},
+			},
+			DriverState: &api.Driver{},
 		}
 		assert.NoError(t, store.CreateNetwork(tx, in))
-
 		n1 := &api.Network{
 			ID: "testID1",
 			Spec: api.NetworkSpec{
@@ -573,6 +582,16 @@ func TestNoDuplicateIPs(t *testing.T) {
 					Name: "test1",
 				},
 			},
+			IPAM: &api.IPAMOptions{
+				Driver: &api.Driver{},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet:  "10.1.0.0/24",
+						Gateway: "10.1.0.1",
+					},
+				},
+			},
+			DriverState: &api.Driver{},
 		}
 		assert.NoError(t, store.CreateNetwork(tx, n1))
 
@@ -649,7 +668,6 @@ func TestNoDuplicateIPs(t *testing.T) {
 
 			return nil
 		}))
-
 		a, err := New(s, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, a)
@@ -661,7 +679,6 @@ func TestNoDuplicateIPs(t *testing.T) {
 
 		// Confirm task gets a unique IP
 		watchTask(t, s, taskWatch, false, hasUniqueIP)
-
 		a.Stop()
 	}
 }
@@ -681,6 +698,15 @@ func TestAllocatorRestoreForDuplicateIPs(t *testing.T) {
 					Name: "default-ingress",
 				},
 				Ingress: true,
+			},
+			IPAM: &api.IPAMOptions{
+				Driver: &api.Driver{},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet:  "10.0.0.0/24",
+						Gateway: "10.0.0.1",
+					},
+				},
 			},
 		}
 		assert.NoError(t, store.CreateNetwork(tx, in))
@@ -815,6 +841,16 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 					Name: "net1",
 				},
 			},
+			IPAM: &api.IPAMOptions{
+				Driver: &api.Driver{},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet:  "10.0.0.0/24",
+						Gateway: "10.0.0.1",
+					},
+				},
+			},
+			DriverState: &api.Driver{},
 		}
 		assert.NoError(t, store.CreateNetwork(tx, in))
 
@@ -887,7 +923,6 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 	hasNoIPOverlapServices := func(fakeT assert.TestingT, service *api.Service) bool {
 		assert.NotEqual(fakeT, len(service.Endpoint.VirtualIPs), 0)
 		assert.NotEqual(fakeT, len(service.Endpoint.VirtualIPs[0].Addr), 0)
-
 		assignedVIP := service.Endpoint.VirtualIPs[0].Addr
 		if assignedIPs[assignedVIP] {
 			t.Fatalf("service %s assigned duplicate IP %s", service.ID, assignedVIP)
@@ -903,7 +938,6 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 	hasNoIPOverlapTasks := func(fakeT assert.TestingT, s *store.MemoryStore, task *api.Task) bool {
 		assert.NotEqual(fakeT, len(task.Networks), 0)
 		assert.NotEqual(fakeT, len(task.Networks[0].Addresses), 0)
-
 		assignedIP := task.Networks[0].Addresses[0]
 		if assignedIPs[assignedIP] {
 			t.Fatalf("task %s assigned duplicate IP %s", task.ID, assignedIP)
@@ -937,6 +971,209 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 		watchService(t, serviceWatch, false, hasNoIPOverlapServices)
 	}
 	assert.Len(t, expectedIPs, 0)
+}
+
+// TestAllocatorRestoreForUnallocatedNetwork tests allocator restart
+// scenarios where there is a combination of allocated and unallocated
+// networks and tests whether the restore logic ensures the networks
+// services and tasks that were preallocated are allocated correctly
+// followed by the allocation of unallocated networks prior to the
+// restart.
+func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+	// Create 3 services with 1 task each
+	numsvcstsks := 3
+	var n1 *api.Network
+	var n2 *api.Network
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		// populate ingress network
+		in := &api.Network{
+			ID: "ingress-nw-id",
+			Spec: api.NetworkSpec{
+				Annotations: api.Annotations{
+					Name: "default-ingress",
+				},
+				Ingress: true,
+			},
+			IPAM: &api.IPAMOptions{
+				Driver: &api.Driver{},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet:  "10.0.0.0/24",
+						Gateway: "10.0.0.1",
+					},
+				},
+			},
+		}
+		assert.NoError(t, store.CreateNetwork(tx, in))
+
+		n1 = &api.Network{
+			ID: "testID1",
+			Spec: api.NetworkSpec{
+				Annotations: api.Annotations{
+					Name: "test1",
+				},
+			},
+			IPAM: &api.IPAMOptions{
+				Driver: &api.Driver{},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet:  "10.1.0.0/24",
+						Gateway: "10.1.0.1",
+					},
+				},
+			},
+			DriverState: &api.Driver{},
+		}
+		assert.NoError(t, store.CreateNetwork(tx, n1))
+
+		n2 = &api.Network{
+			// Intentionally named testID0 so that in restore this network
+			// is looked into first
+			ID: "testID0",
+			Spec: api.NetworkSpec{
+				Annotations: api.Annotations{
+					Name: "test2",
+				},
+			},
+		}
+		assert.NoError(t, store.CreateNetwork(tx, n2))
+
+		for i := 0; i != numsvcstsks; i++ {
+			svc := &api.Service{
+				ID: "testServiceID" + strconv.Itoa(i),
+				Spec: api.ServiceSpec{
+					Annotations: api.Annotations{
+						Name: "service" + strconv.Itoa(i),
+					},
+					Task: api.TaskSpec{
+						Networks: []*api.NetworkAttachmentConfig{
+							{
+								Target: "testID1",
+							},
+						},
+					},
+					Endpoint: &api.EndpointSpec{
+						Mode: api.ResolutionModeVirtualIP,
+						Ports: []*api.PortConfig{
+							{
+								Name:          "",
+								Protocol:      api.ProtocolTCP,
+								TargetPort:    8000,
+								PublishedPort: uint32(8001 + i),
+							},
+						},
+					},
+				},
+				Endpoint: &api.Endpoint{
+					Ports: []*api.PortConfig{
+						{
+							Name:          "",
+							Protocol:      api.ProtocolTCP,
+							TargetPort:    8000,
+							PublishedPort: uint32(8001 + i),
+						},
+					},
+					VirtualIPs: []*api.Endpoint_VirtualIP{
+						{
+							NetworkID: "ingress-nw-id",
+							Addr:      "10.0.0." + strconv.Itoa(2+i) + "/24",
+						},
+						{
+							NetworkID: "testID1",
+							Addr:      "10.1.0." + strconv.Itoa(2+i) + "/24",
+						},
+					},
+				},
+			}
+			assert.NoError(t, store.CreateService(tx, svc))
+		}
+		return nil
+	}))
+
+	for i := 0; i != numsvcstsks; i++ {
+		assert.NoError(t, s.Update(func(tx store.Tx) error {
+			tsk := &api.Task{
+				ID: "testTaskID" + strconv.Itoa(i),
+				Status: api.TaskStatus{
+					State: api.TaskStateNew,
+				},
+				Spec: api.TaskSpec{
+					Networks: []*api.NetworkAttachmentConfig{
+						{
+							Target: "testID1",
+						},
+					},
+				},
+				ServiceID:    "testServiceID" + strconv.Itoa(i),
+				DesiredState: api.TaskStateRunning,
+			}
+			assert.NoError(t, store.CreateTask(tx, tsk))
+			return nil
+		}))
+	}
+
+	assignedIPs := make(map[string]bool)
+	expectedIPs := map[string]string{
+		"testServiceID0": "10.1.0.2/24",
+		"testServiceID1": "10.1.0.3/24",
+		"testServiceID2": "10.1.0.4/24",
+		"testTaskID0":    "10.1.0.5/24",
+		"testTaskID1":    "10.1.0.6/24",
+		"testTaskID2":    "10.1.0.7/24",
+	}
+	hasNoIPOverlapServices := func(fakeT assert.TestingT, service *api.Service) bool {
+		assert.NotEqual(fakeT, len(service.Endpoint.VirtualIPs), 0)
+		assert.NotEqual(fakeT, len(service.Endpoint.VirtualIPs[0].Addr), 0)
+		assignedVIP := service.Endpoint.VirtualIPs[1].Addr
+		if assignedIPs[assignedVIP] {
+			t.Fatalf("service %s assigned duplicate IP %s", service.ID, assignedVIP)
+		}
+		assignedIPs[assignedVIP] = true
+		ip, ok := expectedIPs[service.ID]
+		assert.True(t, ok)
+		assert.Equal(t, ip, assignedVIP)
+		delete(expectedIPs, service.ID)
+		return true
+	}
+
+	hasNoIPOverlapTasks := func(fakeT assert.TestingT, s *store.MemoryStore, task *api.Task) bool {
+		assert.NotEqual(fakeT, len(task.Networks), 0)
+		assert.NotEqual(fakeT, len(task.Networks[0].Addresses), 0)
+		assignedIP := task.Networks[1].Addresses[0]
+		if assignedIPs[assignedIP] {
+			t.Fatalf("task %s assigned duplicate IP %s", task.ID, assignedIP)
+		}
+		assignedIPs[assignedIP] = true
+		ip, ok := expectedIPs[task.ID]
+		assert.True(t, ok)
+		assert.Equal(t, ip, assignedIP)
+		delete(expectedIPs, task.ID)
+		return true
+	}
+
+	a, err := New(s, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, a)
+	// Start allocator
+	go func() {
+		assert.NoError(t, a.Run(context.Background()))
+	}()
+	defer a.Stop()
+
+	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
+	defer cancel()
+
+	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+	defer cancel()
+
+	// Confirm tasks have no IPs that overlap with the services VIPs on restart
+	for i := 0; i != numsvcstsks; i++ {
+		watchTask(t, s, taskWatch, false, hasNoIPOverlapTasks)
+		watchService(t, serviceWatch, false, hasNoIPOverlapServices)
+	}
 }
 
 func TestNodeAllocator(t *testing.T) {
