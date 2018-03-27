@@ -34,13 +34,14 @@ type testCluster struct {
 	errs       chan error
 	wg         sync.WaitGroup
 	counter    int
+	fips       bool
 }
 
 var testnameKey struct{}
 
 // NewCluster creates new cluster to which nodes can be added.
 // AcceptancePolicy is set to most permissive mode on first manager node added.
-func newTestCluster(testname string) *testCluster {
+func newTestCluster(testname string, fips bool) *testCluster {
 	ctx, cancel := context.WithCancel(context.Background())
 	ctx = context.WithValue(ctx, testnameKey, testname)
 	c := &testCluster{
@@ -49,6 +50,7 @@ func newTestCluster(testname string) *testCluster {
 		nodes:      make(map[string]*testNode),
 		nodesOrder: make(map[string]int),
 		errs:       make(chan error, 1024),
+		fips:       fips,
 	}
 	c.api = &dummyAPI{c: c}
 	return c
@@ -92,7 +94,7 @@ func (c *testCluster) AddManager(lateBind bool, rootCA *ca.RootCA) error {
 	// first node
 	var n *testNode
 	if len(c.nodes) == 0 {
-		node, err := newTestNode("", "", lateBind)
+		node, err := newTestNode("", "", lateBind, c.fips)
 		if err != nil {
 			return err
 		}
@@ -113,7 +115,7 @@ func (c *testCluster) AddManager(lateBind bool, rootCA *ca.RootCA) error {
 		if err != nil {
 			return err
 		}
-		node, err := newTestNode(joinAddr, clusterInfo.RootCA.JoinTokens.Manager, false)
+		node, err := newTestNode(joinAddr, clusterInfo.RootCA.JoinTokens.Manager, false, c.fips)
 		if err != nil {
 			return err
 		}
@@ -169,7 +171,7 @@ func (c *testCluster) AddAgent() error {
 	if err != nil {
 		return err
 	}
-	node, err := newTestNode(joinAddr, clusterInfo.RootCA.JoinTokens.Worker, false)
+	node, err := newTestNode(joinAddr, clusterInfo.RootCA.JoinTokens.Worker, false, c.fips)
 	if err != nil {
 		return err
 	}

@@ -54,7 +54,7 @@ func generateCerts(tmpDir string, rootCA *ca.RootCA, nodeID, role, org string, w
 // existing cluster. if joinAddr is empty string, then new cluster will be initialized.
 // It uses TestExecutor as executor. If lateBind is set, the remote API port is not
 // bound.  If rootCA is set, this root is used to bootstrap the node's TLS certs.
-func newTestNode(joinAddr, joinToken string, lateBind bool) (*testNode, error) {
+func newTestNode(joinAddr, joinToken string, lateBind bool, fips bool) (*testNode, error) {
 	tmpDir, err := ioutil.TempDir("", "swarmkit-integration-")
 	if err != nil {
 		return nil, err
@@ -67,6 +67,7 @@ func newTestNode(joinAddr, joinToken string, lateBind bool) (*testNode, error) {
 		StateDir:         tmpDir,
 		Executor:         &agentutils.TestExecutor{},
 		JoinToken:        joinToken,
+		FIPS:             fips,
 	}
 	if !lateBind {
 		cfg.ListenRemoteAPI = "127.0.0.1:0"
