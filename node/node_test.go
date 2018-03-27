@@ -16,14 +16,20 @@ import (
 	agentutils "github.com/docker/swarmkit/agent/testutils"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/ca/keyutils"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/identity"
+	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/testutils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
+
+func getLoggingContext(t *testing.T) context.Context {
+	return log.WithLogger(context.Background(), log.L.WithField("test", t.Name()))
+}
 
 // If there is nothing on disk and no join addr, we create a new CA and a new set of TLS certs.
 // If AutoLockManagers is enabled, the TLS key is encrypted with a randomly generated lock key.
@@ -148,9 +154,9 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 	require.Equal(t, ErrInvalidUnlockKey, err)
 
 	// Invalid CA
-	rootCA, err = ca.CreateRootCA(ca.DefaultRootCN)
+	otherRootCA, err := ca.CreateRootCA(ca.DefaultRootCN)
 	require.NoError(t, err)
-	require.NoError(t, ca.SaveRootCA(rootCA, paths.RootCA))
+	require.NoError(t, ca.SaveRootCA(otherRootCA, paths.RootCA))
 	node, err = New(&Config{
 		StateDir:  tempdir,
 		JoinAddr:  peer.Addr,
@@ -160,6 +166,21 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 	require.NoError(t, err)
 	_, _, err = node.loadSecurityConfig(context.Background(), paths)
 	require.IsType(t, x509.UnknownAuthorityError{}, errors.Cause(err))
+
+	// Convert to PKCS1 and require FIPS
+	require.NoError(t, krw.DowngradeKey())
+	// go back to the previous root CA
+	require.NoError(t, ca.SaveRootCA(rootCA, paths.RootCA))
+	node, err = New(&Config{
+		StateDir:  tempdir,
+		JoinAddr:  peer.Addr,
+		JoinToken: tc.ManagerToken,
+		UnlockKey: []byte("passphrase"),
+		FIPS:      true,
+	})
+	require.NoError(t, err)
+	_, _, err = node.loadSecurityConfig(context.Background(), paths)
+	require.Equal(t, keyutils.ErrFIPSUnsupportedKeyFormat, errors.Cause(err))
 }
 
 // If there is no CA, and a join addr is provided, one is downloaded from the
@@ -487,4 +508,41 @@ func TestManagerFailedStartup(t *testing.T) {
 	case <-node.closed:
 		require.EqualError(t, node.err, "manager stopped: can't initialize raft node: attempted to join raft cluster without knowing own address")
 	}
+}
+
+// TestFIPSConfiguration ensures that new keys will be stored in PKCS8 format.
+func TestFIPSConfiguration(t *testing.T) {
+	ctx := getLoggingContext(t)
+	tmpDir, err := ioutil.TempDir("", "fips")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	paths := ca.NewConfigPaths(filepath.Join(tmpDir, "certificates"))
+
+	// don't bother with a listening socket
+	cAddr := filepath.Join(tmpDir, "control.sock")
+	cfg := &Config{
+		ListenControlAPI: cAddr,
+		StateDir:         tmpDir,
+		Executor:         &agentutils.TestExecutor{},
+		FIPS:             true,
+	}
+	node, err := New(cfg)
+	require.NoError(t, err)
+	require.NoError(t, node.Start(ctx))
+	defer func() {
+		require.NoError(t, node.Stop(ctx))
+	}()
+
+	select {
+	case <-node.Ready():
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "node did not ready in time")
+	}
+
+	nodeKey, err := ioutil.ReadFile(paths.Node.Key)
+	require.NoError(t, err)
+	pemBlock, _ := pem.Decode(nodeKey)
+	require.NotNil(t, pemBlock)
+	require.True(t, keyutils.IsPKCS8(pemBlock.Bytes))
 }

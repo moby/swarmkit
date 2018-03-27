@@ -21,7 +21,6 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
-	"github.com/docker/swarmkit/fips"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager"
 	"github.com/docker/swarmkit/testutils"
@@ -154,7 +153,7 @@ func pollServiceReady(t *testing.T, c *testCluster, sid string, replicas int) {
 }
 
 func newCluster(t *testing.T, numWorker, numManager int) *testCluster {
-	cl := newTestCluster(t.Name())
+	cl := newTestCluster(t.Name(), false)
 	for i := 0; i < numManager; i++ {
 		require.NoError(t, cl.AddManager(false, nil), "manager number %d", i+1)
 	}
@@ -166,8 +165,8 @@ func newCluster(t *testing.T, numWorker, numManager int) *testCluster {
 	return cl
 }
 
-func newClusterWithRootCA(t *testing.T, numWorker, numManager int, rootCA *ca.RootCA) *testCluster {
-	cl := newTestCluster(t.Name())
+func newClusterWithRootCA(t *testing.T, numWorker, numManager int, rootCA *ca.RootCA, fips bool) *testCluster {
+	cl := newTestCluster(t.Name(), fips)
 	for i := 0; i < numManager; i++ {
 		require.NoError(t, cl.AddManager(false, rootCA), "manager number %d", i+1)
 	}
@@ -194,7 +193,7 @@ func TestServiceCreateLateBind(t *testing.T) {
 
 	numWorker, numManager := 3, 3
 
-	cl := newTestCluster(t.Name())
+	cl := newTestCluster(t.Name(), false)
 	for i := 0; i < numManager; i++ {
 		require.NoError(t, cl.AddManager(true, nil), "manager number %d", i+1)
 	}
@@ -268,19 +267,12 @@ func TestNodeOps(t *testing.T) {
 func TestAutolockManagers(t *testing.T) {
 	t.Parallel()
 
-	// run this twice, once with root ca with pkcs1 key and then pkcs8 key
-	defer os.Unsetenv(fips.EnvVar)
-	for _, pkcs1 := range []bool{true, false} {
-		if pkcs1 {
-			os.Unsetenv(fips.EnvVar)
-		} else {
-			os.Setenv(fips.EnvVar, "1")
-		}
-
+	// run this twice, once with FIPS set and once without FIPS set
+	for _, fips := range []bool{true, false} {
 		rootCA, err := ca.CreateRootCA("rootCN")
 		require.NoError(t, err)
 		numWorker, numManager := 1, 1
-		cl := newClusterWithRootCA(t, numWorker, numManager, &rootCA)
+		cl := newClusterWithRootCA(t, numWorker, numManager, &rootCA, fips)
 		defer func() {
 			require.NoError(t, cl.Stop())
 		}()
@@ -551,7 +543,7 @@ func TestForceNewCluster(t *testing.T) {
 
 	// start a new cluster with the external CA bootstrapped
 	numWorker, numManager := 0, 1
-	cl := newTestCluster(t.Name())
+	cl := newTestCluster(t.Name(), false)
 	defer func() {
 		require.NoError(t, cl.Stop())
 	}()
@@ -621,20 +613,13 @@ func pollRootRotationDone(t *testing.T, cl *testCluster) {
 func TestSuccessfulRootRotation(t *testing.T) {
 	t.Parallel()
 
-	// run this twice, once with root ca with pkcs1 key and then pkcs8 key
-	defer os.Unsetenv(fips.EnvVar)
-	for _, pkcs1 := range []bool{true, false} {
-		if pkcs1 {
-			os.Unsetenv(fips.EnvVar)
-		} else {
-			os.Setenv(fips.EnvVar, "1")
-		}
-
+	// run this twice, once with FIPS set and once without
+	for _, fips := range []bool{true, false} {
 		rootCA, err := ca.CreateRootCA("rootCN")
 		require.NoError(t, err)
 
 		numWorker, numManager := 2, 3
-		cl := newClusterWithRootCA(t, numWorker, numManager, &rootCA)
+		cl := newClusterWithRootCA(t, numWorker, numManager, &rootCA, fips)
 		defer func() {
 			require.NoError(t, cl.Stop())
 		}()
@@ -858,7 +843,7 @@ func TestNodeJoinWithWrongCerts(t *testing.T) {
 	require.NoError(t, err)
 
 	for role, token := range tokens {
-		node, err := newTestNode(joinAddr, token, false)
+		node, err := newTestNode(joinAddr, token, false, false)
 		require.NoError(t, err)
 		nodeID := identity.NewID()
 		require.NoError(t,
