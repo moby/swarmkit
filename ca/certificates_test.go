@@ -27,8 +27,6 @@ import (
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/keyutils"
-	"github.com/docker/swarmkit/ca/pkcs8"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/connectionbroker"
 	"github.com/docker/swarmkit/fips"
@@ -45,9 +43,6 @@ import (
 )
 
 func init() {
-	os.Setenv(ca.PassphraseENVVar, "")
-	os.Setenv(ca.PassphraseENVVarPrev, "")
-
 	ca.RenewTLSExponentialBackoff = events.ExponentialBackoffConfig{
 		Base:   250 * time.Millisecond,
 		Factor: 250 * time.Millisecond,
@@ -230,21 +225,6 @@ some random garbage\n
 
 	_, err = ca.GetLocalRootCA(paths.RootCA)
 	require.Error(t, err)
-}
-
-func TestEncryptECPrivateKey(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempBaseDir)
-
-	_, key, err := ca.GenerateNewCSR()
-	assert.NoError(t, err)
-	encryptedKey, err := ca.EncryptECPrivateKey(key, "passphrase")
-	assert.NoError(t, err)
-
-	keyBlock, _ := pem.Decode(encryptedKey)
-	assert.NotNil(t, keyBlock)
-	assert.True(t, pkcs8.IsEncryptedPEMBlock(keyBlock))
 }
 
 func TestParseValidateAndSignCSR(t *testing.T) {
@@ -1330,65 +1310,6 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 	require.NoError(t, err)
 
 	checkValidateAgainstAllRoots(tlsCert)
-}
-
-func TestNewRootCAWithPassphrase(t *testing.T) {
-	defer os.Setenv(ca.PassphraseENVVar, "")
-	defer os.Setenv(ca.PassphraseENVVarPrev, "")
-
-	rootCA, err := ca.CreateRootCA("rootCN")
-	assert.NoError(t, err)
-	rcaSigner, err := rootCA.Signer()
-	assert.NoError(t, err)
-
-	// Ensure that we're encrypting the Key bytes out of NewRoot if there
-	// is a passphrase set as an env Var
-	os.Setenv(ca.PassphraseENVVar, "password1")
-	newRootCA, err := ca.NewRootCA(rootCA.Certs, rcaSigner.Cert, rcaSigner.Key, ca.DefaultNodeCertExpiration, nil)
-	assert.NoError(t, err)
-	nrcaSigner, err := newRootCA.Signer()
-	assert.NoError(t, err)
-	assert.NotEqual(t, rcaSigner.Key, nrcaSigner.Key)
-	assert.Equal(t, rootCA.Certs, newRootCA.Certs)
-	assert.NotContains(t, string(rcaSigner.Key), string(nrcaSigner.Key))
-	keyBlock, _ := pem.Decode(nrcaSigner.Key)
-	assert.NotNil(t, keyBlock)
-	assert.True(t, keyutils.IsEncryptedPEMBlock(keyBlock))
-
-	// Ensure that we're decrypting the Key bytes out of NewRoot if there
-	// is a passphrase set as an env Var
-	anotherNewRootCA, err := ca.NewRootCA(newRootCA.Certs, nrcaSigner.Cert, nrcaSigner.Key, ca.DefaultNodeCertExpiration, nil)
-	assert.NoError(t, err)
-	anrcaSigner, err := anotherNewRootCA.Signer()
-	assert.NoError(t, err)
-	assert.Equal(t, newRootCA, anotherNewRootCA)
-	assert.NotContains(t, string(rcaSigner.Key), string(anrcaSigner.Key))
-	keyBlock, _ = pem.Decode(anrcaSigner.Key)
-	assert.NotNil(t, keyBlock)
-	assert.True(t, keyutils.IsEncryptedPEMBlock(keyBlock))
-
-	// Ensure that we cant decrypt the Key bytes out of NewRoot if there
-	// is a wrong passphrase set as an env Var
-	os.Setenv(ca.PassphraseENVVar, "password2")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Certs, nrcaSigner.Cert, nrcaSigner.Key, ca.DefaultNodeCertExpiration, nil)
-	assert.Error(t, err)
-
-	// Ensure that we cant decrypt the Key bytes out of NewRoot if there
-	// is a wrong passphrase set as an env Var
-	os.Setenv(ca.PassphraseENVVarPrev, "password2")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Certs, nrcaSigner.Cert, nrcaSigner.Key, ca.DefaultNodeCertExpiration, nil)
-	assert.Error(t, err)
-
-	// Ensure that we can decrypt the Key bytes out of NewRoot if there
-	// is a wrong passphrase set as an env Var, but a valid as Prev
-	os.Setenv(ca.PassphraseENVVarPrev, "password1")
-	anotherNewRootCA, err = ca.NewRootCA(newRootCA.Certs, nrcaSigner.Cert, nrcaSigner.Key, ca.DefaultNodeCertExpiration, nil)
-	assert.NoError(t, err)
-	assert.Equal(t, newRootCA, anotherNewRootCA)
-	assert.NotContains(t, string(rcaSigner.Key), string(anrcaSigner.Key))
-	keyBlock, _ = pem.Decode(anrcaSigner.Key)
-	assert.NotNil(t, keyBlock)
-	assert.True(t, keyutils.IsEncryptedPEMBlock(keyBlock))
 }
 
 type certTestCase struct {
