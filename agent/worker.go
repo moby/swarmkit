@@ -435,7 +435,7 @@ func (w *worker) reportAllStatuses(ctx context.Context, reporter StatusReporter)
 			return reporter.UpdateTaskStatus(ctx, id, status)
 		})
 	}); err != nil {
-		log.G(ctx).WithError(err).Errorf("failed reporting initial statuses to registered listener %v", reporter)
+		log.G(ctx).WithError(err).Errorf("failed reporting initial statuses")
 	}
 }
 
