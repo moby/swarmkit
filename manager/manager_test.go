@@ -26,20 +26,19 @@ import (
 	"github.com/docker/swarmkit/manager/state/raft/storage"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/testutils"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestManager(t *testing.T) {
 	temp, err := ioutil.TempFile("", "test-socket")
-	assert.NoError(t, err)
-	assert.NoError(t, temp.Close())
-	assert.NoError(t, os.Remove(temp.Name()))
+	require.NoError(t, err)
+	require.NoError(t, temp.Close())
+	require.NoError(t, os.Remove(temp.Name()))
 
 	defer os.RemoveAll(temp.Name())
 
 	stateDir, err := ioutil.TempDir("", "test-raft")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer os.RemoveAll(stateDir)
 
 	tc := cautils.NewTestCA(t, func(p ca.CertPaths) *ca.KeyReadWriter {
@@ -48,11 +47,11 @@ func TestManager(t *testing.T) {
 	defer tc.Stop()
 
 	agentSecurityConfig, err := tc.NewNodeConfig(ca.WorkerRole)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	agentDiffOrgSecurityConfig, err := tc.NewNodeConfigOrg(ca.WorkerRole, "another-org")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	m, err := New(&Config{
 		RemoteAPI:        &RemoteAddrs{ListenAddr: "127.0.0.1:0"},
@@ -63,8 +62,8 @@ func TestManager(t *testing.T) {
 		UnlockKey:        []byte("kek"),
 		RootCAPaths:      tc.Paths.RootCA,
 	})
-	assert.NoError(t, err)
-	assert.NotNil(t, m)
+	require.NoError(t, err)
+	require.NotNil(t, m)
 
 	tcpAddr := m.Addr()
 
@@ -80,17 +79,21 @@ func TestManager(t *testing.T) {
 	}
 
 	conn, err := grpc.Dial(tcpAddr, opts...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() {
-		assert.NoError(t, conn.Close())
+		require.NoError(t, conn.Close())
 	}()
 
 	// We have to send a dummy request to verify if the connection is actually up.
 	client := api.NewDispatcherClient(conn)
-	_, err = client.Heartbeat(tc.Context, &api.HeartbeatRequest{})
-	assert.Equal(t, dispatcher.ErrNodeNotRegistered.Error(), grpc.ErrorDesc(err))
-	_, err = client.Session(tc.Context, &api.SessionRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
+		_, err = client.Heartbeat(tc.Context, &api.HeartbeatRequest{})
+		if dispatcher.ErrNodeNotRegistered.Error() != grpc.ErrorDesc(err) {
+			return err
+		}
+		_, err = client.Session(tc.Context, &api.SessionRequest{})
+		return err
+	}, 1*time.Second))
 
 	// Try to have a client in a different org access this manager
 	opts = []grpc.DialOption{
@@ -99,14 +102,14 @@ func TestManager(t *testing.T) {
 	}
 
 	conn2, err := grpc.Dial(tcpAddr, opts...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() {
-		assert.NoError(t, conn2.Close())
+		require.NoError(t, conn2.Close())
 	}()
 
 	client = api.NewDispatcherClient(conn2)
 	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
-	assert.Contains(t, grpc.ErrorDesc(err), "Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = Permission denied: remote certificate not part of organization")
+	require.Contains(t, grpc.ErrorDesc(err), "Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = Permission denied: remote certificate not part of organization")
 
 	// Verify that requests to the various GRPC services running on TCP
 	// are rejected if they don't have certs.
@@ -116,22 +119,22 @@ func TestManager(t *testing.T) {
 	}
 
 	noCertConn, err := grpc.Dial(tcpAddr, opts...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() {
-		assert.NoError(t, noCertConn.Close())
+		require.NoError(t, noCertConn.Close())
 	}()
 
 	client = api.NewDispatcherClient(noCertConn)
 	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
-	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = no client certificates in request")
+	require.EqualError(t, err, "rpc error: code = PermissionDenied desc = Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = no client certificates in request")
 
 	controlClient := api.NewControlClient(noCertConn)
 	_, err = controlClient.ListNodes(context.Background(), &api.ListNodesRequest{})
-	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = no client certificates in request")
+	require.EqualError(t, err, "rpc error: code = PermissionDenied desc = Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = no client certificates in request")
 
 	raftClient := api.NewRaftMembershipClient(noCertConn)
 	_, err = raftClient.Join(context.Background(), &api.JoinRequest{})
-	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = no client certificates in request")
+	require.EqualError(t, err, "rpc error: code = PermissionDenied desc = Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = no client certificates in request")
 
 	opts = []grpc.DialOption{
 		grpc.WithTimeout(10 * time.Second),
@@ -139,9 +142,9 @@ func TestManager(t *testing.T) {
 	}
 
 	controlConn, err := grpc.Dial(tcpAddr, opts...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer func() {
-		assert.NoError(t, controlConn.Close())
+		require.NoError(t, controlConn.Close())
 	}()
 
 	// check that the kek is added to the config
@@ -173,7 +176,7 @@ func TestManager(t *testing.T) {
 
 	// Test removal of the agent node
 	agentID := agentSecurityConfig.ClientTLSCreds.NodeID()
-	assert.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
+	require.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
 		return store.CreateNode(tx,
 			&api.Node{
 				ID: agentID,
@@ -195,7 +198,7 @@ func TestManager(t *testing.T) {
 			},
 		},
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	_, err = controlClient.RemoveNode(context.Background(),
 		&api.RemoveNodeRequest{
@@ -203,11 +206,11 @@ func TestManager(t *testing.T) {
 			Force:  true,
 		},
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	client = api.NewDispatcherClient(conn)
 	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
-	assert.Contains(t, grpc.ErrorDesc(err), "removed from swarm")
+	require.Contains(t, grpc.ErrorDesc(err), "removed from swarm")
 
 	m.Stop(tc.Context, false)
 
@@ -287,9 +290,9 @@ func TestManagerLockUnlock(t *testing.T) {
 	require.Nil(t, cluster.UnlockKeys)
 
 	// tls key is unencrypted, but there is a DEK
-	key, err := ioutil.ReadFile(tc.Paths.Node.Key)
+	unencryptedKey, err := ioutil.ReadFile(tc.Paths.Node.Key)
 	require.NoError(t, err)
-	keyBlock, _ := pem.Decode(key)
+	keyBlock, _ := pem.Decode(unencryptedKey)
 	require.NotNil(t, keyBlock)
 	require.False(t, keyutils.IsEncryptedPEMBlock(keyBlock))
 	require.Len(t, keyBlock.Headers, 2)
@@ -326,16 +329,16 @@ func TestManagerLockUnlock(t *testing.T) {
 	require.NoError(t, err)
 
 	// this should update the TLS key, rotate the DEK, and finish snapshotting
-	var updatedKey []byte
+	var encryptedKey []byte
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
-		updatedKey, err = ioutil.ReadFile(tc.Paths.Node.Key)
+		encryptedKey, err = ioutil.ReadFile(tc.Paths.Node.Key)
 		require.NoError(t, err) // this should never error due to atomic writes
 
-		if bytes.Equal(key, updatedKey) {
+		if bytes.Equal(unencryptedKey, encryptedKey) {
 			return fmt.Errorf("TLS key should have been re-encrypted at least")
 		}
 
-		keyBlock, _ = pem.Decode(updatedKey)
+		keyBlock, _ = pem.Decode(encryptedKey)
 		require.NotNil(t, keyBlock) // this should never error due to atomic writes
 
 		if !keyutils.IsEncryptedPEMBlock(keyBlock) {
@@ -344,7 +347,6 @@ func TestManagerLockUnlock(t *testing.T) {
 
 		// we don't check that the TLS key has been rotated, because that may take
 		// a little bit, and is best effort only
-
 		currentDEKString, ok := keyBlock.Headers[pemHeaderRaftDEK]
 		require.True(t, ok) // there should never NOT be a current header
 		nowCurrentDEK, err := decodePEMHeaderValue(currentDEKString, unlockKeyResp.UnlockKey)
@@ -358,7 +360,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	}, 1*time.Second))
 
 	_, ok := keyBlock.Headers[pemHeaderRaftPendingDEK]
-	require.False(t, ok) // once the snapshot is do
+	require.False(t, ok) // once the snapshot is done, the pending DEK should have been deleted
 
 	_, ok = keyBlock.Headers[pemHeaderRaftDEKNeedsRotation]
 	require.False(t, ok)
@@ -398,19 +400,29 @@ func TestManagerLockUnlock(t *testing.T) {
 			return err
 		}
 
-		if bytes.Equal(unlockedKey, updatedKey) {
+		if bytes.Equal(unlockedKey, encryptedKey) {
 			return fmt.Errorf("TLS key should have been rotated")
 		}
 
+		// Previously, we did not check that the TLS key got rotated after going from
+		// unlocked -> locked, because it might take a while for the snapshot to be done,
+		// and the rotation happens on a best effort basis.  However, that *could*
+		// have happened, in which case the encrypted key may have changed, so we have
+		// to poll to make sure that the key is eventually decrypted, rather than
+		// just waiting for it to look different.
+
+		// the new key should not be encrypted, and the DEK should also be unencrypted
+		keyBlock, _ = pem.Decode(unlockedKey)
+		if keyBlock == nil {
+			return fmt.Errorf("keyblock is nil")
+		}
+		if keyutils.IsEncryptedPEMBlock(keyBlock) {
+			return fmt.Errorf("key is still encrypted")
+		}
 		return nil
 	}, 1*time.Second))
 
-	// the new key should not be encrypted, and the DEK should also be unencrypted
-	// but not rotated
-	keyBlock, _ = pem.Decode(unlockedKey)
-	require.NotNil(t, keyBlock)
-	require.False(t, keyutils.IsEncryptedPEMBlock(keyBlock))
-
+	// the DEK should not have been rotated, just decrypted (which was tested previously)
 	unencryptedDEK, err := decodePEMHeaderValue(keyBlock.Headers[pemHeaderRaftDEK], nil)
 	require.NoError(t, err)
 	require.NotNil(t, unencryptedDEK)
