@@ -219,7 +219,12 @@ func (tr *TaskReaper) tick() {
 
 			runningTasks := 0
 			for _, t := range historicTasks {
-				if t.DesiredState <= api.TaskStateRunning || t.Status.State <= api.TaskStateRunning {
+				// Skip tasks which are desired to be running but the current state
+				// is less than or equal to running.
+				// This check is important to ignore tasks which are running or need to be running,
+				// but to delete tasks which are either past running,
+				// or have not reached running but need to be shutdown (because of a service update, for example).
+				if t.DesiredState == api.TaskStateRunning && t.Status.State <= api.TaskStateRunning {
 					// Don't delete running tasks
 					runningTasks++
 					continue
