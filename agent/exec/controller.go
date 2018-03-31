@@ -120,6 +120,9 @@ func Resolve(ctx context.Context, task *api.Task, executor Executor) (Controller
 		status.Message = "accepted"
 		status.State = api.TaskStateAccepted
 		status.Err = ""
+	} else if task.Status.State == api.TaskStateReady ||
+		task.Status.State == api.TaskStateStarting {
+		status.State = api.TaskStateFailed
 	}
 
 	return ctlr, status, err
