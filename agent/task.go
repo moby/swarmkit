@@ -187,6 +187,13 @@ func (tm *taskManager) run(ctx context.Context) {
 			tm.task.Status = *status
 		case task := <-tm.updateq:
 			if equality.TasksEqualStable(task, tm.task) {
+				if tm.task.Status.State > task.Status.State {
+					select {
+					case run <- struct{}{}:
+					default:
+					}
+
+				}
 				continue // ignore the update
 			}
 
