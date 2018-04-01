@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/subtle"
 	"crypto/x509"
+	"fmt"
 	"sync"
 	"time"
 
@@ -23,6 +24,8 @@ import (
 const (
 	defaultReconciliationRetryInterval = 10 * time.Second
 	defaultRootReconciliationInterval  = 3 * time.Second
+	// IssuanceStateRotateMaxBatchSize is the maximum number of nodes we'll tell to rotate their certificates in any given update
+	IssuanceStateRotateMaxBatchSize = 30
 )
 
 // Server is the CA and NodeCA API gRPC server.
@@ -65,7 +68,7 @@ type Server struct {
 	signingMu sync.Mutex
 
 	// lets us monitor and finish root rotations
-	rootReconciler                  *rootRotationReconciler
+	rootReconciler                  *RotationReconciler
 	rootReconciliationRetryInterval time.Duration
 }
 
@@ -462,12 +465,13 @@ func (s *Server) Run(ctx context.Context) error {
 	)
 
 	// call once to ensure that the join tokens and local/external CA signer are always set
-	rootReconciler := &rootRotationReconciler{
-		ctx:                 log.WithField(ctx, "method", "(*Server).rootRotationReconciler"),
-		clusterID:           s.clusterID,
-		store:               s.store,
-		batchUpdateInterval: s.rootReconciliationRetryInterval,
-	}
+	reconciliationCtx := log.WithField(ctx, "method", "(*Server).rootRotationReconciler")
+	// we need to set it on the server, because `Server.UpdateRootCA` can be called from outside the Run function
+	rootReconciler := NewRotationReconciler(reconciliationCtx, &caRootRotationHelper{
+		ctx:       reconciliationCtx,
+		store:     s.store,
+		clusterID: s.clusterID,
+	}, s.rootReconciliationRetryInterval)
 
 	s.UpdateRootCA(ctx, cluster, rootReconciler)
 
@@ -515,16 +519,16 @@ func (s *Server) Run(ctx context.Context) error {
 			switch v := event.(type) {
 			case api.EventCreateNode:
 				s.evaluateAndSignNodeCert(ctx, v.Node)
-				rootReconciler.UpdateNode(v.Node)
+				rootReconciler.UpdateTLSTerminator(nodeTLSTerminator{Node: v.Node})
 			case api.EventUpdateNode:
 				// If this certificate is already at a final state
 				// no need to evaluate and sign it.
 				if !isFinalState(v.Node.Certificate.Status) {
 					s.evaluateAndSignNodeCert(ctx, v.Node)
 				}
-				rootReconciler.UpdateNode(v.Node)
+				rootReconciler.UpdateTLSTerminator(nodeTLSTerminator{Node: v.Node})
 			case api.EventDeleteNode:
-				rootReconciler.DeleteNode(v.Node)
+				rootReconciler.DeleteTLSTerminator(nodeTLSTerminator{Node: v.Node})
 			case api.EventUpdateCluster:
 				if v.Cluster.ID == s.clusterID {
 					s.UpdateRootCA(ctx, v.Cluster, rootReconciler)
@@ -655,7 +659,7 @@ func filterExternalCAURLS(ctx context.Context, desiredCert, defaultCert []byte, 
 // UpdateRootCA is called when there are cluster changes, and it ensures that the local RootCA is
 // always aware of changes in clusterExpiry and the Root CA key material - this can be called by
 // anything to update the root CA material
-func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster, reconciler *rootRotationReconciler) error {
+func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster, reconciler *RotationReconciler) error {
 	s.mu.Lock()
 	s.joinTokens = cluster.RootCA.JoinTokens.Copy()
 	s.mu.Unlock()
@@ -914,4 +918,128 @@ func RootCAFromAPI(ctx context.Context, apiRootCA *api.RootCA, expiry time.Durat
 		signingCert = nil
 	}
 	return NewRootCA(apiRootCA.CACert, signingCert, signingKey, expiry, intermediates)
+}
+
+// wraps a node as a TLS terminator so that
+type nodeTLSTerminator struct {
+	*api.Node
+}
+
+func (n nodeTLSTerminator) TrustRoot() []byte {
+	if n.Description != nil && n.Description.TLSInfo != nil {
+		return n.Description.TLSInfo.TrustRoot
+	}
+	return nil
+}
+
+func (n nodeTLSTerminator) IssuerInfo() *IssuerInfo {
+	if n.Description != nil && n.Description.TLSInfo != nil {
+		return &IssuerInfo{
+			Subject:   n.Description.TLSInfo.CertIssuerSubject,
+			PublicKey: n.Description.TLSInfo.CertIssuerPublicKey,
+		}
+	}
+	return nil
+}
+
+func (n nodeTLSTerminator) Identifier() EntityID {
+	return EntityID{
+		ID:   n.ID,
+		Type: "node",
+	}
+}
+
+type caRootRotationHelper struct {
+	store     *store.MemoryStore
+	ctx       context.Context
+	clusterID string
+}
+
+func (c *caRootRotationHelper) GetAllTerminators() ([]TLSTerminator, error) {
+	var (
+		nodes []*api.Node
+		tts   []TLSTerminator
+		err   error
+	)
+	c.store.View(func(tx store.ReadTx) {
+		nodes, err = store.FindNodes(tx, store.All)
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range nodes {
+		tts = append(tts, nodeTLSTerminator{Node: n})
+	}
+	return tts, nil
+}
+
+func (c *caRootRotationHelper) RotateCerts(tts []TLSTerminator) error {
+	var toUpdate []*api.Node
+	for _, tt := range tts {
+		if nodeTT, ok := tt.(nodeTLSTerminator); ok {
+			iState := nodeTT.Node.Certificate.Status.State
+			if iState != api.IssuanceStateRenew && iState != api.IssuanceStatePending && iState != api.IssuanceStateRotate {
+				n := nodeTT.Node.Copy()
+				n.Certificate.Status.State = api.IssuanceStateRotate
+				toUpdate = append(toUpdate, n)
+			}
+		}
+		if len(toUpdate) >= IssuanceStateRotateMaxBatchSize {
+			break
+		}
+	}
+
+	if len(toUpdate) == 0 {
+		return nil
+	}
+
+	err := c.store.Batch(func(batch *store.Batch) error {
+		// Directly update the nodes rather than get + update, and ignore version errors.  Since
+		// `rootRotationReconciler` should be hooked up to all node update/delete/create events, we should have
+		// close to the latest versions of all the nodes.  If not, the node will updated later and the
+		// next batch of updates should catch it.
+		for _, n := range toUpdate {
+			if err := batch.Update(func(tx store.Tx) error {
+				return store.UpdateNode(tx, n)
+			}); err != nil && err != store.ErrSequenceConflict {
+				log.G(c.ctx).WithError(err).Errorf("unable to update node %s to request a certificate rotation", n.ID)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		log.G(c.ctx).WithError(err).Errorf("store error when trying to batch update %d nodes to request certificate rotation", len(toUpdate))
+	}
+	return err
+}
+
+func (c *caRootRotationHelper) FinishRotation(expectedRootCA, newRootCA *api.RootCA) error {
+	// We only need the root CA certificate in order to generate the join tokens.
+	caRootCA, err := NewRootCA(newRootCA.CACert, nil, nil, DefaultNodeCertExpiration, nil)
+	if err != nil {
+		return errors.Wrap(err, "invalid new cluster root CA object")
+	}
+	updated := newRootCA.Copy()
+	updated.CACertHash = caRootCA.Digest.String()
+	updated.JoinTokens = api.JoinTokens{
+		Worker:  GenerateJoinToken(&caRootCA),
+		Manager: GenerateJoinToken(&caRootCA),
+	}
+
+	return c.store.Update(func(tx store.Tx) error {
+		cluster := store.GetCluster(tx, c.clusterID)
+		if cluster == nil {
+			return fmt.Errorf("unable to get cluster %s", c.clusterID)
+		}
+
+		// If the RootCA object has changed (because another root rotation was started or because some other node
+		// had finished the root rotation), we cannot finish the root rotation that we were working on.
+		if !equality.RootCAEqualStable(expectedRootCA, &cluster.RootCA) {
+			return ErrRootRotationChanged
+		}
+
+		updated.LastForcedRotation = cluster.RootCA.LastForcedRotation
+		cluster.RootCA = *updated
+		return store.UpdateCluster(tx, cluster)
+	})
 }
