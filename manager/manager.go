@@ -213,7 +213,7 @@ func New(config *Config) (*Manager, error) {
 		raftCfg.HeartbeatTick = int(config.HeartbeatTick)
 	}
 
-	dekRotator, err := NewRaftDEKManager(config.SecurityConfig.KeyWriter())
+	dekRotator, err := NewRaftDEKManager(config.SecurityConfig.KeyWriter(), false)
 	if err != nil {
 		return nil, err
 	}
