@@ -695,7 +695,7 @@ func (n *Node) loadSecurityConfig(ctx context.Context, paths *ca.SecurityConfigP
 		cancel         func() error
 	)
 
-	krw := ca.NewKeyReadWriter(paths.Node, n.unlockKey, &manager.RaftDEKData{})
+	krw := ca.NewKeyReadWriter(paths.Node, n.unlockKey, &manager.RaftDEKData{FIPS: n.config.FIPS})
 	// if FIPS is required, we want to make sure our key is stored in PKCS8 format
 	if n.config.FIPS {
 		krw.SetKeyFormatter(keyutils.FIPS)
@@ -729,7 +729,7 @@ func (n *Node) loadSecurityConfig(ctx context.Context, paths *ca.SecurityConfigP
 			if n.config.AutoLockManagers {
 				n.unlockKey = encryption.GenerateSecretKey()
 			}
-			krw = ca.NewKeyReadWriter(paths.Node, n.unlockKey, &manager.RaftDEKData{})
+			krw = ca.NewKeyReadWriter(paths.Node, n.unlockKey, &manager.RaftDEKData{FIPS: n.config.FIPS})
 			rootCA, err = ca.CreateRootCA(ca.DefaultRootCN)
 			if err != nil {
 				return nil, nil, err
@@ -898,6 +898,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 		Availability:     n.config.Availability,
 		PluginGetter:     n.config.PluginGetter,
 		RootCAPaths:      rootPaths,
+		FIPS:             n.config.FIPS,
 	})
 	if err != nil {
 		return false, err

@@ -888,9 +888,15 @@ func TestMixedFIPSClusterNonMandatoryFIPS(t *testing.T) {
 
 	pollClusterReady(t, cl, 2, 3)
 
-	// swap which nodes are fips and which are not - all should start up just fine
+	// switch which worker nodes are fips and which are not - all should start up just fine
+	// on managers, if we enable fips on a previously non-fips node, it won't be able to read
+	// non-fernet raft logs
 	for nodeID, n := range cl.nodes {
-		n.config.FIPS = !n.config.FIPS
+		if n.IsManager() {
+			n.config.FIPS = false
+		} else {
+			n.config.FIPS = !n.config.FIPS
+		}
 		require.NoError(t, n.Pause(false))
 		require.NoError(t, cl.StartNode(nodeID))
 	}
