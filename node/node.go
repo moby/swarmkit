@@ -123,6 +123,9 @@ type Config struct {
 
 	// PluginGetter provides access to docker's plugin inventory.
 	PluginGetter plugingetter.PluginGetter
+
+	// FIPS is a boolean stating whether the node is FIPS enabled
+	FIPS bool
 }
 
 // Node implements the primary node functionality for a member of a swarm
