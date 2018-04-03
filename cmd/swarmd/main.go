@@ -10,7 +10,7 @@ import (
 	"os/signal"
 
 	engineapi "github.com/docker/docker/client"
-	"github.com/docker/swarmkit/agent/exec/dockerapi"
+
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/cli"
@@ -19,11 +19,14 @@ import (
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/docker/swarmkit/node"
 	"github.com/docker/swarmkit/version"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
+	"github.com/docker/swarmkit/agent/exec"
+	"github.com/docker/swarmkit/agent/exec/containerd"
+	"github.com/docker/swarmkit/agent/exec/dockerapi"
 )
 
 var externalCAOpt cli.ExternalCAOpt
@@ -134,6 +137,16 @@ var (
 				return err
 			}
 
+			containerdAddr, err := cmd.Flags().GetString("containerd-addr")
+			if err != nil {
+				return err
+			}
+
+			containerdNamespace, err := cmd.Flags().GetString("containerd-namespace")
+			if err != nil {
+				return err
+			}
+
 			autolockManagers, err := cmd.Flags().GetBool("autolock")
 			if err != nil {
 				return err
@@ -171,13 +184,29 @@ var (
 				return err
 			}
 
-			client, err := engineapi.NewClient(engineAddr, "", nil, nil)
-			if err != nil {
-				return err
+			// Set the executor to dockerapi or containerd based on the containerdAddr.
+			var executor exec.Executor
+
+			if containerdAddr != "" {
+				// Executor will be containerd
+				logrus.Infof("Using containerd via %q with namespace %q", containerdAddr, containerdNamespace)
+
+				executor, err = containerd.NewExecutor(containerdAddr, containerdNamespace, resources)
+				if err != nil {
+					return err
+				}
+			} else {
+				// Executor will be dockerapi
+				client, err := engineapi.NewClient(engineAddr, "", nil, nil)
+
+				if err != nil {
+					return err
+				}
+
+				executor = dockerapi.NewExecutor(client, resources)
 			}
 
-			executor := dockerapi.NewExecutor(client, resources)
-
+			// Setup debug mode
 			if debugAddr != "" {
 				go func() {
 					// setup listening to give access to pprof, expvar, etc.
