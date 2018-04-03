@@ -34,3 +34,6 @@ bin/swarmkitstate
 
 # ignore GoLand IDEA files
 .idea/
+
+# ignore Mac OS X files
+.DS_Store
