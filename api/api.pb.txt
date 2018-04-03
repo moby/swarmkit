@@ -6167,6 +6167,16 @@ file {
       type_name: ".docker.swarmkit.v1.EncryptionKey"
       json_name: "unlockKeys"
     }
+    field {
+      name: "fips"
+      number: 10
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      options {
+        65004: "FIPS"
+      }
+      json_name: "fips"
+    }
     nested_type {
       name: "BlacklistedCertificatesEntry"
       field {
