@@ -3610,7 +3610,7 @@ func (m *Annotations) MarshalTo(dAtA []byte) (int, error) {
 		i += copy(dAtA[i:], m.Name)
 	}
 	if len(m.Labels) > 0 {
-		for k, _ := range m.Labels {
+		for k := range m.Labels {
 			dAtA[i] = 0x12
 			i++
 			v := m.Labels[k]
@@ -3913,7 +3913,7 @@ func (m *EngineDescription) MarshalTo(dAtA []byte) (int, error) {
 		i += copy(dAtA[i:], m.EngineVersion)
 	}
 	if len(m.Labels) > 0 {
-		for k, _ := range m.Labels {
+		for k := range m.Labels {
 			dAtA[i] = 0x12
 			i++
 			v := m.Labels[k]
@@ -4271,7 +4271,7 @@ func (m *Mount_VolumeOptions) MarshalTo(dAtA []byte) (int, error) {
 		i++
 	}
 	if len(m.Labels) > 0 {
-		for k, _ := range m.Labels {
+		for k := range m.Labels {
 			dAtA[i] = 0x12
 			i++
 			v := m.Labels[k]
@@ -4689,7 +4689,7 @@ func (m *NetworkAttachmentConfig) MarshalTo(dAtA []byte) (int, error) {
 		}
 	}
 	if len(m.DriverAttachmentOpts) > 0 {
-		for k, _ := range m.DriverAttachmentOpts {
+		for k := range m.DriverAttachmentOpts {
 			dAtA[i] = 0x22
 			i++
 			v := m.DriverAttachmentOpts[k]
@@ -4747,7 +4747,7 @@ func (m *IPAMConfig) MarshalTo(dAtA []byte) (int, error) {
 		i += copy(dAtA[i:], m.Gateway)
 	}
 	if len(m.Reserved) > 0 {
-		for k, _ := range m.Reserved {
+		for k := range m.Reserved {
 			dAtA[i] = 0x2a
 			i++
 			v := m.Reserved[k]
@@ -4832,7 +4832,7 @@ func (m *Driver) MarshalTo(dAtA []byte) (int, error) {
 		i += copy(dAtA[i:], m.Name)
 	}
 	if len(m.Options) > 0 {
-		for k, _ := range m.Options {
+		for k := range m.Options {
 			dAtA[i] = 0x12
 			i++
 			v := m.Options[k]
@@ -5113,7 +5113,7 @@ func (m *ExternalCA) MarshalTo(dAtA []byte) (int, error) {
 		i += copy(dAtA[i:], m.URL)
 	}
 	if len(m.Options) > 0 {
-		for k, _ := range m.Options {
+		for k := range m.Options {
 			dAtA[i] = 0x1a
 			i++
 			v := m.Options[k]
@@ -7352,7 +7352,7 @@ func (this *Annotations) String() string {
 		return "nil"
 	}
 	keysForLabels := make([]string, 0, len(this.Labels))
-	for k, _ := range this.Labels {
+	for k := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
@@ -7471,7 +7471,7 @@ func (this *EngineDescription) String() string {
 		return "nil"
 	}
 	keysForLabels := make([]string, 0, len(this.Labels))
-	for k, _ := range this.Labels {
+	for k := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
@@ -7580,7 +7580,7 @@ func (this *Mount_VolumeOptions) String() string {
 		return "nil"
 	}
 	keysForLabels := make([]string, 0, len(this.Labels))
-	for k, _ := range this.Labels {
+	for k := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
@@ -7703,7 +7703,7 @@ func (this *NetworkAttachmentConfig) String() string {
 		return "nil"
 	}
 	keysForDriverAttachmentOpts := make([]string, 0, len(this.DriverAttachmentOpts))
-	for k, _ := range this.DriverAttachmentOpts {
+	for k := range this.DriverAttachmentOpts {
 		keysForDriverAttachmentOpts = append(keysForDriverAttachmentOpts, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForDriverAttachmentOpts)
@@ -7726,7 +7726,7 @@ func (this *IPAMConfig) String() string {
 		return "nil"
 	}
 	keysForReserved := make([]string, 0, len(this.Reserved))
-	for k, _ := range this.Reserved {
+	for k := range this.Reserved {
 		keysForReserved = append(keysForReserved, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForReserved)
@@ -7764,7 +7764,7 @@ func (this *Driver) String() string {
 		return "nil"
 	}
 	keysForOptions := make([]string, 0, len(this.Options))
-	for k, _ := range this.Options {
+	for k := range this.Options {
 		keysForOptions = append(keysForOptions, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForOptions)
@@ -7862,7 +7862,7 @@ func (this *ExternalCA) String() string {
 		return "nil"
 	}
 	keysForOptions := make([]string, 0, len(this.Options))
-	for k, _ := range this.Options {
+	for k := range this.Options {
 		keysForOptions = append(keysForOptions, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForOptions)

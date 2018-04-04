@@ -21,10 +21,10 @@ import (
 	"github.com/docker/swarmkit/api/naming"
 	"github.com/docker/swarmkit/log"
 	gogotypes "github.com/gogo/protobuf/types"
+	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
 var (
@@ -117,7 +117,6 @@ func (c *containerAdapter) log(ctx context.Context) *logrus.Entry {
 		"container.id": c.name,
 	})
 }
-
 
 // pullImage downloads the provided content into containerd's content store
 func (c *containerAdapter) pullImage(ctx context.Context) error {

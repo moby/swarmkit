@@ -1245,7 +1245,7 @@ func (m *NetworkAttachment) MarshalTo(dAtA []byte) (int, error) {
 		}
 	}
 	if len(m.DriverAttachmentOpts) > 0 {
-		for k, _ := range m.DriverAttachmentOpts {
+		for k := range m.DriverAttachmentOpts {
 			dAtA[i] = 0x22
 			i++
 			v := m.DriverAttachmentOpts[k]
@@ -1387,7 +1387,7 @@ func (m *Cluster) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintObjects(dAtA, i, uint64(m.EncryptionKeyLamportClock))
 	}
 	if len(m.BlacklistedCertificates) > 0 {
-		for k, _ := range m.BlacklistedCertificates {
+		for k := range m.BlacklistedCertificates {
 			dAtA[i] = 0x42
 			i++
 			v := m.BlacklistedCertificates[k]
@@ -4488,7 +4488,7 @@ func (this *NetworkAttachment) String() string {
 		return "nil"
 	}
 	keysForDriverAttachmentOpts := make([]string, 0, len(this.DriverAttachmentOpts))
-	for k, _ := range this.DriverAttachmentOpts {
+	for k := range this.DriverAttachmentOpts {
 		keysForDriverAttachmentOpts = append(keysForDriverAttachmentOpts, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForDriverAttachmentOpts)
@@ -4525,7 +4525,7 @@ func (this *Cluster) String() string {
 		return "nil"
 	}
 	keysForBlacklistedCertificates := make([]string, 0, len(this.BlacklistedCertificates))
-	for k, _ := range this.BlacklistedCertificates {
+	for k := range this.BlacklistedCertificates {
 		keysForBlacklistedCertificates = append(keysForBlacklistedCertificates, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForBlacklistedCertificates)

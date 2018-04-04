@@ -11,6 +11,9 @@ import (
 
 	engineapi "github.com/docker/docker/client"
 
+	"github.com/docker/swarmkit/agent/exec"
+	"github.com/docker/swarmkit/agent/exec/containerd"
+	"github.com/docker/swarmkit/agent/exec/dockerapi"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/cli"
@@ -24,9 +27,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
-	"github.com/docker/swarmkit/agent/exec"
-	"github.com/docker/swarmkit/agent/exec/containerd"
-	"github.com/docker/swarmkit/agent/exec/dockerapi"
 )
 
 var externalCAOpt cli.ExternalCAOpt
