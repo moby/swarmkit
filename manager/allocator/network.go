@@ -118,11 +118,11 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 		return errors.Wrap(err, "failure while looking for ingress network during init")
 	}
 
-	// First, allocate (read it as restore) objects likes network,nodes,serives
+	// First, allocate (read it as restore) objects likes network, nodes, services
 	// and tasks that were already allocated. Then go on the allocate objects
 	// that are in raft and were previously not allocated. The reason being, during
 	// restore, we  make sure that we populate the allocated states of
-	// the objects in the raft onto our in memory state.
+	// the objects in the raft onto our in-memory state.
 	if err := a.allocateNetworks(ctx, true); err != nil {
 		return err
 	}
@@ -394,6 +394,9 @@ func (a *Allocator) getAllocatedNetworks() ([]*api.Network, error) {
 	return allocatedNetworks, nil
 }
 
+// allocateNodes allocates nodes and commits the updates to the store.
+// existingAddressesOnly is true when only previously allocated nodes
+// need to be re-allocated on allocator init (which happens on leader election).
 func (a *Allocator) allocateNodes(ctx context.Context, existingAddressesOnly bool) error {
 	// Allocate nodes in the store so far before we process watched events.
 	var (
@@ -416,7 +419,9 @@ func (a *Allocator) allocateNodes(ctx context.Context, existingAddressesOnly boo
 
 	for _, node := range nodes {
 		isAllocated := a.allocateNode(ctx, node, existingAddressesOnly, allocatedNetworks)
-		if isAllocated {
+
+		// Only commit nodes that were previously unallocated.
+		if isAllocated && !existingAddressesOnly {
 			allocatedNodes = append(allocatedNodes, node)
 		}
 	}
@@ -537,9 +542,10 @@ func (a *Allocator) deallocateNode(node *api.Node) error {
 	return nil
 }
 
-// allocateNetworks allocates (restores) networks in the store so far before we process
-// watched events. existingOnly flags is set to true to specify if only allocated
-// networks need to be restored.
+// allocateNetworks allocates (restores) preexisting networks in the store before processing
+// new networks from watched events.
+// existingOnly flags is set to true to specify if only previously allocated networks
+// need to be restored.
 func (a *Allocator) allocateNetworks(ctx context.Context, existingOnly bool) error {
 	var (
 		nc       = a.netCtx
@@ -574,7 +580,11 @@ func (a *Allocator) allocateNetworks(ctx context.Context, existingOnly bool) err
 			log.G(ctx).WithField("existingOnly", existingOnly).WithError(err).Errorf("failed allocating network %s during init", n.ID)
 			continue
 		}
-		allocatedNetworks = append(allocatedNetworks, n)
+
+		// Only commit previously unallocated networks to the store.
+		if !existingOnly {
+			allocatedNetworks = append(allocatedNetworks, n)
+		}
 	}
 
 	if err := a.store.Batch(func(batch *store.Batch) error {
