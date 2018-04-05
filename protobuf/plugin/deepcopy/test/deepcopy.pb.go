@@ -2611,7 +2611,7 @@ func (this *MapStruct) String() string {
 		return "nil"
 	}
 	keysForNullableMap := make([]string, 0, len(this.NullableMap))
-	for k := range this.NullableMap {
+	for k, _ := range this.NullableMap {
 		keysForNullableMap = append(keysForNullableMap, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForNullableMap)
@@ -2621,7 +2621,7 @@ func (this *MapStruct) String() string {
 	}
 	mapStringForNullableMap += "}"
 	keysForNonnullableMap := make([]string, 0, len(this.NonnullableMap))
-	for k := range this.NonnullableMap {
+	for k, _ := range this.NonnullableMap {
 		keysForNonnullableMap = append(keysForNonnullableMap, k)
 	}
 	github_com_gogo_protobuf_sortkeys.Strings(keysForNonnullableMap)
