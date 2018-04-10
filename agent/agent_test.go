@@ -232,17 +232,20 @@ func TestHandleSessionMessageNodeChanges(t *testing.T) {
 	require.Empty(t, closedSessions)
 }
 
-// when the node description changes, the session is restarted and propagated up to the dispatcher
+// when the node description changes, the session is restarted and propagated up to the dispatcher.
+// the node description includes the FIPSness of the agent.
 func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 	tlsCh := make(chan events.Event, 1)
 	defer close(tlsCh)
 	tester := agentTestEnv(t, nil, tlsCh)
+	tester.agent.config.FIPS = true // start out with the agent in FIPS-enabled mode
 	defer tester.cleanup()
 	defer tester.StartAgent(t)()
 
 	currSession, closedSessions := tester.dispatcher.GetSessions()
 	require.NotNil(t, currSession)
 	require.NotNil(t, currSession.Description)
+	require.True(t, currSession.Description.FIPS)
 	require.Empty(t, closedSessions)
 
 	tester.executor.UpdateNodeDescription(&api.NodeDescription{
@@ -262,6 +265,7 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 	require.NotEqual(t, currSession, gotSession)
 	require.NotNil(t, gotSession.Description)
 	require.Equal(t, "testAgent", gotSession.Description.Hostname)
+	require.True(t, gotSession.Description.FIPS)
 	currSession = gotSession
 
 	// If nothing changes, the session is not re-established
@@ -291,6 +295,7 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 	require.NotNil(t, gotSession.Description)
 	require.Equal(t, "testAgent", gotSession.Description.Hostname)
 	require.Equal(t, newTLSInfo, gotSession.Description.TLSInfo)
+	require.True(t, gotSession.Description.FIPS)
 }
 
 // If the dispatcher returns an error, if it times out, or if it's unreachable, no matter
