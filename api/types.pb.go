@@ -54,9 +54,11 @@ func (x ResourceType) String() string {
 }
 func (ResourceType) EnumDescriptor() ([]byte, []int) { return fileDescriptorTypes, []int{0} }
 
-// TaskState enumerates the states that a task progresses through within an
-// agent. States are designed to be monotonically increasing, such that if two
-// states are seen by a task, the greater of the new represents the true state.
+// Only the manager create a NEW task, and move the task to PENDING and ASSIGNED.
+// Afterward, the manager must rely on the agent to update the task status
+// (pre-run: preparing, ready, starting;
+//  running;
+//  end-state: complete, shutdown, failed, rejected)
 type TaskState int32
 
 const (
@@ -71,7 +73,9 @@ const (
 	TaskStateCompleted TaskState = 576
 	TaskStateShutdown  TaskState = 640
 	TaskStateFailed    TaskState = 704
-	TaskStateRejected  TaskState = 768
+	// TaskStateRejected means a task never ran, for instance if something about
+	// the environment failed (e.g. setting up a port on that node failed).
+	TaskStateRejected TaskState = 768
 	// TaskStateRemove is used to correctly handle service deletions and scale
 	// downs. This allows us to keep track of tasks that have been marked for
 	// deletion, but can't yet be removed because the agent is in the process of
