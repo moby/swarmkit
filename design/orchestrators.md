@@ -128,10 +128,10 @@ means rolling updates will go node-by-node instead of slot-by-slot.
 The restart supervisor manages the process of shutting down a task, and
 possibly starting a replacement task. Its entry point is a `Restart` method
 which is called inside a store write transaction in one of the orchestrators.
-It atomically changes the state of the old task to `Shutdown`, and, if it's
-appropriate to start a replacement task based on the service's restart policy,
-creates a new task in the same slot (replicated service) or on the same node
-(global service).
+It atomically changes the desired state of the old task to `Shutdown`, and, if
+it's appropriate to start a replacement task based on the service's restart
+policy, creates a new task in the same slot (replicated service) or on the same
+node (global service).
 
 If the service is set up with a restart delay, the restart supervisor handles
 this delay too. It initially creates the new task with the desired state
