@@ -1234,9 +1234,12 @@ type NetworkAttachmentConfig struct {
 	Target string `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
 	// Aliases specifies a list of discoverable alternate names for the service on this Target.
 	Aliases []string `protobuf:"bytes,2,rep,name=aliases" json:"aliases,omitempty"`
-	// Addresses specifies a list of ipv4 and ipv6 addresses
-	// preferred. If these addresses are not available then the
-	// attachment might fail.
+	// Addresses specifies a list of ipv4 and ipv6 addresses preferred. This
+	// field is only used for Network Attachment tasks, (not to be confused with
+	// NetworkAttachment objects) which are created with the resource api and
+	// used to attach regular containers to swarmkit networks.  It should not be
+	// set otherwise. All addresses in this list are allocated, and if any fail
+	// the allocation will fail.
 	Addresses []string `protobuf:"bytes,3,rep,name=addresses" json:"addresses,omitempty"`
 	// DriverAttachmentOpts is a map of driver attachment options for the network target
 	DriverAttachmentOpts map[string]string `protobuf:"bytes,4,rep,name=driver_attachment_opts,json=driverAttachmentOpts" json:"driver_attachment_opts,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`

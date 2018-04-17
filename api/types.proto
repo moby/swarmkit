@@ -573,9 +573,12 @@ message NetworkAttachmentConfig {
 	string target = 1;
 	// Aliases specifies a list of discoverable alternate names for the service on this Target.
 	repeated string aliases = 2;
-	// Addresses specifies a list of ipv4 and ipv6 addresses
-	// preferred. If these addresses are not available then the
-	// attachment might fail.
+	// Addresses specifies a list of ipv4 and ipv6 addresses preferred. This
+	// field is only used for Network Attachment tasks, (not to be confused with
+	// NetworkAttachment objects) which are created with the resource api and
+	// used to attach regular containers to swarmkit networks.  It should not be
+	// set otherwise. All addresses in this list are allocated, and if any fail
+	// the allocation will fail.
 	repeated string addresses = 3;
 	// DriverAttachmentOpts is a map of driver attachment options for the network target
 	map<string, string> driver_attachment_opts = 4;
