@@ -24,6 +24,8 @@ VNDR=$(shell which vndr || echo '')
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
+MOCKS_PACKAGE=mocks
+
 .PHONY: clean all AUTHORS fmt vet lint build binaries test integration setup generate protos checkprotos coverage ci check help install uninstall dep-validate
 .DEFAULT: default
 
@@ -49,6 +51,7 @@ setup: ## install dependencies
 	@go get -u github.com/client9/misspell/cmd/misspell
 	@go get -u github.com/lk4d4/vndr
 	@go get -u github.com/stevvooe/protobuild
+	@go get -u github.com/golang/mock/mockgen
 
 generate: protos
 	@echo "🐳 $@"
@@ -107,6 +110,10 @@ integration: ## run integration tests
 	@echo "🐳 $@"
 	@go test -parallel 8 ${RACE} -tags "${DOCKER_BUILDTAGS}" ${INTEGRATION_PACKAGE}
 
+integration-newallocator:
+	@echo "🐳 $@"
+	@env SWARMKIT_USE_NEW_ALLOCATOR="iknowtherisk" go test -parallel 8 ${RACE} -tags "${DOCKER_BUILDTAGS}" ${INTEGRATION_PACKAGE}
+
 FORCE:
 
 # Build a binary from a cmd.
@@ -119,8 +126,9 @@ bin/%: cmd/% FORCE
 binaries: $(BINARIES) ## build binaries
 	@echo "🐳 $@"
 
-clean: ## clean up binaries
+clean: ## clean up binaries and mocks
 	@echo "🐳 $@"
+	@rm -r $(MOCKS_PACKAGE)
 	@rm -f $(BINARIES)
 
 install: $(BINARIES) ## install binaries
@@ -143,6 +151,10 @@ coverage-integration: ## generate coverprofiles from the integration tests
 	@echo "🐳 $@"
 	go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../${INTEGRATION_PACKAGE}/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
 
+coverage-integration-newallocator: ## generate coverprofiles from the integration tests run with the new allocator
+	@echo "🐳 $@"
+	env SWARMKIT_USE_NEW_ALLOCATOR="iknowtherisk" go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../${INTEGRATION_PACKAGE}/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
+
 help: ## this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
 
@@ -157,3 +169,18 @@ dep-validate:
 		(echo >&2 "+ inconsistent dependencies! what you have in vendor.conf does not match with what you have in vendor" && false)
 	@rm -Rf vendor
 	@mv .vendor.bak vendor
+
+mocks: mock-ipam mock-driver mock-port
+	@echo "🐳 $@"
+
+mock-ipam: manager/allocator/network/ipam/ipam.go
+	mkdir -p mocks/mock_ipam/
+	mockgen -source=$^ -destination=$(MOCKS_PACKAGE)/mock_ipam/mock_ipam.go
+
+mock-driver: manager/allocator/network/driver/driver.go
+	mkdir -p mocks/mock_driver/
+	mockgen -source=$^ -destination=$(MOCKS_PACKAGE)/mock_driver/mock_driver.go
+
+mock-port: manager/allocator/network/port/port.go
+	mkdir -p mocks/mock_port/
+	mockgen -source=$^ -destination=$(MOCKS_PACKAGE)/mock_port/mock_port.go
