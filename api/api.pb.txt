@@ -1852,6 +1852,7 @@ file {
   options {
     java_package: "com.google.protobuf"
     java_outer_classname: "GoGoProtos"
+    go_package: "github.com/gogo/protobuf/gogoproto"
   }
 }
 file {
