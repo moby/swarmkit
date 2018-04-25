@@ -857,12 +857,33 @@ func (a *Allocator) doTaskAlloc(ctx context.Context, ev events.Event) {
 	log.G(ctx).Debugf("task %v was marked pending allocation", t.ID)
 }
 
+func isNodeWindows(node *api.Node) bool {
+	return node != nil &&
+		node.Description != nil &&
+		node.Description.Platform != nil &&
+		node.Description.Platform.OS == "windows"
+
+}
+
+// allocateNode attempts to allocate the network resources required to
+// deploy tasks on a given node given a list of networks that those
+// tasks connect to.  It can be called in two modes:  1) to attempt to
+// to reinstate attachments that were in store (existingAddressesOnly == true)
+// 2) to allocate fresh attachments (existingAddressesOnly == false).  The
+// function returns true if it successfully allocates any new attachments.
 func (a *Allocator) allocateNode(ctx context.Context, node *api.Node, existingAddressesOnly bool, networks []*api.Network) bool {
 	var allocated bool
 
 	nc := a.netCtx
 
 	for _, network := range networks {
+
+		// Only ingress networks and overlay networks on windows nodes
+		// require a per-node-per-network IP address (for NAT).
+		// Avoid allocating an attachment if neither condition holds.
+		if !isNodeWindows(node) && !network.Spec.Ingress {
+			continue
+		}
 
 		var lbAttachment *api.NetworkAttachment
 		for _, na := range node.Attachments {
