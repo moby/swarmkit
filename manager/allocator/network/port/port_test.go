@@ -9,11 +9,12 @@ import (
 	"fmt"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/allocator/network/errors"
 )
 
 var _ = Describe("port.Allocator", func() {
 	var (
-		pa *Allocator
+		pa Allocator
 	)
 
 	BeforeEach(func() {
@@ -142,11 +143,11 @@ var _ = Describe("port.Allocator", func() {
 					p, err = pa.Allocate(endpoint, spec)
 				})
 
-				It("should return ErrPortInUse", func() {
+				It("should return ErrResourceInUse", func() {
 					Expect(err).To(HaveOccurred())
-					Expect(IsErrPortInUse(err)).To(BeTrue())
+					Expect(errors.IsErrResourceInUse(err)).To(BeTrue())
 					Expect(p).To(BeNil())
-					Expect(err.Error()).To(Equal("port 443/TCP is already reserved"))
+					Expect(err.Error()).To(Equal("port 443/TCP is in use"))
 				})
 			})
 
@@ -216,7 +217,7 @@ var _ = Describe("port.Allocator", func() {
 		})
 
 		Context("with invalid publish or target ports", func() {
-			It("should return ErrInvalidEndpoint", func() {
+			It("should return ErrInvalidSpec", func() {
 				spec := &api.EndpointSpec{
 					Ports: []*api.PortConfig{
 						{
@@ -227,20 +228,24 @@ var _ = Describe("port.Allocator", func() {
 				_, err := pa.Allocate(&api.Endpoint{}, spec)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(WithTransform(
-					func(e error) bool { return IsErrInvalidEndpoint(e) },
+					func(e error) bool { return errors.IsErrInvalidSpec(e) },
 					BeTrue(),
 				))
-				Expect(err.Error()).To(Equal("published port 66666 isn't in the valid port range"))
+				Expect(err.Error()).To(Equal(
+					"spec is invalid: published port 66666 isn't in the valid port range",
+				))
 
 				spec.Ports[0].TargetPort = 66666
 				spec.Ports[0].PublishedPort = 0
 				_, err = pa.Allocate(&api.Endpoint{}, spec)
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(WithTransform(
-					func(e error) bool { return IsErrInvalidEndpoint(e) },
+					func(e error) bool { return errors.IsErrInvalidSpec(e) },
 					BeTrue(),
 				))
-				Expect(err.Error()).To(Equal("target port 66666 isn't in the valid port range"))
+				Expect(err.Error()).To(Equal(
+					"spec is invalid: target port 66666 isn't in the valid port range",
+				))
 			})
 		})
 	})
@@ -293,9 +298,12 @@ var _ = Describe("port.Allocator", func() {
 					})
 					p, err = pa.Allocate(endpoint, spec)
 				})
-				It("should fail with ErrPortInUse", func() {
+				It("should fail with ErrInvalidSpec", func() {
 					Expect(err).To(HaveOccurred())
-					Expect(IsErrPortInUse(err)).To(BeTrue())
+					Expect(errors.IsErrInvalidSpec(err)).To(BeTrue())
+					Expect(err.Error()).To(Equal(
+						"spec is invalid: published port 80/TCP is assigned to more than 1 port config",
+					))
 					Expect(p).To(BeNil())
 				})
 			})
@@ -379,7 +387,7 @@ var _ = Describe("port.Allocator", func() {
 				// shadowing p and err here
 				p, err := pa.Allocate(newEndpoint, newSpec)
 				Expect(err).To(HaveOccurred())
-				Expect(IsErrPortInUse(err)).To(BeTrue())
+				Expect(errors.IsErrResourceInUse(err)).To(BeTrue())
 				Expect(p).To(BeNil())
 			})
 		})
@@ -429,7 +437,7 @@ var _ = Describe("port.Allocator", func() {
 					},
 				})
 				Expect(err).To(HaveOccurred())
-				Expect(IsErrPortInUse(err)).To(BeTrue())
+				Expect(errors.IsErrResourceInUse(err)).To(BeTrue())
 			})
 			It("should free the old port", func() {
 				p.Commit()
@@ -453,7 +461,7 @@ var _ = Describe("port.Allocator", func() {
 					Ports: p.Ports()[1:],
 				})
 				Expect(err).To(HaveOccurred())
-				Expect(IsErrPortInUse(err)).To(BeTrue())
+				Expect(errors.IsErrResourceInUse(err)).To(BeTrue())
 			})
 		})
 		Context("to change protocol", func() {
@@ -481,7 +489,7 @@ var _ = Describe("port.Allocator", func() {
 					Ports: p.Ports()[0:1],
 				})
 				Expect(err).To(HaveOccurred())
-				Expect(IsErrPortInUse(err)).To(BeTrue())
+				Expect(errors.IsErrResourceInUse(err)).To(BeTrue())
 			})
 			It("should free the old port", func() {
 				p.Commit()
@@ -578,8 +586,8 @@ var _ = Describe("port.Allocator", func() {
 					}
 					_, e := pa.Allocate(&api.Endpoint{}, spec)
 					Expect(e).To(HaveOccurred())
-					Expect(e).To(WithTransform(IsErrPortInUse, BeTrue()))
-					Expect(e.Error()).To(Equal("port 911/TCP is already reserved"))
+					Expect(e).To(WithTransform(errors.IsErrResourceInUse, BeTrue()))
+					Expect(e.Error()).To(Equal("port 911/TCP is in use"))
 				})
 			})
 		})
@@ -738,14 +746,16 @@ var _ = Describe("port.Allocator", func() {
 						},
 					}
 				})
-				It("should return ErrPortSpaceExhausted", func() {
+				It("should return ErrResourceExhausted", func() {
 					_, err := pa.Allocate(endpoint, spec)
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(WithTransform(
-						func(e error) bool { return IsErrPortSpaceExhausted(e) },
+						errors.IsErrResourceExhausted,
 						BeTrue(),
 					))
-					Expect(err.Error()).To(Equal("the dynamically allocated port space [30000,32767] is exhausted for protocol TCP"))
+					Expect(err.Error()).To(Equal(
+						"resource dynamic port space is exhausted: protocol TCP",
+					))
 				})
 			})
 			Context("when removing one port and adding another", func() {
@@ -1101,7 +1111,7 @@ var _ = Describe("port.Allocator", func() {
 			q, err := pa.Allocate(&api.Endpoint{}, endpoint2.Spec)
 			Expect(q).To(BeNil())
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(WithTransform(IsErrPortInUse, BeTrue()))
+			Expect(err).To(WithTransform(errors.IsErrResourceInUse, BeTrue()))
 		})
 		It("should not free any ports with publish mode host", func() {
 			spec := endpoint2.Spec.Copy()
@@ -1110,7 +1120,90 @@ var _ = Describe("port.Allocator", func() {
 			q, err := pa.Allocate(&api.Endpoint{}, spec)
 			Expect(q).To(BeNil())
 			Expect(err).To(HaveOccurred())
-			Expect(err).To(WithTransform(IsErrPortInUse, BeTrue()))
+			Expect(err).To(WithTransform(errors.IsErrResourceInUse, BeTrue()))
+		})
+	})
+
+})
+
+var _ = Describe("AlreadyAllocated", func() {
+	Context("endpoint and spec are nil", func() {
+		It("should return true", func() {
+			Expect(AlreadyAllocated(nil, nil)).To(BeTrue())
+		})
+	})
+	Context("endpoint is nil and spec is not", func() {
+		It("should return false", func() {
+			Expect(AlreadyAllocated(nil, &api.EndpointSpec{})).To(BeFalse())
+		})
+	})
+	Context("the endpoint's spec is nil, but the spec is not", func() {
+		It("should return false", func() {
+			Expect(AlreadyAllocated(&api.Endpoint{}, &api.EndpointSpec{})).To(BeFalse())
+		})
+	})
+	Context("spec is nil, and endpoint.Spec is not nil and has more than 0 ports", func() {
+		endpoint := &api.Endpoint{
+			Spec: &api.EndpointSpec{
+				Ports: []*api.PortConfig{
+					{},
+				},
+			},
+		}
+		It("should return false", func() {
+			Expect(AlreadyAllocated(endpoint, nil)).To(BeFalse())
+		})
+	})
+	Context("spec and endpoint have different numbers of ports", func() {
+		endpoint := &api.Endpoint{
+			Spec: &api.EndpointSpec{
+				Ports: []*api.PortConfig{
+					{},
+				},
+			},
+		}
+		spec := &api.EndpointSpec{
+			Ports: []*api.PortConfig{
+				{}, {},
+			},
+		}
+		It("should return false", func() {
+			Expect(AlreadyAllocated(endpoint, spec)).To(BeFalse())
+		})
+	})
+	Context("spec and endpoint ports are the same", func() {
+		endpoint := &api.Endpoint{
+			Spec: &api.EndpointSpec{
+				Ports: []*api.PortConfig{
+					{},
+				},
+			},
+		}
+		spec := &api.EndpointSpec{
+			Ports: []*api.PortConfig{
+				{},
+			},
+		}
+
+		It("should return true", func() {
+			Expect(AlreadyAllocated(endpoint, spec)).To(BeTrue())
+		})
+	})
+	Context("spec and endpoint ports are different", func() {
+		endpoint := &api.Endpoint{
+			Spec: &api.EndpointSpec{
+				Ports: []*api.PortConfig{
+					{},
+				},
+			},
+		}
+		spec := &api.EndpointSpec{
+			Ports: []*api.PortConfig{
+				{PublishedPort: 80},
+			},
+		}
+		It("should return false", func() {
+			Expect(AlreadyAllocated(endpoint, spec)).To(BeFalse())
 		})
 	})
 })

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/allocator/network/errors"
 )
 
 const (
@@ -25,64 +26,10 @@ const (
 	masterPortEnd uint32 = 65535
 )
 
-// ErrPortInUse is an error type returned if one of the requested ports is
-// already in use by something else.
-type ErrPortInUse struct {
-	port
-}
-
-// Error returns a formatted message explaining what published port is in use
-func (e ErrPortInUse) Error() string {
-	return fmt.Sprintf("port %d/%s is already reserved", e.port.port, e.port.protocol)
-}
-
-// IsErrPortInUse returns true if the error is of type ErrPortInUse
-func IsErrPortInUse(e error) bool {
-	_, ok := e.(ErrPortInUse)
-	return ok
-}
-
-// ErrPortSpaceExhausted is the error type returned when the dynamically
-// allocated port space for a given protocol is exhausted
-type ErrPortSpaceExhausted struct {
-	protocol api.PortConfig_Protocol
-}
-
-// Error returns a formatted message explaining what protocol is exhausted, and
-// what the dynamic port range is
-func (e ErrPortSpaceExhausted) Error() string {
-	return fmt.Sprintf(
-		"the dynamically allocated port space [%v,%v] is exhausted for protocol %v",
-		DynamicPortStart,
-		DynamicPortEnd,
-		e.protocol,
-	)
-}
-
-// IsErrPortSpaceExhausted returns true if the error is of type
-// ErrPortSpaceExhausted
-func IsErrPortSpaceExhausted(e error) bool {
-	_, ok := e.(ErrPortSpaceExhausted)
-	return ok
-}
-
-// ErrInvalidEndpoint is returned if the endpoint passed to Allocate or
-// Deallocate is somehow not valid. The error message will contain the problem.
-// It is a catchall for any errors not otherwise covered.
-type ErrInvalidEndpoint struct {
-	problem string
-}
-
-// Error returns a formatted message explaining what the problem is
-func (e ErrInvalidEndpoint) Error() string {
-	return e.problem
-}
-
-// IsErrInvalidEndpoint returns true if the provided error is of type
-// ErrInvalidEndpoint
-func IsErrInvalidEndpoint(e error) bool {
-	_, ok := e.(ErrInvalidEndpoint)
-	return ok
+type Allocator interface {
+	Restore([]*api.Endpoint)
+	Allocate(*api.Endpoint, *api.EndpointSpec) (Proposal, error)
+	Deallocate(*api.Endpoint) Proposal
 }
 
 // Allocator is an allocator component that manages the state of which
@@ -95,7 +42,7 @@ func IsErrInvalidEndpoint(e error) bool {
 // allocator doesn't have to check for cases like two services having the same
 // port allocated; we created all of the fields, and we can know they are
 // consistent.
-type Allocator struct {
+type allocator struct {
 	// ports maps the ports in use. essentially, using map as a set
 	ports map[port]struct{}
 }
@@ -107,6 +54,12 @@ type port struct {
 	// protocol represented by this port space
 	protocol api.PortConfig_Protocol
 	port     uint32
+}
+
+// String is a quick implementation of the Stringer interface for the port
+// object so that we can pass it to string format calls with just %v
+func (p port) String() string {
+	return fmt.Sprintf("%v/%v", p.port, p.protocol)
 }
 
 // Proposal is the return value of Allocate and DeallocateEndpoint,
@@ -128,14 +81,11 @@ type Proposal interface {
 	// allocator state. IsNoop does not mean the ports for an endpoint haven't
 	// changed. It only means that the publish ports marked in use by the
 	// allocator haven't changed.
-	//
-	// Used mostly for testing, and should probably not be relied on outside of
-	// this package.
 	IsNoop() bool
 }
 
 type proposal struct {
-	pa         *Allocator
+	pa         *allocator
 	ports      []*api.PortConfig
 	allocate   map[port]struct{}
 	deallocate map[port]struct{}
@@ -182,15 +132,15 @@ func (prop *proposal) IsNoop() bool {
 }
 
 // NewAllocator returns a new instance of the Allocator object
-func NewAllocator() *Allocator {
-	return &Allocator{
+func NewAllocator() Allocator {
+	return &allocator{
 		ports: make(map[port]struct{}),
 	}
 }
 
 // Restore adds the current endpoints to the local state of the port allocator
 // but does not perform any new allocation.
-func (pa *Allocator) Restore(endpoints []*api.Endpoint) {
+func (pa *allocator) Restore(endpoints []*api.Endpoint) {
 	// NOTE(dperny) we can be sure that we're not allocating new or conflicting
 	// state because if an endpoint is unallocated, it will not have any ports.
 	// we can't look at the Spec in this method, because the spec isn't real
@@ -216,7 +166,7 @@ func (pa *Allocator) Restore(endpoints []*api.Endpoint) {
 
 // Deallocate takes an endpoint and provides a Proposal that will deallocate
 // all of its ports.
-func (pa *Allocator) Deallocate(endpoint *api.Endpoint) Proposal {
+func (pa *allocator) Deallocate(endpoint *api.Endpoint) Proposal {
 	prop := &proposal{
 		pa: pa,
 		// we only need deallocate
@@ -248,7 +198,17 @@ func (pa *Allocator) Deallocate(endpoint *api.Endpoint) Proposal {
 // another endpoint with this same Allocator, the caller must later call
 // Commit with the returned proposal. If the allocate is abandoned, then the
 // proposal can just be ignored.
-func (pa *Allocator) Allocate(endpoint *api.Endpoint, spec *api.EndpointSpec) (Proposal, error) {
+//
+// In the case of dynamically allocated ports, Allocate will try to prefer not
+// reassigning the same dynamically allocated port number that is being removed
+// to a new port that is being added. However, this behavior _is not tested_
+// and should _not_ be relied on as part of the API. It's a nice-to-have
+// implementation detail.
+//
+// Because I'm reluctant to alter what I have that already works, we will not
+// return ErrAlreadyAllocated if the endpoint is already allocated. Instead,
+// callers can use the AlreadyAllocated function from this package.
+func (pa *allocator) Allocate(endpoint *api.Endpoint, spec *api.EndpointSpec) (Proposal, error) {
 	// Ok, so Allocate is actually pretty tricky, because we do dynamic
 	// port allocation. This means if the user gives us no published port, we
 	// pick one for them. When we're updating ports, we have to figure out if
@@ -267,6 +227,9 @@ func (pa *Allocator) Allocate(endpoint *api.Endpoint, spec *api.EndpointSpec) (P
 	// which we own, which means we have the old endpoint spec around and can
 	// compare the user's specs. Then, all we have to do is see if the
 	// published port changed.
+	if spec == nil {
+		spec = &api.EndpointSpec{}
+	}
 
 	// So, basically, here's what we're going to do: we're going to create a
 	// new list of PortConfigs. This will be the final list that gets put into
@@ -286,10 +249,10 @@ func (pa *Allocator) Allocate(endpoint *api.Endpoint, spec *api.EndpointSpec) (P
 		// check if the published port or target port is off the end of the
 		// allowed port range
 		if spec.PublishedPort > masterPortEnd {
-			return nil, ErrInvalidEndpoint{fmt.Sprintf("published port %v isn't in the valid port range", spec.PublishedPort)}
+			return nil, errors.ErrInvalidSpec("published port %v isn't in the valid port range", spec.PublishedPort)
 		}
 		if spec.TargetPort > masterPortEnd {
-			return nil, ErrInvalidEndpoint{fmt.Sprintf("target port %v isn't in the valid port range", spec.TargetPort)}
+			return nil, errors.ErrInvalidSpec("target port %v isn't in the valid port range", spec.TargetPort)
 		}
 		// copy the port from the spec into the final ports list
 		finalPorts[i] = spec.Copy()
@@ -356,13 +319,13 @@ func (pa *Allocator) Allocate(endpoint *api.Endpoint, spec *api.EndpointSpec) (P
 		if _, ok := pa.ports[portObj]; ok {
 			// check if we're deallocating this port
 			if _, ok := prop.deallocate[portObj]; !ok {
-				return nil, ErrPortInUse{portObj}
+				return nil, errors.ErrResourceInUse("port", portObj.String())
 			}
 		}
 		// also check that we haven't already tried to allocate this port for
 		// this particular endpoint
 		if _, ok := prop.allocate[portObj]; ok {
-			return nil, ErrPortInUse{portObj}
+			return nil, errors.ErrInvalidSpec("published port %v is assigned to more than 1 port config", portObj)
 		}
 
 		// now, mark this port as "in use" in the newPorts map.
@@ -416,7 +379,7 @@ ports:
 
 		// if we've gotten all the way through the whole range of dynamic
 		// ports, and there are no ports left, return an error
-		return nil, ErrPortSpaceExhausted{p.Protocol}
+		return nil, errors.ErrResourceExhausted("dynamic port space", "protocol "+p.Protocol.String())
 	}
 
 	// add the final ports to the proposal, and we're done
@@ -448,4 +411,58 @@ func PortsMostlyEqual(some, other *api.PortConfig) bool {
 		some.Protocol == other.Protocol &&
 		// are the publish modes?
 		some.PublishMode == other.PublishMode
+}
+
+// AlreadyAllocated returns true if the endpoint's ports are already fully
+// allocated
+func AlreadyAllocated(endpoint *api.Endpoint, spec *api.EndpointSpec) bool {
+	// handle some simple cases involving nil endpoints and spec
+	if endpoint == nil && spec == nil {
+		return true
+	}
+	// if the endpoint is nil but the spec is not, that means we haven't
+	// allocated yet
+	if endpoint == nil && spec != nil {
+		return false
+	}
+
+	// if the endpoint's spec is nil but the spec is not, then that also means
+	// we haven't allocated yet
+	if endpoint.Spec == nil && spec != nil {
+		return false
+	}
+
+	// if the spec is nil, but the endpoint's spec has ports, then that means
+	// we have some deallocation to do
+	if spec == nil && (endpoint.Spec != nil && len(endpoint.Spec.Ports) > 0) {
+		return false
+	}
+	// that should clear up all of  the nil checks.
+
+	// we're just going to compare equality of the specs. This relies on the
+	// behavior that the service's endpoint will always match the embedded
+	// EndpointSpec
+
+	// if there are different numbers of ports, then obvious this endpoint
+	// isn't fully allocated.
+	if len(endpoint.Spec.Ports) != len(spec.Ports) {
+		return false
+	}
+
+	// check every port in the endpoint's spec against the spec. if there are
+	// any ports in the endpoint that aren't in the spec,  then we know this
+	// isn't fully allocated
+portsLoop:
+	for _, port := range endpoint.Spec.Ports {
+		for _, specPort := range spec.Ports {
+			if portsEqual(port, specPort) {
+				continue portsLoop
+			}
+		}
+		// if we get through every spec port, then we have a mismatch and we're
+		// not fully allocated
+		return false
+	}
+	// finally if we get ALL the way through, and
+	return true
 }
