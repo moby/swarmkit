@@ -184,7 +184,7 @@ func TestMigrateToV3EncryptedForm(t *testing.T) {
 	v3EncryptedSnapshot.Metadata.Index += 200
 	v3EncryptedSnapshot.Metadata.Term += 20
 
-	encoder, decoders := encryption.Defaults(dek)
+	encoder, decoders := encryption.Defaults(dek, false)
 	walFactory := NewWALFactory(encoder, decoders)
 	snapFactory := NewSnapFactory(encoder, decoders)
 
