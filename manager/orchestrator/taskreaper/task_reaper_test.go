@@ -99,7 +99,7 @@ func TestTaskReaperInit(t *testing.T) {
 		ServiceID: "cleanservice",
 	}
 
-	// two tasks belonging to a service that does not exist.
+	// some tasks belonging to a service that does not exist.
 	// this first one is sitll running and should not be cleaned up
 	terminaltask1 := &api.Task{
 		ID:           "terminaltask1",
@@ -123,6 +123,28 @@ func TestTaskReaperInit(t *testing.T) {
 		ServiceID: "goneservice",
 	}
 
+	// this third task was never assigned, and should be removed
+	earlytask1 := &api.Task{
+		ID:           "earlytask1",
+		Slot:         3,
+		DesiredState: api.TaskStateRemove,
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+		ServiceID: "goneservice",
+	}
+
+	// this fourth task was never assigned, and should be removed
+	earlytask2 := &api.Task{
+		ID:           "earlytask2",
+		Slot:         4,
+		DesiredState: api.TaskStateRemove,
+		Status: api.TaskStatus{
+			State: api.TaskStateNew,
+		},
+		ServiceID: "goneservice",
+	}
+
 	err := s.Update(func(tx store.Tx) error {
 		require.NoError(t, store.CreateCluster(tx, cluster))
 		require.NoError(t, store.CreateService(tx, service))
@@ -132,6 +154,8 @@ func TestTaskReaperInit(t *testing.T) {
 		require.NoError(t, store.CreateTask(tx, removedtask))
 		require.NoError(t, store.CreateTask(tx, terminaltask1))
 		require.NoError(t, store.CreateTask(tx, terminaltask2))
+		require.NoError(t, store.CreateTask(tx, earlytask1))
+		require.NoError(t, store.CreateTask(tx, earlytask2))
 		return nil
 	})
 	require.NoError(t, err, "Error setting up test fixtures")
@@ -159,7 +183,11 @@ func TestTaskReaperInit(t *testing.T) {
 		assert.Nil(t, store.GetTask(tx, "removedtask"))
 		// the first terminal task, which has not yet shut down, should exist
 		assert.NotNil(t, store.GetTask(tx, "terminaltask1"))
-		// and the second terminal task should have been removed
+		// the second terminal task should have been removed
 		assert.Nil(t, store.GetTask(tx, "terminaltask2"))
+		// the first early task, which was never assigned, should be removed
+		assert.Nil(t, store.GetTask(tx, "earlytask1"))
+		// the second early task, which was never assigned, should be removed
+		assert.Nil(t, store.GetTask(tx, "earlytask2"))
 	})
 }
