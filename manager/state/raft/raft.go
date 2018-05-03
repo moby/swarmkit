@@ -962,7 +962,7 @@ func (n *Node) Join(ctx context.Context, req *api.JoinRequest) (*api.JoinRespons
 		remoteAddr = net.JoinHostPort(remoteHost, requestPort)
 	}
 
-	// We do not bother submitting a configuration change for the
+	// We do not bother to submit a configuration change for the
 	// new member if we can't contact it back using its address
 	if err := n.checkHealth(ctx, remoteAddr, 5*time.Second); err != nil {
 		return nil, err

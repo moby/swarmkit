@@ -290,7 +290,7 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 			expectErrorString: "certificate key mismatch",
 		},
 		{
-			// this is just one class of failures caught by NewRootCA, not going to bother testing others, since they are
+			// this is just one class of failures caught by NewRootCA, not going to bother to test others, since they are
 			// extensively tested in NewRootCA
 			rootCA: initialLocalRootCA,
 			caConfig: api.CAConfig{

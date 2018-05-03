@@ -249,7 +249,7 @@ func New(config *Config) (*Manager, error) {
 	}
 
 	streamInterceptorWrapper := func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		// we can't re-write a stream context, so don't bother creating a
+		// we can't re-write a stream context, so don't bother to create a
 		// sub-context like in unary methods
 		// pass the call down into the grpc_prometheus interceptor
 		err := grpc_prometheus.StreamServerInterceptor(srv, ss, info, handler)
