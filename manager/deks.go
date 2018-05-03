@@ -213,7 +213,7 @@ func (r *RaftDEKManager) MaybeUpdateKEK(candidateKEK ca.KEKData) (bool, bool, er
 	err := r.kw.ViewAndRotateKEK(func(currentKEK ca.KEKData, h ca.PEMKeyHeaders) (ca.KEKData, ca.PEMKeyHeaders, error) {
 		var err error
 		updated, unlockedToLocked, err = compareKEKs(currentKEK, candidateKEK)
-		if err == nil && !updated { // if we don't need to rotate the KEK, don't bother updating
+		if err == nil && !updated { // if we don't need to rotate the KEK, don't bother to update
 			err = errNoUpdateNeeded
 		}
 		if err != nil {
