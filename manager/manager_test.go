@@ -296,7 +296,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	require.NotNil(t, keyBlock)
 	require.False(t, keyutils.IsEncryptedPEMBlock(keyBlock))
 	require.Len(t, keyBlock.Headers, 2)
-	currentDEK, err := decodePEMHeaderValue(keyBlock.Headers[pemHeaderRaftDEK], nil)
+	currentDEK, err := decodePEMHeaderValue(keyBlock.Headers[pemHeaderRaftDEK], nil, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, currentDEK)
 
@@ -349,7 +349,7 @@ func TestManagerLockUnlock(t *testing.T) {
 		// a little bit, and is best effort only
 		currentDEKString, ok := keyBlock.Headers[pemHeaderRaftDEK]
 		require.True(t, ok) // there should never NOT be a current header
-		nowCurrentDEK, err := decodePEMHeaderValue(currentDEKString, unlockKeyResp.UnlockKey)
+		nowCurrentDEK, err := decodePEMHeaderValue(currentDEKString, unlockKeyResp.UnlockKey, false)
 		require.NoError(t, err) // it should always be encrypted
 		if bytes.Equal(currentDEK, nowCurrentDEK) {
 			return fmt.Errorf("snapshot has not been finished yet")
@@ -422,8 +422,13 @@ func TestManagerLockUnlock(t *testing.T) {
 		return nil
 	}, 1*time.Second))
 
-	// the DEK should not have been rotated, just decrypted (which was tested previously)
-	unencryptedDEK, err := decodePEMHeaderValue(keyBlock.Headers[pemHeaderRaftDEK], nil)
+	// the new key should not be encrypted, and the DEK should also be unencrypted
+	// but not rotated
+	keyBlock, _ = pem.Decode(unlockedKey)
+	require.NotNil(t, keyBlock)
+	require.False(t, keyutils.IsEncryptedPEMBlock(keyBlock))
+
+	unencryptedDEK, err := decodePEMHeaderValue(keyBlock.Headers[pemHeaderRaftDEK], nil, false)
 	require.NoError(t, err)
 	require.NotNil(t, unencryptedDEK)
 	require.Equal(t, currentDEK, unencryptedDEK)

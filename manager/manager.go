@@ -213,7 +213,7 @@ func New(config *Config) (*Manager, error) {
 		raftCfg.HeartbeatTick = int(config.HeartbeatTick)
 	}
 
-	dekRotator, err := NewRaftDEKManager(config.SecurityConfig.KeyWriter())
+	dekRotator, err := NewRaftDEKManager(config.SecurityConfig.KeyWriter(), config.FIPS)
 	if err != nil {
 		return nil, err
 	}
@@ -227,6 +227,7 @@ func New(config *Config) (*Manager, error) {
 		ForceNewCluster: config.ForceNewCluster,
 		TLSCredentials:  config.SecurityConfig.ClientTLSCreds,
 		KeyRotator:      dekRotator,
+		FIPS:            config.FIPS,
 	}
 	raftNode := raft.NewNode(newNodeOpts)
 
