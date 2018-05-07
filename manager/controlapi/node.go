@@ -5,6 +5,7 @@ import (
 	"encoding/pem"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/manager/state/raft/membership"
 	"github.com/docker/swarmkit/manager/state/store"
 	gogotypes "github.com/gogo/protobuf/types"
@@ -29,9 +30,17 @@ func (s *Server) GetNode(ctx context.Context, request *api.GetNodeRequest) (*api
 	}
 
 	var node *api.Node
+	var tasks []*api.Task
+	var err error
 	s.store.View(func(tx store.ReadTx) {
 		node = store.GetNode(tx, request.NodeID)
+		if request.AvailableResources && node != nil && node.Description != nil && node.Description.Resources != nil {
+			tasks, err = store.FindTasks(tx, store.ByNodeID(request.NodeID))
+		}
 	})
+	if err != nil {
+		return nil, grpc.Errorf(codes.Internal, "can't find tasks for node %s: %v", request.NodeID, err)
+	}
 	if node == nil {
 		return nil, status.Errorf(codes.NotFound, "node %s not found", request.NodeID)
 	}
@@ -51,9 +60,37 @@ func (s *Server) GetNode(ctx context.Context, request *api.GetNodeRequest) (*api
 		}
 	}
 
+	if request.AvailableResources {
+		availableResources := node.Description.Resources.Copy()
+		for _, task := range tasks {
+			consumeResources(availableResources, task)
+		}
+		node.AvailableResources = availableResources
+	}
+
 	return &api.GetNodeResponse{
 		Node: node,
 	}, nil
+}
+
+func taskReservations(spec api.TaskSpec) (reservations api.Resources) {
+	if spec.Resources != nil && spec.Resources.Reservations != nil {
+		reservations = *spec.Resources.Reservations
+	}
+	return
+}
+
+func consumeResources(resources *api.Resources, task *api.Task) {
+	if task.DesiredState > api.TaskStateRunning {
+		return
+	}
+	reservations := taskReservations(task.Spec)
+
+	resources.MemoryBytes -= reservations.MemoryBytes
+	resources.NanoCPUs -= reservations.NanoCPUs
+
+	genericresource.ConsumeNodeResources(&resources.Generic,
+		task.AssignedGenericResources)
 }
 
 func filterNodes(candidates []*api.Node, filters ...func(*api.Node) bool) []*api.Node {
@@ -79,6 +116,7 @@ func filterNodes(candidates []*api.Node, filters ...func(*api.Node) bool) []*api
 func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (*api.ListNodesResponse, error) {
 	var (
 		nodes []*api.Node
+		tasks []*api.Task
 		err   error
 	)
 	s.store.View(func(tx store.ReadTx) {
@@ -103,6 +141,9 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 			nodes, err = store.FindNodes(tx, store.Or(filters...))
 		default:
 			nodes, err = store.FindNodes(tx, store.All)
+		}
+		if request.AvailableResources && len(nodes) > 0 {
+			tasks, err = store.FindTasks(tx, store.All)
 		}
 	})
 	if err != nil {
@@ -181,6 +222,23 @@ func (s *Server) ListNodes(ctx context.Context, request *api.ListNodesRequest) (
 					}
 					break
 				}
+			}
+		}
+	}
+
+	if request.AvailableResources && len(nodes) > 0 {
+		// Build the map for nodes with available resources
+		nodeMap := make(map[string]*api.Node)
+		for _, node := range nodes {
+			if node.Description != nil && node.Description.Resources != nil {
+				node.AvailableResources = node.Description.Resources.Copy()
+				nodeMap[node.ID] = node
+			}
+		}
+		for _, task := range tasks {
+			node := nodeMap[task.NodeID]
+			if node != nil {
+				consumeResources(node.AvailableResources, task)
 			}
 		}
 	}

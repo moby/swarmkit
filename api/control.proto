@@ -165,6 +165,7 @@ service Control {
 
 message GetNodeRequest {
 	string node_id = 1;
+	bool available_resources = 2;
 }
 
 message GetNodeResponse {
@@ -183,6 +184,7 @@ message ListNodesRequest {
 	}
 
 	Filters filters = 1;
+	bool available_resources = 2;
 }
 
 message ListNodesResponse {

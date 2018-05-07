@@ -3,12 +3,13 @@ package node
 import (
 	"errors"
 	"fmt"
-	"os"
-	"text/tabwriter"
-
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
+	"os"
+	"strconv"
+	"text/tabwriter"
 )
 
 var (
@@ -26,12 +27,18 @@ var (
 			if err != nil {
 				return err
 			}
+			availableResourcesFlag, err := flags.GetBool("available-resources")
+			if err != nil {
+				return err
+			}
 
 			c, err := common.Dial(cmd)
 			if err != nil {
 				return err
 			}
-			r, err := c.ListNodes(common.Context(cmd), &api.ListNodesRequest{})
+			r, err := c.ListNodes(common.Context(cmd), &api.ListNodesRequest{
+				AvailableResources: availableResourcesFlag,
+			})
 			if err != nil {
 				return err
 			}
@@ -44,7 +51,11 @@ var (
 					// Ignore flushing errors - there's nothing we can do.
 					_ = w.Flush()
 				}()
-				common.PrintHeader(w, "ID", "Name", "Membership", "Status", "Availability", "Manager Status")
+				if !availableResourcesFlag {
+					common.PrintHeader(w, "ID", "Name", "Membership", "Status", "Availability", "Manager Status", "CPUs", "Memory")
+				} else {
+					common.PrintHeader(w, "ID", "Name", "Membership", "Status", "Availability", "Manager Status", "CPUs", "Memory", "Available CPUs", "Available Memory")
+				}
 				output = func(n *api.Node) {
 					spec := &n.Spec
 					name := spec.Annotations.Name
@@ -64,15 +75,43 @@ var (
 					if reachability == "" && spec.DesiredRole == api.NodeRoleManager {
 						reachability = "UNKNOWN"
 					}
-
-					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
-						n.ID,
-						name,
-						membership,
-						n.Status.State.String(),
-						availability,
-						reachability,
-					)
+					cpus := ""
+					memory := ""
+					if n.Description != nil && n.Description.Resources != nil {
+						cpus = strconv.FormatFloat(float64(n.Description.Resources.NanoCPUs)/1e9, 'f', -1, 64)
+						memory = humanize.IBytes(uint64(n.Description.Resources.MemoryBytes))
+					}
+					if !availableResourcesFlag {
+						fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+							n.ID,
+							name,
+							membership,
+							n.Status.State.String(),
+							availability,
+							reachability,
+							cpus,
+							memory,
+						)
+					} else {
+						availableCPUs := ""
+						availableMemory := ""
+						if n.AvailableResources != nil {
+							availableCPUs = strconv.FormatFloat(float64(n.AvailableResources.NanoCPUs)/1e9, 'f', -1, 64)
+							availableMemory = humanize.IBytes(uint64(n.AvailableResources.MemoryBytes))
+						}
+						fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+							n.ID,
+							name,
+							membership,
+							n.Status.State.String(),
+							availability,
+							reachability,
+							cpus,
+							memory,
+							availableCPUs,
+							availableMemory,
+						)
+					}
 				}
 			} else {
 				output = func(n *api.Node) { fmt.Println(n.ID) }
@@ -88,4 +127,5 @@ var (
 
 func init() {
 	listCmd.Flags().BoolP("quiet", "q", false, "Only display IDs")
+	listCmd.Flags().BoolP("available-resources", "r", false, "Display available resources")
 }

@@ -81,6 +81,9 @@ message Node {
 	// endpoint on the node to be used for load balancing. Each overlay
 	// network, including ingress network, will have an NetworkAttachment.
 	repeated NetworkAttachment attachments = 10;
+
+	// Available resources on node 
+	Resources available_resources = 11;
 }
 
 message Service {
