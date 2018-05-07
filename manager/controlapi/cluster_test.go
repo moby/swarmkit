@@ -46,8 +46,8 @@ func createClusterObj(id, name string, policy api.AcceptancePolicy, rootCA *ca.R
 			CAKey:      key,
 			CACertHash: rootCA.Digest.String(),
 			JoinTokens: api.JoinTokens{
-				Worker:  ca.GenerateJoinToken(rootCA),
-				Manager: ca.GenerateJoinToken(rootCA),
+				Worker:  ca.GenerateJoinToken(rootCA, false),
+				Manager: ca.GenerateJoinToken(rootCA, false),
 			},
 		},
 	}

@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -273,6 +274,162 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 	require.Error(t, err)
 	_, _, err = ca.NewKeyReadWriter(paths.Node, []byte("passphrase"), nil).Read()
 	require.NoError(t, err)
+}
+
+// If there is nothing on disk and no join addr, and FIPS is enabled, we create a cluster whose
+// ID starts with 'FIPS.'
+func TestLoadSecurityConfigNodeFIPSCreateCluster(t *testing.T) {
+	tempdir, err := ioutil.TempDir("", "test-security-config-fips-new-cluster")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+
+	paths := ca.NewConfigPaths(filepath.Join(tempdir, "certificates"))
+
+	tc := cautils.NewTestCA(t)
+	defer tc.Stop()
+
+	config := &Config{
+		StateDir: tempdir,
+		FIPS:     true,
+	}
+
+	node, err := New(config)
+	require.NoError(t, err)
+	securityConfig, cancel, err := node.loadSecurityConfig(tc.Context, paths)
+	require.NoError(t, err)
+	defer cancel()
+	require.NotNil(t, securityConfig)
+	require.True(t, strings.HasPrefix(securityConfig.ClientTLSCreds.Organization(), "FIPS."))
+}
+
+// If FIPS is enabled and there is a join address, the cluster ID is whatever the CA set
+// the cluster ID to.
+func TestLoadSecurityConfigNodeFIPSJoinCluster(t *testing.T) {
+	tempdir, err := ioutil.TempDir("", "test-security-config-fips-join-cluster")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+
+	certDir := filepath.Join(tempdir, "certificates")
+	paths := ca.NewConfigPaths(certDir)
+
+	for _, fips := range []bool{true, false} {
+		require.NoError(t, os.RemoveAll(certDir))
+
+		var tc *cautils.TestCA
+		if fips {
+			tc = cautils.NewFIPSTestCA(t)
+		} else {
+			tc = cautils.NewTestCA(t)
+		}
+		defer tc.Stop()
+
+		peer, err := tc.ConnBroker.Remotes().Select()
+		require.NoError(t, err)
+
+		node, err := New(&Config{
+			StateDir:  tempdir,
+			JoinAddr:  peer.Addr,
+			JoinToken: tc.ManagerToken,
+			FIPS:      true,
+		})
+		require.NoError(t, err)
+		securityConfig, cancel, err := node.loadSecurityConfig(tc.Context, paths)
+		require.NoError(t, err)
+		defer cancel()
+		require.NotNil(t, securityConfig)
+		require.Equal(t, fips, strings.HasPrefix(securityConfig.ClientTLSCreds.Organization(), "FIPS."))
+	}
+}
+
+// If the certificate specifies that the cluster requires FIPS mode, loading the security
+// config will fail if the node is not FIPS enabled.
+func TestLoadSecurityConfigRespectsFIPSCert(t *testing.T) {
+	tempdir, err := ioutil.TempDir("", "test-security-config-fips-cert-on-disk")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+
+	tc := cautils.NewFIPSTestCA(t)
+	defer tc.Stop()
+
+	certDir := filepath.Join(tempdir, "certificates")
+	require.NoError(t, os.Mkdir(certDir, 0700))
+	paths := ca.NewConfigPaths(certDir)
+
+	// copy certs and keys from the test CA using a hard link
+	_, err = tc.WriteNewNodeConfig(ca.ManagerRole)
+	require.NoError(t, err)
+	require.NoError(t, os.Link(tc.Paths.Node.Cert, paths.Node.Cert))
+	require.NoError(t, os.Link(tc.Paths.Node.Key, paths.Node.Key))
+	require.NoError(t, os.Link(tc.Paths.RootCA.Cert, paths.RootCA.Cert))
+
+	node, err := New(&Config{StateDir: tempdir})
+	require.NoError(t, err)
+	_, _, err = node.loadSecurityConfig(tc.Context, paths)
+	require.Equal(t, ErrMandatoryFIPS, err)
+
+	node, err = New(&Config{
+		StateDir: tempdir,
+		FIPS:     true,
+	})
+	require.NoError(t, err)
+	securityConfig, cancel, err := node.loadSecurityConfig(tc.Context, paths)
+	require.NoError(t, err)
+	defer cancel()
+	require.NotNil(t, securityConfig)
+	require.True(t, strings.HasPrefix(securityConfig.ClientTLSCreds.Organization(), "FIPS."))
+}
+
+// If FIPS is disabled and there is a join address and token, and the join token indicates
+// the cluster requires fips, then loading the security config will fail.  However, if
+// there are already certs on disk, it will load them and ignore the join token.
+func TestLoadSecurityConfigNonFIPSNodeJoinCluster(t *testing.T) {
+	tempdir, err := ioutil.TempDir("", "test-security-config-nonfips-join-cluster")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+
+	certDir := filepath.Join(tempdir, "certificates")
+	require.NoError(t, os.Mkdir(certDir, 0700))
+	paths := ca.NewConfigPaths(certDir)
+
+	tc := cautils.NewTestCA(t)
+	defer tc.Stop()
+	// copy certs and keys from the test CA using a hard link
+	_, err = tc.WriteNewNodeConfig(ca.ManagerRole)
+	require.NoError(t, err)
+	require.NoError(t, os.Link(tc.Paths.Node.Cert, paths.Node.Cert))
+	require.NoError(t, os.Link(tc.Paths.Node.Key, paths.Node.Key))
+	require.NoError(t, os.Link(tc.Paths.RootCA.Cert, paths.RootCA.Cert))
+
+	tcFIPS := cautils.NewFIPSTestCA(t)
+	defer tcFIPS.Stop()
+
+	peer, err := tcFIPS.ConnBroker.Remotes().Select()
+	require.NoError(t, err)
+
+	node, err := New(&Config{
+		StateDir:  tempdir,
+		JoinAddr:  peer.Addr,
+		JoinToken: tcFIPS.ManagerToken,
+	})
+	require.NoError(t, err)
+	securityConfig, cancel, err := node.loadSecurityConfig(tcFIPS.Context, paths)
+	require.NoError(t, err)
+	defer cancel()
+	require.NotNil(t, securityConfig)
+	require.False(t, strings.HasPrefix(securityConfig.ClientTLSCreds.Organization(), "FIPS."))
+
+	// remove the node cert only - now that the node has to download the certs, it will check the
+	// join address and fail
+	require.NoError(t, os.Remove(paths.Node.Cert))
+
+	_, _, err = node.loadSecurityConfig(tcFIPS.Context, paths)
+	require.Equal(t, ErrMandatoryFIPS, err)
+
+	// remove all the certs (CA and node) - the node will also check the join address and fail
+	require.NoError(t, os.RemoveAll(certDir))
+
+	_, _, err = node.loadSecurityConfig(tcFIPS.Context, paths)
+	require.Equal(t, ErrMandatoryFIPS, err)
 }
 
 func TestManagerRespectsDispatcherRootCAUpdate(t *testing.T) {

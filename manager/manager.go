@@ -121,6 +121,11 @@ type Config struct {
 
 	// PluginGetter provides access to docker's plugin inventory.
 	PluginGetter plugingetter.PluginGetter
+
+	// FIPS is a boolean stating whether the node is FIPS enabled - if this is the
+	// first node in the cluster, this setting is used to set the cluster-wide mandatory
+	// FIPS setting.
+	FIPS bool
 }
 
 // Manager is the cluster manager for Swarm.
@@ -930,7 +935,8 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 			raftCfg,
 			api.EncryptionConfig{AutoLockManagers: m.config.AutoLockManagers},
 			unlockKeys,
-			rootCA))
+			rootCA,
+			m.config.FIPS))
 
 		if err != nil && err != store.ErrExist {
 			log.G(ctx).WithError(err).Errorf("error creating cluster object")
@@ -1095,7 +1101,8 @@ func defaultClusterObject(
 	raftCfg api.RaftConfig,
 	encryptionConfig api.EncryptionConfig,
 	initialUnlockKeys []*api.EncryptionKey,
-	rootCA *ca.RootCA) *api.Cluster {
+	rootCA *ca.RootCA,
+	fips bool) *api.Cluster {
 	var caKey []byte
 	if rcaSigner, err := rootCA.Signer(); err == nil {
 		caKey = rcaSigner.Key
@@ -1122,11 +1129,12 @@ func defaultClusterObject(
 			CACert:     rootCA.Certs,
 			CACertHash: rootCA.Digest.String(),
 			JoinTokens: api.JoinTokens{
-				Worker:  ca.GenerateJoinToken(rootCA),
-				Manager: ca.GenerateJoinToken(rootCA),
+				Worker:  ca.GenerateJoinToken(rootCA, fips),
+				Manager: ca.GenerateJoinToken(rootCA, fips),
 			},
 		},
 		UnlockKeys: initialUnlockKeys,
+		FIPS:       fips,
 	}
 }
 

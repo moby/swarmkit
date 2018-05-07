@@ -122,28 +122,9 @@ func (c *testCluster) AddManager(lateBind bool, rootCA *ca.RootCA) error {
 		n = node
 	}
 
-	c.counter++
-	ctx := log.WithLogger(c.ctx, log.L.WithFields(
-		logrus.Fields{
-			"testnode": c.counter,
-			"testname": c.ctx.Value(testnameKey),
-		},
-	))
-
-	c.wg.Add(1)
-	go func() {
-		c.errs <- n.node.Start(ctx)
-		c.wg.Done()
-	}()
-
-	select {
-	case <-n.node.Ready():
-	case <-time.After(opsTimeout):
-		return fmt.Errorf("node did not ready in time")
+	if err := c.AddNode(n); err != nil {
+		return err
 	}
-
-	c.nodes[n.node.NodeID()] = n
-	c.nodesOrder[n.node.NodeID()] = c.counter
 
 	if lateBind {
 		// Verify that the control API works
@@ -159,7 +140,6 @@ func (c *testCluster) AddManager(lateBind bool, rootCA *ca.RootCA) error {
 // AddAgent adds node with Agent role(doesn't participate in raft cluster).
 func (c *testCluster) AddAgent() error {
 	// first node
-	var n *testNode
 	if len(c.nodes) == 0 {
 		return fmt.Errorf("there is no manager nodes")
 	}
@@ -175,29 +155,57 @@ func (c *testCluster) AddAgent() error {
 	if err != nil {
 		return err
 	}
-	n = node
+	return c.AddNode(node)
+}
 
+// AddNode adds a new node to the cluster
+func (c *testCluster) AddNode(n *testNode) error {
 	c.counter++
+	if err := c.runNode(n, c.counter); err != nil {
+		c.counter--
+		return err
+	}
+	c.nodes[n.node.NodeID()] = n
+	c.nodesOrder[n.node.NodeID()] = c.counter
+	return nil
+}
+
+func (c *testCluster) runNode(n *testNode, nodeOrder int) error {
 	ctx := log.WithLogger(c.ctx, log.L.WithFields(
 		logrus.Fields{
-			"testnode": c.counter,
+			"testnode": nodeOrder,
 			"testname": c.ctx.Value(testnameKey),
 		},
 	))
 
-	c.wg.Add(1)
+	errCtx, cancel := context.WithCancel(context.Background())
+	done := make(chan error)
+	defer cancel()
+	defer close(done)
+
+	c.wg.Add(2)
 	go func() {
 		c.errs <- n.node.Start(ctx)
 		c.wg.Done()
 	}()
+	go func(n *node.Node) {
+		err := n.Err(errCtx)
+		select {
+		case <-errCtx.Done():
+		default:
+			done <- err
+		}
+		c.wg.Done()
+	}(n.node)
 
 	select {
 	case <-n.node.Ready():
+	case err := <-done:
+		return err
 	case <-time.After(opsTimeout):
-		return fmt.Errorf("node is not ready in time")
+		return fmt.Errorf("node did not ready in time")
 	}
-	c.nodes[n.node.NodeID()] = n
-	c.nodesOrder[n.node.NodeID()] = c.counter
+
 	return nil
 }
 
@@ -345,40 +353,8 @@ func (c *testCluster) StartNode(id string) error {
 	if !ok {
 		return fmt.Errorf("set node role: node %s not found", id)
 	}
-
-	ctx := log.WithLogger(c.ctx, log.L.WithFields(
-		logrus.Fields{
-			"testnode": c.nodesOrder[id],
-			"testname": c.ctx.Value(testnameKey),
-		},
-	))
-
-	errCtx, cancel := context.WithCancel(context.Background())
-	done := make(chan error)
-	defer cancel()
-	defer close(done)
-
-	c.wg.Add(2)
-	go func() {
-		c.errs <- n.node.Start(ctx)
-		c.wg.Done()
-	}()
-	go func(n *node.Node) {
-		err := n.Err(errCtx)
-		select {
-		case <-errCtx.Done():
-		default:
-			done <- err
-		}
-		c.wg.Done()
-	}(n.node)
-
-	select {
-	case <-n.node.Ready():
-	case err := <-done:
+	if err := c.runNode(n, c.nodesOrder[id]); err != nil {
 		return err
-	case <-time.After(opsTimeout):
-		return fmt.Errorf("node did not ready in time")
 	}
 	if n.node.NodeID() != id {
 		return fmt.Errorf("restarted node does not have have the same ID")

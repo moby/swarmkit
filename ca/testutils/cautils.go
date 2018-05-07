@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -111,17 +112,40 @@ func NewTestCA(t *testing.T, krwGenerators ...func(ca.CertPaths) *ca.KeyReadWrit
 		CAKey:  key,
 	}
 
-	return NewTestCAFromAPIRootCA(t, tempdir, apiRootCA, krwGenerators)
+	return newTestCA(t, tempdir, apiRootCA, krwGenerators, false)
+}
+
+// NewFIPSTestCA is a helper method that creates a mandatory fips TestCA and a bunch of default
+// connections and security configs.
+func NewFIPSTestCA(t *testing.T) *TestCA {
+	tempdir, err := ioutil.TempDir("", "swarm-ca-test-")
+	require.NoError(t, err)
+
+	cert, key, err := CreateRootCertAndKey("swarm-test-CA")
+	require.NoError(t, err)
+	apiRootCA := api.RootCA{
+		CACert: cert,
+		CAKey:  key,
+	}
+
+	return newTestCA(t, tempdir, apiRootCA, nil, true)
 }
 
 // NewTestCAFromAPIRootCA is a helper method that creates a TestCA and a bunch of default
 // connections and security configs, given a temp directory and an api.RootCA to use for creating
 // a cluster and for signing.
 func NewTestCAFromAPIRootCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenerators []func(ca.CertPaths) *ca.KeyReadWriter) *TestCA {
+	return newTestCA(t, tempBaseDir, apiRootCA, krwGenerators, false)
+}
+
+func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenerators []func(ca.CertPaths) *ca.KeyReadWriter, fips bool) *TestCA {
 	s := store.NewMemoryStore(&stateutils.MockProposer{})
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 	organization := identity.NewID()
+	if fips {
+		organization = "FIPS." + organization
+	}
 
 	var (
 		externalSigningServer *ExternalSigningServer
@@ -356,6 +380,7 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 }
 
 func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, apiRootCA api.RootCA, caRootCA *ca.RootCA, externalCAs ...*api.ExternalCA) *api.Cluster {
+	fips := strings.HasPrefix(clusterID, "FIPS.")
 	cluster := &api.Cluster{
 		ID: clusterID,
 		Spec: api.ClusterSpec{
@@ -367,12 +392,13 @@ func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, a
 			},
 		},
 		RootCA: apiRootCA,
+		FIPS:   fips,
 	}
 	if cluster.RootCA.JoinTokens.Worker == "" {
-		cluster.RootCA.JoinTokens.Worker = ca.GenerateJoinToken(caRootCA)
+		cluster.RootCA.JoinTokens.Worker = ca.GenerateJoinToken(caRootCA, fips)
 	}
 	if cluster.RootCA.JoinTokens.Manager == "" {
-		cluster.RootCA.JoinTokens.Manager = ca.GenerateJoinToken(caRootCA)
+		cluster.RootCA.JoinTokens.Manager = ca.GenerateJoinToken(caRootCA, fips)
 	}
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, cluster)
