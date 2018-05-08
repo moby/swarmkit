@@ -209,10 +209,6 @@ func reconcilePortConfigs(s *api.Service) []*api.PortConfig {
 }
 
 func (pa *portAllocator) serviceAllocatePorts(s *api.Service) (err error) {
-	if s.Spec.Endpoint == nil {
-		return nil
-	}
-
 	// We might have previous allocations which we want to stick
 	// to if possible. So instead of strictly going by port
 	// configs in the Spec reconcile the list of port configs from
@@ -270,7 +266,7 @@ func (pa *portAllocator) serviceDeallocatePorts(s *api.Service) {
 }
 
 func (pa *portAllocator) hostPublishPortsNeedUpdate(s *api.Service) bool {
-	if s.Endpoint == nil && s.Spec.Endpoint == nil {
+	if s.Endpoint == nil && len(s.Spec.Endpoint.Ports) == 0 {
 		return false
 	}
 
@@ -283,13 +279,11 @@ func (pa *portAllocator) hostPublishPortsNeedUpdate(s *api.Service) bool {
 		}
 	}
 
-	if s.Spec.Endpoint != nil {
-		for _, portConfig := range s.Spec.Endpoint.Ports {
-			if portConfig.PublishMode == api.PublishModeHost &&
-				portConfig.PublishedPort != 0 {
-				if portStates.delState(portConfig) == nil {
-					return true
-				}
+	for _, portConfig := range s.Spec.Endpoint.Ports {
+		if portConfig.PublishMode == api.PublishModeHost &&
+			portConfig.PublishedPort != 0 {
+			if portStates.delState(portConfig) == nil {
+				return true
 			}
 		}
 	}
@@ -304,16 +298,16 @@ func (pa *portAllocator) isPortsAllocated(s *api.Service) bool {
 func (pa *portAllocator) isPortsAllocatedOnInit(s *api.Service, onInit bool) bool {
 	// If service has no user-defined endpoint and allocated endpoint,
 	// we assume it is allocated and return true.
-	if s.Endpoint == nil && s.Spec.Endpoint == nil {
+	if s.Endpoint == nil && len(s.Spec.Endpoint.Ports) == 0 {
 		return true
 	}
 
 	// If service has allocated endpoint while has no user-defined endpoint,
-	// we assume allocated endpoints are redundant, and they need deallocated.
-	// If service has no allocated endpoint while has user-defined endpoint,
+	// we assume allocated endpoints are redundant, and they need to be deallocated.
+	// If service has no allocated endpoint while it has user-defined endpoint,
 	// we assume it is not allocated.
-	if (s.Endpoint != nil && s.Spec.Endpoint == nil) ||
-		(s.Endpoint == nil && s.Spec.Endpoint != nil) {
+	if (s.Endpoint != nil && len(s.Spec.Endpoint.Ports) == 0) ||
+		(s.Endpoint == nil && len(s.Spec.Endpoint.Ports) > 0) {
 		return false
 	}
 

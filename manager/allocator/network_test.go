@@ -10,7 +10,7 @@ import (
 func TestUpdatePortsInHostPublishMode(t *testing.T) {
 	service := api.Service{
 		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{
+			Endpoint: api.EndpointSpec{
 				Ports: []*api.PortConfig{
 					{
 						Protocol:      api.ProtocolTCP,

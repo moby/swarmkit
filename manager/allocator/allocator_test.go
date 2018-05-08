@@ -93,7 +93,7 @@ func TestAllocator(t *testing.T) {
 						},
 					},
 				},
-				Endpoint: &api.EndpointSpec{
+				Endpoint: api.EndpointSpec{
 					Mode: api.ResolutionModeVirtualIP,
 					Ports: []*api.PortConfig{
 						{
@@ -147,7 +147,7 @@ func TestAllocator(t *testing.T) {
 						},
 					},
 				},
-				Endpoint: &api.EndpointSpec{Mode: api.ResolutionModeDNSRoundRobin},
+				Endpoint: api.EndpointSpec{Mode: api.ResolutionModeDNSRoundRobin},
 			},
 		}
 		assert.NoError(t, store.CreateService(tx, sp1))
@@ -181,7 +181,7 @@ func TestAllocator(t *testing.T) {
 						},
 					},
 				},
-				Endpoint: &api.EndpointSpec{Mode: api.ResolutionModeDNSRoundRobin},
+				Endpoint: api.EndpointSpec{Mode: api.ResolutionModeDNSRoundRobin},
 			},
 		}
 		assert.NoError(t, store.CreateService(tx, sp2))
@@ -277,7 +277,6 @@ func TestAllocator(t *testing.T) {
 						Target: "testID2",
 					},
 				},
-				Endpoint: &api.EndpointSpec{},
 			},
 		}
 		assert.NoError(t, store.CreateService(tx, s2))
@@ -404,16 +403,6 @@ func TestAllocator(t *testing.T) {
 	watchNetwork(t, netWatch, false, isValidNetwork)
 	watchNetwork(t, netWatch, true, nil)
 
-	// Try updating service which is already allocated with no endpointSpec
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		s := store.GetService(tx, "testServiceID1")
-		s.Spec.Endpoint = nil
-
-		assert.NoError(t, store.UpdateService(tx, s))
-		return nil
-	}))
-	watchService(t, serviceWatch, false, nil)
-
 	// Try updating task which is already allocated
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		t2 := store.GetTask(tx, "testTaskID2")
@@ -493,7 +482,7 @@ func TestAllocator(t *testing.T) {
 			Annotations: api.Annotations{
 				Name: "service3",
 			},
-			Endpoint: &api.EndpointSpec{
+			Endpoint: api.EndpointSpec{
 				Ports: []*api.PortConfig{
 					{
 						Name:          "http",
@@ -608,7 +597,7 @@ func TestNoDuplicateIPs(t *testing.T) {
 						},
 					},
 				},
-				Endpoint: &api.EndpointSpec{
+				Endpoint: api.EndpointSpec{
 					Mode: api.ResolutionModeVirtualIP,
 					Ports: []*api.PortConfig{
 						{
@@ -718,7 +707,7 @@ func TestAllocatorRestoreForDuplicateIPs(t *testing.T) {
 					Annotations: api.Annotations{
 						Name: "service" + strconv.Itoa(i),
 					},
-					Endpoint: &api.EndpointSpec{
+					Endpoint: api.EndpointSpec{
 						Mode: api.ResolutionModeVirtualIP,
 
 						Ports: []*api.PortConfig{
@@ -861,7 +850,7 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 					Annotations: api.Annotations{
 						Name: "service" + strconv.Itoa(i),
 					},
-					// Endpoint: &api.EndpointSpec{
+					// Endpoint: api.EndpointSpec{
 					// 	Mode: api.ResolutionModeVirtualIP,
 					// },
 					Task: api.TaskSpec{

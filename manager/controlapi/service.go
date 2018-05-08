@@ -303,12 +303,7 @@ func validateTaskSpec(taskSpec api.TaskSpec) error {
 	return nil
 }
 
-func validateEndpointSpec(epSpec *api.EndpointSpec) error {
-	// Endpoint spec is optional
-	if epSpec == nil {
-		return nil
-	}
-
+func validateEndpointSpec(epSpec api.EndpointSpec) error {
 	type portSpec struct {
 		publishedPort uint32
 		protocol      api.PortConfig_Protocol
@@ -483,7 +478,7 @@ func validateServiceSpec(spec *api.ServiceSpec) error {
 // `serviceID` is not "", then conflicts check will be skipped against this
 // service (the service being updated).
 func (s *Server) checkPortConflicts(spec *api.ServiceSpec, serviceID string) error {
-	if spec.Endpoint == nil {
+	if len(spec.Endpoint.Ports) == 0 {
 		return nil
 	}
 
@@ -558,11 +553,9 @@ func (s *Server) checkPortConflicts(spec *api.ServiceSpec, serviceID string) err
 		if serviceID != "" && serviceID == service.ID {
 			continue
 		}
-		if service.Spec.Endpoint != nil {
-			for _, pc := range service.Spec.Endpoint.Ports {
-				if err := isPortInUse(pc, service); err != nil {
-					return err
-				}
+		for _, pc := range service.Spec.Endpoint.Ports {
+			if err := isPortInUse(pc, service); err != nil {
+				return err
 			}
 		}
 		if service.Endpoint != nil {
@@ -739,7 +732,7 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 		return nil, status.Errorf(codes.NotFound, "service %s not found", request.ServiceID)
 	}
 
-	if request.Spec.Endpoint != nil && !reflect.DeepEqual(request.Spec.Endpoint, service.Spec.Endpoint) {
+	if len(request.Spec.Endpoint.Ports) > 0 && !reflect.DeepEqual(request.Spec.Endpoint, service.Spec.Endpoint) {
 		if err := s.checkPortConflicts(request.Spec, request.ServiceID); err != nil {
 			return nil, err
 		}

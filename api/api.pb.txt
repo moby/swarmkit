@@ -4507,6 +4507,9 @@ file {
       label: LABEL_OPTIONAL
       type: TYPE_MESSAGE
       type_name: ".docker.swarmkit.v1.EndpointSpec"
+      options {
+        65001: 0
+      }
       json_name: "endpoint"
     }
     oneof_decl {

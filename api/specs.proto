@@ -86,7 +86,7 @@ message ServiceSpec {
 
 	// Service endpoint specifies the user provided configuration
 	// to properly discover and load balance a service.
-	EndpointSpec endpoint = 8;
+	EndpointSpec endpoint = 8 [(gogoproto.nullable) = false];
 }
 
 // ReplicatedService sets the reconciliation target to certain number of replicas.
@@ -315,7 +315,7 @@ message ContainerSpec {
 	// Runtimes that don't support it ignore that field
 	Isolation isolation = 24;
 
-	// PidsLimit prevents from OS resource damage by applications inside the container 
+	// PidsLimit prevents from OS resource damage by applications inside the container
 	// using fork bomb attack.
 	int64 pidsLimit = 25;
 }
