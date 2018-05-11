@@ -296,7 +296,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	require.NotNil(t, keyBlock)
 	require.False(t, keyutils.IsEncryptedPEMBlock(keyBlock))
 	require.Len(t, keyBlock.Headers, 2)
-	currentDEK, err := decodePEMHeaderValue(keyBlock.Headers[pemHeaderRaftDEK], nil)
+	currentDEK, err := decodePEMHeaderValue(keyBlock.Headers[pemHeaderRaftDEK], nil, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, currentDEK)
 
@@ -349,7 +349,7 @@ func TestManagerLockUnlock(t *testing.T) {
 		// a little bit, and is best effort only
 		currentDEKString, ok := keyBlock.Headers[pemHeaderRaftDEK]
 		require.True(t, ok) // there should never NOT be a current header
-		nowCurrentDEK, err := decodePEMHeaderValue(currentDEKString, unlockKeyResp.UnlockKey)
+		nowCurrentDEK, err := decodePEMHeaderValue(currentDEKString, unlockKeyResp.UnlockKey, false)
 		require.NoError(t, err) // it should always be encrypted
 		if bytes.Equal(currentDEK, nowCurrentDEK) {
 			return fmt.Errorf("snapshot has not been finished yet")
@@ -366,7 +366,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	require.False(t, ok)
 
 	// verify that the snapshot is readable with the new DEK
-	encrypter, decrypter := encryption.Defaults(currentDEK)
+	encrypter, decrypter := encryption.Defaults(currentDEK, false)
 	// we can't use the raftLogger, because the WALs are still locked while the raft node is up.  And once we remove
 	// the manager, they'll be deleted.
 	snapshot, err := storage.NewSnapFactory(encrypter, decrypter).New(filepath.Join(stateDir, "raft", "snap-v3-encrypted")).Load()
@@ -422,8 +422,13 @@ func TestManagerLockUnlock(t *testing.T) {
 		return nil
 	}, 1*time.Second))
 
-	// the DEK should not have been rotated, just decrypted (which was tested previously)
-	unencryptedDEK, err := decodePEMHeaderValue(keyBlock.Headers[pemHeaderRaftDEK], nil)
+	// the new key should not be encrypted, and the DEK should also be unencrypted
+	// but not rotated
+	keyBlock, _ = pem.Decode(unlockedKey)
+	require.NotNil(t, keyBlock)
+	require.False(t, keyutils.IsEncryptedPEMBlock(keyBlock))
+
+	unencryptedDEK, err := decodePEMHeaderValue(keyBlock.Headers[pemHeaderRaftDEK], nil, false)
 	require.NoError(t, err)
 	require.NotNil(t, unencryptedDEK)
 	require.Equal(t, currentDEK, unencryptedDEK)
@@ -433,160 +438,5 @@ func TestManagerLockUnlock(t *testing.T) {
 	// After stopping we should MAY receive an error from ListenAndServe if
 	// all this happened before WaitForLeader completed, so don't check the
 	// error.
-	<-done
-}
-
-// Tests manager rotates encryption of root key data in the raft store
-func TestManagerEncryptsDecryptsRootKeyMaterial(t *testing.T) {
-	tc := cautils.NewTestCA(t)
-	defer tc.Stop()
-
-	temp, err := ioutil.TempFile("", "test-socket")
-	require.NoError(t, err)
-	require.NoError(t, temp.Close())
-	require.NoError(t, os.Remove(temp.Name()))
-
-	defer os.RemoveAll(temp.Name())
-
-	stateDir, err := ioutil.TempDir("", "test-raft")
-	require.NoError(t, err)
-	defer os.RemoveAll(stateDir)
-
-	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
-	require.NoError(t, err)
-
-	_, _, err = managerSecurityConfig.KeyReader().Read()
-	require.NoError(t, err)
-
-	config := Config{
-		RemoteAPI:      &RemoteAddrs{ListenAddr: "127.0.0.1:0"},
-		ControlAPI:     temp.Name(),
-		StateDir:       stateDir,
-		SecurityConfig: managerSecurityConfig,
-		RootCAPaths:    tc.Paths.RootCA,
-	}
-	done := make(chan error)
-	defer close(done)
-
-	var m *Manager
-	startManager := func() {
-		m, err = New(&config)
-		require.NoError(t, err)
-		require.NotNil(t, m)
-
-		go func() {
-			done <- m.Run(tc.Context)
-		}()
-	}
-
-	startManager()
-
-	var clusterID string
-	// wait for cluster data to be there
-	err = testutils.PollFunc(nil, func() error {
-		// using store.Update just because it returns an error, as opposed to store.View
-		return m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
-			clusters, err := store.FindClusters(tx, store.All)
-			if err != nil {
-				return err
-			}
-			if len(clusters) != 1 {
-				return fmt.Errorf("expected 1 cluster, got %d", len(clusters))
-			}
-			clusterID = clusters[0].ID
-			return nil
-		})
-	})
-
-	os.Setenv(ca.PassphraseENVVar, "kek")
-	defer os.Unsetenv(ca.PassphraseENVVar)
-
-	// restart
-	m.Stop(tc.Context, false)
-	<-done
-	startManager()
-
-	// wait for the key to be encrypted in the raft store
-	err = testutils.PollFunc(nil, func() error {
-		return m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
-			cluster := store.GetCluster(tx, clusterID)
-			if cluster == nil {
-				return fmt.Errorf("cluster gone")
-			}
-			keyBlock, _ := pem.Decode(cluster.RootCA.CAKey)
-			if keyBlock == nil {
-				return fmt.Errorf("could not pem decode root key")
-			}
-			if !keyutils.IsEncryptedPEMBlock(keyBlock) {
-				return fmt.Errorf("root key material not encrypted yet")
-			}
-			_, err = keyutils.DecryptPEMBlock(keyBlock, []byte("kek"))
-			return err
-		})
-	})
-	require.NoError(t, err)
-
-	os.Unsetenv(ca.PassphraseENVVar)
-	os.Setenv(ca.PassphraseENVVarPrev, "kek")
-	defer os.Unsetenv(ca.PassphraseENVVarPrev)
-
-	// restart
-	m.Stop(tc.Context, false)
-	<-done
-	startManager()
-
-	// wait for the key to be decrypted in the raft store
-	pollDecrypted := func() error {
-		return testutils.PollFunc(nil, func() error {
-			// wait until we are leader first, because otherwise the raft node could still be catching
-			// up on all the logs on disk and hence not have processed the "encrypt CA key" log yet
-			if !m.raftNode.IsLeader() {
-				return fmt.Errorf("node is not leader yet")
-			}
-			return m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
-				cluster := store.GetCluster(tx, clusterID)
-				if cluster == nil {
-					return fmt.Errorf("cluster gone")
-				}
-				keyBlock, _ := pem.Decode(cluster.RootCA.CAKey)
-				if keyBlock == nil {
-					return fmt.Errorf("could not pem decode root key")
-				}
-				if keyutils.IsEncryptedPEMBlock(keyBlock) {
-					return fmt.Errorf("root key material not decrypted yet")
-				}
-				return nil
-			})
-		})
-	}
-	require.NoError(t, pollDecrypted())
-
-	// update the key to that can be "decrypted" with both "" and "kek" as the password.  This
-	// doesn't actually match the root CA certificate, and hence the security config can't be
-	// updated, but we're just checking that the CA key is decrypted.
-	require.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
-		cluster := store.GetCluster(tx, clusterID)
-		if cluster == nil {
-			return fmt.Errorf("cluster gone")
-		}
-		cluster.RootCA.CAKey = []byte(`
------BEGIN ENCRYPTED PRIVATE KEY-----
-MIHeMEkGCSqGSIb3DQEFDTA8MBsGCSqGSIb3DQEFDDAOBAiLGJtiTmJ3rQICCAAw
-HQYJYIZIAWUDBAEqBBBeDoliB0Qe73DdcMeFCuRzBIGQP/iFMPj9BJ/81GV//fMp
-KPozbY0EWodXt7KArbeROd5+uWw1muLANUa3KkkXyQhmzlR2Zv3Y/kBuPay9RweU
-md94ZD/HY9K+ISv4tIA7u8gp2Hqr0elfG0QqBuwrh688ZF5jii6umZzXtLVVMvWd
-NF7w1CA6b8w1aTIklVjv0AJ9tgtGQb9phVigPAdyyw6v
------END ENCRYPTED PRIVATE KEY-----
-`)
-		return store.UpdateCluster(tx, cluster)
-	}))
-
-	// restart
-	m.Stop(tc.Context, false)
-	<-done
-	startManager()
-	require.NoError(t, pollDecrypted())
-
-	m.Stop(tc.Context, false)
 	<-done
 }

@@ -125,6 +125,9 @@ message NodeDescription {
 
 	// Information on the node's TLS setup
 	NodeTLSInfo tls_info = 5 [(gogoproto.customname) = "TLSInfo"];
+
+	// FIPS indicates whether the node has FIPS-enabled
+	bool fips = 6 [(gogoproto.customname) = "FIPS"];
 }
 
 message NodeTLSInfo {
@@ -1035,6 +1038,7 @@ message MaybeEncryptedRecord {
 	enum Algorithm {
 		NONE = 0 [(gogoproto.enumvalue_customname) = "NotEncrypted"];
 		SECRETBOX_SALSA20_POLY1305 = 1 [(gogoproto.enumvalue_customname) = "NACLSecretboxSalsa20Poly1305"];
+		FERNET_AES_128_CBC = 2 [(gogoproto.enumvalue_customname) = "FernetAES128CBC"];
 	}
 
 	Algorithm algorithm = 1;

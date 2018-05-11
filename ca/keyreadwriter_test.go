@@ -436,7 +436,7 @@ func testKeyReadWriterDowngradeKeyCase(t *testing.T, tc downgradeTestCase) error
 		require.NotNil(t, block)
 
 		kek = []byte("kek")
-		block, err = keyutils.EncryptPEMBlock(block.Bytes, kek)
+		block, err = keyutils.Default.EncryptPEMBlock(block.Bytes, kek)
 		require.NoError(t, err)
 
 		key = pem.EncodeToMemory(block)
@@ -516,4 +516,48 @@ func TestKeyReadWriterDowngradeKey(t *testing.T) {
 		err := testKeyReadWriterDowngradeKeyCase(t, c)
 		require.NoError(t, err)
 	}
+}
+
+// In FIPS mode, when reading a PKCS1 encrypted key, a PKCS1 error is returned as opposed
+// to any other type of invalid KEK error
+func TestKeyReadWriterReadNonFIPS(t *testing.T) {
+	t.Parallel()
+	cert, key, err := testutils.CreateRootCertAndKey("cn")
+	require.NoError(t, err)
+
+	key, err = pkcs8.ConvertToECPrivateKeyPEM(key)
+	require.NoError(t, err)
+
+	tempdir, err := ioutil.TempDir("", "KeyReadWriter")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+
+	path := ca.NewConfigPaths(filepath.Join(tempdir, "subdir")) // to make sure subdirectories are created
+
+	k := ca.NewKeyReadWriter(path.Node, nil, nil)
+	k.SetKeyFormatter(keyutils.FIPS)
+
+	// can write an unencrypted PKCS1 key with no issues
+	require.NoError(t, k.Write(cert, key, nil))
+	// can read the unencrypted key with no issues
+	readCert, readKey, err := k.Read()
+	require.NoError(t, err)
+	require.Equal(t, cert, readCert)
+	require.Equal(t, key, readKey)
+
+	// cannot write an encrypted PKCS1 key
+	passphrase := []byte("passphrase")
+	require.Equal(t, keyutils.ErrFIPSUnsupportedKeyFormat, k.Write(cert, key, &ca.KEKData{KEK: passphrase}))
+
+	k.SetKeyFormatter(keyutils.Default)
+	require.NoError(t, k.Write(cert, key, &ca.KEKData{KEK: passphrase}))
+
+	// cannot read an encrypted PKCS1 key
+	k.SetKeyFormatter(keyutils.FIPS)
+	_, _, err = k.Read()
+	require.Equal(t, keyutils.ErrFIPSUnsupportedKeyFormat, err)
+
+	k.SetKeyFormatter(keyutils.Default)
+	_, _, err = k.Read()
+	require.NoError(t, err)
 }

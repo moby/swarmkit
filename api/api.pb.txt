@@ -2171,6 +2171,16 @@ file {
       }
       json_name: "tlsInfo"
     }
+    field {
+      name: "fips"
+      number: 6
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      options {
+        65004: "FIPS"
+      }
+      json_name: "fips"
+    }
   }
   message_type {
     name: "NodeTLSInfo"
@@ -3926,6 +3936,13 @@ file {
         number: 1
         options {
           66001: "NACLSecretboxSalsa20Poly1305"
+        }
+      }
+      value {
+        name: "FERNET_AES_128_CBC"
+        number: 2
+        options {
+          66001: "FernetAES128CBC"
         }
       }
     }
@@ -6149,6 +6166,16 @@ file {
       type: TYPE_MESSAGE
       type_name: ".docker.swarmkit.v1.EncryptionKey"
       json_name: "unlockKeys"
+    }
+    field {
+      name: "fips"
+      number: 10
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      options {
+        65004: "FIPS"
+      }
+      json_name: "fips"
     }
     nested_type {
       name: "BlacklistedCertificatesEntry"

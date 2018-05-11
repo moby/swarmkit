@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/swarmkit/node"
+
 	"golang.org/x/net/context"
 
 	"reflect"
@@ -20,7 +22,6 @@ import (
 	events "github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/keyutils"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager"
@@ -154,7 +155,7 @@ func pollServiceReady(t *testing.T, c *testCluster, sid string, replicas int) {
 }
 
 func newCluster(t *testing.T, numWorker, numManager int) *testCluster {
-	cl := newTestCluster(t.Name())
+	cl := newTestCluster(t.Name(), false)
 	for i := 0; i < numManager; i++ {
 		require.NoError(t, cl.AddManager(false, nil), "manager number %d", i+1)
 	}
@@ -166,8 +167,8 @@ func newCluster(t *testing.T, numWorker, numManager int) *testCluster {
 	return cl
 }
 
-func newClusterWithRootCA(t *testing.T, numWorker, numManager int, rootCA *ca.RootCA) *testCluster {
-	cl := newTestCluster(t.Name())
+func newClusterWithRootCA(t *testing.T, numWorker, numManager int, rootCA *ca.RootCA, fips bool) *testCluster {
+	cl := newTestCluster(t.Name(), fips)
 	for i := 0; i < numManager; i++ {
 		require.NoError(t, cl.AddManager(false, rootCA), "manager number %d", i+1)
 	}
@@ -194,7 +195,7 @@ func TestServiceCreateLateBind(t *testing.T) {
 
 	numWorker, numManager := 3, 3
 
-	cl := newTestCluster(t.Name())
+	cl := newTestCluster(t.Name(), false)
 	for i := 0; i < numManager; i++ {
 		require.NoError(t, cl.AddManager(true, nil), "manager number %d", i+1)
 	}
@@ -268,19 +269,12 @@ func TestNodeOps(t *testing.T) {
 func TestAutolockManagers(t *testing.T) {
 	t.Parallel()
 
-	// run this twice, once with root ca with pkcs1 key and then pkcs8 key
-	defer os.Unsetenv(keyutils.FIPSEnvVar)
-	for _, pkcs1 := range []bool{true, false} {
-		if pkcs1 {
-			os.Unsetenv(keyutils.FIPSEnvVar)
-		} else {
-			os.Setenv(keyutils.FIPSEnvVar, "1")
-		}
-
+	// run this twice, once with FIPS set and once without FIPS set
+	for _, fips := range []bool{true, false} {
 		rootCA, err := ca.CreateRootCA("rootCN")
 		require.NoError(t, err)
 		numWorker, numManager := 1, 1
-		cl := newClusterWithRootCA(t, numWorker, numManager, &rootCA)
+		cl := newClusterWithRootCA(t, numWorker, numManager, &rootCA, fips)
 		defer func() {
 			require.NoError(t, cl.Stop())
 		}()
@@ -551,7 +545,7 @@ func TestForceNewCluster(t *testing.T) {
 
 	// start a new cluster with the external CA bootstrapped
 	numWorker, numManager := 0, 1
-	cl := newTestCluster(t.Name())
+	cl := newTestCluster(t.Name(), false)
 	defer func() {
 		require.NoError(t, cl.Stop())
 	}()
@@ -621,20 +615,13 @@ func pollRootRotationDone(t *testing.T, cl *testCluster) {
 func TestSuccessfulRootRotation(t *testing.T) {
 	t.Parallel()
 
-	// run this twice, once with root ca with pkcs1 key and then pkcs8 key
-	defer os.Unsetenv(keyutils.FIPSEnvVar)
-	for _, pkcs1 := range []bool{true, false} {
-		if pkcs1 {
-			os.Unsetenv(keyutils.FIPSEnvVar)
-		} else {
-			os.Setenv(keyutils.FIPSEnvVar, "1")
-		}
-
+	// run this twice, once with FIPS set and once without
+	for _, fips := range []bool{true, false} {
 		rootCA, err := ca.CreateRootCA("rootCN")
 		require.NoError(t, err)
 
 		numWorker, numManager := 2, 3
-		cl := newClusterWithRootCA(t, numWorker, numManager, &rootCA)
+		cl := newClusterWithRootCA(t, numWorker, numManager, &rootCA, fips)
 		defer func() {
 			require.NoError(t, cl.Stop())
 		}()
@@ -858,7 +845,7 @@ func TestNodeJoinWithWrongCerts(t *testing.T) {
 	require.NoError(t, err)
 
 	for role, token := range tokens {
-		node, err := newTestNode(joinAddr, token, false)
+		node, err := newTestNode(joinAddr, token, false, false)
 		require.NoError(t, err)
 		nodeID := identity.NewID()
 		require.NoError(t,
@@ -870,5 +857,113 @@ func TestNodeJoinWithWrongCerts(t *testing.T) {
 		err = cl.StartNode(nodeID)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "certificate signed by unknown authority")
+	}
+}
+
+// If the cluster does not require FIPS, then any node can join and re-join
+// regardless of FIPS mode.
+func TestMixedFIPSClusterNonMandatoryFIPS(t *testing.T) {
+	t.Parallel()
+
+	cl := newTestCluster(t.Name(), false) // no fips
+	defer func() {
+		require.NoError(t, cl.Stop())
+	}()
+	// create cluster with a non-FIPS manager, add another non-FIPS manager and a non-FIPs worker
+	for i := 0; i < 2; i++ {
+		require.NoError(t, cl.AddManager(false, nil))
+	}
+	require.NoError(t, cl.AddAgent())
+
+	// add a FIPS manager and FIPS worker
+	joinAddr, err := cl.RandomManager().node.RemoteAPIAddr()
+	require.NoError(t, err)
+	clusterInfo, err := cl.GetClusterInfo()
+	require.NoError(t, err)
+	for _, token := range []string{clusterInfo.RootCA.JoinTokens.Worker, clusterInfo.RootCA.JoinTokens.Manager} {
+		node, err := newTestNode(joinAddr, token, false, true)
+		require.NoError(t, err)
+		require.NoError(t, cl.AddNode(node))
+	}
+
+	pollClusterReady(t, cl, 2, 3)
+
+	// switch which worker nodes are fips and which are not - all should start up just fine
+	// on managers, if we enable fips on a previously non-fips node, it won't be able to read
+	// non-fernet raft logs
+	for nodeID, n := range cl.nodes {
+		if n.IsManager() {
+			n.config.FIPS = false
+		} else {
+			n.config.FIPS = !n.config.FIPS
+		}
+		require.NoError(t, n.Pause(false))
+		require.NoError(t, cl.StartNode(nodeID))
+	}
+
+	pollClusterReady(t, cl, 2, 3)
+}
+
+// If the cluster require FIPS, then only FIPS nodes can join and re-join.
+func TestMixedFIPSClusterMandatoryFIPS(t *testing.T) {
+	t.Parallel()
+
+	cl := newTestCluster(t.Name(), true)
+	defer func() {
+		require.NoError(t, cl.Stop())
+	}()
+	for i := 0; i < 3; i++ {
+		require.NoError(t, cl.AddManager(false, nil))
+	}
+	require.NoError(t, cl.AddAgent())
+
+	pollClusterReady(t, cl, 1, 3)
+
+	// restart a manager and restart the worker in non-FIPS mode - both will fail, but restarting it in FIPS mode
+	// will succeed
+	leader, err := cl.Leader()
+	require.NoError(t, err)
+	var nonLeader, worker *testNode
+	for _, n := range cl.nodes {
+		if n == leader {
+			continue
+		}
+		if nonLeader == nil && n.IsManager() {
+			nonLeader = n
+		}
+		if worker == nil && !n.IsManager() {
+			worker = n
+		}
+	}
+	for _, n := range []*testNode{nonLeader, worker} {
+		nodeID := n.node.NodeID()
+		rAddr := ""
+		if n.IsManager() {
+			// make sure to save the old address because if a node is stopped, we can't get the node address, and it gets set to
+			// a completely new address, which will break raft in the case of a manager
+			rAddr, err = n.node.RemoteAPIAddr()
+			require.NoError(t, err)
+		}
+		require.NoError(t, n.Pause(false))
+		n.config.FIPS = false
+		require.Equal(t, node.ErrMandatoryFIPS, cl.StartNode(nodeID))
+
+		require.NoError(t, n.Pause(false))
+		n.config.FIPS = true
+		n.config.ListenRemoteAPI = rAddr
+		require.NoError(t, cl.StartNode(nodeID))
+	}
+
+	pollClusterReady(t, cl, 1, 3)
+
+	// try to add a non-FIPS manager and non-FIPS worker - it won't work
+	joinAddr, err := cl.RandomManager().node.RemoteAPIAddr()
+	require.NoError(t, err)
+	clusterInfo, err := cl.GetClusterInfo()
+	require.NoError(t, err)
+	for _, token := range []string{clusterInfo.RootCA.JoinTokens.Worker, clusterInfo.RootCA.JoinTokens.Manager} {
+		n, err := newTestNode(joinAddr, token, false, false)
+		require.NoError(t, err)
+		require.Equal(t, node.ErrMandatoryFIPS, cl.AddNode(n))
 	}
 }

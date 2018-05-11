@@ -2,7 +2,6 @@ package manager
 
 import (
 	"crypto/tls"
-	"encoding/pem"
 	"fmt"
 	"net"
 	"os"
@@ -17,7 +16,6 @@ import (
 	gmetrics "github.com/docker/go-metrics"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/keyutils"
 	"github.com/docker/swarmkit/connectionbroker"
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/log"
@@ -123,6 +121,11 @@ type Config struct {
 
 	// PluginGetter provides access to docker's plugin inventory.
 	PluginGetter plugingetter.PluginGetter
+
+	// FIPS is a boolean stating whether the node is FIPS enabled - if this is the
+	// first node in the cluster, this setting is used to set the cluster-wide mandatory
+	// FIPS setting.
+	FIPS bool
 }
 
 // Manager is the cluster manager for Swarm.
@@ -210,7 +213,7 @@ func New(config *Config) (*Manager, error) {
 		raftCfg.HeartbeatTick = int(config.HeartbeatTick)
 	}
 
-	dekRotator, err := NewRaftDEKManager(config.SecurityConfig.KeyWriter())
+	dekRotator, err := NewRaftDEKManager(config.SecurityConfig.KeyWriter(), config.FIPS)
 	if err != nil {
 		return nil, err
 	}
@@ -224,6 +227,7 @@ func New(config *Config) (*Manager, error) {
 		ForceNewCluster: config.ForceNewCluster,
 		TLSCredentials:  config.SecurityConfig.ClientTLSCreds,
 		KeyRotator:      dekRotator,
+		FIPS:            config.FIPS,
 	}
 	raftNode := raft.NewNode(newNodeOpts)
 
@@ -768,109 +772,6 @@ func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 	return nil
 }
 
-// rotateRootCAKEK will attempt to rotate the key-encryption-key for root CA key-material in raft.
-// If there is no passphrase set in ENV, it returns.
-// If there is plain-text root key-material, and a passphrase set, it encrypts it.
-// If there is encrypted root key-material and it is using the current passphrase, it returns.
-// If there is encrypted root key-material, and it is using the previous passphrase, it
-// re-encrypts it with the current passphrase.
-func (m *Manager) rotateRootCAKEK(ctx context.Context, clusterID string) error {
-	// If we don't have a KEK, we won't ever be rotating anything
-	strPassphrase := os.Getenv(ca.PassphraseENVVar)
-	strPassphrasePrev := os.Getenv(ca.PassphraseENVVarPrev)
-	if strPassphrase == "" && strPassphrasePrev == "" {
-		return nil
-	}
-	if strPassphrase != "" {
-		log.G(ctx).Warn("Encrypting the root CA key in swarm using environment variables is deprecated. " +
-			"Support for decrypting or rotating the key will be removed in the future.")
-	}
-
-	passphrase := []byte(strPassphrase)
-	passphrasePrev := []byte(strPassphrasePrev)
-
-	s := m.raftNode.MemoryStore()
-	var (
-		cluster  *api.Cluster
-		err      error
-		finalKey []byte
-	)
-	// Retrieve the cluster identified by ClusterID
-	return s.Update(func(tx store.Tx) error {
-		cluster = store.GetCluster(tx, clusterID)
-		if cluster == nil {
-			return fmt.Errorf("cluster not found: %s", clusterID)
-		}
-
-		// Try to get the private key from the cluster
-		privKeyPEM := cluster.RootCA.CAKey
-		if len(privKeyPEM) == 0 {
-			// We have no PEM root private key in this cluster.
-			log.G(ctx).Warnf("cluster %s does not have private key material", clusterID)
-			return nil
-		}
-
-		// Decode the PEM private key
-		keyBlock, _ := pem.Decode(privKeyPEM)
-		if keyBlock == nil {
-			return fmt.Errorf("invalid PEM-encoded private key inside of cluster %s", clusterID)
-		}
-
-		if keyutils.IsEncryptedPEMBlock(keyBlock) {
-			// PEM encryption does not have a digest, so sometimes decryption doesn't
-			// error even with the wrong passphrase.  So actually try to parse it into a valid key.
-			_, err := keyutils.ParsePrivateKeyPEMWithPassword(privKeyPEM, []byte(passphrase))
-			if err == nil {
-				// This key is already correctly encrypted with the correct KEK, nothing to do here
-				return nil
-			}
-
-			// This key is already encrypted, but failed with current main passphrase.
-			// Let's try to decrypt with the previous passphrase, and parse into a valid key, for the
-			// same reason as above.
-			_, err = keyutils.ParsePrivateKeyPEMWithPassword(privKeyPEM, []byte(passphrasePrev))
-			if err != nil {
-				// We were not able to decrypt either with the main or backup passphrase, error
-				return err
-			}
-			// ok the above passphrase is correct, so decrypt the PEM block so we can re-encrypt -
-			// since the key was successfully decrypted above, there will be no error doing PEM
-			// decryption
-			unencryptedDER, _ := keyutils.DecryptPEMBlock(keyBlock, []byte(passphrasePrev))
-			unencryptedKeyBlock := &pem.Block{
-				Type:  keyBlock.Type,
-				Bytes: unencryptedDER,
-			}
-
-			// we were able to decrypt the key with the previous passphrase - if the current passphrase is empty,
-			// the we store the decrypted key in raft
-			finalKey = pem.EncodeToMemory(unencryptedKeyBlock)
-
-			// the current passphrase is not empty, so let's encrypt with the new one and store it in raft
-			if strPassphrase != "" {
-				finalKey, err = ca.EncryptECPrivateKey(finalKey, strPassphrase)
-				if err != nil {
-					log.G(ctx).WithError(err).Debugf("failed to rotate the key-encrypting-key for the root key material of cluster %s", clusterID)
-					return err
-				}
-			}
-		} else if strPassphrase != "" {
-			// If this key is not encrypted, and the passphrase is not nil, then we have to encrypt it
-			finalKey, err = ca.EncryptECPrivateKey(privKeyPEM, strPassphrase)
-			if err != nil {
-				log.G(ctx).WithError(err).Debugf("failed to rotate the key-encrypting-key for the root key material of cluster %s", clusterID)
-				return err
-			}
-		} else {
-			return nil // don't update if it's not encrypted and we don't want it encrypted
-		}
-
-		log.G(ctx).Infof("Updating the encryption on the root key material of cluster %s", clusterID)
-		cluster.RootCA.CAKey = finalKey
-		return store.UpdateCluster(tx, cluster)
-	})
-}
-
 // handleLeadershipEvents handles the is leader event or is follower event.
 func (m *Manager) handleLeadershipEvents(ctx context.Context, leadershipCh chan events.Event) {
 	for {
@@ -938,7 +839,10 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	initialCAConfig := ca.DefaultCAConfig()
 	initialCAConfig.ExternalCAs = m.config.ExternalCAs
 
-	var unlockKeys []*api.EncryptionKey
+	var (
+		unlockKeys []*api.EncryptionKey
+		err        error
+	)
 	if m.config.AutoLockManagers {
 		unlockKeys = []*api.EncryptionKey{{
 			Subsystem: ca.ManagerRole,
@@ -957,7 +861,8 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 			raftCfg,
 			api.EncryptionConfig{AutoLockManagers: m.config.AutoLockManagers},
 			unlockKeys,
-			rootCA))
+			rootCA,
+			m.config.FIPS))
 
 		if err != nil && err != store.ErrExist {
 			log.G(ctx).WithError(err).Errorf("error creating cluster object")
@@ -990,12 +895,6 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		}
 		return nil
 	})
-
-	// Attempt to rotate the key-encrypting-key of the root CA key-material
-	err := m.rotateRootCAKEK(ctx, clusterID)
-	if err != nil {
-		log.G(ctx).WithError(err).Error("root key-encrypting-key rotation failed")
-	}
 
 	m.replicatedOrchestrator = replicated.NewReplicatedOrchestrator(s)
 	m.constraintEnforcer = constraintenforcer.New(s)
@@ -1124,7 +1023,8 @@ func defaultClusterObject(
 	raftCfg api.RaftConfig,
 	encryptionConfig api.EncryptionConfig,
 	initialUnlockKeys []*api.EncryptionKey,
-	rootCA *ca.RootCA) *api.Cluster {
+	rootCA *ca.RootCA,
+	fips bool) *api.Cluster {
 	var caKey []byte
 	if rcaSigner, err := rootCA.Signer(); err == nil {
 		caKey = rcaSigner.Key
@@ -1151,11 +1051,12 @@ func defaultClusterObject(
 			CACert:     rootCA.Certs,
 			CACertHash: rootCA.Digest.String(),
 			JoinTokens: api.JoinTokens{
-				Worker:  ca.GenerateJoinToken(rootCA),
-				Manager: ca.GenerateJoinToken(rootCA),
+				Worker:  ca.GenerateJoinToken(rootCA, fips),
+				Manager: ca.GenerateJoinToken(rootCA, fips),
 			},
 		},
 		UnlockKeys: initialUnlockKeys,
+		FIPS:       fips,
 	}
 }
 
