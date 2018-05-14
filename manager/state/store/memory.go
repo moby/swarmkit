@@ -228,6 +228,206 @@ type readTx struct {
 	memDBTx *memdb.Txn
 }
 
+// lookup is an internal typed wrapper around memdb.
+func (tx readTx) lookup(table, index, id string) api.StoreObject {
+	defer metrics.StartTimer(lookupLatencyTimer)()
+	j, err := tx.memDBTx.First(table, index, id)
+	if err != nil {
+		return nil
+	}
+	if j != nil {
+		return j.(api.StoreObject)
+	}
+	return nil
+}
+
+// Get looks up an object by ID.
+// Returns nil if the object doesn't exist.
+func (tx readTx) get(table, id string) api.StoreObject {
+	o := tx.lookup(table, indexID, id)
+	if o == nil {
+		return nil
+	}
+	return o.CopyStoreObject()
+}
+
+// findIterators returns a slice of iterators. The union of items from these
+// iterators provides the result of the query.
+func (tx readTx) findIterators(table string, by By, checkType func(By) error) ([]memdb.ResultIterator, error) {
+	switch by.(type) {
+	case byAll, orCombinator: // generic types
+	default: // all other types
+		if err := checkType(by); err != nil {
+			return nil, err
+		}
+	}
+
+	switch v := by.(type) {
+	case byAll:
+		it, err := tx.memDBTx.Get(table, indexID)
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case orCombinator:
+		var iters []memdb.ResultIterator
+		for _, subBy := range v.bys {
+			it, err := tx.findIterators(table, subBy, checkType)
+			if err != nil {
+				return nil, err
+			}
+			iters = append(iters, it...)
+		}
+		return iters, nil
+	case byName:
+		it, err := tx.memDBTx.Get(table, indexName, strings.ToLower(string(v)))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byIDPrefix:
+		it, err := tx.memDBTx.Get(table, indexID+prefix, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byNamePrefix:
+		it, err := tx.memDBTx.Get(table, indexName+prefix, strings.ToLower(string(v)))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byRuntime:
+		it, err := tx.memDBTx.Get(table, indexRuntime, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byNode:
+		it, err := tx.memDBTx.Get(table, indexNodeID, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byService:
+		it, err := tx.memDBTx.Get(table, indexServiceID, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case bySlot:
+		it, err := tx.memDBTx.Get(table, indexSlot, v.serviceID+"\x00"+strconv.FormatUint(uint64(v.slot), 10))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byDesiredState:
+		it, err := tx.memDBTx.Get(table, indexDesiredState, strconv.FormatInt(int64(v), 10))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byTaskState:
+		it, err := tx.memDBTx.Get(table, indexTaskState, strconv.FormatInt(int64(v), 10))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byRole:
+		it, err := tx.memDBTx.Get(table, indexRole, strconv.FormatInt(int64(v), 10))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byMembership:
+		it, err := tx.memDBTx.Get(table, indexMembership, strconv.FormatInt(int64(v), 10))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byReferencedNetworkID:
+		it, err := tx.memDBTx.Get(table, indexNetwork, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byReferencedSecretID:
+		it, err := tx.memDBTx.Get(table, indexSecret, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byReferencedConfigID:
+		it, err := tx.memDBTx.Get(table, indexConfig, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byKind:
+		it, err := tx.memDBTx.Get(table, indexKind, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byCustom:
+		var key string
+		if v.objType != "" {
+			key = v.objType + "|" + v.index + "|" + v.value
+		} else {
+			key = v.index + "|" + v.value
+		}
+		it, err := tx.memDBTx.Get(table, indexCustom, key)
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byCustomPrefix:
+		var key string
+		if v.objType != "" {
+			key = v.objType + "|" + v.index + "|" + v.value
+		} else {
+			key = v.index + "|" + v.value
+		}
+		it, err := tx.memDBTx.Get(table, indexCustom+prefix, key)
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	default:
+		return nil, ErrInvalidFindBy
+	}
+}
+
+// find selects a set of objects calls a callback for each matching object.
+func (tx readTx) find(table string, by By, checkType func(By) error, appendResult func(api.StoreObject)) error {
+	fromResultIterators := func(its ...memdb.ResultIterator) {
+		ids := make(map[string]struct{})
+		for _, it := range its {
+			for {
+				obj := it.Next()
+				if obj == nil {
+					break
+				}
+				o := obj.(api.StoreObject)
+				id := o.GetID()
+				if _, exists := ids[id]; !exists {
+					appendResult(o.CopyStoreObject())
+					ids[id] = struct{}{}
+				}
+			}
+		}
+	}
+
+	iters, err := tx.findIterators(table, by, checkType)
+	if err != nil {
+		return err
+	}
+
+	fromResultIterators(iters...)
+
+	return nil
+}
+
 // View executes a read transaction.
 func (s *MemoryStore) View(cb func(ReadTx)) {
 	defer metrics.StartTimer(viewLatencyTimer)()
@@ -533,19 +733,6 @@ func (tx tx) changelistStoreActions() ([]api.StoreAction, error) {
 	return actions, nil
 }
 
-// lookup is an internal typed wrapper around memdb.
-func (tx readTx) lookup(table, index, id string) api.StoreObject {
-	defer metrics.StartTimer(lookupLatencyTimer)()
-	j, err := tx.memDBTx.First(table, index, id)
-	if err != nil {
-		return nil
-	}
-	if j != nil {
-		return j.(api.StoreObject)
-	}
-	return nil
-}
-
 // create adds a new object to the store.
 // Returns ErrExist if the ID is already taken.
 func (tx *tx) create(table string, o api.StoreObject) error {
@@ -611,193 +798,6 @@ func (tx *tx) delete(table, id string) error {
 		tx.changelist = append(tx.changelist, n.EventDelete())
 	}
 	return err
-}
-
-// Get looks up an object by ID.
-// Returns nil if the object doesn't exist.
-func (tx readTx) get(table, id string) api.StoreObject {
-	o := tx.lookup(table, indexID, id)
-	if o == nil {
-		return nil
-	}
-	return o.CopyStoreObject()
-}
-
-// findIterators returns a slice of iterators. The union of items from these
-// iterators provides the result of the query.
-func (tx readTx) findIterators(table string, by By, checkType func(By) error) ([]memdb.ResultIterator, error) {
-	switch by.(type) {
-	case byAll, orCombinator: // generic types
-	default: // all other types
-		if err := checkType(by); err != nil {
-			return nil, err
-		}
-	}
-
-	switch v := by.(type) {
-	case byAll:
-		it, err := tx.memDBTx.Get(table, indexID)
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case orCombinator:
-		var iters []memdb.ResultIterator
-		for _, subBy := range v.bys {
-			it, err := tx.findIterators(table, subBy, checkType)
-			if err != nil {
-				return nil, err
-			}
-			iters = append(iters, it...)
-		}
-		return iters, nil
-	case byName:
-		it, err := tx.memDBTx.Get(table, indexName, strings.ToLower(string(v)))
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case byIDPrefix:
-		it, err := tx.memDBTx.Get(table, indexID+prefix, string(v))
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case byNamePrefix:
-		it, err := tx.memDBTx.Get(table, indexName+prefix, strings.ToLower(string(v)))
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case byRuntime:
-		it, err := tx.memDBTx.Get(table, indexRuntime, string(v))
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case byNode:
-		it, err := tx.memDBTx.Get(table, indexNodeID, string(v))
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case byService:
-		it, err := tx.memDBTx.Get(table, indexServiceID, string(v))
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case bySlot:
-		it, err := tx.memDBTx.Get(table, indexSlot, v.serviceID+"\x00"+strconv.FormatUint(uint64(v.slot), 10))
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case byDesiredState:
-		it, err := tx.memDBTx.Get(table, indexDesiredState, strconv.FormatInt(int64(v), 10))
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case byTaskState:
-		it, err := tx.memDBTx.Get(table, indexTaskState, strconv.FormatInt(int64(v), 10))
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case byRole:
-		it, err := tx.memDBTx.Get(table, indexRole, strconv.FormatInt(int64(v), 10))
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case byMembership:
-		it, err := tx.memDBTx.Get(table, indexMembership, strconv.FormatInt(int64(v), 10))
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case byReferencedNetworkID:
-		it, err := tx.memDBTx.Get(table, indexNetwork, string(v))
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case byReferencedSecretID:
-		it, err := tx.memDBTx.Get(table, indexSecret, string(v))
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case byReferencedConfigID:
-		it, err := tx.memDBTx.Get(table, indexConfig, string(v))
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case byKind:
-		it, err := tx.memDBTx.Get(table, indexKind, string(v))
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case byCustom:
-		var key string
-		if v.objType != "" {
-			key = v.objType + "|" + v.index + "|" + v.value
-		} else {
-			key = v.index + "|" + v.value
-		}
-		it, err := tx.memDBTx.Get(table, indexCustom, key)
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	case byCustomPrefix:
-		var key string
-		if v.objType != "" {
-			key = v.objType + "|" + v.index + "|" + v.value
-		} else {
-			key = v.index + "|" + v.value
-		}
-		it, err := tx.memDBTx.Get(table, indexCustom+prefix, key)
-		if err != nil {
-			return nil, err
-		}
-		return []memdb.ResultIterator{it}, nil
-	default:
-		return nil, ErrInvalidFindBy
-	}
-}
-
-// find selects a set of objects calls a callback for each matching object.
-func (tx readTx) find(table string, by By, checkType func(By) error, appendResult func(api.StoreObject)) error {
-	fromResultIterators := func(its ...memdb.ResultIterator) {
-		ids := make(map[string]struct{})
-		for _, it := range its {
-			for {
-				obj := it.Next()
-				if obj == nil {
-					break
-				}
-				o := obj.(api.StoreObject)
-				id := o.GetID()
-				if _, exists := ids[id]; !exists {
-					appendResult(o.CopyStoreObject())
-					ids[id] = struct{}{}
-				}
-			}
-		}
-	}
-
-	iters, err := tx.findIterators(table, by, checkType)
-	if err != nil {
-		return err
-	}
-
-	fromResultIterators(iters...)
-
-	return nil
 }
 
 // Save serializes the data in the store.
