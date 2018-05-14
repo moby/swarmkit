@@ -203,13 +203,12 @@ func (u *Updater) Run(ctx context.Context, slots []orchestrator.Slot) {
 
 	if updateConfig.FailureAction != api.UpdateConfig_CONTINUE {
 		var cancelWatch func()
-		failedTaskWatch, cancelWatch = state.Watch(
-			u.store.WatchQueue(),
+		failedTaskWatch, cancelWatch = u.store.WatchQueue().CallbackWatch(state.Matcher(
 			api.EventUpdateTask{
 				Task:   &api.Task{ServiceID: service.ID, Status: api.TaskStatus{State: api.TaskStateRunning}},
 				Checks: []api.TaskCheckFunc{api.TaskCheckServiceID, state.TaskCheckStateGreaterThan},
 			},
-		)
+		))
 		defer cancelWatch()
 	}
 
@@ -362,10 +361,12 @@ func (u *Updater) worker(ctx context.Context, queue <-chan orchestrator.Slot, up
 
 func (u *Updater) updateTask(ctx context.Context, slot orchestrator.Slot, updated *api.Task, order api.UpdateConfig_UpdateOrder) error {
 	// Kick off the watch before even creating the updated task. This is in order to avoid missing any event.
-	taskUpdates, cancel := state.Watch(u.watchQueue, api.EventUpdateTask{
-		Task:   &api.Task{ID: updated.ID},
-		Checks: []api.TaskCheckFunc{api.TaskCheckID},
-	})
+	taskUpdates, cancel := u.watchQueue.CallbackWatch(state.Matcher(
+		api.EventUpdateTask{
+			Task:   &api.Task{ID: updated.ID},
+			Checks: []api.TaskCheckFunc{api.TaskCheckID},
+		},
+	))
 	defer cancel()
 
 	// Create an empty entry for this task, so the updater knows a failure

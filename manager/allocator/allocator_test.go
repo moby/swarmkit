@@ -202,11 +202,20 @@ func TestAllocator(t *testing.T) {
 		return nil
 	}))
 
-	netWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
+	netWatch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventUpdateNetwork{},
+		api.EventDeleteNetwork{},
+	))
 	defer cancel()
-	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
+	taskWatch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventUpdateTask{},
+		api.EventDeleteTask{},
+	))
 	defer cancel()
-	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+	serviceWatch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventUpdateService{},
+		api.EventDeleteService{},
+	))
 	defer cancel()
 
 	// Start allocator
@@ -626,7 +635,10 @@ func TestNoDuplicateIPs(t *testing.T) {
 		return nil
 	}))
 
-	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
+	taskWatch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventUpdateTask{},
+		api.EventDeleteTask{},
+	))
 	defer cancel()
 
 	assignedIPs := make(map[string]string)
@@ -809,10 +821,16 @@ func TestAllocatorRestoreForDuplicateIPs(t *testing.T) {
 	}()
 	defer a.Stop()
 
-	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
+	taskWatch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventUpdateTask{},
+		api.EventDeleteTask{},
+	))
 	defer cancel()
 
-	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+	serviceWatch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventUpdateService{},
+		api.EventDeleteService{},
+	))
 	defer cancel()
 
 	// Confirm tasks have no IPs that overlap with the services VIPs on restart
@@ -959,10 +977,16 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 	}()
 	defer a.Stop()
 
-	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
+	taskWatch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventUpdateTask{},
+		api.EventDeleteTask{},
+	))
 	defer cancel()
 
-	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+	serviceWatch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventUpdateService{},
+		api.EventDeleteService{},
+	))
 	defer cancel()
 
 	// Confirm tasks have no IPs that overlap with the services VIPs on restart
@@ -1163,10 +1187,16 @@ func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
 	}()
 	defer a.Stop()
 
-	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
+	taskWatch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventUpdateTask{},
+		api.EventDeleteTask{},
+	))
 	defer cancel()
 
-	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+	serviceWatch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventUpdateService{},
+		api.EventDeleteService{},
+	))
 	defer cancel()
 
 	// Confirm tasks have no IPs that overlap with the services VIPs on restart
@@ -1218,9 +1248,15 @@ func TestNodeAllocator(t *testing.T) {
 		return nil
 	}))
 
-	nodeWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateNode{}, api.EventDeleteNode{})
+	nodeWatch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventUpdateNode{},
+		api.EventDeleteNode{},
+	))
 	defer cancel()
-	netWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
+	netWatch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventUpdateNetwork{},
+		api.EventDeleteNetwork{},
+	))
 	defer cancel()
 
 	// Start allocator

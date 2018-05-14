@@ -845,7 +845,7 @@ func ViewAndWatch(store *MemoryStore, cb func(ReadTx) error, specifiers ...api.E
 		if err := cb(tx); err != nil {
 			return err
 		}
-		watch, cancel = state.Watch(store.WatchQueue(), specifiers...)
+		watch, cancel = store.WatchQueue().CallbackWatch(state.Matcher(specifiers...))
 		return nil
 	})
 	if watch != nil && err != nil {
@@ -870,7 +870,7 @@ func ViewAndWatch(store *MemoryStore, cb func(ReadTx) error, specifiers ...api.E
 // longer needed.
 func WatchFrom(store *MemoryStore, version *api.Version, specifiers ...api.Event) (chan events.Event, func(), error) {
 	if version == nil {
-		ch, cancel := state.Watch(store.WatchQueue(), specifiers...)
+		ch, cancel := store.WatchQueue().CallbackWatch(state.Matcher(specifiers...))
 		return ch, cancel, nil
 	}
 
@@ -889,7 +889,7 @@ func WatchFrom(store *MemoryStore, version *api.Version, specifiers ...api.Event
 		curVersion = store.proposer.GetVersion()
 		// Start the watch with the store locked so events cannot be
 		// missed
-		watch, cancelWatch = state.Watch(store.WatchQueue(), specifiers...)
+		watch, cancelWatch = store.WatchQueue().CallbackWatch(state.Matcher(specifiers...))
 		return nil
 	})
 	if watch != nil && err != nil {

@@ -223,7 +223,11 @@ func TestTaskHistory(t *testing.T) {
 	orchestrator := replicated.NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
+	watch, cancel := s.WatchQueue().Watch()
+	/*watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventCreateTask{},
+		api.EventUpdateTask{},
+	))*/
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -357,7 +361,7 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 	defer orchestrator.Stop()
 
 	// watch all incoming events
-	watch, cancel := state.Watch(s.WatchQueue())
+	watch, cancel := s.WatchQueue().Watch()
 	defer cancel()
 
 	service1 := &api.Service{
@@ -489,7 +493,11 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	orchestrator := replicated.NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
+	watch, cancel := s.WatchQueue().Watch()
+	/*watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventCreateTask{},
+		api.EventUpdateTask{},
+	))*/
 	defer cancel()
 
 	service1 := &api.Service{
@@ -626,7 +634,11 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	orchestrator := replicated.NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
+	watch, cancel := s.WatchQueue().Watch()
+	/*watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventCreateTask{},
+		api.EventUpdateTask{},
+	))*/
 	defer cancel()
 
 	service1 := &api.Service{
@@ -780,7 +792,11 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 	orchestrator := replicated.NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
+	watch, cancel := s.WatchQueue().Watch()
+	/*watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventCreateTask{},
+		api.EventUpdateTask{},
+	))*/
 	defer cancel()
 
 	service1 := &api.Service{

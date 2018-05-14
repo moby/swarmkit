@@ -135,7 +135,11 @@ func TestSetup(t *testing.T) {
 	assert.NotNil(t, store)
 	defer store.Close()
 
-	watch, cancel := state.Watch(store.WatchQueue() /*state.EventCreateTask{}, state.EventUpdateTask{}*/)
+	watch, cancel := store.WatchQueue().Watch()
+	/*watch, cancel := store.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventCreateTask{},
+		api.EventUpdateTask{},
+	))*/
 	defer cancel()
 
 	orchestrator := setup(t, store, watch)
@@ -153,7 +157,7 @@ func TestAddNode(t *testing.T) {
 	assert.NotNil(t, store)
 	defer store.Close()
 
-	watch, cancel := state.Watch(store.WatchQueue())
+	watch, cancel := store.WatchQueue().Watch()
 	defer cancel()
 
 	orchestrator := setup(t, store, watch)
@@ -173,7 +177,7 @@ func TestDeleteNode(t *testing.T) {
 	assert.NotNil(t, store)
 	defer store.Close()
 
-	watch, cancel := state.Watch(store.WatchQueue())
+	watch, cancel := store.WatchQueue().Watch()
 	defer cancel()
 
 	orchestrator := setup(t, store, watch)
@@ -195,7 +199,7 @@ func TestNodeAvailability(t *testing.T) {
 	assert.NotNil(t, store)
 	defer store.Close()
 
-	watch, cancel := state.Watch(store.WatchQueue())
+	watch, cancel := store.WatchQueue().Watch()
 	defer cancel()
 
 	orchestrator := setup(t, store, watch)
@@ -259,7 +263,7 @@ func TestNodeState(t *testing.T) {
 	assert.NotNil(t, store)
 	defer store.Close()
 
-	watch, cancel := state.Watch(store.WatchQueue())
+	watch, cancel := store.WatchQueue().Watch()
 	defer cancel()
 
 	orchestrator := setup(t, store, watch)
@@ -300,7 +304,7 @@ func TestAddService(t *testing.T) {
 	assert.NotNil(t, store)
 	defer store.Close()
 
-	watch, cancel := state.Watch(store.WatchQueue())
+	watch, cancel := store.WatchQueue().Watch()
 	defer cancel()
 
 	orchestrator := setup(t, store, watch)
@@ -320,7 +324,7 @@ func TestDeleteService(t *testing.T) {
 	assert.NotNil(t, store)
 	defer store.Close()
 
-	watch, cancel := state.Watch(store.WatchQueue())
+	watch, cancel := store.WatchQueue().Watch()
 	defer cancel()
 
 	orchestrator := setup(t, store, watch)
@@ -342,7 +346,11 @@ func TestRemoveTask(t *testing.T) {
 	assert.NotNil(t, store)
 	defer store.Close()
 
-	watch, cancel := state.Watch(store.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
+	watch, cancel := store.WatchQueue().Watch()
+	/*watch, cancel := store.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventCreateTask{},
+		api.EventUpdateTask{},
+	))*/
 	defer cancel()
 
 	orchestrator := setup(t, store, watch)
@@ -374,7 +382,11 @@ func TestTaskFailure(t *testing.T) {
 	assert.NotNil(t, store)
 	defer store.Close()
 
-	watch, cancel := state.Watch(store.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
+	watch, cancel := store.WatchQueue().Watch()
+	/*watch, cancel := store.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventCreateTask{},
+		api.EventUpdateTask{},
+	))*/
 	defer cancel()
 
 	// first, try a "restart on any" policy
@@ -573,7 +585,11 @@ func TestInitializationRejectedTasks(t *testing.T) {
 	}
 
 	// watch orchestration events
-	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventDeleteTask{})
+	watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventCreateTask{},
+		api.EventUpdateTask{},
+		api.EventDeleteTask{},
+	))
 	defer cancel()
 
 	orchestrator := NewGlobalOrchestrator(s)
@@ -636,7 +652,11 @@ func TestInitializationFailedTasks(t *testing.T) {
 	}
 
 	// watch orchestration events
-	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventDeleteTask{})
+	watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventCreateTask{},
+		api.EventUpdateTask{},
+		api.EventDeleteTask{},
+	))
 	defer cancel()
 
 	orchestrator := NewGlobalOrchestrator(s)
@@ -728,7 +748,11 @@ func TestInitializationExtraTask(t *testing.T) {
 	}
 
 	// watch orchestration events
-	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventDeleteTask{})
+	watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventCreateTask{},
+		api.EventUpdateTask{},
+		api.EventDeleteTask{},
+	))
 	defer cancel()
 
 	orchestrator := NewGlobalOrchestrator(s)
@@ -808,7 +832,11 @@ func TestInitializationMultipleServices(t *testing.T) {
 	}
 
 	// watch orchestration events
-	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventDeleteTask{})
+	watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventCreateTask{},
+		api.EventUpdateTask{},
+		api.EventDeleteTask{},
+	))
 	defer cancel()
 
 	orchestrator := NewGlobalOrchestrator(s)
@@ -949,7 +977,11 @@ func TestInitializationTaskWithoutService(t *testing.T) {
 	}
 
 	// watch orchestration events
-	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventDeleteTask{})
+	watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventCreateTask{},
+		api.EventUpdateTask{},
+		api.EventDeleteTask{},
+	))
 	defer cancel()
 
 	orchestrator := NewGlobalOrchestrator(s)
@@ -1007,7 +1039,11 @@ func TestInitializationTaskOnDrainedNode(t *testing.T) {
 	}
 
 	// watch orchestration events
-	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventDeleteTask{})
+	watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventCreateTask{},
+		api.EventUpdateTask{},
+		api.EventDeleteTask{},
+	))
 	defer cancel()
 
 	orchestrator := NewGlobalOrchestrator(s)
@@ -1079,7 +1115,11 @@ func TestInitializationTaskOnNonexistentNode(t *testing.T) {
 	}
 
 	// watch orchestration events
-	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventDeleteTask{})
+	watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventCreateTask{},
+		api.EventUpdateTask{},
+		api.EventDeleteTask{},
+	))
 	defer cancel()
 
 	orchestrator := NewGlobalOrchestrator(s)
@@ -1248,7 +1288,11 @@ func TestInitializationRestartHistory(t *testing.T) {
 	}
 
 	// watch orchestration events
-	watch, cancel := state.Watch(s.WatchQueue(), api.EventCreateTask{}, api.EventUpdateTask{}, api.EventDeleteTask{})
+	watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventCreateTask{},
+		api.EventUpdateTask{},
+		api.EventDeleteTask{},
+	))
 	defer cancel()
 
 	orchestrator := NewGlobalOrchestrator(s)

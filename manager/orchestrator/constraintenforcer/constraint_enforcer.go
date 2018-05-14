@@ -33,7 +33,7 @@ func New(store *store.MemoryStore) *ConstraintEnforcer {
 func (ce *ConstraintEnforcer) Run() {
 	defer close(ce.doneChan)
 
-	watcher, cancelWatch := state.Watch(ce.store.WatchQueue(), api.EventUpdateNode{})
+	watcher, cancelWatch := ce.store.WatchQueue().CallbackWatch(state.Matcher(api.EventUpdateNode{}))
 	defer cancelWatch()
 
 	var (

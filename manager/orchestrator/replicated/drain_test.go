@@ -206,7 +206,9 @@ func TestDrain(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
+	watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventUpdateTask{},
+	))
 	defer cancel()
 
 	orchestrator := NewReplicatedOrchestrator(s)

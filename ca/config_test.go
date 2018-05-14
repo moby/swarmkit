@@ -741,7 +741,9 @@ func TestRenewTLSConfigUpdatesRootNonUnknownAuthError(t *testing.T) {
 
 	signErr := make(chan error)
 	go func() {
-		updates, cancel := state.Watch(tc.MemoryStore.WatchQueue(), api.EventCreateNode{})
+		updates, cancel := tc.MemoryStore.WatchQueue().CallbackWatch(state.Matcher(
+			api.EventCreateNode{},
+		))
 		defer cancel()
 		select {
 		case event := <-updates: // we want to skip the first node, which is the test CA

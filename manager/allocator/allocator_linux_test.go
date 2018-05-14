@@ -68,7 +68,10 @@ func TestIPAMNotNil(t *testing.T) {
 		return nil
 	}))
 
-	netWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
+	netWatch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+		api.EventUpdateNetwork{},
+		api.EventDeleteNetwork{},
+	))
 	defer cancel()
 
 	// Start allocator

@@ -10,7 +10,6 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,7 +58,7 @@ func TestIsStateDirty(t *testing.T) {
 	assert.False(t, isDirty)
 
 	// Wait for cluster and node to be created.
-	watch, cancel := state.Watch(m.raftNode.MemoryStore().WatchQueue())
+	watch, cancel := m.raftNode.MemoryStore().WatchQueue().Watch()
 	defer cancel()
 	<-watch
 	<-watch

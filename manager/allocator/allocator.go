@@ -151,7 +151,7 @@ func (a *Allocator) Stop() {
 }
 
 func (a *Allocator) init(ctx context.Context, aa *allocActor) (<-chan events.Event, func(), error) {
-	watch, watchCancel := state.Watch(a.store.WatchQueue(),
+	watch, watchCancel := a.store.WatchQueue().CallbackWatch(state.Matcher(
 		api.EventCreateNetwork{},
 		api.EventDeleteNetwork{},
 		api.EventCreateService{},
@@ -164,7 +164,7 @@ func (a *Allocator) init(ctx context.Context, aa *allocActor) (<-chan events.Eve
 		api.EventUpdateNode{},
 		api.EventDeleteNode{},
 		state.EventCommit{},
-	)
+	))
 
 	if err := aa.init(ctx); err != nil {
 		watchCancel()
