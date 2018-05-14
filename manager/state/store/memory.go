@@ -597,10 +597,6 @@ func (s *MemoryStore) update(proposer state.Proposer, cb func(Tx) error) error {
 	return err
 }
 
-func (s *MemoryStore) updateLocal(cb func(Tx) error) error {
-	return s.update(nil, cb)
-}
-
 // Update executes a read/write transaction.
 func (s *MemoryStore) Update(cb func(Tx) error) error {
 	return s.update(s.proposer, cb)
@@ -757,7 +753,7 @@ func (s *MemoryStore) Save(tx ReadTx) (*api.StoreSnapshot, error) {
 // Restore sets the contents of the store to the serialized data in the
 // argument.
 func (s *MemoryStore) Restore(snapshot *api.StoreSnapshot) error {
-	return s.updateLocal(func(tx Tx) error {
+	return s.update(nil, func(tx Tx) error {
 		for _, os := range objectStorers {
 			if err := os.Restore(tx, snapshot); err != nil {
 				return err
