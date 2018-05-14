@@ -544,64 +544,6 @@ func (tx *tx) delete(table, id string) error {
 	return err
 }
 
-// changelistBetweenVersions returns the changes after "from" up to and
-// including "to".
-func (s *MemoryStore) changelistBetweenVersions(from, to api.Version) ([]api.Event, error) {
-	if s.proposer == nil {
-		return nil, errors.New("store does not support versioning")
-	}
-	changes, err := s.proposer.ChangesBetween(from, to)
-	if err != nil {
-		return nil, err
-	}
-
-	var changelist []api.Event
-
-	for _, change := range changes {
-		for _, sa := range change.StoreActions {
-			event, err := api.EventFromStoreAction(sa, nil)
-			if err != nil {
-				return nil, err
-			}
-			changelist = append(changelist, event)
-		}
-		changelist = append(changelist, state.EventCommit{Version: change.Version.Copy()})
-	}
-
-	return changelist, nil
-}
-
-// ApplyStoreActions updates a store based on StoreAction messages.
-func (s *MemoryStore) ApplyStoreActions(actions []api.StoreAction) error {
-	s.updateLock.Lock()
-	memDBTx := s.memDB.Txn(true)
-
-	tx := tx{
-		readTx: readTx{
-			memDBTx: memDBTx,
-		},
-	}
-
-	for _, sa := range actions {
-		if err := applyStoreAction(&tx, sa); err != nil {
-			memDBTx.Abort()
-			s.updateLock.Unlock()
-			return err
-		}
-	}
-
-	memDBTx.Commit()
-
-	for _, c := range tx.changelist {
-		s.queue.Publish(c)
-	}
-	if len(tx.changelist) != 0 {
-		s.queue.Publish(state.EventCommit{})
-	}
-	s.updateLock.Unlock()
-	return nil
-}
-
 func (s *MemoryStore) update(proposer state.Proposer, cb func(Tx) error) error {
 	defer metrics.StartTimer(updateLatencyTimer)()
 	s.updateLock.Lock()
@@ -828,6 +770,64 @@ func (s *MemoryStore) Restore(snapshot *api.StoreSnapshot) error {
 // Queue returns the publish/subscribe queue.
 func (s *MemoryStore) Queue() *watch.Queue {
 	return s.queue
+}
+
+// ApplyStoreActions updates a store based on StoreAction messages.
+func (s *MemoryStore) ApplyStoreActions(actions []api.StoreAction) error {
+	s.updateLock.Lock()
+	memDBTx := s.memDB.Txn(true)
+
+	tx := tx{
+		readTx: readTx{
+			memDBTx: memDBTx,
+		},
+	}
+
+	for _, sa := range actions {
+		if err := applyStoreAction(&tx, sa); err != nil {
+			memDBTx.Abort()
+			s.updateLock.Unlock()
+			return err
+		}
+	}
+
+	memDBTx.Commit()
+
+	for _, c := range tx.changelist {
+		s.queue.Publish(c)
+	}
+	if len(tx.changelist) != 0 {
+		s.queue.Publish(state.EventCommit{})
+	}
+	s.updateLock.Unlock()
+	return nil
+}
+
+// changelistBetweenVersions returns the changes after "from" up to and
+// including "to".
+func (s *MemoryStore) changelistBetweenVersions(from, to api.Version) ([]api.Event, error) {
+	if s.proposer == nil {
+		return nil, errors.New("store does not support versioning")
+	}
+	changes, err := s.proposer.ChangesBetween(from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	var changelist []api.Event
+
+	for _, change := range changes {
+		for _, sa := range change.StoreActions {
+			event, err := api.EventFromStoreAction(sa, nil)
+			if err != nil {
+				return nil, err
+			}
+			changelist = append(changelist, event)
+		}
+		changelist = append(changelist, state.EventCommit{Version: change.Version.Copy()})
+	}
+
+	return changelist, nil
 }
 
 // ViewAndWatch calls a callback which can observe the state of this
