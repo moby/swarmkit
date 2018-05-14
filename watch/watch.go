@@ -1,7 +1,6 @@
 package watch
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -85,13 +84,6 @@ func (q *Queue) Watch() (eventq chan events.Event, cancel func()) {
 	return q.CallbackWatch(nil)
 }
 
-// WatchContext returns a channel where all items published to the queue will
-// be received. The channel will be closed when the provided context is
-// cancelled.
-func (q *Queue) WatchContext(ctx context.Context) (eventq chan events.Event) {
-	return q.CallbackWatchContext(ctx, nil)
-}
-
 // CallbackWatch returns a channel which will receive all events published to
 // the queue from this point that pass the check in the provided callback
 // function. The returned cancel function will stop the flow of events and
@@ -163,18 +155,6 @@ func (q *Queue) CallbackWatch(matcher events.Matcher) (eventq chan events.Event,
 	}()
 
 	return outChan, externalCancelFunc
-}
-
-// CallbackWatchContext returns a channel where all items published to the queue will
-// be received. The channel will be closed when the provided context is
-// cancelled.
-func (q *Queue) CallbackWatchContext(ctx context.Context, matcher events.Matcher) (eventq chan events.Event) {
-	c, cancel := q.CallbackWatch(matcher)
-	go func() {
-		<-ctx.Done()
-		cancel()
-	}()
-	return c
 }
 
 // Publish adds an item to the queue.

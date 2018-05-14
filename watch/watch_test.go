@@ -1,7 +1,6 @@
 package watch
 
 import (
-	"context"
 	"sync"
 	"testing"
 	"time"
@@ -14,15 +13,12 @@ func TestTimeoutLimitWatch(t *testing.T) {
 	require := require.New(t)
 	q := NewQueue(WithTimeout(time.Second), WithLimit(5), WithCloseOutChan())
 	defer q.Close()
-	ctx, cancel := context.WithCancel(context.Background())
 
-	// Cancelling a watcher's context should remove the watcher from the queue and
-	// close its channel.
+	// Cancelling a watcher should remove the watcher from the queue and close its channel.
+	watch, cancel := q.Watch()
 	doneChan := make(chan struct{})
 	go func() {
-		events := q.WatchContext(ctx)
-		for range events {
-		}
+		for range watch {}
 		close(doneChan)
 	}()
 	cancel()
