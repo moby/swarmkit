@@ -113,6 +113,17 @@ func register(os ObjectStoreConfig) {
 	schema.Tables[os.Table.Name] = os.Table
 }
 
+func applyStoreAction(tx Tx, sa api.StoreAction) error {
+	for _, os := range objectStorers {
+		err := os.ApplyStoreAction(tx, sa)
+		if err != errUnknownStoreAction {
+			return err
+		}
+	}
+
+	return errors.New("unrecognized action type")
+}
+
 // timedMutex wraps a sync.Mutex, and keeps track of when it was locked.
 type timedMutex struct {
 	sync.Mutex
@@ -302,17 +313,6 @@ func (s *MemoryStore) ApplyStoreActions(actions []api.StoreAction) error {
 	}
 	s.updateLock.Unlock()
 	return nil
-}
-
-func applyStoreAction(tx Tx, sa api.StoreAction) error {
-	for _, os := range objectStorers {
-		err := os.ApplyStoreAction(tx, sa)
-		if err != errUnknownStoreAction {
-			return err
-		}
-	}
-
-	return errors.New("unrecognized action type")
 }
 
 func (s *MemoryStore) update(proposer state.Proposer, cb func(Tx) error) error {
