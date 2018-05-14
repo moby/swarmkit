@@ -775,7 +775,7 @@ func (m *Manager) updateKEK(ctx context.Context, cluster *api.Cluster) error {
 func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 	clusterID := m.config.SecurityConfig.ClientTLSCreds.Organization()
 	var cluster *api.Cluster
-	clusterWatch, clusterWatchCancel, err := store.ViewAndWatch(m.raftNode.MemoryStore(),
+	clusterWatch, clusterWatchCancel, err := m.raftNode.MemoryStore().ViewAndWatch(
 		func(tx store.ReadTx) error {
 			cluster = store.GetCluster(tx, clusterID)
 			if cluster == nil {

@@ -232,8 +232,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 	if err := d.markNodesUnknown(ctx); err != nil {
 		log.G(ctx).Errorf(`failed to move all nodes to "unknown" state: %v`, err)
 	}
-	configWatcher, cancel, err := store.ViewAndWatch(
-		d.store,
+	configWatcher, cancel, err := d.store.ViewAndWatch(
 		func(readTx store.ReadTx) error {
 			clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
 			if err != nil {
@@ -786,8 +785,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	}
 
 	tasksMap := make(map[string]*api.Task)
-	nodeTasks, cancel, err := store.ViewAndWatch(
-		d.store,
+	nodeTasks, cancel, err := d.store.ViewAndWatch(
 		func(readTx store.ReadTx) error {
 			tasks, err := store.FindTasks(readTx, store.ByNodeID(nodeID))
 			if err != nil {
@@ -930,8 +928,7 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 
 	// TODO(aaronl): Also send node secrets that should be exposed to
 	// this node.
-	nodeTasks, cancel, err := store.ViewAndWatch(
-		d.store,
+	nodeTasks, cancel, err := d.store.ViewAndWatch(
 		func(readTx store.ReadTx) error {
 			tasks, err := store.FindTasks(readTx, store.ByNodeID(nodeID))
 			if err != nil {
@@ -1235,11 +1232,13 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 	log := log.G(ctx).WithFields(fields)
 
 	var nodeObj *api.Node
-	nodeUpdates, cancel, err := store.ViewAndWatch(d.store, func(readTx store.ReadTx) error {
-		nodeObj = store.GetNode(readTx, nodeID)
-		return nil
-	}, api.EventUpdateNode{Node: &api.Node{ID: nodeID},
-		Checks: []api.NodeCheckFunc{api.NodeCheckID}},
+	nodeUpdates, cancel, err := d.store.ViewAndWatch(
+		func(readTx store.ReadTx) error {
+			nodeObj = store.GetNode(readTx, nodeID)
+			return nil
+		},
+		api.EventUpdateNode{Node: &api.Node{ID: nodeID},
+			Checks: []api.NodeCheckFunc{api.NodeCheckID}},
 	)
 	if cancel != nil {
 		defer cancel()

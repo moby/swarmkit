@@ -165,8 +165,7 @@ func (s *Server) NodeCertificateStatus(ctx context.Context, request *api.NodeCer
 	}
 
 	// Retrieve the current value of the certificate with this token, and create a watcher
-	updates, cancel, err := store.ViewAndWatch(
-		s.store,
+	updates, cancel, err := s.store.ViewAndWatch(
 		func(tx store.ReadTx) error {
 			node = store.GetNode(tx, request.NodeID)
 			return nil
@@ -442,8 +441,7 @@ func (s *Server) Run(ctx context.Context) error {
 		cluster *api.Cluster
 		err     error
 	)
-	updates, cancel, err := store.ViewAndWatch(
-		s.store,
+	updates, cancel, err := s.store.ViewAndWatch(
 		func(readTx store.ReadTx) error {
 			cluster = store.GetCluster(readTx, s.clusterID)
 			if cluster == nil {

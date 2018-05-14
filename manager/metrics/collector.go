@@ -60,16 +60,18 @@ func (c *Collector) updateNodeState(prevNode, newNode *api.Node) {
 func (c *Collector) Run(ctx context.Context) error {
 	defer close(c.doneChan)
 
-	watcher, cancel, err := store.ViewAndWatch(c.store, func(readTx store.ReadTx) error {
-		nodes, err := store.FindNodes(readTx, store.All)
-		if err != nil {
-			return err
-		}
-		for _, node := range nodes {
-			c.updateNodeState(nil, node)
-		}
-		return nil
-	})
+	watcher, cancel, err := c.store.ViewAndWatch(
+		func(readTx store.ReadTx) error {
+			nodes, err := store.FindNodes(readTx, store.All)
+			if err != nil {
+				return err
+			}
+			for _, node := range nodes {
+				c.updateNodeState(nil, node)
+			}
+			return nil
+		},
+	)
 	if err != nil {
 		return err
 	}

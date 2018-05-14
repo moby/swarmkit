@@ -3,7 +3,6 @@ package watchapi
 import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state"
-	"github.com/docker/swarmkit/manager/state/store"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -29,7 +28,7 @@ func (s *Server) Watch(request *api.WatchRequest, stream api.Watch_WatchServer) 
 	}
 
 	watchArgs = append(watchArgs, state.EventCommit{})
-	watch, cancel, err := store.WatchFrom(s.store, request.ResumeFrom, watchArgs...)
+	watch, cancel, err := s.store.WatchFrom(request.ResumeFrom, watchArgs...)
 	if err != nil {
 		return err
 	}

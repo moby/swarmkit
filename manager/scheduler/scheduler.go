@@ -105,7 +105,7 @@ func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
 func (s *Scheduler) Run(ctx context.Context) error {
 	defer close(s.doneChan)
 
-	updates, cancel, err := store.ViewAndWatch(s.store, s.setupTasksList)
+	updates, cancel, err := s.store.ViewAndWatch(s.setupTasksList)
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("snapshot store update failed")
 		return err

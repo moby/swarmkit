@@ -440,6 +440,143 @@ func (s *MemoryStore) View(cb func(ReadTx)) {
 	memDBTx.Commit()
 }
 
+// ViewAndWatch calls a callback which can observe the state of this
+// MemoryStore. It also returns a channel that will return further events from
+// this point so the snapshot can be kept up to date. The watch channel must be
+// released with watch.StopWatch when it is no longer needed. The channel is
+// guaranteed to get all events after the moment of the snapshot, and only
+// those events.
+func (s *MemoryStore) ViewAndWatch(cb func(ReadTx) error, specifiers ...api.Event) (watch chan events.Event, cancel func(), err error) {
+	// Using Update to lock the store and guarantee consistency between
+	// the watcher and the the state seen by the callback. snapshotReadTx
+	// exposes this Tx as a ReadTx so the callback can't modify it.
+	err = s.Update(func(tx Tx) error {
+		if err := cb(tx); err != nil {
+			return err
+		}
+		watch, cancel = s.Queue().Watch(state.Matcher(specifiers...))
+		return nil
+	})
+	if watch != nil && err != nil {
+		cancel()
+		cancel = nil
+		watch = nil
+	}
+	return
+}
+
+// changelistBetweenVersions returns the changes after "from" up to and
+// including "to".
+func (s *MemoryStore) changelistBetweenVersions(from, to api.Version) ([]api.Event, error) {
+	if s.proposer == nil {
+		return nil, errors.New("store does not support versioning")
+	}
+	changes, err := s.proposer.ChangesBetween(from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	var changelist []api.Event
+
+	for _, change := range changes {
+		for _, sa := range change.StoreActions {
+			event, err := api.EventFromStoreAction(sa, nil)
+			if err != nil {
+				return nil, err
+			}
+			changelist = append(changelist, event)
+		}
+		changelist = append(changelist, state.EventCommit{Version: change.Version.Copy()})
+	}
+
+	return changelist, nil
+}
+
+// WatchFrom returns a channel that will return past events from starting
+// from "version", and new events until the channel is closed. If "version"
+// is nil, this function is equivalent to
+//
+//     store.Queue().Watch(state.Matcher(specifiers...))
+//
+// If the log has been compacted and it's not possible to produce the exact
+// set of events leading from "version" to the current state, this function
+// will return an error, and the caller should re-sync.
+//
+// The watch channel must be released with watch.StopWatch when it is no
+// longer needed.
+func (s *MemoryStore) WatchFrom(version *api.Version, specifiers ...api.Event) (chan events.Event, func(), error) {
+	if version == nil {
+		ch, cancel := s.Queue().Watch(state.Matcher(specifiers...))
+		return ch, cancel, nil
+	}
+
+	if s.proposer == nil {
+		return nil, nil, errors.New("store does not support versioning")
+	}
+
+	var (
+		curVersion  *api.Version
+		watch       chan events.Event
+		cancelWatch func()
+	)
+	// Using Update to lock the store
+	err := s.Update(func(tx Tx) error {
+		// Get current version
+		curVersion = s.proposer.GetVersion()
+		// Start the watch with the store locked so events cannot be
+		// missed
+		watch, cancelWatch = s.Queue().Watch(state.Matcher(specifiers...))
+		return nil
+	})
+	if watch != nil && err != nil {
+		cancelWatch()
+		return nil, nil, err
+	}
+
+	if curVersion == nil {
+		cancelWatch()
+		return nil, nil, errors.New("could not get current version from store")
+	}
+
+	changelist, err := s.changelistBetweenVersions(*version, *curVersion)
+	if err != nil {
+		cancelWatch()
+		return nil, nil, err
+	}
+
+	ch := make(chan events.Event)
+	stop := make(chan struct{})
+	cancel := func() {
+		close(stop)
+	}
+
+	go func() {
+		defer cancelWatch()
+
+		matcher := state.Matcher(specifiers...)
+		for _, change := range changelist {
+			if matcher(change) {
+				select {
+				case ch <- change:
+				case <-stop:
+					return
+				}
+			}
+		}
+
+		for {
+			select {
+			case <-stop:
+				return
+			case e := <-watch:
+				ch <- e
+			}
+		}
+	}()
+
+	return ch, cancel, nil
+}
+
 // Tx is a read/write transaction. Note that transaction does not imply
 // any internal batching. The purpose of this transaction is to give the
 // user a guarantee that its changes won't be visible to other transactions
@@ -797,143 +934,6 @@ func (s *MemoryStore) ApplyStoreActions(actions []api.StoreAction) error {
 	}
 	s.updateLock.Unlock()
 	return nil
-}
-
-// changelistBetweenVersions returns the changes after "from" up to and
-// including "to".
-func (s *MemoryStore) changelistBetweenVersions(from, to api.Version) ([]api.Event, error) {
-	if s.proposer == nil {
-		return nil, errors.New("store does not support versioning")
-	}
-	changes, err := s.proposer.ChangesBetween(from, to)
-	if err != nil {
-		return nil, err
-	}
-
-	var changelist []api.Event
-
-	for _, change := range changes {
-		for _, sa := range change.StoreActions {
-			event, err := api.EventFromStoreAction(sa, nil)
-			if err != nil {
-				return nil, err
-			}
-			changelist = append(changelist, event)
-		}
-		changelist = append(changelist, state.EventCommit{Version: change.Version.Copy()})
-	}
-
-	return changelist, nil
-}
-
-// ViewAndWatch calls a callback which can observe the state of this
-// MemoryStore. It also returns a channel that will return further events from
-// this point so the snapshot can be kept up to date. The watch channel must be
-// released with watch.StopWatch when it is no longer needed. The channel is
-// guaranteed to get all events after the moment of the snapshot, and only
-// those events.
-func ViewAndWatch(store *MemoryStore, cb func(ReadTx) error, specifiers ...api.Event) (watch chan events.Event, cancel func(), err error) {
-	// Using Update to lock the store and guarantee consistency between
-	// the watcher and the the state seen by the callback. snapshotReadTx
-	// exposes this Tx as a ReadTx so the callback can't modify it.
-	err = store.Update(func(tx Tx) error {
-		if err := cb(tx); err != nil {
-			return err
-		}
-		watch, cancel = store.Queue().Watch(state.Matcher(specifiers...))
-		return nil
-	})
-	if watch != nil && err != nil {
-		cancel()
-		cancel = nil
-		watch = nil
-	}
-	return
-}
-
-// WatchFrom returns a channel that will return past events from starting
-// from "version", and new events until the channel is closed. If "version"
-// is nil, this function is equivalent to
-//
-//     store.Queue().Watch(state.Matcher(specifiers...))
-//
-// If the log has been compacted and it's not possible to produce the exact
-// set of events leading from "version" to the current state, this function
-// will return an error, and the caller should re-sync.
-//
-// The watch channel must be released with watch.StopWatch when it is no
-// longer needed.
-func WatchFrom(store *MemoryStore, version *api.Version, specifiers ...api.Event) (chan events.Event, func(), error) {
-	if version == nil {
-		ch, cancel := store.Queue().Watch(state.Matcher(specifiers...))
-		return ch, cancel, nil
-	}
-
-	if store.proposer == nil {
-		return nil, nil, errors.New("store does not support versioning")
-	}
-
-	var (
-		curVersion  *api.Version
-		watch       chan events.Event
-		cancelWatch func()
-	)
-	// Using Update to lock the store
-	err := store.Update(func(tx Tx) error {
-		// Get current version
-		curVersion = store.proposer.GetVersion()
-		// Start the watch with the store locked so events cannot be
-		// missed
-		watch, cancelWatch = store.Queue().Watch(state.Matcher(specifiers...))
-		return nil
-	})
-	if watch != nil && err != nil {
-		cancelWatch()
-		return nil, nil, err
-	}
-
-	if curVersion == nil {
-		cancelWatch()
-		return nil, nil, errors.New("could not get current version from store")
-	}
-
-	changelist, err := store.changelistBetweenVersions(*version, *curVersion)
-	if err != nil {
-		cancelWatch()
-		return nil, nil, err
-	}
-
-	ch := make(chan events.Event)
-	stop := make(chan struct{})
-	cancel := func() {
-		close(stop)
-	}
-
-	go func() {
-		defer cancelWatch()
-
-		matcher := state.Matcher(specifiers...)
-		for _, change := range changelist {
-			if matcher(change) {
-				select {
-				case ch <- change:
-				case <-stop:
-					return
-				}
-			}
-		}
-
-		for {
-			select {
-			case <-stop:
-				return
-			case e := <-watch:
-				ch <- e
-			}
-		}
-	}()
-
-	return ch, cancel, nil
 }
 
 // touchMeta updates an object's timestamps when necessary and bumps the version

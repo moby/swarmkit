@@ -95,7 +95,7 @@ func (rm *roleManager) Run(ctx context.Context) {
 		tickerCh <-chan time.Time
 	)
 
-	watcher, cancelWatch, err := store.ViewAndWatch(rm.store,
+	watcher, cancelWatch, err := rm.store.ViewAndWatch(
 		func(readTx store.ReadTx) error {
 			var err error
 			nodes, err = store.FindNodes(readTx, store.All)

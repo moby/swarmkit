@@ -865,7 +865,7 @@ func TestStoreSnapshot(t *testing.T) {
 	}
 
 	// Fork
-	watcher, cancel, err := ViewAndWatch(s1, copyToS2)
+	watcher, cancel, err := s1.ViewAndWatch(copyToS2)
 	defer cancel()
 	assert.NoError(t, err)
 
@@ -1427,9 +1427,11 @@ func TestStoreSaveRestore(t *testing.T) {
 		append(altResourceSet, r),
 	)
 
-	watcher, cancel, err := ViewAndWatch(s2, func(ReadTx) error {
-		return nil
-	})
+	watcher, cancel, err := s2.ViewAndWatch(
+		func(ReadTx) error {
+			return nil
+		},
+	)
 	assert.NoError(t, err)
 	defer cancel()
 
@@ -1752,10 +1754,11 @@ func TestWatchFrom(t *testing.T) {
 	}
 
 	// Try to watch from an invalid index
-	_, _, err := WatchFrom(s, &api.Version{Index: 5000})
+	_, _, err := s.WatchFrom(&api.Version{Index: 5000})
 	assert.Error(t, err)
 
-	watch1, cancel1, err := WatchFrom(s, &api.Version{Index: 10}, api.EventCreateNode{}, state.EventCommit{})
+	watch1, cancel1, err := s.WatchFrom(&api.Version{Index: 10},
+	api.EventCreateNode{}, state.EventCommit{})
 	require.NoError(t, err)
 	defer cancel1()
 
@@ -1785,7 +1788,8 @@ func TestWatchFrom(t *testing.T) {
 		}
 	}
 
-	watch2, cancel2, err := WatchFrom(s, &api.Version{Index: 13}, api.EventCreateService{}, state.EventCommit{})
+	watch2, cancel2, err := s.WatchFrom(&api.Version{Index: 13},
+	api.EventCreateService{}, state.EventCommit{})
 	require.NoError(t, err)
 	defer cancel2()
 
