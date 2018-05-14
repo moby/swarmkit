@@ -826,8 +826,8 @@ func (s *MemoryStore) Restore(snapshot *pb.StoreSnapshot) error {
 	})
 }
 
-// WatchQueue returns the publish/subscribe queue.
-func (s *MemoryStore) WatchQueue() *watch.Queue {
+// Queue returns the publish/subscribe queue.
+func (s *MemoryStore) Queue() *watch.Queue {
 	return s.queue
 }
 
@@ -845,7 +845,7 @@ func ViewAndWatch(store *MemoryStore, cb func(ReadTx) error, specifiers ...api.E
 		if err := cb(tx); err != nil {
 			return err
 		}
-		watch, cancel = store.WatchQueue().Watch(state.Matcher(specifiers...))
+		watch, cancel = store.Queue().Watch(state.Matcher(specifiers...))
 		return nil
 	})
 	if watch != nil && err != nil {
@@ -860,7 +860,7 @@ func ViewAndWatch(store *MemoryStore, cb func(ReadTx) error, specifiers ...api.E
 // from "version", and new events until the channel is closed. If "version"
 // is nil, this function is equivalent to
 //
-//     store.WatchQueue().Watch(state.Matcher(specifiers...))
+//     store.Queue().Watch(state.Matcher(specifiers...))
 //
 // If the log has been compacted and it's not possible to produce the exact
 // set of events leading from "version" to the current state, this function
@@ -870,7 +870,7 @@ func ViewAndWatch(store *MemoryStore, cb func(ReadTx) error, specifiers ...api.E
 // longer needed.
 func WatchFrom(store *MemoryStore, version *api.Version, specifiers ...api.Event) (chan events.Event, func(), error) {
 	if version == nil {
-		ch, cancel := store.WatchQueue().Watch(state.Matcher(specifiers...))
+		ch, cancel := store.Queue().Watch(state.Matcher(specifiers...))
 		return ch, cancel, nil
 	}
 
@@ -889,7 +889,7 @@ func WatchFrom(store *MemoryStore, version *api.Version, specifiers ...api.Event
 		curVersion = store.proposer.GetVersion()
 		// Start the watch with the store locked so events cannot be
 		// missed
-		watch, cancelWatch = store.WatchQueue().Watch(state.Matcher(specifiers...))
+		watch, cancelWatch = store.Queue().Watch(state.Matcher(specifiers...))
 		return nil
 	})
 	if watch != nil && err != nil {

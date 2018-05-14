@@ -202,17 +202,17 @@ func TestAllocator(t *testing.T) {
 		return nil
 	}))
 
-	netWatch, cancel := s.WatchQueue().Watch(state.Matcher(
+	netWatch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateNetwork{},
 		api.EventDeleteNetwork{},
 	))
 	defer cancel()
-	taskWatch, cancel := s.WatchQueue().Watch(state.Matcher(
+	taskWatch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},
 	))
 	defer cancel()
-	serviceWatch, cancel := s.WatchQueue().Watch(state.Matcher(
+	serviceWatch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateService{},
 		api.EventDeleteService{},
 	))
@@ -635,7 +635,7 @@ func TestNoDuplicateIPs(t *testing.T) {
 		return nil
 	}))
 
-	taskWatch, cancel := s.WatchQueue().Watch(state.Matcher(
+	taskWatch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},
 	))
@@ -821,13 +821,13 @@ func TestAllocatorRestoreForDuplicateIPs(t *testing.T) {
 	}()
 	defer a.Stop()
 
-	taskWatch, cancel := s.WatchQueue().Watch(state.Matcher(
+	taskWatch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},
 	))
 	defer cancel()
 
-	serviceWatch, cancel := s.WatchQueue().Watch(state.Matcher(
+	serviceWatch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateService{},
 		api.EventDeleteService{},
 	))
@@ -977,13 +977,13 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 	}()
 	defer a.Stop()
 
-	taskWatch, cancel := s.WatchQueue().Watch(state.Matcher(
+	taskWatch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},
 	))
 	defer cancel()
 
-	serviceWatch, cancel := s.WatchQueue().Watch(state.Matcher(
+	serviceWatch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateService{},
 		api.EventDeleteService{},
 	))
@@ -1187,13 +1187,13 @@ func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
 	}()
 	defer a.Stop()
 
-	taskWatch, cancel := s.WatchQueue().Watch(state.Matcher(
+	taskWatch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},
 	))
 	defer cancel()
 
-	serviceWatch, cancel := s.WatchQueue().Watch(state.Matcher(
+	serviceWatch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateService{},
 		api.EventDeleteService{},
 	))
@@ -1248,12 +1248,12 @@ func TestNodeAllocator(t *testing.T) {
 		return nil
 	}))
 
-	nodeWatch, cancel := s.WatchQueue().Watch(state.Matcher(
+	nodeWatch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateNode{},
 		api.EventDeleteNode{},
 	))
 	defer cancel()
-	netWatch, cancel := s.WatchQueue().Watch(state.Matcher(
+	netWatch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateNetwork{},
 		api.EventDeleteNetwork{},
 	))

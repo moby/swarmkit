@@ -60,7 +60,7 @@ func New(store *store.MemoryStore) *TaskReaper {
 // responsible for cleaning up tasks associated with slots that were removed as part of
 // service scale down or service removal.
 func (tr *TaskReaper) Run(ctx context.Context) {
-	watcher, watchCancel := tr.store.WatchQueue().Watch(state.Matcher(
+	watcher, watchCancel := tr.store.Queue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 		api.EventUpdateCluster{},

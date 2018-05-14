@@ -1271,7 +1271,7 @@ func TestBatch(t *testing.T) {
 	s := NewMemoryStore(&testutils.MockProposer{})
 	assert.NotNil(t, s)
 
-	watch, cancel := s.WatchQueue().WatchAll()
+	watch, cancel := s.Queue().WatchAll()
 	defer cancel()
 
 	// Create 405 nodes. Should get split across 3 transactions.
@@ -1332,7 +1332,7 @@ func TestBatchFailure(t *testing.T) {
 	s := NewMemoryStore(&testutils.MockProposer{})
 	assert.NotNil(t, s)
 
-	watch, cancel := s.WatchQueue().WatchAll()
+	watch, cancel := s.Queue().WatchAll()
 	defer cancel()
 
 	// Return an error partway through a transaction.

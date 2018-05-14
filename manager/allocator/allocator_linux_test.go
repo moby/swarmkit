@@ -68,7 +68,7 @@ func TestIPAMNotNil(t *testing.T) {
 		return nil
 	}))
 
-	netWatch, cancel := s.WatchQueue().Watch(state.Matcher(
+	netWatch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateNetwork{},
 		api.EventDeleteNetwork{},
 	))

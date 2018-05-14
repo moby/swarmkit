@@ -39,18 +39,18 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 		failImage2 uint32
 	)
 
-	watchCreate, cancelCreate := s.WatchQueue().Watch(state.Matcher(
+	watchCreate, cancelCreate := s.Queue().Watch(state.Matcher(
 		api.EventCreateTask{},
 	))
 	defer cancelCreate()
 
-	watchServiceUpdate, cancelServiceUpdate := s.WatchQueue().Watch(state.Matcher(
+	watchServiceUpdate, cancelServiceUpdate := s.Queue().Watch(state.Matcher(
 		api.EventUpdateService{},
 	))
 	defer cancelServiceUpdate()
 
 	// Fail new tasks the updater tries to run
-	watchUpdate, cancelUpdate := s.WatchQueue().Watch(state.Matcher(
+	watchUpdate, cancelUpdate := s.Queue().Watch(state.Matcher(
 		api.EventUpdateTask{},
 	))
 	defer cancelUpdate()

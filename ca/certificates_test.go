@@ -683,7 +683,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	csr, _, err := ca.GenerateNewCSR()
 	require.NoError(t, err)
 
-	updates, cancel := tc.MemoryStore.WatchQueue().Watch(state.Matcher(
+	updates, cancel := tc.MemoryStore.Queue().Watch(state.Matcher(
 		api.EventCreateNode{},
 	))
 	defer cancel()

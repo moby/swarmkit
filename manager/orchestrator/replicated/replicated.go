@@ -48,8 +48,7 @@ func (r *Orchestrator) Run(ctx context.Context) error {
 	defer close(r.doneChan)
 
 	// Watch changes to services and tasks
-	queue := r.store.WatchQueue()
-	watcher, cancel := queue.WatchAll()
+	watcher, cancel := r.store.Queue().WatchAll()
 	defer cancel()
 
 	// Balance existing services and drain initial tasks attached to invalid

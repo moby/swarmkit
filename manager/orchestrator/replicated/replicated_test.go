@@ -24,8 +24,8 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.WatchQueue().WatchAll()
-	/*watch, cancel := s.WatchQueue().Watch(state.Matcher(
+	watch, cancel := s.Queue().WatchAll()
+	/*watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 	))*/
@@ -213,7 +213,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.WatchQueue().Watch(state.Matcher(
+	watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},
 	))
@@ -554,7 +554,7 @@ func TestInitializationRejectedTasks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// watch orchestration events
-	watch, cancel := s.WatchQueue().Watch(state.Matcher(
+	watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},
@@ -694,7 +694,7 @@ func TestInitializationFailedTasks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// watch orchestration events
-	watch, cancel := s.WatchQueue().Watch(state.Matcher(
+	watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},
@@ -814,7 +814,7 @@ func TestInitializationNodeDown(t *testing.T) {
 	assert.NoError(t, err)
 
 	// watch orchestration events
-	watch, cancel := s.WatchQueue().Watch(state.Matcher(
+	watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},
@@ -927,7 +927,7 @@ func TestInitializationDelayStart(t *testing.T) {
 	assert.NoError(t, err)
 
 	// watch orchestration events
-	watch, cancel := s.WatchQueue().Watch(state.Matcher(
+	watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},

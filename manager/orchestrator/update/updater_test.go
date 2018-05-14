@@ -66,7 +66,7 @@ func TestUpdater(t *testing.T) {
 	defer s.Close()
 
 	// Move tasks to their desired state.
-	watch, cancel := s.WatchQueue().Watch(state.Matcher(
+	watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateTask{},
 	))
 	defer cancel()
@@ -261,7 +261,7 @@ func TestUpdaterPlacement(t *testing.T) {
 	defer s.Close()
 
 	// Move tasks to their desired state.
-	watch, cancel := s.WatchQueue().Watch(state.Matcher(
+	watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateTask{},
 	))
 	defer cancel()
@@ -375,7 +375,7 @@ func TestUpdaterFailureAction(t *testing.T) {
 	defer s.Close()
 
 	// Fail new tasks the updater tries to run
-	watch, cancel := s.WatchQueue().Watch(state.Matcher(
+	watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateTask{},
 	))
 	defer cancel()
@@ -531,7 +531,7 @@ func TestUpdaterTaskTimeout(t *testing.T) {
 	defer s.Close()
 
 	// Move tasks to their desired state.
-	watch, cancel := s.WatchQueue().Watch(state.Matcher(
+	watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateTask{},
 	))
 	defer cancel()
@@ -625,7 +625,7 @@ func TestUpdaterOrder(t *testing.T) {
 	assert.NotNil(t, s)
 
 	// Move tasks to their desired state.
-	watch, cancel := s.WatchQueue().Watch(state.Matcher(
+	watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventUpdateTask{},
 	))
 	defer cancel()
