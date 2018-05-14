@@ -172,7 +172,7 @@ func (lb *LogBroker) watchSubscriptions(nodeID string) ([]*subscription, chan ev
 	defer lb.mu.RUnlock()
 
 	// Watch for subscription changes for this node.
-	ch, cancel := lb.subscriptionQueue.CallbackWatch(events.MatcherFunc(func(event events.Event) bool {
+	ch, cancel := lb.subscriptionQueue.Watch(events.MatcherFunc(func(event events.Event) bool {
 		s := event.(*subscription)
 		return s.Contains(nodeID)
 	}))
@@ -192,7 +192,7 @@ func (lb *LogBroker) subscribe(id string) (chan events.Event, func()) {
 	lb.mu.RLock()
 	defer lb.mu.RUnlock()
 
-	return lb.logQueue.CallbackWatch(events.MatcherFunc(func(event events.Event) bool {
+	return lb.logQueue.Watch(events.MatcherFunc(func(event events.Event) bool {
 		publish := event.(*logMessage)
 		return publish.SubscriptionID == id
 	}))

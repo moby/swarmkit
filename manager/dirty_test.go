@@ -58,7 +58,7 @@ func TestIsStateDirty(t *testing.T) {
 	assert.False(t, isDirty)
 
 	// Wait for cluster and node to be created.
-	watch, cancel := m.raftNode.MemoryStore().WatchQueue().Watch()
+	watch, cancel := m.raftNode.MemoryStore().WatchQueue().WatchAll()
 	defer cancel()
 	<-watch
 	<-watch

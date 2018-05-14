@@ -15,7 +15,7 @@ func TestTimeoutLimitWatch(t *testing.T) {
 	defer q.Close()
 
 	// Cancelling a watcher should remove the watcher from the queue and close its channel.
-	watch, cancel := q.Watch()
+	watch, cancel := q.WatchAll()
 	doneChan := make(chan struct{})
 	go func() {
 		for range watch {}
@@ -29,7 +29,7 @@ func TestTimeoutLimitWatch(t *testing.T) {
 	readerSleepDuration := 100 * time.Millisecond
 	writerSleepDuration := 10 * time.Millisecond
 
-	events, cancel := q.Watch()
+	events, cancel := q.WatchAll()
 	defer cancel()
 
 	receivedChan := make(chan struct{})
@@ -91,9 +91,9 @@ func TestWatch(t *testing.T) {
 	}
 
 	// Create filtered watchers
-	c1, c1cancel := q.CallbackWatch(tagFilter("t1"))
+	c1, c1cancel := q.Watch(tagFilter("t1"))
 	defer c1cancel()
-	c2, c2cancel := q.CallbackWatch(tagFilter("t2"))
+	c2, c2cancel := q.Watch(tagFilter("t2"))
 	defer c2cancel()
 
 	// Publish items on the queue
@@ -227,7 +227,7 @@ func benchmarkWatchForQueue(q *Queue, b *testing.B, nlisteners, npublishers int,
 		watchersAttached.Add(1)
 		watchersRunning.Add(1)
 		go func(n int) {
-			w, cancel := q.Watch()
+			w, cancel := q.WatchAll()
 			defer cancel()
 			watchersAttached.Done()
 

@@ -151,7 +151,7 @@ func (a *Allocator) Stop() {
 }
 
 func (a *Allocator) init(ctx context.Context, aa *allocActor) (<-chan events.Event, func(), error) {
-	watch, watchCancel := a.store.WatchQueue().CallbackWatch(state.Matcher(
+	watch, watchCancel := a.store.WatchQueue().Watch(state.Matcher(
 		api.EventCreateNetwork{},
 		api.EventDeleteNetwork{},
 		api.EventCreateService{},

@@ -206,7 +206,7 @@ func TestDrain(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+	watch, cancel := s.WatchQueue().Watch(state.Matcher(
 		api.EventUpdateTask{},
 	))
 	defer cancel()

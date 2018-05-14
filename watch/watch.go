@@ -78,17 +78,17 @@ func WithLimit(limit uint64) func(*Queue) error {
 	}
 }
 
-// Watch returns a channel which will receive all items published to the
+// WatchAll returns a channel which will receive all items published to the
 // queue from this point, until cancel is called.
-func (q *Queue) Watch() (eventq chan events.Event, cancel func()) {
-	return q.CallbackWatch(nil)
+func (q *Queue) WatchAll() (eventq chan events.Event, cancel func()) {
+	return q.Watch(nil)
 }
 
-// CallbackWatch returns a channel which will receive all events published to
+// Watch returns a channel which will receive all events published to
 // the queue from this point that pass the check in the provided callback
 // function. The returned cancel function will stop the flow of events and
 // close the channel.
-func (q *Queue) CallbackWatch(matcher events.Matcher) (eventq chan events.Event, cancel func()) {
+func (q *Queue) Watch(matcher events.Matcher) (eventq chan events.Event, cancel func()) {
 	chanSink, ch := q.sinkGen.NewChannelSink()
 	lq := queue.NewLimitQueue(chanSink, q.limit)
 	sink := events.Sink(lq)

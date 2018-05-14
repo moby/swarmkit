@@ -1655,7 +1655,7 @@ func (n *Node) ChangesBetween(from, to api.Version) ([]state.Change, error) {
 // SubscribePeers subscribes to peer updates in cluster. It sends always full
 // list of peers.
 func (n *Node) SubscribePeers() (q chan events.Event, cancel func()) {
-	return n.cluster.PeersBroadcast.Watch()
+	return n.cluster.PeersBroadcast.WatchAll()
 }
 
 // GetMemberlist returns the current list of raft members in the cluster.
@@ -2029,7 +2029,7 @@ func (n *Node) applyRemoveNode(ctx context.Context, cc raftpb.ConfChange) (err e
 // will be sent in form of raft.LeadershipState. Also cancel func is returned -
 // it should be called when listener is no longer interested in events.
 func (n *Node) SubscribeLeadership() (q chan events.Event, cancel func()) {
-	return n.leadershipBroadcast.Watch()
+	return n.leadershipBroadcast.WatchAll()
 }
 
 // createConfigChangeEnts creates a series of Raft entries (i.e.

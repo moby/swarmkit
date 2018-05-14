@@ -260,7 +260,7 @@ func (s *SecurityConfig) UpdateRootCA(rootCA *RootCA) error {
 
 // Watch allows you to set a watch on the security config, in order to be notified of any changes
 func (s *SecurityConfig) Watch() (chan events.Event, func()) {
-	return s.queue.Watch()
+	return s.queue.WatchAll()
 }
 
 // IssuerInfo returns the issuer subject and issuer public key

@@ -32,22 +32,22 @@ func NodeCheckState(n1, n2 *api.Node) bool {
 // Examples:
 //
 // // subscribe to all events
-// q.Watch()
+// q.WatchAll()
 // // or
-// q.CallbackWatch(Matcher())
+// q.Watch(Matcher())
 //
 // // subscribe to all UpdateTask events
-// q.CallbackWatch(Matcher(EventUpdateTask{}))
+// q.Watch(Matcher(EventUpdateTask{}))
 //
 // // subscribe to all task-related events
-// q.CallbackWatch(Matcher(
+// q.Watch(Matcher(
 // 	api.EventUpdateTask{},
 // 	api.EventCreateTask{},
 // 	api.EventDeleteTask{},
 // ))
 //
 // // subscribe to UpdateTask for node 123
-// q.CallbackWatch(Matcher(
+// q.Watch(Matcher(
 // 	api.EventUpdateTask{
 // 		Task: &api.Task{NodeID: 123},
 // 		Checks: []TaskCheckFunc{TaskCheckNodeID},
@@ -56,7 +56,7 @@ func NodeCheckState(n1, n2 *api.Node) bool {
 //
 // // subscribe to UpdateTask for node 123, as well as CreateTask
 // // for node 123 that also has ServiceID set to "abc"
-// q.CallbackWatch(Matcher(
+// q.Watch(Matcher(
 // 	api.EventUpdateTask{
 // 		Task: &api.Task{NodeID: 123},
 // 		Checks: []TaskCheckFunc{TaskCheckNodeID},

@@ -24,8 +24,8 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.WatchQueue().Watch()
-	/*watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+	watch, cancel := s.WatchQueue().WatchAll()
+	/*watch, cancel := s.WatchQueue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 	))*/
@@ -133,7 +133,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+	watch, cancel := s.WatchQueue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 	))
@@ -260,7 +260,7 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+	watch, cancel := s.WatchQueue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 	))
@@ -396,8 +396,8 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.WatchQueue().Watch()
-	/*watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+	watch, cancel := s.WatchQueue().WatchAll()
+	/*watch, cancel := s.WatchQueue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 	))*/
@@ -492,7 +492,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+	watch, cancel := s.WatchQueue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 	))
@@ -663,8 +663,8 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.WatchQueue().Watch()
-	/*watch, cancel := s.WatchQueue().CallbackWatch(state.Matcher(
+	watch, cancel := s.WatchQueue().WatchAll()
+	/*watch, cancel := s.WatchQueue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 	))*/

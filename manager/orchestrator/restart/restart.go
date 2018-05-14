@@ -421,7 +421,7 @@ func (r *Supervisor) DelayStart(ctx context.Context, _ store.Tx, oldTask *api.Ta
 	if waitForTask {
 		// Wait for either the old task to complete, or the old task's
 		// node to become unavailable.
-		watch, cancelWatch = r.store.WatchQueue().CallbackWatch(state.Matcher(
+		watch, cancelWatch = r.store.WatchQueue().Watch(state.Matcher(
 			api.EventUpdateTask{
 				Task:   &api.Task{ID: oldTask.ID, Status: api.TaskStatus{State: api.TaskStateRunning}},
 				Checks: []api.TaskCheckFunc{api.TaskCheckID, state.TaskCheckStateGreaterThan},

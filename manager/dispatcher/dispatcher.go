@@ -1253,7 +1253,7 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		return err
 	}
 
-	clusterUpdatesCh, clusterCancel := d.clusterUpdateQueue.Watch()
+	clusterUpdatesCh, clusterCancel := d.clusterUpdateQueue.WatchAll()
 	defer clusterCancel()
 
 	if err := stream.Send(&api.SessionMessage{

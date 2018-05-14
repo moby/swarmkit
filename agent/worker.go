@@ -580,7 +580,7 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 
 	// In follow mode, watch for new tasks. Don't close the subscription
 	// until it's cancelled.
-	ch, cancel := w.taskevents.Watch()
+	ch, cancel := w.taskevents.WatchAll()
 	defer cancel()
 	for {
 		select {

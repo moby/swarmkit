@@ -741,7 +741,7 @@ func TestRenewTLSConfigUpdatesRootNonUnknownAuthError(t *testing.T) {
 
 	signErr := make(chan error)
 	go func() {
-		updates, cancel := tc.MemoryStore.WatchQueue().CallbackWatch(state.Matcher(
+		updates, cancel := tc.MemoryStore.WatchQueue().Watch(state.Matcher(
 			api.EventCreateNode{},
 		))
 		defer cancel()

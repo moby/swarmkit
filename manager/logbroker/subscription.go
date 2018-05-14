@@ -68,7 +68,7 @@ func (s *subscription) Run(ctx context.Context) {
 
 	if s.follow() {
 		wq := s.store.WatchQueue()
-		ch, cancel := wq.CallbackWatch(state.Matcher(api.EventCreateTask{}, api.EventUpdateTask{}))
+		ch, cancel := wq.Watch(state.Matcher(api.EventCreateTask{}, api.EventUpdateTask{}))
 		go func() {
 			defer cancel()
 			s.watch(ch)

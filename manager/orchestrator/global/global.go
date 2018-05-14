@@ -66,7 +66,7 @@ func (g *Orchestrator) Run(ctx context.Context) error {
 
 	// Watch changes to services and tasks
 	queue := g.store.WatchQueue()
-	watcher, cancel := queue.Watch()
+	watcher, cancel := queue.WatchAll()
 	defer cancel()
 
 	// lookup the cluster
