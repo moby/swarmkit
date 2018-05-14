@@ -180,6 +180,32 @@ func prefixFromArgs(args ...interface{}) ([]byte, error) {
 	return val, nil
 }
 
+// touchMeta updates an object's timestamps when necessary and bumps the version
+// if provided.
+func touchMeta(meta *api.Meta, version *api.Version) error {
+	// Skip meta update if version is not defined as it means we're applying
+	// from raft or restoring from a snapshot.
+	if version == nil {
+		return nil
+	}
+
+	now, err := gogotypes.TimestampProto(time.Now())
+	if err != nil {
+		return err
+	}
+
+	meta.Version = *version
+
+	// Updated CreatedAt if not defined
+	if meta.CreatedAt == nil {
+		meta.CreatedAt = now
+	}
+
+	meta.UpdatedAt = now
+
+	return nil
+}
+
 // MemoryStore is a concurrency-safe, in-memory implementation of the Store
 // interface.
 type MemoryStore struct {
@@ -933,32 +959,6 @@ func (s *MemoryStore) ApplyStoreActions(actions []api.StoreAction) error {
 		s.queue.Publish(state.EventCommit{})
 	}
 	s.updateLock.Unlock()
-	return nil
-}
-
-// touchMeta updates an object's timestamps when necessary and bumps the version
-// if provided.
-func touchMeta(meta *api.Meta, version *api.Version) error {
-	// Skip meta update if version is not defined as it means we're applying
-	// from raft or restoring from a snapshot.
-	if version == nil {
-		return nil
-	}
-
-	now, err := gogotypes.TimestampProto(time.Now())
-	if err != nil {
-		return err
-	}
-
-	meta.Version = *version
-
-	// Updated CreatedAt if not defined
-	if meta.CreatedAt == nil {
-		meta.CreatedAt = now
-	}
-
-	meta.UpdatedAt = now
-
 	return nil
 }
 
