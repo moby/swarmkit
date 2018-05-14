@@ -457,6 +457,93 @@ type tx struct {
 	changelist []api.Event
 }
 
+func (tx *tx) init(memDBTx *memdb.Txn, curVersion *api.Version) {
+	tx.memDBTx = memDBTx
+	tx.curVersion = curVersion
+	tx.changelist = nil
+}
+
+func (tx tx) changelistStoreActions() ([]api.StoreAction, error) {
+	var actions []api.StoreAction
+
+	for _, c := range tx.changelist {
+		sa, err := api.NewStoreAction(c)
+		if err != nil {
+			return nil, err
+		}
+		actions = append(actions, sa)
+	}
+
+	return actions, nil
+}
+
+// create adds a new object to the store.
+// Returns ErrExist if the ID is already taken.
+func (tx *tx) create(table string, o api.StoreObject) error {
+	if tx.lookup(table, indexID, o.GetID()) != nil {
+		return ErrExist
+	}
+
+	copy := o.CopyStoreObject()
+	meta := copy.GetMeta()
+	if err := touchMeta(&meta, tx.curVersion); err != nil {
+		return err
+	}
+	copy.SetMeta(meta)
+
+	err := tx.memDBTx.Insert(table, copy)
+	if err == nil {
+		tx.changelist = append(tx.changelist, copy.EventCreate())
+		o.SetMeta(meta)
+	}
+	return err
+}
+
+// Update updates an existing object in the store.
+// Returns ErrNotExist if the object doesn't exist.
+func (tx *tx) update(table string, o api.StoreObject) error {
+	oldN := tx.lookup(table, indexID, o.GetID())
+	if oldN == nil {
+		return ErrNotExist
+	}
+
+	meta := o.GetMeta()
+
+	if tx.curVersion != nil {
+		if oldN.GetMeta().Version != meta.Version {
+			return ErrSequenceConflict
+		}
+	}
+
+	copy := o.CopyStoreObject()
+	if err := touchMeta(&meta, tx.curVersion); err != nil {
+		return err
+	}
+	copy.SetMeta(meta)
+
+	err := tx.memDBTx.Insert(table, copy)
+	if err == nil {
+		tx.changelist = append(tx.changelist, copy.EventUpdate(oldN))
+		o.SetMeta(meta)
+	}
+	return err
+}
+
+// Delete removes an object from the store.
+// Returns ErrNotExist if the object doesn't exist.
+func (tx *tx) delete(table, id string) error {
+	n := tx.lookup(table, indexID, id)
+	if n == nil {
+		return ErrNotExist
+	}
+
+	err := tx.memDBTx.Delete(table, n)
+	if err == nil {
+		tx.changelist = append(tx.changelist, n.EventDelete())
+	}
+	return err
+}
+
 // changelistBetweenVersions returns the changes after "from" up to and
 // including "to".
 func (s *MemoryStore) changelistBetweenVersions(from, to api.Version) ([]api.Event, error) {
@@ -710,93 +797,6 @@ func (s *MemoryStore) Batch(cb func(*Batch) error) error {
 
 	err := batch.commit()
 	s.updateLock.Unlock()
-	return err
-}
-
-func (tx *tx) init(memDBTx *memdb.Txn, curVersion *api.Version) {
-	tx.memDBTx = memDBTx
-	tx.curVersion = curVersion
-	tx.changelist = nil
-}
-
-func (tx tx) changelistStoreActions() ([]api.StoreAction, error) {
-	var actions []api.StoreAction
-
-	for _, c := range tx.changelist {
-		sa, err := api.NewStoreAction(c)
-		if err != nil {
-			return nil, err
-		}
-		actions = append(actions, sa)
-	}
-
-	return actions, nil
-}
-
-// create adds a new object to the store.
-// Returns ErrExist if the ID is already taken.
-func (tx *tx) create(table string, o api.StoreObject) error {
-	if tx.lookup(table, indexID, o.GetID()) != nil {
-		return ErrExist
-	}
-
-	copy := o.CopyStoreObject()
-	meta := copy.GetMeta()
-	if err := touchMeta(&meta, tx.curVersion); err != nil {
-		return err
-	}
-	copy.SetMeta(meta)
-
-	err := tx.memDBTx.Insert(table, copy)
-	if err == nil {
-		tx.changelist = append(tx.changelist, copy.EventCreate())
-		o.SetMeta(meta)
-	}
-	return err
-}
-
-// Update updates an existing object in the store.
-// Returns ErrNotExist if the object doesn't exist.
-func (tx *tx) update(table string, o api.StoreObject) error {
-	oldN := tx.lookup(table, indexID, o.GetID())
-	if oldN == nil {
-		return ErrNotExist
-	}
-
-	meta := o.GetMeta()
-
-	if tx.curVersion != nil {
-		if oldN.GetMeta().Version != meta.Version {
-			return ErrSequenceConflict
-		}
-	}
-
-	copy := o.CopyStoreObject()
-	if err := touchMeta(&meta, tx.curVersion); err != nil {
-		return err
-	}
-	copy.SetMeta(meta)
-
-	err := tx.memDBTx.Insert(table, copy)
-	if err == nil {
-		tx.changelist = append(tx.changelist, copy.EventUpdate(oldN))
-		o.SetMeta(meta)
-	}
-	return err
-}
-
-// Delete removes an object from the store.
-// Returns ErrNotExist if the object doesn't exist.
-func (tx *tx) delete(table, id string) error {
-	n := tx.lookup(table, indexID, id)
-	if n == nil {
-		return ErrNotExist
-	}
-
-	err := tx.memDBTx.Delete(table, n)
-	if err == nil {
-		tx.changelist = append(tx.changelist, n.EventDelete())
-	}
 	return err
 }
 
