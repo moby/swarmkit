@@ -22,12 +22,10 @@ import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
 
-import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
-import (
-	context "golang.org/x/net/context"
-	grpc "google.golang.org/grpc"
-)
+import context "golang.org/x/net/context"
+import grpc "google.golang.org/grpc"
 
 import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
@@ -256,11 +254,11 @@ func (m *Rectangle) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Lo != nil {
 		m.Lo = &Point{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Lo, o.Lo)
+		deepcopy.Copy(m.Lo, o.Lo)
 	}
 	if o.Hi != nil {
 		m.Hi = &Point{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Hi, o.Hi)
+		deepcopy.Copy(m.Hi, o.Hi)
 	}
 }
 
@@ -279,7 +277,7 @@ func (m *Feature) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Location != nil {
 		m.Location = &Point{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Location, o.Location)
+		deepcopy.Copy(m.Location, o.Location)
 	}
 }
 
@@ -298,7 +296,7 @@ func (m *RouteNote) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Location != nil {
 		m.Location = &Point{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Location, o.Location)
+		deepcopy.Copy(m.Location, o.Location)
 	}
 }
 

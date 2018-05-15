@@ -19,9 +19,7 @@ import fmt "fmt"
 import math "math"
 import google_protobuf "github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 
-import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
-
-import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+import deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import strings "strings"
 import reflect "reflect"
@@ -153,7 +151,7 @@ func (m *StoreObject) CopyFrom(src interface{}) {
 	*m = *o
 	if o.WatchSelectors != nil {
 		m.WatchSelectors = &WatchSelectors{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.WatchSelectors, o.WatchSelectors)
+		deepcopy.Copy(m.WatchSelectors, o.WatchSelectors)
 	}
 }
 
@@ -344,7 +342,7 @@ func (m *StoreObject) MarshalTo(dAtA []byte) (int, error) {
 	var l int
 	_ = l
 	if m.WatchSelectors == nil {
-		return 0, github_com_gogo_protobuf_proto.NewRequiredNotSetError("watch_selectors")
+		return 0, proto.NewRequiredNotSetError("watch_selectors")
 	} else {
 		dAtA[i] = 0xa
 		i++
@@ -968,7 +966,7 @@ func (m *StoreObject) Unmarshal(dAtA []byte) error {
 		}
 	}
 	if hasFields[0]&uint64(0x00000001) == 0 {
-		return github_com_gogo_protobuf_proto.NewRequiredNotSetError("watch_selectors")
+		return proto.NewRequiredNotSetError("watch_selectors")
 	}
 
 	if iNdEx > l {

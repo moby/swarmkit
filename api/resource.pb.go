@@ -9,12 +9,10 @@ import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 
-import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
-import (
-	context "golang.org/x/net/context"
-	grpc "google.golang.org/grpc"
-)
+import context "golang.org/x/net/context"
+import grpc "google.golang.org/grpc"
 
 import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
@@ -115,7 +113,7 @@ func (m *AttachNetworkRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Config != nil {
 		m.Config = &NetworkAttachmentConfig{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Config, o.Config)
+		deepcopy.Copy(m.Config, o.Config)
 	}
 }
 

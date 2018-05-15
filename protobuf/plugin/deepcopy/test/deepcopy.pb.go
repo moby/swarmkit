@@ -25,13 +25,13 @@ import fmt "fmt"
 import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 
-import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import bytes "bytes"
 
 import strings "strings"
 import reflect "reflect"
-import github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
+import sortkeys "github.com/gogo/protobuf/sortkeys"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -773,15 +773,15 @@ func (m *ExternalStruct) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Field1 != nil {
 		m.Field1 = &BasicScalar{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Field1, o.Field1)
+		deepcopy.Copy(m.Field1, o.Field1)
 	}
 	if o.Field2 != nil {
 		m.Field2 = &RepeatedScalar{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Field2, o.Field2)
+		deepcopy.Copy(m.Field2, o.Field2)
 	}
 	if o.Field3 != nil {
 		m.Field3 = &RepeatedScalarPacked{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Field3, o.Field3)
+		deepcopy.Copy(m.Field3, o.Field3)
 	}
 }
 
@@ -802,7 +802,7 @@ func (m *RepeatedExternalStruct) CopyFrom(src interface{}) {
 		m.Field1 = make([]*BasicScalar, len(o.Field1))
 		for i := range m.Field1 {
 			m.Field1[i] = &BasicScalar{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Field1[i], o.Field1[i])
+			deepcopy.Copy(m.Field1[i], o.Field1[i])
 		}
 	}
 
@@ -810,7 +810,7 @@ func (m *RepeatedExternalStruct) CopyFrom(src interface{}) {
 		m.Field2 = make([]*RepeatedScalar, len(o.Field2))
 		for i := range m.Field2 {
 			m.Field2[i] = &RepeatedScalar{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Field2[i], o.Field2[i])
+			deepcopy.Copy(m.Field2[i], o.Field2[i])
 		}
 	}
 
@@ -818,7 +818,7 @@ func (m *RepeatedExternalStruct) CopyFrom(src interface{}) {
 		m.Field3 = make([]*RepeatedScalarPacked, len(o.Field3))
 		for i := range m.Field3 {
 			m.Field3[i] = &RepeatedScalarPacked{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Field3[i], o.Field3[i])
+			deepcopy.Copy(m.Field3[i], o.Field3[i])
 		}
 	}
 
@@ -837,9 +837,9 @@ func (m *NonNullableExternalStruct) CopyFrom(src interface{}) {
 
 	o := src.(*NonNullableExternalStruct)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field1, &o.Field1)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field2, &o.Field2)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field3, &o.Field3)
+	deepcopy.Copy(&m.Field1, &o.Field1)
+	deepcopy.Copy(&m.Field2, &o.Field2)
+	deepcopy.Copy(&m.Field3, &o.Field3)
 }
 
 func (m *RepeatedNonNullableExternalStruct) Copy() *RepeatedNonNullableExternalStruct {
@@ -858,21 +858,21 @@ func (m *RepeatedNonNullableExternalStruct) CopyFrom(src interface{}) {
 	if o.Field1 != nil {
 		m.Field1 = make([]BasicScalar, len(o.Field1))
 		for i := range m.Field1 {
-			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field1[i], &o.Field1[i])
+			deepcopy.Copy(&m.Field1[i], &o.Field1[i])
 		}
 	}
 
 	if o.Field2 != nil {
 		m.Field2 = make([]RepeatedScalar, len(o.Field2))
 		for i := range m.Field2 {
-			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field2[i], &o.Field2[i])
+			deepcopy.Copy(&m.Field2[i], &o.Field2[i])
 		}
 	}
 
 	if o.Field3 != nil {
 		m.Field3 = make([]RepeatedScalarPacked, len(o.Field3))
 		for i := range m.Field3 {
-			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field3[i], &o.Field3[i])
+			deepcopy.Copy(&m.Field3[i], &o.Field3[i])
 		}
 	}
 
@@ -895,7 +895,7 @@ func (m *MapStruct) CopyFrom(src interface{}) {
 		m.NullableMap = make(map[string]*BasicScalar, len(o.NullableMap))
 		for k, v := range o.NullableMap {
 			m.NullableMap[k] = &BasicScalar{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.NullableMap[k], v)
+			deepcopy.Copy(m.NullableMap[k], v)
 		}
 	}
 
@@ -903,7 +903,7 @@ func (m *MapStruct) CopyFrom(src interface{}) {
 		m.NonnullableMap = make(map[string]BasicScalar, len(o.NonnullableMap))
 		for k, v := range o.NonnullableMap {
 			n := BasicScalar{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(&n, &v)
+			deepcopy.Copy(&n, &v)
 			m.NonnullableMap[k] = n
 		}
 	}
@@ -968,13 +968,13 @@ func (m *OneOf) CopyFrom(src interface{}) {
 			v := OneOf_Field8{
 				Field8: &MapStruct{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Field8, o.GetField8())
+			deepcopy.Copy(v.Field8, o.GetField8())
 			m.Fields = &v
 		case *OneOf_Field9:
 			v := OneOf_Field9{
 				Field9: &RepeatedNonNullableExternalStruct{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Field9, o.GetField9())
+			deepcopy.Copy(v.Field9, o.GetField9())
 			m.Fields = &v
 		}
 	}
@@ -985,13 +985,13 @@ func (m *OneOf) CopyFrom(src interface{}) {
 			v := OneOf_Field10{
 				Field10: &NonNullableExternalStruct{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Field10, o.GetField10())
+			deepcopy.Copy(v.Field10, o.GetField10())
 			m.FieldsTwo = &v
 		case *OneOf_Field11:
 			v := OneOf_Field11{
 				Field11: &RepeatedExternalStruct{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Field11, o.GetField11())
+			deepcopy.Copy(v.Field11, o.GetField11())
 			m.FieldsTwo = &v
 		}
 	}
@@ -1000,10 +1000,7 @@ func (m *OneOf) CopyFrom(src interface{}) {
 
 func (this *BasicScalar) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*BasicScalar)
@@ -1016,10 +1013,7 @@ func (this *BasicScalar) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1072,10 +1066,7 @@ func (this *BasicScalar) Equal(that interface{}) bool {
 }
 func (this *RepeatedScalar) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*RepeatedScalar)
@@ -1088,10 +1079,7 @@ func (this *RepeatedScalar) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1219,10 +1207,7 @@ func (this *RepeatedScalar) Equal(that interface{}) bool {
 }
 func (this *RepeatedScalarPacked) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*RepeatedScalarPacked)
@@ -1235,10 +1220,7 @@ func (this *RepeatedScalarPacked) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1350,10 +1332,7 @@ func (this *RepeatedScalarPacked) Equal(that interface{}) bool {
 }
 func (this *ExternalStruct) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*ExternalStruct)
@@ -1366,10 +1345,7 @@ func (this *ExternalStruct) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1386,10 +1362,7 @@ func (this *ExternalStruct) Equal(that interface{}) bool {
 }
 func (this *RepeatedExternalStruct) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*RepeatedExternalStruct)
@@ -1402,10 +1375,7 @@ func (this *RepeatedExternalStruct) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1437,10 +1407,7 @@ func (this *RepeatedExternalStruct) Equal(that interface{}) bool {
 }
 func (this *NonNullableExternalStruct) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*NonNullableExternalStruct)
@@ -1453,10 +1420,7 @@ func (this *NonNullableExternalStruct) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1473,10 +1437,7 @@ func (this *NonNullableExternalStruct) Equal(that interface{}) bool {
 }
 func (this *RepeatedNonNullableExternalStruct) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*RepeatedNonNullableExternalStruct)
@@ -1489,10 +1450,7 @@ func (this *RepeatedNonNullableExternalStruct) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1524,10 +1482,7 @@ func (this *RepeatedNonNullableExternalStruct) Equal(that interface{}) bool {
 }
 func (this *MapStruct) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*MapStruct)
@@ -1540,10 +1495,7 @@ func (this *MapStruct) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1569,10 +1521,7 @@ func (this *MapStruct) Equal(that interface{}) bool {
 }
 func (this *OneOf) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*OneOf)
@@ -1585,10 +1534,7 @@ func (this *OneOf) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1614,10 +1560,7 @@ func (this *OneOf) Equal(that interface{}) bool {
 }
 func (this *OneOf_Field1) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*OneOf_Field1)
@@ -1630,10 +1573,7 @@ func (this *OneOf_Field1) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1644,10 +1584,7 @@ func (this *OneOf_Field1) Equal(that interface{}) bool {
 }
 func (this *OneOf_Field2) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*OneOf_Field2)
@@ -1660,10 +1597,7 @@ func (this *OneOf_Field2) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1674,10 +1608,7 @@ func (this *OneOf_Field2) Equal(that interface{}) bool {
 }
 func (this *OneOf_Field3) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*OneOf_Field3)
@@ -1690,10 +1621,7 @@ func (this *OneOf_Field3) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1704,10 +1632,7 @@ func (this *OneOf_Field3) Equal(that interface{}) bool {
 }
 func (this *OneOf_Field4) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*OneOf_Field4)
@@ -1720,10 +1645,7 @@ func (this *OneOf_Field4) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1734,10 +1656,7 @@ func (this *OneOf_Field4) Equal(that interface{}) bool {
 }
 func (this *OneOf_Field5) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*OneOf_Field5)
@@ -1750,10 +1669,7 @@ func (this *OneOf_Field5) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1764,10 +1680,7 @@ func (this *OneOf_Field5) Equal(that interface{}) bool {
 }
 func (this *OneOf_Field6) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*OneOf_Field6)
@@ -1780,10 +1693,7 @@ func (this *OneOf_Field6) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1794,10 +1704,7 @@ func (this *OneOf_Field6) Equal(that interface{}) bool {
 }
 func (this *OneOf_Field7) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*OneOf_Field7)
@@ -1810,10 +1717,7 @@ func (this *OneOf_Field7) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1824,10 +1728,7 @@ func (this *OneOf_Field7) Equal(that interface{}) bool {
 }
 func (this *OneOf_Field8) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*OneOf_Field8)
@@ -1840,10 +1741,7 @@ func (this *OneOf_Field8) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1854,10 +1752,7 @@ func (this *OneOf_Field8) Equal(that interface{}) bool {
 }
 func (this *OneOf_Field9) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*OneOf_Field9)
@@ -1870,10 +1765,7 @@ func (this *OneOf_Field9) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1884,10 +1776,7 @@ func (this *OneOf_Field9) Equal(that interface{}) bool {
 }
 func (this *OneOf_Field10) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*OneOf_Field10)
@@ -1900,10 +1789,7 @@ func (this *OneOf_Field10) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -1914,10 +1800,7 @@ func (this *OneOf_Field10) Equal(that interface{}) bool {
 }
 func (this *OneOf_Field11) Equal(that interface{}) bool {
 	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	}
 
 	that1, ok := that.(*OneOf_Field11)
@@ -1930,10 +1813,7 @@ func (this *OneOf_Field11) Equal(that interface{}) bool {
 		}
 	}
 	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
+		return this == nil
 	} else if this == nil {
 		return false
 	}
@@ -2613,7 +2493,7 @@ func (this *MapStruct) String() string {
 	for k, _ := range this.NullableMap {
 		keysForNullableMap = append(keysForNullableMap, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForNullableMap)
+	sortkeys.Strings(keysForNullableMap)
 	mapStringForNullableMap := "map[string]*BasicScalar{"
 	for _, k := range keysForNullableMap {
 		mapStringForNullableMap += fmt.Sprintf("%v: %v,", k, this.NullableMap[k])
@@ -2623,7 +2503,7 @@ func (this *MapStruct) String() string {
 	for k, _ := range this.NonnullableMap {
 		keysForNonnullableMap = append(keysForNonnullableMap, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForNonnullableMap)
+	sortkeys.Strings(keysForNonnullableMap)
 	mapStringForNonnullableMap := "map[string]BasicScalar{"
 	for _, k := range keysForNonnullableMap {
 		mapStringForNonnullableMap += fmt.Sprintf("%v: %v,", k, this.NonnullableMap[k])
