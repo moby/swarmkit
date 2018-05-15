@@ -817,55 +817,58 @@ func TestStoreSnapshot(t *testing.T) {
 	s2 := NewMemoryStore(nil)
 	assert.NotNil(t, s2)
 
-	copyToS2 := func(readTx ReadTx) error {
-		return s2.Update(func(tx Tx) error {
-			// Copy over new data
-			nodes, err := FindNodes(readTx, All)
-			if err != nil {
-				return err
-			}
-			for _, n := range nodes {
-				if err := CreateNode(tx, n); err != nil {
-					return err
-				}
-			}
-
-			tasks, err := FindTasks(readTx, All)
-			if err != nil {
-				return err
-			}
-			for _, t := range tasks {
-				if err := CreateTask(tx, t); err != nil {
-					return err
-				}
-			}
-
-			services, err := FindServices(readTx, All)
-			if err != nil {
-				return err
-			}
-			for _, s := range services {
-				if err := CreateService(tx, s); err != nil {
-					return err
-				}
-			}
-
-			networks, err := FindNetworks(readTx, All)
-			if err != nil {
-				return err
-			}
-			for _, n := range networks {
-				if err := CreateNetwork(tx, n); err != nil {
-					return err
-				}
-			}
-
-			return nil
-		})
-	}
-
 	// Fork
-	watcher, cancel, err := s1.ViewAndWatch(copyToS2)
+	var err error
+	watcher, cancel := s1.ViewAndWatch(
+		func(readTx ReadTx) {
+			err = s2.Update(
+				func(tx Tx) error {
+					// Copy over new data
+					nodes, err := FindNodes(readTx, All)
+					if err != nil {
+						return err
+					}
+					for _, n := range nodes {
+						if err := CreateNode(tx, n); err != nil {
+							return err
+						}
+					}
+					// Copy over the tasks
+					tasks, err := FindTasks(readTx, All)
+					if err != nil {
+						return err
+					}
+					for _, t := range tasks {
+						if err := CreateTask(tx, t); err != nil {
+							return err
+						}
+					}
+					// Copy over the services
+					services, err := FindServices(readTx, All)
+					if err != nil {
+						return err
+					}
+					for _, s := range services {
+						if err := CreateService(tx, s); err != nil {
+							return err
+						}
+					}
+					// Copy over the networks
+					networks, err := FindNetworks(readTx, All)
+					if err != nil {
+						return err
+					}
+					for _, n := range networks {
+						if err := CreateNetwork(tx, n); err != nil {
+							return err
+						}
+					}
+
+					return nil
+				},
+			)
+		},
+	)
 	defer cancel()
 	assert.NoError(t, err)
 
@@ -1427,13 +1430,12 @@ func TestStoreSaveRestore(t *testing.T) {
 		append(altResourceSet, r),
 	)
 
-	watcher, cancel, err := s2.ViewAndWatch(
-		func(ReadTx) error {
-			return nil
-		},
+	var err error
+	watcher, cancel := s2.ViewAndWatch(
+		func(ReadTx) {},
 	)
-	assert.NoError(t, err)
 	defer cancel()
+	assert.NoError(t, err)
 
 	err = s2.Restore(snapshot)
 	assert.NoError(t, err)

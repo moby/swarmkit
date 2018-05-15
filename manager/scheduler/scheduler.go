@@ -105,12 +105,15 @@ func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
 func (s *Scheduler) Run(ctx context.Context) error {
 	defer close(s.doneChan)
 
-	updates, cancel, err := s.store.ViewAndWatch(s.setupTasksList)
+	var err error
+	updates, cancel := s.store.ViewAndWatch(func(tx store.ReadTx) {
+		err = s.setupTasksList(tx)
+	})
+	defer cancel()
 	if err != nil {
 		log.G(ctx).WithError(err).Errorf("snapshot store update failed")
 		return err
 	}
-	defer cancel()
 
 	// Validate resource for tasks from preassigned tasks
 	// do this before other tasks because preassigned tasks like

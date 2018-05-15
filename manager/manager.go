@@ -775,23 +775,21 @@ func (m *Manager) updateKEK(ctx context.Context, cluster *api.Cluster) error {
 func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 	clusterID := m.config.SecurityConfig.ClientTLSCreds.Organization()
 	var cluster *api.Cluster
-	clusterWatch, clusterWatchCancel, err := m.raftNode.MemoryStore().ViewAndWatch(
-		func(tx store.ReadTx) error {
+	clusterWatch, clusterWatchCancel := m.raftNode.MemoryStore().ViewAndWatch(
+		func(tx store.ReadTx) {
 			cluster = store.GetCluster(tx, clusterID)
-			if cluster == nil {
-				return fmt.Errorf("unable to get current cluster")
-			}
-			return nil
 		},
 		api.EventUpdateCluster{
 			Cluster: &api.Cluster{ID: clusterID},
 			Checks:  []api.ClusterCheckFunc{api.ClusterCheckID},
 		},
 	)
-	if err != nil {
-		return err
+	if cluster == nil {
+		clusterWatchCancel()
+		return fmt.Errorf("unable to get current cluster")
 	}
 	if err := m.updateKEK(ctx, cluster); err != nil {
+		clusterWatchCancel()
 		return err
 	}
 

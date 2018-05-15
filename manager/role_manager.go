@@ -87,7 +87,7 @@ func (rm *roleManager) Run(ctx context.Context) {
 
 	var (
 		nodes []*api.Node
-
+		err   error
 		// ticker and tickerCh are used to time the reconciliation interval, which will
 		// periodically attempt to re-reconcile nodes that failed to reconcile the first
 		// time through
@@ -95,11 +95,9 @@ func (rm *roleManager) Run(ctx context.Context) {
 		tickerCh <-chan time.Time
 	)
 
-	watcher, cancelWatch, err := rm.store.ViewAndWatch(
-		func(readTx store.ReadTx) error {
-			var err error
+	watcher, cancelWatch := rm.store.ViewAndWatch(
+		func(readTx store.ReadTx) {
 			nodes, err = store.FindNodes(readTx, store.All)
-			return err
 		},
 		api.EventUpdateNode{},
 		api.EventDeleteNode{})

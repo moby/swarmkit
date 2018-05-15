@@ -60,22 +60,23 @@ func (c *Collector) updateNodeState(prevNode, newNode *api.Node) {
 func (c *Collector) Run(ctx context.Context) error {
 	defer close(c.doneChan)
 
-	watcher, cancel, err := c.store.ViewAndWatch(
-		func(readTx store.ReadTx) error {
-			nodes, err := store.FindNodes(readTx, store.All)
+	var err error
+	watcher, cancel := c.store.ViewAndWatch(
+		func(readTx store.ReadTx) {
+			var nodes []*api.Node
+			nodes, err = store.FindNodes(readTx, store.All)
 			if err != nil {
-				return err
+				return
 			}
 			for _, node := range nodes {
 				c.updateNodeState(nil, node)
 			}
-			return nil
 		},
 	)
+	defer cancel()
 	if err != nil {
 		return err
 	}
-	defer cancel()
 
 	for {
 		select {

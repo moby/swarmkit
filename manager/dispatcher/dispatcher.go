@@ -232,14 +232,17 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 	if err := d.markNodesUnknown(ctx); err != nil {
 		log.G(ctx).Errorf(`failed to move all nodes to "unknown" state: %v`, err)
 	}
-	configWatcher, cancel, err := d.store.ViewAndWatch(
-		func(readTx store.ReadTx) error {
-			clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
+	var err error
+	configWatcher, cancel := d.store.ViewAndWatch(
+		func(readTx store.ReadTx) {
+			var clusters []*api.Cluster
+			clusters, err = store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
 			if err != nil {
-				return err
+				return
 			}
-			if err == nil && len(clusters) == 1 {
-				heartbeatPeriod, err := gogotypes.DurationFromProto(clusters[0].Spec.Dispatcher.HeartbeatPeriod)
+			if len(clusters) == 1 {
+				var heartbeatPeriod time.Duration
+				heartbeatPeriod, err = gogotypes.DurationFromProto(clusters[0].Spec.Dispatcher.HeartbeatPeriod)
 				if err == nil && heartbeatPeriod > 0 {
 					d.config.HeartbeatPeriod = heartbeatPeriod
 				}
@@ -248,10 +251,10 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 				}
 				d.lastSeenRootCert = clusters[0].RootCA.CACert
 			}
-			return nil
 		},
 		api.EventUpdateCluster{},
 	)
+	defer cancel()
 	if err != nil {
 		d.mu.Unlock()
 		return err
@@ -263,7 +266,6 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 	defer peerCancel()
 	d.lastSeenManagers = getWeightedPeers(d.cluster)
 
-	defer cancel()
 	d.ctx, d.cancel = context.WithCancel(ctx)
 	ctx = d.ctx
 	d.wg.Add(1)
@@ -785,16 +787,16 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 	}
 
 	tasksMap := make(map[string]*api.Task)
-	nodeTasks, cancel, err := d.store.ViewAndWatch(
-		func(readTx store.ReadTx) error {
-			tasks, err := store.FindTasks(readTx, store.ByNodeID(nodeID))
+	nodeTasks, cancel := d.store.ViewAndWatch(
+		func(readTx store.ReadTx) {
+			var tasks []*api.Task
+			tasks, err = store.FindTasks(readTx, store.ByNodeID(nodeID))
 			if err != nil {
-				return err
+				return
 			}
 			for _, t := range tasks {
 				tasksMap[t.ID] = t
 			}
-			return nil
 		},
 		api.EventCreateTask{Task: &api.Task{NodeID: nodeID},
 			Checks: []api.TaskCheckFunc{api.TaskCheckNodeID}},
@@ -803,10 +805,10 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 		api.EventDeleteTask{Task: &api.Task{NodeID: nodeID},
 			Checks: []api.TaskCheckFunc{api.TaskCheckNodeID}},
 	)
+	defer cancel()
 	if err != nil {
 		return err
 	}
-	defer cancel()
 
 	for {
 		if _, err := d.nodes.GetWithSession(nodeID, r.SessionID); err != nil {
@@ -928,28 +930,27 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 
 	// TODO(aaronl): Also send node secrets that should be exposed to
 	// this node.
-	nodeTasks, cancel, err := d.store.ViewAndWatch(
-		func(readTx store.ReadTx) error {
-			tasks, err := store.FindTasks(readTx, store.ByNodeID(nodeID))
+	nodeTasks, cancel := d.store.ViewAndWatch(
+		func(readTx store.ReadTx) {
+			var tasks []*api.Task
+			tasks, err = store.FindTasks(readTx, store.ByNodeID(nodeID))
 			if err != nil {
-				return err
+				return
 			}
 
 			for _, t := range tasks {
 				assignments.addOrUpdateTask(readTx, t)
 			}
-
-			return nil
 		},
 		api.EventUpdateTask{Task: &api.Task{NodeID: nodeID},
 			Checks: []api.TaskCheckFunc{api.TaskCheckNodeID}},
 		api.EventDeleteTask{Task: &api.Task{NodeID: nodeID},
 			Checks: []api.TaskCheckFunc{api.TaskCheckNodeID}},
 	)
+	defer cancel()
 	if err != nil {
 		return err
 	}
-	defer cancel()
 
 	if err := sendMessage(assignments.message(), api.AssignmentsMessage_COMPLETE); err != nil {
 		return err
@@ -1232,17 +1233,14 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 	log := log.G(ctx).WithFields(fields)
 
 	var nodeObj *api.Node
-	nodeUpdates, cancel, err := d.store.ViewAndWatch(
-		func(readTx store.ReadTx) error {
+	nodeUpdates, cancel := d.store.ViewAndWatch(
+		func(readTx store.ReadTx) {
 			nodeObj = store.GetNode(readTx, nodeID)
-			return nil
 		},
 		api.EventUpdateNode{Node: &api.Node{ID: nodeID},
 			Checks: []api.NodeCheckFunc{api.NodeCheckID}},
 	)
-	if cancel != nil {
-		defer cancel()
-	}
+	defer cancel()
 
 	if err != nil {
 		log.WithError(err).Error("ViewAndWatch Node failed")

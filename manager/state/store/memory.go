@@ -472,22 +472,16 @@ func (s *MemoryStore) View(cb func(ReadTx)) {
 // released with watch.StopWatch when it is no longer needed. The channel is
 // guaranteed to get all events after the moment of the snapshot, and only
 // those events.
-func (s *MemoryStore) ViewAndWatch(cb func(ReadTx) error, specifiers ...api.Event) (watch chan events.Event, cancel func(), err error) {
+func (s *MemoryStore) ViewAndWatch(cb func(ReadTx), specifiers ...api.Event) (watch chan events.Event, cancel func()) {
 	// Using Update to lock the store and guarantee consistency between
 	// the watcher and the the state seen by the callback. snapshotReadTx
 	// exposes this Tx as a ReadTx so the callback can't modify it.
-	err = s.Update(func(tx Tx) error {
-		if err := cb(tx); err != nil {
-			return err
-		}
-		watch, cancel = s.Queue().Watch(state.Matcher(specifiers...))
-		return nil
+	s.updateLock.Lock()
+	s.View(func(tx ReadTx) {
+		cb(tx)
+		watch, cancel = s.queue.Watch(state.Matcher(specifiers...))
 	})
-	if watch != nil && err != nil {
-		cancel()
-		cancel = nil
-		watch = nil
-	}
+	s.updateLock.Unlock()
 	return
 }
 

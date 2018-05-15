@@ -165,16 +165,12 @@ func (s *Server) NodeCertificateStatus(ctx context.Context, request *api.NodeCer
 	}
 
 	// Retrieve the current value of the certificate with this token, and create a watcher
-	updates, cancel, err := s.store.ViewAndWatch(
-		func(tx store.ReadTx) error {
+	updates, cancel := s.store.ViewAndWatch(
+		func(tx store.ReadTx) {
 			node = store.GetNode(tx, request.NodeID)
-			return nil
 		},
 		event,
 	)
-	if err != nil {
-		return nil, err
-	}
 	defer cancel()
 
 	// This node ID doesn't exist
@@ -441,14 +437,14 @@ func (s *Server) Run(ctx context.Context) error {
 		cluster *api.Cluster
 		err     error
 	)
-	updates, cancel, err := s.store.ViewAndWatch(
-		func(readTx store.ReadTx) error {
+	updates, cancel := s.store.ViewAndWatch(
+		func(readTx store.ReadTx) {
 			cluster = store.GetCluster(readTx, s.clusterID)
 			if cluster == nil {
-				return errors.New("could not find cluster object")
+				err = errors.New("could not find cluster object")
+			} else {
+				nodes, err = store.FindNodes(readTx, store.All)
 			}
-			nodes, err = store.FindNodes(readTx, store.All)
-			return err
 		},
 		api.EventCreateNode{},
 		api.EventUpdateNode{},
@@ -458,6 +454,7 @@ func (s *Server) Run(ctx context.Context) error {
 			Checks:  []api.ClusterCheckFunc{api.ClusterCheckID},
 		},
 	)
+	defer cancel()
 
 	// call once to ensure that the join tokens and local/external CA signer are always set
 	rootReconciler := &rootRotationReconciler{
@@ -481,7 +478,6 @@ func (s *Server) Run(ctx context.Context) error {
 		}).WithError(err).Errorf("snapshot store view failed")
 		return err
 	}
-	defer cancel()
 
 	// We might have missed some updates if there was a leader election,
 	// so let's pick up the slack.
