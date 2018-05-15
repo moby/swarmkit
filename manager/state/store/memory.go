@@ -533,61 +533,50 @@ func (s *MemoryStore) changelistBetweenVersions(from, to api.Version) ([]api.Eve
 //
 // The watch channel must be released with the cancel function provided when it
 // is no longer needed.
-func (s *MemoryStore) WatchFrom(version *api.Version, specifiers ...api.Event) (chan events.Event, func(), error) {
+func (s *MemoryStore) WatchFrom(version *api.Version, specifiers ...api.Event) (watch chan events.Event, cancel func(), err error) {
 	if version == nil {
-		ch, cancel := s.Watch(specifiers...)
-		return ch, cancel, nil
+		watch, cancel = s.Watch(specifiers...)
+		return
 	}
 
 	if s.proposer == nil {
 		return nil, nil, errors.New("store does not support versioning")
 	}
 
-	var (
-		curVersion  *api.Version
-		watch       chan events.Event
-		cancelWatch func()
+	// Get current version and watch for changes for the future
+	var curVersion  *api.Version
+	futureWatch, futureCancel := s.ViewAndWatch(
+		func(tx ReadTx) {
+			curVersion = s.proposer.GetVersion()
+		},
+		specifiers...,
 	)
-	// Using Update to lock the store
-	err := s.Update(func(tx Tx) error {
-		// Get current version
-		curVersion = s.proposer.GetVersion()
-		// Start the watch with the store locked so events cannot be
-		// missed
-		watch, cancelWatch = s.Watch(specifiers...)
-		return nil
-	})
-	if watch != nil && err != nil {
-		cancelWatch()
-		return nil, nil, err
-	}
 
 	if curVersion == nil {
-		cancelWatch()
+		futureCancel()
 		return nil, nil, errors.New("could not get current version from store")
 	}
 
 	changelist, err := s.changelistBetweenVersions(*version, *curVersion)
 	if err != nil {
-		cancelWatch()
+		futureCancel()
 		return nil, nil, err
 	}
 
-	ch := make(chan events.Event)
-	stop := make(chan struct{})
-	cancel := func() {
-		close(stop)
+	watch = make(chan events.Event)
+	stopChan := make(chan struct{})
+	cancel = func() {
+		futureCancel()
+		close(stopChan)
 	}
 
 	go func() {
-		defer cancelWatch()
-
 		matcher := state.Matcher(specifiers...)
 		for _, change := range changelist {
 			if matcher(change) {
 				select {
-				case ch <- change:
-				case <-stop:
+				case watch <- change:
+				case <-stopChan:
 					return
 				}
 			}
@@ -595,15 +584,15 @@ func (s *MemoryStore) WatchFrom(version *api.Version, specifiers ...api.Event) (
 
 		for {
 			select {
-			case <-stop:
+			case <-stopChan:
 				return
-			case e := <-watch:
-				ch <- e
+			case event := <-futureWatch:
+				watch <- event
 			}
 		}
 	}()
 
-	return ch, cancel, nil
+	return
 }
 
 // Tx is a read/write transaction. Note that transaction does not imply
