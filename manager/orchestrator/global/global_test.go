@@ -136,10 +136,10 @@ func TestSetup(t *testing.T) {
 	defer store.Close()
 
 	watch, cancel := store.Watch()
-	/*watch, cancel := store.Queue().Watch(state.Matcher(
+	/*watch, cancel := store.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
-	))*/
+	)*/
 	defer cancel()
 
 	orchestrator := setup(t, store, watch)
@@ -347,10 +347,10 @@ func TestRemoveTask(t *testing.T) {
 	defer store.Close()
 
 	watch, cancel := store.Watch()
-	/*watch, cancel := store.Queue().Watch(state.Matcher(
+	/*watch, cancel := store.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
-	))*/
+	)*/
 	defer cancel()
 
 	orchestrator := setup(t, store, watch)
@@ -383,10 +383,10 @@ func TestTaskFailure(t *testing.T) {
 	defer store.Close()
 
 	watch, cancel := store.Watch()
-	/*watch, cancel := store.Queue().Watch(state.Matcher(
+	/*watch, cancel := store.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
-	))*/
+	)*/
 	defer cancel()
 
 	// first, try a "restart on any" policy

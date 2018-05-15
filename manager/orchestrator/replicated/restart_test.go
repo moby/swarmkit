@@ -25,10 +25,10 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 	defer orchestrator.Stop()
 
 	watch, cancel := s.Watch()
-	/*watch, cancel := s.Queue().Watch(state.Matcher(
+	/*watch, cancel := s.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
-	))*/
+	)*/
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -397,10 +397,10 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 	defer orchestrator.Stop()
 
 	watch, cancel := s.Watch()
-	/*watch, cancel := s.Queue().Watch(state.Matcher(
+	/*watch, cancel := s.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
-	))*/
+	)*/
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -664,10 +664,10 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	defer orchestrator.Stop()
 
 	watch, cancel := s.Watch()
-	/*watch, cancel := s.Queue().Watch(state.Matcher(
+	/*watch, cancel := s.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
-	))*/
+	)*/
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is

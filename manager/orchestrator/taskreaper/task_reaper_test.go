@@ -224,10 +224,10 @@ func TestTaskHistory(t *testing.T) {
 	defer orchestrator.Stop()
 
 	watch, cancel := s.Watch()
-	/*watch, cancel := s.Queue().Watch(state.Matcher(
+	/*watch, cancel := s.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
-	))*/
+	)*/
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -494,10 +494,10 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	defer orchestrator.Stop()
 
 	watch, cancel := s.Watch()
-	/*watch, cancel := s.Queue().Watch(state.Matcher(
+	/*watch, cancel := s.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
-	))*/
+	)*/
 	defer cancel()
 
 	service1 := &api.Service{
@@ -635,10 +635,10 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	defer orchestrator.Stop()
 
 	watch, cancel := s.Watch()
-	/*watch, cancel := s.Queue().Watch(state.Matcher(
+	/*watch, cancel := s.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
-	))*/
+	)*/
 	defer cancel()
 
 	service1 := &api.Service{
@@ -793,10 +793,10 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 	defer orchestrator.Stop()
 
 	watch, cancel := s.Watch()
-	/*watch, cancel := s.Queue().Watch(state.Matcher(
+	/*watch, cancel := s.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
-	))*/
+	)*/
 	defer cancel()
 
 	service1 := &api.Service{
