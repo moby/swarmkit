@@ -983,9 +983,9 @@ func TestStreamRaftMessage(t *testing.T) {
 	assert.Error(t, err, "Received unexpected error EOF")
 
 	_, err = stream.CloseAndRecv()
-	errStr := fmt.Sprintf("grpc: received message length %d exceeding the max size %d", raftMsg.Size(), transport.GRPCMaxMsgSize)
+	errStr := fmt.Sprintf("grpc: received message larger than max (%d vs. %d)", raftMsg.Size(), transport.GRPCMaxMsgSize)
 	s, _ := status.FromError(err)
-	assert.Equal(t, codes.Internal, s.Code())
+	assert.Equal(t, codes.ResourceExhausted, s.Code())
 	assert.Equal(t, errStr, s.Message())
 
 	// Sending multiple snap messages with different indexes
