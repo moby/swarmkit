@@ -123,7 +123,7 @@ func TestConstraintEnforcer(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(api.EventUpdateTask{}))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	constraintEnforcer := New(s)

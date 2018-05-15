@@ -7,7 +7,6 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/orchestrator/testutils"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
@@ -39,20 +38,14 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 		failImage2 uint32
 	)
 
-	watchCreate, cancelCreate := s.Queue().Watch(state.Matcher(
-		api.EventCreateTask{},
-	))
+	watchCreate, cancelCreate := s.Watch(api.EventCreateTask{})
 	defer cancelCreate()
 
-	watchServiceUpdate, cancelServiceUpdate := s.Queue().Watch(state.Matcher(
-		api.EventUpdateService{},
-	))
+	watchServiceUpdate, cancelServiceUpdate := s.Watch(api.EventUpdateService{})
 	defer cancelServiceUpdate()
 
 	// Fail new tasks the updater tries to run
-	watchUpdate, cancelUpdate := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watchUpdate, cancelUpdate := s.Watch(api.EventUpdateTask{})
 	defer cancelUpdate()
 	go func() {
 		failedLast := false

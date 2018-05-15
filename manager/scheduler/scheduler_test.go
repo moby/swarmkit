@@ -12,7 +12,6 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -112,9 +111,7 @@ func TestScheduler(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -463,9 +460,7 @@ func testHA(t *testing.T, useSpecVersion bool) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -779,9 +774,7 @@ func testPreferences(t *testing.T, useSpecVersion bool) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1045,9 +1038,7 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1144,9 +1135,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1256,9 +1245,7 @@ func TestSchedulerFaultyNode(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1404,9 +1391,7 @@ func TestSchedulerFaultyNodeSpecVersion(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1589,9 +1574,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1751,9 +1734,7 @@ func TestSchedulerResourceConstraintHA(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1841,9 +1822,7 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -1945,9 +1924,7 @@ func TestSchedulerPreexistingDeadTask(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -2141,9 +2118,7 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -2275,9 +2250,7 @@ func TestPreassignedTasks(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -2376,9 +2349,7 @@ func TestIgnoreTasks(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -2760,9 +2731,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {
@@ -2933,9 +2902,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 		s := store.NewMemoryStore(nil)
 		scheduler := New(s)
 
-		watch, cancel := s.Queue().Watch(state.Matcher(
-			api.EventUpdateTask{},
-		))
+		watch, cancel := s.Watch(api.EventUpdateTask{})
 
 		go func() {
 			_ = scheduler.Run(ctx)
@@ -3136,9 +3103,7 @@ func TestSchedulerHostPort(t *testing.T) {
 
 	scheduler := New(s)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	go func() {

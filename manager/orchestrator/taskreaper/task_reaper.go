@@ -8,7 +8,6 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/orchestrator"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"golang.org/x/net/context"
 )
@@ -60,11 +59,11 @@ func New(store *store.MemoryStore) *TaskReaper {
 // responsible for cleaning up tasks associated with slots that were removed as part of
 // service scale down or service removal.
 func (tr *TaskReaper) Run(ctx context.Context) {
-	watcher, watchCancel := tr.store.Queue().Watch(state.Matcher(
+	watcher, watchCancel := tr.store.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 		api.EventUpdateCluster{},
-	))
+	)
 
 	defer func() {
 		close(tr.doneChan)

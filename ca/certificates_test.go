@@ -30,7 +30,6 @@ import (
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/connectionbroker"
 	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/remotes"
 	"github.com/docker/swarmkit/testutils"
@@ -683,9 +682,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	csr, _, err := ca.GenerateNewCSR()
 	require.NoError(t, err)
 
-	updates, cancel := tc.MemoryStore.Queue().Watch(state.Matcher(
-		api.EventCreateNode{},
-	))
+	updates, cancel := tc.MemoryStore.Watch(api.EventCreateNode{})
 	defer cancel()
 
 	fakeCAServer := newNonSigningCAServer(t, tc)

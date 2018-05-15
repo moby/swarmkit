@@ -469,9 +469,9 @@ func (s *MemoryStore) View(cb func(ReadTx)) {
 // ViewAndWatch calls a callback which can observe the state of this
 // MemoryStore. It also returns a channel that will return further events from
 // this point so the snapshot can be kept up to date. The watch channel must be
-// released with watch.StopWatch when it is no longer needed. The channel is
-// guaranteed to get all events after the moment of the snapshot, and only
-// those events.
+// released with cancel function provided when it is no longer needed.
+// The channel is guaranteed to get all events after the moment of the snapshot,
+// and only those events.
 func (s *MemoryStore) ViewAndWatch(cb func(ReadTx), specifiers ...api.Event) (watch chan events.Event, cancel func()) {
 	// Using Update to lock the store and guarantee consistency between
 	// the watcher and the the state seen by the callback. snapshotReadTx
@@ -479,10 +479,17 @@ func (s *MemoryStore) ViewAndWatch(cb func(ReadTx), specifiers ...api.Event) (wa
 	s.updateLock.Lock()
 	s.View(func(tx ReadTx) {
 		cb(tx)
-		watch, cancel = s.queue.Watch(state.Matcher(specifiers...))
+		watch, cancel = s.Watch(specifiers...)
 	})
 	s.updateLock.Unlock()
 	return
+}
+
+func (s *MemoryStore) Watch(specifiers ...api.Event) (watch chan events.Event, cancel func()) {
+	if len(specifiers) == 0 {
+		return s.queue.WatchAll()
+	}
+	return s.queue.Watch(state.Matcher(specifiers...))
 }
 
 // changelistBetweenVersions returns the changes after "from" up to and
@@ -516,17 +523,17 @@ func (s *MemoryStore) changelistBetweenVersions(from, to api.Version) ([]api.Eve
 // from "version", and new events until the channel is closed. If "version"
 // is nil, this function is equivalent to
 //
-//     store.Queue().Watch(state.Matcher(specifiers...))
+//     store.Watch(specifiers...)
 //
 // If the log has been compacted and it's not possible to produce the exact
 // set of events leading from "version" to the current state, this function
 // will return an error, and the caller should re-sync.
 //
-// The watch channel must be released with watch.StopWatch when it is no
-// longer needed.
+// The watch channel must be released with the cancel function provided when it
+// is no longer needed.
 func (s *MemoryStore) WatchFrom(version *api.Version, specifiers ...api.Event) (chan events.Event, func(), error) {
 	if version == nil {
-		ch, cancel := s.Queue().Watch(state.Matcher(specifiers...))
+		ch, cancel := s.Watch(specifiers...)
 		return ch, cancel, nil
 	}
 
@@ -545,7 +552,7 @@ func (s *MemoryStore) WatchFrom(version *api.Version, specifiers ...api.Event) (
 		curVersion = s.proposer.GetVersion()
 		// Start the watch with the store locked so events cannot be
 		// missed
-		watch, cancelWatch = s.Queue().Watch(state.Matcher(specifiers...))
+		watch, cancelWatch = s.Watch(specifiers...)
 		return nil
 	})
 	if watch != nil && err != nil {
@@ -918,11 +925,6 @@ func (s *MemoryStore) Restore(snapshot *api.StoreSnapshot) error {
 		}
 		return nil
 	})
-}
-
-// Queue returns the publish/subscribe queue.
-func (s *MemoryStore) Queue() *watch.Queue {
-	return s.queue
 }
 
 // ApplyStoreActions updates a store based on StoreAction messages.

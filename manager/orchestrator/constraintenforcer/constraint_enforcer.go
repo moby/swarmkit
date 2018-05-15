@@ -7,7 +7,6 @@ import (
 	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/constraint"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
 )
@@ -33,7 +32,7 @@ func New(store *store.MemoryStore) *ConstraintEnforcer {
 func (ce *ConstraintEnforcer) Run() {
 	defer close(ce.doneChan)
 
-	watcher, cancelWatch := ce.store.Queue().Watch(state.Matcher(api.EventUpdateNode{}))
+	watcher, cancelWatch := ce.store.Watch(api.EventUpdateNode{})
 	defer cancelWatch()
 
 	var (

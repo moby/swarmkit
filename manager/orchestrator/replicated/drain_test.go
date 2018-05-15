@@ -5,7 +5,6 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/orchestrator/testutils"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -206,9 +205,7 @@ func TestDrain(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 
 	orchestrator := NewReplicatedOrchestrator(s)

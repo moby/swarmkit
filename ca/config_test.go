@@ -23,7 +23,6 @@ import (
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/testutils"
 	"github.com/pkg/errors"
@@ -741,9 +740,7 @@ func TestRenewTLSConfigUpdatesRootNonUnknownAuthError(t *testing.T) {
 
 	signErr := make(chan error)
 	go func() {
-		updates, cancel := tc.MemoryStore.Queue().Watch(state.Matcher(
-			api.EventCreateNode{},
-		))
+		updates, cancel := tc.MemoryStore.Watch(api.EventCreateNode{})
 		defer cancel()
 		select {
 		case event := <-updates: // we want to skip the first node, which is the test CA

@@ -5,10 +5,9 @@ import (
 	"strings"
 	"sync"
 
-	events "github.com/docker/go-events"
+	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/watch"
 	"golang.org/x/net/context"
@@ -67,10 +66,10 @@ func (s *subscription) Run(ctx context.Context) {
 	s.ctx, s.cancel = context.WithCancel(ctx)
 
 	if s.follow() {
-		ch, cancel := s.store.Queue().Watch(state.Matcher(
+		ch, cancel := s.store.Watch(
 			api.EventCreateTask{},
 			api.EventUpdateTask{},
-		))
+		)
 		go func() {
 			defer cancel()
 			s.watch(ch)

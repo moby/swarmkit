@@ -6,7 +6,6 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
@@ -68,10 +67,10 @@ func TestIPAMNotNil(t *testing.T) {
 		return nil
 	}))
 
-	netWatch, cancel := s.Queue().Watch(state.Matcher(
+	netWatch, cancel := s.Watch(
 		api.EventUpdateNetwork{},
 		api.EventDeleteNetwork{},
-	))
+	)
 	defer cancel()
 
 	// Start allocator

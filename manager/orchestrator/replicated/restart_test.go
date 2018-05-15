@@ -24,7 +24,7 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.Queue().WatchAll()
+	watch, cancel := s.Watch()
 	/*watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
@@ -133,10 +133,10 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
+	watch, cancel := s.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
-	))
+	)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -260,10 +260,10 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
+	watch, cancel := s.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
-	))
+	)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -396,7 +396,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.Queue().WatchAll()
+	watch, cancel := s.Watch()
 	/*watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
@@ -492,10 +492,10 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
+	watch, cancel := s.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
-	))
+	)
 	defer cancel()
 
 	// Create a service with two instances specified before the orchestrator is
@@ -663,7 +663,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.Queue().WatchAll()
+	watch, cancel := s.Watch()
 	/*watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},

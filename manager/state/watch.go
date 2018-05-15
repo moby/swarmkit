@@ -70,9 +70,6 @@ func NodeCheckState(n1, n2 *api.Node) bool {
 // 	},
 // ))
 func Matcher(specifiers ...api.Event) events.MatcherFunc {
-	if len(specifiers) == 0 {
-		return nil
-	}
 	return events.MatcherFunc(func(event events.Event) bool {
 		for _, s := range specifiers {
 			if s.Matches(event) {

@@ -7,7 +7,6 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/orchestrator/restart"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
@@ -66,9 +65,7 @@ func TestUpdater(t *testing.T) {
 	defer s.Close()
 
 	// Move tasks to their desired state.
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 	go func() {
 		for e := range watch {
@@ -261,9 +258,7 @@ func TestUpdaterPlacement(t *testing.T) {
 	defer s.Close()
 
 	// Move tasks to their desired state.
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 	go func() {
 		for e := range watch {
@@ -375,9 +370,7 @@ func TestUpdaterFailureAction(t *testing.T) {
 	defer s.Close()
 
 	// Fail new tasks the updater tries to run
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 	go func() {
 		for e := range watch {
@@ -531,9 +524,7 @@ func TestUpdaterTaskTimeout(t *testing.T) {
 	defer s.Close()
 
 	// Move tasks to their desired state.
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 	go func() {
 		for e := range watch {
@@ -625,9 +616,7 @@ func TestUpdaterOrder(t *testing.T) {
 	assert.NotNil(t, s)
 
 	// Move tasks to their desired state.
-	watch, cancel := s.Queue().Watch(state.Matcher(
-		api.EventUpdateTask{},
-	))
+	watch, cancel := s.Watch(api.EventUpdateTask{})
 	defer cancel()
 	go func() {
 		for e := range watch {

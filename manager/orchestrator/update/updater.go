@@ -18,7 +18,6 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
-	"github.com/docker/swarmkit/watch"
 	gogotypes "github.com/gogo/protobuf/types"
 )
 
@@ -86,7 +85,6 @@ func (u *Supervisor) CancelAll() {
 // Updater updates a set of tasks to a new version.
 type Updater struct {
 	store    *store.MemoryStore
-	queue    *watch.Queue
 	restarts *restart.Supervisor
 
 	cluster    *api.Cluster
@@ -105,7 +103,6 @@ type Updater struct {
 func NewUpdater(store *store.MemoryStore, restartSupervisor *restart.Supervisor, cluster *api.Cluster, newService *api.Service) *Updater {
 	return &Updater{
 		store:        store,
-		queue:        store.Queue(),
 		restarts:     restartSupervisor,
 		cluster:      cluster.Copy(),
 		newService:   newService.Copy(),
@@ -203,12 +200,12 @@ func (u *Updater) Run(ctx context.Context, slots []orchestrator.Slot) {
 
 	if updateConfig.FailureAction != api.UpdateConfig_CONTINUE {
 		var cancelWatch func()
-		failedTaskWatch, cancelWatch = u.store.Queue().Watch(state.Matcher(
+		failedTaskWatch, cancelWatch = u.store.Watch(
 			api.EventUpdateTask{
 				Task:   &api.Task{ServiceID: service.ID, Status: api.TaskStatus{State: api.TaskStateRunning}},
 				Checks: []api.TaskCheckFunc{api.TaskCheckServiceID, state.TaskCheckStateGreaterThan},
 			},
-		))
+		)
 		defer cancelWatch()
 	}
 
@@ -361,12 +358,12 @@ func (u *Updater) worker(ctx context.Context, queue <-chan orchestrator.Slot, up
 
 func (u *Updater) updateTask(ctx context.Context, slot orchestrator.Slot, updated *api.Task, order api.UpdateConfig_UpdateOrder) error {
 	// Kick off the watch before even creating the updated task. This is in order to avoid missing any event.
-	taskUpdates, cancel := u.queue.Watch(state.Matcher(
+	taskUpdates, cancel := u.store.Watch(
 		api.EventUpdateTask{
 			Task:   &api.Task{ID: updated.ID},
 			Checks: []api.TaskCheckFunc{api.TaskCheckID},
 		},
-	))
+	)
 	defer cancel()
 
 	// Create an empty entry for this task, so the updater knows a failure

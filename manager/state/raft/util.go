@@ -6,9 +6,8 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -56,10 +55,10 @@ func WaitForLeader(ctx context.Context, n *Node) error {
 }
 
 // WaitForCluster waits until node observes that the cluster wide config is
-// committed to raft. This ensures that we can see and serve informations
+// committed to raft. This ensures that we can see and serve information
 // related to the cluster.
 func WaitForCluster(ctx context.Context, n *Node) (cluster *api.Cluster, err error) {
-	watch, cancel := n.MemoryStore().Queue().Watch(state.Matcher(api.EventCreateCluster{}))
+	watch, cancel := n.MemoryStore().Watch(api.EventCreateCluster{})
 	defer cancel()
 
 	var clusters []*api.Cluster

@@ -223,7 +223,7 @@ func TestTaskHistory(t *testing.T) {
 	orchestrator := replicated.NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.Queue().WatchAll()
+	watch, cancel := s.Watch()
 	/*watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
@@ -361,7 +361,7 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 	defer orchestrator.Stop()
 
 	// watch all incoming events
-	watch, cancel := s.Queue().WatchAll()
+	watch, cancel := s.Watch()
 	defer cancel()
 
 	service1 := &api.Service{
@@ -493,7 +493,7 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	orchestrator := replicated.NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.Queue().WatchAll()
+	watch, cancel := s.Watch()
 	/*watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
@@ -634,7 +634,7 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	orchestrator := replicated.NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.Queue().WatchAll()
+	watch, cancel := s.Watch()
 	/*watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
@@ -792,7 +792,7 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 	orchestrator := replicated.NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.Queue().WatchAll()
+	watch, cancel := s.Watch()
 	/*watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},

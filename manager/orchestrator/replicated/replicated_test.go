@@ -6,7 +6,6 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/orchestrator/testutils"
-	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
 	gogotypes "github.com/gogo/protobuf/types"
@@ -24,7 +23,7 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.Queue().WatchAll()
+	watch, cancel := s.Watch()
 	/*watch, cancel := s.Queue().Watch(state.Matcher(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
@@ -213,10 +212,10 @@ func TestReplicatedScaleDown(t *testing.T) {
 	orchestrator := NewReplicatedOrchestrator(s)
 	defer orchestrator.Stop()
 
-	watch, cancel := s.Queue().Watch(state.Matcher(
+	watch, cancel := s.Watch(
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},
-	))
+	)
 	defer cancel()
 
 	s1 := &api.Service{
@@ -554,11 +553,11 @@ func TestInitializationRejectedTasks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// watch orchestration events
-	watch, cancel := s.Queue().Watch(state.Matcher(
+	watch, cancel := s.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},
-	))
+	)
 	defer cancel()
 
 	orchestrator := NewReplicatedOrchestrator(s)
@@ -694,11 +693,11 @@ func TestInitializationFailedTasks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// watch orchestration events
-	watch, cancel := s.Queue().Watch(state.Matcher(
+	watch, cancel := s.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},
-	))
+	)
 	defer cancel()
 
 	orchestrator := NewReplicatedOrchestrator(s)
@@ -814,11 +813,11 @@ func TestInitializationNodeDown(t *testing.T) {
 	assert.NoError(t, err)
 
 	// watch orchestration events
-	watch, cancel := s.Queue().Watch(state.Matcher(
+	watch, cancel := s.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},
-	))
+	)
 	defer cancel()
 
 	orchestrator := NewReplicatedOrchestrator(s)
@@ -927,11 +926,11 @@ func TestInitializationDelayStart(t *testing.T) {
 	assert.NoError(t, err)
 
 	// watch orchestration events
-	watch, cancel := s.Queue().Watch(state.Matcher(
+	watch, cancel := s.Watch(
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 		api.EventDeleteTask{},
-	))
+	)
 	defer cancel()
 
 	orchestrator := NewReplicatedOrchestrator(s)
