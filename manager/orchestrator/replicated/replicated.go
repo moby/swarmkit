@@ -47,26 +47,25 @@ func NewReplicatedOrchestrator(store *store.MemoryStore) *Orchestrator {
 func (r *Orchestrator) Run(ctx context.Context) error {
 	defer close(r.doneChan)
 
-	// Watch changes to services and tasks
-	watcher, cancel := r.store.Watch()
-	defer cancel()
-
 	// Balance existing services and drain initial tasks attached to invalid
-	// nodes
+	// nodes and watch changes to services and tasks
 	var err error
-	r.store.View(func(readTx store.ReadTx) {
-		if err = r.initTasks(ctx, readTx); err != nil {
-			return
-		}
+	watcher, cancel := r.store.ViewAndWatch(
+		func(readTx store.ReadTx) {
+			if err = r.initTasks(ctx, readTx); err != nil {
+				return
+			}
 
-		if err = r.initServices(readTx); err != nil {
-			return
-		}
+			if err = r.initServices(readTx); err != nil {
+				return
+			}
 
-		if err = r.initCluster(readTx); err != nil {
-			return
-		}
-	})
+			if err = r.initCluster(readTx); err != nil {
+				return
+			}
+		},
+	)
+	defer cancel()
 	if err != nil {
 		return err
 	}

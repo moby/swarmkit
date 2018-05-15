@@ -58,28 +58,27 @@ func WaitForLeader(ctx context.Context, n *Node) error {
 // committed to raft. This ensures that we can see and serve information
 // related to the cluster.
 func WaitForCluster(ctx context.Context, n *Node) (cluster *api.Cluster, err error) {
-	watch, cancel := n.MemoryStore().Watch(api.EventCreateCluster{})
+	var clusters []*api.Cluster
+	watch, cancel := n.MemoryStore().ViewAndWatch(
+		func(readTx store.ReadTx) {
+			clusters, err = store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
+		},
+		api.EventCreateCluster{},
+	)
 	defer cancel()
 
-	var clusters []*api.Cluster
-	n.MemoryStore().View(func(readTx store.ReadTx) {
-		clusters, err = store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(clusters) == 1 {
-		cluster = clusters[0]
-	} else {
-		select {
-		case e := <-watch:
-			cluster = e.(api.EventCreateCluster).Cluster
-		case <-ctx.Done():
-			return nil, ctx.Err()
+	if err == nil {
+		if len(clusters) == 1 {
+			cluster = clusters[0]
+		} else {
+			select {
+			case e := <-watch:
+				cluster = e.(api.EventCreateCluster).Cluster
+			case <-ctx.Done():
+				err = ctx.Err()
+			}
 		}
 	}
 
-	return cluster, nil
+	return
 }

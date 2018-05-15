@@ -59,39 +59,38 @@ func New(store *store.MemoryStore) *TaskReaper {
 // responsible for cleaning up tasks associated with slots that were removed as part of
 // service scale down or service removal.
 func (tr *TaskReaper) Run(ctx context.Context) {
-	watcher, watchCancel := tr.store.Watch(
+	defer close(tr.doneChan)
+
+	var (
+		orphanedTasks []*api.Task
+		removeTasks []*api.Task
+	)
+	watcher, watchCancel := tr.store.ViewAndWatch(
+		func(readTx store.ReadTx) {
+			var err error
+
+			clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
+			if err == nil && len(clusters) == 1 {
+				tr.taskHistory = clusters[0].Spec.Orchestration.TaskHistoryRetentionLimit
+			}
+
+			// On startup, scan the entire store and inspect orphaned tasks from previous life.
+			orphanedTasks, err = store.FindTasks(readTx, store.ByTaskState(api.TaskStateOrphaned))
+			if err != nil {
+				log.G(ctx).WithError(err).Error("failed to find Orphaned tasks in task reaper init")
+			}
+			removeTasks, err = store.FindTasks(readTx, store.ByDesiredState(api.TaskStateRemove))
+			if err != nil {
+				log.G(ctx).WithError(err).Error("failed to find tasks with desired state REMOVE in task reaper init")
+			}
+		},
 		api.EventCreateTask{},
 		api.EventUpdateTask{},
 		api.EventUpdateCluster{},
 	)
+	defer watchCancel()
 
-	defer func() {
-		close(tr.doneChan)
-		watchCancel()
-	}()
-
-	var orphanedTasks []*api.Task
-	var removeTasks []*api.Task
-	tr.store.View(func(readTx store.ReadTx) {
-		var err error
-
-		clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
-		if err == nil && len(clusters) == 1 {
-			tr.taskHistory = clusters[0].Spec.Orchestration.TaskHistoryRetentionLimit
-		}
-
-		// On startup, scan the entire store and inspect orphaned tasks from previous life.
-		orphanedTasks, err = store.FindTasks(readTx, store.ByTaskState(api.TaskStateOrphaned))
-		if err != nil {
-			log.G(ctx).WithError(err).Error("failed to find Orphaned tasks in task reaper init")
-		}
-		removeTasks, err = store.FindTasks(readTx, store.ByDesiredState(api.TaskStateRemove))
-		if err != nil {
-			log.G(ctx).WithError(err).Error("failed to find tasks with desired state REMOVE in task reaper init")
-		}
-	})
-
-	if len(orphanedTasks)+len(removeTasks) > 0 {
+	if len(orphanedTasks) + len(removeTasks) > 0 {
 		for _, t := range orphanedTasks {
 			// Do not reap service tasks immediately.
 			// Let them go through the regular history cleanup process

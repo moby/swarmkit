@@ -64,23 +64,22 @@ func (g *Orchestrator) initTasks(ctx context.Context, readTx store.ReadTx) error
 func (g *Orchestrator) Run(ctx context.Context) error {
 	defer close(g.doneChan)
 
-	// Watch changes to services and tasks
-	watcher, cancel := g.store.Watch()
+	// Lookup the cluster and watch changes to services and tasks
+	var (
+		clusters []*api.Cluster
+		err      error
+	)
+	watcher, cancel := g.store.ViewAndWatch(
+		func(readTx store.ReadTx) {
+			clusters, err = store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
+		},
+	)
 	defer cancel()
-
-	// lookup the cluster
-	var err error
-	g.store.View(func(readTx store.ReadTx) {
-		var clusters []*api.Cluster
-		clusters, err = store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
-
-		if len(clusters) != 1 {
-			return // just pick up the cluster when it is created.
-		}
-		g.cluster = clusters[0]
-	})
 	if err != nil {
 		return err
+	}
+	if len(clusters) == 1 {
+		g.cluster = clusters[0]
 	}
 
 	// Get list of nodes

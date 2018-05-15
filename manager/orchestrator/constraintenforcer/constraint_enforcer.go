@@ -32,16 +32,17 @@ func New(store *store.MemoryStore) *ConstraintEnforcer {
 func (ce *ConstraintEnforcer) Run() {
 	defer close(ce.doneChan)
 
-	watcher, cancelWatch := ce.store.Watch(api.EventUpdateNode{})
-	defer cancelWatch()
-
 	var (
 		nodes []*api.Node
 		err   error
 	)
-	ce.store.View(func(readTx store.ReadTx) {
-		nodes, err = store.FindNodes(readTx, store.All)
-	})
+	watcher, cancelWatch := ce.store.ViewAndWatch(
+		func(readTx store.ReadTx) {
+			nodes, err = store.FindNodes(readTx, store.All)
+		},
+		api.EventUpdateNode{},
+	)
+	defer cancelWatch()
 	if err != nil {
 		log.L.WithError(err).Error("failed to check nodes for noncompliant tasks")
 	} else {
