@@ -1760,7 +1760,9 @@ func TestWatchFrom(t *testing.T) {
 	assert.Error(t, err)
 
 	watch1, cancel1, err := s.WatchFrom(&api.Version{Index: 10},
-	api.EventCreateNode{}, state.EventCommit{})
+		api.EventCreateNode{},
+		state.EventCommit{},
+	)
 	require.NoError(t, err)
 	defer cancel1()
 
@@ -1791,7 +1793,9 @@ func TestWatchFrom(t *testing.T) {
 	}
 
 	watch2, cancel2, err := s.WatchFrom(&api.Version{Index: 13},
-	api.EventCreateService{}, state.EventCommit{})
+		api.EventCreateService{},
+		state.EventCommit{},
+	)
 	require.NoError(t, err)
 	defer cancel2()
 

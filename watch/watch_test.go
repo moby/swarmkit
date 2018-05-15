@@ -18,7 +18,8 @@ func TestTimeoutLimitWatch(t *testing.T) {
 	watch, cancel := q.WatchAll()
 	doneChan := make(chan struct{})
 	go func() {
-		for range watch {}
+		for range watch {
+		}
 		close(doneChan)
 	}()
 	cancel()

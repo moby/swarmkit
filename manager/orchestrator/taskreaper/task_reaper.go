@@ -63,7 +63,7 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 
 	var (
 		orphanedTasks []*api.Task
-		removeTasks []*api.Task
+		removeTasks   []*api.Task
 	)
 	watcher, watchCancel := tr.store.ViewAndWatch(
 		func(readTx store.ReadTx) {
@@ -90,7 +90,7 @@ func (tr *TaskReaper) Run(ctx context.Context) {
 	)
 	defer watchCancel()
 
-	if len(orphanedTasks) + len(removeTasks) > 0 {
+	if len(orphanedTasks)+len(removeTasks) > 0 {
 		for _, t := range orphanedTasks {
 			// Do not reap service tasks immediately.
 			// Let them go through the regular history cleanup process

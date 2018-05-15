@@ -544,7 +544,7 @@ func (s *MemoryStore) WatchFrom(version *api.Version, specifiers ...api.Event) (
 	}
 
 	// Get current version and watch for changes for the future
-	var curVersion  *api.Version
+	var curVersion *api.Version
 	futureWatch, futureCancel := s.ViewAndWatch(
 		func(tx ReadTx) {
 			curVersion = s.proposer.GetVersion()
