@@ -469,7 +469,7 @@ func (s *MemoryStore) View(cb func(ReadTx)) {
 // ViewAndWatch calls a callback which can observe the state of this
 // MemoryStore. It also returns a channel that will return further events from
 // this point so the snapshot can be kept up to date. The watch channel must be
-// released with cancel function provided when it is no longer needed.
+// released with the cancel function provided when it is no longer needed.
 // The channel is guaranteed to get all events after the moment of the snapshot,
 // and only those events.
 func (s *MemoryStore) ViewAndWatch(cb func(ReadTx), specifiers ...api.Event) (watch chan events.Event, cancel func()) {
@@ -485,6 +485,8 @@ func (s *MemoryStore) ViewAndWatch(cb func(ReadTx), specifiers ...api.Event) (wa
 	return
 }
 
+// Watch returns a channel that will return events. The watch channel must be
+// released with the cancel function provided when it is no longer needed.
 func (s *MemoryStore) Watch(specifiers ...api.Event) (watch chan events.Event, cancel func()) {
 	if len(specifiers) == 0 {
 		return s.queue.WatchAll()
