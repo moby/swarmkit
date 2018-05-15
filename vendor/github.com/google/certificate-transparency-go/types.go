@@ -54,6 +54,12 @@ func (e LogEntryType) String() string {
 	}
 }
 
+// RFC6962 section 2.1 requires a prefix byte on hash inputs for second preimage resistance.
+const (
+	TreeLeafPrefix = byte(0x00)
+	TreeNodePrefix = byte(0x01)
+)
+
 // MerkleLeafType represents the MerkleLeafType enum from section 3.4:
 //   enum { timestamped_entry(0), (255) } MerkleLeafType;
 type MerkleLeafType tls.Enum // tls:"maxval:255"
