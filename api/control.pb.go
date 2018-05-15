@@ -9,12 +9,10 @@ import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 
-import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
-import (
-	context "golang.org/x/net/context"
-	grpc "google.golang.org/grpc"
-)
+import context "golang.org/x/net/context"
+import grpc "google.golang.org/grpc"
 
 import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
@@ -25,7 +23,7 @@ import rafttime "time"
 
 import strings "strings"
 import reflect "reflect"
-import github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
+import sortkeys "github.com/gogo/protobuf/sortkeys"
 
 import io "io"
 
@@ -1054,7 +1052,7 @@ func (m *GetNodeResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Node != nil {
 		m.Node = &Node{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Node, o.Node)
+		deepcopy.Copy(m.Node, o.Node)
 	}
 }
 
@@ -1073,7 +1071,7 @@ func (m *ListNodesRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Filters != nil {
 		m.Filters = &ListNodesRequest_Filters{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
+		deepcopy.Copy(m.Filters, o.Filters)
 	}
 }
 
@@ -1141,7 +1139,7 @@ func (m *ListNodesResponse) CopyFrom(src interface{}) {
 		m.Nodes = make([]*Node, len(o.Nodes))
 		for i := range m.Nodes {
 			m.Nodes[i] = &Node{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Nodes[i], o.Nodes[i])
+			deepcopy.Copy(m.Nodes[i], o.Nodes[i])
 		}
 	}
 
@@ -1162,11 +1160,11 @@ func (m *UpdateNodeRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.NodeVersion != nil {
 		m.NodeVersion = &Version{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.NodeVersion, o.NodeVersion)
+		deepcopy.Copy(m.NodeVersion, o.NodeVersion)
 	}
 	if o.Spec != nil {
 		m.Spec = &NodeSpec{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+		deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -1185,7 +1183,7 @@ func (m *UpdateNodeResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Node != nil {
 		m.Node = &Node{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Node, o.Node)
+		deepcopy.Copy(m.Node, o.Node)
 	}
 }
 
@@ -1244,7 +1242,7 @@ func (m *GetTaskResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Task != nil {
 		m.Task = &Task{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Task, o.Task)
+		deepcopy.Copy(m.Task, o.Task)
 	}
 }
 
@@ -1288,7 +1286,7 @@ func (m *ListTasksRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Filters != nil {
 		m.Filters = &ListTasksRequest_Filters{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
+		deepcopy.Copy(m.Filters, o.Filters)
 	}
 }
 
@@ -1366,7 +1364,7 @@ func (m *ListTasksResponse) CopyFrom(src interface{}) {
 		m.Tasks = make([]*Task, len(o.Tasks))
 		for i := range m.Tasks {
 			m.Tasks[i] = &Task{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Tasks[i], o.Tasks[i])
+			deepcopy.Copy(m.Tasks[i], o.Tasks[i])
 		}
 	}
 
@@ -1387,7 +1385,7 @@ func (m *CreateServiceRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Spec != nil {
 		m.Spec = &ServiceSpec{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+		deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -1406,7 +1404,7 @@ func (m *CreateServiceResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Service != nil {
 		m.Service = &Service{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Service, o.Service)
+		deepcopy.Copy(m.Service, o.Service)
 	}
 }
 
@@ -1440,7 +1438,7 @@ func (m *GetServiceResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Service != nil {
 		m.Service = &Service{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Service, o.Service)
+		deepcopy.Copy(m.Service, o.Service)
 	}
 }
 
@@ -1459,11 +1457,11 @@ func (m *UpdateServiceRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.ServiceVersion != nil {
 		m.ServiceVersion = &Version{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.ServiceVersion, o.ServiceVersion)
+		deepcopy.Copy(m.ServiceVersion, o.ServiceVersion)
 	}
 	if o.Spec != nil {
 		m.Spec = &ServiceSpec{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+		deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -1482,7 +1480,7 @@ func (m *UpdateServiceResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Service != nil {
 		m.Service = &Service{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Service, o.Service)
+		deepcopy.Copy(m.Service, o.Service)
 	}
 }
 
@@ -1526,7 +1524,7 @@ func (m *ListServicesRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Filters != nil {
 		m.Filters = &ListServicesRequest_Filters{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
+		deepcopy.Copy(m.Filters, o.Filters)
 	}
 }
 
@@ -1589,7 +1587,7 @@ func (m *ListServicesResponse) CopyFrom(src interface{}) {
 		m.Services = make([]*Service, len(o.Services))
 		for i := range m.Services {
 			m.Services[i] = &Service{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Services[i], o.Services[i])
+			deepcopy.Copy(m.Services[i], o.Services[i])
 		}
 	}
 
@@ -1610,7 +1608,7 @@ func (m *CreateNetworkRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Spec != nil {
 		m.Spec = &NetworkSpec{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+		deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -1629,7 +1627,7 @@ func (m *CreateNetworkResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Network != nil {
 		m.Network = &Network{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Network, o.Network)
+		deepcopy.Copy(m.Network, o.Network)
 	}
 }
 
@@ -1663,7 +1661,7 @@ func (m *GetNetworkResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Network != nil {
 		m.Network = &Network{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Network, o.Network)
+		deepcopy.Copy(m.Network, o.Network)
 	}
 }
 
@@ -1707,7 +1705,7 @@ func (m *ListNetworksRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Filters != nil {
 		m.Filters = &ListNetworksRequest_Filters{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
+		deepcopy.Copy(m.Filters, o.Filters)
 	}
 }
 
@@ -1765,7 +1763,7 @@ func (m *ListNetworksResponse) CopyFrom(src interface{}) {
 		m.Networks = make([]*Network, len(o.Networks))
 		for i := range m.Networks {
 			m.Networks[i] = &Network{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Networks[i], o.Networks[i])
+			deepcopy.Copy(m.Networks[i], o.Networks[i])
 		}
 	}
 
@@ -1801,7 +1799,7 @@ func (m *GetClusterResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Cluster != nil {
 		m.Cluster = &Cluster{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Cluster, o.Cluster)
+		deepcopy.Copy(m.Cluster, o.Cluster)
 	}
 }
 
@@ -1820,7 +1818,7 @@ func (m *ListClustersRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Filters != nil {
 		m.Filters = &ListClustersRequest_Filters{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
+		deepcopy.Copy(m.Filters, o.Filters)
 	}
 }
 
@@ -1878,7 +1876,7 @@ func (m *ListClustersResponse) CopyFrom(src interface{}) {
 		m.Clusters = make([]*Cluster, len(o.Clusters))
 		for i := range m.Clusters {
 			m.Clusters[i] = &Cluster{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Clusters[i], o.Clusters[i])
+			deepcopy.Copy(m.Clusters[i], o.Clusters[i])
 		}
 	}
 
@@ -1914,13 +1912,13 @@ func (m *UpdateClusterRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.ClusterVersion != nil {
 		m.ClusterVersion = &Version{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.ClusterVersion, o.ClusterVersion)
+		deepcopy.Copy(m.ClusterVersion, o.ClusterVersion)
 	}
 	if o.Spec != nil {
 		m.Spec = &ClusterSpec{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+		deepcopy.Copy(m.Spec, o.Spec)
 	}
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Rotation, &o.Rotation)
+	deepcopy.Copy(&m.Rotation, &o.Rotation)
 }
 
 func (m *UpdateClusterResponse) Copy() *UpdateClusterResponse {
@@ -1938,7 +1936,7 @@ func (m *UpdateClusterResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Cluster != nil {
 		m.Cluster = &Cluster{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Cluster, o.Cluster)
+		deepcopy.Copy(m.Cluster, o.Cluster)
 	}
 }
 
@@ -1972,7 +1970,7 @@ func (m *GetSecretResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Secret != nil {
 		m.Secret = &Secret{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Secret, o.Secret)
+		deepcopy.Copy(m.Secret, o.Secret)
 	}
 }
 
@@ -1991,11 +1989,11 @@ func (m *UpdateSecretRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.SecretVersion != nil {
 		m.SecretVersion = &Version{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.SecretVersion, o.SecretVersion)
+		deepcopy.Copy(m.SecretVersion, o.SecretVersion)
 	}
 	if o.Spec != nil {
 		m.Spec = &SecretSpec{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+		deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -2014,7 +2012,7 @@ func (m *UpdateSecretResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Secret != nil {
 		m.Secret = &Secret{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Secret, o.Secret)
+		deepcopy.Copy(m.Secret, o.Secret)
 	}
 }
 
@@ -2033,7 +2031,7 @@ func (m *ListSecretsRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Filters != nil {
 		m.Filters = &ListSecretsRequest_Filters{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
+		deepcopy.Copy(m.Filters, o.Filters)
 	}
 }
 
@@ -2091,7 +2089,7 @@ func (m *ListSecretsResponse) CopyFrom(src interface{}) {
 		m.Secrets = make([]*Secret, len(o.Secrets))
 		for i := range m.Secrets {
 			m.Secrets[i] = &Secret{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Secrets[i], o.Secrets[i])
+			deepcopy.Copy(m.Secrets[i], o.Secrets[i])
 		}
 	}
 
@@ -2112,7 +2110,7 @@ func (m *CreateSecretRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Spec != nil {
 		m.Spec = &SecretSpec{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+		deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -2131,7 +2129,7 @@ func (m *CreateSecretResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Secret != nil {
 		m.Secret = &Secret{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Secret, o.Secret)
+		deepcopy.Copy(m.Secret, o.Secret)
 	}
 }
 
@@ -2190,7 +2188,7 @@ func (m *GetConfigResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Config != nil {
 		m.Config = &Config{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Config, o.Config)
+		deepcopy.Copy(m.Config, o.Config)
 	}
 }
 
@@ -2209,11 +2207,11 @@ func (m *UpdateConfigRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.ConfigVersion != nil {
 		m.ConfigVersion = &Version{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.ConfigVersion, o.ConfigVersion)
+		deepcopy.Copy(m.ConfigVersion, o.ConfigVersion)
 	}
 	if o.Spec != nil {
 		m.Spec = &ConfigSpec{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+		deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -2232,7 +2230,7 @@ func (m *UpdateConfigResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Config != nil {
 		m.Config = &Config{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Config, o.Config)
+		deepcopy.Copy(m.Config, o.Config)
 	}
 }
 
@@ -2251,7 +2249,7 @@ func (m *ListConfigsRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Filters != nil {
 		m.Filters = &ListConfigsRequest_Filters{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
+		deepcopy.Copy(m.Filters, o.Filters)
 	}
 }
 
@@ -2309,7 +2307,7 @@ func (m *ListConfigsResponse) CopyFrom(src interface{}) {
 		m.Configs = make([]*Config, len(o.Configs))
 		for i := range m.Configs {
 			m.Configs[i] = &Config{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Configs[i], o.Configs[i])
+			deepcopy.Copy(m.Configs[i], o.Configs[i])
 		}
 	}
 
@@ -2330,7 +2328,7 @@ func (m *CreateConfigRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Spec != nil {
 		m.Spec = &ConfigSpec{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+		deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -2349,7 +2347,7 @@ func (m *CreateConfigResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Config != nil {
 		m.Config = &Config{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Config, o.Config)
+		deepcopy.Copy(m.Config, o.Config)
 	}
 }
 
@@ -7879,7 +7877,7 @@ func (this *ListNodesRequest_Filters) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
+	sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -8005,7 +8003,7 @@ func (this *ListTasksRequest_Filters) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
+	sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -8136,7 +8134,7 @@ func (this *ListServicesRequest_Filters) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
+	sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -8241,7 +8239,7 @@ func (this *ListNetworksRequest_Filters) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
+	sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -8304,7 +8302,7 @@ func (this *ListClustersRequest_Filters) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
+	sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -8424,7 +8422,7 @@ func (this *ListSecretsRequest_Filters) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
+	sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -8548,7 +8546,7 @@ func (this *ListConfigsRequest_Filters) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
+	sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])

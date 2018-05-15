@@ -11,12 +11,10 @@ import raftpb "github.com/coreos/etcd/raft/raftpb"
 // skipping weak import gogoproto "github.com/gogo/protobuf/gogoproto"
 // skipping weak import docker_protobuf_plugin "github.com/docker/swarmkit/protobuf/plugin"
 
-import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
-import (
-	context "golang.org/x/net/context"
-	grpc "google.golang.org/grpc"
-)
+import context "golang.org/x/net/context"
+import grpc "google.golang.org/grpc"
 
 import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
@@ -615,7 +613,7 @@ func (m *RaftMember) CopyFrom(src interface{}) {
 
 	o := src.(*RaftMember)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Status, &o.Status)
+	deepcopy.Copy(&m.Status, &o.Status)
 }
 
 func (m *JoinRequest) Copy() *JoinRequest {
@@ -650,7 +648,7 @@ func (m *JoinResponse) CopyFrom(src interface{}) {
 		m.Members = make([]*RaftMember, len(o.Members))
 		for i := range m.Members {
 			m.Members[i] = &RaftMember{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Members[i], o.Members[i])
+			deepcopy.Copy(m.Members[i], o.Members[i])
 		}
 	}
 
@@ -676,7 +674,7 @@ func (m *LeaveRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Node != nil {
 		m.Node = &RaftMember{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Node, o.Node)
+		deepcopy.Copy(m.Node, o.Node)
 	}
 }
 
@@ -756,7 +754,7 @@ func (m *InternalRaftRequest) CopyFrom(src interface{}) {
 	if o.Action != nil {
 		m.Action = make([]StoreAction, len(o.Action))
 		for i := range m.Action {
-			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Action[i], &o.Action[i])
+			deepcopy.Copy(&m.Action[i], &o.Action[i])
 		}
 	}
 
@@ -781,55 +779,55 @@ func (m *StoreAction) CopyFrom(src interface{}) {
 			v := StoreAction_Node{
 				Node: &Node{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Node, o.GetNode())
+			deepcopy.Copy(v.Node, o.GetNode())
 			m.Target = &v
 		case *StoreAction_Service:
 			v := StoreAction_Service{
 				Service: &Service{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Service, o.GetService())
+			deepcopy.Copy(v.Service, o.GetService())
 			m.Target = &v
 		case *StoreAction_Task:
 			v := StoreAction_Task{
 				Task: &Task{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Task, o.GetTask())
+			deepcopy.Copy(v.Task, o.GetTask())
 			m.Target = &v
 		case *StoreAction_Network:
 			v := StoreAction_Network{
 				Network: &Network{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Network, o.GetNetwork())
+			deepcopy.Copy(v.Network, o.GetNetwork())
 			m.Target = &v
 		case *StoreAction_Cluster:
 			v := StoreAction_Cluster{
 				Cluster: &Cluster{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Cluster, o.GetCluster())
+			deepcopy.Copy(v.Cluster, o.GetCluster())
 			m.Target = &v
 		case *StoreAction_Secret:
 			v := StoreAction_Secret{
 				Secret: &Secret{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Secret, o.GetSecret())
+			deepcopy.Copy(v.Secret, o.GetSecret())
 			m.Target = &v
 		case *StoreAction_Resource:
 			v := StoreAction_Resource{
 				Resource: &Resource{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Resource, o.GetResource())
+			deepcopy.Copy(v.Resource, o.GetResource())
 			m.Target = &v
 		case *StoreAction_Extension:
 			v := StoreAction_Extension{
 				Extension: &Extension{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Extension, o.GetExtension())
+			deepcopy.Copy(v.Extension, o.GetExtension())
 			m.Target = &v
 		case *StoreAction_Config:
 			v := StoreAction_Config{
 				Config: &Config{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Config, o.GetConfig())
+			deepcopy.Copy(v.Config, o.GetConfig())
 			m.Target = &v
 		}
 	}

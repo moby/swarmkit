@@ -9,7 +9,7 @@ import math "math"
 
 // skipping weak import gogoproto "github.com/gogo/protobuf/gogoproto"
 
-import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import strings "strings"
 import reflect "reflect"
@@ -101,7 +101,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Nodes = make([]*Node, len(o.Nodes))
 		for i := range m.Nodes {
 			m.Nodes[i] = &Node{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Nodes[i], o.Nodes[i])
+			deepcopy.Copy(m.Nodes[i], o.Nodes[i])
 		}
 	}
 
@@ -109,7 +109,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Services = make([]*Service, len(o.Services))
 		for i := range m.Services {
 			m.Services[i] = &Service{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Services[i], o.Services[i])
+			deepcopy.Copy(m.Services[i], o.Services[i])
 		}
 	}
 
@@ -117,7 +117,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Networks = make([]*Network, len(o.Networks))
 		for i := range m.Networks {
 			m.Networks[i] = &Network{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Networks[i], o.Networks[i])
+			deepcopy.Copy(m.Networks[i], o.Networks[i])
 		}
 	}
 
@@ -125,7 +125,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Tasks = make([]*Task, len(o.Tasks))
 		for i := range m.Tasks {
 			m.Tasks[i] = &Task{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Tasks[i], o.Tasks[i])
+			deepcopy.Copy(m.Tasks[i], o.Tasks[i])
 		}
 	}
 
@@ -133,7 +133,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Clusters = make([]*Cluster, len(o.Clusters))
 		for i := range m.Clusters {
 			m.Clusters[i] = &Cluster{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Clusters[i], o.Clusters[i])
+			deepcopy.Copy(m.Clusters[i], o.Clusters[i])
 		}
 	}
 
@@ -141,7 +141,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Secrets = make([]*Secret, len(o.Secrets))
 		for i := range m.Secrets {
 			m.Secrets[i] = &Secret{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Secrets[i], o.Secrets[i])
+			deepcopy.Copy(m.Secrets[i], o.Secrets[i])
 		}
 	}
 
@@ -149,7 +149,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Resources = make([]*Resource, len(o.Resources))
 		for i := range m.Resources {
 			m.Resources[i] = &Resource{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Resources[i], o.Resources[i])
+			deepcopy.Copy(m.Resources[i], o.Resources[i])
 		}
 	}
 
@@ -157,7 +157,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Extensions = make([]*Extension, len(o.Extensions))
 		for i := range m.Extensions {
 			m.Extensions[i] = &Extension{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Extensions[i], o.Extensions[i])
+			deepcopy.Copy(m.Extensions[i], o.Extensions[i])
 		}
 	}
 
@@ -165,7 +165,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Configs = make([]*Config, len(o.Configs))
 		for i := range m.Configs {
 			m.Configs[i] = &Config{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Configs[i], o.Configs[i])
+			deepcopy.Copy(m.Configs[i], o.Configs[i])
 		}
 	}
 
@@ -188,7 +188,7 @@ func (m *ClusterSnapshot) CopyFrom(src interface{}) {
 		m.Members = make([]*RaftMember, len(o.Members))
 		for i := range m.Members {
 			m.Members[i] = &RaftMember{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Members[i], o.Members[i])
+			deepcopy.Copy(m.Members[i], o.Members[i])
 		}
 	}
 
@@ -212,8 +212,8 @@ func (m *Snapshot) CopyFrom(src interface{}) {
 
 	o := src.(*Snapshot)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Membership, &o.Membership)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Store, &o.Store)
+	deepcopy.Copy(&m.Membership, &o.Membership)
+	deepcopy.Copy(&m.Store, &o.Store)
 }
 
 func (m *StoreSnapshot) Marshal() (dAtA []byte, err error) {

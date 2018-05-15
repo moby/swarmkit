@@ -11,11 +11,11 @@ import google_protobuf1 "github.com/gogo/protobuf/types"
 import google_protobuf3 "github.com/gogo/protobuf/types"
 import google_protobuf4 "github.com/gogo/protobuf/types"
 
-import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import strings "strings"
 import reflect "reflect"
-import github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
+import sortkeys "github.com/gogo/protobuf/sortkeys"
 
 import io "io"
 
@@ -884,7 +884,7 @@ func (m *NodeSpec) CopyFrom(src interface{}) {
 
 	o := src.(*NodeSpec)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
+	deepcopy.Copy(&m.Annotations, &o.Annotations)
 }
 
 func (m *ServiceSpec) Copy() *ServiceSpec {
@@ -900,27 +900,27 @@ func (m *ServiceSpec) CopyFrom(src interface{}) {
 
 	o := src.(*ServiceSpec)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Task, &o.Task)
+	deepcopy.Copy(&m.Annotations, &o.Annotations)
+	deepcopy.Copy(&m.Task, &o.Task)
 	if o.Update != nil {
 		m.Update = &UpdateConfig{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Update, o.Update)
+		deepcopy.Copy(m.Update, o.Update)
 	}
 	if o.Rollback != nil {
 		m.Rollback = &UpdateConfig{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Rollback, o.Rollback)
+		deepcopy.Copy(m.Rollback, o.Rollback)
 	}
 	if o.Networks != nil {
 		m.Networks = make([]*NetworkAttachmentConfig, len(o.Networks))
 		for i := range m.Networks {
 			m.Networks[i] = &NetworkAttachmentConfig{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Networks[i], o.Networks[i])
+			deepcopy.Copy(m.Networks[i], o.Networks[i])
 		}
 	}
 
 	if o.Endpoint != nil {
 		m.Endpoint = &EndpointSpec{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Endpoint, o.Endpoint)
+		deepcopy.Copy(m.Endpoint, o.Endpoint)
 	}
 	if o.Mode != nil {
 		switch o.Mode.(type) {
@@ -928,13 +928,13 @@ func (m *ServiceSpec) CopyFrom(src interface{}) {
 			v := ServiceSpec_Replicated{
 				Replicated: &ReplicatedService{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Replicated, o.GetReplicated())
+			deepcopy.Copy(v.Replicated, o.GetReplicated())
 			m.Mode = &v
 		case *ServiceSpec_Global:
 			v := ServiceSpec_Global{
 				Global: &GlobalService{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Global, o.GetGlobal())
+			deepcopy.Copy(v.Global, o.GetGlobal())
 			m.Mode = &v
 		}
 	}
@@ -981,32 +981,32 @@ func (m *TaskSpec) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Resources != nil {
 		m.Resources = &ResourceRequirements{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Resources, o.Resources)
+		deepcopy.Copy(m.Resources, o.Resources)
 	}
 	if o.Restart != nil {
 		m.Restart = &RestartPolicy{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Restart, o.Restart)
+		deepcopy.Copy(m.Restart, o.Restart)
 	}
 	if o.Placement != nil {
 		m.Placement = &Placement{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Placement, o.Placement)
+		deepcopy.Copy(m.Placement, o.Placement)
 	}
 	if o.LogDriver != nil {
 		m.LogDriver = &Driver{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.LogDriver, o.LogDriver)
+		deepcopy.Copy(m.LogDriver, o.LogDriver)
 	}
 	if o.Networks != nil {
 		m.Networks = make([]*NetworkAttachmentConfig, len(o.Networks))
 		for i := range m.Networks {
 			m.Networks[i] = &NetworkAttachmentConfig{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Networks[i], o.Networks[i])
+			deepcopy.Copy(m.Networks[i], o.Networks[i])
 		}
 	}
 
 	if o.ResourceReferences != nil {
 		m.ResourceReferences = make([]ResourceReference, len(o.ResourceReferences))
 		for i := range m.ResourceReferences {
-			github_com_docker_swarmkit_api_deepcopy.Copy(&m.ResourceReferences[i], &o.ResourceReferences[i])
+			deepcopy.Copy(&m.ResourceReferences[i], &o.ResourceReferences[i])
 		}
 	}
 
@@ -1016,19 +1016,19 @@ func (m *TaskSpec) CopyFrom(src interface{}) {
 			v := TaskSpec_Attachment{
 				Attachment: &NetworkAttachmentSpec{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Attachment, o.GetAttachment())
+			deepcopy.Copy(v.Attachment, o.GetAttachment())
 			m.Runtime = &v
 		case *TaskSpec_Container:
 			v := TaskSpec_Container{
 				Container: &ContainerSpec{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Container, o.GetContainer())
+			deepcopy.Copy(v.Container, o.GetContainer())
 			m.Runtime = &v
 		case *TaskSpec_Generic:
 			v := TaskSpec_Generic{
 				Generic: &GenericRuntimeSpec{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Generic, o.GetGeneric())
+			deepcopy.Copy(v.Generic, o.GetGeneric())
 			m.Runtime = &v
 		}
 	}
@@ -1065,7 +1065,7 @@ func (m *GenericRuntimeSpec) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Payload != nil {
 		m.Payload = &google_protobuf3.Any{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Payload, o.Payload)
+		deepcopy.Copy(m.Payload, o.Payload)
 	}
 }
 
@@ -1126,32 +1126,32 @@ func (m *ContainerSpec) CopyFrom(src interface{}) {
 
 	if o.Privileges != nil {
 		m.Privileges = &Privileges{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Privileges, o.Privileges)
+		deepcopy.Copy(m.Privileges, o.Privileges)
 	}
 	if o.Init != nil {
 		m.Init = &google_protobuf4.BoolValue{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Init, o.Init)
+		deepcopy.Copy(m.Init, o.Init)
 	}
 	if o.Mounts != nil {
 		m.Mounts = make([]Mount, len(o.Mounts))
 		for i := range m.Mounts {
-			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Mounts[i], &o.Mounts[i])
+			deepcopy.Copy(&m.Mounts[i], &o.Mounts[i])
 		}
 	}
 
 	if o.StopGracePeriod != nil {
 		m.StopGracePeriod = &google_protobuf1.Duration{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.StopGracePeriod, o.StopGracePeriod)
+		deepcopy.Copy(m.StopGracePeriod, o.StopGracePeriod)
 	}
 	if o.PullOptions != nil {
 		m.PullOptions = &ContainerSpec_PullOptions{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.PullOptions, o.PullOptions)
+		deepcopy.Copy(m.PullOptions, o.PullOptions)
 	}
 	if o.Secrets != nil {
 		m.Secrets = make([]*SecretReference, len(o.Secrets))
 		for i := range m.Secrets {
 			m.Secrets[i] = &SecretReference{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Secrets[i], o.Secrets[i])
+			deepcopy.Copy(m.Secrets[i], o.Secrets[i])
 		}
 	}
 
@@ -1159,7 +1159,7 @@ func (m *ContainerSpec) CopyFrom(src interface{}) {
 		m.Configs = make([]*ConfigReference, len(o.Configs))
 		for i := range m.Configs {
 			m.Configs[i] = &ConfigReference{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Configs[i], o.Configs[i])
+			deepcopy.Copy(m.Configs[i], o.Configs[i])
 		}
 	}
 
@@ -1170,11 +1170,11 @@ func (m *ContainerSpec) CopyFrom(src interface{}) {
 
 	if o.DNSConfig != nil {
 		m.DNSConfig = &ContainerSpec_DNSConfig{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.DNSConfig, o.DNSConfig)
+		deepcopy.Copy(m.DNSConfig, o.DNSConfig)
 	}
 	if o.Healthcheck != nil {
 		m.Healthcheck = &HealthConfig{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Healthcheck, o.Healthcheck)
+		deepcopy.Copy(m.Healthcheck, o.Healthcheck)
 	}
 }
 
@@ -1240,7 +1240,7 @@ func (m *EndpointSpec) CopyFrom(src interface{}) {
 		m.Ports = make([]*PortConfig, len(o.Ports))
 		for i := range m.Ports {
 			m.Ports[i] = &PortConfig{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Ports[i], o.Ports[i])
+			deepcopy.Copy(m.Ports[i], o.Ports[i])
 		}
 	}
 
@@ -1259,14 +1259,14 @@ func (m *NetworkSpec) CopyFrom(src interface{}) {
 
 	o := src.(*NetworkSpec)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
+	deepcopy.Copy(&m.Annotations, &o.Annotations)
 	if o.DriverConfig != nil {
 		m.DriverConfig = &Driver{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.DriverConfig, o.DriverConfig)
+		deepcopy.Copy(m.DriverConfig, o.DriverConfig)
 	}
 	if o.IPAM != nil {
 		m.IPAM = &IPAMOptions{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.IPAM, o.IPAM)
+		deepcopy.Copy(m.IPAM, o.IPAM)
 	}
 	if o.ConfigFrom != nil {
 		switch o.ConfigFrom.(type) {
@@ -1293,14 +1293,14 @@ func (m *ClusterSpec) CopyFrom(src interface{}) {
 
 	o := src.(*ClusterSpec)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.AcceptancePolicy, &o.AcceptancePolicy)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Orchestration, &o.Orchestration)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Raft, &o.Raft)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Dispatcher, &o.Dispatcher)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.CAConfig, &o.CAConfig)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.TaskDefaults, &o.TaskDefaults)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.EncryptionConfig, &o.EncryptionConfig)
+	deepcopy.Copy(&m.Annotations, &o.Annotations)
+	deepcopy.Copy(&m.AcceptancePolicy, &o.AcceptancePolicy)
+	deepcopy.Copy(&m.Orchestration, &o.Orchestration)
+	deepcopy.Copy(&m.Raft, &o.Raft)
+	deepcopy.Copy(&m.Dispatcher, &o.Dispatcher)
+	deepcopy.Copy(&m.CAConfig, &o.CAConfig)
+	deepcopy.Copy(&m.TaskDefaults, &o.TaskDefaults)
+	deepcopy.Copy(&m.EncryptionConfig, &o.EncryptionConfig)
 }
 
 func (m *SecretSpec) Copy() *SecretSpec {
@@ -1316,18 +1316,18 @@ func (m *SecretSpec) CopyFrom(src interface{}) {
 
 	o := src.(*SecretSpec)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
+	deepcopy.Copy(&m.Annotations, &o.Annotations)
 	if o.Data != nil {
 		m.Data = make([]byte, len(o.Data))
 		copy(m.Data, o.Data)
 	}
 	if o.Templating != nil {
 		m.Templating = &Driver{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Templating, o.Templating)
+		deepcopy.Copy(m.Templating, o.Templating)
 	}
 	if o.Driver != nil {
 		m.Driver = &Driver{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Driver, o.Driver)
+		deepcopy.Copy(m.Driver, o.Driver)
 	}
 }
 
@@ -1344,14 +1344,14 @@ func (m *ConfigSpec) CopyFrom(src interface{}) {
 
 	o := src.(*ConfigSpec)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
+	deepcopy.Copy(&m.Annotations, &o.Annotations)
 	if o.Data != nil {
 		m.Data = make([]byte, len(o.Data))
 		copy(m.Data, o.Data)
 	}
 	if o.Templating != nil {
 		m.Templating = &Driver{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Templating, o.Templating)
+		deepcopy.Copy(m.Templating, o.Templating)
 	}
 }
 
@@ -3097,7 +3097,7 @@ func (this *ContainerSpec) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
+	sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])

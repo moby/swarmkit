@@ -12,14 +12,12 @@ import _ "github.com/gogo/protobuf/types"
 
 import time "time"
 
-import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
-import (
-	context "golang.org/x/net/context"
-	grpc "google.golang.org/grpc"
-)
+import context "golang.org/x/net/context"
+import grpc "google.golang.org/grpc"
 
-import github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
+import types "github.com/gogo/protobuf/types"
 
 import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
@@ -510,7 +508,7 @@ func (m *SessionRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Description != nil {
 		m.Description = &NodeDescription{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Description, o.Description)
+		deepcopy.Copy(m.Description, o.Description)
 	}
 }
 
@@ -529,13 +527,13 @@ func (m *SessionMessage) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Node != nil {
 		m.Node = &Node{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Node, o.Node)
+		deepcopy.Copy(m.Node, o.Node)
 	}
 	if o.Managers != nil {
 		m.Managers = make([]*WeightedPeer, len(o.Managers))
 		for i := range m.Managers {
 			m.Managers[i] = &WeightedPeer{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Managers[i], o.Managers[i])
+			deepcopy.Copy(m.Managers[i], o.Managers[i])
 		}
 	}
 
@@ -543,7 +541,7 @@ func (m *SessionMessage) CopyFrom(src interface{}) {
 		m.NetworkBootstrapKeys = make([]*EncryptionKey, len(o.NetworkBootstrapKeys))
 		for i := range m.NetworkBootstrapKeys {
 			m.NetworkBootstrapKeys[i] = &EncryptionKey{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.NetworkBootstrapKeys[i], o.NetworkBootstrapKeys[i])
+			deepcopy.Copy(m.NetworkBootstrapKeys[i], o.NetworkBootstrapKeys[i])
 		}
 	}
 
@@ -581,7 +579,7 @@ func (m *HeartbeatResponse) CopyFrom(src interface{}) {
 
 	o := src.(*HeartbeatResponse)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Period, &o.Period)
+	deepcopy.Copy(&m.Period, &o.Period)
 }
 
 func (m *UpdateTaskStatusRequest) Copy() *UpdateTaskStatusRequest {
@@ -601,7 +599,7 @@ func (m *UpdateTaskStatusRequest) CopyFrom(src interface{}) {
 		m.Updates = make([]*UpdateTaskStatusRequest_TaskStatusUpdate, len(o.Updates))
 		for i := range m.Updates {
 			m.Updates[i] = &UpdateTaskStatusRequest_TaskStatusUpdate{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Updates[i], o.Updates[i])
+			deepcopy.Copy(m.Updates[i], o.Updates[i])
 		}
 	}
 
@@ -622,7 +620,7 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Status != nil {
 		m.Status = &TaskStatus{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Status, o.Status)
+		deepcopy.Copy(m.Status, o.Status)
 	}
 }
 
@@ -668,7 +666,7 @@ func (m *TasksMessage) CopyFrom(src interface{}) {
 		m.Tasks = make([]*Task, len(o.Tasks))
 		for i := range m.Tasks {
 			m.Tasks[i] = &Task{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Tasks[i], o.Tasks[i])
+			deepcopy.Copy(m.Tasks[i], o.Tasks[i])
 		}
 	}
 
@@ -708,19 +706,19 @@ func (m *Assignment) CopyFrom(src interface{}) {
 			v := Assignment_Task{
 				Task: &Task{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Task, o.GetTask())
+			deepcopy.Copy(v.Task, o.GetTask())
 			m.Item = &v
 		case *Assignment_Secret:
 			v := Assignment_Secret{
 				Secret: &Secret{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Secret, o.GetSecret())
+			deepcopy.Copy(v.Secret, o.GetSecret())
 			m.Item = &v
 		case *Assignment_Config:
 			v := Assignment_Config{
 				Config: &Config{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Config, o.GetConfig())
+			deepcopy.Copy(v.Config, o.GetConfig())
 			m.Item = &v
 		}
 	}
@@ -742,7 +740,7 @@ func (m *AssignmentChange) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Assignment != nil {
 		m.Assignment = &Assignment{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Assignment, o.Assignment)
+		deepcopy.Copy(m.Assignment, o.Assignment)
 	}
 }
 
@@ -763,7 +761,7 @@ func (m *AssignmentsMessage) CopyFrom(src interface{}) {
 		m.Changes = make([]*AssignmentChange, len(o.Changes))
 		for i := range m.Changes {
 			m.Changes[i] = &AssignmentChange{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Changes[i], o.Changes[i])
+			deepcopy.Copy(m.Changes[i], o.Changes[i])
 		}
 	}
 
@@ -1242,8 +1240,8 @@ func (m *HeartbeatResponse) MarshalTo(dAtA []byte) (int, error) {
 	_ = l
 	dAtA[i] = 0xa
 	i++
-	i = encodeVarintDispatcher(dAtA, i, uint64(github_com_gogo_protobuf_types.SizeOfStdDuration(m.Period)))
-	n3, err := github_com_gogo_protobuf_types.StdDurationMarshalTo(m.Period, dAtA[i:])
+	i = encodeVarintDispatcher(dAtA, i, uint64(types.SizeOfStdDuration(m.Period)))
+	n3, err := types.StdDurationMarshalTo(m.Period, dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
@@ -1926,7 +1924,7 @@ func (m *HeartbeatRequest) Size() (n int) {
 func (m *HeartbeatResponse) Size() (n int) {
 	var l int
 	_ = l
-	l = github_com_gogo_protobuf_types.SizeOfStdDuration(m.Period)
+	l = types.SizeOfStdDuration(m.Period)
 	n += 1 + l + sovDispatcher(uint64(l))
 	return n
 }
@@ -2713,7 +2711,7 @@ func (m *HeartbeatResponse) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := github_com_gogo_protobuf_types.StdDurationUnmarshal(&m.Period, dAtA[iNdEx:postIndex]); err != nil {
+			if err := types.StdDurationUnmarshal(&m.Period, dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
