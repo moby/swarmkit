@@ -603,10 +603,19 @@ func (m *Manager) Run(parent context.Context) error {
 	}
 
 	if int(raftConfig.ElectionTick) != m.raftNode.Config.ElectionTick {
-		log.G(ctx).Warningf("election tick value (%ds) is different from the one defined in the cluster config (%vs), the cluster may be unstable", m.raftNode.Config.ElectionTick, raftConfig.ElectionTick)
+		log.G(ctx).Warningf("election tick value (%ds) is different from the one defined in the cluster config (%vs), cluster config value will be updated", m.raftNode.Config.ElectionTick, raftConfig.ElectionTick)
 	}
 	if int(raftConfig.HeartbeatTick) != m.raftNode.Config.HeartbeatTick {
-		log.G(ctx).Warningf("heartbeat tick value (%ds) is different from the one defined in the cluster config (%vs), the cluster may be unstable", m.raftNode.Config.HeartbeatTick, raftConfig.HeartbeatTick)
+		log.G(ctx).Warningf("heartbeat tick value (%ds) is different from the one defined in the cluster config (%vs), cluster config value will be updated", m.raftNode.Config.HeartbeatTick, raftConfig.HeartbeatTick)
+	}
+
+	// Update raft election/hearbeat values in the store.
+	if err = m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
+		c.Spec.Raft.ElectionTick = uint32(m.raftNode.Config.ElectionTick)
+		c.Spec.Raft.HeartbeatTick = uint32(m.raftNode.Config.HeartbeatTick)
+		return store.UpdateCluster(tx, c)
+	}); err != nil {
+		log.G(ctx).WithError(err).Errorf("unable to update cluster config values for election/hearbeat tick")
 	}
 
 	// wait for an error in serving.
