@@ -966,6 +966,22 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 				log.G(ctx).WithError(err).Error("failed to create predefined network " + p.Name)
 			}
 		}
+
+		c := store.GetCluster(tx, m.config.SecurityConfig.ClientTLSCreds.Organization())
+		raftConfig := c.Spec.Raft
+		if int(raftConfig.ElectionTick) == m.raftNode.Config.ElectionTick && int(raftConfig.HeartbeatTick) != m.raftNode.Config.HeartbeatTick {
+			return nil
+		}
+
+		// Update raft election/hearbeat values in the store, if needed.
+		if err := m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
+			c.Spec.Raft.ElectionTick = uint32(m.raftNode.Config.ElectionTick)
+			c.Spec.Raft.HeartbeatTick = uint32(m.raftNode.Config.HeartbeatTick)
+			return store.UpdateCluster(tx, c)
+		}); err != nil {
+			log.G(ctx).WithError(err).Errorf("unable to update cluster config values for election/hearbeat tick")
+		}
+
 		return nil
 	})
 
