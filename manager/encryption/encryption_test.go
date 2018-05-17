@@ -107,6 +107,15 @@ func TestMultiDecryptor(t *testing.T) {
 			require.IsType(t, ErrCannotDecrypt{}, err)
 		}
 	}
+
+	// Test multidecryptor where it does not have a decryptor with the right key
+	for _, d := range []MultiDecrypter{m, NewMultiDecrypter()} {
+		plaintext := []byte("message")
+		ciphertext, err := Encrypt(plaintext, NewNACLSecretbox([]byte("other")))
+		require.NoError(t, err)
+		_, err = Decrypt(ciphertext, d)
+		require.IsType(t, ErrCannotDecrypt{}, err)
+	}
 }
 
 // The default encrypter/decrypter, if FIPS is not enabled, is NACLSecretBox.
