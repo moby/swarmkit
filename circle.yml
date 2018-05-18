@@ -5,7 +5,7 @@ machine:
 
         PROTOC: "https://github.com/google/protobuf/releases/download/v3.2.0/protoc-3.2.0-linux-x86_64.zip"
 
-        GOVERSION: "1.9.3"
+        GOVERSION: "1.10.3"
         GOPATH: "$HOME/.go_workspace"
 
         WORKDIR:  "$GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
