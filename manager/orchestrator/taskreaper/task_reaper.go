@@ -78,7 +78,7 @@ func (tr *TaskReaper) Run() {
 		}
 		removeTasks, err = store.FindTasks(readTx, store.ByDesiredState(api.TaskStateRemove))
 		if err != nil {
-			log.G(ctx).WithError(err).Error("failed to find tasks with desired state REMOVE in task reaper init")
+			log.G(context.TODO()).WithError(err).Error("failed to find tasks with desired state REMOVE in task reaper init")
 		}
 	})
 
