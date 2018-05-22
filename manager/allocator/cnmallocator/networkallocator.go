@@ -139,16 +139,26 @@ func (na *cnmNetworkAllocator) Allocate(n *api.Network) error {
 	}
 
 	// No swarm-level allocation can be provided by the network driver for
-	// node-local networks. Only thing needed is populating the driver's name
-	// in the driver's state.
+	// node-local networks. Populate the driver's name, options and also
+	// the IPAM config options, all of these are needed to create
+	// the networks on nodes.
 	if nw.isNodeLocal {
-		n.DriverState = &api.Driver{
-			Name: d.name,
+		_, ipamName, ipamOptions, ipamConfigs, err := na.resolveIPAMInitialState(n)
+		if err != nil {
+			return err
 		}
-		// In order to support backward compatibility with older daemon
-		// versions which assumes the network attachment to contains
-		// non nil IPAM attribute, passing an empty object
-		n.IPAM = &api.IPAMOptions{Driver: &api.Driver{}}
+
+		// Update the runtime IPAM configurations with initial state
+		n.IPAM = &api.IPAMOptions{
+			Driver:  &api.Driver{Name: ipamName, Options: ipamOptions},
+			Configs: ipamConfigs,
+		}
+
+		dOptions := resolveDriverOptions(n)
+		n.DriverState = &api.Driver{
+			Name:    d.name,
+			Options: dOptions,
+		}
 	} else {
 		nw.pools, err = na.allocatePools(n)
 		if err != nil {
@@ -742,19 +752,9 @@ func (na *cnmNetworkAllocator) allocateDriverState(n *api.Network) error {
 		return err
 	}
 
-	options := make(map[string]string)
 	// reconcile the driver specific options from the network spec
 	// and from the operational state retrieved from the store
-	if n.Spec.DriverConfig != nil {
-		for k, v := range n.Spec.DriverConfig.Options {
-			options[k] = v
-		}
-	}
-	if n.DriverState != nil {
-		for k, v := range n.DriverState.Options {
-			options[k] = v
-		}
-	}
+	options := resolveDriverOptions(n)
 
 	// Construct IPAM data for driver consumption.
 	ipv4Data := make([]driverapi.IPAMData, 0, len(n.IPAM.Configs))
@@ -874,7 +874,7 @@ func releasePools(ipam ipamapi.Ipam, icList []*api.IPAMConfig, pools map[string]
 }
 
 func (na *cnmNetworkAllocator) allocatePools(n *api.Network) (map[string]string, error) {
-	ipam, dName, dOptions, err := na.resolveIPAM(n)
+	ipam, dName, dOptions, ipamConfigs, err := na.resolveIPAMInitialState(n)
 	if err != nil {
 		return nil, err
 	}
@@ -887,17 +887,6 @@ func (na *cnmNetworkAllocator) allocatePools(n *api.Network) (map[string]string,
 	}
 
 	pools := make(map[string]string)
-
-	var ipamConfigs []*api.IPAMConfig
-
-	// If there is non-nil IPAM state always prefer those subnet
-	// configs over Spec configs.
-	if n.IPAM != nil {
-		ipamConfigs = n.IPAM.Configs
-	} else if n.Spec.IPAM != nil {
-		ipamConfigs = make([]*api.IPAMConfig, len(n.Spec.IPAM.Configs))
-		copy(ipamConfigs, n.Spec.IPAM.Configs)
-	}
 
 	// Append an empty slot for subnet allocation if there are no
 	// IPAM configs from either spec or state.
@@ -1016,4 +1005,43 @@ func setIPAMSerialAlloc(opts map[string]string) map[string]string {
 		opts[ipamapi.AllocSerialPrefix] = "true"
 	}
 	return opts
+}
+
+// resolveDriverOptions reconciles the driver specific options from the network spec
+// and from the operational state retrieved from the store
+func resolveDriverOptions(n *api.Network) map[string]string {
+	options := make(map[string]string)
+	// reconcile the driver specific options from the network spec
+	// and from the operational state retrieved from the store
+	if n.Spec.DriverConfig != nil {
+		for k, v := range n.Spec.DriverConfig.Options {
+			options[k] = v
+		}
+	}
+	if n.DriverState != nil {
+		for k, v := range n.DriverState.Options {
+			options[k] = v
+		}
+	}
+	return options
+}
+
+func (na *cnmNetworkAllocator) resolveIPAMInitialState(n *api.Network) (ipamapi.Ipam, string, map[string]string, []*api.IPAMConfig, error) {
+	ipam, dName, dOptions, err := na.resolveIPAM(n)
+	if err != nil {
+		return nil, "", nil, nil, err
+	}
+
+	var ipamConfigs []*api.IPAMConfig
+
+	// If there is non-nil IPAM state always prefer those subnet
+	// configs over Spec configs.
+	if n.IPAM != nil {
+		ipamConfigs = n.IPAM.Configs
+	} else if n.Spec.IPAM != nil {
+		ipamConfigs = make([]*api.IPAMConfig, len(n.Spec.IPAM.Configs))
+		copy(ipamConfigs, n.Spec.IPAM.Configs)
+	}
+
+	return ipam, dName, dOptions, ipamConfigs, nil
 }
