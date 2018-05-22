@@ -794,10 +794,7 @@ func TestRaftUnreachableNode(t *testing.T) {
 	nodes[2].Server = s
 	raft.Register(s, nodes[2].Node)
 
-	go func() {
-		// After stopping, we should receive an error from Serve
-		assert.Error(t, s.Serve(wrappedListener))
-	}()
+	go s.Serve(wrappedListener)
 
 	raftutils.WaitForCluster(t, clockSource, nodes)
 	defer raftutils.TeardownCluster(nodes)
