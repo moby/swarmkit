@@ -294,10 +294,7 @@ func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA,
 	api.RegisterHealthServer(s, healthServer)
 	raft.Register(s, n)
 
-	go func() {
-		// After stopping, we should receive an error from Serve
-		assert.Error(t, s.Serve(wrappedListener))
-	}()
+	go s.Serve(wrappedListener)
 
 	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_SERVING)
 
@@ -399,10 +396,7 @@ func CopyNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNode,
 	api.RegisterHealthServer(s, healthServer)
 	raft.Register(s, n)
 
-	go func() {
-		// After stopping, we should receive an error from Serve
-		require.Error(t, s.Serve(wrappedListener))
-	}()
+	go s.Serve(wrappedListener)
 
 	healthServer.SetServingStatus("Raft", api.HealthCheckResponse_SERVING)
 
