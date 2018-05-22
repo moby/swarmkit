@@ -227,18 +227,16 @@ import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 
-import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
-import (
-	context "golang.org/x/net/context"
-	grpc "google.golang.org/grpc"
-)
+import context "golang.org/x/net/context"
+import grpc "google.golang.org/grpc"
 
 import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
 import status "google.golang.org/grpc/status"
 import metadata "google.golang.org/grpc/metadata"
-import transport "google.golang.org/grpc/transport"
+import peer "google.golang.org/grpc/peer"
 import rafttime "time"
 
 import strings "strings"
@@ -418,11 +416,11 @@ func (m *NodeCertificateStatusResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Status != nil {
 		m.Status = &IssuanceStatus{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Status, o.Status)
+		deepcopy.Copy(m.Status, o.Status)
 	}
 	if o.Certificate != nil {
 		m.Certificate = &Certificate{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Certificate, o.Certificate)
+		deepcopy.Copy(m.Certificate, o.Certificate)
 	}
 }
 
@@ -516,7 +514,7 @@ func (m *GetUnlockKeyResponse) CopyFrom(src interface{}) {
 		m.UnlockKey = make([]byte, len(o.UnlockKey))
 		copy(m.UnlockKey, o.UnlockKey)
 	}
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Version, &o.Version)
+	deepcopy.Copy(&m.Version, &o.Version)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -966,11 +964,11 @@ type raftProxyCAServer struct {
 
 func NewRaftProxyCAServer(local CAServer, connSelector raftselector.ConnProvider, localCtxMod, remoteCtxMod func(context.Context) (context.Context, error)) CAServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
-		s, ok := transport.StreamFromContext(ctx)
+		p, ok := peer.FromContext(ctx)
 		if !ok {
 			return ctx, status.Errorf(codes.InvalidArgument, "remote addr is not found in context")
 		}
-		addr := s.ServerTransport().RemoteAddr().String()
+		addr := p.Addr.String()
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok && len(md["redirect"]) != 0 {
 			return ctx, status.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
@@ -1108,11 +1106,11 @@ type raftProxyNodeCAServer struct {
 
 func NewRaftProxyNodeCAServer(local NodeCAServer, connSelector raftselector.ConnProvider, localCtxMod, remoteCtxMod func(context.Context) (context.Context, error)) NodeCAServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
-		s, ok := transport.StreamFromContext(ctx)
+		p, ok := peer.FromContext(ctx)
 		if !ok {
 			return ctx, status.Errorf(codes.InvalidArgument, "remote addr is not found in context")
 		}
-		addr := s.ServerTransport().RemoteAddr().String()
+		addr := p.Addr.String()
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok && len(md["redirect"]) != 0 {
 			return ctx, status.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])

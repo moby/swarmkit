@@ -34,11 +34,11 @@ func (g *raftProxyGen) genProxyStruct(s *descriptor.ServiceDescriptorProto) {
 func (g *raftProxyGen) genProxyConstructor(s *descriptor.ServiceDescriptorProto) {
 	g.gen.P("func NewRaftProxy" + s.GetName() + "Server(local " + s.GetName() + "Server, connSelector raftselector.ConnProvider, localCtxMod, remoteCtxMod func(context.Context)(context.Context, error)) " + s.GetName() + "Server {")
 	g.gen.P(`redirectChecker := func(ctx context.Context)(context.Context, error) {
-		s, ok := transport.StreamFromContext(ctx)
+		p, ok := peer.FromContext(ctx)
 		if !ok {
 			return ctx, status.Errorf(codes.InvalidArgument, "remote addr is not found in context")
 		}
-		addr := s.ServerTransport().RemoteAddr().String()
+		addr := p.Addr.String()
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok && len(md["redirect"]) != 0 {
 			return ctx, status.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
@@ -378,7 +378,7 @@ func (g *raftProxyGen) GenerateImports(file *generator.FileDescriptor) {
 	g.gen.P("import codes \"google.golang.org/grpc/codes\"")
 	g.gen.P("import status \"google.golang.org/grpc/status\"")
 	g.gen.P("import metadata \"google.golang.org/grpc/metadata\"")
-	g.gen.P("import transport \"google.golang.org/grpc/transport\"")
+	g.gen.P("import peer \"google.golang.org/grpc/peer\"")
 	// don't conflict with import added by ptypes
 	g.gen.P("import rafttime \"time\"")
 }
