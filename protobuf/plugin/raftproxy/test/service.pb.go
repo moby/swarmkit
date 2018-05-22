@@ -22,18 +22,16 @@ import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
 
-import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
-import (
-	context "golang.org/x/net/context"
-	grpc "google.golang.org/grpc"
-)
+import context "golang.org/x/net/context"
+import grpc "google.golang.org/grpc"
 
 import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
 import status "google.golang.org/grpc/status"
 import metadata "google.golang.org/grpc/metadata"
-import transport "google.golang.org/grpc/transport"
+import peer "google.golang.org/grpc/peer"
 import rafttime "time"
 
 import strings "strings"
@@ -256,11 +254,11 @@ func (m *Rectangle) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Lo != nil {
 		m.Lo = &Point{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Lo, o.Lo)
+		deepcopy.Copy(m.Lo, o.Lo)
 	}
 	if o.Hi != nil {
 		m.Hi = &Point{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Hi, o.Hi)
+		deepcopy.Copy(m.Hi, o.Hi)
 	}
 }
 
@@ -279,7 +277,7 @@ func (m *Feature) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Location != nil {
 		m.Location = &Point{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Location, o.Location)
+		deepcopy.Copy(m.Location, o.Location)
 	}
 }
 
@@ -298,7 +296,7 @@ func (m *RouteNote) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Location != nil {
 		m.Location = &Point{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Location, o.Location)
+		deepcopy.Copy(m.Location, o.Location)
 	}
 }
 
@@ -953,11 +951,11 @@ type raftProxyRouteGuideServer struct {
 
 func NewRaftProxyRouteGuideServer(local RouteGuideServer, connSelector raftselector.ConnProvider, localCtxMod, remoteCtxMod func(context.Context) (context.Context, error)) RouteGuideServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
-		s, ok := transport.StreamFromContext(ctx)
+		p, ok := peer.FromContext(ctx)
 		if !ok {
 			return ctx, status.Errorf(codes.InvalidArgument, "remote addr is not found in context")
 		}
-		addr := s.ServerTransport().RemoteAddr().String()
+		addr := p.Addr.String()
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok && len(md["redirect"]) != 0 {
 			return ctx, status.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
@@ -1236,11 +1234,11 @@ type raftProxyHealthServer struct {
 
 func NewRaftProxyHealthServer(local HealthServer, connSelector raftselector.ConnProvider, localCtxMod, remoteCtxMod func(context.Context) (context.Context, error)) HealthServer {
 	redirectChecker := func(ctx context.Context) (context.Context, error) {
-		s, ok := transport.StreamFromContext(ctx)
+		p, ok := peer.FromContext(ctx)
 		if !ok {
 			return ctx, status.Errorf(codes.InvalidArgument, "remote addr is not found in context")
 		}
-		addr := s.ServerTransport().RemoteAddr().String()
+		addr := p.Addr.String()
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok && len(md["redirect"]) != 0 {
 			return ctx, status.Errorf(codes.ResourceExhausted, "more than one redirect to leader from: %s", md["redirect"])
