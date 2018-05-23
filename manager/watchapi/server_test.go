@@ -2,7 +2,6 @@ package watchapi
 
 import (
 	"io/ioutil"
-	"log"
 	"net"
 	"os"
 	"testing"
@@ -102,6 +101,6 @@ func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, memb
 }
 
 func init() {
-	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
 	logrus.SetOutput(ioutil.Discard)
 }
