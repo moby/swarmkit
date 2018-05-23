@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
 )
@@ -44,11 +43,11 @@ func TestGetNode(t *testing.T) {
 
 	_, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	_, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: "invalid"})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err))
+	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
 	node := createNode(t, ts, "id", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: node.ID})
@@ -465,7 +464,7 @@ func TestUpdateNode(t *testing.T) {
 		NodeVersion: &api.Version{},
 	})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err))
+	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
 	// Create a node object for the manager
 	assert.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
@@ -481,11 +480,11 @@ func TestUpdateNode(t *testing.T) {
 
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: "invalid", Spec: &api.NodeSpec{}, NodeVersion: &api.Version{}})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err))
+	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
 	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodeID})
 	assert.NoError(t, err)
@@ -496,7 +495,7 @@ func TestUpdateNode(t *testing.T) {
 
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	spec := r.Node.Spec.Copy()
 	spec.Availability = api.NodeAvailabilityDrain
@@ -505,7 +504,7 @@ func TestUpdateNode(t *testing.T) {
 		Spec:   spec,
 	})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      nodeID,
@@ -602,7 +601,7 @@ func testUpdateNodeDemote(t *testing.T) {
 		NodeVersion: version,
 	})
 	assert.Error(t, err)
-	assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))
+	assert.Equal(t, codes.FailedPrecondition, testutils.ErrorCode(err))
 
 	// Restart Node 3
 	nodes[3] = raftutils.RestartNode(t, clockSource, nodes[3], false)
@@ -705,7 +704,7 @@ func testUpdateNodeDemote(t *testing.T) {
 		NodeVersion: version,
 	})
 	assert.Error(t, err)
-	assert.Equal(t, codes.FailedPrecondition, grpc.Code(err))
+	assert.Equal(t, codes.FailedPrecondition, testutils.ErrorCode(err))
 
 	// Propose a change in the spec and check if the remaining node can still process updates
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})

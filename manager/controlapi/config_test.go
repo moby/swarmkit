@@ -10,7 +10,6 @@ import (
 	"github.com/docker/swarmkit/testutils"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
@@ -55,7 +54,7 @@ func TestValidateConfigSpec(t *testing.T) {
 	} {
 		err := validateConfigSpec(createConfigSpec(badName, []byte("valid config"), nil))
 		assert.Error(t, err)
-		assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
+		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	}
 
 	for _, badSpec := range []*api.ConfigSpec{
@@ -64,7 +63,7 @@ func TestValidateConfigSpec(t *testing.T) {
 	} {
 		err := validateConfigSpec(badSpec)
 		assert.Error(t, err)
-		assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
+		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	}
 
 	for _, goodName := range []string{
@@ -99,7 +98,7 @@ func TestCreateConfig(t *testing.T) {
 	// ---- creating a config with an invalid spec fails, thus checking that CreateConfig validates the spec ----
 	_, err := ts.Client.CreateConfig(context.Background(), &api.CreateConfigRequest{Spec: createConfigSpec("", nil, nil)})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// ---- creating a config with a valid spec succeeds, and returns a config that reflects the config in the store
 	// exactly
@@ -124,7 +123,7 @@ func TestCreateConfig(t *testing.T) {
 	// ---- creating a config with the same name, even if it's the exact same spec, fails due to a name conflict ----
 	_, err = ts.Client.CreateConfig(context.Background(), &validSpecRequest)
 	assert.Error(t, err)
-	assert.Equal(t, codes.AlreadyExists, grpc.Code(err), testutils.ErrorDesc(err))
+	assert.Equal(t, codes.AlreadyExists, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 }
 
 func TestGetConfig(t *testing.T) {
@@ -134,12 +133,12 @@ func TestGetConfig(t *testing.T) {
 	// ---- getting a config without providing an ID results in an InvalidArgument ----
 	_, err := ts.Client.GetConfig(context.Background(), &api.GetConfigRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// ---- getting a non-existent config fails with NotFound ----
 	_, err = ts.Client.GetConfig(context.Background(), &api.GetConfigRequest{ConfigID: "12345"})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err), testutils.ErrorDesc(err))
+	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// ---- getting an existing config returns the config ----
 	config := configFromConfigSpec(createConfigSpec("name", []byte("data"), nil))
@@ -169,12 +168,12 @@ func TestUpdateConfig(t *testing.T) {
 	// updating a config without providing an ID results in an InvalidArgument
 	_, err = ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// getting a non-existent config fails with NotFound
 	_, err = ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{ConfigID: "1234adsaa", ConfigVersion: &api.Version{Index: 1}})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err), testutils.ErrorDesc(err))
+	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// updating an existing config's data returns an error
 	config.Spec.Data = []byte{1}
@@ -183,7 +182,7 @@ func TestUpdateConfig(t *testing.T) {
 		Spec:          &config.Spec,
 		ConfigVersion: &config.Meta.Version,
 	})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// updating an existing config's Name returns an error
 	config.Spec.Data = nil
@@ -193,7 +192,7 @@ func TestUpdateConfig(t *testing.T) {
 		Spec:          &config.Spec,
 		ConfigVersion: &config.Meta.Version,
 	})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// updating the config with the original spec succeeds
 	config.Spec.Data = []byte("data")
@@ -245,7 +244,7 @@ func TestRemoveUnusedConfig(t *testing.T) {
 	// removing a config without providing an ID results in an InvalidArgument
 	_, err := ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// removing a config that exists succeeds
 	config := configFromConfigSpec(createConfigSpec("name", []byte("data"), nil))
@@ -261,7 +260,7 @@ func TestRemoveUnusedConfig(t *testing.T) {
 	// ---- it was really removed because attempting to remove it again fails with a NotFound ----
 	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigID: config.ID})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err), testutils.ErrorDesc(err))
+	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 }
 
@@ -302,7 +301,7 @@ func TestRemoveUsedConfig(t *testing.T) {
 
 	// removing a config that exists but is in use fails
 	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigID: resp.Config.ID})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	assert.Regexp(t, "service[1-2], service[1-2]", testutils.ErrorDesc(err))
 
 	// removing a config that exists but is not in use succeeds
@@ -312,7 +311,7 @@ func TestRemoveUsedConfig(t *testing.T) {
 	// it was really removed because attempting to remove it again fails with a NotFound
 	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigID: resp2.Config.ID})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err), testutils.ErrorDesc(err))
+	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 }
 
 func TestListConfigs(t *testing.T) {
