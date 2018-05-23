@@ -2,31 +2,15 @@ package manager
 
 import (
 	"errors"
-	"io/ioutil"
-	"log"
 	"testing"
-
-	"github.com/pivotal-golang/clock/fakeclock"
-
-	"google.golang.org/grpc/grpclog"
 
 	"github.com/docker/swarmkit/api"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/testutils"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
-
-func getRaftCluster(t *testing.T, tc *cautils.TestCA) (map[uint64]*raftutils.TestNode, *fakeclock.FakeClock) {
-	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
-	logrus.SetOutput(ioutil.Discard)
-
-	nodes, fc := raftutils.NewRaftCluster(t, tc)
-	raftutils.WaitForCluster(t, fc, nodes)
-	return nodes, fc
-}
 
 // While roleManager is running, if a node is demoted, it is removed from the raft cluster.  If a node is
 // promoted, it is not added to the cluster but its observed role will change to manager.

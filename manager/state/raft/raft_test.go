@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -43,15 +42,14 @@ const (
 
 func init() {
 	store.WedgeTimeout = 3 * time.Second
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+	logrus.SetOutput(ioutil.Discard)
 }
 
 var tc *cautils.TestCA
 
 func TestMain(m *testing.M) {
 	tc = cautils.NewTestCA(nil)
-
-	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
-	logrus.SetOutput(ioutil.Discard)
 
 	// Set a smaller segment size so we don't incur cost preallocating
 	// space on old filesystems like HFS+.
