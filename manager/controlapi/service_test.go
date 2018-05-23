@@ -12,7 +12,6 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
@@ -182,7 +181,7 @@ func TestValidateResources(t *testing.T) {
 	for _, b := range bad {
 		err := validateResources(b)
 		assert.Error(t, err)
-		assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	}
 
 	for _, g := range good {
@@ -202,7 +201,7 @@ func TestValidateResourceRequirements(t *testing.T) {
 	for _, b := range bad {
 		err := validateResourceRequirements(b)
 		assert.Error(t, err)
-		assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	}
 
 	for _, g := range good {
@@ -226,7 +225,7 @@ func TestValidateMode(t *testing.T) {
 	for _, b := range bad {
 		err := validateMode(b)
 		assert.Error(t, err)
-		assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	}
 
 	for _, g := range good {
@@ -284,7 +283,7 @@ func TestValidateTaskSpec(t *testing.T) {
 	} {
 		err := validateTaskSpec(bad.s)
 		assert.Error(t, err)
-		assert.Equal(t, bad.c, grpc.Code(err))
+		assert.Equal(t, bad.c, testutils.ErrorCode(err))
 	}
 
 	for _, good := range []api.TaskSpec{
@@ -362,7 +361,7 @@ func TestValidateContainerSpec(t *testing.T) {
 	} {
 		err := validateContainerSpec(bad.spec)
 		assert.Error(t, err)
-		assert.Equal(t, bad.c, grpc.Code(err), testutils.ErrorDesc(err))
+		assert.Equal(t, bad.c, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	}
 
 	good1 := api.TaskSpec{
@@ -432,7 +431,7 @@ func TestValidateServiceSpec(t *testing.T) {
 	} {
 		err := validateServiceSpec(bad.spec)
 		assert.Error(t, err)
-		assert.Equal(t, bad.c, grpc.Code(err), testutils.ErrorDesc(err))
+		assert.Equal(t, bad.c, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	}
 
 	for _, good := range []*api.ServiceSpec{
@@ -465,7 +464,7 @@ func TestValidateRestartPolicy(t *testing.T) {
 	for _, b := range bad {
 		err := validateRestartPolicy(b)
 		assert.Error(t, err)
-		assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	}
 
 	for _, g := range good {
@@ -492,7 +491,7 @@ func TestValidateUpdate(t *testing.T) {
 	for _, b := range bad {
 		err := validateUpdate(b)
 		assert.Error(t, err)
-		assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	}
 
 	for _, g := range good {
@@ -505,7 +504,7 @@ func TestCreateService(t *testing.T) {
 	defer ts.Stop()
 	_, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	spec := createSpec("name", "image", 1)
 	r, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
@@ -527,7 +526,7 @@ func TestCreateService(t *testing.T) {
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	// test no port conflicts when no publish port is specified
 	spec3 := createSpec("name4", "image", 1)
@@ -591,7 +590,7 @@ func TestCreateService(t *testing.T) {
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	// ensure port conflict when host ports overlaps with ingress port (ingress port first)
 	spec = createSpec("name12", "image", 1)
@@ -608,14 +607,14 @@ func TestCreateService(t *testing.T) {
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	// ingress network cannot be attached explicitly
 	spec = createSpec("name14", "image", 1)
 	spec.Task.Networks = []*api.NetworkAttachmentConfig{{Target: getIngressTargetID(t, ts)}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 }
 
 func TestSecretValidation(t *testing.T) {
@@ -628,7 +627,7 @@ func TestSecretValidation(t *testing.T) {
 	secretRef.SecretName = "404"
 	serviceSpec := createServiceSpecWithSecrets("service", secretRef)
 	_, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	// test creating service with a secretRef that has an existing secret
 	// but mismatched SecretName fails.
@@ -636,21 +635,21 @@ func TestSecretValidation(t *testing.T) {
 	secretRef1.SecretName = "secret2"
 	serviceSpec = createServiceSpecWithSecrets("service1", secretRef1)
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	// test secret target conflicts
 	secretRef2 := createSecret(t, ts, "secret2", "secret2.txt")
 	secretRef3 := createSecret(t, ts, "secret3", "secret2.txt")
 	serviceSpec = createServiceSpecWithSecrets("service2", secretRef2, secretRef3)
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	// test secret target conflicts with same secret and two references
 	secretRef3.SecretID = secretRef2.SecretID
 	secretRef3.SecretName = secretRef2.SecretName
 	serviceSpec = createServiceSpecWithSecrets("service3", secretRef2, secretRef3)
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	// test two different secretReferences with using the same secret
 	secretRef5 := secretRef2.Copy()
@@ -669,7 +668,7 @@ func TestSecretValidation(t *testing.T) {
 
 	serviceSpec = createServiceSpecWithSecrets("invalid-blank", secretRefBlank)
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	// Test secret References with valid filenames
 	// Note: "../secretfile.txt", "../../secretfile.txt" will be rejected
@@ -698,7 +697,7 @@ func TestSecretValidation(t *testing.T) {
 		Spec:           serviceSpec1,
 		ServiceVersion: &rs.Service.Meta.Version,
 	})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 }
 
 func TestConfigValidation(t *testing.T) {
@@ -711,7 +710,7 @@ func TestConfigValidation(t *testing.T) {
 	configRef.ConfigName = "404"
 	serviceSpec := createServiceSpecWithConfigs("service", configRef)
 	_, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	// test creating service with a configRef that has an existing config
 	// but mismatched ConfigName fails.
@@ -719,21 +718,21 @@ func TestConfigValidation(t *testing.T) {
 	configRef1.ConfigName = "config2"
 	serviceSpec = createServiceSpecWithConfigs("service1", configRef1)
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	// test config target conflicts
 	configRef2 := createConfig(t, ts, "config2", "config2.txt")
 	configRef3 := createConfig(t, ts, "config3", "config2.txt")
 	serviceSpec = createServiceSpecWithConfigs("service2", configRef2, configRef3)
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	// test config target conflicts with same config and two references
 	configRef3.ConfigID = configRef2.ConfigID
 	configRef3.ConfigName = configRef2.ConfigName
 	serviceSpec = createServiceSpecWithConfigs("service3", configRef2, configRef3)
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	// test two different configReferences with using the same config
 	configRef5 := configRef2.Copy()
@@ -773,7 +772,7 @@ func TestConfigValidation(t *testing.T) {
 		Spec:           serviceSpec1,
 		ServiceVersion: &rs.Service.Meta.Version,
 	})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 }
 
 func TestGetService(t *testing.T) {
@@ -781,11 +780,11 @@ func TestGetService(t *testing.T) {
 	defer ts.Stop()
 	_, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	_, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: "invalid"})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err))
+	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
 	service := createService(t, ts, "name", "image", 1)
 	r, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
@@ -801,16 +800,16 @@ func TestUpdateService(t *testing.T) {
 
 	_, err := ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: "invalid", Spec: &service.Spec, ServiceVersion: &api.Version{}})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err))
+	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
 	// No update options.
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: &service.Spec})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: &service.Spec, ServiceVersion: &service.Meta.Version})
 	assert.NoError(t, err)
@@ -892,7 +891,7 @@ func TestUpdateService(t *testing.T) {
 		ServiceVersion: &rs.Service.Meta.Version,
 	})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	spec3.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishedPort: uint32(9001), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
@@ -914,7 +913,7 @@ func TestUpdateService(t *testing.T) {
 		ServiceVersion: &rs.Service.Meta.Version,
 	})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 }
 
 func TestServiceUpdateRejectNetworkChange(t *testing.T) {
@@ -996,7 +995,7 @@ func TestRemoveService(t *testing.T) {
 	defer ts.Stop()
 	_, err := ts.Client.RemoveService(context.Background(), &api.RemoveServiceRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	service := createService(t, ts, "name", "image", 1)
 	r, err := ts.Client.RemoveService(context.Background(), &api.RemoveServiceRequest{ServiceID: service.ID})
@@ -1091,14 +1090,14 @@ func TestValidateEndpointSpec(t *testing.T) {
 
 	err := validateEndpointSpec(endPointSpec1)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	err = validateEndpointSpec(endPointSpec2)
 	assert.NoError(t, err)
 
 	err = validateEndpointSpec(endPointSpec3)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	err = validateEndpointSpec(endPointSpec4)
 	assert.NoError(t, err)
@@ -1149,7 +1148,7 @@ func TestServiceEndpointSpecUpdate(t *testing.T) {
 	_, err = ts.Client.UpdateService(context.Background(),
 		&api.UpdateServiceRequest{Spec: spec})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 }
 
 func TestListServices(t *testing.T) {

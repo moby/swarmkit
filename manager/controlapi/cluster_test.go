@@ -10,11 +10,11 @@ import (
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
+	grpcutils "github.com/docker/swarmkit/testutils"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
@@ -113,7 +113,7 @@ func TestValidateClusterSpec(t *testing.T) {
 	} {
 		err := validateClusterSpec(bad.spec)
 		assert.Error(t, err)
-		assert.Equal(t, bad.c, grpc.Code(err))
+		assert.Equal(t, bad.c, grpcutils.ErrorCode(err))
 	}
 
 	for _, good := range []*api.ClusterSpec{
@@ -130,11 +130,11 @@ func TestGetCluster(t *testing.T) {
 	defer ts.Stop()
 	_, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, grpcutils.ErrorCode(err))
 
 	_, err = ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: "invalid"})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err))
+	assert.Equal(t, codes.NotFound, grpcutils.ErrorCode(err))
 
 	cluster := createCluster(t, ts, "name", "name", api.AcceptancePolicy{}, ts.Server.securityConfig.RootCA())
 	r, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: cluster.ID})
@@ -156,11 +156,11 @@ func TestGetClusterWithSecret(t *testing.T) {
 	defer ts.Stop()
 	_, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, grpcutils.ErrorCode(err))
 
 	_, err = ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: "invalid"})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err))
+	assert.Equal(t, codes.NotFound, grpcutils.ErrorCode(err))
 
 	policy := api.AcceptancePolicy{Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{{Secret: &api.AcceptancePolicy_RoleAdmissionPolicy_Secret{Data: []byte("secret")}}}}
 	cluster := createCluster(t, ts, "name", "name", policy, ts.Server.securityConfig.RootCA())
@@ -180,16 +180,16 @@ func TestUpdateCluster(t *testing.T) {
 
 	_, err := ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, grpcutils.ErrorCode(err))
 
 	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{ClusterID: "invalid", Spec: &cluster.Spec, ClusterVersion: &api.Version{}})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err))
+	assert.Equal(t, codes.NotFound, grpcutils.ErrorCode(err))
 
 	// No update options.
 	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{ClusterID: cluster.ID, Spec: &cluster.Spec})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, grpcutils.ErrorCode(err))
 
 	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{ClusterID: cluster.ID, Spec: &cluster.Spec, ClusterVersion: &cluster.Meta.Version})
 	assert.NoError(t, err)

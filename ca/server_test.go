@@ -26,7 +26,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
@@ -48,7 +47,7 @@ func TestRestartRootCA(t *testing.T) {
 
 	_, err := tc.NodeCAClients[0].NodeCertificateStatus(tc.Context, &api.NodeCertificateStatusRequest{NodeID: "foo"})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err))
+	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
 	tc.CAServer.Stop()
 	go tc.CAServer.Run(tc.Context)
@@ -57,7 +56,7 @@ func TestRestartRootCA(t *testing.T) {
 
 	_, err = tc.NodeCAClients[0].NodeCertificateStatus(tc.Context, &api.NodeCertificateStatusRequest{NodeID: "foo"})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err))
+	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 }
 
 func TestIssueNodeCertificate(t *testing.T) {

@@ -14,10 +14,9 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
-	grpcutils "github.com/docker/swarmkit/testutils"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type rootCARotationTestCase struct {
@@ -309,8 +308,9 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 		secConfig := getSecurityConfig(t, &localRootCA, cluster)
 		_, err := validateCAConfig(context.Background(), secConfig, cluster)
 		require.Error(t, err, invalid.expectErrorString)
-		require.Equal(t, codes.InvalidArgument, grpc.Code(err), invalid.expectErrorString)
-		require.Contains(t, grpcutils.ErrorDesc(err), invalid.expectErrorString)
+		s, _ := status.FromError(err)
+		require.Equal(t, codes.InvalidArgument, s.Code(), invalid.expectErrorString)
+		require.Contains(t, s.Message(), invalid.expectErrorString)
 	}
 }
 

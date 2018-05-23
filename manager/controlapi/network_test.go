@@ -3,9 +3,9 @@ package controlapi
 import (
 	"testing"
 
+	"github.com/docker/swarmkit/testutils"
 	"golang.org/x/net/context"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	"github.com/docker/swarmkit/api"
@@ -89,13 +89,13 @@ func TestValidateDriver(t *testing.T) {
 
 	err := validateDriver(&api.Driver{Name: ""}, nil, "")
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 }
 
 func TestValidateIPAMConfiguration(t *testing.T) {
 	err := validateIPAMConfiguration(nil)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	IPAMConf := &api.IPAMConfig{
 		Subnet: "",
@@ -103,12 +103,12 @@ func TestValidateIPAMConfiguration(t *testing.T) {
 
 	err = validateIPAMConfiguration(IPAMConf)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	IPAMConf.Subnet = "bad"
 	err = validateIPAMConfiguration(IPAMConf)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	IPAMConf.Subnet = "192.168.0.0/16"
 	err = validateIPAMConfiguration(IPAMConf)
@@ -117,12 +117,12 @@ func TestValidateIPAMConfiguration(t *testing.T) {
 	IPAMConf.Range = "bad"
 	err = validateIPAMConfiguration(IPAMConf)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	IPAMConf.Range = "192.169.1.0/24"
 	err = validateIPAMConfiguration(IPAMConf)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	IPAMConf.Range = "192.168.1.0/24"
 	err = validateIPAMConfiguration(IPAMConf)
@@ -131,12 +131,12 @@ func TestValidateIPAMConfiguration(t *testing.T) {
 	IPAMConf.Gateway = "bad"
 	err = validateIPAMConfiguration(IPAMConf)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	IPAMConf.Gateway = "192.169.1.1"
 	err = validateIPAMConfiguration(IPAMConf)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	IPAMConf.Gateway = "192.168.1.1"
 	err = validateIPAMConfiguration(IPAMConf)

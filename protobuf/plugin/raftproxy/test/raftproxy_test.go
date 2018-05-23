@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/swarmkit/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -60,5 +61,5 @@ func TestSimpleRedirect(t *testing.T) {
 	client := NewRouteGuideClient(conn)
 	_, err = client.GetFeature(context.Background(), &Point{})
 	assert.NotNil(t, err)
-	assert.Equal(t, codes.ResourceExhausted, grpc.Code(err))
+	assert.Equal(t, codes.ResourceExhausted, testutils.ErrorCode(err))
 }

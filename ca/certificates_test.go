@@ -39,6 +39,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/status"
 )
 
 func init() {
@@ -760,7 +761,8 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	// error - it should have returned after 1 second, but add some more for rudge time.
 	select {
 	case err = <-completed:
-		require.Equal(t, grpc.Code(err), codes.DeadlineExceeded)
+		s, _ := status.FromError(err)
+		require.Equal(t, s.Code(), codes.DeadlineExceeded)
 	case <-time.After(3 * time.Second):
 		require.FailNow(t, "GetRemoteSignedCertificate should have been canceled after 1 second, and it has been 3")
 	}
