@@ -3,18 +3,18 @@ package controlapi
 import (
 	"context"
 	"crypto/x509"
+	"encoding/pem"
 	"io/ioutil"
 	"os"
 	"testing"
 	"time"
-
-	"encoding/pem"
 
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/cloudflare/cfssl/initca"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
+	grpcutils "github.com/docker/swarmkit/testutils"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -310,7 +310,7 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 		_, err := validateCAConfig(context.Background(), secConfig, cluster)
 		require.Error(t, err, invalid.expectErrorString)
 		require.Equal(t, codes.InvalidArgument, grpc.Code(err), invalid.expectErrorString)
-		require.Contains(t, grpc.ErrorDesc(err), invalid.expectErrorString)
+		require.Contains(t, grpcutils.ErrorDesc(err), invalid.expectErrorString)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -54,7 +55,7 @@ func TestValidateSecretSpec(t *testing.T) {
 	} {
 		err := validateSecretSpec(createSecretSpec(badName, []byte("valid secret"), nil))
 		assert.Error(t, err)
-		assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
 	}
 
 	for _, badSpec := range []*api.SecretSpec{
@@ -63,7 +64,7 @@ func TestValidateSecretSpec(t *testing.T) {
 	} {
 		err := validateSecretSpec(badSpec)
 		assert.Error(t, err)
-		assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+		assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
 	}
 
 	for _, goodName := range []string{
@@ -95,7 +96,7 @@ func TestValidateSecretSpec(t *testing.T) {
 	spec.Driver = &api.Driver{}
 	err := validateSecretSpec(spec)
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
 	spec.Driver.Name = "secret-driver"
 	err = validateSecretSpec(spec)
 	assert.NoError(t, err)
@@ -108,7 +109,7 @@ func TestCreateSecret(t *testing.T) {
 	// ---- creating a secret with an invalid spec fails, thus checking that CreateSecret validates the spec ----
 	_, err := ts.Client.CreateSecret(context.Background(), &api.CreateSecretRequest{Spec: createSecretSpec("", nil, nil)})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
 
 	// ---- creating a secret with a valid spec succeeds, and returns a secret that reflects the secret in the store
 	// exactly, but without the private data ----
@@ -135,7 +136,7 @@ func TestCreateSecret(t *testing.T) {
 	// ---- creating a secret with the same name, even if it's the exact same spec, fails due to a name conflict ----
 	_, err = ts.Client.CreateSecret(context.Background(), &validSpecRequest)
 	assert.Error(t, err)
-	assert.Equal(t, codes.AlreadyExists, grpc.Code(err), grpc.ErrorDesc(err))
+	assert.Equal(t, codes.AlreadyExists, grpc.Code(err), testutils.ErrorDesc(err))
 }
 
 func TestGetSecret(t *testing.T) {
@@ -145,12 +146,12 @@ func TestGetSecret(t *testing.T) {
 	// ---- getting a secret without providing an ID results in an InvalidArgument ----
 	_, err := ts.Client.GetSecret(context.Background(), &api.GetSecretRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
 
 	// ---- getting a non-existent secret fails with NotFound ----
 	_, err = ts.Client.GetSecret(context.Background(), &api.GetSecretRequest{SecretID: "12345"})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err), grpc.ErrorDesc(err))
+	assert.Equal(t, codes.NotFound, grpc.Code(err), testutils.ErrorDesc(err))
 
 	// ---- getting an existing secret returns the secret with all the private data cleaned ----
 	secret := secretFromSecretSpec(createSecretSpec("name", []byte("data"), nil))
@@ -184,12 +185,12 @@ func TestUpdateSecret(t *testing.T) {
 	// updating a secret without providing an ID results in an InvalidArgument
 	_, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
 
 	// getting a non-existent secret fails with NotFound
 	_, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{SecretID: "1234adsaa", SecretVersion: &api.Version{Index: 1}})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err), grpc.ErrorDesc(err))
+	assert.Equal(t, codes.NotFound, grpc.Code(err), testutils.ErrorDesc(err))
 
 	// updating an existing secret's data returns an error
 	secret.Spec.Data = []byte{1}
@@ -198,7 +199,7 @@ func TestUpdateSecret(t *testing.T) {
 		Spec:          &secret.Spec,
 		SecretVersion: &secret.Meta.Version,
 	})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
 
 	// updating an existing secret's Name returns an error
 	secret.Spec.Data = nil
@@ -208,7 +209,7 @@ func TestUpdateSecret(t *testing.T) {
 		Spec:          &secret.Spec,
 		SecretVersion: &secret.Meta.Version,
 	})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
 
 	// updating the secret with the original spec succeeds
 	secret.Spec.Data = []byte("data")
@@ -260,7 +261,7 @@ func TestRemoveUnusedSecret(t *testing.T) {
 	// removing a secret without providing an ID results in an InvalidArgument
 	_, err := ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
 
 	// removing a secret that exists succeeds
 	secret := secretFromSecretSpec(createSecretSpec("name", []byte("data"), nil))
@@ -276,7 +277,7 @@ func TestRemoveUnusedSecret(t *testing.T) {
 	// ---- it was really removed because attempting to remove it again fails with a NotFound ----
 	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: secret.ID})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err), grpc.ErrorDesc(err))
+	assert.Equal(t, codes.NotFound, grpc.Code(err), testutils.ErrorDesc(err))
 
 }
 
@@ -317,8 +318,8 @@ func TestRemoveUsedSecret(t *testing.T) {
 
 	// removing a secret that exists but is in use fails
 	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: resp.Secret.ID})
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), grpc.ErrorDesc(err))
-	assert.Regexp(t, "service[1-2], service[1-2]", grpc.ErrorDesc(err))
+	assert.Equal(t, codes.InvalidArgument, grpc.Code(err), testutils.ErrorDesc(err))
+	assert.Regexp(t, "service[1-2], service[1-2]", testutils.ErrorDesc(err))
 
 	// removing a secret that exists but is not in use succeeds
 	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: resp2.Secret.ID})
@@ -327,7 +328,7 @@ func TestRemoveUsedSecret(t *testing.T) {
 	// it was really removed because attempting to remove it again fails with a NotFound
 	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: resp2.Secret.ID})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err), grpc.ErrorDesc(err))
+	assert.Equal(t, codes.NotFound, grpc.Code(err), testutils.ErrorDesc(err))
 }
 
 func TestListSecrets(t *testing.T) {
