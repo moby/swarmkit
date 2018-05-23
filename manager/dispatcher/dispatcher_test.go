@@ -384,7 +384,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 	resp, err := gd.Clients[0].Heartbeat(context.Background(), &api.HeartbeatRequest{SessionID: expectedSessionID})
 	assert.Nil(t, resp)
 	assert.Error(t, err)
-	assert.Equal(t, grpc.ErrorDesc(err), ErrNodeNotRegistered.Error())
+	assert.Equal(t, testutils.ErrorDesc(err), ErrNodeNotRegistered.Error())
 }
 
 func TestHeartbeatUnregistered(t *testing.T) {
@@ -394,7 +394,7 @@ func TestHeartbeatUnregistered(t *testing.T) {
 	resp, err := gd.Clients[0].Heartbeat(context.Background(), &api.HeartbeatRequest{})
 	assert.Nil(t, resp)
 	assert.Error(t, err)
-	assert.Equal(t, ErrSessionInvalid.Error(), grpc.ErrorDesc(err))
+	assert.Equal(t, ErrSessionInvalid.Error(), testutils.ErrorDesc(err))
 }
 
 // If the session ID is not sent as part of the Assignments request, an error is returned to the stream

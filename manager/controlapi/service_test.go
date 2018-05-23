@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/testutils"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -361,7 +362,7 @@ func TestValidateContainerSpec(t *testing.T) {
 	} {
 		err := validateContainerSpec(bad.spec)
 		assert.Error(t, err)
-		assert.Equal(t, bad.c, grpc.Code(err), grpc.ErrorDesc(err))
+		assert.Equal(t, bad.c, grpc.Code(err), testutils.ErrorDesc(err))
 	}
 
 	good1 := api.TaskSpec{
@@ -431,7 +432,7 @@ func TestValidateServiceSpec(t *testing.T) {
 	} {
 		err := validateServiceSpec(bad.spec)
 		assert.Error(t, err)
-		assert.Equal(t, bad.c, grpc.Code(err), grpc.ErrorDesc(err))
+		assert.Equal(t, bad.c, grpc.Code(err), testutils.ErrorDesc(err))
 	}
 
 	for _, good := range []*api.ServiceSpec{

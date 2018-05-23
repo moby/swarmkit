@@ -15,6 +15,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state/raft/membership"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/pkg/errors"
 )
 
@@ -244,7 +245,7 @@ func (p *peer) sendProcessMessage(ctx context.Context, m raftpb.Message) error {
 	}
 
 	// Handle errors.
-	if grpc.Code(err) == codes.NotFound && grpc.ErrorDesc(err) == membership.ErrMemberRemoved.Error() {
+	if grpc.Code(err) == codes.NotFound && testutils.ErrorDesc(err) == membership.ErrMemberRemoved.Error() {
 		p.tr.config.NodeRemoved()
 	}
 	if m.Type == raftpb.MsgSnap {
