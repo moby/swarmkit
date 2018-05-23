@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"golang.org/x/net/context"
 
@@ -387,6 +388,37 @@ func TestLoadSecurityConfigKeyFormat(t *testing.T) {
 	testGRPCConnection(t, secConfig)
 }
 
+// Custom GRPC dialer that does the TLS handshake itself, so that we can grab whatever
+// TLS error comes out.  Otherwise, GRPC 10.1 attempts to load balance connections and dial
+// asynchronously, thus eating whatever connection errors there are and returning nothing
+// but a timeout error
+func tlsGRPCDial(ctx context.Context, address string, creds credentials.TransportCredentials) (*grpc.ClientConn, chan error, error) {
+	dialerErrChan := make(chan error, 1)
+	conn, err := grpc.Dial(
+		address,
+		grpc.WithBlock(),
+		grpc.WithTimeout(10*time.Second),
+		grpc.WithInsecure(),
+		grpc.WithDialer(func(address string, timeout time.Duration) (net.Conn, error) {
+			ctx, cancel := context.WithTimeout(ctx, timeout)
+			defer cancel()
+
+			conn, err := (&net.Dialer{Cancel: ctx.Done()}).Dial("tcp", address)
+			if err != nil {
+				dialerErrChan <- err
+				return nil, err
+			}
+			conn, _, err = creds.ClientHandshake(ctx, address, conn)
+			if err != nil {
+				dialerErrChan <- err
+				return nil, err
+			}
+			return conn, nil
+		}),
+	)
+	return conn, dialerErrChan, err
+}
+
 // When the root CA is updated on the security config, the root pools are updated
 func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	t.Parallel()
@@ -428,18 +460,20 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	defer grpcServer.Stop()
 
 	// we should not be able to connect to the test CA server using the original security config, and should not
-	// be able to connect to new server using the test CA's client credentials
-	dialOptsBase := []grpc.DialOption{
-		grpc.WithBlock(),
-		grpc.WithTimeout(10 * time.Second),
-	}
-	dialOpts := append(dialOptsBase, grpc.WithTransportCredentials(secConfig.ClientTLSCreds))
-	_, err = grpc.Dial(tc.Addr, dialOpts...)
+	// be able to connect to new server using the test CA's client credentials.  We also need to use our own
+	// dialer, so that grpc does not attempt to load balance/retry the connection - this way the x509 errors can be
+	// surfaced.
+	_, actualErrChan, err := tlsGRPCDial(tc.Context, tc.Addr, secConfig.ClientTLSCreds)
+	defer close(actualErrChan)
+	require.Error(t, err)
+	err = <-actualErrChan
 	require.Error(t, err)
 	require.IsType(t, x509.UnknownAuthorityError{}, err)
 
-	dialOpts = append(dialOptsBase, grpc.WithTransportCredentials(tcConfig.ClientTLSCreds))
-	_, err = grpc.Dial(l.Addr().String(), dialOpts...)
+	_, actualErrChan, err = tlsGRPCDial(tc.Context, l.Addr().String(), tcConfig.ClientTLSCreds)
+	defer close(actualErrChan)
+	require.Error(t, err)
+	err = <-actualErrChan
 	require.Error(t, err)
 	require.IsType(t, x509.UnknownAuthorityError{}, err)
 
@@ -460,13 +494,21 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 
 	// can now connect to the test CA using our modified security config, and can cannect to our server using
 	// the test CA config
-	conn, err := grpc.Dial(tc.Addr, dialOpts...)
+	conn, err := grpc.Dial(
+		tc.Addr,
+		grpc.WithBlock(),
+		grpc.WithTimeout(10*time.Second),
+		grpc.WithTransportCredentials(tcConfig.ClientTLSCreds),
+	)
 	require.NoError(t, err)
 	conn.Close()
 
-	dialOpts = append(dialOptsBase, grpc.WithTransportCredentials(secConfig.ClientTLSCreds))
-	conn, err = grpc.Dial(tc.Addr, dialOpts...)
-
+	conn, err = grpc.Dial(
+		tc.Addr,
+		grpc.WithBlock(),
+		grpc.WithTimeout(10*time.Second),
+		grpc.WithTransportCredentials(secConfig.ClientTLSCreds),
+	)
 	require.NoError(t, err)
 	conn.Close()
 

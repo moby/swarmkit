@@ -10,12 +10,10 @@ import _ "github.com/gogo/protobuf/gogoproto"
 import google_protobuf "github.com/gogo/protobuf/types"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 
-import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
-import (
-	context "golang.org/x/net/context"
-	grpc "google.golang.org/grpc"
-)
+import context "golang.org/x/net/context"
+import grpc "google.golang.org/grpc"
 
 import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
@@ -304,7 +302,7 @@ func (m *LogSubscriptionOptions) CopyFrom(src interface{}) {
 
 	if o.Since != nil {
 		m.Since = &google_protobuf.Timestamp{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Since, o.Since)
+		deepcopy.Copy(m.Since, o.Since)
 	}
 }
 
@@ -381,10 +379,10 @@ func (m *LogMessage) CopyFrom(src interface{}) {
 
 	o := src.(*LogMessage)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Context, &o.Context)
+	deepcopy.Copy(&m.Context, &o.Context)
 	if o.Timestamp != nil {
 		m.Timestamp = &google_protobuf.Timestamp{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Timestamp, o.Timestamp)
+		deepcopy.Copy(m.Timestamp, o.Timestamp)
 	}
 	if o.Data != nil {
 		m.Data = make([]byte, len(o.Data))
@@ -393,7 +391,7 @@ func (m *LogMessage) CopyFrom(src interface{}) {
 	if o.Attrs != nil {
 		m.Attrs = make([]LogAttr, len(o.Attrs))
 		for i := range m.Attrs {
-			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Attrs[i], &o.Attrs[i])
+			deepcopy.Copy(&m.Attrs[i], &o.Attrs[i])
 		}
 	}
 
@@ -414,11 +412,11 @@ func (m *SubscribeLogsRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Selector != nil {
 		m.Selector = &LogSelector{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Selector, o.Selector)
+		deepcopy.Copy(m.Selector, o.Selector)
 	}
 	if o.Options != nil {
 		m.Options = &LogSubscriptionOptions{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Options, o.Options)
+		deepcopy.Copy(m.Options, o.Options)
 	}
 }
 
@@ -438,7 +436,7 @@ func (m *SubscribeLogsMessage) CopyFrom(src interface{}) {
 	if o.Messages != nil {
 		m.Messages = make([]LogMessage, len(o.Messages))
 		for i := range m.Messages {
-			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Messages[i], &o.Messages[i])
+			deepcopy.Copy(&m.Messages[i], &o.Messages[i])
 		}
 	}
 
@@ -469,11 +467,11 @@ func (m *SubscriptionMessage) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Selector != nil {
 		m.Selector = &LogSelector{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Selector, o.Selector)
+		deepcopy.Copy(m.Selector, o.Selector)
 	}
 	if o.Options != nil {
 		m.Options = &LogSubscriptionOptions{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Options, o.Options)
+		deepcopy.Copy(m.Options, o.Options)
 	}
 }
 
@@ -493,7 +491,7 @@ func (m *PublishLogsMessage) CopyFrom(src interface{}) {
 	if o.Messages != nil {
 		m.Messages = make([]LogMessage, len(o.Messages))
 		for i := range m.Messages {
-			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Messages[i], &o.Messages[i])
+			deepcopy.Copy(&m.Messages[i], &o.Messages[i])
 		}
 	}
 
