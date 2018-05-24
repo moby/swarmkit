@@ -71,6 +71,42 @@ func TestVolumesAndBinds(t *testing.T) {
 	}
 }
 
+func TestTmpfsOptions(t *testing.T) {
+	type testCase struct {
+		explain string
+		config  api.Mount
+		x       string
+	}
+
+	cases := []testCase{
+		{"Tmpfs mount with exec option", api.Mount{Type: api.MountTypeTmpfs, Target: "/kerfluffle", TmpfsOptions: &api.Mount_TmpfsOptions{Options: "exec"}}, "exec"},
+		{"Tmpfs mount with noexec option", api.Mount{Type: api.MountTypeTmpfs, Target: "/kerfluffle", TmpfsOptions: &api.Mount_TmpfsOptions{Options: "noexec"}}, "noexec"},
+	}
+
+	for _, c := range cases {
+		cfg := containerConfig{
+			task: &api.Task{
+				Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{
+						Mounts: []api.Mount{c.config},
+					},
+				}},
+			},
+		}
+
+		mountOpts, ok := cfg.hostConfig().Tmpfs["/kerfluffle"]
+		if !ok {
+			t.Fatalf("expected 1 mount, found none")
+		}
+
+		if mountOpts != c.x {
+			t.Log(c.explain)
+			t.Logf("expected Tmpfs opts: %+v, got: %+v", c.x, mountOpts)
+			t.Fail()
+		}
+	}
+}
+
 func TestHealthcheck(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{

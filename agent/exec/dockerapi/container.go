@@ -395,6 +395,18 @@ func getMountMask(m *api.Mount) string {
 
 			maskOpts = append(maskOpts, fmt.Sprintf("size=%d%s", size, suffix))
 		}
+
+		if opts := m.TmpfsOptions.Options; opts != "" {
+			validOpts := map[string]bool{
+				"exec":   true,
+				"noexec": true,
+			}
+			for _, opt := range strings.Split(strings.ToLower(opts), ",") {
+				if _, ok := validOpts[opt]; ok {
+					maskOpts = append(maskOpts, opt)
+				}
+			}
+		}
 	}
 
 	return strings.Join(maskOpts, ",")
