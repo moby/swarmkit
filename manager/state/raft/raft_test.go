@@ -975,7 +975,7 @@ func TestStreamRaftMessage(t *testing.T) {
 
 	raftMsg := &api.StreamRaftMessageRequest{Message: msg}
 	err = stream.Send(raftMsg)
-	assert.Error(t, err, "Received unexpected error EOF")
+	assert.NoError(t, err)
 
 	_, err = stream.CloseAndRecv()
 	errStr := fmt.Sprintf("grpc: received message larger than max (%d vs. %d)", raftMsg.Size(), transport.GRPCMaxMsgSize)
