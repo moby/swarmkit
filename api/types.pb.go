@@ -13,14 +13,14 @@ import _ "github.com/gogo/protobuf/gogoproto"
 import os "os"
 import time "time"
 
-import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
-import encoding_binary "encoding/binary"
-import github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
+import binary "encoding/binary"
+import types "github.com/gogo/protobuf/types"
 
 import strings "strings"
 import reflect "reflect"
-import github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
+import sortkeys "github.com/gogo/protobuf/sortkeys"
 
 import io "io"
 
@@ -2254,7 +2254,7 @@ func (m *Annotations) CopyFrom(src interface{}) {
 	if o.Indices != nil {
 		m.Indices = make([]IndexEntry, len(o.Indices))
 		for i := range m.Indices {
-			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Indices[i], &o.Indices[i])
+			deepcopy.Copy(&m.Indices[i], &o.Indices[i])
 		}
 	}
 
@@ -2309,13 +2309,13 @@ func (m *GenericResource) CopyFrom(src interface{}) {
 			v := GenericResource_NamedResourceSpec{
 				NamedResourceSpec: &NamedGenericResource{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.NamedResourceSpec, o.GetNamedResourceSpec())
+			deepcopy.Copy(v.NamedResourceSpec, o.GetNamedResourceSpec())
 			m.Resource = &v
 		case *GenericResource_DiscreteResourceSpec:
 			v := GenericResource_DiscreteResourceSpec{
 				DiscreteResourceSpec: &DiscreteGenericResource{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.DiscreteResourceSpec, o.GetDiscreteResourceSpec())
+			deepcopy.Copy(v.DiscreteResourceSpec, o.GetDiscreteResourceSpec())
 			m.Resource = &v
 		}
 	}
@@ -2339,7 +2339,7 @@ func (m *Resources) CopyFrom(src interface{}) {
 		m.Generic = make([]*GenericResource, len(o.Generic))
 		for i := range m.Generic {
 			m.Generic[i] = &GenericResource{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Generic[i], o.Generic[i])
+			deepcopy.Copy(m.Generic[i], o.Generic[i])
 		}
 	}
 
@@ -2360,11 +2360,11 @@ func (m *ResourceRequirements) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Limits != nil {
 		m.Limits = &Resources{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Limits, o.Limits)
+		deepcopy.Copy(m.Limits, o.Limits)
 	}
 	if o.Reservations != nil {
 		m.Reservations = &Resources{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Reservations, o.Reservations)
+		deepcopy.Copy(m.Reservations, o.Reservations)
 	}
 }
 
@@ -2421,7 +2421,7 @@ func (m *EngineDescription) CopyFrom(src interface{}) {
 	if o.Plugins != nil {
 		m.Plugins = make([]PluginDescription, len(o.Plugins))
 		for i := range m.Plugins {
-			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Plugins[i], &o.Plugins[i])
+			deepcopy.Copy(&m.Plugins[i], &o.Plugins[i])
 		}
 	}
 
@@ -2442,19 +2442,19 @@ func (m *NodeDescription) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Platform != nil {
 		m.Platform = &Platform{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Platform, o.Platform)
+		deepcopy.Copy(m.Platform, o.Platform)
 	}
 	if o.Resources != nil {
 		m.Resources = &Resources{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Resources, o.Resources)
+		deepcopy.Copy(m.Resources, o.Resources)
 	}
 	if o.Engine != nil {
 		m.Engine = &EngineDescription{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Engine, o.Engine)
+		deepcopy.Copy(m.Engine, o.Engine)
 	}
 	if o.TLSInfo != nil {
 		m.TLSInfo = &NodeTLSInfo{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.TLSInfo, o.TLSInfo)
+		deepcopy.Copy(m.TLSInfo, o.TLSInfo)
 	}
 }
 
@@ -2545,15 +2545,15 @@ func (m *Mount) CopyFrom(src interface{}) {
 	*m = *o
 	if o.BindOptions != nil {
 		m.BindOptions = &Mount_BindOptions{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.BindOptions, o.BindOptions)
+		deepcopy.Copy(m.BindOptions, o.BindOptions)
 	}
 	if o.VolumeOptions != nil {
 		m.VolumeOptions = &Mount_VolumeOptions{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.VolumeOptions, o.VolumeOptions)
+		deepcopy.Copy(m.VolumeOptions, o.VolumeOptions)
 	}
 	if o.TmpfsOptions != nil {
 		m.TmpfsOptions = &Mount_TmpfsOptions{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.TmpfsOptions, o.TmpfsOptions)
+		deepcopy.Copy(m.TmpfsOptions, o.TmpfsOptions)
 	}
 }
 
@@ -2594,7 +2594,7 @@ func (m *Mount_VolumeOptions) CopyFrom(src interface{}) {
 
 	if o.DriverConfig != nil {
 		m.DriverConfig = &Driver{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.DriverConfig, o.DriverConfig)
+		deepcopy.Copy(m.DriverConfig, o.DriverConfig)
 	}
 }
 
@@ -2628,11 +2628,11 @@ func (m *RestartPolicy) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Delay != nil {
 		m.Delay = &google_protobuf1.Duration{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Delay, o.Delay)
+		deepcopy.Copy(m.Delay, o.Delay)
 	}
 	if o.Window != nil {
 		m.Window = &google_protobuf1.Duration{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Window, o.Window)
+		deepcopy.Copy(m.Window, o.Window)
 	}
 }
 
@@ -2649,10 +2649,10 @@ func (m *UpdateConfig) CopyFrom(src interface{}) {
 
 	o := src.(*UpdateConfig)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Delay, &o.Delay)
+	deepcopy.Copy(&m.Delay, &o.Delay)
 	if o.Monitor != nil {
 		m.Monitor = &google_protobuf1.Duration{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Monitor, o.Monitor)
+		deepcopy.Copy(m.Monitor, o.Monitor)
 	}
 }
 
@@ -2671,11 +2671,11 @@ func (m *UpdateStatus) CopyFrom(src interface{}) {
 	*m = *o
 	if o.StartedAt != nil {
 		m.StartedAt = &google_protobuf.Timestamp{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.StartedAt, o.StartedAt)
+		deepcopy.Copy(m.StartedAt, o.StartedAt)
 	}
 	if o.CompletedAt != nil {
 		m.CompletedAt = &google_protobuf.Timestamp{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.CompletedAt, o.CompletedAt)
+		deepcopy.Copy(m.CompletedAt, o.CompletedAt)
 	}
 }
 
@@ -2711,7 +2711,7 @@ func (m *PortStatus) CopyFrom(src interface{}) {
 		m.Ports = make([]*PortConfig, len(o.Ports))
 		for i := range m.Ports {
 			m.Ports[i] = &PortConfig{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Ports[i], o.Ports[i])
+			deepcopy.Copy(m.Ports[i], o.Ports[i])
 		}
 	}
 
@@ -2732,15 +2732,15 @@ func (m *TaskStatus) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Timestamp != nil {
 		m.Timestamp = &google_protobuf.Timestamp{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Timestamp, o.Timestamp)
+		deepcopy.Copy(m.Timestamp, o.Timestamp)
 	}
 	if o.PortStatus != nil {
 		m.PortStatus = &PortStatus{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.PortStatus, o.PortStatus)
+		deepcopy.Copy(m.PortStatus, o.PortStatus)
 	}
 	if o.AppliedAt != nil {
 		m.AppliedAt = &google_protobuf.Timestamp{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.AppliedAt, o.AppliedAt)
+		deepcopy.Copy(m.AppliedAt, o.AppliedAt)
 	}
 	if o.RuntimeStatus != nil {
 		switch o.RuntimeStatus.(type) {
@@ -2748,7 +2748,7 @@ func (m *TaskStatus) CopyFrom(src interface{}) {
 			v := TaskStatus_Container{
 				Container: &ContainerStatus{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Container, o.GetContainer())
+			deepcopy.Copy(v.Container, o.GetContainer())
 			m.RuntimeStatus = &v
 		}
 	}
@@ -2861,13 +2861,13 @@ func (m *IPAMOptions) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Driver != nil {
 		m.Driver = &Driver{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Driver, o.Driver)
+		deepcopy.Copy(m.Driver, o.Driver)
 	}
 	if o.Configs != nil {
 		m.Configs = make([]*IPAMConfig, len(o.Configs))
 		for i := range m.Configs {
 			m.Configs[i] = &IPAMConfig{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Configs[i], o.Configs[i])
+			deepcopy.Copy(m.Configs[i], o.Configs[i])
 		}
 	}
 
@@ -2903,7 +2903,7 @@ func (m *WeightedPeer) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Peer != nil {
 		m.Peer = &Peer{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Peer, o.Peer)
+		deepcopy.Copy(m.Peer, o.Peer)
 	}
 }
 
@@ -2939,7 +2939,7 @@ func (m *AcceptancePolicy) CopyFrom(src interface{}) {
 		m.Policies = make([]*AcceptancePolicy_RoleAdmissionPolicy, len(o.Policies))
 		for i := range m.Policies {
 			m.Policies[i] = &AcceptancePolicy_RoleAdmissionPolicy{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Policies[i], o.Policies[i])
+			deepcopy.Copy(m.Policies[i], o.Policies[i])
 		}
 	}
 
@@ -2960,7 +2960,7 @@ func (m *AcceptancePolicy_RoleAdmissionPolicy) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Secret != nil {
 		m.Secret = &AcceptancePolicy_RoleAdmissionPolicy_Secret{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Secret, o.Secret)
+		deepcopy.Copy(m.Secret, o.Secret)
 	}
 }
 
@@ -3024,13 +3024,13 @@ func (m *CAConfig) CopyFrom(src interface{}) {
 	*m = *o
 	if o.NodeCertExpiry != nil {
 		m.NodeCertExpiry = &google_protobuf1.Duration{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.NodeCertExpiry, o.NodeCertExpiry)
+		deepcopy.Copy(m.NodeCertExpiry, o.NodeCertExpiry)
 	}
 	if o.ExternalCAs != nil {
 		m.ExternalCAs = make([]*ExternalCA, len(o.ExternalCAs))
 		for i := range m.ExternalCAs {
 			m.ExternalCAs[i] = &ExternalCA{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.ExternalCAs[i], o.ExternalCAs[i])
+			deepcopy.Copy(m.ExternalCAs[i], o.ExternalCAs[i])
 		}
 	}
 
@@ -3074,7 +3074,7 @@ func (m *TaskDefaults) CopyFrom(src interface{}) {
 	*m = *o
 	if o.LogDriver != nil {
 		m.LogDriver = &Driver{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.LogDriver, o.LogDriver)
+		deepcopy.Copy(m.LogDriver, o.LogDriver)
 	}
 }
 
@@ -3093,7 +3093,7 @@ func (m *DispatcherConfig) CopyFrom(src interface{}) {
 	*m = *o
 	if o.HeartbeatPeriod != nil {
 		m.HeartbeatPeriod = &google_protobuf1.Duration{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.HeartbeatPeriod, o.HeartbeatPeriod)
+		deepcopy.Copy(m.HeartbeatPeriod, o.HeartbeatPeriod)
 	}
 }
 
@@ -3161,7 +3161,7 @@ func (m *PlacementPreference) CopyFrom(src interface{}) {
 			v := PlacementPreference_Spread{
 				Spread: &SpreadOver{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Spread, o.GetSpread())
+			deepcopy.Copy(v.Spread, o.GetSpread())
 			m.Preference = &v
 		}
 	}
@@ -3190,7 +3190,7 @@ func (m *Placement) CopyFrom(src interface{}) {
 		m.Preferences = make([]*PlacementPreference, len(o.Preferences))
 		for i := range m.Preferences {
 			m.Preferences[i] = &PlacementPreference{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Preferences[i], o.Preferences[i])
+			deepcopy.Copy(m.Preferences[i], o.Preferences[i])
 		}
 	}
 
@@ -3198,7 +3198,7 @@ func (m *Placement) CopyFrom(src interface{}) {
 		m.Platforms = make([]*Platform, len(o.Platforms))
 		for i := range m.Platforms {
 			m.Platforms[i] = &Platform{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Platforms[i], o.Platforms[i])
+			deepcopy.Copy(m.Platforms[i], o.Platforms[i])
 		}
 	}
 
@@ -3240,10 +3240,10 @@ func (m *RootCA) CopyFrom(src interface{}) {
 		m.CACert = make([]byte, len(o.CACert))
 		copy(m.CACert, o.CACert)
 	}
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.JoinTokens, &o.JoinTokens)
+	deepcopy.Copy(&m.JoinTokens, &o.JoinTokens)
 	if o.RootRotation != nil {
 		m.RootRotation = &RootRotation{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.RootRotation, o.RootRotation)
+		deepcopy.Copy(m.RootRotation, o.RootRotation)
 	}
 }
 
@@ -3264,7 +3264,7 @@ func (m *Certificate) CopyFrom(src interface{}) {
 		m.CSR = make([]byte, len(o.CSR))
 		copy(m.CSR, o.CSR)
 	}
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Status, &o.Status)
+	deepcopy.Copy(&m.Status, &o.Status)
 	if o.Certificate != nil {
 		m.Certificate = make([]byte, len(o.Certificate))
 		copy(m.Certificate, o.Certificate)
@@ -3339,7 +3339,7 @@ func (m *SecretReference) CopyFrom(src interface{}) {
 			v := SecretReference_File{
 				File: &FileTarget{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.File, o.GetFile())
+			deepcopy.Copy(v.File, o.GetFile())
 			m.Target = &v
 		}
 	}
@@ -3365,7 +3365,7 @@ func (m *ConfigReference) CopyFrom(src interface{}) {
 			v := ConfigReference_File{
 				File: &FileTarget{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.File, o.GetFile())
+			deepcopy.Copy(v.File, o.GetFile())
 			m.Target = &v
 		}
 	}
@@ -3387,7 +3387,7 @@ func (m *BlacklistedCertificate) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Expiry != nil {
 		m.Expiry = &google_protobuf.Timestamp{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Expiry, o.Expiry)
+		deepcopy.Copy(m.Expiry, o.Expiry)
 	}
 }
 
@@ -3411,15 +3411,15 @@ func (m *HealthConfig) CopyFrom(src interface{}) {
 
 	if o.Interval != nil {
 		m.Interval = &google_protobuf1.Duration{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Interval, o.Interval)
+		deepcopy.Copy(m.Interval, o.Interval)
 	}
 	if o.Timeout != nil {
 		m.Timeout = &google_protobuf1.Duration{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Timeout, o.Timeout)
+		deepcopy.Copy(m.Timeout, o.Timeout)
 	}
 	if o.StartPeriod != nil {
 		m.StartPeriod = &google_protobuf1.Duration{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.StartPeriod, o.StartPeriod)
+		deepcopy.Copy(m.StartPeriod, o.StartPeriod)
 	}
 }
 
@@ -3488,11 +3488,11 @@ func (m *Privileges) CopyFrom(src interface{}) {
 	*m = *o
 	if o.CredentialSpec != nil {
 		m.CredentialSpec = &Privileges_CredentialSpec{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.CredentialSpec, o.CredentialSpec)
+		deepcopy.Copy(m.CredentialSpec, o.CredentialSpec)
 	}
 	if o.SELinuxContext != nil {
 		m.SELinuxContext = &Privileges_SELinuxContext{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.SELinuxContext, o.SELinuxContext)
+		deepcopy.Copy(m.SELinuxContext, o.SELinuxContext)
 	}
 }
 
@@ -4414,8 +4414,8 @@ func (m *UpdateConfig) MarshalTo(dAtA []byte) (int, error) {
 	}
 	dAtA[i] = 0x12
 	i++
-	i = encodeVarintTypes(dAtA, i, uint64(github_com_gogo_protobuf_types.SizeOfStdDuration(m.Delay)))
-	n16, err := github_com_gogo_protobuf_types.StdDurationMarshalTo(m.Delay, dAtA[i:])
+	i = encodeVarintTypes(dAtA, i, uint64(types.SizeOfStdDuration(m.Delay)))
+	n16, err := types.StdDurationMarshalTo(m.Delay, dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
@@ -4438,7 +4438,7 @@ func (m *UpdateConfig) MarshalTo(dAtA []byte) (int, error) {
 	if m.MaxFailureRatio != 0 {
 		dAtA[i] = 0x2d
 		i++
-		encoding_binary.LittleEndian.PutUint32(dAtA[i:], uint32(math.Float32bits(float32(m.MaxFailureRatio))))
+		binary.LittleEndian.PutUint32(dAtA[i:], uint32(math.Float32bits(float32(m.MaxFailureRatio))))
 		i += 4
 	}
 	if m.Order != 0 {
@@ -6533,7 +6533,7 @@ func (m *UpdateConfig) Size() (n int) {
 	if m.Parallelism != 0 {
 		n += 1 + sovTypes(uint64(m.Parallelism))
 	}
-	l = github_com_gogo_protobuf_types.SizeOfStdDuration(m.Delay)
+	l = types.SizeOfStdDuration(m.Delay)
 	n += 1 + l + sovTypes(uint64(l))
 	if m.FailureAction != 0 {
 		n += 1 + sovTypes(uint64(m.FailureAction))
@@ -7357,7 +7357,7 @@ func (this *Annotations) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
+	sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -7476,7 +7476,7 @@ func (this *EngineDescription) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
+	sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -7586,7 +7586,7 @@ func (this *Mount_VolumeOptions) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
+	sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -7709,7 +7709,7 @@ func (this *NetworkAttachmentConfig) String() string {
 	for k, _ := range this.DriverAttachmentOpts {
 		keysForDriverAttachmentOpts = append(keysForDriverAttachmentOpts, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForDriverAttachmentOpts)
+	sortkeys.Strings(keysForDriverAttachmentOpts)
 	mapStringForDriverAttachmentOpts := "map[string]string{"
 	for _, k := range keysForDriverAttachmentOpts {
 		mapStringForDriverAttachmentOpts += fmt.Sprintf("%v: %v,", k, this.DriverAttachmentOpts[k])
@@ -7732,7 +7732,7 @@ func (this *IPAMConfig) String() string {
 	for k, _ := range this.Reserved {
 		keysForReserved = append(keysForReserved, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForReserved)
+	sortkeys.Strings(keysForReserved)
 	mapStringForReserved := "map[string]string{"
 	for _, k := range keysForReserved {
 		mapStringForReserved += fmt.Sprintf("%v: %v,", k, this.Reserved[k])
@@ -7770,7 +7770,7 @@ func (this *Driver) String() string {
 	for k, _ := range this.Options {
 		keysForOptions = append(keysForOptions, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForOptions)
+	sortkeys.Strings(keysForOptions)
 	mapStringForOptions := "map[string]string{"
 	for _, k := range keysForOptions {
 		mapStringForOptions += fmt.Sprintf("%v: %v,", k, this.Options[k])
@@ -7868,7 +7868,7 @@ func (this *ExternalCA) String() string {
 	for k, _ := range this.Options {
 		keysForOptions = append(keysForOptions, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForOptions)
+	sortkeys.Strings(keysForOptions)
 	mapStringForOptions := "map[string]string{"
 	for _, k := range keysForOptions {
 		mapStringForOptions += fmt.Sprintf("%v: %v,", k, this.Options[k])
@@ -11200,7 +11200,7 @@ func (m *UpdateConfig) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := github_com_gogo_protobuf_types.StdDurationUnmarshal(&m.Delay, dAtA[iNdEx:postIndex]); err != nil {
+			if err := types.StdDurationUnmarshal(&m.Delay, dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -11264,7 +11264,7 @@ func (m *UpdateConfig) Unmarshal(dAtA []byte) error {
 			if (iNdEx + 4) > l {
 				return io.ErrUnexpectedEOF
 			}
-			v = uint32(encoding_binary.LittleEndian.Uint32(dAtA[iNdEx:]))
+			v = uint32(binary.LittleEndian.Uint32(dAtA[iNdEx:]))
 			iNdEx += 4
 			m.MaxFailureRatio = float32(math.Float32frombits(v))
 		case 6:

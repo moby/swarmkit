@@ -11,13 +11,13 @@ import _ "github.com/gogo/protobuf/gogoproto"
 import google_protobuf3 "github.com/gogo/protobuf/types"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
 
-import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
-import github_com_docker_go_events "github.com/docker/go-events"
+import go_events "github.com/docker/go-events"
 import strings "strings"
 
 import reflect "reflect"
-import github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
+import sortkeys "github.com/gogo/protobuf/sortkeys"
 
 import io "io"
 
@@ -372,14 +372,14 @@ func (m *Meta) CopyFrom(src interface{}) {
 
 	o := src.(*Meta)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Version, &o.Version)
+	deepcopy.Copy(&m.Version, &o.Version)
 	if o.CreatedAt != nil {
 		m.CreatedAt = &google_protobuf.Timestamp{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.CreatedAt, o.CreatedAt)
+		deepcopy.Copy(m.CreatedAt, o.CreatedAt)
 	}
 	if o.UpdatedAt != nil {
 		m.UpdatedAt = &google_protobuf.Timestamp{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.UpdatedAt, o.UpdatedAt)
+		deepcopy.Copy(m.UpdatedAt, o.UpdatedAt)
 	}
 }
 
@@ -396,27 +396,27 @@ func (m *Node) CopyFrom(src interface{}) {
 
 	o := src.(*Node)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
+	deepcopy.Copy(&m.Meta, &o.Meta)
+	deepcopy.Copy(&m.Spec, &o.Spec)
 	if o.Description != nil {
 		m.Description = &NodeDescription{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Description, o.Description)
+		deepcopy.Copy(m.Description, o.Description)
 	}
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Status, &o.Status)
+	deepcopy.Copy(&m.Status, &o.Status)
 	if o.ManagerStatus != nil {
 		m.ManagerStatus = &ManagerStatus{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.ManagerStatus, o.ManagerStatus)
+		deepcopy.Copy(m.ManagerStatus, o.ManagerStatus)
 	}
 	if o.Attachment != nil {
 		m.Attachment = &NetworkAttachment{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Attachment, o.Attachment)
+		deepcopy.Copy(m.Attachment, o.Attachment)
 	}
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Certificate, &o.Certificate)
+	deepcopy.Copy(&m.Certificate, &o.Certificate)
 	if o.Attachments != nil {
 		m.Attachments = make([]*NetworkAttachment, len(o.Attachments))
 		for i := range m.Attachments {
 			m.Attachments[i] = &NetworkAttachment{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Attachments[i], o.Attachments[i])
+			deepcopy.Copy(m.Attachments[i], o.Attachments[i])
 		}
 	}
 
@@ -435,27 +435,27 @@ func (m *Service) CopyFrom(src interface{}) {
 
 	o := src.(*Service)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
+	deepcopy.Copy(&m.Meta, &o.Meta)
+	deepcopy.Copy(&m.Spec, &o.Spec)
 	if o.SpecVersion != nil {
 		m.SpecVersion = &Version{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.SpecVersion, o.SpecVersion)
+		deepcopy.Copy(m.SpecVersion, o.SpecVersion)
 	}
 	if o.PreviousSpec != nil {
 		m.PreviousSpec = &ServiceSpec{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.PreviousSpec, o.PreviousSpec)
+		deepcopy.Copy(m.PreviousSpec, o.PreviousSpec)
 	}
 	if o.PreviousSpecVersion != nil {
 		m.PreviousSpecVersion = &Version{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.PreviousSpecVersion, o.PreviousSpecVersion)
+		deepcopy.Copy(m.PreviousSpecVersion, o.PreviousSpecVersion)
 	}
 	if o.Endpoint != nil {
 		m.Endpoint = &Endpoint{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Endpoint, o.Endpoint)
+		deepcopy.Copy(m.Endpoint, o.Endpoint)
 	}
 	if o.UpdateStatus != nil {
 		m.UpdateStatus = &UpdateStatus{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.UpdateStatus, o.UpdateStatus)
+		deepcopy.Copy(m.UpdateStatus, o.UpdateStatus)
 	}
 }
 
@@ -474,13 +474,13 @@ func (m *Endpoint) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Spec != nil {
 		m.Spec = &EndpointSpec{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
+		deepcopy.Copy(m.Spec, o.Spec)
 	}
 	if o.Ports != nil {
 		m.Ports = make([]*PortConfig, len(o.Ports))
 		for i := range m.Ports {
 			m.Ports[i] = &PortConfig{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Ports[i], o.Ports[i])
+			deepcopy.Copy(m.Ports[i], o.Ports[i])
 		}
 	}
 
@@ -488,7 +488,7 @@ func (m *Endpoint) CopyFrom(src interface{}) {
 		m.VirtualIPs = make([]*Endpoint_VirtualIP, len(o.VirtualIPs))
 		for i := range m.VirtualIPs {
 			m.VirtualIPs[i] = &Endpoint_VirtualIP{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.VirtualIPs[i], o.VirtualIPs[i])
+			deepcopy.Copy(m.VirtualIPs[i], o.VirtualIPs[i])
 		}
 	}
 
@@ -522,36 +522,36 @@ func (m *Task) CopyFrom(src interface{}) {
 
 	o := src.(*Task)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
+	deepcopy.Copy(&m.Meta, &o.Meta)
+	deepcopy.Copy(&m.Spec, &o.Spec)
 	if o.SpecVersion != nil {
 		m.SpecVersion = &Version{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.SpecVersion, o.SpecVersion)
+		deepcopy.Copy(m.SpecVersion, o.SpecVersion)
 	}
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.ServiceAnnotations, &o.ServiceAnnotations)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Status, &o.Status)
+	deepcopy.Copy(&m.Annotations, &o.Annotations)
+	deepcopy.Copy(&m.ServiceAnnotations, &o.ServiceAnnotations)
+	deepcopy.Copy(&m.Status, &o.Status)
 	if o.Networks != nil {
 		m.Networks = make([]*NetworkAttachment, len(o.Networks))
 		for i := range m.Networks {
 			m.Networks[i] = &NetworkAttachment{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Networks[i], o.Networks[i])
+			deepcopy.Copy(m.Networks[i], o.Networks[i])
 		}
 	}
 
 	if o.Endpoint != nil {
 		m.Endpoint = &Endpoint{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Endpoint, o.Endpoint)
+		deepcopy.Copy(m.Endpoint, o.Endpoint)
 	}
 	if o.LogDriver != nil {
 		m.LogDriver = &Driver{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.LogDriver, o.LogDriver)
+		deepcopy.Copy(m.LogDriver, o.LogDriver)
 	}
 	if o.AssignedGenericResources != nil {
 		m.AssignedGenericResources = make([]*GenericResource, len(o.AssignedGenericResources))
 		for i := range m.AssignedGenericResources {
 			m.AssignedGenericResources[i] = &GenericResource{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.AssignedGenericResources[i], o.AssignedGenericResources[i])
+			deepcopy.Copy(m.AssignedGenericResources[i], o.AssignedGenericResources[i])
 		}
 	}
 
@@ -572,7 +572,7 @@ func (m *NetworkAttachment) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Network != nil {
 		m.Network = &Network{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Network, o.Network)
+		deepcopy.Copy(m.Network, o.Network)
 	}
 	if o.Addresses != nil {
 		m.Addresses = make([]string, len(o.Addresses))
@@ -606,15 +606,15 @@ func (m *Network) CopyFrom(src interface{}) {
 
 	o := src.(*Network)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
+	deepcopy.Copy(&m.Meta, &o.Meta)
+	deepcopy.Copy(&m.Spec, &o.Spec)
 	if o.DriverState != nil {
 		m.DriverState = &Driver{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.DriverState, o.DriverState)
+		deepcopy.Copy(m.DriverState, o.DriverState)
 	}
 	if o.IPAM != nil {
 		m.IPAM = &IPAMOptions{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.IPAM, o.IPAM)
+		deepcopy.Copy(m.IPAM, o.IPAM)
 	}
 }
 
@@ -631,14 +631,14 @@ func (m *Cluster) CopyFrom(src interface{}) {
 
 	o := src.(*Cluster)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.RootCA, &o.RootCA)
+	deepcopy.Copy(&m.Meta, &o.Meta)
+	deepcopy.Copy(&m.Spec, &o.Spec)
+	deepcopy.Copy(&m.RootCA, &o.RootCA)
 	if o.NetworkBootstrapKeys != nil {
 		m.NetworkBootstrapKeys = make([]*EncryptionKey, len(o.NetworkBootstrapKeys))
 		for i := range m.NetworkBootstrapKeys {
 			m.NetworkBootstrapKeys[i] = &EncryptionKey{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.NetworkBootstrapKeys[i], o.NetworkBootstrapKeys[i])
+			deepcopy.Copy(m.NetworkBootstrapKeys[i], o.NetworkBootstrapKeys[i])
 		}
 	}
 
@@ -646,7 +646,7 @@ func (m *Cluster) CopyFrom(src interface{}) {
 		m.BlacklistedCertificates = make(map[string]*BlacklistedCertificate, len(o.BlacklistedCertificates))
 		for k, v := range o.BlacklistedCertificates {
 			m.BlacklistedCertificates[k] = &BlacklistedCertificate{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.BlacklistedCertificates[k], v)
+			deepcopy.Copy(m.BlacklistedCertificates[k], v)
 		}
 	}
 
@@ -654,7 +654,7 @@ func (m *Cluster) CopyFrom(src interface{}) {
 		m.UnlockKeys = make([]*EncryptionKey, len(o.UnlockKeys))
 		for i := range m.UnlockKeys {
 			m.UnlockKeys[i] = &EncryptionKey{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.UnlockKeys[i], o.UnlockKeys[i])
+			deepcopy.Copy(m.UnlockKeys[i], o.UnlockKeys[i])
 		}
 	}
 
@@ -673,8 +673,8 @@ func (m *Secret) CopyFrom(src interface{}) {
 
 	o := src.(*Secret)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
+	deepcopy.Copy(&m.Meta, &o.Meta)
+	deepcopy.Copy(&m.Spec, &o.Spec)
 }
 
 func (m *Config) Copy() *Config {
@@ -690,8 +690,8 @@ func (m *Config) CopyFrom(src interface{}) {
 
 	o := src.(*Config)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
+	deepcopy.Copy(&m.Meta, &o.Meta)
+	deepcopy.Copy(&m.Spec, &o.Spec)
 }
 
 func (m *Resource) Copy() *Resource {
@@ -707,11 +707,11 @@ func (m *Resource) CopyFrom(src interface{}) {
 
 	o := src.(*Resource)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
+	deepcopy.Copy(&m.Meta, &o.Meta)
+	deepcopy.Copy(&m.Annotations, &o.Annotations)
 	if o.Payload != nil {
 		m.Payload = &google_protobuf3.Any{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Payload, o.Payload)
+		deepcopy.Copy(m.Payload, o.Payload)
 	}
 }
 
@@ -728,8 +728,8 @@ func (m *Extension) CopyFrom(src interface{}) {
 
 	o := src.(*Extension)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
+	deepcopy.Copy(&m.Meta, &o.Meta)
+	deepcopy.Copy(&m.Annotations, &o.Annotations)
 }
 
 func (m *Meta) Marshal() (dAtA []byte, err error) {
@@ -2019,7 +2019,7 @@ type EventCreateNode struct {
 	Checks []NodeCheckFunc
 }
 
-func (e EventCreateNode) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateNode) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateNode)
 	if !ok {
 		return false
@@ -2039,7 +2039,7 @@ type EventUpdateNode struct {
 	Checks  []NodeCheckFunc
 }
 
-func (e EventUpdateNode) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateNode) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateNode)
 	if !ok {
 		return false
@@ -2058,7 +2058,7 @@ type EventDeleteNode struct {
 	Checks []NodeCheckFunc
 }
 
-func (e EventDeleteNode) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteNode) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteNode)
 	if !ok {
 		return false
@@ -2266,7 +2266,7 @@ type EventCreateService struct {
 	Checks  []ServiceCheckFunc
 }
 
-func (e EventCreateService) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateService) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateService)
 	if !ok {
 		return false
@@ -2286,7 +2286,7 @@ type EventUpdateService struct {
 	Checks     []ServiceCheckFunc
 }
 
-func (e EventUpdateService) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateService) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateService)
 	if !ok {
 		return false
@@ -2305,7 +2305,7 @@ type EventDeleteService struct {
 	Checks  []ServiceCheckFunc
 }
 
-func (e EventDeleteService) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteService) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteService)
 	if !ok {
 		return false
@@ -2483,7 +2483,7 @@ type EventCreateTask struct {
 	Checks []TaskCheckFunc
 }
 
-func (e EventCreateTask) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateTask) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateTask)
 	if !ok {
 		return false
@@ -2503,7 +2503,7 @@ type EventUpdateTask struct {
 	Checks  []TaskCheckFunc
 }
 
-func (e EventUpdateTask) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateTask) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateTask)
 	if !ok {
 		return false
@@ -2522,7 +2522,7 @@ type EventDeleteTask struct {
 	Checks []TaskCheckFunc
 }
 
-func (e EventDeleteTask) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteTask) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteTask)
 	if !ok {
 		return false
@@ -2743,7 +2743,7 @@ type EventCreateNetwork struct {
 	Checks  []NetworkCheckFunc
 }
 
-func (e EventCreateNetwork) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateNetwork) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateNetwork)
 	if !ok {
 		return false
@@ -2763,7 +2763,7 @@ type EventUpdateNetwork struct {
 	Checks     []NetworkCheckFunc
 }
 
-func (e EventUpdateNetwork) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateNetwork) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateNetwork)
 	if !ok {
 		return false
@@ -2782,7 +2782,7 @@ type EventDeleteNetwork struct {
 	Checks  []NetworkCheckFunc
 }
 
-func (e EventDeleteNetwork) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteNetwork) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteNetwork)
 	if !ok {
 		return false
@@ -2960,7 +2960,7 @@ type EventCreateCluster struct {
 	Checks  []ClusterCheckFunc
 }
 
-func (e EventCreateCluster) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateCluster) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateCluster)
 	if !ok {
 		return false
@@ -2980,7 +2980,7 @@ type EventUpdateCluster struct {
 	Checks     []ClusterCheckFunc
 }
 
-func (e EventUpdateCluster) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateCluster) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateCluster)
 	if !ok {
 		return false
@@ -2999,7 +2999,7 @@ type EventDeleteCluster struct {
 	Checks  []ClusterCheckFunc
 }
 
-func (e EventDeleteCluster) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteCluster) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteCluster)
 	if !ok {
 		return false
@@ -3177,7 +3177,7 @@ type EventCreateSecret struct {
 	Checks []SecretCheckFunc
 }
 
-func (e EventCreateSecret) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateSecret) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateSecret)
 	if !ok {
 		return false
@@ -3197,7 +3197,7 @@ type EventUpdateSecret struct {
 	Checks    []SecretCheckFunc
 }
 
-func (e EventUpdateSecret) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateSecret) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateSecret)
 	if !ok {
 		return false
@@ -3216,7 +3216,7 @@ type EventDeleteSecret struct {
 	Checks []SecretCheckFunc
 }
 
-func (e EventDeleteSecret) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteSecret) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteSecret)
 	if !ok {
 		return false
@@ -3394,7 +3394,7 @@ type EventCreateConfig struct {
 	Checks []ConfigCheckFunc
 }
 
-func (e EventCreateConfig) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateConfig) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateConfig)
 	if !ok {
 		return false
@@ -3414,7 +3414,7 @@ type EventUpdateConfig struct {
 	Checks    []ConfigCheckFunc
 }
 
-func (e EventUpdateConfig) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateConfig) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateConfig)
 	if !ok {
 		return false
@@ -3433,7 +3433,7 @@ type EventDeleteConfig struct {
 	Checks []ConfigCheckFunc
 }
 
-func (e EventDeleteConfig) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteConfig) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteConfig)
 	if !ok {
 		return false
@@ -3611,7 +3611,7 @@ type EventCreateResource struct {
 	Checks   []ResourceCheckFunc
 }
 
-func (e EventCreateResource) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateResource) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateResource)
 	if !ok {
 		return false
@@ -3631,7 +3631,7 @@ type EventUpdateResource struct {
 	Checks      []ResourceCheckFunc
 }
 
-func (e EventUpdateResource) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateResource) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateResource)
 	if !ok {
 		return false
@@ -3650,7 +3650,7 @@ type EventDeleteResource struct {
 	Checks   []ResourceCheckFunc
 }
 
-func (e EventDeleteResource) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteResource) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteResource)
 	if !ok {
 		return false
@@ -3834,7 +3834,7 @@ type EventCreateExtension struct {
 	Checks    []ExtensionCheckFunc
 }
 
-func (e EventCreateExtension) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventCreateExtension) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateExtension)
 	if !ok {
 		return false
@@ -3854,7 +3854,7 @@ type EventUpdateExtension struct {
 	Checks       []ExtensionCheckFunc
 }
 
-func (e EventUpdateExtension) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventUpdateExtension) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateExtension)
 	if !ok {
 		return false
@@ -3873,7 +3873,7 @@ type EventDeleteExtension struct {
 	Checks    []ExtensionCheckFunc
 }
 
-func (e EventDeleteExtension) Matches(apiEvent github_com_docker_go_events.Event) bool {
+func (e EventDeleteExtension) Matches(apiEvent go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteExtension)
 	if !ok {
 		return false
@@ -4490,7 +4490,7 @@ func (this *NetworkAttachment) String() string {
 	for k, _ := range this.DriverAttachmentOpts {
 		keysForDriverAttachmentOpts = append(keysForDriverAttachmentOpts, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForDriverAttachmentOpts)
+	sortkeys.Strings(keysForDriverAttachmentOpts)
 	mapStringForDriverAttachmentOpts := "map[string]string{"
 	for _, k := range keysForDriverAttachmentOpts {
 		mapStringForDriverAttachmentOpts += fmt.Sprintf("%v: %v,", k, this.DriverAttachmentOpts[k])
@@ -4527,7 +4527,7 @@ func (this *Cluster) String() string {
 	for k, _ := range this.BlacklistedCertificates {
 		keysForBlacklistedCertificates = append(keysForBlacklistedCertificates, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForBlacklistedCertificates)
+	sortkeys.Strings(keysForBlacklistedCertificates)
 	mapStringForBlacklistedCertificates := "map[string]*BlacklistedCertificate{"
 	for _, k := range keysForBlacklistedCertificates {
 		mapStringForBlacklistedCertificates += fmt.Sprintf("%v: %v,", k, this.BlacklistedCertificates[k])
