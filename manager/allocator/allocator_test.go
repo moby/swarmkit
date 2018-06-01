@@ -272,9 +272,18 @@ func TestAllocator(t *testing.T) {
 				Annotations: api.Annotations{
 					Name: "service2",
 				},
-				Networks: []*api.NetworkAttachmentConfig{
-					{
-						Target: "testID2",
+				Task: api.TaskSpec{
+					// use a generic task spec runtime, to avoid having to fill
+					// out a container spec
+					Runtime: &api.TaskSpec_Generic{
+						// TODO(dperny): hilariously, if Generic is nil, it
+						// causes a copy function to segfault.
+						Generic: &api.GenericRuntimeSpec{},
+					},
+					Networks: []*api.NetworkAttachmentConfig{
+						{
+							Target: "testID2",
+						},
 					},
 				},
 				Endpoint: &api.EndpointSpec{},

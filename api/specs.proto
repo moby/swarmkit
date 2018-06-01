@@ -61,6 +61,13 @@ message NodeSpec {
 // strategy and restart policy, a number of application-level behaviors can be
 // defined.
 message ServiceSpec {
+	// There was previous a field ServiceSpec.Networks. It has been deprecated
+	// and replaced by the Networks field in Task (TaskSpec.Networks). Its former
+	// field number and name have been reserved, to avoid reusing them later on
+	// and causing possible issues with very old objects
+	reserved 7;
+	reserved "networks";
+
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
 	// Task defines the task template this service will spawn.
@@ -76,13 +83,6 @@ message ServiceSpec {
 
 	// Rollback contains settings which affect rollbacks of updates.
 	UpdateConfig rollback = 9;
-
-	// ServiceSpec.Networks has been deprecated and is replaced by
-	// Networks field in Task (TaskSpec.Networks).
-	// This field (ServiceSpec.Networks) is kept for compatibility.
-	// In case TaskSpec.Networks does not exist, ServiceSpec.Networks
-	// is still honored if it exists.
-	repeated NetworkAttachmentConfig networks = 7 [deprecated=true];
 
 	// Service endpoint specifies the user provided configuration
 	// to properly discover and load balance a service.

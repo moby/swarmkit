@@ -4491,17 +4491,6 @@ file {
       json_name: "rollback"
     }
     field {
-      name: "networks"
-      number: 7
-      label: LABEL_REPEATED
-      type: TYPE_MESSAGE
-      type_name: ".docker.swarmkit.v1.NetworkAttachmentConfig"
-      options {
-        deprecated: true
-      }
-      json_name: "networks"
-    }
-    field {
       name: "endpoint"
       number: 8
       label: LABEL_OPTIONAL
@@ -4512,6 +4501,11 @@ file {
     oneof_decl {
       name: "mode"
     }
+    reserved_range {
+      start: 7
+      end: 8
+    }
+    reserved_name: "networks"
   }
   message_type {
     name: "ReplicatedService"

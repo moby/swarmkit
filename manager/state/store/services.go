@@ -174,10 +174,6 @@ func (si serviceIndexerByNetwork) FromObject(obj interface{}) (bool, [][]byte, e
 
 	specNetworks := s.Spec.Task.Networks
 
-	if len(specNetworks) == 0 {
-		specNetworks = s.Spec.Networks
-	}
-
 	for _, na := range specNetworks {
 		// Add the null character as a terminator
 		networkIDs = append(networkIDs, []byte(na.Target+"\x00"))
