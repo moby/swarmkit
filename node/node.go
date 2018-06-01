@@ -36,7 +36,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 )
@@ -253,7 +252,6 @@ func (n *Node) Start(ctx context.Context) error {
 		go n.run(ctx)
 		err = nil // clear error above, only once.
 	})
-
 	return err
 }
 
@@ -1312,28 +1310,32 @@ func (fs *firstSessionErrorTracker) SessionClosed() error {
 		return nil
 	}
 
-	// additionally, the error we're looking for is an internal error
-	if grpcStatus.Code() != codes.Internal {
-		return nil
-	}
-
-	// NOTE(dperny): grpc does not expose the error type, which means we have
+	// NOTE(dperny, cyli): grpc does not expose the error type, which means we have
 	// to string matching to figure out if it's an x509 error.
 	//
-	// the error we're looking for starts with "connection error:", then says
+	// The error we're looking for has "connection error:", then says
 	// "transport:" and finally has "x509:"
-	// specifically, it reads:
+	// specifically, the connection error description reads:
 	//
 	//   transport: authentication handshake failed: x509: certificate signed by unknown authority
 	//
-	// this string matching has caused trouble in the past. specifically, at
+	// This string matching has caused trouble in the past. specifically, at
 	// some point between grpc versions 1.3.0 and 1.7.5, the string we were
 	// matching changed from "transport: x509" to "transport: authentication
 	// handshake failed: x509", which was an issue because we were matching for
 	// string "transport: x509:".
-	if !strings.HasPrefix(grpcStatus.Message(), "connection error") &&
-		!strings.Contains(grpcStatus.Message(), "transport:") &&
-		!strings.Contains(grpcStatus.Message(), "x509:") {
+	//
+	// In GRPC >= 1.10.x, transient errors like TLS errors became hidden by the
+	// load balancing that GRPC does.  In GRPC 1.11.x, they were exposed again
+	// (usually) in RPC calls, but the error string then became:
+	// rpc error: code = Unavailable desc = all SubConns are in TransientFailure, latest connection error: connection error: desc = "transport: authentication handshake failed: x509: certificate signed by unknown authority"
+	//
+	// It also went from an Internal error to an Unavailable error.  So we're just going
+	// to search for the string: "transport: authentication handshake failed: x509:" since
+	// we want to fail for ALL x509 failures, not just unknown authority errors.
+
+	if !strings.Contains(grpcStatus.Message(), "connection error") ||
+		!strings.Contains(grpcStatus.Message(), "transport: authentication handshake failed: x509:") {
 		return nil
 	}
 	return fs.err

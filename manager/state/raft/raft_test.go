@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -43,15 +42,14 @@ const (
 
 func init() {
 	store.WedgeTimeout = 3 * time.Second
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+	logrus.SetOutput(ioutil.Discard)
 }
 
 var tc *cautils.TestCA
 
 func TestMain(m *testing.M) {
 	tc = cautils.NewTestCA(nil)
-
-	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
-	logrus.SetOutput(ioutil.Discard)
 
 	// Set a smaller segment size so we don't incur cost preallocating
 	// space on old filesystems like HFS+.
@@ -796,10 +794,7 @@ func TestRaftUnreachableNode(t *testing.T) {
 	nodes[2].Server = s
 	raft.Register(s, nodes[2].Node)
 
-	go func() {
-		// After stopping, we should receive an error from Serve
-		assert.Error(t, s.Serve(wrappedListener))
-	}()
+	go s.Serve(wrappedListener)
 
 	raftutils.WaitForCluster(t, clockSource, nodes)
 	defer raftutils.TeardownCluster(nodes)
@@ -980,7 +975,7 @@ func TestStreamRaftMessage(t *testing.T) {
 
 	raftMsg := &api.StreamRaftMessageRequest{Message: msg}
 	err = stream.Send(raftMsg)
-	assert.Error(t, err, "Received unexpected error EOF")
+	assert.NoError(t, err)
 
 	_, err = stream.CloseAndRecv()
 	errStr := fmt.Sprintf("grpc: received message larger than max (%d vs. %d)", raftMsg.Size(), transport.GRPCMaxMsgSize)

@@ -3,7 +3,6 @@ package controlapi
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"testing"
 
 	"github.com/docker/swarmkit/api"
@@ -241,7 +240,7 @@ func TestRemoveNodes(t *testing.T) {
 }
 
 func init() {
-	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
 	logrus.SetOutput(ioutil.Discard)
 }
 

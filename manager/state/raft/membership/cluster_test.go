@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -26,12 +25,13 @@ import (
 
 var tc *cautils.TestCA
 
+func init() {
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
+	logrus.SetOutput(ioutil.Discard)
+}
+
 func TestMain(m *testing.M) {
 	tc = cautils.NewTestCA(nil)
-
-	grpclog.SetLogger(log.New(ioutil.Discard, "", log.LstdFlags))
-	logrus.SetOutput(ioutil.Discard)
-
 	res := m.Run()
 	tc.Stop()
 	os.Exit(res)
