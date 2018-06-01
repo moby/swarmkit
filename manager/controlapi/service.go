@@ -751,16 +751,6 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 			return status.Errorf(codes.NotFound, "service %s not found", request.ServiceID)
 		}
 
-		// It's not okay to update Service.Spec.Networks on its own.
-		// However, if Service.Spec.Task.Networks is also being
-		// updated, that's okay (for example when migrating from the
-		// deprecated Spec.Networks field to Spec.Task.Networks).
-		if (len(request.Spec.Networks) != 0 || len(service.Spec.Networks) != 0) &&
-			!reflect.DeepEqual(request.Spec.Networks, service.Spec.Networks) &&
-			reflect.DeepEqual(request.Spec.Task.Networks, service.Spec.Task.Networks) {
-			return status.Errorf(codes.Unimplemented, errNetworkUpdateNotSupported.Error())
-		}
-
 		// Check to see if all the secrets being added exist as objects
 		// in our datastore
 		err := s.checkSecretExistence(tx, request.Spec)

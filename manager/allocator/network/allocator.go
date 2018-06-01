@@ -412,12 +412,7 @@ func (a *allocator) AllocateService(service *api.Service) error {
 		return err
 	}
 
-	// TODO(dperny) this handles the case of spec.Networks, which we should
-	// deprecate before removing this code entirely
 	networks := service.Spec.Task.Networks
-	if len(service.Spec.Task.Networks) == 0 && len(service.Spec.Networks) != 0 {
-		networks = service.Spec.Networks
-	}
 	ids := make(map[string]struct{}, len(networks))
 	// build up a list of network ids to allocate vips for
 	for _, nw := range networks {
