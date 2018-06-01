@@ -63,15 +63,15 @@ func createServiceInNetworkSpec(name, image string, nwid string, instances uint6
 					Image: image,
 				},
 			},
+			Networks: []*api.NetworkAttachmentConfig{
+				{
+					Target: nwid,
+				},
+			},
 		},
 		Mode: &api.ServiceSpec_Replicated{
 			Replicated: &api.ReplicatedService{
 				Replicas: instances,
-			},
-		},
-		Networks: []*api.NetworkAttachmentConfig{
-			{
-				Target: nwid,
 			},
 		},
 	}
