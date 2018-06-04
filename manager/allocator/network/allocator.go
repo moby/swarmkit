@@ -116,7 +116,12 @@ func NewAllocator(pg plugingetter.PluginGetter) Allocator {
 // provided.
 //
 // If an error occurs during the restore, the local state may be inconsistent,
-// and this allocator should be abandoned.
+// and this allocator should be abandoned. Restore will only return errors when
+// proceeding with the provided objects will lead to an inconsistent state in
+// which the correct operation of the allocator cannot proceed. If there are
+// other kinds of errors where swarmkit will work incorrectly but the state
+// doesn't cause the allocator to, e.g., allocator duplicate IP addresses, we
+// allow Restore to proceed.
 func (a *allocator) Restore(networks []*api.Network, services []*api.Service, tasks []*api.Task, nodes []*api.Node) error {
 	// there is a problem with restoring nodes: because node deallocation
 	// depends on network deallocation, it is possible for a network to be
@@ -148,9 +153,12 @@ func (a *allocator) Restore(networks []*api.Network, services []*api.Service, ta
 	// cannot be deleted while it is still in use by tasks.
 	existingNetworks := make(map[string]struct{}, len(networks))
 
-	// find if we have an ingress network in this list. if so, save its ID. we
-	// need it to correctly allocate tasks and services. there should only ever
-	// be 1 ingress network
+	// Find if we have an ingress network in this list. If so, save its ID. we
+	// need it to correctly allocate tasks and services. There should only ever
+	// be 1 ingress network, and it cannot be node local. We do not check if an
+	// ingress network is a node-local network, because while such a state
+	// would be invalid, it's not the kind of invalid state that will break the
+	// correct operation of the allocator.
 	for _, nw := range networks {
 		existingNetworks[nw.ID] = struct{}{}
 
@@ -168,7 +176,12 @@ func (a *allocator) Restore(networks []*api.Network, services []*api.Service, ta
 
 		// check if the network is node-local, and add it to our set if so.
 		if local {
-			a.nodeLocalNetworks[nw.ID] = nw
+			// before adding to the set of node local networks, check if this
+			// network is allocated. only add allocated networks to the set of
+			// node local networks.
+			if driver.IsAllocated(nw) {
+				a.nodeLocalNetworks[nw.ID] = nw
+			}
 		}
 	}
 
@@ -261,6 +274,8 @@ func (a *allocator) AllocateNetwork(n *api.Network) error {
 		if err := a.ipam.AllocateNetwork(n); err != nil {
 			return err
 		}
+	} else {
+		a.nodeLocalNetworks[n.ID] = n
 	}
 	if err := a.driver.Allocate(n); err != nil {
 		a.ipam.DeallocateNetwork(n)
@@ -443,12 +458,14 @@ func (a *allocator) AllocateService(service *api.Service) error {
 
 	// check the resolution mode of the new endpoint spec. If it's
 	// ResolutionModeDNSRoundRobin, then we need to deallocate vips, not
-	// allocate them.
+	// allocate them. ResolutionModeDNSRoundRobin means that instead of
+	// addressing and load balancing a service based on a VIP, DNS queries
+	// round-robin between task IP addresses (returning a different task IP
+	// each time).
 	if endpointSpec.Mode == api.ResolutionModeDNSRoundRobin {
 		a.ipam.DeallocateVIPs(endpoint)
 		endpoint.VirtualIPs = nil
 	} else {
-		// we don't need to allocate vips if the publish mode is DNSRR
 		if err := a.ipam.AllocateVIPs(endpoint, ids); err != nil {
 			// if the error is a result of anything other than the fact that we're
 			// already allocated, return it
@@ -489,13 +506,13 @@ func (a *allocator) DeallocateService(service *api.Service) error {
 // with the Endpoint of its corresponding service.
 //
 // Before calling AllocateTask, the caller must make sure that the service is
-// fully allocated. If the service's allocation state is out of data, the task
+// fully allocated. If the service's allocation state is out of date, the task
 // wil inherit that out of date state.
 //
 // AllocateTask can only be called on New tasks, and should only be called
 // once. It cannot handle task updates.
 //
-// If the return value if nil, then the task has been fully allocated.
+// If the return value is nil, then the task has been fully allocated.
 // Otherwise, the task has not been allocated at all. This method will never
 // leave the task in a partially allocated state.
 func (a *allocator) AllocateTask(task *api.Task) (rerr error) {
@@ -607,8 +624,10 @@ func (a *allocator) AllocateNode(node *api.Node, requestedNetworks map[string]st
 		networks[nw] = struct{}{}
 	}
 
-	// before we do anything, add the ingress network if it exists to the
-	// networks map. we always need an ingress network attachment.
+	// the node always needs a network attachment to the ingress network. if it
+	// exists, add the ingress network to the list of requested networks now.
+	// it may already be in the requested networks, but we if it is, then
+	// nothing has been altered.
 	if a.ingressID != "" {
 		// if for some reason, the caller has already added the ingress network
 		// to the networks list, this will do nothing, which isn't a problem.
@@ -632,12 +651,12 @@ func (a *allocator) AllocateNode(node *api.Node, requestedNetworks map[string]st
 		}
 	}
 
-	// TODO(dperny): code to support the singular network attachment. remove.
+	// TODO(dperny): this is code to support the singular network attachment.
+	// remove in a few releases so we don't have to support it.
 	if node.Attachment != nil && node.Attachment.Network != nil {
 		if _, ok := networks[node.Attachment.Network.ID]; ok {
 			keep = append(keep, node.Attachment)
 			delete(networks, node.Attachment.Network.ID)
-			// we can go ahead and nil out the attachment
 		} else {
 			remove = append(remove, node.Attachment)
 		}
@@ -697,8 +716,9 @@ func (a *allocator) AllocateNode(node *api.Node, requestedNetworks map[string]st
 	}
 
 	node.Attachments = append(keep, finalAttachments...)
-	// TODO(dperny): code to support the singular network attachment nil out
-	// the singular node attachment, so we never have to think of it again.
+	// TODO(dperny): code to support the singular network attachment, remove in
+	// a few releases. nil out the singular node attachment, so we never have
+	// to think of it again.
 	node.Attachment = nil
 	return nil
 }

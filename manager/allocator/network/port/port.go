@@ -226,7 +226,7 @@ func (pa *allocator) Allocate(endpoint *api.Endpoint, spec *api.EndpointSpec) (P
 	// user's spec wants a new (dynamically allocated) port, just like if we
 	// had dynamically assigned the port.
 	//
-	// Luckily for use, we keep a copy of the spec on the Endpoint object,
+	// Luckily for us, we keep a copy of the spec on the Endpoint object,
 	// which we own, which means we have the old endpoint spec around and can
 	// compare the user's specs. Then, all we have to do is see if the
 	// published port changed.
@@ -236,7 +236,7 @@ func (pa *allocator) Allocate(endpoint *api.Endpoint, spec *api.EndpointSpec) (P
 
 	// So, basically, here's what we're going to do: we're going to create a
 	// new list of PortConfigs. This will be the final list that gets put into
-	// the object endpoint object
+	// the endpoint object
 	finalPorts := make([]*api.PortConfig, len(spec.Ports))
 
 	// first, we need to "recover" any dynamically assigned publish ports. to

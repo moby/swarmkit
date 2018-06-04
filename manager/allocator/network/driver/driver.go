@@ -257,3 +257,23 @@ func getIpamData(n *api.Network) ([]driverapi.IPAMData, error) {
 	}
 	return ipamData, nil
 }
+
+// IsAllocated returns true if driver state of the provided network is fully
+// allocated.
+func IsAllocated(n *api.Network) bool {
+	// driver state should not be nil
+	// NOTE(dperny): really, the only vital portion of this is DriverState is
+	// non-nil and name is not empty. however, including the other checks
+	// future-proofs this function a bit.
+	return n.DriverState != nil &&
+		// driver name should not be empty
+		n.DriverState.Name != "" &&
+		// either there is a DriverConfig in the spec...
+		((n.Spec.DriverConfig != nil &&
+			// and the name either matches
+			(n.Spec.DriverConfig.Name == n.DriverState.Name ||
+				// or is emptystring
+				n.Spec.DriverConfig.Name == "")) ||
+			// ... or there is no DriverConfig at all at all
+			n.Spec.DriverConfig == nil)
+}

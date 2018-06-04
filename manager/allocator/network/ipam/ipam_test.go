@@ -542,6 +542,7 @@ var _ = Describe("ipam.Allocator", func() {
 				}
 				reg.ipams["default"] = ipamAndCaps{mock, nil}
 			})
+
 			Context("when the user has specified no settings", func() {
 				BeforeEach(func() {
 					network = &api.Network{
@@ -577,7 +578,9 @@ var _ = Describe("ipam.Allocator", func() {
 					Expect(poolsRequested).To(Equal(1))
 					Expect(addressesRequested).To(Equal(0))
 				})
+
 			})
+
 			Context("when the IPAM driver returns no gateway address", func() {
 				BeforeEach(func() {
 					mock.requestPoolFunc = func(_, _, _ string, _ map[string]string, _ bool) (string, *net.IPNet, map[string]string, error) {
@@ -602,6 +605,7 @@ var _ = Describe("ipam.Allocator", func() {
 					Expect(network.IPAM.Configs[0].Gateway).To(Equal("192.168.2.2"))
 				})
 			})
+
 			Context("when a gateway address is specified by the user", func() {
 				var (
 					addressRequested string
@@ -636,8 +640,24 @@ var _ = Describe("ipam.Allocator", func() {
 					Expect(network.IPAM.Configs[0]).ToNot(BeNil())
 					Expect(network.IPAM.Configs[0].Subnet).To(Equal("192.168.2.0/24"))
 					Expect(network.IPAM.Configs[0].Gateway).To(Equal("192.168.2.99"))
+					Expect(network.IPAM.Driver.Options).NotTo(HaveKey(ipamapi.RequestAddressType))
+				})
+
+				Context("when a value for ipamapi.RequestAddressType is set", func() {
+					BeforeEach(func() {
+						network.Spec.IPAM.Driver = &api.Driver{
+							Options: map[string]string{ipamapi.RequestAddressType: "nondefaultvalue"},
+						}
+					})
+
+					It("should restore the value set by the user", func() {
+						Expect(network.IPAM.Driver.Options).To(HaveKeyWithValue(
+							ipamapi.RequestAddressType, "nondefaultvalue",
+						))
+					})
 				})
 			})
+
 			Context("when specifying an IPAM driver", func() {
 				var (
 					err       error
@@ -1237,6 +1257,7 @@ var _ = Describe("ipam.Allocator", func() {
 				})
 			})
 		})
+
 		// TODO(dperny): write these tests.
 		// honestly i'm so tired of writing tests jfc
 		// please no more
@@ -1249,6 +1270,7 @@ var _ = Describe("ipam.Allocator", func() {
 			JustBeforeEach(func() {
 				attachment, err = a.AllocateAttachment(spec)
 			})
+
 			Context("when an attachment has no addresses specified", func() {
 				BeforeEach(func() {
 					spec = &api.NetworkAttachmentConfig{
@@ -1272,6 +1294,7 @@ var _ = Describe("ipam.Allocator", func() {
 					Expect(spec.DriverAttachmentOpts).To(Equal(attachment.DriverAttachmentOpts))
 				})
 			})
+
 			Context("when an attachment has addresses specified", func() {
 				BeforeEach(func() {
 					spec = &api.NetworkAttachmentConfig{
@@ -1290,6 +1313,19 @@ var _ = Describe("ipam.Allocator", func() {
 						"192.168.2.3/24",
 						"192.168.2.4/24",
 					))
+				})
+			})
+
+			// TODO(dperny): this test case is trivial, but the code is a pain
+			// in the butt to write because of the really ugly fake IPAM i use,
+			// so I'm leaving the test case here for some enterprising
+			// contributor to finish out later.
+			PContext("when allocating the attachment addresses fails partway through", func() {
+				It("should release any addresses already allocated", func() {
+
+				})
+
+				It("should remove those addresses from the endpoints map", func() {
 				})
 			})
 		})
