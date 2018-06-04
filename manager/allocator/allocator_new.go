@@ -458,24 +458,34 @@ func (a *NewAllocator) handleEvent(ctx context.Context, event events.Event) {
 		}
 	case api.EventCreateTask, api.EventUpdateTask:
 		var t *api.Task
-		if e, ok := ev.(api.EventCreateTask); ok {
+		if e, ok := ev.(api.EventUpdateTask); ok {
+			// before we do any processing, check the old task. if the previous
+			// state was a terminal state, then the task must necessarily have
+			// already been deallocated.
+			if e.OldTask != nil && !isTaskLive(e.OldTask) {
+				return
+			}
 			t = e.Task
 		} else {
-			t = ev.(api.EventUpdateTask).Task
+			t = ev.(api.EventCreateTask).Task
 		}
 
 		if t == nil {
 			// if for some reason there is no task, nothing to do
 			return
 		}
+
 		// updating a task may mean the task has entered a terminal state. if
 		// it has, we will free its network resources just as if we had deleted
 		// it.
-		if t.Status.State >= api.TaskStateCompleted {
+		if !isTaskLive(t) {
+			// if the task was already in a terminal state, we should ignore
+			// this update, not try to deallocate it again
 			if _, ok := a.deletedObjects[t.ID]; ok {
 				delete(a.deletedObjects, t.ID)
 				return
 			}
+			log.G(ctx).WithField("task.id", t.ID).Debug("deallocating task")
 			allocDone := metrics.StartTimer(allocatorActions.WithValues("task", "deallocate"))
 			err := a.network.DeallocateTask(t)
 			allocDone()
@@ -492,7 +502,7 @@ func (a *NewAllocator) handleEvent(ctx context.Context, event events.Event) {
 		if ev.Task == nil {
 			return
 		}
-		if ev.Task.Status.State >= api.TaskStateCompleted {
+		if !isTaskLive(ev.Task) {
 			// if the task is being deleted from a terminal state, we will have
 			// deallocated it when it moved into that terminal state, and do
 			// not need to do so now.
@@ -975,9 +985,7 @@ func (a *NewAllocator) processPendingAllocations(ctx context.Context) {
 				for _, task := range allocatedTasks {
 					if err := batch.Update(func(tx store.Tx) error {
 						currentTask := store.GetTask(tx, task.ID)
-						if currentTask == nil ||
-							currentTask.Status.State != api.TaskStateNew ||
-							currentTask.DesiredState != api.TaskStateRunning {
+						if !isTaskLive(currentTask) {
 							log.G(ctx).WithField("task.id", task.ID).Debug("task terminated or removed after allocation but before commit")
 							a.network.DeallocateTask(task)
 							a.deletedObjects[task.ID] = struct{}{}
@@ -1004,4 +1012,22 @@ func (a *NewAllocator) processPendingAllocations(ctx context.Context) {
 			taskWriteTxDone()
 		}
 	}
+}
+
+// isTaskLive returns true if the task is non-nil and in a non-terminal state.
+//
+// this function, though simple, has been factored out to avoid any errors that
+// may arise from slightly different checks for liveness (for example,
+// task.Status.State > api.TaskStateRunning vs task.Status.State >= api.TaskStateCompleted
+func isTaskLive(t *api.Task) bool {
+	// a nil task is not live, of course
+	if t == nil {
+		return false
+	}
+	// a task past the RUNNING state is not live.
+	if t.Status.State > api.TaskStateRunning {
+		return false
+	}
+	// otherwise, it's live
+	return true
 }

@@ -49,6 +49,11 @@ type Allocator interface {
 	AllocateVIPs(*api.Endpoint, map[string]struct{}) error
 	DeallocateVIPs(*api.Endpoint)
 	AllocateAttachment(*api.NetworkAttachmentConfig) (*api.NetworkAttachment, error)
+	// DeallocateAttachment is the only Deallocate method that returns an
+	// error. It is desirable for them all to do so, but the error handling
+	// flow for deallocation has not been fully designed yet, and its benefits
+	// are comparatively marginal, so in the interest of time, the other
+	// methods do not have error returns implemented yet.
 	DeallocateAttachment(*api.NetworkAttachment) error
 }
 
@@ -466,8 +471,20 @@ func (a *allocator) AllocateNetwork(n *api.Network) (rerr error) {
 		}
 		// add the option indicating that we're gonna request a gateway, and
 		// remove it before we exit this function
+		// NOTE(dperny): I don't think there are alternate values of
+		// RequestAddressType, but just in case, we should save whatever
+		// previous value there may have been
+		prevReqAddrType, hasPrevReqAddrType := ipamOpts[ipamapi.RequestAddressType]
 		ipamOpts[ipamapi.RequestAddressType] = netlabel.Gateway
-		defer delete(ipamOpts, ipamapi.RequestAddressType)
+		defer func() {
+			// if there was a value, set it back to that value. otherwise, just
+			// delete from the map
+			if hasPrevReqAddrType {
+				ipamOpts[ipamapi.RequestAddressType] = prevReqAddrType
+			} else {
+				delete(ipamOpts, ipamapi.RequestAddressType)
+			}
+		}()
 		if config.Gateway != "" || gwIP == nil {
 			gwIP, _, err = ipam.RequestAddress(poolID, net.ParseIP(config.Gateway), ipamOpts)
 			if err != nil {
@@ -559,35 +576,35 @@ func (a *allocator) AllocateVIPs(endpoint *api.Endpoint, networkIDs map[string]s
 	// allocation by using this as a guess
 	keep := make([]*api.Endpoint_VirtualIP, 0, len(endpoint.VirtualIPs))
 	deallocate := []*api.Endpoint_VirtualIP{}
-	// first, we need to figure out if any virtual IPs are being removed
-	// continues are bad and hard to follow, so here's the plain english
-	// explanation:
-	// for every VIP currently allocated
-	//     go through the list of desired network IDs
-	//         if a network ID matches the ID on the VIP
-	//             then we're keeping this vip, so add it to the keep list and
-	//             go to the next VIPs, skipping the bottom of this loop
-	//     if we get to this point, then we have been through every desired
-	//     network ID and not found one matching the one on this VIP, so we
-	//     can add it to the list of VIPs to deallocate
+	// nwidsInVips is a set of all of network IDs with a VIP currently
+	// allocated, used to verify which vips we already have allocated.
+	nwidsInVips := make(map[string]struct{}, len(endpoint.VirtualIPs))
+
+	// go through all of the VIPs we  have, and sort them into VIPs we're
+	// keeping and vips we're removing. in addition, make note of which
+	// networks have a VIP allocated already, so we can quickly figure out
+	// which networks we need to allocate for.
+	//
+	// NOTE(dperny): another possible optimization may be to copy the
+	// networkIDs map, and then delete each network ID found in the endpoint
+	// already from the map, leaving us after with a map containing only the
+	// network IDs we need to newly allocate.
 	for _, vip := range endpoint.VirtualIPs {
 		if _, ok := networkIDs[vip.NetworkID]; ok {
 			keep = append(keep, vip)
 		} else {
 			deallocate = append(deallocate, vip)
 		}
+		nwidsInVips[vip.NetworkID] = struct{}{}
 	}
 
-	// now figure out which new network IDs we've added, which is the same loop
-	// above but swapped around to check network IDs against VIPs
-newvips:
+	// now go through all the networks we desire to have allocated. If any of
+	// those networks does not already have an VIP allocated on the endpoint,
+	// add it to the list of networks we're allocating.
 	for nwid := range networkIDs {
-		for _, vip := range endpoint.VirtualIPs {
-			if vip.NetworkID == nwid {
-				continue newvips
-			}
+		if _, ok := nwidsInVips[nwid]; !ok {
+			allocate = append(allocate, nwid)
 		}
-		allocate = append(allocate, nwid)
 	}
 
 	// create a new slice to hold the vips we're allocating now
@@ -654,7 +671,7 @@ allocateLoop:
 	// network, and each network in turn has non-overlapping subnets, there is
 	// no chance of IPs we're releasing to be reused in the allocation of new
 	// VIPs. So, instead, we deallocate last, so that if any allocation fails,
-	// we only have to roll back incomplete allocation, not re-allocation a
+	// we only have to roll back incomplete allocation, not re-allocate a
 	// release. We don't have to worry about re-allocating if deallocate fails,
 	// because if deallocation fails we are in a world of hurt.
 	a.deallocateVIPs(deallocate)
@@ -676,12 +693,11 @@ func (a *allocator) deallocateVIPs(deallocate []*api.Endpoint_VirtualIP) {
 		// because the higher levels won't allow the deletion of a network
 		// which still has resources attached, so no need to check ok
 		local := a.networks[vip.NetworkID]
-		// get the IPAM driver for this network. no need to check that the fi
-		ipam, _ := a.drvRegistry.IPAM(local.nw.IPAM.Driver.Name)
 		// we don't need to check that the IPAM driver is non-nil because the
 		// network being successfully allocated indicates that it is not. If it
 		// is nil, we should probably crash the program anyway cause that's not
 		// right
+		ipam, _ := a.drvRegistry.IPAM(local.nw.IPAM.Driver.Name)
 
 		// we don't need to check err, because we set this value to begin with.
 		// if we inherited some bogus value from an old iteration of the
@@ -766,8 +782,9 @@ func (a *allocator) AllocateAttachment(config *api.NetworkAttachmentConfig) (att
 		if rerr != nil {
 			for _, addr := range attach.Addresses {
 				poolID := local.endpoints[addr]
-				addr := net.ParseIP(addr)
-				ipam.ReleaseAddress(poolID, addr)
+				ip := net.ParseIP(addr)
+				ipam.ReleaseAddress(poolID, ip)
+				delete(local.endpoints, addr)
 			}
 		}
 	}()

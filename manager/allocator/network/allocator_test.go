@@ -95,19 +95,30 @@ var _ = Describe("network.Allocator", func() {
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
-		Context("when there are some networks allocated", func() {
+		Context("when there are some networks present", func() {
 			BeforeEach(func() {
 				initNetworks = []*api.Network{
 					{
 						ID: "fooNet",
 					},
 					{
+						// this local network is allocated and should be added
+						// to the nodeLocalNetworks list
 						ID: "localnet",
+						DriverState: &api.Driver{
+							Name: "local",
+						},
+					},
+					{
+						// this local network is not allocated and should not
+						// be added to nodeLocalNetworks on Restore
+						ID: "localnet2",
 					},
 				}
 				// fooNet will be global, but localnet will be local
 				mockDriver.EXPECT().IsNetworkNodeLocal(initNetworks[0]).Return(false, nil)
 				mockDriver.EXPECT().IsNetworkNodeLocal(initNetworks[1]).Return(true, nil)
+				mockDriver.EXPECT().IsNetworkNodeLocal(initNetworks[2]).Return(true, nil)
 				mockPort.EXPECT().Restore([]*api.Endpoint{})
 				mockIpam.EXPECT().Restore(initNetworks, []*api.Endpoint{}, []*api.NetworkAttachment{}).Return(nil)
 				mockDriver.EXPECT().Restore(initNetworks).Return(nil)
@@ -121,9 +132,11 @@ var _ = Describe("network.Allocator", func() {
 				// networks. this spec has been left here for documentation
 				// purposes
 			})
-			It("should keep track of node-local networks", func() {
-				Expect(a.nodeLocalNetworks).To(HaveKey("localnet"))
-				Expect(a.nodeLocalNetworks["localnet"]).To(Equal(initNetworks[1]))
+			It("should keep track of allocated node-local networks", func() {
+				Expect(a.nodeLocalNetworks).To(HaveKeyWithValue(
+					"localnet", initNetworks[1],
+				))
+				Expect(a.nodeLocalNetworks).ToNot(HaveKey("localnet2"))
 			})
 		})
 		Context("when objects that depend on networks are allocated", func() {
@@ -506,6 +519,9 @@ var _ = Describe("network.Allocator", func() {
 				})
 				It("should return no error", func() {
 					Expect(err).ToNot(HaveOccurred())
+				})
+				It("should add the network to the map of node-local networks", func() {
+					Expect(a.nodeLocalNetworks).To(HaveKeyWithValue(net.ID, net))
 				})
 			})
 			Context("when the network driver is invalid", func() {
