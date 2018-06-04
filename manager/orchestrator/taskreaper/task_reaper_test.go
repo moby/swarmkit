@@ -1,8 +1,6 @@
 package taskreaper
 
 import (
-	"context"
-
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,7 +14,6 @@ import (
 // it is initialized. This will happen every time cluster leadership changes.
 func TestTaskReaperInit(t *testing.T) {
 	// start up the memory store
-	ctx := context.Background()
 	s := store.NewMemoryStore(nil)
 	require.NotNil(t, s)
 	defer s.Close()
@@ -164,7 +161,7 @@ func TestTaskReaperInit(t *testing.T) {
 	reaper := New(s)
 
 	// Now, start the reaper
-	go reaper.Run(ctx)
+	go reaper.Run()
 
 	// And then stop the reaper. This will cause the reaper to run through its
 	// whole init phase and then immediately enter the loop body, get the stop

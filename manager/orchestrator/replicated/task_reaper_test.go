@@ -11,6 +11,7 @@ import (
 	"github.com/docker/swarmkit/manager/state/store"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 )
 
@@ -210,7 +211,7 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 	go func() {
 		assert.NoError(t, orchestrator.Run(ctx))
 	}()
-	go taskReaper.Run(ctx)
+	go taskReaper.Run()
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
@@ -342,7 +343,7 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	go func() {
 		assert.NoError(t, orchestrator.Run(ctx))
 	}()
-	go taskReaper.Run(ctx)
+	go taskReaper.Run()
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
@@ -480,7 +481,7 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	go func() {
 		assert.NoError(t, orchestrator.Run(ctx))
 	}()
-	go taskReaper.Run(ctx)
+	go taskReaper.Run()
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, api.TaskStateNew, observedTask1.Status.State)
@@ -634,7 +635,7 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 	go func() {
 		assert.NoError(t, orchestrator.Run(ctx))
 	}()
-	go taskReaper.Run(ctx)
+	go taskReaper.Run()
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, api.TaskStateNew, observedTask1.Status.State)
