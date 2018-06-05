@@ -2021,6 +2021,94 @@ func TestPreassignedTasks(t *testing.T) {
 	assert.Equal(t, assignment3.NodeID, "node2")
 }
 
+func TestIgnoreTasks(t *testing.T) {
+	ctx := context.Background()
+	initialNodeSet := []*api.Node{
+		{
+			ID: "node1",
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Name: "name1",
+				},
+			},
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+		},
+	}
+
+	// Tasks with desired state running, shutdown, remove.
+	initialTaskSet := []*api.Task{
+		{
+			ID:           "task1",
+			DesiredState: api.TaskStateRunning,
+			ServiceAnnotations: api.Annotations{
+				Name: "name1",
+			},
+
+			Status: api.TaskStatus{
+				State: api.TaskStatePending,
+			},
+		},
+		{
+			ID:           "task2",
+			DesiredState: api.TaskStateShutdown,
+			ServiceAnnotations: api.Annotations{
+				Name: "name2",
+			},
+			Status: api.TaskStatus{
+				State: api.TaskStatePending,
+			},
+			NodeID: initialNodeSet[0].ID,
+		},
+		{
+			ID:           "task3",
+			DesiredState: api.TaskStateRemove,
+			ServiceAnnotations: api.Annotations{
+				Name: "name2",
+			},
+			Status: api.TaskStatus{
+				State: api.TaskStatePending,
+			},
+			NodeID: initialNodeSet[0].ID,
+		},
+	}
+
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	err := s.Update(func(tx store.Tx) error {
+		// Prepopulate nodes
+		for _, n := range initialNodeSet {
+			assert.NoError(t, store.CreateNode(tx, n))
+		}
+
+		// Prepopulate tasks
+		for _, task := range initialTaskSet {
+			assert.NoError(t, store.CreateTask(tx, task))
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(s)
+
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run(ctx))
+	}()
+
+	// task1 is the only task that gets assigned since other two tasks
+	// are ignored by the scheduler.
+	// Normally task2/task3 should get assigned first since its a preassigned task.
+	assignment3 := watchAssignment(t, watch)
+	assert.Equal(t, assignment3.ID, "task1")
+	assert.Equal(t, assignment3.NodeID, "node1")
+}
+
 func watchAssignmentFailure(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
