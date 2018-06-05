@@ -951,6 +951,11 @@ func TestNodeAllocator(t *testing.T) {
 	var node1FromStore *api.Node
 	node1 := &api.Node{
 		ID: "nodeID1",
+		Description: &api.NodeDescription{
+			Platform: &api.Platform{
+				OS: "linux",
+			},
+		},
 	}
 
 	// Try adding some objects to store before allocator is started
@@ -992,14 +997,19 @@ func TestNodeAllocator(t *testing.T) {
 	}()
 	defer a.Stop()
 
-	// Validate node has 2 LB IP address (1 for each network).
-	watchNetwork(t, netWatch, false, isValidNetwork)                                      // ingress
-	watchNetwork(t, netWatch, false, isValidNetwork)                                      // overlayID1
-	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
+	// Validate node1 has 1 LB IP address (ingress only)
+	watchNetwork(t, netWatch, false, isValidNetwork)                        // ingress
+	watchNetwork(t, netWatch, false, isValidNetwork)                        // overlayID1
+	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress"}) // node1
 
-	// Add a node and validate it gets a LB ip on each network.
+	// Add a windows node and validate it gets a LB ip on each network.
 	node2 := &api.Node{
 		ID: "nodeID2",
+		Description: &api.NodeDescription{
+			Platform: &api.Platform{
+				OS: "windows",
+			},
+		},
 	}
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateNode(tx, node2))
@@ -1007,7 +1017,7 @@ func TestNodeAllocator(t *testing.T) {
 	}))
 	watchNode(t, nodeWatch, false, isValidNode, node2, []string{"ingress", "overlayID1"}) // node2
 
-	// Add a network and validate each node has 3 LB IP addresses
+	// Add a network and validate that the windows node 3 LB IP addresses
 	n2 := &api.Network{
 		ID: "overlayID2",
 		Spec: api.NetworkSpec{
@@ -1021,19 +1031,17 @@ func TestNodeAllocator(t *testing.T) {
 		return nil
 	}))
 	watchNetwork(t, netWatch, false, isValidNetwork)                                                    // overlayID2
-	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress", "overlayID1", "overlayID3"}) // node1
-	watchNode(t, nodeWatch, false, isValidNode, node2, []string{"ingress", "overlayID1", "overlayID3"}) // node2
+	watchNode(t, nodeWatch, false, isValidNode, node2, []string{"ingress", "overlayID1", "overlayID2"}) // node2
 
-	// Remove a network and validate each node has 2 LB IP addresses
+	// Remove a network and validate  that the windows node has 2 LB IP addresses
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.DeleteNetwork(tx, n2.ID))
 		return nil
 	}))
 	watchNetwork(t, netWatch, false, isValidNetwork)                                      // overlayID2
-	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
 	watchNode(t, nodeWatch, false, isValidNode, node2, []string{"ingress", "overlayID1"}) // node2
 
-	// Remove a node and validate remaining node has 2 LB IP addresses
+	// Remove the windows node and validate remaining node has 1 LB IP address
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.DeleteNode(tx, node2.ID))
 		return nil
@@ -1043,7 +1051,7 @@ func TestNodeAllocator(t *testing.T) {
 		node1FromStore = store.GetNode(tx, node1.ID)
 	})
 
-	isValidNode(t, node1, node1FromStore, []string{"ingress", "overlayID1"})
+	isValidNode(t, node1, node1FromStore, []string{"ingress"})
 
 	// Validate that a LB IP address is not allocated for node-local networks
 	p := &api.Network{
@@ -1068,7 +1076,7 @@ func TestNodeAllocator(t *testing.T) {
 		node1FromStore = store.GetNode(tx, node1.ID)
 	})
 
-	isValidNode(t, node1, node1FromStore, []string{"ingress", "overlayID1"})
+	isValidNode(t, node1, node1FromStore, []string{"ingress"})
 }
 
 func isValidNode(t assert.TestingT, originalNode, updatedNode *api.Node, networks []string) bool {
@@ -1163,7 +1171,6 @@ func watchNode(t *testing.T, watch chan events.Event, expectTimeout bool,
 	originalNode *api.Node,
 	networks []string) {
 	for {
-
 		var node *api.Node
 		select {
 		case event := <-watch:
