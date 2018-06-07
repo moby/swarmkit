@@ -127,8 +127,8 @@ that the requested node has the necessary resources, in the case of global
 services' tasks). It changes their state to `ASSIGNED`.
 
 From this point, control over the state passes to the agent. A task will
-progress through the `ACCEPTED`, `PREPARING`, and `STARTING` states on the
-way to `RUNNING`. If a task exits without an error code, it moves to the
+progress through the `ACCEPTED`, `PREPARING`, `READY', and `STARTING` states on
+the way to `RUNNING`. If a task exits without an error code, it moves to the
 `COMPLETE` state. If it fails, it moves to the `FAILED` state instead.
 
 A task may alternatively end up in the `SHUTDOWN` state if its shutdown was
