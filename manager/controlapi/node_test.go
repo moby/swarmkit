@@ -57,6 +57,7 @@ func TestGetNode(t *testing.T) {
 }
 
 func TestListNodes(t *testing.T) {
+
 	ts := newTestServer(t)
 	defer ts.Stop()
 	r, err := ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
@@ -141,6 +142,217 @@ func TestListNodes(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Nodes))
+}
+
+func TestListNodesWithLabelFilter(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+
+	// satify these test cases:
+	// Filtering on engine labels
+	// - returns all nodes with matching engine labels
+	// - does not return nodes with matching node labels
+	// - does not return nodes with non-matching engine labels
+	// Filtering on nodes:
+	// - returns all nodes with matching node labels
+	// - does not return nodes with matching engine labels
+	// - does not return nodes with non-matching node labels
+
+	// we'll need 3 nodes for this test.
+	nodes := make([]*api.Node, 3)
+	nodes[0] = &api.Node{
+		ID: "node0",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Labels: map[string]string{
+					"allcommon":  "node",
+					"nodelabel1": "shouldmatch",
+					"nodelabel2": "unique1",
+				},
+			},
+		},
+		Description: &api.NodeDescription{
+			Engine: &api.EngineDescription{
+				Labels: map[string]string{
+					"allcommon":    "engine",
+					"enginelabel1": "shouldmatch",
+					"enginelabel2": "unique1",
+				},
+			},
+		},
+	}
+
+	nodes[1] = &api.Node{
+		ID: "node1",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Labels: map[string]string{
+					"allcommon":  "node",
+					"nodelabel1": "shouldmatch",
+					"nodelabel2": "unique2",
+				},
+			},
+		},
+		Description: &api.NodeDescription{
+			Engine: &api.EngineDescription{
+				Labels: map[string]string{
+					"allcommon":    "engine",
+					"enginelabel1": "shouldmatch",
+					"enginelabel2": "unique2",
+				},
+			},
+		},
+	}
+	nodes[2] = &api.Node{
+		ID: "node2",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Labels: map[string]string{
+					"allcommon":  "node",
+					"nodelabel1": "shouldnevermatch",
+					"nodelabel2": "unique1",
+				},
+			},
+		},
+		Description: &api.NodeDescription{
+			Engine: &api.EngineDescription{
+				Labels: map[string]string{
+					"allcommon":    "engine",
+					"enginelabel1": "shouldnevermatch",
+					"enginelabel2": "unique1",
+				},
+			},
+		},
+	}
+
+	// createNode gives us a bunch of fields we don't care about. instead, do a
+	// store update directly
+	err := ts.Store.Update(func(tx store.Tx) error {
+		for _, node := range nodes {
+			if err := store.CreateNode(tx, node); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	require.NoError(t, err, "error creating nodes")
+
+	// now try listing nodes
+
+	// listing with an empty set of labels should return all nodes
+	t.Log("list nodes with no filters")
+	r, err := ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
+		Filters: &api.ListNodesRequest_Filters{},
+	})
+	assert.NoError(t, err)
+	assert.Len(t, r.Nodes, 3)
+
+	t.Log("list nodes with allcommon=engine engine label filter")
+	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
+		Filters: &api.ListNodesRequest_Filters{
+			Labels: map[string]string{"allcommon": "engine"},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Len(t, r.Nodes, 3)
+
+	t.Log("list nodes with allcommon=node engine label filter")
+	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
+		Filters: &api.ListNodesRequest_Filters{
+			Labels: map[string]string{"allcommon": "node"},
+		},
+	})
+	// nothing should be returned; allcommon=engine on engine labels
+	assert.NoError(t, err)
+	assert.Len(t, r.Nodes, 0)
+
+	t.Log("list nodes with allcommon=node node filter")
+	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
+		Filters: &api.ListNodesRequest_Filters{
+			NodeLabels: map[string]string{"allcommon": "node"},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Len(t, r.Nodes, 3)
+
+	t.Log("list nodes with allcommon=engine node filter")
+	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
+		Filters: &api.ListNodesRequest_Filters{
+			NodeLabels: map[string]string{"allcommon": "engine"},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Len(t, r.Nodes, 0)
+
+	t.Log("list nodes with nodelabel1=shouldmatch node filter")
+	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
+		Filters: &api.ListNodesRequest_Filters{
+			NodeLabels: map[string]string{"nodelabel1": "shouldmatch"},
+		},
+	})
+	// should only return the first 2 nodes
+	assert.NoError(t, err)
+	assert.Len(t, r.Nodes, 2)
+	assert.Contains(t, r.Nodes, nodes[0])
+	assert.Contains(t, r.Nodes, nodes[1])
+
+	t.Log("list nodes with enginelabel1=shouldmatch engine filter")
+	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
+		Filters: &api.ListNodesRequest_Filters{
+			Labels: map[string]string{"enginelabel1": "shouldmatch"},
+		},
+	})
+	// should only return the first 2 nodes
+	assert.NoError(t, err)
+	assert.Len(t, r.Nodes, 2)
+	assert.Contains(t, r.Nodes, nodes[0])
+	assert.Contains(t, r.Nodes, nodes[1])
+
+	t.Log("list nodes with node two engine filters")
+	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
+		Filters: &api.ListNodesRequest_Filters{
+			Labels: map[string]string{
+				"enginelabel1": "shouldmatch",
+				"enginelabel2": "unique1",
+			},
+		},
+	})
+	// should only return the first node
+	assert.NoError(t, err)
+	assert.Len(t, r.Nodes, 1)
+	assert.Contains(t, r.Nodes, nodes[0])
+
+	t.Log("list nodes with node two node filters")
+	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
+		Filters: &api.ListNodesRequest_Filters{
+			NodeLabels: map[string]string{
+				"nodelabel1": "shouldmatch",
+				"nodelabel2": "unique1",
+			},
+		},
+	})
+	// should only return the first node
+	assert.NoError(t, err)
+	assert.Len(t, r.Nodes, 1)
+	assert.Contains(t, r.Nodes, nodes[0])
+
+	t.Log("list nodes with both engine and node filters")
+	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
+		Filters: &api.ListNodesRequest_Filters{
+			// all nodes pass this filter
+			Labels: map[string]string{
+				"enginelabel1": "",
+			},
+			// only 0 and 2 pass this filter
+			NodeLabels: map[string]string{
+				"nodelabel2": "unique1",
+			},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Len(t, r.Nodes, 2)
+	assert.Contains(t, r.Nodes, nodes[0])
+	assert.Contains(t, r.Nodes, nodes[2])
 }
 
 func TestRemoveNodes(t *testing.T) {
