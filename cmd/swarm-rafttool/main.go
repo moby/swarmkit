@@ -157,6 +157,24 @@ var (
 			return downgradeKey(stateDir, unlockKey)
 		},
 	}
+
+	renewCertsCmd = &cobra.Command{
+		Use:   "renew-certs",
+		Short: "Renew expired manager cert",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			stateDir, err := cmd.Flags().GetString("state-dir")
+			if err != nil {
+				return err
+			}
+
+			unlockKey, err := cmd.Flags().GetString("unlock-key")
+			if err != nil {
+				return err
+			}
+
+			return renewCerts(stateDir, unlockKey)
+		},
+	}
 )
 
 func init() {
@@ -169,6 +187,7 @@ func init() {
 		dumpSnapshotCmd,
 		dumpObjectCmd,
 		downgradeKeyCmd,
+		renewCertsCmd,
 	)
 
 	dumpSnapshotCmd.Flags().Bool("redact", false, "Redact the values of secrets, configs, and environment variables")
