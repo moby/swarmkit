@@ -12,7 +12,7 @@ import (
 	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/docker/swarmkit/api/naming"
 	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/allocator"
+	"github.com/docker/swarmkit/manager/allocator/helpers"
 	"github.com/docker/swarmkit/manager/constraint"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/protobuf/ptypes"
@@ -435,7 +435,7 @@ func (s *Server) validateNetworks(networks []*api.NetworkAttachmentConfig) error
 		if network == nil {
 			continue
 		}
-		if allocator.IsIngressNetwork(network) {
+		if helpers.IsIngress(network) {
 			return status.Errorf(codes.InvalidArgument,
 				"Service cannot be explicitly attached to the ingress network %q", network.Spec.Annotations.Name)
 		}
@@ -660,8 +660,12 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 		SpecVersion: &api.Version{},
 	}
 
-	if allocator.IsIngressNetworkNeeded(service) {
-		if _, err := allocator.GetIngressNetwork(s.store); err == allocator.ErrNoIngress {
+	if helpers.IsIngressNetworkNeeded(service.Spec.Endpoint) {
+		var err error
+		s.store.View(func(tx store.ReadTx) {
+			_, err = s.getIngressNetwork(tx)
+		})
+		if err == errNoIngress {
 			return nil, status.Errorf(codes.FailedPrecondition, "service needs ingress network, but no ingress network is present")
 		}
 	}
@@ -807,8 +811,8 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 			service.UpdateStatus = nil
 		}
 
-		if allocator.IsIngressNetworkNeeded(service) {
-			if _, err := allocator.GetIngressNetwork(s.store); err == allocator.ErrNoIngress {
+		if helpers.IsIngressNetworkNeeded(service.Spec.Endpoint) {
+			if _, err := s.getIngressNetwork(tx); err == errNoIngress {
 				return status.Errorf(codes.FailedPrecondition, "service needs ingress network, but no ingress network is present")
 			}
 		}

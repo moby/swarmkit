@@ -7,6 +7,7 @@ import (
 	"github.com/docker/libnetwork/drvregistry"
 
 	// the allocator types
+	"github.com/docker/swarmkit/manager/allocator/helpers"
 	"github.com/docker/swarmkit/manager/allocator/network/driver"
 	"github.com/docker/swarmkit/manager/allocator/network/errors"
 	"github.com/docker/swarmkit/manager/allocator/network/ipam"
@@ -162,7 +163,7 @@ func (a *allocator) Restore(networks []*api.Network, services []*api.Service, ta
 	for _, nw := range networks {
 		existingNetworks[nw.ID] = struct{}{}
 
-		if isIngress(nw) {
+		if helpers.IsIngress(nw) {
 			a.ingressID = nw.ID
 		}
 		// TODO(dperny): this is broken. if the network is node local but not
@@ -258,7 +259,7 @@ func (a *allocator) AllocateNetwork(n *api.Network) error {
 	// returning ErrAlreadyAllocated later on, but might also be the case if
 	// the ingress network was found in the Restore but not fully allocated at
 	// the time
-	if isIngress(n) && a.ingressID != "" && a.ingressID != n.ID {
+	if helpers.IsIngress(n) && a.ingressID != "" && a.ingressID != n.ID {
 		return errors.ErrInvalidSpec("an ingress network (%v) is already allocated", a.ingressID)
 	}
 	// first, figure out if the network is node-local, so we know whether or
@@ -283,7 +284,7 @@ func (a *allocator) AllocateNetwork(n *api.Network) error {
 	}
 	// now that we've fully allocated, if this is an ingress network, set the
 	// ingressID
-	if isIngress(n) {
+	if helpers.IsIngress(n) {
 		a.ingressID = n.ID
 	}
 	return nil
@@ -442,7 +443,7 @@ func (a *allocator) AllocateService(service *api.Service) error {
 	// not be found in the spec's NetworkAttachmentConfigs. however, in the
 	// actual objects, it should have a VIP. so, if we need it, append it to
 	// the list of network IDs we're requesting VIPs for.
-	if ingressNeeded(proposal.Ports()) {
+	if helpers.IsIngressNetworkNeeded(endpointSpec) {
 		if a.ingressID != "" {
 			ids[a.ingressID] = struct{}{}
 		} else {
@@ -541,7 +542,7 @@ func (a *allocator) AllocateTask(task *api.Task) (rerr error) {
 	// expensive, because it's a copy, but there shouldn't be many network
 	// attachment configs, and they're just pointers anyway.
 	copy(attachmentConfigs, task.Spec.Networks)
-	if task.Endpoint != nil && ingressNeeded(task.Endpoint.Ports) {
+	if task.Endpoint != nil && helpers.IsIngressNetworkNeeded(task.Endpoint.Spec) {
 		if a.ingressID != "" {
 			// this is safe, because it won't modify the list on the spec.
 			attachmentConfigs = append(attachmentConfigs,
@@ -787,7 +788,7 @@ func (a *allocator) isServiceFullyAllocated(service *api.Service) bool {
 	}
 	// if we're using vips, check that we're using the right vips
 	if spec.Mode == api.ResolutionModeVirtualIP {
-		ingress := ingressNeeded(spec.Ports)
+		ingress := helpers.IsIngressNetworkNeeded(spec)
 		// networksWithVips is a map of all the network IDs that are present
 		// in the VIPs, which tells us if every network attachment has a VIP
 		// allocated. this catches a bizarre edge case where a network has two
@@ -852,33 +853,4 @@ func (a *allocator) isServiceFullyAllocated(service *api.Service) bool {
 		return false
 	}
 	return true
-}
-
-// ingressNeeded checks the port list, and returns true if the ingress network
-// is needed. the ingress network is needed if there is at least 1 port in the
-// port configs that is in PublishModeIngress.
-func ingressNeeded(ports []*api.PortConfig) bool {
-	for _, port := range ports {
-		if port.PublishMode == api.PublishModeIngress {
-			return true
-		}
-	}
-	return false
-}
-
-// isIngress returns "true" if the provided network is an ingress network
-func isIngress(nw *api.Network) bool {
-	// ingress networks should have the ingress field set on the spec
-	if nw.Spec.Ingress {
-		// TODO(dperny): handle partially allocated ingress networks
-		return true
-	}
-
-	// however, some older networks indicate that they're ingress with
-	// labels.
-	_, ok := nw.Spec.Annotations.Labels["com.docker.swarm.internal"]
-	if ok && nw.Spec.Annotations.Name == "ingress" {
-		return true
-	}
-	return false
 }

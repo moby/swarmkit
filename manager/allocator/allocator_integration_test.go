@@ -47,11 +47,11 @@ func init() {
 // components. It should be a definitive test of the allocator's public API. If
 // these tests pass, then any changes to the allocator should not require
 // changes to other components that depend on it.
-var _ = Describe("allocator.NewAllocator", func() {
+var _ = Describe("allocator.Allocator", func() {
 	var (
 		ctx       context.Context
 		dataStore *store.MemoryStore
-		allocator *NewAllocator
+		allocator *Allocator
 
 		// allocatorExitResult is the result of the running allocator exiting
 		// from its go routine. If this channel does not write either nil or
@@ -109,7 +109,7 @@ var _ = Describe("allocator.NewAllocator", func() {
 		// the allocator has no PluginGetter.
 		// TODO(dperny): we should handle this case, somehow, and provide a
 		// PluginGetter so the integration tests can run with it.
-		allocator = NewNew(dataStore, nil)
+		allocator = New(dataStore, nil)
 
 		// reinitialize this channel every spec
 		allocatorExitResult = make(chan error)

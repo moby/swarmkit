@@ -110,10 +110,6 @@ integration: ## run integration tests
 	@echo "🐳 $@"
 	@go test -parallel 8 ${RACE} -tags "${DOCKER_BUILDTAGS}" ${INTEGRATION_PACKAGE}
 
-integration-newallocator:
-	@echo "🐳 $@"
-	@env SWARMKIT_USE_NEW_ALLOCATOR="iknowtherisk" go test -parallel 8 ${RACE} -tags "${DOCKER_BUILDTAGS}" ${INTEGRATION_PACKAGE}
-
 FORCE:
 
 # Build a binary from a cmd.
@@ -150,10 +146,6 @@ coverage: ## generate coverprofiles from the unit tests
 coverage-integration: ## generate coverprofiles from the integration tests
 	@echo "🐳 $@"
 	go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../${INTEGRATION_PACKAGE}/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
-
-coverage-integration-newallocator: ## generate coverprofiles from the integration tests run with the new allocator
-	@echo "🐳 $@"
-	env SWARMKIT_USE_NEW_ALLOCATOR="iknowtherisk" go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../${INTEGRATION_PACKAGE}/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
 
 help: ## this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort

@@ -20,7 +20,7 @@ import (
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/allocator"
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
+	"github.com/docker/swarmkit/manager/allocator/network"
 	"github.com/docker/swarmkit/manager/controlapi"
 	"github.com/docker/swarmkit/manager/dispatcher"
 	"github.com/docker/swarmkit/manager/drivers"
@@ -145,7 +145,6 @@ type Manager struct {
 	constraintEnforcer     *constraintenforcer.ConstraintEnforcer
 	scheduler              *scheduler.Scheduler
 	allocator              *allocator.Allocator
-	newallocator           *allocator.NewAllocator
 	keyManager             *keymanager.KeyManager
 	server                 *grpc.Server
 	localserver            *grpc.Server
@@ -962,8 +961,8 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		// are known to be present in each cluster node. This is needed
 		// in order to allow running services on the predefined docker
 		// networks like `bridge` and `host`.
-		for _, p := range allocator.PredefinedNetworks() {
-			if err := store.CreateNetwork(tx, newPredefinedNetwork(p.Name, p.Driver)); err != nil && err != store.ErrNameConflict {
+		for _, p := range network.PredefinedNetworks() {
+			if err := store.CreateNetwork(tx, newPredefinedNetwork(p.Name, p.Driver)); err != store.ErrNameConflict {
 				log.G(ctx).WithError(err).Error("failed to create predefined network " + p.Name)
 			}
 		}
@@ -982,18 +981,11 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	// shutdown underlying manager processes when leadership is
 	// lost.
 
-	// TODO(dperny): this is a temporary feature flag so that we can build
-	// swarmkit with the new allocator compiled in, and switch on its use
-	// dynamically
-	if os.Getenv("SWARMKIT_USE_NEW_ALLOCATOR") == "iknowtherisk" {
-		m.newallocator = allocator.NewNew(s, m.config.PluginGetter)
-	} else {
-		m.allocator, err = allocator.New(s, m.config.PluginGetter)
-		if err != nil {
-			log.G(ctx).WithError(err).Error("failed to create allocator")
-			// TODO(stevvooe): It doesn't seem correct here to fail
-			// creating the allocator but then use it anyway.
-		}
+	m.allocator = allocator.New(s, m.config.PluginGetter)
+	if err != nil {
+		log.G(ctx).WithError(err).Error("failed to create allocator")
+		// TODO(stevvooe): It doesn't seem correct here to fail
+		// creating the allocator but then use it anyway.
 	}
 
 	if m.keyManager != nil {
@@ -1026,23 +1018,11 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	// TODO(aluzzardi): This should have some kind of error handling so that
 	// any component that goes down would bring the entire manager down.
 
-	// TODO(dperny): this is part of the temporary feature gate for the new
-	// allocator.
-	if m.allocator != nil {
-		go func(allocator *allocator.Allocator) {
-			if err := allocator.Run(ctx); err != nil {
-				log.G(ctx).WithError(err).Error("allocator exited with an error")
-			}
-		}(m.allocator)
-	} else {
-		if m.newallocator != nil {
-			go func(a *allocator.NewAllocator) {
-				if err := a.Run(ctx); err != nil {
-					log.G(ctx).WithError(err).Error("allocator exited with an error")
-				}
-			}(m.newallocator)
+	go func(allocator *allocator.Allocator) {
+		if err := allocator.Run(ctx); err != nil {
+			log.G(ctx).WithError(err).Error("allocator exited with an error")
 		}
-	}
+	}(m.allocator)
 
 	go func(scheduler *scheduler.Scheduler) {
 		if err := scheduler.Run(ctx); err != nil {
@@ -1085,16 +1065,9 @@ func (m *Manager) becomeFollower() {
 	m.logbroker.Stop()
 	m.caserver.Stop()
 
-	// TODO(dperny): we're stopping both allocators, just in case we end up in
-	// a situation where both are running. part of the temporary feature gate
 	if m.allocator != nil {
 		m.allocator.Stop()
 		m.allocator = nil
-	}
-
-	if m.newallocator != nil {
-		m.newallocator.Stop()
-		m.newallocator = nil
 	}
 
 	m.constraintEnforcer.Stop()
@@ -1222,7 +1195,7 @@ func newPredefinedNetwork(name, driver string) *api.Network {
 			Annotations: api.Annotations{
 				Name: name,
 				Labels: map[string]string{
-					networkallocator.PredefinedLabel: "true",
+					network.PredefinedLabel: "true",
 				},
 			},
 			DriverConfig: &api.Driver{Name: driver},
