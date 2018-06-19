@@ -188,6 +188,9 @@ func (tr *TaskReaper) tick() {
 		for dirty := range tr.dirty {
 			service := store.GetService(tx, dirty.ServiceID)
 			if service == nil {
+				// If the service can't be found, assume that it was deleted
+				// and remove the slot from the dirty list.
+				delete(tr.dirty, dirty)
 				continue
 			}
 
