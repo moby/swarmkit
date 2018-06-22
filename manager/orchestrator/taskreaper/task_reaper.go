@@ -138,12 +138,25 @@ func (tr *TaskReaper) tick() {
 	for _, tID := range tr.orphaned {
 		deleteTasks[tID] = struct{}{}
 	}
+
+	// Check history of dirty tasks for cleanup.
+	// Note: Clean out the dirty set at the end of this tick iteration
+	// in all but one scenarios (documented below).
+	// When tick() finishes, the tasks in the slot were either cleaned up,
+	// or it was skipped because it didn't meet the criteria for cleaning.
+	// Either way, we can discard the dirty set because future events on
+	// that slot will cause the task to be readded to the dirty set
+	// at that point.
+	//
+	// The only case when we keep the slot dirty is when there are more
+	// than one running tasks present for a given slot.
+	// In that case, we need to keep the slot dirty to allow it to be
+	// cleaned when tick() is called next and one or more the tasks
+	// in that slot have stopped running.
 	tr.store.View(func(tx store.ReadTx) {
 		for dirty := range tr.dirty {
 			service := store.GetService(tx, dirty.serviceID)
 			if service == nil {
-				// If the service can't be found, assume that it was deleted
-				// and remove the slot from the dirty list.
 				delete(tr.dirty, dirty)
 				continue
 			}
@@ -151,6 +164,7 @@ func (tr *TaskReaper) tick() {
 			taskHistory := tr.taskHistory
 
 			if taskHistory < 0 {
+				delete(tr.dirty, dirty)
 				continue
 			}
 
@@ -178,6 +192,7 @@ func (tr *TaskReaper) tick() {
 			}
 
 			if int64(len(historicTasks)) <= taskHistory {
+				delete(tr.dirty, dirty)
 				continue
 			}
 
@@ -201,6 +216,12 @@ func (tr *TaskReaper) tick() {
 				}
 			}
 
+			// The only case when we keep the slot dirty at the end of tick()
+			// is when there are more than one running tasks present
+			// for a given slot.
+			// In that case, we keep the slot dirty to allow it to be
+			// cleaned when tick() is called next and one or more of
+			// the tasks in that slot have stopped running.
 			if runningTasks <= 1 {
 				delete(tr.dirty, dirty)
 			}
