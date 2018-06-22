@@ -43,6 +43,40 @@ func (d *storeObjectGen) genMsgStoreObject(m *generator.Descriptor, storeObject 
 	d.P("type ", ccTypeName, "CheckFunc func(t1, t2 *", ccTypeName, ") bool")
 	d.P()
 
+	// generate the event object type interface for this type
+	// event types implement some empty interfaces, for ease of use, like such:
+	//
+	//   type EventCreate interface {
+	//     IsEventCreatet() bool
+	//   }
+	//
+	//   type EventNode interface {
+	//     IsEventNode() bool
+	//   }
+	//
+	// then, each event has the corresponding interfaces implemented for its
+	// type. for example:
+	//
+	//   func (e EventCreateNode) IsEventCreate() bool {
+	//     return true
+	//   }
+	//
+	//   func (e EventCreateNode) IsEventNode() bool {
+	//     return true
+	//   }
+	//
+	// this lets the user filter events based on their interface type.
+	// note that the event type for each object type needs to be generated for
+	// each object. the event change type (Create/Update/Delete) is
+	// hand-written in the storeobject.go file because they are only needed
+	// once.
+	d.P("type Event", ccTypeName, " interface {")
+	d.In()
+	d.P("IsEvent", ccTypeName, "() bool")
+	d.Out()
+	d.P("}")
+	d.P()
+
 	for _, event := range []string{"Create", "Update", "Delete"} {
 		d.P("type Event", event, ccTypeName, " struct {")
 		d.In()
@@ -75,6 +109,23 @@ func (d *storeObjectGen) genMsgStoreObject(m *generator.Descriptor, storeObject 
 		d.P("return true")
 		d.Out()
 		d.P("}")
+		d.P()
+
+		// implement event change type interface (IsEventCreate)
+		d.P("func (e Event", event, ccTypeName, ") IsEvent", event, "() bool {")
+		d.In()
+		d.P("return true")
+		d.Out()
+		d.P("}")
+		d.P()
+
+		// implement event object type interface (IsEventNode)
+		d.P("func (e Event", event, ccTypeName, ") IsEvent", ccTypeName, "() bool {")
+		d.In()
+		d.P("return true")
+		d.Out()
+		d.P("}")
+		d.P()
 	}
 
 	// Generate methods for this type
