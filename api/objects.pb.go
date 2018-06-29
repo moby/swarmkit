@@ -1957,6 +1957,10 @@ func sozObjects(x uint64) (n int) {
 
 type NodeCheckFunc func(t1, t2 *Node) bool
 
+type EventNode interface {
+	IsEventNode() bool
+}
+
 type EventCreateNode struct {
 	Node   *Node
 	Checks []NodeCheckFunc
@@ -1973,6 +1977,14 @@ func (e EventCreateNode) Matches(apiEvent github_com_docker_go_events.Event) boo
 			return false
 		}
 	}
+	return true
+}
+
+func (e EventCreateNode) IsEventCreate() bool {
+	return true
+}
+
+func (e EventCreateNode) IsEventNode() bool {
 	return true
 }
 
@@ -1996,6 +2008,14 @@ func (e EventUpdateNode) Matches(apiEvent github_com_docker_go_events.Event) boo
 	return true
 }
 
+func (e EventUpdateNode) IsEventUpdate() bool {
+	return true
+}
+
+func (e EventUpdateNode) IsEventNode() bool {
+	return true
+}
+
 type EventDeleteNode struct {
 	Node   *Node
 	Checks []NodeCheckFunc
@@ -2014,6 +2034,15 @@ func (e EventDeleteNode) Matches(apiEvent github_com_docker_go_events.Event) boo
 	}
 	return true
 }
+
+func (e EventDeleteNode) IsEventDelete() bool {
+	return true
+}
+
+func (e EventDeleteNode) IsEventNode() bool {
+	return true
+}
+
 func (m *Node) CopyStoreObject() StoreObject {
 	return m.Copy()
 }
@@ -2204,6 +2233,10 @@ func (indexer NodeCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, er
 
 type ServiceCheckFunc func(t1, t2 *Service) bool
 
+type EventService interface {
+	IsEventService() bool
+}
+
 type EventCreateService struct {
 	Service *Service
 	Checks  []ServiceCheckFunc
@@ -2220,6 +2253,14 @@ func (e EventCreateService) Matches(apiEvent github_com_docker_go_events.Event) 
 			return false
 		}
 	}
+	return true
+}
+
+func (e EventCreateService) IsEventCreate() bool {
+	return true
+}
+
+func (e EventCreateService) IsEventService() bool {
 	return true
 }
 
@@ -2243,6 +2284,14 @@ func (e EventUpdateService) Matches(apiEvent github_com_docker_go_events.Event) 
 	return true
 }
 
+func (e EventUpdateService) IsEventUpdate() bool {
+	return true
+}
+
+func (e EventUpdateService) IsEventService() bool {
+	return true
+}
+
 type EventDeleteService struct {
 	Service *Service
 	Checks  []ServiceCheckFunc
@@ -2261,6 +2310,15 @@ func (e EventDeleteService) Matches(apiEvent github_com_docker_go_events.Event) 
 	}
 	return true
 }
+
+func (e EventDeleteService) IsEventDelete() bool {
+	return true
+}
+
+func (e EventDeleteService) IsEventService() bool {
+	return true
+}
+
 func (m *Service) CopyStoreObject() StoreObject {
 	return m.Copy()
 }
@@ -2421,6 +2479,10 @@ func (indexer ServiceCustomIndexer) FromObject(obj interface{}) (bool, [][]byte,
 
 type TaskCheckFunc func(t1, t2 *Task) bool
 
+type EventTask interface {
+	IsEventTask() bool
+}
+
 type EventCreateTask struct {
 	Task   *Task
 	Checks []TaskCheckFunc
@@ -2437,6 +2499,14 @@ func (e EventCreateTask) Matches(apiEvent github_com_docker_go_events.Event) boo
 			return false
 		}
 	}
+	return true
+}
+
+func (e EventCreateTask) IsEventCreate() bool {
+	return true
+}
+
+func (e EventCreateTask) IsEventTask() bool {
 	return true
 }
 
@@ -2460,6 +2530,14 @@ func (e EventUpdateTask) Matches(apiEvent github_com_docker_go_events.Event) boo
 	return true
 }
 
+func (e EventUpdateTask) IsEventUpdate() bool {
+	return true
+}
+
+func (e EventUpdateTask) IsEventTask() bool {
+	return true
+}
+
 type EventDeleteTask struct {
 	Task   *Task
 	Checks []TaskCheckFunc
@@ -2478,6 +2556,15 @@ func (e EventDeleteTask) Matches(apiEvent github_com_docker_go_events.Event) boo
 	}
 	return true
 }
+
+func (e EventDeleteTask) IsEventDelete() bool {
+	return true
+}
+
+func (e EventDeleteTask) IsEventTask() bool {
+	return true
+}
+
 func (m *Task) CopyStoreObject() StoreObject {
 	return m.Copy()
 }
@@ -2681,6 +2768,10 @@ func (indexer TaskCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, er
 
 type NetworkCheckFunc func(t1, t2 *Network) bool
 
+type EventNetwork interface {
+	IsEventNetwork() bool
+}
+
 type EventCreateNetwork struct {
 	Network *Network
 	Checks  []NetworkCheckFunc
@@ -2697,6 +2788,14 @@ func (e EventCreateNetwork) Matches(apiEvent github_com_docker_go_events.Event) 
 			return false
 		}
 	}
+	return true
+}
+
+func (e EventCreateNetwork) IsEventCreate() bool {
+	return true
+}
+
+func (e EventCreateNetwork) IsEventNetwork() bool {
 	return true
 }
 
@@ -2720,6 +2819,14 @@ func (e EventUpdateNetwork) Matches(apiEvent github_com_docker_go_events.Event) 
 	return true
 }
 
+func (e EventUpdateNetwork) IsEventUpdate() bool {
+	return true
+}
+
+func (e EventUpdateNetwork) IsEventNetwork() bool {
+	return true
+}
+
 type EventDeleteNetwork struct {
 	Network *Network
 	Checks  []NetworkCheckFunc
@@ -2738,6 +2845,15 @@ func (e EventDeleteNetwork) Matches(apiEvent github_com_docker_go_events.Event) 
 	}
 	return true
 }
+
+func (e EventDeleteNetwork) IsEventDelete() bool {
+	return true
+}
+
+func (e EventDeleteNetwork) IsEventNetwork() bool {
+	return true
+}
+
 func (m *Network) CopyStoreObject() StoreObject {
 	return m.Copy()
 }
@@ -2898,6 +3014,10 @@ func (indexer NetworkCustomIndexer) FromObject(obj interface{}) (bool, [][]byte,
 
 type ClusterCheckFunc func(t1, t2 *Cluster) bool
 
+type EventCluster interface {
+	IsEventCluster() bool
+}
+
 type EventCreateCluster struct {
 	Cluster *Cluster
 	Checks  []ClusterCheckFunc
@@ -2914,6 +3034,14 @@ func (e EventCreateCluster) Matches(apiEvent github_com_docker_go_events.Event) 
 			return false
 		}
 	}
+	return true
+}
+
+func (e EventCreateCluster) IsEventCreate() bool {
+	return true
+}
+
+func (e EventCreateCluster) IsEventCluster() bool {
 	return true
 }
 
@@ -2937,6 +3065,14 @@ func (e EventUpdateCluster) Matches(apiEvent github_com_docker_go_events.Event) 
 	return true
 }
 
+func (e EventUpdateCluster) IsEventUpdate() bool {
+	return true
+}
+
+func (e EventUpdateCluster) IsEventCluster() bool {
+	return true
+}
+
 type EventDeleteCluster struct {
 	Cluster *Cluster
 	Checks  []ClusterCheckFunc
@@ -2955,6 +3091,15 @@ func (e EventDeleteCluster) Matches(apiEvent github_com_docker_go_events.Event) 
 	}
 	return true
 }
+
+func (e EventDeleteCluster) IsEventDelete() bool {
+	return true
+}
+
+func (e EventDeleteCluster) IsEventCluster() bool {
+	return true
+}
+
 func (m *Cluster) CopyStoreObject() StoreObject {
 	return m.Copy()
 }
@@ -3115,6 +3260,10 @@ func (indexer ClusterCustomIndexer) FromObject(obj interface{}) (bool, [][]byte,
 
 type SecretCheckFunc func(t1, t2 *Secret) bool
 
+type EventSecret interface {
+	IsEventSecret() bool
+}
+
 type EventCreateSecret struct {
 	Secret *Secret
 	Checks []SecretCheckFunc
@@ -3131,6 +3280,14 @@ func (e EventCreateSecret) Matches(apiEvent github_com_docker_go_events.Event) b
 			return false
 		}
 	}
+	return true
+}
+
+func (e EventCreateSecret) IsEventCreate() bool {
+	return true
+}
+
+func (e EventCreateSecret) IsEventSecret() bool {
 	return true
 }
 
@@ -3154,6 +3311,14 @@ func (e EventUpdateSecret) Matches(apiEvent github_com_docker_go_events.Event) b
 	return true
 }
 
+func (e EventUpdateSecret) IsEventUpdate() bool {
+	return true
+}
+
+func (e EventUpdateSecret) IsEventSecret() bool {
+	return true
+}
+
 type EventDeleteSecret struct {
 	Secret *Secret
 	Checks []SecretCheckFunc
@@ -3172,6 +3337,15 @@ func (e EventDeleteSecret) Matches(apiEvent github_com_docker_go_events.Event) b
 	}
 	return true
 }
+
+func (e EventDeleteSecret) IsEventDelete() bool {
+	return true
+}
+
+func (e EventDeleteSecret) IsEventSecret() bool {
+	return true
+}
+
 func (m *Secret) CopyStoreObject() StoreObject {
 	return m.Copy()
 }
@@ -3332,6 +3506,10 @@ func (indexer SecretCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, 
 
 type ConfigCheckFunc func(t1, t2 *Config) bool
 
+type EventConfig interface {
+	IsEventConfig() bool
+}
+
 type EventCreateConfig struct {
 	Config *Config
 	Checks []ConfigCheckFunc
@@ -3348,6 +3526,14 @@ func (e EventCreateConfig) Matches(apiEvent github_com_docker_go_events.Event) b
 			return false
 		}
 	}
+	return true
+}
+
+func (e EventCreateConfig) IsEventCreate() bool {
+	return true
+}
+
+func (e EventCreateConfig) IsEventConfig() bool {
 	return true
 }
 
@@ -3371,6 +3557,14 @@ func (e EventUpdateConfig) Matches(apiEvent github_com_docker_go_events.Event) b
 	return true
 }
 
+func (e EventUpdateConfig) IsEventUpdate() bool {
+	return true
+}
+
+func (e EventUpdateConfig) IsEventConfig() bool {
+	return true
+}
+
 type EventDeleteConfig struct {
 	Config *Config
 	Checks []ConfigCheckFunc
@@ -3389,6 +3583,15 @@ func (e EventDeleteConfig) Matches(apiEvent github_com_docker_go_events.Event) b
 	}
 	return true
 }
+
+func (e EventDeleteConfig) IsEventDelete() bool {
+	return true
+}
+
+func (e EventDeleteConfig) IsEventConfig() bool {
+	return true
+}
+
 func (m *Config) CopyStoreObject() StoreObject {
 	return m.Copy()
 }
@@ -3549,6 +3752,10 @@ func (indexer ConfigCustomIndexer) FromObject(obj interface{}) (bool, [][]byte, 
 
 type ResourceCheckFunc func(t1, t2 *Resource) bool
 
+type EventResource interface {
+	IsEventResource() bool
+}
+
 type EventCreateResource struct {
 	Resource *Resource
 	Checks   []ResourceCheckFunc
@@ -3565,6 +3772,14 @@ func (e EventCreateResource) Matches(apiEvent github_com_docker_go_events.Event)
 			return false
 		}
 	}
+	return true
+}
+
+func (e EventCreateResource) IsEventCreate() bool {
+	return true
+}
+
+func (e EventCreateResource) IsEventResource() bool {
 	return true
 }
 
@@ -3588,6 +3803,14 @@ func (e EventUpdateResource) Matches(apiEvent github_com_docker_go_events.Event)
 	return true
 }
 
+func (e EventUpdateResource) IsEventUpdate() bool {
+	return true
+}
+
+func (e EventUpdateResource) IsEventResource() bool {
+	return true
+}
+
 type EventDeleteResource struct {
 	Resource *Resource
 	Checks   []ResourceCheckFunc
@@ -3606,6 +3829,15 @@ func (e EventDeleteResource) Matches(apiEvent github_com_docker_go_events.Event)
 	}
 	return true
 }
+
+func (e EventDeleteResource) IsEventDelete() bool {
+	return true
+}
+
+func (e EventDeleteResource) IsEventResource() bool {
+	return true
+}
+
 func (m *Resource) CopyStoreObject() StoreObject {
 	return m.Copy()
 }
@@ -3772,6 +4004,10 @@ func (indexer ResourceCustomIndexer) FromObject(obj interface{}) (bool, [][]byte
 
 type ExtensionCheckFunc func(t1, t2 *Extension) bool
 
+type EventExtension interface {
+	IsEventExtension() bool
+}
+
 type EventCreateExtension struct {
 	Extension *Extension
 	Checks    []ExtensionCheckFunc
@@ -3788,6 +4024,14 @@ func (e EventCreateExtension) Matches(apiEvent github_com_docker_go_events.Event
 			return false
 		}
 	}
+	return true
+}
+
+func (e EventCreateExtension) IsEventCreate() bool {
+	return true
+}
+
+func (e EventCreateExtension) IsEventExtension() bool {
 	return true
 }
 
@@ -3811,6 +4055,14 @@ func (e EventUpdateExtension) Matches(apiEvent github_com_docker_go_events.Event
 	return true
 }
 
+func (e EventUpdateExtension) IsEventUpdate() bool {
+	return true
+}
+
+func (e EventUpdateExtension) IsEventExtension() bool {
+	return true
+}
+
 type EventDeleteExtension struct {
 	Extension *Extension
 	Checks    []ExtensionCheckFunc
@@ -3829,6 +4081,15 @@ func (e EventDeleteExtension) Matches(apiEvent github_com_docker_go_events.Event
 	}
 	return true
 }
+
+func (e EventDeleteExtension) IsEventDelete() bool {
+	return true
+}
+
+func (e EventDeleteExtension) IsEventExtension() bool {
+	return true
+}
+
 func (m *Extension) CopyStoreObject() StoreObject {
 	return m.Copy()
 }
