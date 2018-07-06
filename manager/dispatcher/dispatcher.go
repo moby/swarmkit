@@ -293,9 +293,16 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			publishManagers(ev.([]*api.Peer))
 		case <-d.processUpdatesTrigger:
 			d.processUpdates(ctx)
+			batchTimer.Stop()
+			// drain the timer, if it has already expired
+			select {
+			case <-batchTimer.C:
+			default:
+			}
 			batchTimer.Reset(maxBatchInterval)
 		case <-batchTimer.C:
 			d.processUpdates(ctx)
+			// batch timer has already expired, so no need to drain
 			batchTimer.Reset(maxBatchInterval)
 		case v := <-configWatcher:
 			cluster := v.(api.EventUpdateCluster)
