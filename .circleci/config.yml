@@ -11,7 +11,7 @@ jobs:
       # Needed to install go
       OS: linux
       ARCH: amd64
-      GOVERSION: 1.10.3
+      GOVERSION: 1.11beta3
       # Needed to install protoc
       PROTOC: https://github.com/google/protobuf/releases/download/v3.5.0/protoc-3.5.0-linux-x86_64.zip
 
