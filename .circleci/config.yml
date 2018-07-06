@@ -1,7 +1,12 @@
 version: 2
 jobs:
   build:
-    working_directory: ~/go/src/github.com/docker/swarmkit
+    # CircleCI by default sets the gopath to be ~/.go_workspace and /usr/local/go_workspace
+    # apparently.  We cannot set the working directory or environment variables by using
+    # other environment variables (although the working directory can use the `~` character,
+    # but environment variables cannot), so to avoid having to override the GOPATH for every
+    # run command, just hard code in the directory to be CircleCI expects it to be.
+    working_directory: /home/circleci/.go_workspace/src/github.com/docker/swarmkit
     environment:
       # Needed to install go
       OS: linux
@@ -44,7 +49,6 @@ jobs:
         name: Install go
         command: |
             sudo rm -rf /usr/local/go
-            rm -rf "$GOPATH"
             curl -fsSL -o "$HOME/go.tar.gz" "https://storage.googleapis.com/golang/go$GOVERSION.$OS-$ARCH.tar.gz"
             sudo tar -C /usr/local -xzf "$HOME/go.tar.gz"
 
@@ -79,7 +83,7 @@ jobs:
     # The GOPATH setting would not be needed if we used the golang docker image
     - run:
         name: Compile/lint/vet/protobuf validation
-        command: GOPATH="$HOME/go" make check binaries checkprotos
+        command: make check binaries checkprotos
 
     - run:
         name: Run unit tests
@@ -87,13 +91,13 @@ jobs:
             sudo mkdir /tmpfs
             sudo mount -t tmpfs tmpfs /tmpfs
             sudo chown 1000:1000 /tmpfs
-            GOPATH="$HOME/go" TMPDIR=/tmpfs make coverage
+            TMPDIR=/tmpfs make coverage
 
     - run:
         name: Run integration tests
         command: |
             # TMPFS has already been set up previously in the unit test step
-            GOPATH="$HOME/go" TMPDIR=/tmpfs make coverage-integration
+            TMPDIR=/tmpfs make coverage-integration
 
     - run:
         name: Push coverage info to codecov.io
