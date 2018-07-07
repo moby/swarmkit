@@ -117,27 +117,27 @@ func TestHandleSessionMessageNetworkManagerChanges(t *testing.T) {
 	var messages = []*api.SessionMessage{
 		{
 			Managers: []*api.WeightedPeer{
-				{&api.Peer{NodeID: "node1", Addr: "10.0.0.1"}, 1.0}},
+				{Peer: &api.Peer{NodeID: "node1", Addr: "10.0.0.1"}, Weight: 1.0}},
 			NetworkBootstrapKeys: []*api.EncryptionKey{{}},
 		},
 		{
 			Managers: []*api.WeightedPeer{
-				{&api.Peer{NodeID: "node1", Addr: ""}, 1.0}},
+				{Peer: &api.Peer{NodeID: "node1", Addr: ""}, Weight: 1.0}},
 			NetworkBootstrapKeys: []*api.EncryptionKey{{}},
 		},
 		{
 			Managers: []*api.WeightedPeer{
-				{&api.Peer{NodeID: "node1", Addr: "10.0.0.1"}, 1.0}},
+				{Peer: &api.Peer{NodeID: "node1", Addr: "10.0.0.1"}, Weight: 1.0}},
 			NetworkBootstrapKeys: nil,
 		},
 		{
 			Managers: []*api.WeightedPeer{
-				{&api.Peer{NodeID: "", Addr: "10.0.0.1"}, 1.0}},
+				{Peer: &api.Peer{NodeID: "", Addr: "10.0.0.1"}, Weight: 1.0}},
 			NetworkBootstrapKeys: []*api.EncryptionKey{{}},
 		},
 		{
 			Managers: []*api.WeightedPeer{
-				{&api.Peer{NodeID: "node1", Addr: "10.0.0.1"}, 0.0}},
+				{Peer: &api.Peer{NodeID: "node1", Addr: "10.0.0.1"}, Weight: 0.0}},
 			NetworkBootstrapKeys: []*api.EncryptionKey{{}},
 		},
 	}
