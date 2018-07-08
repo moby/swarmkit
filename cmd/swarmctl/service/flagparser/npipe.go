@@ -21,12 +21,14 @@ func parseNpipe(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		container := spec.Task.GetContainer()
 
 		for _, npipe := range npipes {
-			if strings.Contains(npipe, ":") {
+			parts := strings.SplitN(npipe, ":", 2)
+			if len(parts) != 2 {
 				return fmt.Errorf("npipe format %q not supported", npipe)
 			}
 			container.Mounts = append(container.Mounts, api.Mount{
 				Type:   api.MountTypeNamedPipe,
-				Target: npipe,
+				Source: parts[0],
+				Target: parts[1],
 			})
 		}
 	}
