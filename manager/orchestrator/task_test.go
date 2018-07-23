@@ -1,7 +1,10 @@
 package orchestrator
 
 import (
+	google_protobuf "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"sort"
+	"strconv"
 	"testing"
 
 	"github.com/docker/swarmkit/api"
@@ -104,4 +107,42 @@ func TestIsTaskDirtyPlacementConstraintsOnly(t *testing.T) {
 	// Clear out placement constraints.
 	service.Spec.Task.Placement.Constraints = nil
 	assert.False(t, IsTaskDirtyPlacementConstraintsOnly(service.Spec.Task, task))
+}
+
+// Test Task sorting, which is currently based on
+// Status.AppliedAt, and then on Status.Timestamp.
+func TestTaskSort(t *testing.T) {
+	var tasks []*api.Task
+	size := 5
+	seconds := int64(size)
+	for i := 0; i < size; i++ {
+		task := &api.Task{
+			ID: "id_" + strconv.Itoa(i),
+			Status: api.TaskStatus{
+				Timestamp: &google_protobuf.Timestamp{Seconds: seconds},
+			},
+		}
+
+		seconds--
+		tasks = append(tasks, task)
+	}
+
+	sort.Sort(TasksByTimestamp(tasks))
+	for i, task := range tasks {
+		expected := &google_protobuf.Timestamp{Seconds: int64(i + 1)}
+		assert.Equal(t, expected, task.Status.Timestamp)
+		assert.Equal(t, "id_"+strconv.Itoa(size-(i+1)), task.ID)
+	}
+
+	for i, task := range tasks {
+		task.Status.AppliedAt = &google_protobuf.Timestamp{Seconds: int64(size - i)}
+	}
+
+	sort.Sort(TasksByTimestamp(tasks))
+	sort.Sort(TasksByTimestamp(tasks))
+	for i, task := range tasks {
+		expected := &google_protobuf.Timestamp{Seconds: int64(i + 1)}
+		assert.Equal(t, expected, task.Status.AppliedAt)
+		assert.Equal(t, "id_"+strconv.Itoa(i), task.ID)
+	}
 }
