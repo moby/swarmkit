@@ -9,7 +9,7 @@ import math "math"
 
 // skipping weak import gogoproto "github.com/gogo/protobuf/gogoproto"
 
-import deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import strings "strings"
 import reflect "reflect"
@@ -20,6 +20,12 @@ import io "io"
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type Snapshot_Version int32
 
@@ -38,44 +44,139 @@ var Snapshot_Version_value = map[string]int32{
 func (x Snapshot_Version) String() string {
 	return proto.EnumName(Snapshot_Version_name, int32(x))
 }
-func (Snapshot_Version) EnumDescriptor() ([]byte, []int) { return fileDescriptorSnapshot, []int{2, 0} }
+func (Snapshot_Version) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_snapshot_a25ff9c091135b2f, []int{2, 0}
+}
 
 // StoreSnapshot is used to store snapshots of the store.
 type StoreSnapshot struct {
-	Nodes      []*Node      `protobuf:"bytes,1,rep,name=nodes" json:"nodes,omitempty"`
-	Services   []*Service   `protobuf:"bytes,2,rep,name=services" json:"services,omitempty"`
-	Networks   []*Network   `protobuf:"bytes,3,rep,name=networks" json:"networks,omitempty"`
-	Tasks      []*Task      `protobuf:"bytes,4,rep,name=tasks" json:"tasks,omitempty"`
-	Clusters   []*Cluster   `protobuf:"bytes,5,rep,name=clusters" json:"clusters,omitempty"`
-	Secrets    []*Secret    `protobuf:"bytes,6,rep,name=secrets" json:"secrets,omitempty"`
-	Resources  []*Resource  `protobuf:"bytes,7,rep,name=resources" json:"resources,omitempty"`
-	Extensions []*Extension `protobuf:"bytes,8,rep,name=extensions" json:"extensions,omitempty"`
-	Configs    []*Config    `protobuf:"bytes,9,rep,name=configs" json:"configs,omitempty"`
+	Nodes                []*Node      `protobuf:"bytes,1,rep,name=nodes" json:"nodes,omitempty"`
+	Services             []*Service   `protobuf:"bytes,2,rep,name=services" json:"services,omitempty"`
+	Networks             []*Network   `protobuf:"bytes,3,rep,name=networks" json:"networks,omitempty"`
+	Tasks                []*Task      `protobuf:"bytes,4,rep,name=tasks" json:"tasks,omitempty"`
+	Clusters             []*Cluster   `protobuf:"bytes,5,rep,name=clusters" json:"clusters,omitempty"`
+	Secrets              []*Secret    `protobuf:"bytes,6,rep,name=secrets" json:"secrets,omitempty"`
+	Resources            []*Resource  `protobuf:"bytes,7,rep,name=resources" json:"resources,omitempty"`
+	Extensions           []*Extension `protobuf:"bytes,8,rep,name=extensions" json:"extensions,omitempty"`
+	Configs              []*Config    `protobuf:"bytes,9,rep,name=configs" json:"configs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
+	XXX_unrecognized     []byte       `json:"-"`
+	XXX_sizecache        int32        `json:"-"`
 }
 
-func (m *StoreSnapshot) Reset()                    { *m = StoreSnapshot{} }
-func (*StoreSnapshot) ProtoMessage()               {}
-func (*StoreSnapshot) Descriptor() ([]byte, []int) { return fileDescriptorSnapshot, []int{0} }
+func (m *StoreSnapshot) Reset()      { *m = StoreSnapshot{} }
+func (*StoreSnapshot) ProtoMessage() {}
+func (*StoreSnapshot) Descriptor() ([]byte, []int) {
+	return fileDescriptor_snapshot_a25ff9c091135b2f, []int{0}
+}
+func (m *StoreSnapshot) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *StoreSnapshot) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_StoreSnapshot.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *StoreSnapshot) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StoreSnapshot.Merge(dst, src)
+}
+func (m *StoreSnapshot) XXX_Size() int {
+	return m.Size()
+}
+func (m *StoreSnapshot) XXX_DiscardUnknown() {
+	xxx_messageInfo_StoreSnapshot.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_StoreSnapshot proto.InternalMessageInfo
 
 // ClusterSnapshot stores cluster membership information in snapshots.
 type ClusterSnapshot struct {
-	Members []*RaftMember `protobuf:"bytes,1,rep,name=members" json:"members,omitempty"`
-	Removed []uint64      `protobuf:"varint,2,rep,name=removed" json:"removed,omitempty"`
+	Members              []*RaftMember `protobuf:"bytes,1,rep,name=members" json:"members,omitempty"`
+	Removed              []uint64      `protobuf:"varint,2,rep,name=removed" json:"removed,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
 }
 
-func (m *ClusterSnapshot) Reset()                    { *m = ClusterSnapshot{} }
-func (*ClusterSnapshot) ProtoMessage()               {}
-func (*ClusterSnapshot) Descriptor() ([]byte, []int) { return fileDescriptorSnapshot, []int{1} }
+func (m *ClusterSnapshot) Reset()      { *m = ClusterSnapshot{} }
+func (*ClusterSnapshot) ProtoMessage() {}
+func (*ClusterSnapshot) Descriptor() ([]byte, []int) {
+	return fileDescriptor_snapshot_a25ff9c091135b2f, []int{1}
+}
+func (m *ClusterSnapshot) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ClusterSnapshot) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ClusterSnapshot.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ClusterSnapshot) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ClusterSnapshot.Merge(dst, src)
+}
+func (m *ClusterSnapshot) XXX_Size() int {
+	return m.Size()
+}
+func (m *ClusterSnapshot) XXX_DiscardUnknown() {
+	xxx_messageInfo_ClusterSnapshot.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ClusterSnapshot proto.InternalMessageInfo
 
 type Snapshot struct {
-	Version    Snapshot_Version `protobuf:"varint,1,opt,name=version,proto3,enum=docker.swarmkit.v1.Snapshot_Version" json:"version,omitempty"`
-	Membership ClusterSnapshot  `protobuf:"bytes,2,opt,name=membership" json:"membership"`
-	Store      StoreSnapshot    `protobuf:"bytes,3,opt,name=store" json:"store"`
+	Version              Snapshot_Version `protobuf:"varint,1,opt,name=version,proto3,enum=docker.swarmkit.v1.Snapshot_Version" json:"version,omitempty"`
+	Membership           ClusterSnapshot  `protobuf:"bytes,2,opt,name=membership" json:"membership"`
+	Store                StoreSnapshot    `protobuf:"bytes,3,opt,name=store" json:"store"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
-func (m *Snapshot) Reset()                    { *m = Snapshot{} }
-func (*Snapshot) ProtoMessage()               {}
-func (*Snapshot) Descriptor() ([]byte, []int) { return fileDescriptorSnapshot, []int{2} }
+func (m *Snapshot) Reset()      { *m = Snapshot{} }
+func (*Snapshot) ProtoMessage() {}
+func (*Snapshot) Descriptor() ([]byte, []int) {
+	return fileDescriptor_snapshot_a25ff9c091135b2f, []int{2}
+}
+func (m *Snapshot) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Snapshot) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Snapshot.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Snapshot) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Snapshot.Merge(dst, src)
+}
+func (m *Snapshot) XXX_Size() int {
+	return m.Size()
+}
+func (m *Snapshot) XXX_DiscardUnknown() {
+	xxx_messageInfo_Snapshot.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Snapshot proto.InternalMessageInfo
 
 func init() {
 	proto.RegisterType((*StoreSnapshot)(nil), "docker.swarmkit.v1.StoreSnapshot")
@@ -101,7 +202,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Nodes = make([]*Node, len(o.Nodes))
 		for i := range m.Nodes {
 			m.Nodes[i] = &Node{}
-			deepcopy.Copy(m.Nodes[i], o.Nodes[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Nodes[i], o.Nodes[i])
 		}
 	}
 
@@ -109,7 +210,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Services = make([]*Service, len(o.Services))
 		for i := range m.Services {
 			m.Services[i] = &Service{}
-			deepcopy.Copy(m.Services[i], o.Services[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Services[i], o.Services[i])
 		}
 	}
 
@@ -117,7 +218,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Networks = make([]*Network, len(o.Networks))
 		for i := range m.Networks {
 			m.Networks[i] = &Network{}
-			deepcopy.Copy(m.Networks[i], o.Networks[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Networks[i], o.Networks[i])
 		}
 	}
 
@@ -125,7 +226,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Tasks = make([]*Task, len(o.Tasks))
 		for i := range m.Tasks {
 			m.Tasks[i] = &Task{}
-			deepcopy.Copy(m.Tasks[i], o.Tasks[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Tasks[i], o.Tasks[i])
 		}
 	}
 
@@ -133,7 +234,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Clusters = make([]*Cluster, len(o.Clusters))
 		for i := range m.Clusters {
 			m.Clusters[i] = &Cluster{}
-			deepcopy.Copy(m.Clusters[i], o.Clusters[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Clusters[i], o.Clusters[i])
 		}
 	}
 
@@ -141,7 +242,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Secrets = make([]*Secret, len(o.Secrets))
 		for i := range m.Secrets {
 			m.Secrets[i] = &Secret{}
-			deepcopy.Copy(m.Secrets[i], o.Secrets[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Secrets[i], o.Secrets[i])
 		}
 	}
 
@@ -149,7 +250,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Resources = make([]*Resource, len(o.Resources))
 		for i := range m.Resources {
 			m.Resources[i] = &Resource{}
-			deepcopy.Copy(m.Resources[i], o.Resources[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Resources[i], o.Resources[i])
 		}
 	}
 
@@ -157,7 +258,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Extensions = make([]*Extension, len(o.Extensions))
 		for i := range m.Extensions {
 			m.Extensions[i] = &Extension{}
-			deepcopy.Copy(m.Extensions[i], o.Extensions[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Extensions[i], o.Extensions[i])
 		}
 	}
 
@@ -165,7 +266,7 @@ func (m *StoreSnapshot) CopyFrom(src interface{}) {
 		m.Configs = make([]*Config, len(o.Configs))
 		for i := range m.Configs {
 			m.Configs[i] = &Config{}
-			deepcopy.Copy(m.Configs[i], o.Configs[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Configs[i], o.Configs[i])
 		}
 	}
 
@@ -188,7 +289,7 @@ func (m *ClusterSnapshot) CopyFrom(src interface{}) {
 		m.Members = make([]*RaftMember, len(o.Members))
 		for i := range m.Members {
 			m.Members[i] = &RaftMember{}
-			deepcopy.Copy(m.Members[i], o.Members[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Members[i], o.Members[i])
 		}
 	}
 
@@ -212,8 +313,8 @@ func (m *Snapshot) CopyFrom(src interface{}) {
 
 	o := src.(*Snapshot)
 	*m = *o
-	deepcopy.Copy(&m.Membership, &o.Membership)
-	deepcopy.Copy(&m.Store, &o.Store)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Membership, &o.Membership)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Store, &o.Store)
 }
 
 func (m *StoreSnapshot) Marshal() (dAtA []byte, err error) {
@@ -339,6 +440,9 @@ func (m *StoreSnapshot) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -375,6 +479,9 @@ func (m *ClusterSnapshot) MarshalTo(dAtA []byte) (int, error) {
 			i++
 			i = encodeVarintSnapshot(dAtA, i, uint64(num))
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -415,6 +522,9 @@ func (m *Snapshot) MarshalTo(dAtA []byte) (int, error) {
 		return 0, err
 	}
 	i += n2
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -485,6 +595,9 @@ func (m *StoreSnapshot) Size() (n int) {
 			n += 1 + l + sovSnapshot(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -502,6 +615,9 @@ func (m *ClusterSnapshot) Size() (n int) {
 			n += 1 + sovSnapshot(uint64(e))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -515,6 +631,9 @@ func (m *Snapshot) Size() (n int) {
 	n += 1 + l + sovSnapshot(uint64(l))
 	l = m.Store.Size()
 	n += 1 + l + sovSnapshot(uint64(l))
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -545,6 +664,7 @@ func (this *StoreSnapshot) String() string {
 		`Resources:` + strings.Replace(fmt.Sprintf("%v", this.Resources), "Resource", "Resource", 1) + `,`,
 		`Extensions:` + strings.Replace(fmt.Sprintf("%v", this.Extensions), "Extension", "Extension", 1) + `,`,
 		`Configs:` + strings.Replace(fmt.Sprintf("%v", this.Configs), "Config", "Config", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -556,6 +676,7 @@ func (this *ClusterSnapshot) String() string {
 	s := strings.Join([]string{`&ClusterSnapshot{`,
 		`Members:` + strings.Replace(fmt.Sprintf("%v", this.Members), "RaftMember", "RaftMember", 1) + `,`,
 		`Removed:` + fmt.Sprintf("%v", this.Removed) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -568,6 +689,7 @@ func (this *Snapshot) String() string {
 		`Version:` + fmt.Sprintf("%v", this.Version) + `,`,
 		`Membership:` + strings.Replace(strings.Replace(this.Membership.String(), "ClusterSnapshot", "ClusterSnapshot", 1), `&`, ``, 1) + `,`,
 		`Store:` + strings.Replace(strings.Replace(this.Store.String(), "StoreSnapshot", "StoreSnapshot", 1), `&`, ``, 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -900,6 +1022,7 @@ func (m *StoreSnapshot) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -1043,6 +1166,7 @@ func (m *ClusterSnapshot) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -1172,6 +1296,7 @@ func (m *Snapshot) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -1287,10 +1412,10 @@ var (
 )
 
 func init() {
-	proto.RegisterFile("github.com/docker/swarmkit/api/snapshot.proto", fileDescriptorSnapshot)
+	proto.RegisterFile("github.com/docker/swarmkit/api/snapshot.proto", fileDescriptor_snapshot_a25ff9c091135b2f)
 }
 
-var fileDescriptorSnapshot = []byte{
+var fileDescriptor_snapshot_a25ff9c091135b2f = []byte{
 	// 493 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x93, 0xbf, 0x8f, 0xd3, 0x30,
 	0x14, 0xc7, 0x93, 0xf4, 0x47, 0x7a, 0x3e, 0x01, 0x87, 0xc5, 0x60, 0x95, 0x23, 0x94, 0xc2, 0x50,

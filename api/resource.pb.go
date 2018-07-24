@@ -6,10 +6,10 @@ package api
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
+import _ "github.com/gogo/protobuf/gogoproto"
 
-import deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import context "golang.org/x/net/context"
 import grpc "google.golang.org/grpc"
@@ -31,37 +31,167 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
+
 type AttachNetworkRequest struct {
-	Config      *NetworkAttachmentConfig `protobuf:"bytes,1,opt,name=config" json:"config,omitempty"`
-	ContainerID string                   `protobuf:"bytes,2,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
+	Config               *NetworkAttachmentConfig `protobuf:"bytes,1,opt,name=config" json:"config,omitempty"`
+	ContainerID          string                   `protobuf:"bytes,2,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
+	XXX_unrecognized     []byte                   `json:"-"`
+	XXX_sizecache        int32                    `json:"-"`
 }
 
-func (m *AttachNetworkRequest) Reset()                    { *m = AttachNetworkRequest{} }
-func (*AttachNetworkRequest) ProtoMessage()               {}
-func (*AttachNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorResource, []int{0} }
+func (m *AttachNetworkRequest) Reset()      { *m = AttachNetworkRequest{} }
+func (*AttachNetworkRequest) ProtoMessage() {}
+func (*AttachNetworkRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_resource_94d1e1c7448b743c, []int{0}
+}
+func (m *AttachNetworkRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AttachNetworkRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AttachNetworkRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AttachNetworkRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AttachNetworkRequest.Merge(dst, src)
+}
+func (m *AttachNetworkRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AttachNetworkRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AttachNetworkRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AttachNetworkRequest proto.InternalMessageInfo
 
 type AttachNetworkResponse struct {
-	AttachmentID string `protobuf:"bytes,1,opt,name=attachment_id,json=attachmentId,proto3" json:"attachment_id,omitempty"`
+	AttachmentID         string   `protobuf:"bytes,1,opt,name=attachment_id,json=attachmentId,proto3" json:"attachment_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AttachNetworkResponse) Reset()                    { *m = AttachNetworkResponse{} }
-func (*AttachNetworkResponse) ProtoMessage()               {}
-func (*AttachNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorResource, []int{1} }
+func (m *AttachNetworkResponse) Reset()      { *m = AttachNetworkResponse{} }
+func (*AttachNetworkResponse) ProtoMessage() {}
+func (*AttachNetworkResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_resource_94d1e1c7448b743c, []int{1}
+}
+func (m *AttachNetworkResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AttachNetworkResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AttachNetworkResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AttachNetworkResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AttachNetworkResponse.Merge(dst, src)
+}
+func (m *AttachNetworkResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *AttachNetworkResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AttachNetworkResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AttachNetworkResponse proto.InternalMessageInfo
 
 type DetachNetworkRequest struct {
-	AttachmentID string `protobuf:"bytes,1,opt,name=attachment_id,json=attachmentId,proto3" json:"attachment_id,omitempty"`
+	AttachmentID         string   `protobuf:"bytes,1,opt,name=attachment_id,json=attachmentId,proto3" json:"attachment_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *DetachNetworkRequest) Reset()                    { *m = DetachNetworkRequest{} }
-func (*DetachNetworkRequest) ProtoMessage()               {}
-func (*DetachNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorResource, []int{2} }
+func (m *DetachNetworkRequest) Reset()      { *m = DetachNetworkRequest{} }
+func (*DetachNetworkRequest) ProtoMessage() {}
+func (*DetachNetworkRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_resource_94d1e1c7448b743c, []int{2}
+}
+func (m *DetachNetworkRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *DetachNetworkRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_DetachNetworkRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *DetachNetworkRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DetachNetworkRequest.Merge(dst, src)
+}
+func (m *DetachNetworkRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *DetachNetworkRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_DetachNetworkRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DetachNetworkRequest proto.InternalMessageInfo
 
 type DetachNetworkResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *DetachNetworkResponse) Reset()                    { *m = DetachNetworkResponse{} }
-func (*DetachNetworkResponse) ProtoMessage()               {}
-func (*DetachNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorResource, []int{3} }
+func (m *DetachNetworkResponse) Reset()      { *m = DetachNetworkResponse{} }
+func (*DetachNetworkResponse) ProtoMessage() {}
+func (*DetachNetworkResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_resource_94d1e1c7448b743c, []int{3}
+}
+func (m *DetachNetworkResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *DetachNetworkResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_DetachNetworkResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *DetachNetworkResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DetachNetworkResponse.Merge(dst, src)
+}
+func (m *DetachNetworkResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *DetachNetworkResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_DetachNetworkResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DetachNetworkResponse proto.InternalMessageInfo
 
 func init() {
 	proto.RegisterType((*AttachNetworkRequest)(nil), "docker.swarmkit.v1.AttachNetworkRequest")
@@ -113,7 +243,7 @@ func (m *AttachNetworkRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Config != nil {
 		m.Config = &NetworkAttachmentConfig{}
-		deepcopy.Copy(m.Config, o.Config)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Config, o.Config)
 	}
 }
 
@@ -183,7 +313,7 @@ func NewResourceAllocatorClient(cc *grpc.ClientConn) ResourceAllocatorClient {
 
 func (c *resourceAllocatorClient) AttachNetwork(ctx context.Context, in *AttachNetworkRequest, opts ...grpc.CallOption) (*AttachNetworkResponse, error) {
 	out := new(AttachNetworkResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.ResourceAllocator/AttachNetwork", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.ResourceAllocator/AttachNetwork", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +322,7 @@ func (c *resourceAllocatorClient) AttachNetwork(ctx context.Context, in *AttachN
 
 func (c *resourceAllocatorClient) DetachNetwork(ctx context.Context, in *DetachNetworkRequest, opts ...grpc.CallOption) (*DetachNetworkResponse, error) {
 	out := new(DetachNetworkResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.ResourceAllocator/DetachNetwork", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.ResourceAllocator/DetachNetwork", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -294,6 +424,9 @@ func (m *AttachNetworkRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintResource(dAtA, i, uint64(len(m.ContainerID)))
 		i += copy(dAtA[i:], m.ContainerID)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -317,6 +450,9 @@ func (m *AttachNetworkResponse) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintResource(dAtA, i, uint64(len(m.AttachmentID)))
 		i += copy(dAtA[i:], m.AttachmentID)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -342,6 +478,9 @@ func (m *DetachNetworkRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintResource(dAtA, i, uint64(len(m.AttachmentID)))
 		i += copy(dAtA[i:], m.AttachmentID)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -360,6 +499,9 @@ func (m *DetachNetworkResponse) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -526,6 +668,9 @@ func (m *AttachNetworkRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovResource(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -535,6 +680,9 @@ func (m *AttachNetworkResponse) Size() (n int) {
 	l = len(m.AttachmentID)
 	if l > 0 {
 		n += 1 + l + sovResource(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -546,12 +694,18 @@ func (m *DetachNetworkRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovResource(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *DetachNetworkResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -575,6 +729,7 @@ func (this *AttachNetworkRequest) String() string {
 	s := strings.Join([]string{`&AttachNetworkRequest{`,
 		`Config:` + strings.Replace(fmt.Sprintf("%v", this.Config), "NetworkAttachmentConfig", "NetworkAttachmentConfig", 1) + `,`,
 		`ContainerID:` + fmt.Sprintf("%v", this.ContainerID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -585,6 +740,7 @@ func (this *AttachNetworkResponse) String() string {
 	}
 	s := strings.Join([]string{`&AttachNetworkResponse{`,
 		`AttachmentID:` + fmt.Sprintf("%v", this.AttachmentID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -595,6 +751,7 @@ func (this *DetachNetworkRequest) String() string {
 	}
 	s := strings.Join([]string{`&DetachNetworkRequest{`,
 		`AttachmentID:` + fmt.Sprintf("%v", this.AttachmentID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -604,6 +761,7 @@ func (this *DetachNetworkResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&DetachNetworkResponse{`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -719,6 +877,7 @@ func (m *AttachNetworkRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -798,6 +957,7 @@ func (m *AttachNetworkResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -877,6 +1037,7 @@ func (m *DetachNetworkRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -927,6 +1088,7 @@ func (m *DetachNetworkResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -1042,10 +1204,10 @@ var (
 )
 
 func init() {
-	proto.RegisterFile("github.com/docker/swarmkit/api/resource.proto", fileDescriptorResource)
+	proto.RegisterFile("github.com/docker/swarmkit/api/resource.proto", fileDescriptor_resource_94d1e1c7448b743c)
 }
 
-var fileDescriptorResource = []byte{
+var fileDescriptor_resource_94d1e1c7448b743c = []byte{
 	// 397 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x92, 0xcf, 0x4e, 0xf2, 0x40,
 	0x14, 0xc5, 0x19, 0x16, 0x24, 0xdf, 0x50, 0xf2, 0x69, 0x03, 0x91, 0x90, 0x58, 0x48, 0xdd, 0xa0,

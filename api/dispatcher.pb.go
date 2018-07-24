@@ -6,18 +6,18 @@ package api
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
+import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/gogo/protobuf/types"
 
 import time "time"
 
-import deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import context "golang.org/x/net/context"
 import grpc "google.golang.org/grpc"
 
-import types "github.com/gogo/protobuf/types"
+import github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
 
 import raftselector "github.com/docker/swarmkit/manager/raftselector"
 import codes "google.golang.org/grpc/codes"
@@ -36,6 +36,12 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 var _ = time.Kitchen
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type AssignmentChange_AssignmentAction int32
 
@@ -57,7 +63,7 @@ func (x AssignmentChange_AssignmentAction) String() string {
 	return proto.EnumName(AssignmentChange_AssignmentAction_name, int32(x))
 }
 func (AssignmentChange_AssignmentAction) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptorDispatcher, []int{10, 0}
+	return fileDescriptor_dispatcher_cf2154bf4b8cbb02, []int{10, 0}
 }
 
 // AssignmentType specifies whether this assignment message carries
@@ -82,7 +88,7 @@ func (x AssignmentsMessage_Type) String() string {
 	return proto.EnumName(AssignmentsMessage_Type_name, int32(x))
 }
 func (AssignmentsMessage_Type) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptorDispatcher, []int{11, 0}
+	return fileDescriptor_dispatcher_cf2154bf4b8cbb02, []int{11, 0}
 }
 
 // SessionRequest starts a session.
@@ -92,12 +98,43 @@ type SessionRequest struct {
 	// SessionID is empty or invalid, a new SessionID will be assigned.
 	//
 	// See SessionMessage.SessionID for details.
-	SessionID string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	SessionID            string   `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SessionRequest) Reset()                    { *m = SessionRequest{} }
-func (*SessionRequest) ProtoMessage()               {}
-func (*SessionRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{0} }
+func (m *SessionRequest) Reset()      { *m = SessionRequest{} }
+func (*SessionRequest) ProtoMessage() {}
+func (*SessionRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dispatcher_cf2154bf4b8cbb02, []int{0}
+}
+func (m *SessionRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SessionRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_SessionRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *SessionRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SessionRequest.Merge(dst, src)
+}
+func (m *SessionRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *SessionRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_SessionRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SessionRequest proto.InternalMessageInfo
 
 // SessionMessage instructs an agent on various actions as part of the current
 // session. An agent should act immediately on the contents.
@@ -154,48 +191,173 @@ type SessionMessage struct {
 	// for securing network bootstrapping and communication.
 	NetworkBootstrapKeys []*EncryptionKey `protobuf:"bytes,4,rep,name=network_bootstrap_keys,json=networkBootstrapKeys" json:"network_bootstrap_keys,omitempty"`
 	// Which root certificates to trust
-	RootCA []byte `protobuf:"bytes,5,opt,name=RootCA,proto3" json:"RootCA,omitempty"`
+	RootCA               []byte   `protobuf:"bytes,5,opt,name=RootCA,proto3" json:"RootCA,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SessionMessage) Reset()                    { *m = SessionMessage{} }
-func (*SessionMessage) ProtoMessage()               {}
-func (*SessionMessage) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{1} }
+func (m *SessionMessage) Reset()      { *m = SessionMessage{} }
+func (*SessionMessage) ProtoMessage() {}
+func (*SessionMessage) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dispatcher_cf2154bf4b8cbb02, []int{1}
+}
+func (m *SessionMessage) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SessionMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_SessionMessage.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *SessionMessage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SessionMessage.Merge(dst, src)
+}
+func (m *SessionMessage) XXX_Size() int {
+	return m.Size()
+}
+func (m *SessionMessage) XXX_DiscardUnknown() {
+	xxx_messageInfo_SessionMessage.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SessionMessage proto.InternalMessageInfo
 
 // HeartbeatRequest provides identifying properties for a single heartbeat.
 type HeartbeatRequest struct {
-	SessionID string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	SessionID            string   `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *HeartbeatRequest) Reset()                    { *m = HeartbeatRequest{} }
-func (*HeartbeatRequest) ProtoMessage()               {}
-func (*HeartbeatRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{2} }
+func (m *HeartbeatRequest) Reset()      { *m = HeartbeatRequest{} }
+func (*HeartbeatRequest) ProtoMessage() {}
+func (*HeartbeatRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dispatcher_cf2154bf4b8cbb02, []int{2}
+}
+func (m *HeartbeatRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *HeartbeatRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_HeartbeatRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *HeartbeatRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_HeartbeatRequest.Merge(dst, src)
+}
+func (m *HeartbeatRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *HeartbeatRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_HeartbeatRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_HeartbeatRequest proto.InternalMessageInfo
 
 type HeartbeatResponse struct {
 	// Period is the duration to wait before sending the next heartbeat.
 	// Well-behaved agents should update this on every heartbeat round trip.
-	Period time.Duration `protobuf:"bytes,1,opt,name=period,stdduration" json:"period"`
+	Period               time.Duration `protobuf:"bytes,1,opt,name=period,stdduration" json:"period"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
 }
 
-func (m *HeartbeatResponse) Reset()                    { *m = HeartbeatResponse{} }
-func (*HeartbeatResponse) ProtoMessage()               {}
-func (*HeartbeatResponse) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{3} }
+func (m *HeartbeatResponse) Reset()      { *m = HeartbeatResponse{} }
+func (*HeartbeatResponse) ProtoMessage() {}
+func (*HeartbeatResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dispatcher_cf2154bf4b8cbb02, []int{3}
+}
+func (m *HeartbeatResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *HeartbeatResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_HeartbeatResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *HeartbeatResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_HeartbeatResponse.Merge(dst, src)
+}
+func (m *HeartbeatResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *HeartbeatResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_HeartbeatResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_HeartbeatResponse proto.InternalMessageInfo
 
 type UpdateTaskStatusRequest struct {
 	// Tasks should contain all statuses for running tasks. Only the status
 	// field must be set. The spec is not required.
-	SessionID string                                      `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Updates   []*UpdateTaskStatusRequest_TaskStatusUpdate `protobuf:"bytes,3,rep,name=updates" json:"updates,omitempty"`
+	SessionID            string                                      `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Updates              []*UpdateTaskStatusRequest_TaskStatusUpdate `protobuf:"bytes,3,rep,name=updates" json:"updates,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                                    `json:"-"`
+	XXX_unrecognized     []byte                                      `json:"-"`
+	XXX_sizecache        int32                                       `json:"-"`
 }
 
 func (m *UpdateTaskStatusRequest) Reset()      { *m = UpdateTaskStatusRequest{} }
 func (*UpdateTaskStatusRequest) ProtoMessage() {}
 func (*UpdateTaskStatusRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptorDispatcher, []int{4}
+	return fileDescriptor_dispatcher_cf2154bf4b8cbb02, []int{4}
+}
+func (m *UpdateTaskStatusRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UpdateTaskStatusRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UpdateTaskStatusRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *UpdateTaskStatusRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateTaskStatusRequest.Merge(dst, src)
+}
+func (m *UpdateTaskStatusRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *UpdateTaskStatusRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateTaskStatusRequest.DiscardUnknown(m)
 }
 
+var xxx_messageInfo_UpdateTaskStatusRequest proto.InternalMessageInfo
+
 type UpdateTaskStatusRequest_TaskStatusUpdate struct {
-	TaskID string      `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
-	Status *TaskStatus `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
+	TaskID               string      `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	Status               *TaskStatus `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
 }
 
 func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Reset() {
@@ -203,55 +365,234 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Reset() {
 }
 func (*UpdateTaskStatusRequest_TaskStatusUpdate) ProtoMessage() {}
 func (*UpdateTaskStatusRequest_TaskStatusUpdate) Descriptor() ([]byte, []int) {
-	return fileDescriptorDispatcher, []int{4, 0}
+	return fileDescriptor_dispatcher_cf2154bf4b8cbb02, []int{4, 0}
+}
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UpdateTaskStatusRequest_TaskStatusUpdate.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *UpdateTaskStatusRequest_TaskStatusUpdate) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateTaskStatusRequest_TaskStatusUpdate.Merge(dst, src)
+}
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) XXX_Size() int {
+	return m.Size()
+}
+func (m *UpdateTaskStatusRequest_TaskStatusUpdate) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateTaskStatusRequest_TaskStatusUpdate.DiscardUnknown(m)
 }
 
+var xxx_messageInfo_UpdateTaskStatusRequest_TaskStatusUpdate proto.InternalMessageInfo
+
 type UpdateTaskStatusResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *UpdateTaskStatusResponse) Reset()      { *m = UpdateTaskStatusResponse{} }
 func (*UpdateTaskStatusResponse) ProtoMessage() {}
 func (*UpdateTaskStatusResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptorDispatcher, []int{5}
+	return fileDescriptor_dispatcher_cf2154bf4b8cbb02, []int{5}
 }
+func (m *UpdateTaskStatusResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UpdateTaskStatusResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UpdateTaskStatusResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *UpdateTaskStatusResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateTaskStatusResponse.Merge(dst, src)
+}
+func (m *UpdateTaskStatusResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *UpdateTaskStatusResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateTaskStatusResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UpdateTaskStatusResponse proto.InternalMessageInfo
 
 type TasksRequest struct {
-	SessionID string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	SessionID            string   `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *TasksRequest) Reset()                    { *m = TasksRequest{} }
-func (*TasksRequest) ProtoMessage()               {}
-func (*TasksRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{6} }
+func (m *TasksRequest) Reset()      { *m = TasksRequest{} }
+func (*TasksRequest) ProtoMessage() {}
+func (*TasksRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dispatcher_cf2154bf4b8cbb02, []int{6}
+}
+func (m *TasksRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *TasksRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_TasksRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *TasksRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TasksRequest.Merge(dst, src)
+}
+func (m *TasksRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *TasksRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_TasksRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TasksRequest proto.InternalMessageInfo
 
 type TasksMessage struct {
 	// Tasks is the set of tasks that should be running on the node.
 	// Tasks outside of this set running on the node should be terminated.
-	Tasks []*Task `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
+	Tasks                []*Task  `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *TasksMessage) Reset()                    { *m = TasksMessage{} }
-func (*TasksMessage) ProtoMessage()               {}
-func (*TasksMessage) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{7} }
+func (m *TasksMessage) Reset()      { *m = TasksMessage{} }
+func (*TasksMessage) ProtoMessage() {}
+func (*TasksMessage) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dispatcher_cf2154bf4b8cbb02, []int{7}
+}
+func (m *TasksMessage) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *TasksMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_TasksMessage.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *TasksMessage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TasksMessage.Merge(dst, src)
+}
+func (m *TasksMessage) XXX_Size() int {
+	return m.Size()
+}
+func (m *TasksMessage) XXX_DiscardUnknown() {
+	xxx_messageInfo_TasksMessage.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TasksMessage proto.InternalMessageInfo
 
 type AssignmentsRequest struct {
-	SessionID string `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	SessionID            string   `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *AssignmentsRequest) Reset()                    { *m = AssignmentsRequest{} }
-func (*AssignmentsRequest) ProtoMessage()               {}
-func (*AssignmentsRequest) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{8} }
+func (m *AssignmentsRequest) Reset()      { *m = AssignmentsRequest{} }
+func (*AssignmentsRequest) ProtoMessage() {}
+func (*AssignmentsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dispatcher_cf2154bf4b8cbb02, []int{8}
+}
+func (m *AssignmentsRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AssignmentsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AssignmentsRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AssignmentsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AssignmentsRequest.Merge(dst, src)
+}
+func (m *AssignmentsRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *AssignmentsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AssignmentsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AssignmentsRequest proto.InternalMessageInfo
 
 type Assignment struct {
 	// Types that are valid to be assigned to Item:
 	//	*Assignment_Task
 	//	*Assignment_Secret
 	//	*Assignment_Config
-	Item isAssignment_Item `protobuf_oneof:"item"`
+	Item                 isAssignment_Item `protobuf_oneof:"item"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
 }
 
-func (m *Assignment) Reset()                    { *m = Assignment{} }
-func (*Assignment) ProtoMessage()               {}
-func (*Assignment) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{9} }
+func (m *Assignment) Reset()      { *m = Assignment{} }
+func (*Assignment) ProtoMessage() {}
+func (*Assignment) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dispatcher_cf2154bf4b8cbb02, []int{9}
+}
+func (m *Assignment) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Assignment) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Assignment.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Assignment) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Assignment.Merge(dst, src)
+}
+func (m *Assignment) XXX_Size() int {
+	return m.Size()
+}
+func (m *Assignment) XXX_DiscardUnknown() {
+	xxx_messageInfo_Assignment.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Assignment proto.InternalMessageInfo
 
 type isAssignment_Item interface {
 	isAssignment_Item()
@@ -374,17 +715,17 @@ func _Assignment_OneofSizer(msg proto.Message) (n int) {
 	switch x := m.Item.(type) {
 	case *Assignment_Task:
 		s := proto.Size(x.Task)
-		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *Assignment_Secret:
 		s := proto.Size(x.Secret)
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *Assignment_Config:
 		s := proto.Size(x.Config)
-		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case nil:
@@ -395,13 +736,44 @@ func _Assignment_OneofSizer(msg proto.Message) (n int) {
 }
 
 type AssignmentChange struct {
-	Assignment *Assignment                       `protobuf:"bytes,1,opt,name=assignment" json:"assignment,omitempty"`
-	Action     AssignmentChange_AssignmentAction `protobuf:"varint,2,opt,name=action,proto3,enum=docker.swarmkit.v1.AssignmentChange_AssignmentAction" json:"action,omitempty"`
+	Assignment           *Assignment                       `protobuf:"bytes,1,opt,name=assignment" json:"assignment,omitempty"`
+	Action               AssignmentChange_AssignmentAction `protobuf:"varint,2,opt,name=action,proto3,enum=docker.swarmkit.v1.AssignmentChange_AssignmentAction" json:"action,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                          `json:"-"`
+	XXX_unrecognized     []byte                            `json:"-"`
+	XXX_sizecache        int32                             `json:"-"`
 }
 
-func (m *AssignmentChange) Reset()                    { *m = AssignmentChange{} }
-func (*AssignmentChange) ProtoMessage()               {}
-func (*AssignmentChange) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{10} }
+func (m *AssignmentChange) Reset()      { *m = AssignmentChange{} }
+func (*AssignmentChange) ProtoMessage() {}
+func (*AssignmentChange) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dispatcher_cf2154bf4b8cbb02, []int{10}
+}
+func (m *AssignmentChange) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AssignmentChange) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AssignmentChange.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AssignmentChange) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AssignmentChange.Merge(dst, src)
+}
+func (m *AssignmentChange) XXX_Size() int {
+	return m.Size()
+}
+func (m *AssignmentChange) XXX_DiscardUnknown() {
+	xxx_messageInfo_AssignmentChange.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AssignmentChange proto.InternalMessageInfo
 
 type AssignmentsMessage struct {
 	Type AssignmentsMessage_Type `protobuf:"varint,1,opt,name=type,proto3,enum=docker.swarmkit.v1.AssignmentsMessage_Type" json:"type,omitempty"`
@@ -416,12 +788,43 @@ type AssignmentsMessage struct {
 	// against missed messages.
 	ResultsIn string `protobuf:"bytes,3,opt,name=results_in,json=resultsIn,proto3" json:"results_in,omitempty"`
 	// AssignmentChange is a set of changes to apply on this node.
-	Changes []*AssignmentChange `protobuf:"bytes,4,rep,name=changes" json:"changes,omitempty"`
+	Changes              []*AssignmentChange `protobuf:"bytes,4,rep,name=changes" json:"changes,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
+	XXX_unrecognized     []byte              `json:"-"`
+	XXX_sizecache        int32               `json:"-"`
 }
 
-func (m *AssignmentsMessage) Reset()                    { *m = AssignmentsMessage{} }
-func (*AssignmentsMessage) ProtoMessage()               {}
-func (*AssignmentsMessage) Descriptor() ([]byte, []int) { return fileDescriptorDispatcher, []int{11} }
+func (m *AssignmentsMessage) Reset()      { *m = AssignmentsMessage{} }
+func (*AssignmentsMessage) ProtoMessage() {}
+func (*AssignmentsMessage) Descriptor() ([]byte, []int) {
+	return fileDescriptor_dispatcher_cf2154bf4b8cbb02, []int{11}
+}
+func (m *AssignmentsMessage) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AssignmentsMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AssignmentsMessage.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *AssignmentsMessage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AssignmentsMessage.Merge(dst, src)
+}
+func (m *AssignmentsMessage) XXX_Size() int {
+	return m.Size()
+}
+func (m *AssignmentsMessage) XXX_DiscardUnknown() {
+	xxx_messageInfo_AssignmentsMessage.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AssignmentsMessage proto.InternalMessageInfo
 
 func init() {
 	proto.RegisterType((*SessionRequest)(nil), "docker.swarmkit.v1.SessionRequest")
@@ -508,7 +911,7 @@ func (m *SessionRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Description != nil {
 		m.Description = &NodeDescription{}
-		deepcopy.Copy(m.Description, o.Description)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Description, o.Description)
 	}
 }
 
@@ -527,13 +930,13 @@ func (m *SessionMessage) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Node != nil {
 		m.Node = &Node{}
-		deepcopy.Copy(m.Node, o.Node)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Node, o.Node)
 	}
 	if o.Managers != nil {
 		m.Managers = make([]*WeightedPeer, len(o.Managers))
 		for i := range m.Managers {
 			m.Managers[i] = &WeightedPeer{}
-			deepcopy.Copy(m.Managers[i], o.Managers[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Managers[i], o.Managers[i])
 		}
 	}
 
@@ -541,7 +944,7 @@ func (m *SessionMessage) CopyFrom(src interface{}) {
 		m.NetworkBootstrapKeys = make([]*EncryptionKey, len(o.NetworkBootstrapKeys))
 		for i := range m.NetworkBootstrapKeys {
 			m.NetworkBootstrapKeys[i] = &EncryptionKey{}
-			deepcopy.Copy(m.NetworkBootstrapKeys[i], o.NetworkBootstrapKeys[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.NetworkBootstrapKeys[i], o.NetworkBootstrapKeys[i])
 		}
 	}
 
@@ -579,7 +982,7 @@ func (m *HeartbeatResponse) CopyFrom(src interface{}) {
 
 	o := src.(*HeartbeatResponse)
 	*m = *o
-	deepcopy.Copy(&m.Period, &o.Period)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Period, &o.Period)
 }
 
 func (m *UpdateTaskStatusRequest) Copy() *UpdateTaskStatusRequest {
@@ -599,7 +1002,7 @@ func (m *UpdateTaskStatusRequest) CopyFrom(src interface{}) {
 		m.Updates = make([]*UpdateTaskStatusRequest_TaskStatusUpdate, len(o.Updates))
 		for i := range m.Updates {
 			m.Updates[i] = &UpdateTaskStatusRequest_TaskStatusUpdate{}
-			deepcopy.Copy(m.Updates[i], o.Updates[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Updates[i], o.Updates[i])
 		}
 	}
 
@@ -620,7 +1023,7 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Status != nil {
 		m.Status = &TaskStatus{}
-		deepcopy.Copy(m.Status, o.Status)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Status, o.Status)
 	}
 }
 
@@ -666,7 +1069,7 @@ func (m *TasksMessage) CopyFrom(src interface{}) {
 		m.Tasks = make([]*Task, len(o.Tasks))
 		for i := range m.Tasks {
 			m.Tasks[i] = &Task{}
-			deepcopy.Copy(m.Tasks[i], o.Tasks[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Tasks[i], o.Tasks[i])
 		}
 	}
 
@@ -706,19 +1109,19 @@ func (m *Assignment) CopyFrom(src interface{}) {
 			v := Assignment_Task{
 				Task: &Task{},
 			}
-			deepcopy.Copy(v.Task, o.GetTask())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Task, o.GetTask())
 			m.Item = &v
 		case *Assignment_Secret:
 			v := Assignment_Secret{
 				Secret: &Secret{},
 			}
-			deepcopy.Copy(v.Secret, o.GetSecret())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Secret, o.GetSecret())
 			m.Item = &v
 		case *Assignment_Config:
 			v := Assignment_Config{
 				Config: &Config{},
 			}
-			deepcopy.Copy(v.Config, o.GetConfig())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Config, o.GetConfig())
 			m.Item = &v
 		}
 	}
@@ -740,7 +1143,7 @@ func (m *AssignmentChange) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Assignment != nil {
 		m.Assignment = &Assignment{}
-		deepcopy.Copy(m.Assignment, o.Assignment)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Assignment, o.Assignment)
 	}
 }
 
@@ -761,7 +1164,7 @@ func (m *AssignmentsMessage) CopyFrom(src interface{}) {
 		m.Changes = make([]*AssignmentChange, len(o.Changes))
 		for i := range m.Changes {
 			m.Changes[i] = &AssignmentChange{}
-			deepcopy.Copy(m.Changes[i], o.Changes[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Changes[i], o.Changes[i])
 		}
 	}
 
@@ -818,7 +1221,7 @@ func NewDispatcherClient(cc *grpc.ClientConn) DispatcherClient {
 }
 
 func (c *dispatcherClient) Session(ctx context.Context, in *SessionRequest, opts ...grpc.CallOption) (Dispatcher_SessionClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Dispatcher_serviceDesc.Streams[0], c.cc, "/docker.swarmkit.v1.Dispatcher/Session", opts...)
+	stream, err := c.cc.NewStream(ctx, &_Dispatcher_serviceDesc.Streams[0], "/docker.swarmkit.v1.Dispatcher/Session", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -851,7 +1254,7 @@ func (x *dispatcherSessionClient) Recv() (*SessionMessage, error) {
 
 func (c *dispatcherClient) Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
 	out := new(HeartbeatResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Dispatcher/Heartbeat", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Dispatcher/Heartbeat", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -860,15 +1263,16 @@ func (c *dispatcherClient) Heartbeat(ctx context.Context, in *HeartbeatRequest, 
 
 func (c *dispatcherClient) UpdateTaskStatus(ctx context.Context, in *UpdateTaskStatusRequest, opts ...grpc.CallOption) (*UpdateTaskStatusResponse, error) {
 	out := new(UpdateTaskStatusResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Dispatcher/UpdateTaskStatus", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Dispatcher/UpdateTaskStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
+// Deprecated: Do not use.
 func (c *dispatcherClient) Tasks(ctx context.Context, in *TasksRequest, opts ...grpc.CallOption) (Dispatcher_TasksClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Dispatcher_serviceDesc.Streams[1], c.cc, "/docker.swarmkit.v1.Dispatcher/Tasks", opts...)
+	stream, err := c.cc.NewStream(ctx, &_Dispatcher_serviceDesc.Streams[1], "/docker.swarmkit.v1.Dispatcher/Tasks", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -900,7 +1304,7 @@ func (x *dispatcherTasksClient) Recv() (*TasksMessage, error) {
 }
 
 func (c *dispatcherClient) Assignments(ctx context.Context, in *AssignmentsRequest, opts ...grpc.CallOption) (Dispatcher_AssignmentsClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Dispatcher_serviceDesc.Streams[2], c.cc, "/docker.swarmkit.v1.Dispatcher/Assignments", opts...)
+	stream, err := c.cc.NewStream(ctx, &_Dispatcher_serviceDesc.Streams[2], "/docker.swarmkit.v1.Dispatcher/Assignments", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1132,6 +1536,9 @@ func (m *SessionRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintDispatcher(dAtA, i, uint64(len(m.SessionID)))
 		i += copy(dAtA[i:], m.SessionID)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1196,6 +1603,9 @@ func (m *SessionMessage) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintDispatcher(dAtA, i, uint64(len(m.RootCA)))
 		i += copy(dAtA[i:], m.RootCA)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1220,6 +1630,9 @@ func (m *HeartbeatRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintDispatcher(dAtA, i, uint64(len(m.SessionID)))
 		i += copy(dAtA[i:], m.SessionID)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1240,12 +1653,15 @@ func (m *HeartbeatResponse) MarshalTo(dAtA []byte) (int, error) {
 	_ = l
 	dAtA[i] = 0xa
 	i++
-	i = encodeVarintDispatcher(dAtA, i, uint64(types.SizeOfStdDuration(m.Period)))
-	n3, err := types.StdDurationMarshalTo(m.Period, dAtA[i:])
+	i = encodeVarintDispatcher(dAtA, i, uint64(github_com_gogo_protobuf_types.SizeOfStdDuration(m.Period)))
+	n3, err := github_com_gogo_protobuf_types.StdDurationMarshalTo(m.Period, dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n3
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1282,6 +1698,9 @@ func (m *UpdateTaskStatusRequest) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1316,6 +1735,9 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) MarshalTo(dAtA []byte) (int, 
 		}
 		i += n4
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1334,6 +1756,9 @@ func (m *UpdateTaskStatusResponse) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1357,6 +1782,9 @@ func (m *TasksRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintDispatcher(dAtA, i, uint64(len(m.SessionID)))
 		i += copy(dAtA[i:], m.SessionID)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -1388,6 +1816,9 @@ func (m *TasksMessage) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1411,6 +1842,9 @@ func (m *AssignmentsRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintDispatcher(dAtA, i, uint64(len(m.SessionID)))
 		i += copy(dAtA[i:], m.SessionID)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -1436,6 +1870,9 @@ func (m *Assignment) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += nn5
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -1512,6 +1949,9 @@ func (m *AssignmentChange) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintDispatcher(dAtA, i, uint64(m.Action))
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1558,6 +1998,9 @@ func (m *AssignmentsMessage) MarshalTo(dAtA []byte) (int, error) {
 			}
 			i += n
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -1878,6 +2321,9 @@ func (m *SessionRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovDispatcher(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1908,6 +2354,9 @@ func (m *SessionMessage) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovDispatcher(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1918,14 +2367,20 @@ func (m *HeartbeatRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovDispatcher(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *HeartbeatResponse) Size() (n int) {
 	var l int
 	_ = l
-	l = types.SizeOfStdDuration(m.Period)
+	l = github_com_gogo_protobuf_types.SizeOfStdDuration(m.Period)
 	n += 1 + l + sovDispatcher(uint64(l))
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1942,6 +2397,9 @@ func (m *UpdateTaskStatusRequest) Size() (n int) {
 			n += 1 + l + sovDispatcher(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1956,12 +2414,18 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Size() (n int) {
 		l = m.Status.Size()
 		n += 1 + l + sovDispatcher(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *UpdateTaskStatusResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1971,6 +2435,9 @@ func (m *TasksRequest) Size() (n int) {
 	l = len(m.SessionID)
 	if l > 0 {
 		n += 1 + l + sovDispatcher(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -1984,6 +2451,9 @@ func (m *TasksMessage) Size() (n int) {
 			n += 1 + l + sovDispatcher(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1994,6 +2464,9 @@ func (m *AssignmentsRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovDispatcher(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2002,6 +2475,9 @@ func (m *Assignment) Size() (n int) {
 	_ = l
 	if m.Item != nil {
 		n += m.Item.Size()
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2043,6 +2519,9 @@ func (m *AssignmentChange) Size() (n int) {
 	if m.Action != 0 {
 		n += 1 + sovDispatcher(uint64(m.Action))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2065,6 +2544,9 @@ func (m *AssignmentsMessage) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovDispatcher(uint64(l))
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2089,6 +2571,7 @@ func (this *SessionRequest) String() string {
 	s := strings.Join([]string{`&SessionRequest{`,
 		`Description:` + strings.Replace(fmt.Sprintf("%v", this.Description), "NodeDescription", "NodeDescription", 1) + `,`,
 		`SessionID:` + fmt.Sprintf("%v", this.SessionID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2103,6 +2586,7 @@ func (this *SessionMessage) String() string {
 		`Managers:` + strings.Replace(fmt.Sprintf("%v", this.Managers), "WeightedPeer", "WeightedPeer", 1) + `,`,
 		`NetworkBootstrapKeys:` + strings.Replace(fmt.Sprintf("%v", this.NetworkBootstrapKeys), "EncryptionKey", "EncryptionKey", 1) + `,`,
 		`RootCA:` + fmt.Sprintf("%v", this.RootCA) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2113,6 +2597,7 @@ func (this *HeartbeatRequest) String() string {
 	}
 	s := strings.Join([]string{`&HeartbeatRequest{`,
 		`SessionID:` + fmt.Sprintf("%v", this.SessionID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2122,7 +2607,8 @@ func (this *HeartbeatResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&HeartbeatResponse{`,
-		`Period:` + strings.Replace(strings.Replace(this.Period.String(), "Duration", "google_protobuf1.Duration", 1), `&`, ``, 1) + `,`,
+		`Period:` + strings.Replace(strings.Replace(this.Period.String(), "Duration", "types.Duration", 1), `&`, ``, 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2134,6 +2620,7 @@ func (this *UpdateTaskStatusRequest) String() string {
 	s := strings.Join([]string{`&UpdateTaskStatusRequest{`,
 		`SessionID:` + fmt.Sprintf("%v", this.SessionID) + `,`,
 		`Updates:` + strings.Replace(fmt.Sprintf("%v", this.Updates), "UpdateTaskStatusRequest_TaskStatusUpdate", "UpdateTaskStatusRequest_TaskStatusUpdate", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2145,6 +2632,7 @@ func (this *UpdateTaskStatusRequest_TaskStatusUpdate) String() string {
 	s := strings.Join([]string{`&UpdateTaskStatusRequest_TaskStatusUpdate{`,
 		`TaskID:` + fmt.Sprintf("%v", this.TaskID) + `,`,
 		`Status:` + strings.Replace(fmt.Sprintf("%v", this.Status), "TaskStatus", "TaskStatus", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2154,6 +2642,7 @@ func (this *UpdateTaskStatusResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&UpdateTaskStatusResponse{`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2164,6 +2653,7 @@ func (this *TasksRequest) String() string {
 	}
 	s := strings.Join([]string{`&TasksRequest{`,
 		`SessionID:` + fmt.Sprintf("%v", this.SessionID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2174,6 +2664,7 @@ func (this *TasksMessage) String() string {
 	}
 	s := strings.Join([]string{`&TasksMessage{`,
 		`Tasks:` + strings.Replace(fmt.Sprintf("%v", this.Tasks), "Task", "Task", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2184,6 +2675,7 @@ func (this *AssignmentsRequest) String() string {
 	}
 	s := strings.Join([]string{`&AssignmentsRequest{`,
 		`SessionID:` + fmt.Sprintf("%v", this.SessionID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2194,6 +2686,7 @@ func (this *Assignment) String() string {
 	}
 	s := strings.Join([]string{`&Assignment{`,
 		`Item:` + fmt.Sprintf("%v", this.Item) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2235,6 +2728,7 @@ func (this *AssignmentChange) String() string {
 	s := strings.Join([]string{`&AssignmentChange{`,
 		`Assignment:` + strings.Replace(fmt.Sprintf("%v", this.Assignment), "Assignment", "Assignment", 1) + `,`,
 		`Action:` + fmt.Sprintf("%v", this.Action) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2248,6 +2742,7 @@ func (this *AssignmentsMessage) String() string {
 		`AppliesTo:` + fmt.Sprintf("%v", this.AppliesTo) + `,`,
 		`ResultsIn:` + fmt.Sprintf("%v", this.ResultsIn) + `,`,
 		`Changes:` + strings.Replace(fmt.Sprintf("%v", this.Changes), "AssignmentChange", "AssignmentChange", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2363,6 +2858,7 @@ func (m *SessionRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2568,6 +3064,7 @@ func (m *SessionMessage) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2647,6 +3144,7 @@ func (m *HeartbeatRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2711,7 +3209,7 @@ func (m *HeartbeatResponse) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := types.StdDurationUnmarshal(&m.Period, dAtA[iNdEx:postIndex]); err != nil {
+			if err := github_com_gogo_protobuf_types.StdDurationUnmarshal(&m.Period, dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -2727,6 +3225,7 @@ func (m *HeartbeatResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2837,6 +3336,7 @@ func (m *UpdateTaskStatusRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2949,6 +3449,7 @@ func (m *UpdateTaskStatusRequest_TaskStatusUpdate) Unmarshal(dAtA []byte) error 
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2999,6 +3500,7 @@ func (m *UpdateTaskStatusResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3078,6 +3580,7 @@ func (m *TasksRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3159,6 +3662,7 @@ func (m *TasksMessage) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3238,6 +3742,7 @@ func (m *AssignmentsRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3384,6 +3889,7 @@ func (m *Assignment) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3486,6 +3992,7 @@ func (m *AssignmentChange) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3644,6 +4151,7 @@ func (m *AssignmentsMessage) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3759,10 +4267,10 @@ var (
 )
 
 func init() {
-	proto.RegisterFile("github.com/docker/swarmkit/api/dispatcher.proto", fileDescriptorDispatcher)
+	proto.RegisterFile("github.com/docker/swarmkit/api/dispatcher.proto", fileDescriptor_dispatcher_cf2154bf4b8cbb02)
 }
 
-var fileDescriptorDispatcher = []byte{
+var fileDescriptor_dispatcher_cf2154bf4b8cbb02 = []byte{
 	// 1007 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x55, 0x4f, 0x6f, 0xe3, 0x44,
 	0x1c, 0xcd, 0xa4, 0xa9, 0xdb, 0xfc, 0xd2, 0x2d, 0x61, 0xb4, 0x2a, 0xc6, 0xd2, 0xa6, 0xc1, 0x65,

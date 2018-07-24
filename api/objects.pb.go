@@ -6,18 +6,17 @@ package api
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_protobuf "github.com/gogo/protobuf/types"
-import _ "github.com/gogo/protobuf/gogoproto"
-import google_protobuf3 "github.com/gogo/protobuf/types"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
+import _ "github.com/gogo/protobuf/gogoproto"
+import types "github.com/gogo/protobuf/types"
 
-import deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
-import go_events "github.com/docker/go-events"
+import github_com_docker_go_events "github.com/docker/go-events"
 import strings "strings"
 
 import reflect "reflect"
-import sortkeys "github.com/gogo/protobuf/sortkeys"
+import github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
 
 import io "io"
 
@@ -26,19 +25,56 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
+
 // Meta contains metadata about objects. Every object contains a meta field.
 type Meta struct {
 	// Version tracks the current version of the object.
 	Version Version `protobuf:"bytes,1,opt,name=version" json:"version"`
 	// Object timestamps.
 	// Note: can't use stdtime because these fields are nullable.
-	CreatedAt *google_protobuf.Timestamp `protobuf:"bytes,2,opt,name=created_at,json=createdAt" json:"created_at,omitempty"`
-	UpdatedAt *google_protobuf.Timestamp `protobuf:"bytes,3,opt,name=updated_at,json=updatedAt" json:"updated_at,omitempty"`
+	CreatedAt            *types.Timestamp `protobuf:"bytes,2,opt,name=created_at,json=createdAt" json:"created_at,omitempty"`
+	UpdatedAt            *types.Timestamp `protobuf:"bytes,3,opt,name=updated_at,json=updatedAt" json:"updated_at,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
-func (m *Meta) Reset()                    { *m = Meta{} }
-func (*Meta) ProtoMessage()               {}
-func (*Meta) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{0} }
+func (m *Meta) Reset()      { *m = Meta{} }
+func (*Meta) ProtoMessage() {}
+func (*Meta) Descriptor() ([]byte, []int) {
+	return fileDescriptor_objects_f5a65a8247a86d75, []int{0}
+}
+func (m *Meta) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Meta) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Meta.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Meta) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Meta.Merge(dst, src)
+}
+func (m *Meta) XXX_Size() int {
+	return m.Size()
+}
+func (m *Meta) XXX_DiscardUnknown() {
+	xxx_messageInfo_Meta.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Meta proto.InternalMessageInfo
 
 // Node provides the internal node state as seen by the cluster.
 type Node struct {
@@ -58,7 +94,7 @@ type Node struct {
 	ManagerStatus *ManagerStatus `protobuf:"bytes,6,opt,name=manager_status,json=managerStatus" json:"manager_status,omitempty"`
 	// DEPRECATED: Use Attachments to find the ingress network
 	// The node attachment to the ingress network.
-	Attachment *NetworkAttachment `protobuf:"bytes,7,opt,name=attachment" json:"attachment,omitempty"`
+	Attachment *NetworkAttachment `protobuf:"bytes,7,opt,name=attachment" json:"attachment,omitempty"` // Deprecated: Do not use.
 	// Certificate is the TLS certificate issued for the node, if any.
 	Certificate Certificate `protobuf:"bytes,8,opt,name=certificate" json:"certificate"`
 	// Role is the *observed* role for this node. It differs from the
@@ -74,12 +110,43 @@ type Node struct {
 	// Attachments enumerates the network attachments for the node to set up an
 	// endpoint on the node to be used for load balancing. Each overlay
 	// network, including ingress network, will have an NetworkAttachment.
-	Attachments []*NetworkAttachment `protobuf:"bytes,10,rep,name=attachments" json:"attachments,omitempty"`
+	Attachments          []*NetworkAttachment `protobuf:"bytes,10,rep,name=attachments" json:"attachments,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
 }
 
-func (m *Node) Reset()                    { *m = Node{} }
-func (*Node) ProtoMessage()               {}
-func (*Node) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{1} }
+func (m *Node) Reset()      { *m = Node{} }
+func (*Node) ProtoMessage() {}
+func (*Node) Descriptor() ([]byte, []int) {
+	return fileDescriptor_objects_f5a65a8247a86d75, []int{1}
+}
+func (m *Node) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Node) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Node.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Node) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Node.Merge(dst, src)
+}
+func (m *Node) XXX_Size() int {
+	return m.Size()
+}
+func (m *Node) XXX_DiscardUnknown() {
+	xxx_messageInfo_Node.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Node proto.InternalMessageInfo
 
 type Service struct {
 	ID   string      `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -101,12 +168,43 @@ type Service struct {
 	Endpoint *Endpoint `protobuf:"bytes,4,opt,name=endpoint" json:"endpoint,omitempty"`
 	// UpdateStatus contains the status of an update, if one is in
 	// progress.
-	UpdateStatus *UpdateStatus `protobuf:"bytes,5,opt,name=update_status,json=updateStatus" json:"update_status,omitempty"`
+	UpdateStatus         *UpdateStatus `protobuf:"bytes,5,opt,name=update_status,json=updateStatus" json:"update_status,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
 }
 
-func (m *Service) Reset()                    { *m = Service{} }
-func (*Service) ProtoMessage()               {}
-func (*Service) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{2} }
+func (m *Service) Reset()      { *m = Service{} }
+func (*Service) ProtoMessage() {}
+func (*Service) Descriptor() ([]byte, []int) {
+	return fileDescriptor_objects_f5a65a8247a86d75, []int{2}
+}
+func (m *Service) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Service) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Service.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Service) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Service.Merge(dst, src)
+}
+func (m *Service) XXX_Size() int {
+	return m.Size()
+}
+func (m *Service) XXX_DiscardUnknown() {
+	xxx_messageInfo_Service.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Service proto.InternalMessageInfo
 
 // Endpoint specified all the network parameters required to
 // correctly discover and load balance a service
@@ -118,12 +216,43 @@ type Endpoint struct {
 	Ports []*PortConfig `protobuf:"bytes,2,rep,name=ports" json:"ports,omitempty"`
 	// VirtualIPs specifies the IP addresses under which this endpoint will be
 	// made available.
-	VirtualIPs []*Endpoint_VirtualIP `protobuf:"bytes,3,rep,name=virtual_ips,json=virtualIps" json:"virtual_ips,omitempty"`
+	VirtualIPs           []*Endpoint_VirtualIP `protobuf:"bytes,3,rep,name=virtual_ips,json=virtualIps" json:"virtual_ips,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
+	XXX_unrecognized     []byte                `json:"-"`
+	XXX_sizecache        int32                 `json:"-"`
 }
 
-func (m *Endpoint) Reset()                    { *m = Endpoint{} }
-func (*Endpoint) ProtoMessage()               {}
-func (*Endpoint) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{3} }
+func (m *Endpoint) Reset()      { *m = Endpoint{} }
+func (*Endpoint) ProtoMessage() {}
+func (*Endpoint) Descriptor() ([]byte, []int) {
+	return fileDescriptor_objects_f5a65a8247a86d75, []int{3}
+}
+func (m *Endpoint) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Endpoint) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Endpoint.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Endpoint) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Endpoint.Merge(dst, src)
+}
+func (m *Endpoint) XXX_Size() int {
+	return m.Size()
+}
+func (m *Endpoint) XXX_DiscardUnknown() {
+	xxx_messageInfo_Endpoint.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Endpoint proto.InternalMessageInfo
 
 // VirtualIP specifies a set of networks this endpoint will be attached to
 // and the IP addresses the target service will be made available under.
@@ -138,12 +267,43 @@ type Endpoint_VirtualIP struct {
 	// interfaces assigned this IP address or any route
 	// created for this address.  More than one to
 	// accommodate for both IPv4 and IPv6
-	Addr string `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr,omitempty"`
+	Addr                 string   `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Endpoint_VirtualIP) Reset()                    { *m = Endpoint_VirtualIP{} }
-func (*Endpoint_VirtualIP) ProtoMessage()               {}
-func (*Endpoint_VirtualIP) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{3, 0} }
+func (m *Endpoint_VirtualIP) Reset()      { *m = Endpoint_VirtualIP{} }
+func (*Endpoint_VirtualIP) ProtoMessage() {}
+func (*Endpoint_VirtualIP) Descriptor() ([]byte, []int) {
+	return fileDescriptor_objects_f5a65a8247a86d75, []int{3, 0}
+}
+func (m *Endpoint_VirtualIP) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Endpoint_VirtualIP) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Endpoint_VirtualIP.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Endpoint_VirtualIP) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Endpoint_VirtualIP.Merge(dst, src)
+}
+func (m *Endpoint_VirtualIP) XXX_Size() int {
+	return m.Size()
+}
+func (m *Endpoint_VirtualIP) XXX_DiscardUnknown() {
+	xxx_messageInfo_Endpoint_VirtualIP.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Endpoint_VirtualIP proto.InternalMessageInfo
 
 // Task specifies the parameters for implementing a Spec. A task is effectively
 // immutable and idempotent. Once it is dispatched to a node, it will not be
@@ -204,11 +364,42 @@ type Task struct {
 	// If not present, the daemon's default will be used.
 	LogDriver                *Driver            `protobuf:"bytes,13,opt,name=log_driver,json=logDriver" json:"log_driver,omitempty"`
 	AssignedGenericResources []*GenericResource `protobuf:"bytes,15,rep,name=assigned_generic_resources,json=assignedGenericResources" json:"assigned_generic_resources,omitempty"`
+	XXX_NoUnkeyedLiteral     struct{}           `json:"-"`
+	XXX_unrecognized         []byte             `json:"-"`
+	XXX_sizecache            int32              `json:"-"`
 }
 
-func (m *Task) Reset()                    { *m = Task{} }
-func (*Task) ProtoMessage()               {}
-func (*Task) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{4} }
+func (m *Task) Reset()      { *m = Task{} }
+func (*Task) ProtoMessage() {}
+func (*Task) Descriptor() ([]byte, []int) {
+	return fileDescriptor_objects_f5a65a8247a86d75, []int{4}
+}
+func (m *Task) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Task) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Task.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Task) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Task.Merge(dst, src)
+}
+func (m *Task) XXX_Size() int {
+	return m.Size()
+}
+func (m *Task) XXX_DiscardUnknown() {
+	xxx_messageInfo_Task.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Task proto.InternalMessageInfo
 
 // NetworkAttachment specifies the network parameters of attachment to
 // a single network by an object such as task or node.
@@ -224,11 +415,42 @@ type NetworkAttachment struct {
 	Aliases []string `protobuf:"bytes,3,rep,name=aliases" json:"aliases,omitempty"`
 	// Map of all the driver attachment options for this network
 	DriverAttachmentOpts map[string]string `protobuf:"bytes,4,rep,name=driver_attachment_opts,json=driverAttachmentOpts" json:"driver_attachment_opts,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
 }
 
-func (m *NetworkAttachment) Reset()                    { *m = NetworkAttachment{} }
-func (*NetworkAttachment) ProtoMessage()               {}
-func (*NetworkAttachment) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{5} }
+func (m *NetworkAttachment) Reset()      { *m = NetworkAttachment{} }
+func (*NetworkAttachment) ProtoMessage() {}
+func (*NetworkAttachment) Descriptor() ([]byte, []int) {
+	return fileDescriptor_objects_f5a65a8247a86d75, []int{5}
+}
+func (m *NetworkAttachment) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *NetworkAttachment) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_NetworkAttachment.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *NetworkAttachment) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_NetworkAttachment.Merge(dst, src)
+}
+func (m *NetworkAttachment) XXX_Size() int {
+	return m.Size()
+}
+func (m *NetworkAttachment) XXX_DiscardUnknown() {
+	xxx_messageInfo_NetworkAttachment.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_NetworkAttachment proto.InternalMessageInfo
 
 type Network struct {
 	ID   string      `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -238,12 +460,43 @@ type Network struct {
 	DriverState *Driver `protobuf:"bytes,4,opt,name=driver_state,json=driverState" json:"driver_state,omitempty"`
 	// Runtime state of IPAM options. This may not reflect the
 	// ipam options from NetworkSpec.
-	IPAM *IPAMOptions `protobuf:"bytes,5,opt,name=ipam" json:"ipam,omitempty"`
+	IPAM                 *IPAMOptions `protobuf:"bytes,5,opt,name=ipam" json:"ipam,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
+	XXX_unrecognized     []byte       `json:"-"`
+	XXX_sizecache        int32        `json:"-"`
 }
 
-func (m *Network) Reset()                    { *m = Network{} }
-func (*Network) ProtoMessage()               {}
-func (*Network) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{6} }
+func (m *Network) Reset()      { *m = Network{} }
+func (*Network) ProtoMessage() {}
+func (*Network) Descriptor() ([]byte, []int) {
+	return fileDescriptor_objects_f5a65a8247a86d75, []int{6}
+}
+func (m *Network) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Network) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Network.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Network) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Network.Merge(dst, src)
+}
+func (m *Network) XXX_Size() int {
+	return m.Size()
+}
+func (m *Network) XXX_DiscardUnknown() {
+	xxx_messageInfo_Network.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Network proto.InternalMessageInfo
 
 // Cluster provides global cluster settings.
 type Cluster struct {
@@ -273,12 +526,43 @@ type Cluster struct {
 	// the format of the join tokens, and nodes that are not FIPS-enabled should
 	// reject joining the cluster.  Nodes that report themselves to be non-FIPS
 	// should be rejected from the cluster.
-	FIPS bool `protobuf:"varint,10,opt,name=fips,proto3" json:"fips,omitempty"`
+	FIPS                 bool     `protobuf:"varint,10,opt,name=fips,proto3" json:"fips,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Cluster) Reset()                    { *m = Cluster{} }
-func (*Cluster) ProtoMessage()               {}
-func (*Cluster) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{7} }
+func (m *Cluster) Reset()      { *m = Cluster{} }
+func (*Cluster) ProtoMessage() {}
+func (*Cluster) Descriptor() ([]byte, []int) {
+	return fileDescriptor_objects_f5a65a8247a86d75, []int{7}
+}
+func (m *Cluster) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Cluster) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Cluster.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Cluster) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Cluster.Merge(dst, src)
+}
+func (m *Cluster) XXX_Size() int {
+	return m.Size()
+}
+func (m *Cluster) XXX_DiscardUnknown() {
+	xxx_messageInfo_Cluster.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Cluster proto.InternalMessageInfo
 
 // Secret represents a secret that should be passed to a container or a node,
 // and is immutable.
@@ -289,12 +573,43 @@ type Secret struct {
 	// secret data that the user provides.
 	Spec SecretSpec `protobuf:"bytes,3,opt,name=spec" json:"spec"`
 	// Whether the secret is an internal secret (not set by a user) or not.
-	Internal bool `protobuf:"varint,4,opt,name=internal,proto3" json:"internal,omitempty"`
+	Internal             bool     `protobuf:"varint,4,opt,name=internal,proto3" json:"internal,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Secret) Reset()                    { *m = Secret{} }
-func (*Secret) ProtoMessage()               {}
-func (*Secret) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{8} }
+func (m *Secret) Reset()      { *m = Secret{} }
+func (*Secret) ProtoMessage() {}
+func (*Secret) Descriptor() ([]byte, []int) {
+	return fileDescriptor_objects_f5a65a8247a86d75, []int{8}
+}
+func (m *Secret) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Secret) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Secret.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Secret) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Secret.Merge(dst, src)
+}
+func (m *Secret) XXX_Size() int {
+	return m.Size()
+}
+func (m *Secret) XXX_DiscardUnknown() {
+	xxx_messageInfo_Secret.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Secret proto.InternalMessageInfo
 
 // Config represents a set of configuration files that should be passed to a
 // container.
@@ -303,12 +618,43 @@ type Config struct {
 	Meta Meta   `protobuf:"bytes,2,opt,name=meta" json:"meta"`
 	// Spec contains the actual config data, as well as any context around the
 	// config data that the user provides.
-	Spec ConfigSpec `protobuf:"bytes,3,opt,name=spec" json:"spec"`
+	Spec                 ConfigSpec `protobuf:"bytes,3,opt,name=spec" json:"spec"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
 }
 
-func (m *Config) Reset()                    { *m = Config{} }
-func (*Config) ProtoMessage()               {}
-func (*Config) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{9} }
+func (m *Config) Reset()      { *m = Config{} }
+func (*Config) ProtoMessage() {}
+func (*Config) Descriptor() ([]byte, []int) {
+	return fileDescriptor_objects_f5a65a8247a86d75, []int{9}
+}
+func (m *Config) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Config) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Config.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Config) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Config.Merge(dst, src)
+}
+func (m *Config) XXX_Size() int {
+	return m.Size()
+}
+func (m *Config) XXX_DiscardUnknown() {
+	xxx_messageInfo_Config.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Config proto.InternalMessageInfo
 
 // Resource is a top-level object with externally defined content and indexing.
 // SwarmKit can serve as a store for these objects without understanding their
@@ -323,25 +669,87 @@ type Resource struct {
 	Kind string `protobuf:"bytes,4,opt,name=kind,proto3" json:"kind,omitempty"`
 	// Payload bytes. This data is not interpreted in any way by SwarmKit.
 	// By convention, it should be a marshalled protocol buffers message.
-	Payload *google_protobuf3.Any `protobuf:"bytes,5,opt,name=payload" json:"payload,omitempty"`
+	Payload              *types.Any `protobuf:"bytes,5,opt,name=payload" json:"payload,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
 }
 
-func (m *Resource) Reset()                    { *m = Resource{} }
-func (*Resource) ProtoMessage()               {}
-func (*Resource) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{10} }
+func (m *Resource) Reset()      { *m = Resource{} }
+func (*Resource) ProtoMessage() {}
+func (*Resource) Descriptor() ([]byte, []int) {
+	return fileDescriptor_objects_f5a65a8247a86d75, []int{10}
+}
+func (m *Resource) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Resource) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Resource.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Resource) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Resource.Merge(dst, src)
+}
+func (m *Resource) XXX_Size() int {
+	return m.Size()
+}
+func (m *Resource) XXX_DiscardUnknown() {
+	xxx_messageInfo_Resource.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Resource proto.InternalMessageInfo
 
 // Extension declares a type of "resource" object. This message provides some
 // metadata about the objects.
 type Extension struct {
-	ID          string      `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Meta        Meta        `protobuf:"bytes,2,opt,name=meta" json:"meta"`
-	Annotations Annotations `protobuf:"bytes,3,opt,name=annotations" json:"annotations"`
-	Description string      `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	ID                   string      `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Meta                 Meta        `protobuf:"bytes,2,opt,name=meta" json:"meta"`
+	Annotations          Annotations `protobuf:"bytes,3,opt,name=annotations" json:"annotations"`
+	Description          string      `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
 }
 
-func (m *Extension) Reset()                    { *m = Extension{} }
-func (*Extension) ProtoMessage()               {}
-func (*Extension) Descriptor() ([]byte, []int) { return fileDescriptorObjects, []int{11} }
+func (m *Extension) Reset()      { *m = Extension{} }
+func (*Extension) ProtoMessage() {}
+func (*Extension) Descriptor() ([]byte, []int) {
+	return fileDescriptor_objects_f5a65a8247a86d75, []int{11}
+}
+func (m *Extension) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Extension) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Extension.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Extension) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Extension.Merge(dst, src)
+}
+func (m *Extension) XXX_Size() int {
+	return m.Size()
+}
+func (m *Extension) XXX_DiscardUnknown() {
+	xxx_messageInfo_Extension.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Extension proto.InternalMessageInfo
 
 func init() {
 	proto.RegisterType((*Meta)(nil), "docker.swarmkit.v1.Meta")
@@ -351,8 +759,10 @@ func init() {
 	proto.RegisterType((*Endpoint_VirtualIP)(nil), "docker.swarmkit.v1.Endpoint.VirtualIP")
 	proto.RegisterType((*Task)(nil), "docker.swarmkit.v1.Task")
 	proto.RegisterType((*NetworkAttachment)(nil), "docker.swarmkit.v1.NetworkAttachment")
+	proto.RegisterMapType((map[string]string)(nil), "docker.swarmkit.v1.NetworkAttachment.DriverAttachmentOptsEntry")
 	proto.RegisterType((*Network)(nil), "docker.swarmkit.v1.Network")
 	proto.RegisterType((*Cluster)(nil), "docker.swarmkit.v1.Cluster")
+	proto.RegisterMapType((map[string]*BlacklistedCertificate)(nil), "docker.swarmkit.v1.Cluster.BlacklistedCertificatesEntry")
 	proto.RegisterType((*Secret)(nil), "docker.swarmkit.v1.Secret")
 	proto.RegisterType((*Config)(nil), "docker.swarmkit.v1.Config")
 	proto.RegisterType((*Resource)(nil), "docker.swarmkit.v1.Resource")
@@ -372,14 +782,14 @@ func (m *Meta) CopyFrom(src interface{}) {
 
 	o := src.(*Meta)
 	*m = *o
-	deepcopy.Copy(&m.Version, &o.Version)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Version, &o.Version)
 	if o.CreatedAt != nil {
-		m.CreatedAt = &google_protobuf.Timestamp{}
-		deepcopy.Copy(m.CreatedAt, o.CreatedAt)
+		m.CreatedAt = &types.Timestamp{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.CreatedAt, o.CreatedAt)
 	}
 	if o.UpdatedAt != nil {
-		m.UpdatedAt = &google_protobuf.Timestamp{}
-		deepcopy.Copy(m.UpdatedAt, o.UpdatedAt)
+		m.UpdatedAt = &types.Timestamp{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.UpdatedAt, o.UpdatedAt)
 	}
 }
 
@@ -396,27 +806,27 @@ func (m *Node) CopyFrom(src interface{}) {
 
 	o := src.(*Node)
 	*m = *o
-	deepcopy.Copy(&m.Meta, &o.Meta)
-	deepcopy.Copy(&m.Spec, &o.Spec)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
 	if o.Description != nil {
 		m.Description = &NodeDescription{}
-		deepcopy.Copy(m.Description, o.Description)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Description, o.Description)
 	}
-	deepcopy.Copy(&m.Status, &o.Status)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Status, &o.Status)
 	if o.ManagerStatus != nil {
 		m.ManagerStatus = &ManagerStatus{}
-		deepcopy.Copy(m.ManagerStatus, o.ManagerStatus)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.ManagerStatus, o.ManagerStatus)
 	}
 	if o.Attachment != nil {
 		m.Attachment = &NetworkAttachment{}
-		deepcopy.Copy(m.Attachment, o.Attachment)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Attachment, o.Attachment)
 	}
-	deepcopy.Copy(&m.Certificate, &o.Certificate)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Certificate, &o.Certificate)
 	if o.Attachments != nil {
 		m.Attachments = make([]*NetworkAttachment, len(o.Attachments))
 		for i := range m.Attachments {
 			m.Attachments[i] = &NetworkAttachment{}
-			deepcopy.Copy(m.Attachments[i], o.Attachments[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Attachments[i], o.Attachments[i])
 		}
 	}
 
@@ -435,27 +845,27 @@ func (m *Service) CopyFrom(src interface{}) {
 
 	o := src.(*Service)
 	*m = *o
-	deepcopy.Copy(&m.Meta, &o.Meta)
-	deepcopy.Copy(&m.Spec, &o.Spec)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
 	if o.SpecVersion != nil {
 		m.SpecVersion = &Version{}
-		deepcopy.Copy(m.SpecVersion, o.SpecVersion)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.SpecVersion, o.SpecVersion)
 	}
 	if o.PreviousSpec != nil {
 		m.PreviousSpec = &ServiceSpec{}
-		deepcopy.Copy(m.PreviousSpec, o.PreviousSpec)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.PreviousSpec, o.PreviousSpec)
 	}
 	if o.PreviousSpecVersion != nil {
 		m.PreviousSpecVersion = &Version{}
-		deepcopy.Copy(m.PreviousSpecVersion, o.PreviousSpecVersion)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.PreviousSpecVersion, o.PreviousSpecVersion)
 	}
 	if o.Endpoint != nil {
 		m.Endpoint = &Endpoint{}
-		deepcopy.Copy(m.Endpoint, o.Endpoint)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Endpoint, o.Endpoint)
 	}
 	if o.UpdateStatus != nil {
 		m.UpdateStatus = &UpdateStatus{}
-		deepcopy.Copy(m.UpdateStatus, o.UpdateStatus)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.UpdateStatus, o.UpdateStatus)
 	}
 }
 
@@ -474,13 +884,13 @@ func (m *Endpoint) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Spec != nil {
 		m.Spec = &EndpointSpec{}
-		deepcopy.Copy(m.Spec, o.Spec)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
 	}
 	if o.Ports != nil {
 		m.Ports = make([]*PortConfig, len(o.Ports))
 		for i := range m.Ports {
 			m.Ports[i] = &PortConfig{}
-			deepcopy.Copy(m.Ports[i], o.Ports[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Ports[i], o.Ports[i])
 		}
 	}
 
@@ -488,7 +898,7 @@ func (m *Endpoint) CopyFrom(src interface{}) {
 		m.VirtualIPs = make([]*Endpoint_VirtualIP, len(o.VirtualIPs))
 		for i := range m.VirtualIPs {
 			m.VirtualIPs[i] = &Endpoint_VirtualIP{}
-			deepcopy.Copy(m.VirtualIPs[i], o.VirtualIPs[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.VirtualIPs[i], o.VirtualIPs[i])
 		}
 	}
 
@@ -522,36 +932,36 @@ func (m *Task) CopyFrom(src interface{}) {
 
 	o := src.(*Task)
 	*m = *o
-	deepcopy.Copy(&m.Meta, &o.Meta)
-	deepcopy.Copy(&m.Spec, &o.Spec)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
 	if o.SpecVersion != nil {
 		m.SpecVersion = &Version{}
-		deepcopy.Copy(m.SpecVersion, o.SpecVersion)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.SpecVersion, o.SpecVersion)
 	}
-	deepcopy.Copy(&m.Annotations, &o.Annotations)
-	deepcopy.Copy(&m.ServiceAnnotations, &o.ServiceAnnotations)
-	deepcopy.Copy(&m.Status, &o.Status)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.ServiceAnnotations, &o.ServiceAnnotations)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Status, &o.Status)
 	if o.Networks != nil {
 		m.Networks = make([]*NetworkAttachment, len(o.Networks))
 		for i := range m.Networks {
 			m.Networks[i] = &NetworkAttachment{}
-			deepcopy.Copy(m.Networks[i], o.Networks[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Networks[i], o.Networks[i])
 		}
 	}
 
 	if o.Endpoint != nil {
 		m.Endpoint = &Endpoint{}
-		deepcopy.Copy(m.Endpoint, o.Endpoint)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Endpoint, o.Endpoint)
 	}
 	if o.LogDriver != nil {
 		m.LogDriver = &Driver{}
-		deepcopy.Copy(m.LogDriver, o.LogDriver)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.LogDriver, o.LogDriver)
 	}
 	if o.AssignedGenericResources != nil {
 		m.AssignedGenericResources = make([]*GenericResource, len(o.AssignedGenericResources))
 		for i := range m.AssignedGenericResources {
 			m.AssignedGenericResources[i] = &GenericResource{}
-			deepcopy.Copy(m.AssignedGenericResources[i], o.AssignedGenericResources[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.AssignedGenericResources[i], o.AssignedGenericResources[i])
 		}
 	}
 
@@ -572,7 +982,7 @@ func (m *NetworkAttachment) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Network != nil {
 		m.Network = &Network{}
-		deepcopy.Copy(m.Network, o.Network)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Network, o.Network)
 	}
 	if o.Addresses != nil {
 		m.Addresses = make([]string, len(o.Addresses))
@@ -606,15 +1016,15 @@ func (m *Network) CopyFrom(src interface{}) {
 
 	o := src.(*Network)
 	*m = *o
-	deepcopy.Copy(&m.Meta, &o.Meta)
-	deepcopy.Copy(&m.Spec, &o.Spec)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
 	if o.DriverState != nil {
 		m.DriverState = &Driver{}
-		deepcopy.Copy(m.DriverState, o.DriverState)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.DriverState, o.DriverState)
 	}
 	if o.IPAM != nil {
 		m.IPAM = &IPAMOptions{}
-		deepcopy.Copy(m.IPAM, o.IPAM)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.IPAM, o.IPAM)
 	}
 }
 
@@ -631,14 +1041,14 @@ func (m *Cluster) CopyFrom(src interface{}) {
 
 	o := src.(*Cluster)
 	*m = *o
-	deepcopy.Copy(&m.Meta, &o.Meta)
-	deepcopy.Copy(&m.Spec, &o.Spec)
-	deepcopy.Copy(&m.RootCA, &o.RootCA)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.RootCA, &o.RootCA)
 	if o.NetworkBootstrapKeys != nil {
 		m.NetworkBootstrapKeys = make([]*EncryptionKey, len(o.NetworkBootstrapKeys))
 		for i := range m.NetworkBootstrapKeys {
 			m.NetworkBootstrapKeys[i] = &EncryptionKey{}
-			deepcopy.Copy(m.NetworkBootstrapKeys[i], o.NetworkBootstrapKeys[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.NetworkBootstrapKeys[i], o.NetworkBootstrapKeys[i])
 		}
 	}
 
@@ -646,7 +1056,7 @@ func (m *Cluster) CopyFrom(src interface{}) {
 		m.BlacklistedCertificates = make(map[string]*BlacklistedCertificate, len(o.BlacklistedCertificates))
 		for k, v := range o.BlacklistedCertificates {
 			m.BlacklistedCertificates[k] = &BlacklistedCertificate{}
-			deepcopy.Copy(m.BlacklistedCertificates[k], v)
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.BlacklistedCertificates[k], v)
 		}
 	}
 
@@ -654,7 +1064,7 @@ func (m *Cluster) CopyFrom(src interface{}) {
 		m.UnlockKeys = make([]*EncryptionKey, len(o.UnlockKeys))
 		for i := range m.UnlockKeys {
 			m.UnlockKeys[i] = &EncryptionKey{}
-			deepcopy.Copy(m.UnlockKeys[i], o.UnlockKeys[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.UnlockKeys[i], o.UnlockKeys[i])
 		}
 	}
 
@@ -673,8 +1083,8 @@ func (m *Secret) CopyFrom(src interface{}) {
 
 	o := src.(*Secret)
 	*m = *o
-	deepcopy.Copy(&m.Meta, &o.Meta)
-	deepcopy.Copy(&m.Spec, &o.Spec)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
 }
 
 func (m *Config) Copy() *Config {
@@ -690,8 +1100,8 @@ func (m *Config) CopyFrom(src interface{}) {
 
 	o := src.(*Config)
 	*m = *o
-	deepcopy.Copy(&m.Meta, &o.Meta)
-	deepcopy.Copy(&m.Spec, &o.Spec)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Spec, &o.Spec)
 }
 
 func (m *Resource) Copy() *Resource {
@@ -707,11 +1117,11 @@ func (m *Resource) CopyFrom(src interface{}) {
 
 	o := src.(*Resource)
 	*m = *o
-	deepcopy.Copy(&m.Meta, &o.Meta)
-	deepcopy.Copy(&m.Annotations, &o.Annotations)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
 	if o.Payload != nil {
-		m.Payload = &google_protobuf3.Any{}
-		deepcopy.Copy(m.Payload, o.Payload)
+		m.Payload = &types.Any{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Payload, o.Payload)
 	}
 }
 
@@ -728,8 +1138,8 @@ func (m *Extension) CopyFrom(src interface{}) {
 
 	o := src.(*Extension)
 	*m = *o
-	deepcopy.Copy(&m.Meta, &o.Meta)
-	deepcopy.Copy(&m.Annotations, &o.Annotations)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Meta, &o.Meta)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
 }
 
 func (m *Meta) Marshal() (dAtA []byte, err error) {
@@ -774,6 +1184,9 @@ func (m *Meta) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n3
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -878,6 +1291,9 @@ func (m *Node) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -968,6 +1384,9 @@ func (m *Service) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n17
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1020,6 +1439,9 @@ func (m *Endpoint) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1049,6 +1471,9 @@ func (m *Endpoint_VirtualIP) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintObjects(dAtA, i, uint64(len(m.Addr)))
 		i += copy(dAtA[i:], m.Addr)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -1190,6 +1615,9 @@ func (m *Task) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1265,6 +1693,9 @@ func (m *NetworkAttachment) MarshalTo(dAtA []byte) (int, error) {
 			i += copy(dAtA[i:], v)
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1324,6 +1755,9 @@ func (m *Network) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n31
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -1440,6 +1874,9 @@ func (m *Cluster) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i++
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1490,6 +1927,9 @@ func (m *Secret) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i++
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1530,6 +1970,9 @@ func (m *Config) MarshalTo(dAtA []byte) (int, error) {
 		return 0, err
 	}
 	i += n39
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1586,6 +2029,9 @@ func (m *Resource) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n42
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1632,6 +2078,9 @@ func (m *Extension) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintObjects(dAtA, i, uint64(len(m.Description)))
 		i += copy(dAtA[i:], m.Description)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1657,6 +2106,9 @@ func (m *Meta) Size() (n int) {
 	if m.UpdatedAt != nil {
 		l = m.UpdatedAt.Size()
 		n += 1 + l + sovObjects(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -1697,6 +2149,9 @@ func (m *Node) Size() (n int) {
 			n += 1 + l + sovObjects(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1731,6 +2186,9 @@ func (m *Service) Size() (n int) {
 		l = m.PreviousSpecVersion.Size()
 		n += 1 + l + sovObjects(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1753,6 +2211,9 @@ func (m *Endpoint) Size() (n int) {
 			n += 1 + l + sovObjects(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1766,6 +2227,9 @@ func (m *Endpoint_VirtualIP) Size() (n int) {
 	l = len(m.Addr)
 	if l > 0 {
 		n += 1 + l + sovObjects(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -1825,6 +2289,9 @@ func (m *Task) Size() (n int) {
 			n += 1 + l + sovObjects(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1855,6 +2322,9 @@ func (m *NetworkAttachment) Size() (n int) {
 			n += mapEntrySize + 1 + sovObjects(uint64(mapEntrySize))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1876,6 +2346,9 @@ func (m *Network) Size() (n int) {
 	if m.IPAM != nil {
 		l = m.IPAM.Size()
 		n += 1 + l + sovObjects(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -1924,6 +2397,9 @@ func (m *Cluster) Size() (n int) {
 	if m.FIPS {
 		n += 2
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1941,6 +2417,9 @@ func (m *Secret) Size() (n int) {
 	if m.Internal {
 		n += 2
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1955,6 +2434,9 @@ func (m *Config) Size() (n int) {
 	n += 1 + l + sovObjects(uint64(l))
 	l = m.Spec.Size()
 	n += 1 + l + sovObjects(uint64(l))
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1977,6 +2459,9 @@ func (m *Resource) Size() (n int) {
 		l = m.Payload.Size()
 		n += 1 + l + sovObjects(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1994,6 +2479,9 @@ func (m *Extension) Size() (n int) {
 	l = len(m.Description)
 	if l > 0 {
 		n += 1 + l + sovObjects(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2023,7 +2511,7 @@ type EventCreateNode struct {
 	Checks []NodeCheckFunc
 }
 
-func (e EventCreateNode) Matches(apiEvent go_events.Event) bool {
+func (e EventCreateNode) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateNode)
 	if !ok {
 		return false
@@ -2051,7 +2539,7 @@ type EventUpdateNode struct {
 	Checks  []NodeCheckFunc
 }
 
-func (e EventUpdateNode) Matches(apiEvent go_events.Event) bool {
+func (e EventUpdateNode) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateNode)
 	if !ok {
 		return false
@@ -2078,7 +2566,7 @@ type EventDeleteNode struct {
 	Checks []NodeCheckFunc
 }
 
-func (e EventDeleteNode) Matches(apiEvent go_events.Event) bool {
+func (e EventDeleteNode) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteNode)
 	if !ok {
 		return false
@@ -2299,7 +2787,7 @@ type EventCreateService struct {
 	Checks  []ServiceCheckFunc
 }
 
-func (e EventCreateService) Matches(apiEvent go_events.Event) bool {
+func (e EventCreateService) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateService)
 	if !ok {
 		return false
@@ -2327,7 +2815,7 @@ type EventUpdateService struct {
 	Checks     []ServiceCheckFunc
 }
 
-func (e EventUpdateService) Matches(apiEvent go_events.Event) bool {
+func (e EventUpdateService) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateService)
 	if !ok {
 		return false
@@ -2354,7 +2842,7 @@ type EventDeleteService struct {
 	Checks  []ServiceCheckFunc
 }
 
-func (e EventDeleteService) Matches(apiEvent go_events.Event) bool {
+func (e EventDeleteService) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteService)
 	if !ok {
 		return false
@@ -2545,7 +3033,7 @@ type EventCreateTask struct {
 	Checks []TaskCheckFunc
 }
 
-func (e EventCreateTask) Matches(apiEvent go_events.Event) bool {
+func (e EventCreateTask) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateTask)
 	if !ok {
 		return false
@@ -2573,7 +3061,7 @@ type EventUpdateTask struct {
 	Checks  []TaskCheckFunc
 }
 
-func (e EventUpdateTask) Matches(apiEvent go_events.Event) bool {
+func (e EventUpdateTask) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateTask)
 	if !ok {
 		return false
@@ -2600,7 +3088,7 @@ type EventDeleteTask struct {
 	Checks []TaskCheckFunc
 }
 
-func (e EventDeleteTask) Matches(apiEvent go_events.Event) bool {
+func (e EventDeleteTask) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteTask)
 	if !ok {
 		return false
@@ -2834,7 +3322,7 @@ type EventCreateNetwork struct {
 	Checks  []NetworkCheckFunc
 }
 
-func (e EventCreateNetwork) Matches(apiEvent go_events.Event) bool {
+func (e EventCreateNetwork) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateNetwork)
 	if !ok {
 		return false
@@ -2862,7 +3350,7 @@ type EventUpdateNetwork struct {
 	Checks     []NetworkCheckFunc
 }
 
-func (e EventUpdateNetwork) Matches(apiEvent go_events.Event) bool {
+func (e EventUpdateNetwork) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateNetwork)
 	if !ok {
 		return false
@@ -2889,7 +3377,7 @@ type EventDeleteNetwork struct {
 	Checks  []NetworkCheckFunc
 }
 
-func (e EventDeleteNetwork) Matches(apiEvent go_events.Event) bool {
+func (e EventDeleteNetwork) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteNetwork)
 	if !ok {
 		return false
@@ -3080,7 +3568,7 @@ type EventCreateCluster struct {
 	Checks  []ClusterCheckFunc
 }
 
-func (e EventCreateCluster) Matches(apiEvent go_events.Event) bool {
+func (e EventCreateCluster) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateCluster)
 	if !ok {
 		return false
@@ -3108,7 +3596,7 @@ type EventUpdateCluster struct {
 	Checks     []ClusterCheckFunc
 }
 
-func (e EventUpdateCluster) Matches(apiEvent go_events.Event) bool {
+func (e EventUpdateCluster) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateCluster)
 	if !ok {
 		return false
@@ -3135,7 +3623,7 @@ type EventDeleteCluster struct {
 	Checks  []ClusterCheckFunc
 }
 
-func (e EventDeleteCluster) Matches(apiEvent go_events.Event) bool {
+func (e EventDeleteCluster) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteCluster)
 	if !ok {
 		return false
@@ -3326,7 +3814,7 @@ type EventCreateSecret struct {
 	Checks []SecretCheckFunc
 }
 
-func (e EventCreateSecret) Matches(apiEvent go_events.Event) bool {
+func (e EventCreateSecret) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateSecret)
 	if !ok {
 		return false
@@ -3354,7 +3842,7 @@ type EventUpdateSecret struct {
 	Checks    []SecretCheckFunc
 }
 
-func (e EventUpdateSecret) Matches(apiEvent go_events.Event) bool {
+func (e EventUpdateSecret) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateSecret)
 	if !ok {
 		return false
@@ -3381,7 +3869,7 @@ type EventDeleteSecret struct {
 	Checks []SecretCheckFunc
 }
 
-func (e EventDeleteSecret) Matches(apiEvent go_events.Event) bool {
+func (e EventDeleteSecret) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteSecret)
 	if !ok {
 		return false
@@ -3572,7 +4060,7 @@ type EventCreateConfig struct {
 	Checks []ConfigCheckFunc
 }
 
-func (e EventCreateConfig) Matches(apiEvent go_events.Event) bool {
+func (e EventCreateConfig) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateConfig)
 	if !ok {
 		return false
@@ -3600,7 +4088,7 @@ type EventUpdateConfig struct {
 	Checks    []ConfigCheckFunc
 }
 
-func (e EventUpdateConfig) Matches(apiEvent go_events.Event) bool {
+func (e EventUpdateConfig) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateConfig)
 	if !ok {
 		return false
@@ -3627,7 +4115,7 @@ type EventDeleteConfig struct {
 	Checks []ConfigCheckFunc
 }
 
-func (e EventDeleteConfig) Matches(apiEvent go_events.Event) bool {
+func (e EventDeleteConfig) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteConfig)
 	if !ok {
 		return false
@@ -3818,7 +4306,7 @@ type EventCreateResource struct {
 	Checks   []ResourceCheckFunc
 }
 
-func (e EventCreateResource) Matches(apiEvent go_events.Event) bool {
+func (e EventCreateResource) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateResource)
 	if !ok {
 		return false
@@ -3846,7 +4334,7 @@ type EventUpdateResource struct {
 	Checks      []ResourceCheckFunc
 }
 
-func (e EventUpdateResource) Matches(apiEvent go_events.Event) bool {
+func (e EventUpdateResource) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateResource)
 	if !ok {
 		return false
@@ -3873,7 +4361,7 @@ type EventDeleteResource struct {
 	Checks   []ResourceCheckFunc
 }
 
-func (e EventDeleteResource) Matches(apiEvent go_events.Event) bool {
+func (e EventDeleteResource) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteResource)
 	if !ok {
 		return false
@@ -4070,7 +4558,7 @@ type EventCreateExtension struct {
 	Checks    []ExtensionCheckFunc
 }
 
-func (e EventCreateExtension) Matches(apiEvent go_events.Event) bool {
+func (e EventCreateExtension) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventCreateExtension)
 	if !ok {
 		return false
@@ -4098,7 +4586,7 @@ type EventUpdateExtension struct {
 	Checks       []ExtensionCheckFunc
 }
 
-func (e EventUpdateExtension) Matches(apiEvent go_events.Event) bool {
+func (e EventUpdateExtension) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventUpdateExtension)
 	if !ok {
 		return false
@@ -4125,7 +4613,7 @@ type EventDeleteExtension struct {
 	Checks    []ExtensionCheckFunc
 }
 
-func (e EventDeleteExtension) Matches(apiEvent go_events.Event) bool {
+func (e EventDeleteExtension) Matches(apiEvent github_com_docker_go_events.Event) bool {
 	typedEvent, ok := apiEvent.(EventDeleteExtension)
 	if !ok {
 		return false
@@ -4654,8 +5142,9 @@ func (this *Meta) String() string {
 	}
 	s := strings.Join([]string{`&Meta{`,
 		`Version:` + strings.Replace(strings.Replace(this.Version.String(), "Version", "Version", 1), `&`, ``, 1) + `,`,
-		`CreatedAt:` + strings.Replace(fmt.Sprintf("%v", this.CreatedAt), "Timestamp", "google_protobuf.Timestamp", 1) + `,`,
-		`UpdatedAt:` + strings.Replace(fmt.Sprintf("%v", this.UpdatedAt), "Timestamp", "google_protobuf.Timestamp", 1) + `,`,
+		`CreatedAt:` + strings.Replace(fmt.Sprintf("%v", this.CreatedAt), "Timestamp", "types.Timestamp", 1) + `,`,
+		`UpdatedAt:` + strings.Replace(fmt.Sprintf("%v", this.UpdatedAt), "Timestamp", "types.Timestamp", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4675,6 +5164,7 @@ func (this *Node) String() string {
 		`Certificate:` + strings.Replace(strings.Replace(this.Certificate.String(), "Certificate", "Certificate", 1), `&`, ``, 1) + `,`,
 		`Role:` + fmt.Sprintf("%v", this.Role) + `,`,
 		`Attachments:` + strings.Replace(fmt.Sprintf("%v", this.Attachments), "NetworkAttachment", "NetworkAttachment", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4692,6 +5182,7 @@ func (this *Service) String() string {
 		`PreviousSpec:` + strings.Replace(fmt.Sprintf("%v", this.PreviousSpec), "ServiceSpec", "ServiceSpec", 1) + `,`,
 		`SpecVersion:` + strings.Replace(fmt.Sprintf("%v", this.SpecVersion), "Version", "Version", 1) + `,`,
 		`PreviousSpecVersion:` + strings.Replace(fmt.Sprintf("%v", this.PreviousSpecVersion), "Version", "Version", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4704,6 +5195,7 @@ func (this *Endpoint) String() string {
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "EndpointSpec", "EndpointSpec", 1) + `,`,
 		`Ports:` + strings.Replace(fmt.Sprintf("%v", this.Ports), "PortConfig", "PortConfig", 1) + `,`,
 		`VirtualIPs:` + strings.Replace(fmt.Sprintf("%v", this.VirtualIPs), "Endpoint_VirtualIP", "Endpoint_VirtualIP", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4715,6 +5207,7 @@ func (this *Endpoint_VirtualIP) String() string {
 	s := strings.Join([]string{`&Endpoint_VirtualIP{`,
 		`NetworkID:` + fmt.Sprintf("%v", this.NetworkID) + `,`,
 		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4739,6 +5232,7 @@ func (this *Task) String() string {
 		`LogDriver:` + strings.Replace(fmt.Sprintf("%v", this.LogDriver), "Driver", "Driver", 1) + `,`,
 		`SpecVersion:` + strings.Replace(fmt.Sprintf("%v", this.SpecVersion), "Version", "Version", 1) + `,`,
 		`AssignedGenericResources:` + strings.Replace(fmt.Sprintf("%v", this.AssignedGenericResources), "GenericResource", "GenericResource", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4751,7 +5245,7 @@ func (this *NetworkAttachment) String() string {
 	for k, _ := range this.DriverAttachmentOpts {
 		keysForDriverAttachmentOpts = append(keysForDriverAttachmentOpts, k)
 	}
-	sortkeys.Strings(keysForDriverAttachmentOpts)
+	github_com_gogo_protobuf_sortkeys.Strings(keysForDriverAttachmentOpts)
 	mapStringForDriverAttachmentOpts := "map[string]string{"
 	for _, k := range keysForDriverAttachmentOpts {
 		mapStringForDriverAttachmentOpts += fmt.Sprintf("%v: %v,", k, this.DriverAttachmentOpts[k])
@@ -4762,6 +5256,7 @@ func (this *NetworkAttachment) String() string {
 		`Addresses:` + fmt.Sprintf("%v", this.Addresses) + `,`,
 		`Aliases:` + fmt.Sprintf("%v", this.Aliases) + `,`,
 		`DriverAttachmentOpts:` + mapStringForDriverAttachmentOpts + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4776,6 +5271,7 @@ func (this *Network) String() string {
 		`Spec:` + strings.Replace(strings.Replace(this.Spec.String(), "NetworkSpec", "NetworkSpec", 1), `&`, ``, 1) + `,`,
 		`DriverState:` + strings.Replace(fmt.Sprintf("%v", this.DriverState), "Driver", "Driver", 1) + `,`,
 		`IPAM:` + strings.Replace(fmt.Sprintf("%v", this.IPAM), "IPAMOptions", "IPAMOptions", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4788,7 +5284,7 @@ func (this *Cluster) String() string {
 	for k, _ := range this.BlacklistedCertificates {
 		keysForBlacklistedCertificates = append(keysForBlacklistedCertificates, k)
 	}
-	sortkeys.Strings(keysForBlacklistedCertificates)
+	github_com_gogo_protobuf_sortkeys.Strings(keysForBlacklistedCertificates)
 	mapStringForBlacklistedCertificates := "map[string]*BlacklistedCertificate{"
 	for _, k := range keysForBlacklistedCertificates {
 		mapStringForBlacklistedCertificates += fmt.Sprintf("%v: %v,", k, this.BlacklistedCertificates[k])
@@ -4804,6 +5300,7 @@ func (this *Cluster) String() string {
 		`BlacklistedCertificates:` + mapStringForBlacklistedCertificates + `,`,
 		`UnlockKeys:` + strings.Replace(fmt.Sprintf("%v", this.UnlockKeys), "EncryptionKey", "EncryptionKey", 1) + `,`,
 		`FIPS:` + fmt.Sprintf("%v", this.FIPS) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4817,6 +5314,7 @@ func (this *Secret) String() string {
 		`Meta:` + strings.Replace(strings.Replace(this.Meta.String(), "Meta", "Meta", 1), `&`, ``, 1) + `,`,
 		`Spec:` + strings.Replace(strings.Replace(this.Spec.String(), "SecretSpec", "SecretSpec", 1), `&`, ``, 1) + `,`,
 		`Internal:` + fmt.Sprintf("%v", this.Internal) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4829,6 +5327,7 @@ func (this *Config) String() string {
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
 		`Meta:` + strings.Replace(strings.Replace(this.Meta.String(), "Meta", "Meta", 1), `&`, ``, 1) + `,`,
 		`Spec:` + strings.Replace(strings.Replace(this.Spec.String(), "ConfigSpec", "ConfigSpec", 1), `&`, ``, 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4842,7 +5341,8 @@ func (this *Resource) String() string {
 		`Meta:` + strings.Replace(strings.Replace(this.Meta.String(), "Meta", "Meta", 1), `&`, ``, 1) + `,`,
 		`Annotations:` + strings.Replace(strings.Replace(this.Annotations.String(), "Annotations", "Annotations", 1), `&`, ``, 1) + `,`,
 		`Kind:` + fmt.Sprintf("%v", this.Kind) + `,`,
-		`Payload:` + strings.Replace(fmt.Sprintf("%v", this.Payload), "Any", "google_protobuf3.Any", 1) + `,`,
+		`Payload:` + strings.Replace(fmt.Sprintf("%v", this.Payload), "Any", "types.Any", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4856,6 +5356,7 @@ func (this *Extension) String() string {
 		`Meta:` + strings.Replace(strings.Replace(this.Meta.String(), "Meta", "Meta", 1), `&`, ``, 1) + `,`,
 		`Annotations:` + strings.Replace(strings.Replace(this.Annotations.String(), "Annotations", "Annotations", 1), `&`, ``, 1) + `,`,
 		`Description:` + fmt.Sprintf("%v", this.Description) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4954,7 +5455,7 @@ func (m *Meta) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.CreatedAt == nil {
-				m.CreatedAt = &google_protobuf.Timestamp{}
+				m.CreatedAt = &types.Timestamp{}
 			}
 			if err := m.CreatedAt.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -4987,7 +5488,7 @@ func (m *Meta) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.UpdatedAt == nil {
-				m.UpdatedAt = &google_protobuf.Timestamp{}
+				m.UpdatedAt = &types.Timestamp{}
 			}
 			if err := m.UpdatedAt.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -5005,6 +5506,7 @@ func (m *Meta) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -5353,6 +5855,7 @@ func (m *Node) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -5657,6 +6160,7 @@ func (m *Service) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -5802,6 +6306,7 @@ func (m *Endpoint) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -5910,6 +6415,7 @@ func (m *Endpoint_VirtualIP) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -6396,6 +6902,7 @@ func (m *Task) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -6655,6 +7162,7 @@ func (m *NetworkAttachment) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -6860,6 +7368,7 @@ func (m *Network) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -7253,6 +7762,7 @@ func (m *Cluster) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -7412,6 +7922,7 @@ func (m *Secret) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -7551,6 +8062,7 @@ func (m *Config) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -7734,7 +8246,7 @@ func (m *Resource) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Payload == nil {
-				m.Payload = &google_protobuf3.Any{}
+				m.Payload = &types.Any{}
 			}
 			if err := m.Payload.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -7752,6 +8264,7 @@ func (m *Resource) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -7920,6 +8433,7 @@ func (m *Extension) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -8034,9 +8548,11 @@ var (
 	ErrIntOverflowObjects   = fmt.Errorf("proto: integer overflow")
 )
 
-func init() { proto.RegisterFile("github.com/docker/swarmkit/api/objects.proto", fileDescriptorObjects) }
+func init() {
+	proto.RegisterFile("github.com/docker/swarmkit/api/objects.proto", fileDescriptor_objects_f5a65a8247a86d75)
+}
 
-var fileDescriptorObjects = []byte{
+var fileDescriptor_objects_f5a65a8247a86d75 = []byte{
 	// 1544 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x58, 0x4d, 0x73, 0xdb, 0x4c,
 	0x1d, 0xaf, 0x6c, 0xc5, 0x2f, 0x7f, 0x27, 0x26, 0xec, 0x13, 0x82, 0x6a, 0x82, 0x1d, 0xfc, 0x0c,

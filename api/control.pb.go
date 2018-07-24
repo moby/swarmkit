@@ -6,10 +6,10 @@ package api
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
+import _ "github.com/gogo/protobuf/gogoproto"
 
-import deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import context "golang.org/x/net/context"
 import grpc "google.golang.org/grpc"
@@ -23,7 +23,7 @@ import rafttime "time"
 
 import strings "strings"
 import reflect "reflect"
-import sortkeys "github.com/gogo/protobuf/sortkeys"
+import github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
 
 import io "io"
 
@@ -31,6 +31,12 @@ import io "io"
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type UpdateServiceRequest_Rollback int32
 
@@ -56,32 +62,125 @@ func (x UpdateServiceRequest_Rollback) String() string {
 	return proto.EnumName(UpdateServiceRequest_Rollback_name, int32(x))
 }
 func (UpdateServiceRequest_Rollback) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{18, 0}
+	return fileDescriptor_control_040dca6f676eeedc, []int{18, 0}
 }
 
 type GetNodeRequest struct {
-	NodeID string `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	NodeID               string   `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetNodeRequest) Reset()                    { *m = GetNodeRequest{} }
-func (*GetNodeRequest) ProtoMessage()               {}
-func (*GetNodeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{0} }
+func (m *GetNodeRequest) Reset()      { *m = GetNodeRequest{} }
+func (*GetNodeRequest) ProtoMessage() {}
+func (*GetNodeRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{0}
+}
+func (m *GetNodeRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GetNodeRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GetNodeRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GetNodeRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetNodeRequest.Merge(dst, src)
+}
+func (m *GetNodeRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *GetNodeRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetNodeRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetNodeRequest proto.InternalMessageInfo
 
 type GetNodeResponse struct {
-	Node *Node `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
+	Node                 *Node    `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetNodeResponse) Reset()                    { *m = GetNodeResponse{} }
-func (*GetNodeResponse) ProtoMessage()               {}
-func (*GetNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{1} }
+func (m *GetNodeResponse) Reset()      { *m = GetNodeResponse{} }
+func (*GetNodeResponse) ProtoMessage() {}
+func (*GetNodeResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{1}
+}
+func (m *GetNodeResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GetNodeResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GetNodeResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GetNodeResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetNodeResponse.Merge(dst, src)
+}
+func (m *GetNodeResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *GetNodeResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetNodeResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetNodeResponse proto.InternalMessageInfo
 
 type ListNodesRequest struct {
-	Filters *ListNodesRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+	Filters              *ListNodesRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
+	XXX_unrecognized     []byte                    `json:"-"`
+	XXX_sizecache        int32                     `json:"-"`
 }
 
-func (m *ListNodesRequest) Reset()                    { *m = ListNodesRequest{} }
-func (*ListNodesRequest) ProtoMessage()               {}
-func (*ListNodesRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{2} }
+func (m *ListNodesRequest) Reset()      { *m = ListNodesRequest{} }
+func (*ListNodesRequest) ProtoMessage() {}
+func (*ListNodesRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{2}
+}
+func (m *ListNodesRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListNodesRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListNodesRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListNodesRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListNodesRequest.Merge(dst, src)
+}
+func (m *ListNodesRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListNodesRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListNodesRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListNodesRequest proto.InternalMessageInfo
 
 type ListNodesRequest_Filters struct {
 	Names       []string              `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
@@ -90,99 +189,438 @@ type ListNodesRequest_Filters struct {
 	Memberships []NodeSpec_Membership `protobuf:"varint,4,rep,name=memberships,enum=docker.swarmkit.v1.NodeSpec_Membership" json:"memberships,omitempty"`
 	Roles       []NodeRole            `protobuf:"varint,5,rep,name=roles,enum=docker.swarmkit.v1.NodeRole" json:"roles,omitempty"`
 	// NamePrefixes matches all objects with the given prefixes
-	NamePrefixes []string `protobuf:"bytes,6,rep,name=name_prefixes,json=namePrefixes" json:"name_prefixes,omitempty"`
+	NamePrefixes         []string `protobuf:"bytes,6,rep,name=name_prefixes,json=namePrefixes" json:"name_prefixes,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *ListNodesRequest_Filters) Reset()      { *m = ListNodesRequest_Filters{} }
 func (*ListNodesRequest_Filters) ProtoMessage() {}
 func (*ListNodesRequest_Filters) Descriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{2, 0}
+	return fileDescriptor_control_040dca6f676eeedc, []int{2, 0}
 }
+func (m *ListNodesRequest_Filters) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListNodesRequest_Filters) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListNodesRequest_Filters.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListNodesRequest_Filters) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListNodesRequest_Filters.Merge(dst, src)
+}
+func (m *ListNodesRequest_Filters) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListNodesRequest_Filters) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListNodesRequest_Filters.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListNodesRequest_Filters proto.InternalMessageInfo
 
 type ListNodesResponse struct {
-	Nodes []*Node `protobuf:"bytes,1,rep,name=nodes" json:"nodes,omitempty"`
+	Nodes                []*Node  `protobuf:"bytes,1,rep,name=nodes" json:"nodes,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ListNodesResponse) Reset()                    { *m = ListNodesResponse{} }
-func (*ListNodesResponse) ProtoMessage()               {}
-func (*ListNodesResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{3} }
+func (m *ListNodesResponse) Reset()      { *m = ListNodesResponse{} }
+func (*ListNodesResponse) ProtoMessage() {}
+func (*ListNodesResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{3}
+}
+func (m *ListNodesResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListNodesResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListNodesResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListNodesResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListNodesResponse.Merge(dst, src)
+}
+func (m *ListNodesResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListNodesResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListNodesResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListNodesResponse proto.InternalMessageInfo
 
 // UpdateNodeRequest requests an update to the specified node. This may be used
 // to request a new availability for a node, such as PAUSE. Invalid updates
 // will be denied and cause an error.
 type UpdateNodeRequest struct {
-	NodeID      string    `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	NodeVersion *Version  `protobuf:"bytes,2,opt,name=node_version,json=nodeVersion" json:"node_version,omitempty"`
-	Spec        *NodeSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	NodeID               string    `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	NodeVersion          *Version  `protobuf:"bytes,2,opt,name=node_version,json=nodeVersion" json:"node_version,omitempty"`
+	Spec                 *NodeSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
 }
 
-func (m *UpdateNodeRequest) Reset()                    { *m = UpdateNodeRequest{} }
-func (*UpdateNodeRequest) ProtoMessage()               {}
-func (*UpdateNodeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{4} }
+func (m *UpdateNodeRequest) Reset()      { *m = UpdateNodeRequest{} }
+func (*UpdateNodeRequest) ProtoMessage() {}
+func (*UpdateNodeRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{4}
+}
+func (m *UpdateNodeRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UpdateNodeRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UpdateNodeRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *UpdateNodeRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateNodeRequest.Merge(dst, src)
+}
+func (m *UpdateNodeRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *UpdateNodeRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateNodeRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UpdateNodeRequest proto.InternalMessageInfo
 
 type UpdateNodeResponse struct {
-	Node *Node `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
+	Node                 *Node    `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *UpdateNodeResponse) Reset()                    { *m = UpdateNodeResponse{} }
-func (*UpdateNodeResponse) ProtoMessage()               {}
-func (*UpdateNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{5} }
+func (m *UpdateNodeResponse) Reset()      { *m = UpdateNodeResponse{} }
+func (*UpdateNodeResponse) ProtoMessage() {}
+func (*UpdateNodeResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{5}
+}
+func (m *UpdateNodeResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UpdateNodeResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UpdateNodeResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *UpdateNodeResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateNodeResponse.Merge(dst, src)
+}
+func (m *UpdateNodeResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *UpdateNodeResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateNodeResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UpdateNodeResponse proto.InternalMessageInfo
 
 // RemoveNodeRequest requests to delete the specified node from store.
 type RemoveNodeRequest struct {
-	NodeID string `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	Force  bool   `protobuf:"varint,2,opt,name=force,proto3" json:"force,omitempty"`
+	NodeID               string   `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	Force                bool     `protobuf:"varint,2,opt,name=force,proto3" json:"force,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RemoveNodeRequest) Reset()                    { *m = RemoveNodeRequest{} }
-func (*RemoveNodeRequest) ProtoMessage()               {}
-func (*RemoveNodeRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{6} }
+func (m *RemoveNodeRequest) Reset()      { *m = RemoveNodeRequest{} }
+func (*RemoveNodeRequest) ProtoMessage() {}
+func (*RemoveNodeRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{6}
+}
+func (m *RemoveNodeRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RemoveNodeRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RemoveNodeRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RemoveNodeRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveNodeRequest.Merge(dst, src)
+}
+func (m *RemoveNodeRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RemoveNodeRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveNodeRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveNodeRequest proto.InternalMessageInfo
 
 type RemoveNodeResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RemoveNodeResponse) Reset()                    { *m = RemoveNodeResponse{} }
-func (*RemoveNodeResponse) ProtoMessage()               {}
-func (*RemoveNodeResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{7} }
+func (m *RemoveNodeResponse) Reset()      { *m = RemoveNodeResponse{} }
+func (*RemoveNodeResponse) ProtoMessage() {}
+func (*RemoveNodeResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{7}
+}
+func (m *RemoveNodeResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RemoveNodeResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RemoveNodeResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RemoveNodeResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveNodeResponse.Merge(dst, src)
+}
+func (m *RemoveNodeResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RemoveNodeResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveNodeResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveNodeResponse proto.InternalMessageInfo
 
 type GetTaskRequest struct {
-	TaskID string `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	TaskID               string   `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetTaskRequest) Reset()                    { *m = GetTaskRequest{} }
-func (*GetTaskRequest) ProtoMessage()               {}
-func (*GetTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{8} }
+func (m *GetTaskRequest) Reset()      { *m = GetTaskRequest{} }
+func (*GetTaskRequest) ProtoMessage() {}
+func (*GetTaskRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{8}
+}
+func (m *GetTaskRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GetTaskRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GetTaskRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GetTaskRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetTaskRequest.Merge(dst, src)
+}
+func (m *GetTaskRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *GetTaskRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetTaskRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetTaskRequest proto.InternalMessageInfo
 
 type GetTaskResponse struct {
-	Task *Task `protobuf:"bytes,1,opt,name=task" json:"task,omitempty"`
+	Task                 *Task    `protobuf:"bytes,1,opt,name=task" json:"task,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetTaskResponse) Reset()                    { *m = GetTaskResponse{} }
-func (*GetTaskResponse) ProtoMessage()               {}
-func (*GetTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{9} }
+func (m *GetTaskResponse) Reset()      { *m = GetTaskResponse{} }
+func (*GetTaskResponse) ProtoMessage() {}
+func (*GetTaskResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{9}
+}
+func (m *GetTaskResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GetTaskResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GetTaskResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GetTaskResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetTaskResponse.Merge(dst, src)
+}
+func (m *GetTaskResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *GetTaskResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetTaskResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetTaskResponse proto.InternalMessageInfo
 
 type RemoveTaskRequest struct {
-	TaskID string `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	TaskID               string   `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RemoveTaskRequest) Reset()                    { *m = RemoveTaskRequest{} }
-func (*RemoveTaskRequest) ProtoMessage()               {}
-func (*RemoveTaskRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{10} }
+func (m *RemoveTaskRequest) Reset()      { *m = RemoveTaskRequest{} }
+func (*RemoveTaskRequest) ProtoMessage() {}
+func (*RemoveTaskRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{10}
+}
+func (m *RemoveTaskRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RemoveTaskRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RemoveTaskRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RemoveTaskRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveTaskRequest.Merge(dst, src)
+}
+func (m *RemoveTaskRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RemoveTaskRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveTaskRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveTaskRequest proto.InternalMessageInfo
 
 type RemoveTaskResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RemoveTaskResponse) Reset()                    { *m = RemoveTaskResponse{} }
-func (*RemoveTaskResponse) ProtoMessage()               {}
-func (*RemoveTaskResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{11} }
+func (m *RemoveTaskResponse) Reset()      { *m = RemoveTaskResponse{} }
+func (*RemoveTaskResponse) ProtoMessage() {}
+func (*RemoveTaskResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{11}
+}
+func (m *RemoveTaskResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RemoveTaskResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RemoveTaskResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RemoveTaskResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveTaskResponse.Merge(dst, src)
+}
+func (m *RemoveTaskResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RemoveTaskResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveTaskResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveTaskResponse proto.InternalMessageInfo
 
 type ListTasksRequest struct {
-	Filters *ListTasksRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+	Filters              *ListTasksRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
+	XXX_unrecognized     []byte                    `json:"-"`
+	XXX_sizecache        int32                     `json:"-"`
 }
 
-func (m *ListTasksRequest) Reset()                    { *m = ListTasksRequest{} }
-func (*ListTasksRequest) ProtoMessage()               {}
-func (*ListTasksRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{12} }
+func (m *ListTasksRequest) Reset()      { *m = ListTasksRequest{} }
+func (*ListTasksRequest) ProtoMessage() {}
+func (*ListTasksRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{12}
+}
+func (m *ListTasksRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListTasksRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListTasksRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListTasksRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListTasksRequest.Merge(dst, src)
+}
+func (m *ListTasksRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListTasksRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListTasksRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListTasksRequest proto.InternalMessageInfo
 
 type ListTasksRequest_Filters struct {
 	Names         []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
@@ -198,55 +636,239 @@ type ListTasksRequest_Filters struct {
 	// service definition.
 	// Note: this is intended for internal status reporting rather
 	// than being exposed to users. It may be removed in the future.
-	UpToDate bool `protobuf:"varint,8,opt,name=up_to_date,json=upToDate,proto3" json:"up_to_date,omitempty"`
+	UpToDate             bool     `protobuf:"varint,8,opt,name=up_to_date,json=upToDate,proto3" json:"up_to_date,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *ListTasksRequest_Filters) Reset()      { *m = ListTasksRequest_Filters{} }
 func (*ListTasksRequest_Filters) ProtoMessage() {}
 func (*ListTasksRequest_Filters) Descriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{12, 0}
+	return fileDescriptor_control_040dca6f676eeedc, []int{12, 0}
 }
+func (m *ListTasksRequest_Filters) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListTasksRequest_Filters) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListTasksRequest_Filters.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListTasksRequest_Filters) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListTasksRequest_Filters.Merge(dst, src)
+}
+func (m *ListTasksRequest_Filters) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListTasksRequest_Filters) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListTasksRequest_Filters.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListTasksRequest_Filters proto.InternalMessageInfo
 
 type ListTasksResponse struct {
-	Tasks []*Task `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
+	Tasks                []*Task  `protobuf:"bytes,1,rep,name=tasks" json:"tasks,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ListTasksResponse) Reset()                    { *m = ListTasksResponse{} }
-func (*ListTasksResponse) ProtoMessage()               {}
-func (*ListTasksResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{13} }
+func (m *ListTasksResponse) Reset()      { *m = ListTasksResponse{} }
+func (*ListTasksResponse) ProtoMessage() {}
+func (*ListTasksResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{13}
+}
+func (m *ListTasksResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListTasksResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListTasksResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListTasksResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListTasksResponse.Merge(dst, src)
+}
+func (m *ListTasksResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListTasksResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListTasksResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListTasksResponse proto.InternalMessageInfo
 
 type CreateServiceRequest struct {
-	Spec *ServiceSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	Spec                 *ServiceSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
+	XXX_unrecognized     []byte       `json:"-"`
+	XXX_sizecache        int32        `json:"-"`
 }
 
-func (m *CreateServiceRequest) Reset()                    { *m = CreateServiceRequest{} }
-func (*CreateServiceRequest) ProtoMessage()               {}
-func (*CreateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{14} }
+func (m *CreateServiceRequest) Reset()      { *m = CreateServiceRequest{} }
+func (*CreateServiceRequest) ProtoMessage() {}
+func (*CreateServiceRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{14}
+}
+func (m *CreateServiceRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *CreateServiceRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_CreateServiceRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *CreateServiceRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CreateServiceRequest.Merge(dst, src)
+}
+func (m *CreateServiceRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *CreateServiceRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CreateServiceRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CreateServiceRequest proto.InternalMessageInfo
 
 type CreateServiceResponse struct {
-	Service *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
+	Service              *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CreateServiceResponse) Reset()                    { *m = CreateServiceResponse{} }
-func (*CreateServiceResponse) ProtoMessage()               {}
-func (*CreateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{15} }
+func (m *CreateServiceResponse) Reset()      { *m = CreateServiceResponse{} }
+func (*CreateServiceResponse) ProtoMessage() {}
+func (*CreateServiceResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{15}
+}
+func (m *CreateServiceResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *CreateServiceResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_CreateServiceResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *CreateServiceResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CreateServiceResponse.Merge(dst, src)
+}
+func (m *CreateServiceResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *CreateServiceResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_CreateServiceResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CreateServiceResponse proto.InternalMessageInfo
 
 type GetServiceRequest struct {
-	ServiceID      string `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
-	InsertDefaults bool   `protobuf:"varint,2,opt,name=insert_defaults,json=insertDefaults,proto3" json:"insert_defaults,omitempty"`
+	ServiceID            string   `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	InsertDefaults       bool     `protobuf:"varint,2,opt,name=insert_defaults,json=insertDefaults,proto3" json:"insert_defaults,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetServiceRequest) Reset()                    { *m = GetServiceRequest{} }
-func (*GetServiceRequest) ProtoMessage()               {}
-func (*GetServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{16} }
+func (m *GetServiceRequest) Reset()      { *m = GetServiceRequest{} }
+func (*GetServiceRequest) ProtoMessage() {}
+func (*GetServiceRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{16}
+}
+func (m *GetServiceRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GetServiceRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GetServiceRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GetServiceRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetServiceRequest.Merge(dst, src)
+}
+func (m *GetServiceRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *GetServiceRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetServiceRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetServiceRequest proto.InternalMessageInfo
 
 type GetServiceResponse struct {
-	Service *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
+	Service              *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetServiceResponse) Reset()                    { *m = GetServiceResponse{} }
-func (*GetServiceResponse) ProtoMessage()               {}
-func (*GetServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{17} }
+func (m *GetServiceResponse) Reset()      { *m = GetServiceResponse{} }
+func (*GetServiceResponse) ProtoMessage() {}
+func (*GetServiceResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{17}
+}
+func (m *GetServiceResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GetServiceResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GetServiceResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GetServiceResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetServiceResponse.Merge(dst, src)
+}
+func (m *GetServiceResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *GetServiceResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetServiceResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetServiceResponse proto.InternalMessageInfo
 
 type UpdateServiceRequest struct {
 	ServiceID      string       `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
@@ -255,191 +877,836 @@ type UpdateServiceRequest struct {
 	// Rollback may be set to PREVIOUS to request a rollback (the service's
 	// spec will be set to the value of its previous_spec field). In this
 	// case, the spec field of this request is ignored.
-	Rollback UpdateServiceRequest_Rollback `protobuf:"varint,4,opt,name=rollback,proto3,enum=docker.swarmkit.v1.UpdateServiceRequest_Rollback" json:"rollback,omitempty"`
+	Rollback             UpdateServiceRequest_Rollback `protobuf:"varint,4,opt,name=rollback,proto3,enum=docker.swarmkit.v1.UpdateServiceRequest_Rollback" json:"rollback,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                      `json:"-"`
+	XXX_unrecognized     []byte                        `json:"-"`
+	XXX_sizecache        int32                         `json:"-"`
 }
 
-func (m *UpdateServiceRequest) Reset()                    { *m = UpdateServiceRequest{} }
-func (*UpdateServiceRequest) ProtoMessage()               {}
-func (*UpdateServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{18} }
+func (m *UpdateServiceRequest) Reset()      { *m = UpdateServiceRequest{} }
+func (*UpdateServiceRequest) ProtoMessage() {}
+func (*UpdateServiceRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{18}
+}
+func (m *UpdateServiceRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UpdateServiceRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UpdateServiceRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *UpdateServiceRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateServiceRequest.Merge(dst, src)
+}
+func (m *UpdateServiceRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *UpdateServiceRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateServiceRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UpdateServiceRequest proto.InternalMessageInfo
 
 type UpdateServiceResponse struct {
-	Service *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
+	Service              *Service `protobuf:"bytes,1,opt,name=service" json:"service,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *UpdateServiceResponse) Reset()                    { *m = UpdateServiceResponse{} }
-func (*UpdateServiceResponse) ProtoMessage()               {}
-func (*UpdateServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{19} }
+func (m *UpdateServiceResponse) Reset()      { *m = UpdateServiceResponse{} }
+func (*UpdateServiceResponse) ProtoMessage() {}
+func (*UpdateServiceResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{19}
+}
+func (m *UpdateServiceResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UpdateServiceResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UpdateServiceResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *UpdateServiceResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateServiceResponse.Merge(dst, src)
+}
+func (m *UpdateServiceResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *UpdateServiceResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateServiceResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UpdateServiceResponse proto.InternalMessageInfo
 
 type RemoveServiceRequest struct {
-	ServiceID string `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	ServiceID            string   `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RemoveServiceRequest) Reset()                    { *m = RemoveServiceRequest{} }
-func (*RemoveServiceRequest) ProtoMessage()               {}
-func (*RemoveServiceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{20} }
+func (m *RemoveServiceRequest) Reset()      { *m = RemoveServiceRequest{} }
+func (*RemoveServiceRequest) ProtoMessage() {}
+func (*RemoveServiceRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{20}
+}
+func (m *RemoveServiceRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RemoveServiceRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RemoveServiceRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RemoveServiceRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveServiceRequest.Merge(dst, src)
+}
+func (m *RemoveServiceRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RemoveServiceRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveServiceRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveServiceRequest proto.InternalMessageInfo
 
 type RemoveServiceResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RemoveServiceResponse) Reset()                    { *m = RemoveServiceResponse{} }
-func (*RemoveServiceResponse) ProtoMessage()               {}
-func (*RemoveServiceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{21} }
+func (m *RemoveServiceResponse) Reset()      { *m = RemoveServiceResponse{} }
+func (*RemoveServiceResponse) ProtoMessage() {}
+func (*RemoveServiceResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{21}
+}
+func (m *RemoveServiceResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RemoveServiceResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RemoveServiceResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RemoveServiceResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveServiceResponse.Merge(dst, src)
+}
+func (m *RemoveServiceResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RemoveServiceResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveServiceResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveServiceResponse proto.InternalMessageInfo
 
 type ListServicesRequest struct {
-	Filters *ListServicesRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+	Filters              *ListServicesRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                     `json:"-"`
+	XXX_unrecognized     []byte                       `json:"-"`
+	XXX_sizecache        int32                        `json:"-"`
 }
 
-func (m *ListServicesRequest) Reset()                    { *m = ListServicesRequest{} }
-func (*ListServicesRequest) ProtoMessage()               {}
-func (*ListServicesRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{22} }
+func (m *ListServicesRequest) Reset()      { *m = ListServicesRequest{} }
+func (*ListServicesRequest) ProtoMessage() {}
+func (*ListServicesRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{22}
+}
+func (m *ListServicesRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListServicesRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListServicesRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListServicesRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListServicesRequest.Merge(dst, src)
+}
+func (m *ListServicesRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListServicesRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListServicesRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListServicesRequest proto.InternalMessageInfo
 
 type ListServicesRequest_Filters struct {
 	Names      []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
 	IDPrefixes []string          `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
 	Labels     map[string]string `protobuf:"bytes,3,rep,name=labels" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// NamePrefixes matches all objects with the given prefixes
-	NamePrefixes []string `protobuf:"bytes,4,rep,name=name_prefixes,json=namePrefixes" json:"name_prefixes,omitempty"`
-	Runtimes     []string `protobuf:"bytes,5,rep,name=runtimes" json:"runtimes,omitempty"`
+	NamePrefixes         []string `protobuf:"bytes,4,rep,name=name_prefixes,json=namePrefixes" json:"name_prefixes,omitempty"`
+	Runtimes             []string `protobuf:"bytes,5,rep,name=runtimes" json:"runtimes,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *ListServicesRequest_Filters) Reset()      { *m = ListServicesRequest_Filters{} }
 func (*ListServicesRequest_Filters) ProtoMessage() {}
 func (*ListServicesRequest_Filters) Descriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{22, 0}
+	return fileDescriptor_control_040dca6f676eeedc, []int{22, 0}
 }
+func (m *ListServicesRequest_Filters) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListServicesRequest_Filters) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListServicesRequest_Filters.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListServicesRequest_Filters) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListServicesRequest_Filters.Merge(dst, src)
+}
+func (m *ListServicesRequest_Filters) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListServicesRequest_Filters) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListServicesRequest_Filters.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListServicesRequest_Filters proto.InternalMessageInfo
 
 type ListServicesResponse struct {
-	Services []*Service `protobuf:"bytes,1,rep,name=services" json:"services,omitempty"`
+	Services             []*Service `protobuf:"bytes,1,rep,name=services" json:"services,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
 }
 
-func (m *ListServicesResponse) Reset()                    { *m = ListServicesResponse{} }
-func (*ListServicesResponse) ProtoMessage()               {}
-func (*ListServicesResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{23} }
+func (m *ListServicesResponse) Reset()      { *m = ListServicesResponse{} }
+func (*ListServicesResponse) ProtoMessage() {}
+func (*ListServicesResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{23}
+}
+func (m *ListServicesResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListServicesResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListServicesResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListServicesResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListServicesResponse.Merge(dst, src)
+}
+func (m *ListServicesResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListServicesResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListServicesResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListServicesResponse proto.InternalMessageInfo
 
 type CreateNetworkRequest struct {
-	Spec *NetworkSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	Spec                 *NetworkSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
+	XXX_unrecognized     []byte       `json:"-"`
+	XXX_sizecache        int32        `json:"-"`
 }
 
-func (m *CreateNetworkRequest) Reset()                    { *m = CreateNetworkRequest{} }
-func (*CreateNetworkRequest) ProtoMessage()               {}
-func (*CreateNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{24} }
+func (m *CreateNetworkRequest) Reset()      { *m = CreateNetworkRequest{} }
+func (*CreateNetworkRequest) ProtoMessage() {}
+func (*CreateNetworkRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{24}
+}
+func (m *CreateNetworkRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *CreateNetworkRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_CreateNetworkRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *CreateNetworkRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CreateNetworkRequest.Merge(dst, src)
+}
+func (m *CreateNetworkRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *CreateNetworkRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CreateNetworkRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CreateNetworkRequest proto.InternalMessageInfo
 
 type CreateNetworkResponse struct {
-	Network *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
+	Network              *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CreateNetworkResponse) Reset()                    { *m = CreateNetworkResponse{} }
-func (*CreateNetworkResponse) ProtoMessage()               {}
-func (*CreateNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{25} }
+func (m *CreateNetworkResponse) Reset()      { *m = CreateNetworkResponse{} }
+func (*CreateNetworkResponse) ProtoMessage() {}
+func (*CreateNetworkResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{25}
+}
+func (m *CreateNetworkResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *CreateNetworkResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_CreateNetworkResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *CreateNetworkResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CreateNetworkResponse.Merge(dst, src)
+}
+func (m *CreateNetworkResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *CreateNetworkResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_CreateNetworkResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CreateNetworkResponse proto.InternalMessageInfo
 
 type GetNetworkRequest struct {
-	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	NetworkID string `protobuf:"bytes,2,opt,name=network_id,json=networkId,proto3" json:"network_id,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	NetworkID            string   `protobuf:"bytes,2,opt,name=network_id,json=networkId,proto3" json:"network_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetNetworkRequest) Reset()                    { *m = GetNetworkRequest{} }
-func (*GetNetworkRequest) ProtoMessage()               {}
-func (*GetNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{26} }
+func (m *GetNetworkRequest) Reset()      { *m = GetNetworkRequest{} }
+func (*GetNetworkRequest) ProtoMessage() {}
+func (*GetNetworkRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{26}
+}
+func (m *GetNetworkRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GetNetworkRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GetNetworkRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GetNetworkRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetNetworkRequest.Merge(dst, src)
+}
+func (m *GetNetworkRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *GetNetworkRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetNetworkRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetNetworkRequest proto.InternalMessageInfo
 
 type GetNetworkResponse struct {
-	Network *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
+	Network              *Network `protobuf:"bytes,1,opt,name=network" json:"network,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetNetworkResponse) Reset()                    { *m = GetNetworkResponse{} }
-func (*GetNetworkResponse) ProtoMessage()               {}
-func (*GetNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{27} }
+func (m *GetNetworkResponse) Reset()      { *m = GetNetworkResponse{} }
+func (*GetNetworkResponse) ProtoMessage() {}
+func (*GetNetworkResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{27}
+}
+func (m *GetNetworkResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GetNetworkResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GetNetworkResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GetNetworkResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetNetworkResponse.Merge(dst, src)
+}
+func (m *GetNetworkResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *GetNetworkResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetNetworkResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetNetworkResponse proto.InternalMessageInfo
 
 type RemoveNetworkRequest struct {
-	Name      string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	NetworkID string `protobuf:"bytes,2,opt,name=network_id,json=networkId,proto3" json:"network_id,omitempty"`
+	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	NetworkID            string   `protobuf:"bytes,2,opt,name=network_id,json=networkId,proto3" json:"network_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RemoveNetworkRequest) Reset()                    { *m = RemoveNetworkRequest{} }
-func (*RemoveNetworkRequest) ProtoMessage()               {}
-func (*RemoveNetworkRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{28} }
+func (m *RemoveNetworkRequest) Reset()      { *m = RemoveNetworkRequest{} }
+func (*RemoveNetworkRequest) ProtoMessage() {}
+func (*RemoveNetworkRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{28}
+}
+func (m *RemoveNetworkRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RemoveNetworkRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RemoveNetworkRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RemoveNetworkRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveNetworkRequest.Merge(dst, src)
+}
+func (m *RemoveNetworkRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RemoveNetworkRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveNetworkRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveNetworkRequest proto.InternalMessageInfo
 
 type RemoveNetworkResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RemoveNetworkResponse) Reset()                    { *m = RemoveNetworkResponse{} }
-func (*RemoveNetworkResponse) ProtoMessage()               {}
-func (*RemoveNetworkResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{29} }
+func (m *RemoveNetworkResponse) Reset()      { *m = RemoveNetworkResponse{} }
+func (*RemoveNetworkResponse) ProtoMessage() {}
+func (*RemoveNetworkResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{29}
+}
+func (m *RemoveNetworkResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RemoveNetworkResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RemoveNetworkResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RemoveNetworkResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveNetworkResponse.Merge(dst, src)
+}
+func (m *RemoveNetworkResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RemoveNetworkResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveNetworkResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveNetworkResponse proto.InternalMessageInfo
 
 type ListNetworksRequest struct {
-	Filters *ListNetworksRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+	Filters              *ListNetworksRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                     `json:"-"`
+	XXX_unrecognized     []byte                       `json:"-"`
+	XXX_sizecache        int32                        `json:"-"`
 }
 
-func (m *ListNetworksRequest) Reset()                    { *m = ListNetworksRequest{} }
-func (*ListNetworksRequest) ProtoMessage()               {}
-func (*ListNetworksRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{30} }
+func (m *ListNetworksRequest) Reset()      { *m = ListNetworksRequest{} }
+func (*ListNetworksRequest) ProtoMessage() {}
+func (*ListNetworksRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{30}
+}
+func (m *ListNetworksRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListNetworksRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListNetworksRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListNetworksRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListNetworksRequest.Merge(dst, src)
+}
+func (m *ListNetworksRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListNetworksRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListNetworksRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListNetworksRequest proto.InternalMessageInfo
 
 type ListNetworksRequest_Filters struct {
 	Names      []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
 	IDPrefixes []string          `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
 	Labels     map[string]string `protobuf:"bytes,3,rep,name=labels" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// NamePrefixes matches all objects with the given prefixes
-	NamePrefixes []string `protobuf:"bytes,4,rep,name=name_prefixes,json=namePrefixes" json:"name_prefixes,omitempty"`
+	NamePrefixes         []string `protobuf:"bytes,4,rep,name=name_prefixes,json=namePrefixes" json:"name_prefixes,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *ListNetworksRequest_Filters) Reset()      { *m = ListNetworksRequest_Filters{} }
 func (*ListNetworksRequest_Filters) ProtoMessage() {}
 func (*ListNetworksRequest_Filters) Descriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{30, 0}
+	return fileDescriptor_control_040dca6f676eeedc, []int{30, 0}
 }
+func (m *ListNetworksRequest_Filters) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListNetworksRequest_Filters) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListNetworksRequest_Filters.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListNetworksRequest_Filters) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListNetworksRequest_Filters.Merge(dst, src)
+}
+func (m *ListNetworksRequest_Filters) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListNetworksRequest_Filters) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListNetworksRequest_Filters.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListNetworksRequest_Filters proto.InternalMessageInfo
 
 type ListNetworksResponse struct {
-	Networks []*Network `protobuf:"bytes,1,rep,name=networks" json:"networks,omitempty"`
+	Networks             []*Network `protobuf:"bytes,1,rep,name=networks" json:"networks,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
 }
 
-func (m *ListNetworksResponse) Reset()                    { *m = ListNetworksResponse{} }
-func (*ListNetworksResponse) ProtoMessage()               {}
-func (*ListNetworksResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{31} }
+func (m *ListNetworksResponse) Reset()      { *m = ListNetworksResponse{} }
+func (*ListNetworksResponse) ProtoMessage() {}
+func (*ListNetworksResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{31}
+}
+func (m *ListNetworksResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListNetworksResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListNetworksResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListNetworksResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListNetworksResponse.Merge(dst, src)
+}
+func (m *ListNetworksResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListNetworksResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListNetworksResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListNetworksResponse proto.InternalMessageInfo
 
 type GetClusterRequest struct {
-	ClusterID string `protobuf:"bytes,1,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
+	ClusterID            string   `protobuf:"bytes,1,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetClusterRequest) Reset()                    { *m = GetClusterRequest{} }
-func (*GetClusterRequest) ProtoMessage()               {}
-func (*GetClusterRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{32} }
+func (m *GetClusterRequest) Reset()      { *m = GetClusterRequest{} }
+func (*GetClusterRequest) ProtoMessage() {}
+func (*GetClusterRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{32}
+}
+func (m *GetClusterRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GetClusterRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GetClusterRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GetClusterRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetClusterRequest.Merge(dst, src)
+}
+func (m *GetClusterRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *GetClusterRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetClusterRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetClusterRequest proto.InternalMessageInfo
 
 type GetClusterResponse struct {
-	Cluster *Cluster `protobuf:"bytes,1,opt,name=cluster" json:"cluster,omitempty"`
+	Cluster              *Cluster `protobuf:"bytes,1,opt,name=cluster" json:"cluster,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetClusterResponse) Reset()                    { *m = GetClusterResponse{} }
-func (*GetClusterResponse) ProtoMessage()               {}
-func (*GetClusterResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{33} }
+func (m *GetClusterResponse) Reset()      { *m = GetClusterResponse{} }
+func (*GetClusterResponse) ProtoMessage() {}
+func (*GetClusterResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{33}
+}
+func (m *GetClusterResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GetClusterResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GetClusterResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GetClusterResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetClusterResponse.Merge(dst, src)
+}
+func (m *GetClusterResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *GetClusterResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetClusterResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetClusterResponse proto.InternalMessageInfo
 
 type ListClustersRequest struct {
-	Filters *ListClustersRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+	Filters              *ListClustersRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                     `json:"-"`
+	XXX_unrecognized     []byte                       `json:"-"`
+	XXX_sizecache        int32                        `json:"-"`
 }
 
-func (m *ListClustersRequest) Reset()                    { *m = ListClustersRequest{} }
-func (*ListClustersRequest) ProtoMessage()               {}
-func (*ListClustersRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{34} }
+func (m *ListClustersRequest) Reset()      { *m = ListClustersRequest{} }
+func (*ListClustersRequest) ProtoMessage() {}
+func (*ListClustersRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{34}
+}
+func (m *ListClustersRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListClustersRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListClustersRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListClustersRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListClustersRequest.Merge(dst, src)
+}
+func (m *ListClustersRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListClustersRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListClustersRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListClustersRequest proto.InternalMessageInfo
 
 type ListClustersRequest_Filters struct {
 	Names      []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
 	IDPrefixes []string          `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
 	Labels     map[string]string `protobuf:"bytes,3,rep,name=labels" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// NamePrefixes matches all objects with the given prefixes
-	NamePrefixes []string `protobuf:"bytes,4,rep,name=name_prefixes,json=namePrefixes" json:"name_prefixes,omitempty"`
+	NamePrefixes         []string `protobuf:"bytes,4,rep,name=name_prefixes,json=namePrefixes" json:"name_prefixes,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *ListClustersRequest_Filters) Reset()      { *m = ListClustersRequest_Filters{} }
 func (*ListClustersRequest_Filters) ProtoMessage() {}
 func (*ListClustersRequest_Filters) Descriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{34, 0}
+	return fileDescriptor_control_040dca6f676eeedc, []int{34, 0}
 }
+func (m *ListClustersRequest_Filters) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListClustersRequest_Filters) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListClustersRequest_Filters.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListClustersRequest_Filters) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListClustersRequest_Filters.Merge(dst, src)
+}
+func (m *ListClustersRequest_Filters) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListClustersRequest_Filters) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListClustersRequest_Filters.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListClustersRequest_Filters proto.InternalMessageInfo
 
 type ListClustersResponse struct {
-	Clusters []*Cluster `protobuf:"bytes,1,rep,name=clusters" json:"clusters,omitempty"`
+	Clusters             []*Cluster `protobuf:"bytes,1,rep,name=clusters" json:"clusters,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
 }
 
-func (m *ListClustersResponse) Reset()                    { *m = ListClustersResponse{} }
-func (*ListClustersResponse) ProtoMessage()               {}
-func (*ListClustersResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{35} }
+func (m *ListClustersResponse) Reset()      { *m = ListClustersResponse{} }
+func (*ListClustersResponse) ProtoMessage() {}
+func (*ListClustersResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{35}
+}
+func (m *ListClustersResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListClustersResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListClustersResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListClustersResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListClustersResponse.Merge(dst, src)
+}
+func (m *ListClustersResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListClustersResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListClustersResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListClustersResponse proto.InternalMessageInfo
 
 // KeyRotation tells UpdateCluster what items to rotate
 type KeyRotation struct {
@@ -448,12 +1715,43 @@ type KeyRotation struct {
 	// ManagerJoinToken tells UpdateCluster to rotate the manager secret token.
 	ManagerJoinToken bool `protobuf:"varint,2,opt,name=manager_join_token,json=managerJoinToken,proto3" json:"manager_join_token,omitempty"`
 	// ManagerUnlockKey tells UpdateCluster to rotate the manager unlock key
-	ManagerUnlockKey bool `protobuf:"varint,3,opt,name=manager_unlock_key,json=managerUnlockKey,proto3" json:"manager_unlock_key,omitempty"`
+	ManagerUnlockKey     bool     `protobuf:"varint,3,opt,name=manager_unlock_key,json=managerUnlockKey,proto3" json:"manager_unlock_key,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *KeyRotation) Reset()                    { *m = KeyRotation{} }
-func (*KeyRotation) ProtoMessage()               {}
-func (*KeyRotation) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{36} }
+func (m *KeyRotation) Reset()      { *m = KeyRotation{} }
+func (*KeyRotation) ProtoMessage() {}
+func (*KeyRotation) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{36}
+}
+func (m *KeyRotation) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *KeyRotation) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_KeyRotation.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *KeyRotation) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_KeyRotation.Merge(dst, src)
+}
+func (m *KeyRotation) XXX_Size() int {
+	return m.Size()
+}
+func (m *KeyRotation) XXX_DiscardUnknown() {
+	xxx_messageInfo_KeyRotation.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_KeyRotation proto.InternalMessageInfo
 
 type UpdateClusterRequest struct {
 	// ClusterID is the cluster ID to update.
@@ -463,40 +1761,164 @@ type UpdateClusterRequest struct {
 	// Spec is the new spec to apply to the cluster.
 	Spec *ClusterSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
 	// Rotation contains flags for join token and unlock key rotation
-	Rotation KeyRotation `protobuf:"bytes,4,opt,name=rotation" json:"rotation"`
+	Rotation             KeyRotation `protobuf:"bytes,4,opt,name=rotation" json:"rotation"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
 }
 
-func (m *UpdateClusterRequest) Reset()                    { *m = UpdateClusterRequest{} }
-func (*UpdateClusterRequest) ProtoMessage()               {}
-func (*UpdateClusterRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{37} }
+func (m *UpdateClusterRequest) Reset()      { *m = UpdateClusterRequest{} }
+func (*UpdateClusterRequest) ProtoMessage() {}
+func (*UpdateClusterRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{37}
+}
+func (m *UpdateClusterRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UpdateClusterRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UpdateClusterRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *UpdateClusterRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateClusterRequest.Merge(dst, src)
+}
+func (m *UpdateClusterRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *UpdateClusterRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateClusterRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UpdateClusterRequest proto.InternalMessageInfo
 
 type UpdateClusterResponse struct {
-	Cluster *Cluster `protobuf:"bytes,1,opt,name=cluster" json:"cluster,omitempty"`
+	Cluster              *Cluster `protobuf:"bytes,1,opt,name=cluster" json:"cluster,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *UpdateClusterResponse) Reset()                    { *m = UpdateClusterResponse{} }
-func (*UpdateClusterResponse) ProtoMessage()               {}
-func (*UpdateClusterResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{38} }
+func (m *UpdateClusterResponse) Reset()      { *m = UpdateClusterResponse{} }
+func (*UpdateClusterResponse) ProtoMessage() {}
+func (*UpdateClusterResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{38}
+}
+func (m *UpdateClusterResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UpdateClusterResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UpdateClusterResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *UpdateClusterResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateClusterResponse.Merge(dst, src)
+}
+func (m *UpdateClusterResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *UpdateClusterResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateClusterResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UpdateClusterResponse proto.InternalMessageInfo
 
 // GetSecretRequest is the request to get a `Secret` object given a secret id.
 type GetSecretRequest struct {
-	SecretID string `protobuf:"bytes,1,opt,name=secret_id,json=secretId,proto3" json:"secret_id,omitempty"`
+	SecretID             string   `protobuf:"bytes,1,opt,name=secret_id,json=secretId,proto3" json:"secret_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetSecretRequest) Reset()                    { *m = GetSecretRequest{} }
-func (*GetSecretRequest) ProtoMessage()               {}
-func (*GetSecretRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{39} }
+func (m *GetSecretRequest) Reset()      { *m = GetSecretRequest{} }
+func (*GetSecretRequest) ProtoMessage() {}
+func (*GetSecretRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{39}
+}
+func (m *GetSecretRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GetSecretRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GetSecretRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GetSecretRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetSecretRequest.Merge(dst, src)
+}
+func (m *GetSecretRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *GetSecretRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetSecretRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetSecretRequest proto.InternalMessageInfo
 
 // GetSecretResponse contains the Secret corresponding to the id in
 // `GetSecretRequest`, but the `Secret.Spec.Data` field in each `Secret`
 // object should be nil instead of actually containing the secret bytes.
 type GetSecretResponse struct {
-	Secret *Secret `protobuf:"bytes,1,opt,name=secret" json:"secret,omitempty"`
+	Secret               *Secret  `protobuf:"bytes,1,opt,name=secret" json:"secret,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetSecretResponse) Reset()                    { *m = GetSecretResponse{} }
-func (*GetSecretResponse) ProtoMessage()               {}
-func (*GetSecretResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{40} }
+func (m *GetSecretResponse) Reset()      { *m = GetSecretResponse{} }
+func (*GetSecretResponse) ProtoMessage() {}
+func (*GetSecretResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{40}
+}
+func (m *GetSecretResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GetSecretResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GetSecretResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GetSecretResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetSecretResponse.Merge(dst, src)
+}
+func (m *GetSecretResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *GetSecretResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetSecretResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetSecretResponse proto.InternalMessageInfo
 
 type UpdateSecretRequest struct {
 	// SecretID is the secret ID to update.
@@ -505,114 +1927,453 @@ type UpdateSecretRequest struct {
 	SecretVersion *Version `protobuf:"bytes,2,opt,name=secret_version,json=secretVersion" json:"secret_version,omitempty"`
 	// Spec is the new spec to apply to the Secret
 	// Only some fields are allowed to be updated.
-	Spec *SecretSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	Spec                 *SecretSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
 }
 
-func (m *UpdateSecretRequest) Reset()                    { *m = UpdateSecretRequest{} }
-func (*UpdateSecretRequest) ProtoMessage()               {}
-func (*UpdateSecretRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{41} }
+func (m *UpdateSecretRequest) Reset()      { *m = UpdateSecretRequest{} }
+func (*UpdateSecretRequest) ProtoMessage() {}
+func (*UpdateSecretRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{41}
+}
+func (m *UpdateSecretRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UpdateSecretRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UpdateSecretRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *UpdateSecretRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateSecretRequest.Merge(dst, src)
+}
+func (m *UpdateSecretRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *UpdateSecretRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateSecretRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UpdateSecretRequest proto.InternalMessageInfo
 
 type UpdateSecretResponse struct {
-	Secret *Secret `protobuf:"bytes,1,opt,name=secret" json:"secret,omitempty"`
+	Secret               *Secret  `protobuf:"bytes,1,opt,name=secret" json:"secret,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *UpdateSecretResponse) Reset()                    { *m = UpdateSecretResponse{} }
-func (*UpdateSecretResponse) ProtoMessage()               {}
-func (*UpdateSecretResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{42} }
+func (m *UpdateSecretResponse) Reset()      { *m = UpdateSecretResponse{} }
+func (*UpdateSecretResponse) ProtoMessage() {}
+func (*UpdateSecretResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{42}
+}
+func (m *UpdateSecretResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UpdateSecretResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UpdateSecretResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *UpdateSecretResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateSecretResponse.Merge(dst, src)
+}
+func (m *UpdateSecretResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *UpdateSecretResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateSecretResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UpdateSecretResponse proto.InternalMessageInfo
 
 // ListSecretRequest is the request to list all non-internal secrets in the secret store,
 // or all secrets filtered by (name or name prefix or id prefix) and labels.
 type ListSecretsRequest struct {
-	Filters *ListSecretsRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+	Filters              *ListSecretsRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                    `json:"-"`
+	XXX_unrecognized     []byte                      `json:"-"`
+	XXX_sizecache        int32                       `json:"-"`
 }
 
-func (m *ListSecretsRequest) Reset()                    { *m = ListSecretsRequest{} }
-func (*ListSecretsRequest) ProtoMessage()               {}
-func (*ListSecretsRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{43} }
+func (m *ListSecretsRequest) Reset()      { *m = ListSecretsRequest{} }
+func (*ListSecretsRequest) ProtoMessage() {}
+func (*ListSecretsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{43}
+}
+func (m *ListSecretsRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListSecretsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListSecretsRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListSecretsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListSecretsRequest.Merge(dst, src)
+}
+func (m *ListSecretsRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListSecretsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListSecretsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListSecretsRequest proto.InternalMessageInfo
 
 type ListSecretsRequest_Filters struct {
-	Names        []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
-	IDPrefixes   []string          `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
-	Labels       map[string]string `protobuf:"bytes,3,rep,name=labels" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	NamePrefixes []string          `protobuf:"bytes,4,rep,name=name_prefixes,json=namePrefixes" json:"name_prefixes,omitempty"`
+	Names                []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
+	IDPrefixes           []string          `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
+	Labels               map[string]string `protobuf:"bytes,3,rep,name=labels" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	NamePrefixes         []string          `protobuf:"bytes,4,rep,name=name_prefixes,json=namePrefixes" json:"name_prefixes,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
 }
 
 func (m *ListSecretsRequest_Filters) Reset()      { *m = ListSecretsRequest_Filters{} }
 func (*ListSecretsRequest_Filters) ProtoMessage() {}
 func (*ListSecretsRequest_Filters) Descriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{43, 0}
+	return fileDescriptor_control_040dca6f676eeedc, []int{43, 0}
 }
+func (m *ListSecretsRequest_Filters) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListSecretsRequest_Filters) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListSecretsRequest_Filters.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListSecretsRequest_Filters) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListSecretsRequest_Filters.Merge(dst, src)
+}
+func (m *ListSecretsRequest_Filters) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListSecretsRequest_Filters) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListSecretsRequest_Filters.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListSecretsRequest_Filters proto.InternalMessageInfo
 
 // ListSecretResponse contains a list of all the secrets that match the name or
 // name prefix filters provided in `ListSecretRequest`.  The `Secret.Spec.Data`
 // field in each `Secret` object should be nil instead of actually containing
 // the secret bytes.
 type ListSecretsResponse struct {
-	Secrets []*Secret `protobuf:"bytes,1,rep,name=secrets" json:"secrets,omitempty"`
+	Secrets              []*Secret `protobuf:"bytes,1,rep,name=secrets" json:"secrets,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
 }
 
-func (m *ListSecretsResponse) Reset()                    { *m = ListSecretsResponse{} }
-func (*ListSecretsResponse) ProtoMessage()               {}
-func (*ListSecretsResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{44} }
+func (m *ListSecretsResponse) Reset()      { *m = ListSecretsResponse{} }
+func (*ListSecretsResponse) ProtoMessage() {}
+func (*ListSecretsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{44}
+}
+func (m *ListSecretsResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListSecretsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListSecretsResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListSecretsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListSecretsResponse.Merge(dst, src)
+}
+func (m *ListSecretsResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListSecretsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListSecretsResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListSecretsResponse proto.InternalMessageInfo
 
 // CreateSecretRequest specifies a new secret (it will not update an existing
 // secret) to create.
 type CreateSecretRequest struct {
-	Spec *SecretSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	Spec                 *SecretSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
 }
 
-func (m *CreateSecretRequest) Reset()                    { *m = CreateSecretRequest{} }
-func (*CreateSecretRequest) ProtoMessage()               {}
-func (*CreateSecretRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{45} }
+func (m *CreateSecretRequest) Reset()      { *m = CreateSecretRequest{} }
+func (*CreateSecretRequest) ProtoMessage() {}
+func (*CreateSecretRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{45}
+}
+func (m *CreateSecretRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *CreateSecretRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_CreateSecretRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *CreateSecretRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CreateSecretRequest.Merge(dst, src)
+}
+func (m *CreateSecretRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *CreateSecretRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CreateSecretRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CreateSecretRequest proto.InternalMessageInfo
 
 // CreateSecretResponse contains the newly created `Secret` corresponding to the
 // name in `CreateSecretRequest`.  The `Secret.Spec.Data` field should be nil instead
 // of actually containing the secret bytes.
 type CreateSecretResponse struct {
-	Secret *Secret `protobuf:"bytes,1,opt,name=secret" json:"secret,omitempty"`
+	Secret               *Secret  `protobuf:"bytes,1,opt,name=secret" json:"secret,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CreateSecretResponse) Reset()                    { *m = CreateSecretResponse{} }
-func (*CreateSecretResponse) ProtoMessage()               {}
-func (*CreateSecretResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{46} }
+func (m *CreateSecretResponse) Reset()      { *m = CreateSecretResponse{} }
+func (*CreateSecretResponse) ProtoMessage() {}
+func (*CreateSecretResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{46}
+}
+func (m *CreateSecretResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *CreateSecretResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_CreateSecretResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *CreateSecretResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CreateSecretResponse.Merge(dst, src)
+}
+func (m *CreateSecretResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *CreateSecretResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_CreateSecretResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CreateSecretResponse proto.InternalMessageInfo
 
 // RemoveSecretRequest contains the ID of the secret that should be removed.  This
 // removes all versions of the secret.
 type RemoveSecretRequest struct {
-	SecretID string `protobuf:"bytes,1,opt,name=secret_id,json=secretId,proto3" json:"secret_id,omitempty"`
+	SecretID             string   `protobuf:"bytes,1,opt,name=secret_id,json=secretId,proto3" json:"secret_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RemoveSecretRequest) Reset()                    { *m = RemoveSecretRequest{} }
-func (*RemoveSecretRequest) ProtoMessage()               {}
-func (*RemoveSecretRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{47} }
+func (m *RemoveSecretRequest) Reset()      { *m = RemoveSecretRequest{} }
+func (*RemoveSecretRequest) ProtoMessage() {}
+func (*RemoveSecretRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{47}
+}
+func (m *RemoveSecretRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RemoveSecretRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RemoveSecretRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RemoveSecretRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveSecretRequest.Merge(dst, src)
+}
+func (m *RemoveSecretRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RemoveSecretRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveSecretRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveSecretRequest proto.InternalMessageInfo
 
 // RemoveSecretResponse is an empty object indicating the successful removal of
 // a secret.
 type RemoveSecretResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RemoveSecretResponse) Reset()                    { *m = RemoveSecretResponse{} }
-func (*RemoveSecretResponse) ProtoMessage()               {}
-func (*RemoveSecretResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{48} }
+func (m *RemoveSecretResponse) Reset()      { *m = RemoveSecretResponse{} }
+func (*RemoveSecretResponse) ProtoMessage() {}
+func (*RemoveSecretResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{48}
+}
+func (m *RemoveSecretResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RemoveSecretResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RemoveSecretResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RemoveSecretResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveSecretResponse.Merge(dst, src)
+}
+func (m *RemoveSecretResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RemoveSecretResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveSecretResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveSecretResponse proto.InternalMessageInfo
 
 // GetConfigRequest is the request to get a `Config` object given a config id.
 type GetConfigRequest struct {
-	ConfigID string `protobuf:"bytes,1,opt,name=config_id,json=configId,proto3" json:"config_id,omitempty"`
+	ConfigID             string   `protobuf:"bytes,1,opt,name=config_id,json=configId,proto3" json:"config_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetConfigRequest) Reset()                    { *m = GetConfigRequest{} }
-func (*GetConfigRequest) ProtoMessage()               {}
-func (*GetConfigRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{49} }
+func (m *GetConfigRequest) Reset()      { *m = GetConfigRequest{} }
+func (*GetConfigRequest) ProtoMessage() {}
+func (*GetConfigRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{49}
+}
+func (m *GetConfigRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GetConfigRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GetConfigRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GetConfigRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetConfigRequest.Merge(dst, src)
+}
+func (m *GetConfigRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *GetConfigRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetConfigRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetConfigRequest proto.InternalMessageInfo
 
 // GetConfigResponse contains the Config corresponding to the id in
 // `GetConfigRequest`.
 type GetConfigResponse struct {
-	Config *Config `protobuf:"bytes,1,opt,name=config" json:"config,omitempty"`
+	Config               *Config  `protobuf:"bytes,1,opt,name=config" json:"config,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GetConfigResponse) Reset()                    { *m = GetConfigResponse{} }
-func (*GetConfigResponse) ProtoMessage()               {}
-func (*GetConfigResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{50} }
+func (m *GetConfigResponse) Reset()      { *m = GetConfigResponse{} }
+func (*GetConfigResponse) ProtoMessage() {}
+func (*GetConfigResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{50}
+}
+func (m *GetConfigResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GetConfigResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GetConfigResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GetConfigResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetConfigResponse.Merge(dst, src)
+}
+func (m *GetConfigResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *GetConfigResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetConfigResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetConfigResponse proto.InternalMessageInfo
 
 type UpdateConfigRequest struct {
 	// ConfigID is the config ID to update.
@@ -621,98 +2382,376 @@ type UpdateConfigRequest struct {
 	ConfigVersion *Version `protobuf:"bytes,2,opt,name=config_version,json=configVersion" json:"config_version,omitempty"`
 	// Spec is the new spec to apply to the Config
 	// Only some fields are allowed to be updated.
-	Spec *ConfigSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	Spec                 *ConfigSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
 }
 
-func (m *UpdateConfigRequest) Reset()                    { *m = UpdateConfigRequest{} }
-func (*UpdateConfigRequest) ProtoMessage()               {}
-func (*UpdateConfigRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{51} }
+func (m *UpdateConfigRequest) Reset()      { *m = UpdateConfigRequest{} }
+func (*UpdateConfigRequest) ProtoMessage() {}
+func (*UpdateConfigRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{51}
+}
+func (m *UpdateConfigRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UpdateConfigRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UpdateConfigRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *UpdateConfigRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateConfigRequest.Merge(dst, src)
+}
+func (m *UpdateConfigRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *UpdateConfigRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateConfigRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UpdateConfigRequest proto.InternalMessageInfo
 
 type UpdateConfigResponse struct {
-	Config *Config `protobuf:"bytes,1,opt,name=config" json:"config,omitempty"`
+	Config               *Config  `protobuf:"bytes,1,opt,name=config" json:"config,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *UpdateConfigResponse) Reset()                    { *m = UpdateConfigResponse{} }
-func (*UpdateConfigResponse) ProtoMessage()               {}
-func (*UpdateConfigResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{52} }
+func (m *UpdateConfigResponse) Reset()      { *m = UpdateConfigResponse{} }
+func (*UpdateConfigResponse) ProtoMessage() {}
+func (*UpdateConfigResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{52}
+}
+func (m *UpdateConfigResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *UpdateConfigResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_UpdateConfigResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *UpdateConfigResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_UpdateConfigResponse.Merge(dst, src)
+}
+func (m *UpdateConfigResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *UpdateConfigResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_UpdateConfigResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_UpdateConfigResponse proto.InternalMessageInfo
 
 // ListConfigRequest is the request to list all configs in the config store,
 // or all configs filtered by (name or name prefix or id prefix) and labels.
 type ListConfigsRequest struct {
-	Filters *ListConfigsRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+	Filters              *ListConfigsRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                    `json:"-"`
+	XXX_unrecognized     []byte                      `json:"-"`
+	XXX_sizecache        int32                       `json:"-"`
 }
 
-func (m *ListConfigsRequest) Reset()                    { *m = ListConfigsRequest{} }
-func (*ListConfigsRequest) ProtoMessage()               {}
-func (*ListConfigsRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{53} }
+func (m *ListConfigsRequest) Reset()      { *m = ListConfigsRequest{} }
+func (*ListConfigsRequest) ProtoMessage() {}
+func (*ListConfigsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{53}
+}
+func (m *ListConfigsRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListConfigsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListConfigsRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListConfigsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListConfigsRequest.Merge(dst, src)
+}
+func (m *ListConfigsRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListConfigsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListConfigsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListConfigsRequest proto.InternalMessageInfo
 
 type ListConfigsRequest_Filters struct {
-	Names        []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
-	IDPrefixes   []string          `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
-	Labels       map[string]string `protobuf:"bytes,3,rep,name=labels" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	NamePrefixes []string          `protobuf:"bytes,4,rep,name=name_prefixes,json=namePrefixes" json:"name_prefixes,omitempty"`
+	Names                []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
+	IDPrefixes           []string          `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
+	Labels               map[string]string `protobuf:"bytes,3,rep,name=labels" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	NamePrefixes         []string          `protobuf:"bytes,4,rep,name=name_prefixes,json=namePrefixes" json:"name_prefixes,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
 }
 
 func (m *ListConfigsRequest_Filters) Reset()      { *m = ListConfigsRequest_Filters{} }
 func (*ListConfigsRequest_Filters) ProtoMessage() {}
 func (*ListConfigsRequest_Filters) Descriptor() ([]byte, []int) {
-	return fileDescriptorControl, []int{53, 0}
+	return fileDescriptor_control_040dca6f676eeedc, []int{53, 0}
 }
+func (m *ListConfigsRequest_Filters) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListConfigsRequest_Filters) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListConfigsRequest_Filters.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListConfigsRequest_Filters) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListConfigsRequest_Filters.Merge(dst, src)
+}
+func (m *ListConfigsRequest_Filters) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListConfigsRequest_Filters) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListConfigsRequest_Filters.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListConfigsRequest_Filters proto.InternalMessageInfo
 
 // ListConfigResponse contains a list of all the configs that match the name or
 // name prefix filters provided in `ListConfigRequest`.
 type ListConfigsResponse struct {
-	Configs []*Config `protobuf:"bytes,1,rep,name=configs" json:"configs,omitempty"`
+	Configs              []*Config `protobuf:"bytes,1,rep,name=configs" json:"configs,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
 }
 
-func (m *ListConfigsResponse) Reset()                    { *m = ListConfigsResponse{} }
-func (*ListConfigsResponse) ProtoMessage()               {}
-func (*ListConfigsResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{54} }
+func (m *ListConfigsResponse) Reset()      { *m = ListConfigsResponse{} }
+func (*ListConfigsResponse) ProtoMessage() {}
+func (*ListConfigsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{54}
+}
+func (m *ListConfigsResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ListConfigsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ListConfigsResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ListConfigsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ListConfigsResponse.Merge(dst, src)
+}
+func (m *ListConfigsResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *ListConfigsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ListConfigsResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ListConfigsResponse proto.InternalMessageInfo
 
 // CreateConfigRequest specifies a new config (it will not update an existing
 // config) to create.
 type CreateConfigRequest struct {
-	Spec *ConfigSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	Spec                 *ConfigSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
 }
 
-func (m *CreateConfigRequest) Reset()                    { *m = CreateConfigRequest{} }
-func (*CreateConfigRequest) ProtoMessage()               {}
-func (*CreateConfigRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{55} }
+func (m *CreateConfigRequest) Reset()      { *m = CreateConfigRequest{} }
+func (*CreateConfigRequest) ProtoMessage() {}
+func (*CreateConfigRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{55}
+}
+func (m *CreateConfigRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *CreateConfigRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_CreateConfigRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *CreateConfigRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CreateConfigRequest.Merge(dst, src)
+}
+func (m *CreateConfigRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *CreateConfigRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CreateConfigRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CreateConfigRequest proto.InternalMessageInfo
 
 // CreateConfigResponse contains the newly created `Config` corresponding to the
 // name in `CreateConfigRequest`.
 type CreateConfigResponse struct {
-	Config *Config `protobuf:"bytes,1,opt,name=config" json:"config,omitempty"`
+	Config               *Config  `protobuf:"bytes,1,opt,name=config" json:"config,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CreateConfigResponse) Reset()                    { *m = CreateConfigResponse{} }
-func (*CreateConfigResponse) ProtoMessage()               {}
-func (*CreateConfigResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{56} }
+func (m *CreateConfigResponse) Reset()      { *m = CreateConfigResponse{} }
+func (*CreateConfigResponse) ProtoMessage() {}
+func (*CreateConfigResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{56}
+}
+func (m *CreateConfigResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *CreateConfigResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_CreateConfigResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *CreateConfigResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CreateConfigResponse.Merge(dst, src)
+}
+func (m *CreateConfigResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *CreateConfigResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_CreateConfigResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_CreateConfigResponse proto.InternalMessageInfo
 
 // RemoveConfigRequest contains the ID of the config that should be removed.  This
 // removes all versions of the config.
 type RemoveConfigRequest struct {
-	ConfigID string `protobuf:"bytes,1,opt,name=config_id,json=configId,proto3" json:"config_id,omitempty"`
+	ConfigID             string   `protobuf:"bytes,1,opt,name=config_id,json=configId,proto3" json:"config_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RemoveConfigRequest) Reset()                    { *m = RemoveConfigRequest{} }
-func (*RemoveConfigRequest) ProtoMessage()               {}
-func (*RemoveConfigRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{57} }
+func (m *RemoveConfigRequest) Reset()      { *m = RemoveConfigRequest{} }
+func (*RemoveConfigRequest) ProtoMessage() {}
+func (*RemoveConfigRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{57}
+}
+func (m *RemoveConfigRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RemoveConfigRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RemoveConfigRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RemoveConfigRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveConfigRequest.Merge(dst, src)
+}
+func (m *RemoveConfigRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *RemoveConfigRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveConfigRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveConfigRequest proto.InternalMessageInfo
 
 // RemoveConfigResponse is an empty object indicating the successful removal of
 // a config.
 type RemoveConfigResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RemoveConfigResponse) Reset()                    { *m = RemoveConfigResponse{} }
-func (*RemoveConfigResponse) ProtoMessage()               {}
-func (*RemoveConfigResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{58} }
+func (m *RemoveConfigResponse) Reset()      { *m = RemoveConfigResponse{} }
+func (*RemoveConfigResponse) ProtoMessage() {}
+func (*RemoveConfigResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_control_040dca6f676eeedc, []int{58}
+}
+func (m *RemoveConfigResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RemoveConfigResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RemoveConfigResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RemoveConfigResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RemoveConfigResponse.Merge(dst, src)
+}
+func (m *RemoveConfigResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *RemoveConfigResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RemoveConfigResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RemoveConfigResponse proto.InternalMessageInfo
 
 func init() {
 	proto.RegisterType((*GetNodeRequest)(nil), "docker.swarmkit.v1.GetNodeRequest")
 	proto.RegisterType((*GetNodeResponse)(nil), "docker.swarmkit.v1.GetNodeResponse")
 	proto.RegisterType((*ListNodesRequest)(nil), "docker.swarmkit.v1.ListNodesRequest")
 	proto.RegisterType((*ListNodesRequest_Filters)(nil), "docker.swarmkit.v1.ListNodesRequest.Filters")
+	proto.RegisterMapType((map[string]string)(nil), "docker.swarmkit.v1.ListNodesRequest.Filters.LabelsEntry")
 	proto.RegisterType((*ListNodesResponse)(nil), "docker.swarmkit.v1.ListNodesResponse")
 	proto.RegisterType((*UpdateNodeRequest)(nil), "docker.swarmkit.v1.UpdateNodeRequest")
 	proto.RegisterType((*UpdateNodeResponse)(nil), "docker.swarmkit.v1.UpdateNodeResponse")
@@ -724,6 +2763,7 @@ func init() {
 	proto.RegisterType((*RemoveTaskResponse)(nil), "docker.swarmkit.v1.RemoveTaskResponse")
 	proto.RegisterType((*ListTasksRequest)(nil), "docker.swarmkit.v1.ListTasksRequest")
 	proto.RegisterType((*ListTasksRequest_Filters)(nil), "docker.swarmkit.v1.ListTasksRequest.Filters")
+	proto.RegisterMapType((map[string]string)(nil), "docker.swarmkit.v1.ListTasksRequest.Filters.LabelsEntry")
 	proto.RegisterType((*ListTasksResponse)(nil), "docker.swarmkit.v1.ListTasksResponse")
 	proto.RegisterType((*CreateServiceRequest)(nil), "docker.swarmkit.v1.CreateServiceRequest")
 	proto.RegisterType((*CreateServiceResponse)(nil), "docker.swarmkit.v1.CreateServiceResponse")
@@ -735,6 +2775,7 @@ func init() {
 	proto.RegisterType((*RemoveServiceResponse)(nil), "docker.swarmkit.v1.RemoveServiceResponse")
 	proto.RegisterType((*ListServicesRequest)(nil), "docker.swarmkit.v1.ListServicesRequest")
 	proto.RegisterType((*ListServicesRequest_Filters)(nil), "docker.swarmkit.v1.ListServicesRequest.Filters")
+	proto.RegisterMapType((map[string]string)(nil), "docker.swarmkit.v1.ListServicesRequest.Filters.LabelsEntry")
 	proto.RegisterType((*ListServicesResponse)(nil), "docker.swarmkit.v1.ListServicesResponse")
 	proto.RegisterType((*CreateNetworkRequest)(nil), "docker.swarmkit.v1.CreateNetworkRequest")
 	proto.RegisterType((*CreateNetworkResponse)(nil), "docker.swarmkit.v1.CreateNetworkResponse")
@@ -744,11 +2785,13 @@ func init() {
 	proto.RegisterType((*RemoveNetworkResponse)(nil), "docker.swarmkit.v1.RemoveNetworkResponse")
 	proto.RegisterType((*ListNetworksRequest)(nil), "docker.swarmkit.v1.ListNetworksRequest")
 	proto.RegisterType((*ListNetworksRequest_Filters)(nil), "docker.swarmkit.v1.ListNetworksRequest.Filters")
+	proto.RegisterMapType((map[string]string)(nil), "docker.swarmkit.v1.ListNetworksRequest.Filters.LabelsEntry")
 	proto.RegisterType((*ListNetworksResponse)(nil), "docker.swarmkit.v1.ListNetworksResponse")
 	proto.RegisterType((*GetClusterRequest)(nil), "docker.swarmkit.v1.GetClusterRequest")
 	proto.RegisterType((*GetClusterResponse)(nil), "docker.swarmkit.v1.GetClusterResponse")
 	proto.RegisterType((*ListClustersRequest)(nil), "docker.swarmkit.v1.ListClustersRequest")
 	proto.RegisterType((*ListClustersRequest_Filters)(nil), "docker.swarmkit.v1.ListClustersRequest.Filters")
+	proto.RegisterMapType((map[string]string)(nil), "docker.swarmkit.v1.ListClustersRequest.Filters.LabelsEntry")
 	proto.RegisterType((*ListClustersResponse)(nil), "docker.swarmkit.v1.ListClustersResponse")
 	proto.RegisterType((*KeyRotation)(nil), "docker.swarmkit.v1.KeyRotation")
 	proto.RegisterType((*UpdateClusterRequest)(nil), "docker.swarmkit.v1.UpdateClusterRequest")
@@ -759,6 +2802,7 @@ func init() {
 	proto.RegisterType((*UpdateSecretResponse)(nil), "docker.swarmkit.v1.UpdateSecretResponse")
 	proto.RegisterType((*ListSecretsRequest)(nil), "docker.swarmkit.v1.ListSecretsRequest")
 	proto.RegisterType((*ListSecretsRequest_Filters)(nil), "docker.swarmkit.v1.ListSecretsRequest.Filters")
+	proto.RegisterMapType((map[string]string)(nil), "docker.swarmkit.v1.ListSecretsRequest.Filters.LabelsEntry")
 	proto.RegisterType((*ListSecretsResponse)(nil), "docker.swarmkit.v1.ListSecretsResponse")
 	proto.RegisterType((*CreateSecretRequest)(nil), "docker.swarmkit.v1.CreateSecretRequest")
 	proto.RegisterType((*CreateSecretResponse)(nil), "docker.swarmkit.v1.CreateSecretResponse")
@@ -770,6 +2814,7 @@ func init() {
 	proto.RegisterType((*UpdateConfigResponse)(nil), "docker.swarmkit.v1.UpdateConfigResponse")
 	proto.RegisterType((*ListConfigsRequest)(nil), "docker.swarmkit.v1.ListConfigsRequest")
 	proto.RegisterType((*ListConfigsRequest_Filters)(nil), "docker.swarmkit.v1.ListConfigsRequest.Filters")
+	proto.RegisterMapType((map[string]string)(nil), "docker.swarmkit.v1.ListConfigsRequest.Filters.LabelsEntry")
 	proto.RegisterType((*ListConfigsResponse)(nil), "docker.swarmkit.v1.ListConfigsResponse")
 	proto.RegisterType((*CreateConfigRequest)(nil), "docker.swarmkit.v1.CreateConfigRequest")
 	proto.RegisterType((*CreateConfigResponse)(nil), "docker.swarmkit.v1.CreateConfigResponse")
@@ -1052,7 +3097,7 @@ func (m *GetNodeResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Node != nil {
 		m.Node = &Node{}
-		deepcopy.Copy(m.Node, o.Node)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Node, o.Node)
 	}
 }
 
@@ -1071,7 +3116,7 @@ func (m *ListNodesRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Filters != nil {
 		m.Filters = &ListNodesRequest_Filters{}
-		deepcopy.Copy(m.Filters, o.Filters)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
 	}
 }
 
@@ -1139,7 +3184,7 @@ func (m *ListNodesResponse) CopyFrom(src interface{}) {
 		m.Nodes = make([]*Node, len(o.Nodes))
 		for i := range m.Nodes {
 			m.Nodes[i] = &Node{}
-			deepcopy.Copy(m.Nodes[i], o.Nodes[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Nodes[i], o.Nodes[i])
 		}
 	}
 
@@ -1160,11 +3205,11 @@ func (m *UpdateNodeRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.NodeVersion != nil {
 		m.NodeVersion = &Version{}
-		deepcopy.Copy(m.NodeVersion, o.NodeVersion)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.NodeVersion, o.NodeVersion)
 	}
 	if o.Spec != nil {
 		m.Spec = &NodeSpec{}
-		deepcopy.Copy(m.Spec, o.Spec)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -1183,7 +3228,7 @@ func (m *UpdateNodeResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Node != nil {
 		m.Node = &Node{}
-		deepcopy.Copy(m.Node, o.Node)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Node, o.Node)
 	}
 }
 
@@ -1242,7 +3287,7 @@ func (m *GetTaskResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Task != nil {
 		m.Task = &Task{}
-		deepcopy.Copy(m.Task, o.Task)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Task, o.Task)
 	}
 }
 
@@ -1286,7 +3331,7 @@ func (m *ListTasksRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Filters != nil {
 		m.Filters = &ListTasksRequest_Filters{}
-		deepcopy.Copy(m.Filters, o.Filters)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
 	}
 }
 
@@ -1364,7 +3409,7 @@ func (m *ListTasksResponse) CopyFrom(src interface{}) {
 		m.Tasks = make([]*Task, len(o.Tasks))
 		for i := range m.Tasks {
 			m.Tasks[i] = &Task{}
-			deepcopy.Copy(m.Tasks[i], o.Tasks[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Tasks[i], o.Tasks[i])
 		}
 	}
 
@@ -1385,7 +3430,7 @@ func (m *CreateServiceRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Spec != nil {
 		m.Spec = &ServiceSpec{}
-		deepcopy.Copy(m.Spec, o.Spec)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -1404,7 +3449,7 @@ func (m *CreateServiceResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Service != nil {
 		m.Service = &Service{}
-		deepcopy.Copy(m.Service, o.Service)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Service, o.Service)
 	}
 }
 
@@ -1438,7 +3483,7 @@ func (m *GetServiceResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Service != nil {
 		m.Service = &Service{}
-		deepcopy.Copy(m.Service, o.Service)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Service, o.Service)
 	}
 }
 
@@ -1457,11 +3502,11 @@ func (m *UpdateServiceRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.ServiceVersion != nil {
 		m.ServiceVersion = &Version{}
-		deepcopy.Copy(m.ServiceVersion, o.ServiceVersion)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.ServiceVersion, o.ServiceVersion)
 	}
 	if o.Spec != nil {
 		m.Spec = &ServiceSpec{}
-		deepcopy.Copy(m.Spec, o.Spec)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -1480,7 +3525,7 @@ func (m *UpdateServiceResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Service != nil {
 		m.Service = &Service{}
-		deepcopy.Copy(m.Service, o.Service)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Service, o.Service)
 	}
 }
 
@@ -1524,7 +3569,7 @@ func (m *ListServicesRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Filters != nil {
 		m.Filters = &ListServicesRequest_Filters{}
-		deepcopy.Copy(m.Filters, o.Filters)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
 	}
 }
 
@@ -1587,7 +3632,7 @@ func (m *ListServicesResponse) CopyFrom(src interface{}) {
 		m.Services = make([]*Service, len(o.Services))
 		for i := range m.Services {
 			m.Services[i] = &Service{}
-			deepcopy.Copy(m.Services[i], o.Services[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Services[i], o.Services[i])
 		}
 	}
 
@@ -1608,7 +3653,7 @@ func (m *CreateNetworkRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Spec != nil {
 		m.Spec = &NetworkSpec{}
-		deepcopy.Copy(m.Spec, o.Spec)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -1627,7 +3672,7 @@ func (m *CreateNetworkResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Network != nil {
 		m.Network = &Network{}
-		deepcopy.Copy(m.Network, o.Network)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Network, o.Network)
 	}
 }
 
@@ -1661,7 +3706,7 @@ func (m *GetNetworkResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Network != nil {
 		m.Network = &Network{}
-		deepcopy.Copy(m.Network, o.Network)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Network, o.Network)
 	}
 }
 
@@ -1705,7 +3750,7 @@ func (m *ListNetworksRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Filters != nil {
 		m.Filters = &ListNetworksRequest_Filters{}
-		deepcopy.Copy(m.Filters, o.Filters)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
 	}
 }
 
@@ -1763,7 +3808,7 @@ func (m *ListNetworksResponse) CopyFrom(src interface{}) {
 		m.Networks = make([]*Network, len(o.Networks))
 		for i := range m.Networks {
 			m.Networks[i] = &Network{}
-			deepcopy.Copy(m.Networks[i], o.Networks[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Networks[i], o.Networks[i])
 		}
 	}
 
@@ -1799,7 +3844,7 @@ func (m *GetClusterResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Cluster != nil {
 		m.Cluster = &Cluster{}
-		deepcopy.Copy(m.Cluster, o.Cluster)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Cluster, o.Cluster)
 	}
 }
 
@@ -1818,7 +3863,7 @@ func (m *ListClustersRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Filters != nil {
 		m.Filters = &ListClustersRequest_Filters{}
-		deepcopy.Copy(m.Filters, o.Filters)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
 	}
 }
 
@@ -1876,7 +3921,7 @@ func (m *ListClustersResponse) CopyFrom(src interface{}) {
 		m.Clusters = make([]*Cluster, len(o.Clusters))
 		for i := range m.Clusters {
 			m.Clusters[i] = &Cluster{}
-			deepcopy.Copy(m.Clusters[i], o.Clusters[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Clusters[i], o.Clusters[i])
 		}
 	}
 
@@ -1912,13 +3957,13 @@ func (m *UpdateClusterRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.ClusterVersion != nil {
 		m.ClusterVersion = &Version{}
-		deepcopy.Copy(m.ClusterVersion, o.ClusterVersion)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.ClusterVersion, o.ClusterVersion)
 	}
 	if o.Spec != nil {
 		m.Spec = &ClusterSpec{}
-		deepcopy.Copy(m.Spec, o.Spec)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
 	}
-	deepcopy.Copy(&m.Rotation, &o.Rotation)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Rotation, &o.Rotation)
 }
 
 func (m *UpdateClusterResponse) Copy() *UpdateClusterResponse {
@@ -1936,7 +3981,7 @@ func (m *UpdateClusterResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Cluster != nil {
 		m.Cluster = &Cluster{}
-		deepcopy.Copy(m.Cluster, o.Cluster)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Cluster, o.Cluster)
 	}
 }
 
@@ -1970,7 +4015,7 @@ func (m *GetSecretResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Secret != nil {
 		m.Secret = &Secret{}
-		deepcopy.Copy(m.Secret, o.Secret)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Secret, o.Secret)
 	}
 }
 
@@ -1989,11 +4034,11 @@ func (m *UpdateSecretRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.SecretVersion != nil {
 		m.SecretVersion = &Version{}
-		deepcopy.Copy(m.SecretVersion, o.SecretVersion)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.SecretVersion, o.SecretVersion)
 	}
 	if o.Spec != nil {
 		m.Spec = &SecretSpec{}
-		deepcopy.Copy(m.Spec, o.Spec)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -2012,7 +4057,7 @@ func (m *UpdateSecretResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Secret != nil {
 		m.Secret = &Secret{}
-		deepcopy.Copy(m.Secret, o.Secret)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Secret, o.Secret)
 	}
 }
 
@@ -2031,7 +4076,7 @@ func (m *ListSecretsRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Filters != nil {
 		m.Filters = &ListSecretsRequest_Filters{}
-		deepcopy.Copy(m.Filters, o.Filters)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
 	}
 }
 
@@ -2089,7 +4134,7 @@ func (m *ListSecretsResponse) CopyFrom(src interface{}) {
 		m.Secrets = make([]*Secret, len(o.Secrets))
 		for i := range m.Secrets {
 			m.Secrets[i] = &Secret{}
-			deepcopy.Copy(m.Secrets[i], o.Secrets[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Secrets[i], o.Secrets[i])
 		}
 	}
 
@@ -2110,7 +4155,7 @@ func (m *CreateSecretRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Spec != nil {
 		m.Spec = &SecretSpec{}
-		deepcopy.Copy(m.Spec, o.Spec)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -2129,7 +4174,7 @@ func (m *CreateSecretResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Secret != nil {
 		m.Secret = &Secret{}
-		deepcopy.Copy(m.Secret, o.Secret)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Secret, o.Secret)
 	}
 }
 
@@ -2188,7 +4233,7 @@ func (m *GetConfigResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Config != nil {
 		m.Config = &Config{}
-		deepcopy.Copy(m.Config, o.Config)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Config, o.Config)
 	}
 }
 
@@ -2207,11 +4252,11 @@ func (m *UpdateConfigRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.ConfigVersion != nil {
 		m.ConfigVersion = &Version{}
-		deepcopy.Copy(m.ConfigVersion, o.ConfigVersion)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.ConfigVersion, o.ConfigVersion)
 	}
 	if o.Spec != nil {
 		m.Spec = &ConfigSpec{}
-		deepcopy.Copy(m.Spec, o.Spec)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -2230,7 +4275,7 @@ func (m *UpdateConfigResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Config != nil {
 		m.Config = &Config{}
-		deepcopy.Copy(m.Config, o.Config)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Config, o.Config)
 	}
 }
 
@@ -2249,7 +4294,7 @@ func (m *ListConfigsRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Filters != nil {
 		m.Filters = &ListConfigsRequest_Filters{}
-		deepcopy.Copy(m.Filters, o.Filters)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters, o.Filters)
 	}
 }
 
@@ -2307,7 +4352,7 @@ func (m *ListConfigsResponse) CopyFrom(src interface{}) {
 		m.Configs = make([]*Config, len(o.Configs))
 		for i := range m.Configs {
 			m.Configs[i] = &Config{}
-			deepcopy.Copy(m.Configs[i], o.Configs[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Configs[i], o.Configs[i])
 		}
 	}
 
@@ -2328,7 +4373,7 @@ func (m *CreateConfigRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Spec != nil {
 		m.Spec = &ConfigSpec{}
-		deepcopy.Copy(m.Spec, o.Spec)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Spec, o.Spec)
 	}
 }
 
@@ -2347,7 +4392,7 @@ func (m *CreateConfigResponse) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Config != nil {
 		m.Config = &Config{}
-		deepcopy.Copy(m.Config, o.Config)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Config, o.Config)
 	}
 }
 
@@ -2477,7 +4522,7 @@ func NewControlClient(cc *grpc.ClientConn) ControlClient {
 
 func (c *controlClient) GetNode(ctx context.Context, in *GetNodeRequest, opts ...grpc.CallOption) (*GetNodeResponse, error) {
 	out := new(GetNodeResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetNode", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetNode", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2486,7 +4531,7 @@ func (c *controlClient) GetNode(ctx context.Context, in *GetNodeRequest, opts ..
 
 func (c *controlClient) ListNodes(ctx context.Context, in *ListNodesRequest, opts ...grpc.CallOption) (*ListNodesResponse, error) {
 	out := new(ListNodesResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListNodes", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListNodes", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2495,7 +4540,7 @@ func (c *controlClient) ListNodes(ctx context.Context, in *ListNodesRequest, opt
 
 func (c *controlClient) UpdateNode(ctx context.Context, in *UpdateNodeRequest, opts ...grpc.CallOption) (*UpdateNodeResponse, error) {
 	out := new(UpdateNodeResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/UpdateNode", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/UpdateNode", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2504,7 +4549,7 @@ func (c *controlClient) UpdateNode(ctx context.Context, in *UpdateNodeRequest, o
 
 func (c *controlClient) RemoveNode(ctx context.Context, in *RemoveNodeRequest, opts ...grpc.CallOption) (*RemoveNodeResponse, error) {
 	out := new(RemoveNodeResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/RemoveNode", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/RemoveNode", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2513,7 +4558,7 @@ func (c *controlClient) RemoveNode(ctx context.Context, in *RemoveNodeRequest, o
 
 func (c *controlClient) GetTask(ctx context.Context, in *GetTaskRequest, opts ...grpc.CallOption) (*GetTaskResponse, error) {
 	out := new(GetTaskResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetTask", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2522,7 +4567,7 @@ func (c *controlClient) GetTask(ctx context.Context, in *GetTaskRequest, opts ..
 
 func (c *controlClient) ListTasks(ctx context.Context, in *ListTasksRequest, opts ...grpc.CallOption) (*ListTasksResponse, error) {
 	out := new(ListTasksResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListTasks", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListTasks", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2531,7 +4576,7 @@ func (c *controlClient) ListTasks(ctx context.Context, in *ListTasksRequest, opt
 
 func (c *controlClient) RemoveTask(ctx context.Context, in *RemoveTaskRequest, opts ...grpc.CallOption) (*RemoveTaskResponse, error) {
 	out := new(RemoveTaskResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/RemoveTask", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/RemoveTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2540,7 +4585,7 @@ func (c *controlClient) RemoveTask(ctx context.Context, in *RemoveTaskRequest, o
 
 func (c *controlClient) GetService(ctx context.Context, in *GetServiceRequest, opts ...grpc.CallOption) (*GetServiceResponse, error) {
 	out := new(GetServiceResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetService", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetService", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2549,7 +4594,7 @@ func (c *controlClient) GetService(ctx context.Context, in *GetServiceRequest, o
 
 func (c *controlClient) ListServices(ctx context.Context, in *ListServicesRequest, opts ...grpc.CallOption) (*ListServicesResponse, error) {
 	out := new(ListServicesResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListServices", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListServices", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2558,7 +4603,7 @@ func (c *controlClient) ListServices(ctx context.Context, in *ListServicesReques
 
 func (c *controlClient) CreateService(ctx context.Context, in *CreateServiceRequest, opts ...grpc.CallOption) (*CreateServiceResponse, error) {
 	out := new(CreateServiceResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/CreateService", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/CreateService", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2567,7 +4612,7 @@ func (c *controlClient) CreateService(ctx context.Context, in *CreateServiceRequ
 
 func (c *controlClient) UpdateService(ctx context.Context, in *UpdateServiceRequest, opts ...grpc.CallOption) (*UpdateServiceResponse, error) {
 	out := new(UpdateServiceResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/UpdateService", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/UpdateService", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2576,7 +4621,7 @@ func (c *controlClient) UpdateService(ctx context.Context, in *UpdateServiceRequ
 
 func (c *controlClient) RemoveService(ctx context.Context, in *RemoveServiceRequest, opts ...grpc.CallOption) (*RemoveServiceResponse, error) {
 	out := new(RemoveServiceResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/RemoveService", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/RemoveService", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2585,7 +4630,7 @@ func (c *controlClient) RemoveService(ctx context.Context, in *RemoveServiceRequ
 
 func (c *controlClient) GetNetwork(ctx context.Context, in *GetNetworkRequest, opts ...grpc.CallOption) (*GetNetworkResponse, error) {
 	out := new(GetNetworkResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetNetwork", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetNetwork", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2594,7 +4639,7 @@ func (c *controlClient) GetNetwork(ctx context.Context, in *GetNetworkRequest, o
 
 func (c *controlClient) ListNetworks(ctx context.Context, in *ListNetworksRequest, opts ...grpc.CallOption) (*ListNetworksResponse, error) {
 	out := new(ListNetworksResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListNetworks", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListNetworks", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2603,7 +4648,7 @@ func (c *controlClient) ListNetworks(ctx context.Context, in *ListNetworksReques
 
 func (c *controlClient) CreateNetwork(ctx context.Context, in *CreateNetworkRequest, opts ...grpc.CallOption) (*CreateNetworkResponse, error) {
 	out := new(CreateNetworkResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/CreateNetwork", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/CreateNetwork", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2612,7 +4657,7 @@ func (c *controlClient) CreateNetwork(ctx context.Context, in *CreateNetworkRequ
 
 func (c *controlClient) RemoveNetwork(ctx context.Context, in *RemoveNetworkRequest, opts ...grpc.CallOption) (*RemoveNetworkResponse, error) {
 	out := new(RemoveNetworkResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/RemoveNetwork", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/RemoveNetwork", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2621,7 +4666,7 @@ func (c *controlClient) RemoveNetwork(ctx context.Context, in *RemoveNetworkRequ
 
 func (c *controlClient) GetCluster(ctx context.Context, in *GetClusterRequest, opts ...grpc.CallOption) (*GetClusterResponse, error) {
 	out := new(GetClusterResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetCluster", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetCluster", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2630,7 +4675,7 @@ func (c *controlClient) GetCluster(ctx context.Context, in *GetClusterRequest, o
 
 func (c *controlClient) ListClusters(ctx context.Context, in *ListClustersRequest, opts ...grpc.CallOption) (*ListClustersResponse, error) {
 	out := new(ListClustersResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListClusters", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListClusters", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2639,7 +4684,7 @@ func (c *controlClient) ListClusters(ctx context.Context, in *ListClustersReques
 
 func (c *controlClient) UpdateCluster(ctx context.Context, in *UpdateClusterRequest, opts ...grpc.CallOption) (*UpdateClusterResponse, error) {
 	out := new(UpdateClusterResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/UpdateCluster", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/UpdateCluster", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2648,7 +4693,7 @@ func (c *controlClient) UpdateCluster(ctx context.Context, in *UpdateClusterRequ
 
 func (c *controlClient) GetSecret(ctx context.Context, in *GetSecretRequest, opts ...grpc.CallOption) (*GetSecretResponse, error) {
 	out := new(GetSecretResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetSecret", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetSecret", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2657,7 +4702,7 @@ func (c *controlClient) GetSecret(ctx context.Context, in *GetSecretRequest, opt
 
 func (c *controlClient) UpdateSecret(ctx context.Context, in *UpdateSecretRequest, opts ...grpc.CallOption) (*UpdateSecretResponse, error) {
 	out := new(UpdateSecretResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/UpdateSecret", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/UpdateSecret", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2666,7 +4711,7 @@ func (c *controlClient) UpdateSecret(ctx context.Context, in *UpdateSecretReques
 
 func (c *controlClient) ListSecrets(ctx context.Context, in *ListSecretsRequest, opts ...grpc.CallOption) (*ListSecretsResponse, error) {
 	out := new(ListSecretsResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListSecrets", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListSecrets", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2675,7 +4720,7 @@ func (c *controlClient) ListSecrets(ctx context.Context, in *ListSecretsRequest,
 
 func (c *controlClient) CreateSecret(ctx context.Context, in *CreateSecretRequest, opts ...grpc.CallOption) (*CreateSecretResponse, error) {
 	out := new(CreateSecretResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/CreateSecret", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/CreateSecret", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2684,7 +4729,7 @@ func (c *controlClient) CreateSecret(ctx context.Context, in *CreateSecretReques
 
 func (c *controlClient) RemoveSecret(ctx context.Context, in *RemoveSecretRequest, opts ...grpc.CallOption) (*RemoveSecretResponse, error) {
 	out := new(RemoveSecretResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/RemoveSecret", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/RemoveSecret", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2693,7 +4738,7 @@ func (c *controlClient) RemoveSecret(ctx context.Context, in *RemoveSecretReques
 
 func (c *controlClient) GetConfig(ctx context.Context, in *GetConfigRequest, opts ...grpc.CallOption) (*GetConfigResponse, error) {
 	out := new(GetConfigResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetConfig", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetConfig", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2702,7 +4747,7 @@ func (c *controlClient) GetConfig(ctx context.Context, in *GetConfigRequest, opt
 
 func (c *controlClient) UpdateConfig(ctx context.Context, in *UpdateConfigRequest, opts ...grpc.CallOption) (*UpdateConfigResponse, error) {
 	out := new(UpdateConfigResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/UpdateConfig", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/UpdateConfig", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2711,7 +4756,7 @@ func (c *controlClient) UpdateConfig(ctx context.Context, in *UpdateConfigReques
 
 func (c *controlClient) ListConfigs(ctx context.Context, in *ListConfigsRequest, opts ...grpc.CallOption) (*ListConfigsResponse, error) {
 	out := new(ListConfigsResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListConfigs", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListConfigs", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2720,7 +4765,7 @@ func (c *controlClient) ListConfigs(ctx context.Context, in *ListConfigsRequest,
 
 func (c *controlClient) CreateConfig(ctx context.Context, in *CreateConfigRequest, opts ...grpc.CallOption) (*CreateConfigResponse, error) {
 	out := new(CreateConfigResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/CreateConfig", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/CreateConfig", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2729,7 +4774,7 @@ func (c *controlClient) CreateConfig(ctx context.Context, in *CreateConfigReques
 
 func (c *controlClient) RemoveConfig(ctx context.Context, in *RemoveConfigRequest, opts ...grpc.CallOption) (*RemoveConfigResponse, error) {
 	out := new(RemoveConfigResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/RemoveConfig", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Control/RemoveConfig", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3490,6 +5535,9 @@ func (m *GetNodeRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintControl(dAtA, i, uint64(len(m.NodeID)))
 		i += copy(dAtA[i:], m.NodeID)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -3518,6 +5566,9 @@ func (m *GetNodeResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n1
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -3545,6 +5596,9 @@ func (m *ListNodesRequest) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n2
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -3640,6 +5694,9 @@ func (m *ListNodesRequest_Filters) MarshalTo(dAtA []byte) (int, error) {
 			i += copy(dAtA[i:], s)
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -3669,6 +5726,9 @@ func (m *ListNodesResponse) MarshalTo(dAtA []byte) (int, error) {
 			}
 			i += n
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -3714,6 +5774,9 @@ func (m *UpdateNodeRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n4
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -3741,6 +5804,9 @@ func (m *UpdateNodeResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n5
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -3776,6 +5842,9 @@ func (m *RemoveNodeRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i++
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -3794,6 +5863,9 @@ func (m *RemoveNodeResponse) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -3817,6 +5889,9 @@ func (m *GetTaskRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintControl(dAtA, i, uint64(len(m.TaskID)))
 		i += copy(dAtA[i:], m.TaskID)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -3846,6 +5921,9 @@ func (m *GetTaskResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n6
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -3870,6 +5948,9 @@ func (m *RemoveTaskRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintControl(dAtA, i, uint64(len(m.TaskID)))
 		i += copy(dAtA[i:], m.TaskID)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -3888,6 +5969,9 @@ func (m *RemoveTaskResponse) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -3915,6 +5999,9 @@ func (m *ListTasksRequest) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n7
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -4058,6 +6145,9 @@ func (m *ListTasksRequest_Filters) MarshalTo(dAtA []byte) (int, error) {
 			i += copy(dAtA[i:], s)
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4088,6 +6178,9 @@ func (m *ListTasksResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4116,6 +6209,9 @@ func (m *CreateServiceRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n8
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4143,6 +6239,9 @@ func (m *CreateServiceResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n9
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -4178,6 +6277,9 @@ func (m *GetServiceRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i++
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4205,6 +6307,9 @@ func (m *GetServiceResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n10
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -4255,6 +6360,9 @@ func (m *UpdateServiceRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintControl(dAtA, i, uint64(m.Rollback))
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4283,6 +6391,9 @@ func (m *UpdateServiceResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n13
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4307,6 +6418,9 @@ func (m *RemoveServiceRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintControl(dAtA, i, uint64(len(m.ServiceID)))
 		i += copy(dAtA[i:], m.ServiceID)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4325,6 +6439,9 @@ func (m *RemoveServiceResponse) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4352,6 +6469,9 @@ func (m *ListServicesRequest) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n14
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -4448,6 +6568,9 @@ func (m *ListServicesRequest_Filters) MarshalTo(dAtA []byte) (int, error) {
 			i += copy(dAtA[i:], s)
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4478,6 +6601,9 @@ func (m *ListServicesResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4506,6 +6632,9 @@ func (m *CreateNetworkRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n15
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4533,6 +6662,9 @@ func (m *CreateNetworkResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n16
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -4564,6 +6696,9 @@ func (m *GetNetworkRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintControl(dAtA, i, uint64(len(m.NetworkID)))
 		i += copy(dAtA[i:], m.NetworkID)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4591,6 +6726,9 @@ func (m *GetNetworkResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n17
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -4622,6 +6760,9 @@ func (m *RemoveNetworkRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintControl(dAtA, i, uint64(len(m.NetworkID)))
 		i += copy(dAtA[i:], m.NetworkID)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4640,6 +6781,9 @@ func (m *RemoveNetworkResponse) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4667,6 +6811,9 @@ func (m *ListNetworksRequest) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n18
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -4748,6 +6895,9 @@ func (m *ListNetworksRequest_Filters) MarshalTo(dAtA []byte) (int, error) {
 			i += copy(dAtA[i:], s)
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4778,6 +6928,9 @@ func (m *ListNetworksResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4801,6 +6954,9 @@ func (m *GetClusterRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintControl(dAtA, i, uint64(len(m.ClusterID)))
 		i += copy(dAtA[i:], m.ClusterID)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -4830,6 +6986,9 @@ func (m *GetClusterResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n19
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4857,6 +7016,9 @@ func (m *ListClustersRequest) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n20
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -4938,6 +7100,9 @@ func (m *ListClustersRequest_Filters) MarshalTo(dAtA []byte) (int, error) {
 			i += copy(dAtA[i:], s)
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -4967,6 +7132,9 @@ func (m *ListClustersResponse) MarshalTo(dAtA []byte) (int, error) {
 			}
 			i += n
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5015,6 +7183,9 @@ func (m *KeyRotation) MarshalTo(dAtA []byte) (int, error) {
 			dAtA[i] = 0
 		}
 		i++
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5068,6 +7239,9 @@ func (m *UpdateClusterRequest) MarshalTo(dAtA []byte) (int, error) {
 		return 0, err
 	}
 	i += n23
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5096,6 +7270,9 @@ func (m *UpdateClusterResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n24
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5119,6 +7296,9 @@ func (m *GetSecretRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintControl(dAtA, i, uint64(len(m.SecretID)))
 		i += copy(dAtA[i:], m.SecretID)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5147,6 +7327,9 @@ func (m *GetSecretResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n25
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5192,6 +7375,9 @@ func (m *UpdateSecretRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n27
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5220,6 +7406,9 @@ func (m *UpdateSecretResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n28
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5247,6 +7436,9 @@ func (m *ListSecretsRequest) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n29
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5328,6 +7520,9 @@ func (m *ListSecretsRequest_Filters) MarshalTo(dAtA []byte) (int, error) {
 			i += copy(dAtA[i:], s)
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5358,6 +7553,9 @@ func (m *ListSecretsResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5385,6 +7583,9 @@ func (m *CreateSecretRequest) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n30
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5414,6 +7615,9 @@ func (m *CreateSecretResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n31
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5438,6 +7642,9 @@ func (m *RemoveSecretRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintControl(dAtA, i, uint64(len(m.SecretID)))
 		i += copy(dAtA[i:], m.SecretID)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5456,6 +7663,9 @@ func (m *RemoveSecretResponse) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5479,6 +7689,9 @@ func (m *GetConfigRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintControl(dAtA, i, uint64(len(m.ConfigID)))
 		i += copy(dAtA[i:], m.ConfigID)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5507,6 +7720,9 @@ func (m *GetConfigResponse) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n32
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5552,6 +7768,9 @@ func (m *UpdateConfigRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n34
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5580,6 +7799,9 @@ func (m *UpdateConfigResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n35
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5607,6 +7829,9 @@ func (m *ListConfigsRequest) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n36
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5688,6 +7913,9 @@ func (m *ListConfigsRequest_Filters) MarshalTo(dAtA []byte) (int, error) {
 			i += copy(dAtA[i:], s)
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5718,6 +7946,9 @@ func (m *ListConfigsResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5745,6 +7976,9 @@ func (m *CreateConfigRequest) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n37
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -5774,6 +8008,9 @@ func (m *CreateConfigResponse) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n38
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5798,6 +8035,9 @@ func (m *RemoveConfigRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintControl(dAtA, i, uint64(len(m.ConfigID)))
 		i += copy(dAtA[i:], m.ConfigID)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -5816,6 +8056,9 @@ func (m *RemoveConfigResponse) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -6923,6 +9166,9 @@ func (m *GetNodeRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -6933,6 +9179,9 @@ func (m *GetNodeResponse) Size() (n int) {
 		l = m.Node.Size()
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -6942,6 +9191,9 @@ func (m *ListNodesRequest) Size() (n int) {
 	if m.Filters != nil {
 		l = m.Filters.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -6985,6 +9237,9 @@ func (m *ListNodesRequest_Filters) Size() (n int) {
 			n += 1 + l + sovControl(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -6996,6 +9251,9 @@ func (m *ListNodesResponse) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovControl(uint64(l))
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7015,6 +9273,9 @@ func (m *UpdateNodeRequest) Size() (n int) {
 		l = m.Spec.Size()
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7024,6 +9285,9 @@ func (m *UpdateNodeResponse) Size() (n int) {
 	if m.Node != nil {
 		l = m.Node.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7038,12 +9302,18 @@ func (m *RemoveNodeRequest) Size() (n int) {
 	if m.Force {
 		n += 2
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *RemoveNodeResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7053,6 +9323,9 @@ func (m *GetTaskRequest) Size() (n int) {
 	l = len(m.TaskID)
 	if l > 0 {
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7064,6 +9337,9 @@ func (m *GetTaskResponse) Size() (n int) {
 		l = m.Task.Size()
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7074,12 +9350,18 @@ func (m *RemoveTaskRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *RemoveTaskResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7089,6 +9371,9 @@ func (m *ListTasksRequest) Size() (n int) {
 	if m.Filters != nil {
 		l = m.Filters.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7148,6 +9433,9 @@ func (m *ListTasksRequest_Filters) Size() (n int) {
 			n += 1 + l + sovControl(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7160,6 +9448,9 @@ func (m *ListTasksResponse) Size() (n int) {
 			n += 1 + l + sovControl(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7170,6 +9461,9 @@ func (m *CreateServiceRequest) Size() (n int) {
 		l = m.Spec.Size()
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7179,6 +9473,9 @@ func (m *CreateServiceResponse) Size() (n int) {
 	if m.Service != nil {
 		l = m.Service.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7193,6 +9490,9 @@ func (m *GetServiceRequest) Size() (n int) {
 	if m.InsertDefaults {
 		n += 2
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7202,6 +9502,9 @@ func (m *GetServiceResponse) Size() (n int) {
 	if m.Service != nil {
 		l = m.Service.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7224,6 +9527,9 @@ func (m *UpdateServiceRequest) Size() (n int) {
 	if m.Rollback != 0 {
 		n += 1 + sovControl(uint64(m.Rollback))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7233,6 +9539,9 @@ func (m *UpdateServiceResponse) Size() (n int) {
 	if m.Service != nil {
 		l = m.Service.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7244,12 +9553,18 @@ func (m *RemoveServiceRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *RemoveServiceResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7259,6 +9574,9 @@ func (m *ListServicesRequest) Size() (n int) {
 	if m.Filters != nil {
 		l = m.Filters.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7298,6 +9616,9 @@ func (m *ListServicesRequest_Filters) Size() (n int) {
 			n += 1 + l + sovControl(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7310,6 +9631,9 @@ func (m *ListServicesResponse) Size() (n int) {
 			n += 1 + l + sovControl(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7320,6 +9644,9 @@ func (m *CreateNetworkRequest) Size() (n int) {
 		l = m.Spec.Size()
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7329,6 +9656,9 @@ func (m *CreateNetworkResponse) Size() (n int) {
 	if m.Network != nil {
 		l = m.Network.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7344,6 +9674,9 @@ func (m *GetNetworkRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7353,6 +9686,9 @@ func (m *GetNetworkResponse) Size() (n int) {
 	if m.Network != nil {
 		l = m.Network.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7368,12 +9704,18 @@ func (m *RemoveNetworkRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *RemoveNetworkResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7383,6 +9725,9 @@ func (m *ListNetworksRequest) Size() (n int) {
 	if m.Filters != nil {
 		l = m.Filters.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7416,6 +9761,9 @@ func (m *ListNetworksRequest_Filters) Size() (n int) {
 			n += 1 + l + sovControl(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7428,6 +9776,9 @@ func (m *ListNetworksResponse) Size() (n int) {
 			n += 1 + l + sovControl(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7437,6 +9788,9 @@ func (m *GetClusterRequest) Size() (n int) {
 	l = len(m.ClusterID)
 	if l > 0 {
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7448,6 +9802,9 @@ func (m *GetClusterResponse) Size() (n int) {
 		l = m.Cluster.Size()
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7457,6 +9814,9 @@ func (m *ListClustersRequest) Size() (n int) {
 	if m.Filters != nil {
 		l = m.Filters.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7490,6 +9850,9 @@ func (m *ListClustersRequest_Filters) Size() (n int) {
 			n += 1 + l + sovControl(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7501,6 +9864,9 @@ func (m *ListClustersResponse) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovControl(uint64(l))
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7516,6 +9882,9 @@ func (m *KeyRotation) Size() (n int) {
 	}
 	if m.ManagerUnlockKey {
 		n += 2
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7537,6 +9906,9 @@ func (m *UpdateClusterRequest) Size() (n int) {
 	}
 	l = m.Rotation.Size()
 	n += 1 + l + sovControl(uint64(l))
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7546,6 +9918,9 @@ func (m *UpdateClusterResponse) Size() (n int) {
 	if m.Cluster != nil {
 		l = m.Cluster.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7557,6 +9932,9 @@ func (m *GetSecretRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7566,6 +9944,9 @@ func (m *GetSecretResponse) Size() (n int) {
 	if m.Secret != nil {
 		l = m.Secret.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7585,6 +9966,9 @@ func (m *UpdateSecretRequest) Size() (n int) {
 		l = m.Spec.Size()
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7595,6 +9979,9 @@ func (m *UpdateSecretResponse) Size() (n int) {
 		l = m.Secret.Size()
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7604,6 +9991,9 @@ func (m *ListSecretsRequest) Size() (n int) {
 	if m.Filters != nil {
 		l = m.Filters.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7637,6 +10027,9 @@ func (m *ListSecretsRequest_Filters) Size() (n int) {
 			n += 1 + l + sovControl(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7649,6 +10042,9 @@ func (m *ListSecretsResponse) Size() (n int) {
 			n += 1 + l + sovControl(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7658,6 +10054,9 @@ func (m *CreateSecretRequest) Size() (n int) {
 	if m.Spec != nil {
 		l = m.Spec.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7669,6 +10068,9 @@ func (m *CreateSecretResponse) Size() (n int) {
 		l = m.Secret.Size()
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7679,12 +10081,18 @@ func (m *RemoveSecretRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *RemoveSecretResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7695,6 +10103,9 @@ func (m *GetConfigRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7704,6 +10115,9 @@ func (m *GetConfigResponse) Size() (n int) {
 	if m.Config != nil {
 		l = m.Config.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7723,6 +10137,9 @@ func (m *UpdateConfigRequest) Size() (n int) {
 		l = m.Spec.Size()
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7733,6 +10150,9 @@ func (m *UpdateConfigResponse) Size() (n int) {
 		l = m.Config.Size()
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7742,6 +10162,9 @@ func (m *ListConfigsRequest) Size() (n int) {
 	if m.Filters != nil {
 		l = m.Filters.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7775,6 +10198,9 @@ func (m *ListConfigsRequest_Filters) Size() (n int) {
 			n += 1 + l + sovControl(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7787,6 +10213,9 @@ func (m *ListConfigsResponse) Size() (n int) {
 			n += 1 + l + sovControl(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7796,6 +10225,9 @@ func (m *CreateConfigRequest) Size() (n int) {
 	if m.Spec != nil {
 		l = m.Spec.Size()
 		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -7807,6 +10239,9 @@ func (m *CreateConfigResponse) Size() (n int) {
 		l = m.Config.Size()
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7817,12 +10252,18 @@ func (m *RemoveConfigRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovControl(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *RemoveConfigResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -7845,6 +10286,7 @@ func (this *GetNodeRequest) String() string {
 	}
 	s := strings.Join([]string{`&GetNodeRequest{`,
 		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -7855,6 +10297,7 @@ func (this *GetNodeResponse) String() string {
 	}
 	s := strings.Join([]string{`&GetNodeResponse{`,
 		`Node:` + strings.Replace(fmt.Sprintf("%v", this.Node), "Node", "Node", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -7865,6 +10308,7 @@ func (this *ListNodesRequest) String() string {
 	}
 	s := strings.Join([]string{`&ListNodesRequest{`,
 		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListNodesRequest_Filters", "ListNodesRequest_Filters", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -7877,7 +10321,7 @@ func (this *ListNodesRequest_Filters) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	sortkeys.Strings(keysForLabels)
+	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -7890,6 +10334,7 @@ func (this *ListNodesRequest_Filters) String() string {
 		`Memberships:` + fmt.Sprintf("%v", this.Memberships) + `,`,
 		`Roles:` + fmt.Sprintf("%v", this.Roles) + `,`,
 		`NamePrefixes:` + fmt.Sprintf("%v", this.NamePrefixes) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -7900,6 +10345,7 @@ func (this *ListNodesResponse) String() string {
 	}
 	s := strings.Join([]string{`&ListNodesResponse{`,
 		`Nodes:` + strings.Replace(fmt.Sprintf("%v", this.Nodes), "Node", "Node", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -7912,6 +10358,7 @@ func (this *UpdateNodeRequest) String() string {
 		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
 		`NodeVersion:` + strings.Replace(fmt.Sprintf("%v", this.NodeVersion), "Version", "Version", 1) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NodeSpec", "NodeSpec", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -7922,6 +10369,7 @@ func (this *UpdateNodeResponse) String() string {
 	}
 	s := strings.Join([]string{`&UpdateNodeResponse{`,
 		`Node:` + strings.Replace(fmt.Sprintf("%v", this.Node), "Node", "Node", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -7933,6 +10381,7 @@ func (this *RemoveNodeRequest) String() string {
 	s := strings.Join([]string{`&RemoveNodeRequest{`,
 		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
 		`Force:` + fmt.Sprintf("%v", this.Force) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -7942,6 +10391,7 @@ func (this *RemoveNodeResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&RemoveNodeResponse{`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -7952,6 +10402,7 @@ func (this *GetTaskRequest) String() string {
 	}
 	s := strings.Join([]string{`&GetTaskRequest{`,
 		`TaskID:` + fmt.Sprintf("%v", this.TaskID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -7962,6 +10413,7 @@ func (this *GetTaskResponse) String() string {
 	}
 	s := strings.Join([]string{`&GetTaskResponse{`,
 		`Task:` + strings.Replace(fmt.Sprintf("%v", this.Task), "Task", "Task", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -7972,6 +10424,7 @@ func (this *RemoveTaskRequest) String() string {
 	}
 	s := strings.Join([]string{`&RemoveTaskRequest{`,
 		`TaskID:` + fmt.Sprintf("%v", this.TaskID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -7981,6 +10434,7 @@ func (this *RemoveTaskResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&RemoveTaskResponse{`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -7991,6 +10445,7 @@ func (this *ListTasksRequest) String() string {
 	}
 	s := strings.Join([]string{`&ListTasksRequest{`,
 		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListTasksRequest_Filters", "ListTasksRequest_Filters", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8003,7 +10458,7 @@ func (this *ListTasksRequest_Filters) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	sortkeys.Strings(keysForLabels)
+	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -8019,6 +10474,7 @@ func (this *ListTasksRequest_Filters) String() string {
 		`NamePrefixes:` + fmt.Sprintf("%v", this.NamePrefixes) + `,`,
 		`UpToDate:` + fmt.Sprintf("%v", this.UpToDate) + `,`,
 		`Runtimes:` + fmt.Sprintf("%v", this.Runtimes) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8029,6 +10485,7 @@ func (this *ListTasksResponse) String() string {
 	}
 	s := strings.Join([]string{`&ListTasksResponse{`,
 		`Tasks:` + strings.Replace(fmt.Sprintf("%v", this.Tasks), "Task", "Task", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8039,6 +10496,7 @@ func (this *CreateServiceRequest) String() string {
 	}
 	s := strings.Join([]string{`&CreateServiceRequest{`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "ServiceSpec", "ServiceSpec", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8049,6 +10507,7 @@ func (this *CreateServiceResponse) String() string {
 	}
 	s := strings.Join([]string{`&CreateServiceResponse{`,
 		`Service:` + strings.Replace(fmt.Sprintf("%v", this.Service), "Service", "Service", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8060,6 +10519,7 @@ func (this *GetServiceRequest) String() string {
 	s := strings.Join([]string{`&GetServiceRequest{`,
 		`ServiceID:` + fmt.Sprintf("%v", this.ServiceID) + `,`,
 		`InsertDefaults:` + fmt.Sprintf("%v", this.InsertDefaults) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8070,6 +10530,7 @@ func (this *GetServiceResponse) String() string {
 	}
 	s := strings.Join([]string{`&GetServiceResponse{`,
 		`Service:` + strings.Replace(fmt.Sprintf("%v", this.Service), "Service", "Service", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8083,6 +10544,7 @@ func (this *UpdateServiceRequest) String() string {
 		`ServiceVersion:` + strings.Replace(fmt.Sprintf("%v", this.ServiceVersion), "Version", "Version", 1) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "ServiceSpec", "ServiceSpec", 1) + `,`,
 		`Rollback:` + fmt.Sprintf("%v", this.Rollback) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8093,6 +10555,7 @@ func (this *UpdateServiceResponse) String() string {
 	}
 	s := strings.Join([]string{`&UpdateServiceResponse{`,
 		`Service:` + strings.Replace(fmt.Sprintf("%v", this.Service), "Service", "Service", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8103,6 +10566,7 @@ func (this *RemoveServiceRequest) String() string {
 	}
 	s := strings.Join([]string{`&RemoveServiceRequest{`,
 		`ServiceID:` + fmt.Sprintf("%v", this.ServiceID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8112,6 +10576,7 @@ func (this *RemoveServiceResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&RemoveServiceResponse{`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8122,6 +10587,7 @@ func (this *ListServicesRequest) String() string {
 	}
 	s := strings.Join([]string{`&ListServicesRequest{`,
 		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListServicesRequest_Filters", "ListServicesRequest_Filters", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8134,7 +10600,7 @@ func (this *ListServicesRequest_Filters) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	sortkeys.Strings(keysForLabels)
+	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -8146,6 +10612,7 @@ func (this *ListServicesRequest_Filters) String() string {
 		`Labels:` + mapStringForLabels + `,`,
 		`NamePrefixes:` + fmt.Sprintf("%v", this.NamePrefixes) + `,`,
 		`Runtimes:` + fmt.Sprintf("%v", this.Runtimes) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8156,6 +10623,7 @@ func (this *ListServicesResponse) String() string {
 	}
 	s := strings.Join([]string{`&ListServicesResponse{`,
 		`Services:` + strings.Replace(fmt.Sprintf("%v", this.Services), "Service", "Service", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8166,6 +10634,7 @@ func (this *CreateNetworkRequest) String() string {
 	}
 	s := strings.Join([]string{`&CreateNetworkRequest{`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "NetworkSpec", "NetworkSpec", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8176,6 +10645,7 @@ func (this *CreateNetworkResponse) String() string {
 	}
 	s := strings.Join([]string{`&CreateNetworkResponse{`,
 		`Network:` + strings.Replace(fmt.Sprintf("%v", this.Network), "Network", "Network", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8187,6 +10657,7 @@ func (this *GetNetworkRequest) String() string {
 	s := strings.Join([]string{`&GetNetworkRequest{`,
 		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
 		`NetworkID:` + fmt.Sprintf("%v", this.NetworkID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8197,6 +10668,7 @@ func (this *GetNetworkResponse) String() string {
 	}
 	s := strings.Join([]string{`&GetNetworkResponse{`,
 		`Network:` + strings.Replace(fmt.Sprintf("%v", this.Network), "Network", "Network", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8208,6 +10680,7 @@ func (this *RemoveNetworkRequest) String() string {
 	s := strings.Join([]string{`&RemoveNetworkRequest{`,
 		`Name:` + fmt.Sprintf("%v", this.Name) + `,`,
 		`NetworkID:` + fmt.Sprintf("%v", this.NetworkID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8217,6 +10690,7 @@ func (this *RemoveNetworkResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&RemoveNetworkResponse{`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8227,6 +10701,7 @@ func (this *ListNetworksRequest) String() string {
 	}
 	s := strings.Join([]string{`&ListNetworksRequest{`,
 		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListNetworksRequest_Filters", "ListNetworksRequest_Filters", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8239,7 +10714,7 @@ func (this *ListNetworksRequest_Filters) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	sortkeys.Strings(keysForLabels)
+	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -8250,6 +10725,7 @@ func (this *ListNetworksRequest_Filters) String() string {
 		`IDPrefixes:` + fmt.Sprintf("%v", this.IDPrefixes) + `,`,
 		`Labels:` + mapStringForLabels + `,`,
 		`NamePrefixes:` + fmt.Sprintf("%v", this.NamePrefixes) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8260,6 +10736,7 @@ func (this *ListNetworksResponse) String() string {
 	}
 	s := strings.Join([]string{`&ListNetworksResponse{`,
 		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "Network", "Network", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8270,6 +10747,7 @@ func (this *GetClusterRequest) String() string {
 	}
 	s := strings.Join([]string{`&GetClusterRequest{`,
 		`ClusterID:` + fmt.Sprintf("%v", this.ClusterID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8280,6 +10758,7 @@ func (this *GetClusterResponse) String() string {
 	}
 	s := strings.Join([]string{`&GetClusterResponse{`,
 		`Cluster:` + strings.Replace(fmt.Sprintf("%v", this.Cluster), "Cluster", "Cluster", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8290,6 +10769,7 @@ func (this *ListClustersRequest) String() string {
 	}
 	s := strings.Join([]string{`&ListClustersRequest{`,
 		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListClustersRequest_Filters", "ListClustersRequest_Filters", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8302,7 +10782,7 @@ func (this *ListClustersRequest_Filters) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	sortkeys.Strings(keysForLabels)
+	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -8313,6 +10793,7 @@ func (this *ListClustersRequest_Filters) String() string {
 		`IDPrefixes:` + fmt.Sprintf("%v", this.IDPrefixes) + `,`,
 		`Labels:` + mapStringForLabels + `,`,
 		`NamePrefixes:` + fmt.Sprintf("%v", this.NamePrefixes) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8323,6 +10804,7 @@ func (this *ListClustersResponse) String() string {
 	}
 	s := strings.Join([]string{`&ListClustersResponse{`,
 		`Clusters:` + strings.Replace(fmt.Sprintf("%v", this.Clusters), "Cluster", "Cluster", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8335,6 +10817,7 @@ func (this *KeyRotation) String() string {
 		`WorkerJoinToken:` + fmt.Sprintf("%v", this.WorkerJoinToken) + `,`,
 		`ManagerJoinToken:` + fmt.Sprintf("%v", this.ManagerJoinToken) + `,`,
 		`ManagerUnlockKey:` + fmt.Sprintf("%v", this.ManagerUnlockKey) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8348,6 +10831,7 @@ func (this *UpdateClusterRequest) String() string {
 		`ClusterVersion:` + strings.Replace(fmt.Sprintf("%v", this.ClusterVersion), "Version", "Version", 1) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "ClusterSpec", "ClusterSpec", 1) + `,`,
 		`Rotation:` + strings.Replace(strings.Replace(this.Rotation.String(), "KeyRotation", "KeyRotation", 1), `&`, ``, 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8358,6 +10842,7 @@ func (this *UpdateClusterResponse) String() string {
 	}
 	s := strings.Join([]string{`&UpdateClusterResponse{`,
 		`Cluster:` + strings.Replace(fmt.Sprintf("%v", this.Cluster), "Cluster", "Cluster", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8368,6 +10853,7 @@ func (this *GetSecretRequest) String() string {
 	}
 	s := strings.Join([]string{`&GetSecretRequest{`,
 		`SecretID:` + fmt.Sprintf("%v", this.SecretID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8378,6 +10864,7 @@ func (this *GetSecretResponse) String() string {
 	}
 	s := strings.Join([]string{`&GetSecretResponse{`,
 		`Secret:` + strings.Replace(fmt.Sprintf("%v", this.Secret), "Secret", "Secret", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8390,6 +10877,7 @@ func (this *UpdateSecretRequest) String() string {
 		`SecretID:` + fmt.Sprintf("%v", this.SecretID) + `,`,
 		`SecretVersion:` + strings.Replace(fmt.Sprintf("%v", this.SecretVersion), "Version", "Version", 1) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "SecretSpec", "SecretSpec", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8400,6 +10888,7 @@ func (this *UpdateSecretResponse) String() string {
 	}
 	s := strings.Join([]string{`&UpdateSecretResponse{`,
 		`Secret:` + strings.Replace(fmt.Sprintf("%v", this.Secret), "Secret", "Secret", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8410,6 +10899,7 @@ func (this *ListSecretsRequest) String() string {
 	}
 	s := strings.Join([]string{`&ListSecretsRequest{`,
 		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListSecretsRequest_Filters", "ListSecretsRequest_Filters", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8422,7 +10912,7 @@ func (this *ListSecretsRequest_Filters) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	sortkeys.Strings(keysForLabels)
+	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -8433,6 +10923,7 @@ func (this *ListSecretsRequest_Filters) String() string {
 		`IDPrefixes:` + fmt.Sprintf("%v", this.IDPrefixes) + `,`,
 		`Labels:` + mapStringForLabels + `,`,
 		`NamePrefixes:` + fmt.Sprintf("%v", this.NamePrefixes) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8443,6 +10934,7 @@ func (this *ListSecretsResponse) String() string {
 	}
 	s := strings.Join([]string{`&ListSecretsResponse{`,
 		`Secrets:` + strings.Replace(fmt.Sprintf("%v", this.Secrets), "Secret", "Secret", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8453,6 +10945,7 @@ func (this *CreateSecretRequest) String() string {
 	}
 	s := strings.Join([]string{`&CreateSecretRequest{`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "SecretSpec", "SecretSpec", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8463,6 +10956,7 @@ func (this *CreateSecretResponse) String() string {
 	}
 	s := strings.Join([]string{`&CreateSecretResponse{`,
 		`Secret:` + strings.Replace(fmt.Sprintf("%v", this.Secret), "Secret", "Secret", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8473,6 +10967,7 @@ func (this *RemoveSecretRequest) String() string {
 	}
 	s := strings.Join([]string{`&RemoveSecretRequest{`,
 		`SecretID:` + fmt.Sprintf("%v", this.SecretID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8482,6 +10977,7 @@ func (this *RemoveSecretResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&RemoveSecretResponse{`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8492,6 +10988,7 @@ func (this *GetConfigRequest) String() string {
 	}
 	s := strings.Join([]string{`&GetConfigRequest{`,
 		`ConfigID:` + fmt.Sprintf("%v", this.ConfigID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8502,6 +10999,7 @@ func (this *GetConfigResponse) String() string {
 	}
 	s := strings.Join([]string{`&GetConfigResponse{`,
 		`Config:` + strings.Replace(fmt.Sprintf("%v", this.Config), "Config", "Config", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8514,6 +11012,7 @@ func (this *UpdateConfigRequest) String() string {
 		`ConfigID:` + fmt.Sprintf("%v", this.ConfigID) + `,`,
 		`ConfigVersion:` + strings.Replace(fmt.Sprintf("%v", this.ConfigVersion), "Version", "Version", 1) + `,`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "ConfigSpec", "ConfigSpec", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8524,6 +11023,7 @@ func (this *UpdateConfigResponse) String() string {
 	}
 	s := strings.Join([]string{`&UpdateConfigResponse{`,
 		`Config:` + strings.Replace(fmt.Sprintf("%v", this.Config), "Config", "Config", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8534,6 +11034,7 @@ func (this *ListConfigsRequest) String() string {
 	}
 	s := strings.Join([]string{`&ListConfigsRequest{`,
 		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListConfigsRequest_Filters", "ListConfigsRequest_Filters", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8546,7 +11047,7 @@ func (this *ListConfigsRequest_Filters) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	sortkeys.Strings(keysForLabels)
+	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -8557,6 +11058,7 @@ func (this *ListConfigsRequest_Filters) String() string {
 		`IDPrefixes:` + fmt.Sprintf("%v", this.IDPrefixes) + `,`,
 		`Labels:` + mapStringForLabels + `,`,
 		`NamePrefixes:` + fmt.Sprintf("%v", this.NamePrefixes) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8567,6 +11069,7 @@ func (this *ListConfigsResponse) String() string {
 	}
 	s := strings.Join([]string{`&ListConfigsResponse{`,
 		`Configs:` + strings.Replace(fmt.Sprintf("%v", this.Configs), "Config", "Config", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8577,6 +11080,7 @@ func (this *CreateConfigRequest) String() string {
 	}
 	s := strings.Join([]string{`&CreateConfigRequest{`,
 		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "ConfigSpec", "ConfigSpec", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8587,6 +11091,7 @@ func (this *CreateConfigResponse) String() string {
 	}
 	s := strings.Join([]string{`&CreateConfigResponse{`,
 		`Config:` + strings.Replace(fmt.Sprintf("%v", this.Config), "Config", "Config", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8597,6 +11102,7 @@ func (this *RemoveConfigRequest) String() string {
 	}
 	s := strings.Join([]string{`&RemoveConfigRequest{`,
 		`ConfigID:` + fmt.Sprintf("%v", this.ConfigID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8606,6 +11112,7 @@ func (this *RemoveConfigResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&RemoveConfigResponse{`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -8688,6 +11195,7 @@ func (m *GetNodeRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -8771,6 +11279,7 @@ func (m *GetNodeResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -8854,6 +11363,7 @@ func (m *ListNodesRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -9233,6 +11743,7 @@ func (m *ListNodesRequest_Filters) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -9314,6 +11825,7 @@ func (m *ListNodesResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -9459,6 +11971,7 @@ func (m *UpdateNodeRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -9542,6 +12055,7 @@ func (m *UpdateNodeResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -9641,6 +12155,7 @@ func (m *RemoveNodeRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -9691,6 +12206,7 @@ func (m *RemoveNodeResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -9770,6 +12286,7 @@ func (m *GetTaskRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -9853,6 +12370,7 @@ func (m *GetTaskResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -9932,6 +12450,7 @@ func (m *RemoveTaskRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -9982,6 +12501,7 @@ func (m *RemoveTaskResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -10065,6 +12585,7 @@ func (m *ListTasksRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -10489,6 +13010,7 @@ func (m *ListTasksRequest_Filters) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -10570,6 +13092,7 @@ func (m *ListTasksResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -10653,6 +13176,7 @@ func (m *CreateServiceRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -10736,6 +13260,7 @@ func (m *CreateServiceResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -10835,6 +13360,7 @@ func (m *GetServiceRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -10918,6 +13444,7 @@ func (m *GetServiceResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11082,6 +13609,7 @@ func (m *UpdateServiceRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11165,6 +13693,7 @@ func (m *UpdateServiceResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11244,6 +13773,7 @@ func (m *RemoveServiceRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11294,6 +13824,7 @@ func (m *RemoveServiceResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11377,6 +13908,7 @@ func (m *ListServicesRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11661,6 +14193,7 @@ func (m *ListServicesRequest_Filters) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11742,6 +14275,7 @@ func (m *ListServicesResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11825,6 +14359,7 @@ func (m *CreateNetworkRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -11908,6 +14443,7 @@ func (m *CreateNetworkResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12016,6 +14552,7 @@ func (m *GetNetworkRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12099,6 +14636,7 @@ func (m *GetNetworkResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12207,6 +14745,7 @@ func (m *RemoveNetworkRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12257,6 +14796,7 @@ func (m *RemoveNetworkResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12340,6 +14880,7 @@ func (m *ListNetworksRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12595,6 +15136,7 @@ func (m *ListNetworksRequest_Filters) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12676,6 +15218,7 @@ func (m *ListNetworksResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12755,6 +15298,7 @@ func (m *GetClusterRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12838,6 +15382,7 @@ func (m *GetClusterResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -12921,6 +15466,7 @@ func (m *ListClustersRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13176,6 +15722,7 @@ func (m *ListClustersRequest_Filters) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13257,6 +15804,7 @@ func (m *ListClustersResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13367,6 +15915,7 @@ func (m *KeyRotation) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13542,6 +16091,7 @@ func (m *UpdateClusterRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13625,6 +16175,7 @@ func (m *UpdateClusterResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13704,6 +16255,7 @@ func (m *GetSecretRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13787,6 +16339,7 @@ func (m *GetSecretResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -13932,6 +16485,7 @@ func (m *UpdateSecretRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14015,6 +16569,7 @@ func (m *UpdateSecretResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14098,6 +16653,7 @@ func (m *ListSecretsRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14353,6 +16909,7 @@ func (m *ListSecretsRequest_Filters) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14434,6 +16991,7 @@ func (m *ListSecretsResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14517,6 +17075,7 @@ func (m *CreateSecretRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14600,6 +17159,7 @@ func (m *CreateSecretResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14679,6 +17239,7 @@ func (m *RemoveSecretRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14729,6 +17290,7 @@ func (m *RemoveSecretResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14808,6 +17370,7 @@ func (m *GetConfigRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -14891,6 +17454,7 @@ func (m *GetConfigResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15036,6 +17600,7 @@ func (m *UpdateConfigRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15119,6 +17684,7 @@ func (m *UpdateConfigResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15202,6 +17768,7 @@ func (m *ListConfigsRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15457,6 +18024,7 @@ func (m *ListConfigsRequest_Filters) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15538,6 +18106,7 @@ func (m *ListConfigsResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15621,6 +18190,7 @@ func (m *CreateConfigRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15704,6 +18274,7 @@ func (m *CreateConfigResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15783,6 +18354,7 @@ func (m *RemoveConfigRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15833,6 +18405,7 @@ func (m *RemoveConfigResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -15947,9 +18520,11 @@ var (
 	ErrIntOverflowControl   = fmt.Errorf("proto: integer overflow")
 )
 
-func init() { proto.RegisterFile("github.com/docker/swarmkit/api/control.proto", fileDescriptorControl) }
+func init() {
+	proto.RegisterFile("github.com/docker/swarmkit/api/control.proto", fileDescriptor_control_040dca6f676eeedc)
+}
 
-var fileDescriptorControl = []byte{
+var fileDescriptor_control_040dca6f676eeedc = []byte{
 	// 2137 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x5a, 0x4f, 0x73, 0x1b, 0x49,
 	0x15, 0xb7, 0xfe, 0xd8, 0x92, 0x9f, 0x6c, 0xd9, 0xee, 0x38, 0xa0, 0x52, 0x82, 0x9d, 0x9a, 0x90,

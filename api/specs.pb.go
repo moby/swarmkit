@@ -7,15 +7,13 @@ import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
-import google_protobuf1 "github.com/gogo/protobuf/types"
-import google_protobuf3 "github.com/gogo/protobuf/types"
-import google_protobuf4 "github.com/gogo/protobuf/types"
+import types "github.com/gogo/protobuf/types"
 
-import deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import strings "strings"
 import reflect "reflect"
-import sortkeys "github.com/gogo/protobuf/sortkeys"
+import github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
 
 import io "io"
 
@@ -23,6 +21,12 @@ import io "io"
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type NodeSpec_Membership int32
 
@@ -43,7 +47,9 @@ var NodeSpec_Membership_value = map[string]int32{
 func (x NodeSpec_Membership) String() string {
 	return proto.EnumName(NodeSpec_Membership_name, int32(x))
 }
-func (NodeSpec_Membership) EnumDescriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{0, 0} }
+func (NodeSpec_Membership) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{0, 0}
+}
 
 type NodeSpec_Availability int32
 
@@ -72,7 +78,9 @@ var NodeSpec_Availability_value = map[string]int32{
 func (x NodeSpec_Availability) String() string {
 	return proto.EnumName(NodeSpec_Availability_name, int32(x))
 }
-func (NodeSpec_Availability) EnumDescriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{0, 1} }
+func (NodeSpec_Availability) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{0, 1}
+}
 
 type ContainerSpec_Isolation int32
 
@@ -100,7 +108,7 @@ func (x ContainerSpec_Isolation) String() string {
 	return proto.EnumName(ContainerSpec_Isolation_name, int32(x))
 }
 func (ContainerSpec_Isolation) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptorSpecs, []int{8, 0}
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{8, 0}
 }
 
 // ResolutionMode specifies the mode of resolution to use for
@@ -136,7 +144,7 @@ func (x EndpointSpec_ResolutionMode) String() string {
 	return proto.EnumName(EndpointSpec_ResolutionMode_name, int32(x))
 }
 func (EndpointSpec_ResolutionMode) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptorSpecs, []int{9, 0}
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{9, 0}
 }
 
 type NodeSpec struct {
@@ -147,12 +155,43 @@ type NodeSpec struct {
 	Membership NodeSpec_Membership `protobuf:"varint,3,opt,name=membership,proto3,enum=docker.swarmkit.v1.NodeSpec_Membership" json:"membership,omitempty"`
 	// Availability allows a user to control the current scheduling status of a
 	// node.
-	Availability NodeSpec_Availability `protobuf:"varint,4,opt,name=availability,proto3,enum=docker.swarmkit.v1.NodeSpec_Availability" json:"availability,omitempty"`
+	Availability         NodeSpec_Availability `protobuf:"varint,4,opt,name=availability,proto3,enum=docker.swarmkit.v1.NodeSpec_Availability" json:"availability,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
+	XXX_unrecognized     []byte                `json:"-"`
+	XXX_sizecache        int32                 `json:"-"`
 }
 
-func (m *NodeSpec) Reset()                    { *m = NodeSpec{} }
-func (*NodeSpec) ProtoMessage()               {}
-func (*NodeSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{0} }
+func (m *NodeSpec) Reset()      { *m = NodeSpec{} }
+func (*NodeSpec) ProtoMessage() {}
+func (*NodeSpec) Descriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{0}
+}
+func (m *NodeSpec) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *NodeSpec) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_NodeSpec.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *NodeSpec) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_NodeSpec.Merge(dst, src)
+}
+func (m *NodeSpec) XXX_Size() int {
+	return m.Size()
+}
+func (m *NodeSpec) XXX_DiscardUnknown() {
+	xxx_messageInfo_NodeSpec.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_NodeSpec proto.InternalMessageInfo
 
 // ServiceSpec defines the properties of a service.
 //
@@ -177,15 +216,46 @@ type ServiceSpec struct {
 	// This field (ServiceSpec.Networks) is kept for compatibility.
 	// In case TaskSpec.Networks does not exist, ServiceSpec.Networks
 	// is still honored if it exists.
-	Networks []*NetworkAttachmentConfig `protobuf:"bytes,7,rep,name=networks" json:"networks,omitempty"`
+	Networks []*NetworkAttachmentConfig `protobuf:"bytes,7,rep,name=networks" json:"networks,omitempty"` // Deprecated: Do not use.
 	// Service endpoint specifies the user provided configuration
 	// to properly discover and load balance a service.
-	Endpoint *EndpointSpec `protobuf:"bytes,8,opt,name=endpoint" json:"endpoint,omitempty"`
+	Endpoint             *EndpointSpec `protobuf:"bytes,8,opt,name=endpoint" json:"endpoint,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
 }
 
-func (m *ServiceSpec) Reset()                    { *m = ServiceSpec{} }
-func (*ServiceSpec) ProtoMessage()               {}
-func (*ServiceSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{1} }
+func (m *ServiceSpec) Reset()      { *m = ServiceSpec{} }
+func (*ServiceSpec) ProtoMessage() {}
+func (*ServiceSpec) Descriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{1}
+}
+func (m *ServiceSpec) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ServiceSpec) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ServiceSpec.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ServiceSpec) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ServiceSpec.Merge(dst, src)
+}
+func (m *ServiceSpec) XXX_Size() int {
+	return m.Size()
+}
+func (m *ServiceSpec) XXX_DiscardUnknown() {
+	xxx_messageInfo_ServiceSpec.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ServiceSpec proto.InternalMessageInfo
 
 type isServiceSpec_Mode interface {
 	isServiceSpec_Mode()
@@ -283,12 +353,12 @@ func _ServiceSpec_OneofSizer(msg proto.Message) (n int) {
 	switch x := m.Mode.(type) {
 	case *ServiceSpec_Replicated:
 		s := proto.Size(x.Replicated)
-		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *ServiceSpec_Global:
 		s := proto.Size(x.Global)
-		n += proto.SizeVarint(4<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case nil:
@@ -300,20 +370,82 @@ func _ServiceSpec_OneofSizer(msg proto.Message) (n int) {
 
 // ReplicatedService sets the reconciliation target to certain number of replicas.
 type ReplicatedService struct {
-	Replicas uint64 `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
+	Replicas             uint64   `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ReplicatedService) Reset()                    { *m = ReplicatedService{} }
-func (*ReplicatedService) ProtoMessage()               {}
-func (*ReplicatedService) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{2} }
+func (m *ReplicatedService) Reset()      { *m = ReplicatedService{} }
+func (*ReplicatedService) ProtoMessage() {}
+func (*ReplicatedService) Descriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{2}
+}
+func (m *ReplicatedService) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ReplicatedService) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ReplicatedService.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ReplicatedService) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReplicatedService.Merge(dst, src)
+}
+func (m *ReplicatedService) XXX_Size() int {
+	return m.Size()
+}
+func (m *ReplicatedService) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReplicatedService.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReplicatedService proto.InternalMessageInfo
 
 // GlobalService represents global service.
 type GlobalService struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *GlobalService) Reset()                    { *m = GlobalService{} }
-func (*GlobalService) ProtoMessage()               {}
-func (*GlobalService) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{3} }
+func (m *GlobalService) Reset()      { *m = GlobalService{} }
+func (*GlobalService) ProtoMessage() {}
+func (*GlobalService) Descriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{3}
+}
+func (m *GlobalService) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GlobalService) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GlobalService.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GlobalService) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GlobalService.Merge(dst, src)
+}
+func (m *GlobalService) XXX_Size() int {
+	return m.Size()
+}
+func (m *GlobalService) XXX_DiscardUnknown() {
+	xxx_messageInfo_GlobalService.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GlobalService proto.InternalMessageInfo
 
 type TaskSpec struct {
 	// Types that are valid to be assigned to Runtime:
@@ -347,12 +479,43 @@ type TaskSpec struct {
 	// dispatcher to send the related objects.
 	//
 	// ResourceReferences is a list of ResourceReferences used by the task.
-	ResourceReferences []ResourceReference `protobuf:"bytes,11,rep,name=resource_references,json=resourceReferences" json:"resource_references"`
+	ResourceReferences   []ResourceReference `protobuf:"bytes,11,rep,name=resource_references,json=resourceReferences" json:"resource_references"`
+	XXX_NoUnkeyedLiteral struct{}            `json:"-"`
+	XXX_unrecognized     []byte              `json:"-"`
+	XXX_sizecache        int32               `json:"-"`
 }
 
-func (m *TaskSpec) Reset()                    { *m = TaskSpec{} }
-func (*TaskSpec) ProtoMessage()               {}
-func (*TaskSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{4} }
+func (m *TaskSpec) Reset()      { *m = TaskSpec{} }
+func (*TaskSpec) ProtoMessage() {}
+func (*TaskSpec) Descriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{4}
+}
+func (m *TaskSpec) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *TaskSpec) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_TaskSpec.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *TaskSpec) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_TaskSpec.Merge(dst, src)
+}
+func (m *TaskSpec) XXX_Size() int {
+	return m.Size()
+}
+func (m *TaskSpec) XXX_DiscardUnknown() {
+	xxx_messageInfo_TaskSpec.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_TaskSpec proto.InternalMessageInfo
 
 type isTaskSpec_Runtime interface {
 	isTaskSpec_Runtime()
@@ -475,17 +638,17 @@ func _TaskSpec_OneofSizer(msg proto.Message) (n int) {
 	switch x := m.Runtime.(type) {
 	case *TaskSpec_Attachment:
 		s := proto.Size(x.Attachment)
-		n += proto.SizeVarint(8<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *TaskSpec_Container:
 		s := proto.Size(x.Container)
-		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *TaskSpec_Generic:
 		s := proto.Size(x.Generic)
-		n += proto.SizeVarint(10<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case nil:
@@ -496,34 +659,127 @@ func _TaskSpec_OneofSizer(msg proto.Message) (n int) {
 }
 
 type ResourceReference struct {
-	ResourceID   string       `protobuf:"bytes,1,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
-	ResourceType ResourceType `protobuf:"varint,2,opt,name=resource_type,json=resourceType,proto3,enum=docker.swarmkit.v1.ResourceType" json:"resource_type,omitempty"`
+	ResourceID           string       `protobuf:"bytes,1,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	ResourceType         ResourceType `protobuf:"varint,2,opt,name=resource_type,json=resourceType,proto3,enum=docker.swarmkit.v1.ResourceType" json:"resource_type,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
+	XXX_unrecognized     []byte       `json:"-"`
+	XXX_sizecache        int32        `json:"-"`
 }
 
-func (m *ResourceReference) Reset()                    { *m = ResourceReference{} }
-func (*ResourceReference) ProtoMessage()               {}
-func (*ResourceReference) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{5} }
+func (m *ResourceReference) Reset()      { *m = ResourceReference{} }
+func (*ResourceReference) ProtoMessage() {}
+func (*ResourceReference) Descriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{5}
+}
+func (m *ResourceReference) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ResourceReference) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ResourceReference.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ResourceReference) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResourceReference.Merge(dst, src)
+}
+func (m *ResourceReference) XXX_Size() int {
+	return m.Size()
+}
+func (m *ResourceReference) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResourceReference.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResourceReference proto.InternalMessageInfo
 
 type GenericRuntimeSpec struct {
-	Kind    string                `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
-	Payload *google_protobuf3.Any `protobuf:"bytes,2,opt,name=payload" json:"payload,omitempty"`
+	Kind                 string     `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	Payload              *types.Any `protobuf:"bytes,2,opt,name=payload" json:"payload,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
+	XXX_unrecognized     []byte     `json:"-"`
+	XXX_sizecache        int32      `json:"-"`
 }
 
-func (m *GenericRuntimeSpec) Reset()                    { *m = GenericRuntimeSpec{} }
-func (*GenericRuntimeSpec) ProtoMessage()               {}
-func (*GenericRuntimeSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{6} }
+func (m *GenericRuntimeSpec) Reset()      { *m = GenericRuntimeSpec{} }
+func (*GenericRuntimeSpec) ProtoMessage() {}
+func (*GenericRuntimeSpec) Descriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{6}
+}
+func (m *GenericRuntimeSpec) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *GenericRuntimeSpec) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_GenericRuntimeSpec.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *GenericRuntimeSpec) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GenericRuntimeSpec.Merge(dst, src)
+}
+func (m *GenericRuntimeSpec) XXX_Size() int {
+	return m.Size()
+}
+func (m *GenericRuntimeSpec) XXX_DiscardUnknown() {
+	xxx_messageInfo_GenericRuntimeSpec.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GenericRuntimeSpec proto.InternalMessageInfo
 
 // NetworkAttachmentSpec specifies runtime parameters required to attach
 // a container to a network.
 type NetworkAttachmentSpec struct {
 	// ContainerID specifies a unique ID of the container for which
 	// this attachment is for.
-	ContainerID string `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
+	ContainerID          string   `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *NetworkAttachmentSpec) Reset()                    { *m = NetworkAttachmentSpec{} }
-func (*NetworkAttachmentSpec) ProtoMessage()               {}
-func (*NetworkAttachmentSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{7} }
+func (m *NetworkAttachmentSpec) Reset()      { *m = NetworkAttachmentSpec{} }
+func (*NetworkAttachmentSpec) ProtoMessage() {}
+func (*NetworkAttachmentSpec) Descriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{7}
+}
+func (m *NetworkAttachmentSpec) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *NetworkAttachmentSpec) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_NetworkAttachmentSpec.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *NetworkAttachmentSpec) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_NetworkAttachmentSpec.Merge(dst, src)
+}
+func (m *NetworkAttachmentSpec) XXX_Size() int {
+	return m.Size()
+}
+func (m *NetworkAttachmentSpec) XXX_DiscardUnknown() {
+	xxx_messageInfo_NetworkAttachmentSpec.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_NetworkAttachmentSpec proto.InternalMessageInfo
 
 // Container specifies runtime parameters for a container.
 type ContainerSpec struct {
@@ -572,7 +828,7 @@ type ContainerSpec struct {
 	// Privileges specifies security configuration/permissions.
 	Privileges *Privileges `protobuf:"bytes,22,opt,name=privileges" json:"privileges,omitempty"`
 	// Init declares that a custom init will be running inside the container, if null, use the daemon's configured settings
-	Init *google_protobuf4.BoolValue `protobuf:"bytes,23,opt,name=init" json:"init,omitempty"`
+	Init *types.BoolValue `protobuf:"bytes,23,opt,name=init" json:"init,omitempty"`
 	// TTY declares that a TTY should be attached to the standard streams,
 	// including stdin if it is still open.
 	TTY bool `protobuf:"varint,13,opt,name=tty,proto3" json:"tty,omitempty"`
@@ -589,7 +845,7 @@ type ContainerSpec struct {
 	// StopGracePeriod the grace period for stopping the container before
 	// forcefully killing the container.
 	// Note: Can't use stdduration here because this needs to be nullable.
-	StopGracePeriod *google_protobuf1.Duration `protobuf:"bytes,9,opt,name=stop_grace_period,json=stopGracePeriod" json:"stop_grace_period,omitempty"`
+	StopGracePeriod *types.Duration `protobuf:"bytes,9,opt,name=stop_grace_period,json=stopGracePeriod" json:"stop_grace_period,omitempty"`
 	// PullOptions parameterize the behavior of image pulls.
 	PullOptions *ContainerSpec_PullOptions `protobuf:"bytes,10,opt,name=pull_options,json=pullOptions" json:"pull_options,omitempty"`
 	// SecretReference contains references to zero or more secrets that
@@ -621,12 +877,43 @@ type ContainerSpec struct {
 	Isolation ContainerSpec_Isolation `protobuf:"varint,24,opt,name=isolation,proto3,enum=docker.swarmkit.v1.ContainerSpec_Isolation" json:"isolation,omitempty"`
 	// PidsLimit prevents from OS resource damage by applications inside the container
 	// using fork bomb attack.
-	PidsLimit int64 `protobuf:"varint,25,opt,name=pidsLimit,proto3" json:"pidsLimit,omitempty"`
+	PidsLimit            int64    `protobuf:"varint,25,opt,name=pidsLimit,proto3" json:"pidsLimit,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ContainerSpec) Reset()                    { *m = ContainerSpec{} }
-func (*ContainerSpec) ProtoMessage()               {}
-func (*ContainerSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{8} }
+func (m *ContainerSpec) Reset()      { *m = ContainerSpec{} }
+func (*ContainerSpec) ProtoMessage() {}
+func (*ContainerSpec) Descriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{8}
+}
+func (m *ContainerSpec) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ContainerSpec) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ContainerSpec.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ContainerSpec) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ContainerSpec.Merge(dst, src)
+}
+func (m *ContainerSpec) XXX_Size() int {
+	return m.Size()
+}
+func (m *ContainerSpec) XXX_DiscardUnknown() {
+	xxx_messageInfo_ContainerSpec.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ContainerSpec proto.InternalMessageInfo
 
 // PullOptions allows one to parameterize an image pull.
 type ContainerSpec_PullOptions struct {
@@ -634,14 +921,43 @@ type ContainerSpec_PullOptions struct {
 	// to pull private images. This is the unmodified JSON used as part of
 	// the `X-Registry-Auth` header.
 	// TODO(nishanttotla): This field will later be deprecated
-	RegistryAuth string `protobuf:"bytes,64,opt,name=registry_auth,json=registryAuth,proto3" json:"registry_auth,omitempty"`
+	RegistryAuth         string   `protobuf:"bytes,64,opt,name=registry_auth,json=registryAuth,proto3" json:"registry_auth,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *ContainerSpec_PullOptions) Reset()      { *m = ContainerSpec_PullOptions{} }
 func (*ContainerSpec_PullOptions) ProtoMessage() {}
 func (*ContainerSpec_PullOptions) Descriptor() ([]byte, []int) {
-	return fileDescriptorSpecs, []int{8, 1}
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{8, 1}
 }
+func (m *ContainerSpec_PullOptions) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ContainerSpec_PullOptions) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ContainerSpec_PullOptions.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ContainerSpec_PullOptions) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ContainerSpec_PullOptions.Merge(dst, src)
+}
+func (m *ContainerSpec_PullOptions) XXX_Size() int {
+	return m.Size()
+}
+func (m *ContainerSpec_PullOptions) XXX_DiscardUnknown() {
+	xxx_messageInfo_ContainerSpec_PullOptions.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ContainerSpec_PullOptions proto.InternalMessageInfo
 
 // DNSConfig specifies DNS related configurations in resolver configuration file (resolv.conf)
 // Detailed documentation is available in:
@@ -653,12 +969,43 @@ type ContainerSpec_DNSConfig struct {
 	// Search specifies the search list for host-name lookup
 	Search []string `protobuf:"bytes,2,rep,name=search" json:"search,omitempty"`
 	// Options allows certain internal resolver variables to be modified
-	Options []string `protobuf:"bytes,3,rep,name=options" json:"options,omitempty"`
+	Options              []string `protobuf:"bytes,3,rep,name=options" json:"options,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ContainerSpec_DNSConfig) Reset()                    { *m = ContainerSpec_DNSConfig{} }
-func (*ContainerSpec_DNSConfig) ProtoMessage()               {}
-func (*ContainerSpec_DNSConfig) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{8, 2} }
+func (m *ContainerSpec_DNSConfig) Reset()      { *m = ContainerSpec_DNSConfig{} }
+func (*ContainerSpec_DNSConfig) ProtoMessage() {}
+func (*ContainerSpec_DNSConfig) Descriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{8, 2}
+}
+func (m *ContainerSpec_DNSConfig) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ContainerSpec_DNSConfig) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ContainerSpec_DNSConfig.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ContainerSpec_DNSConfig) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ContainerSpec_DNSConfig.Merge(dst, src)
+}
+func (m *ContainerSpec_DNSConfig) XXX_Size() int {
+	return m.Size()
+}
+func (m *ContainerSpec_DNSConfig) XXX_DiscardUnknown() {
+	xxx_messageInfo_ContainerSpec_DNSConfig.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ContainerSpec_DNSConfig proto.InternalMessageInfo
 
 // EndpointSpec defines the properties that can be configured to
 // access and loadbalance the service.
@@ -666,12 +1013,43 @@ type EndpointSpec struct {
 	Mode EndpointSpec_ResolutionMode `protobuf:"varint,1,opt,name=mode,proto3,enum=docker.swarmkit.v1.EndpointSpec_ResolutionMode" json:"mode,omitempty"`
 	// List of exposed ports that this service is accessible from
 	// external to the cluster.
-	Ports []*PortConfig `protobuf:"bytes,2,rep,name=ports" json:"ports,omitempty"`
+	Ports                []*PortConfig `protobuf:"bytes,2,rep,name=ports" json:"ports,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
 }
 
-func (m *EndpointSpec) Reset()                    { *m = EndpointSpec{} }
-func (*EndpointSpec) ProtoMessage()               {}
-func (*EndpointSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{9} }
+func (m *EndpointSpec) Reset()      { *m = EndpointSpec{} }
+func (*EndpointSpec) ProtoMessage() {}
+func (*EndpointSpec) Descriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{9}
+}
+func (m *EndpointSpec) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *EndpointSpec) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_EndpointSpec.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *EndpointSpec) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EndpointSpec.Merge(dst, src)
+}
+func (m *EndpointSpec) XXX_Size() int {
+	return m.Size()
+}
+func (m *EndpointSpec) XXX_DiscardUnknown() {
+	xxx_messageInfo_EndpointSpec.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EndpointSpec proto.InternalMessageInfo
 
 // NetworkSpec specifies user defined network parameters.
 type NetworkSpec struct {
@@ -701,12 +1079,43 @@ type NetworkSpec struct {
 	//
 	// Types that are valid to be assigned to ConfigFrom:
 	//	*NetworkSpec_Network
-	ConfigFrom isNetworkSpec_ConfigFrom `protobuf_oneof:"config_from"`
+	ConfigFrom           isNetworkSpec_ConfigFrom `protobuf_oneof:"config_from"`
+	XXX_NoUnkeyedLiteral struct{}                 `json:"-"`
+	XXX_unrecognized     []byte                   `json:"-"`
+	XXX_sizecache        int32                    `json:"-"`
 }
 
-func (m *NetworkSpec) Reset()                    { *m = NetworkSpec{} }
-func (*NetworkSpec) ProtoMessage()               {}
-func (*NetworkSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{10} }
+func (m *NetworkSpec) Reset()      { *m = NetworkSpec{} }
+func (*NetworkSpec) ProtoMessage() {}
+func (*NetworkSpec) Descriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{10}
+}
+func (m *NetworkSpec) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *NetworkSpec) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_NetworkSpec.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *NetworkSpec) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_NetworkSpec.Merge(dst, src)
+}
+func (m *NetworkSpec) XXX_Size() int {
+	return m.Size()
+}
+func (m *NetworkSpec) XXX_DiscardUnknown() {
+	xxx_messageInfo_NetworkSpec.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_NetworkSpec proto.InternalMessageInfo
 
 type isNetworkSpec_ConfigFrom interface {
 	isNetworkSpec_ConfigFrom()
@@ -775,7 +1184,7 @@ func _NetworkSpec_OneofSizer(msg proto.Message) (n int) {
 	// config_from
 	switch x := m.ConfigFrom.(type) {
 	case *NetworkSpec_Network:
-		n += proto.SizeVarint(8<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(len(x.Network)))
 		n += len(x.Network)
 	case nil:
@@ -791,7 +1200,7 @@ type ClusterSpec struct {
 	// DEPRECATED: AcceptancePolicy defines the certificate issuance policy.
 	// Acceptance policy is no longer customizable, and secrets have been
 	// replaced with join tokens.
-	AcceptancePolicy AcceptancePolicy `protobuf:"bytes,2,opt,name=acceptance_policy,json=acceptancePolicy" json:"acceptance_policy"`
+	AcceptancePolicy AcceptancePolicy `protobuf:"bytes,2,opt,name=acceptance_policy,json=acceptancePolicy" json:"acceptance_policy"` // Deprecated: Do not use.
 	// Orchestration defines cluster-level orchestration settings.
 	Orchestration OrchestrationConfig `protobuf:"bytes,3,opt,name=orchestration" json:"orchestration"`
 	// Raft defines the cluster's raft settings.
@@ -803,12 +1212,43 @@ type ClusterSpec struct {
 	// TaskDefaults specifies the default values to use for task creation.
 	TaskDefaults TaskDefaults `protobuf:"bytes,7,opt,name=task_defaults,json=taskDefaults" json:"task_defaults"`
 	// EncryptionConfig defines the cluster's encryption settings.
-	EncryptionConfig EncryptionConfig `protobuf:"bytes,8,opt,name=encryption_config,json=encryptionConfig" json:"encryption_config"`
+	EncryptionConfig     EncryptionConfig `protobuf:"bytes,8,opt,name=encryption_config,json=encryptionConfig" json:"encryption_config"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
-func (m *ClusterSpec) Reset()                    { *m = ClusterSpec{} }
-func (*ClusterSpec) ProtoMessage()               {}
-func (*ClusterSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{11} }
+func (m *ClusterSpec) Reset()      { *m = ClusterSpec{} }
+func (*ClusterSpec) ProtoMessage() {}
+func (*ClusterSpec) Descriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{11}
+}
+func (m *ClusterSpec) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ClusterSpec) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ClusterSpec.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ClusterSpec) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ClusterSpec.Merge(dst, src)
+}
+func (m *ClusterSpec) XXX_Size() int {
+	return m.Size()
+}
+func (m *ClusterSpec) XXX_DiscardUnknown() {
+	xxx_messageInfo_ClusterSpec.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ClusterSpec proto.InternalMessageInfo
 
 // SecretSpec specifies a user-provided secret.
 type SecretSpec struct {
@@ -822,12 +1262,43 @@ type SecretSpec struct {
 	// - golang: Go templating
 	Templating *Driver `protobuf:"bytes,3,opt,name=templating" json:"templating,omitempty"`
 	// Driver is the the secret driver that is used to store the specified secret
-	Driver *Driver `protobuf:"bytes,4,opt,name=driver" json:"driver,omitempty"`
+	Driver               *Driver  `protobuf:"bytes,4,opt,name=driver" json:"driver,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SecretSpec) Reset()                    { *m = SecretSpec{} }
-func (*SecretSpec) ProtoMessage()               {}
-func (*SecretSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{12} }
+func (m *SecretSpec) Reset()      { *m = SecretSpec{} }
+func (*SecretSpec) ProtoMessage() {}
+func (*SecretSpec) Descriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{12}
+}
+func (m *SecretSpec) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SecretSpec) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_SecretSpec.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *SecretSpec) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SecretSpec.Merge(dst, src)
+}
+func (m *SecretSpec) XXX_Size() int {
+	return m.Size()
+}
+func (m *SecretSpec) XXX_DiscardUnknown() {
+	xxx_messageInfo_SecretSpec.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SecretSpec proto.InternalMessageInfo
 
 // ConfigSpec specifies user-provided configuration files.
 type ConfigSpec struct {
@@ -841,12 +1312,43 @@ type ConfigSpec struct {
 	//
 	// The currently recognized values are:
 	// - golang: Go templating
-	Templating *Driver `protobuf:"bytes,3,opt,name=templating" json:"templating,omitempty"`
+	Templating           *Driver  `protobuf:"bytes,3,opt,name=templating" json:"templating,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ConfigSpec) Reset()                    { *m = ConfigSpec{} }
-func (*ConfigSpec) ProtoMessage()               {}
-func (*ConfigSpec) Descriptor() ([]byte, []int) { return fileDescriptorSpecs, []int{13} }
+func (m *ConfigSpec) Reset()      { *m = ConfigSpec{} }
+func (*ConfigSpec) ProtoMessage() {}
+func (*ConfigSpec) Descriptor() ([]byte, []int) {
+	return fileDescriptor_specs_d9fa10676d63fc55, []int{13}
+}
+func (m *ConfigSpec) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ConfigSpec) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ConfigSpec.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ConfigSpec) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ConfigSpec.Merge(dst, src)
+}
+func (m *ConfigSpec) XXX_Size() int {
+	return m.Size()
+}
+func (m *ConfigSpec) XXX_DiscardUnknown() {
+	xxx_messageInfo_ConfigSpec.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ConfigSpec proto.InternalMessageInfo
 
 func init() {
 	proto.RegisterType((*NodeSpec)(nil), "docker.swarmkit.v1.NodeSpec")
@@ -858,6 +1360,7 @@ func init() {
 	proto.RegisterType((*GenericRuntimeSpec)(nil), "docker.swarmkit.v1.GenericRuntimeSpec")
 	proto.RegisterType((*NetworkAttachmentSpec)(nil), "docker.swarmkit.v1.NetworkAttachmentSpec")
 	proto.RegisterType((*ContainerSpec)(nil), "docker.swarmkit.v1.ContainerSpec")
+	proto.RegisterMapType((map[string]string)(nil), "docker.swarmkit.v1.ContainerSpec.LabelsEntry")
 	proto.RegisterType((*ContainerSpec_PullOptions)(nil), "docker.swarmkit.v1.ContainerSpec.PullOptions")
 	proto.RegisterType((*ContainerSpec_DNSConfig)(nil), "docker.swarmkit.v1.ContainerSpec.DNSConfig")
 	proto.RegisterType((*EndpointSpec)(nil), "docker.swarmkit.v1.EndpointSpec")
@@ -884,7 +1387,7 @@ func (m *NodeSpec) CopyFrom(src interface{}) {
 
 	o := src.(*NodeSpec)
 	*m = *o
-	deepcopy.Copy(&m.Annotations, &o.Annotations)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
 }
 
 func (m *ServiceSpec) Copy() *ServiceSpec {
@@ -900,27 +1403,27 @@ func (m *ServiceSpec) CopyFrom(src interface{}) {
 
 	o := src.(*ServiceSpec)
 	*m = *o
-	deepcopy.Copy(&m.Annotations, &o.Annotations)
-	deepcopy.Copy(&m.Task, &o.Task)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Task, &o.Task)
 	if o.Update != nil {
 		m.Update = &UpdateConfig{}
-		deepcopy.Copy(m.Update, o.Update)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Update, o.Update)
 	}
 	if o.Rollback != nil {
 		m.Rollback = &UpdateConfig{}
-		deepcopy.Copy(m.Rollback, o.Rollback)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Rollback, o.Rollback)
 	}
 	if o.Networks != nil {
 		m.Networks = make([]*NetworkAttachmentConfig, len(o.Networks))
 		for i := range m.Networks {
 			m.Networks[i] = &NetworkAttachmentConfig{}
-			deepcopy.Copy(m.Networks[i], o.Networks[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Networks[i], o.Networks[i])
 		}
 	}
 
 	if o.Endpoint != nil {
 		m.Endpoint = &EndpointSpec{}
-		deepcopy.Copy(m.Endpoint, o.Endpoint)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Endpoint, o.Endpoint)
 	}
 	if o.Mode != nil {
 		switch o.Mode.(type) {
@@ -928,13 +1431,13 @@ func (m *ServiceSpec) CopyFrom(src interface{}) {
 			v := ServiceSpec_Replicated{
 				Replicated: &ReplicatedService{},
 			}
-			deepcopy.Copy(v.Replicated, o.GetReplicated())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Replicated, o.GetReplicated())
 			m.Mode = &v
 		case *ServiceSpec_Global:
 			v := ServiceSpec_Global{
 				Global: &GlobalService{},
 			}
-			deepcopy.Copy(v.Global, o.GetGlobal())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Global, o.GetGlobal())
 			m.Mode = &v
 		}
 	}
@@ -981,32 +1484,32 @@ func (m *TaskSpec) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Resources != nil {
 		m.Resources = &ResourceRequirements{}
-		deepcopy.Copy(m.Resources, o.Resources)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Resources, o.Resources)
 	}
 	if o.Restart != nil {
 		m.Restart = &RestartPolicy{}
-		deepcopy.Copy(m.Restart, o.Restart)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Restart, o.Restart)
 	}
 	if o.Placement != nil {
 		m.Placement = &Placement{}
-		deepcopy.Copy(m.Placement, o.Placement)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Placement, o.Placement)
 	}
 	if o.LogDriver != nil {
 		m.LogDriver = &Driver{}
-		deepcopy.Copy(m.LogDriver, o.LogDriver)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.LogDriver, o.LogDriver)
 	}
 	if o.Networks != nil {
 		m.Networks = make([]*NetworkAttachmentConfig, len(o.Networks))
 		for i := range m.Networks {
 			m.Networks[i] = &NetworkAttachmentConfig{}
-			deepcopy.Copy(m.Networks[i], o.Networks[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Networks[i], o.Networks[i])
 		}
 	}
 
 	if o.ResourceReferences != nil {
 		m.ResourceReferences = make([]ResourceReference, len(o.ResourceReferences))
 		for i := range m.ResourceReferences {
-			deepcopy.Copy(&m.ResourceReferences[i], &o.ResourceReferences[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(&m.ResourceReferences[i], &o.ResourceReferences[i])
 		}
 	}
 
@@ -1016,19 +1519,19 @@ func (m *TaskSpec) CopyFrom(src interface{}) {
 			v := TaskSpec_Attachment{
 				Attachment: &NetworkAttachmentSpec{},
 			}
-			deepcopy.Copy(v.Attachment, o.GetAttachment())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Attachment, o.GetAttachment())
 			m.Runtime = &v
 		case *TaskSpec_Container:
 			v := TaskSpec_Container{
 				Container: &ContainerSpec{},
 			}
-			deepcopy.Copy(v.Container, o.GetContainer())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Container, o.GetContainer())
 			m.Runtime = &v
 		case *TaskSpec_Generic:
 			v := TaskSpec_Generic{
 				Generic: &GenericRuntimeSpec{},
 			}
-			deepcopy.Copy(v.Generic, o.GetGeneric())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Generic, o.GetGeneric())
 			m.Runtime = &v
 		}
 	}
@@ -1064,8 +1567,8 @@ func (m *GenericRuntimeSpec) CopyFrom(src interface{}) {
 	o := src.(*GenericRuntimeSpec)
 	*m = *o
 	if o.Payload != nil {
-		m.Payload = &google_protobuf3.Any{}
-		deepcopy.Copy(m.Payload, o.Payload)
+		m.Payload = &types.Any{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Payload, o.Payload)
 	}
 }
 
@@ -1126,32 +1629,32 @@ func (m *ContainerSpec) CopyFrom(src interface{}) {
 
 	if o.Privileges != nil {
 		m.Privileges = &Privileges{}
-		deepcopy.Copy(m.Privileges, o.Privileges)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Privileges, o.Privileges)
 	}
 	if o.Init != nil {
-		m.Init = &google_protobuf4.BoolValue{}
-		deepcopy.Copy(m.Init, o.Init)
+		m.Init = &types.BoolValue{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Init, o.Init)
 	}
 	if o.Mounts != nil {
 		m.Mounts = make([]Mount, len(o.Mounts))
 		for i := range m.Mounts {
-			deepcopy.Copy(&m.Mounts[i], &o.Mounts[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Mounts[i], &o.Mounts[i])
 		}
 	}
 
 	if o.StopGracePeriod != nil {
-		m.StopGracePeriod = &google_protobuf1.Duration{}
-		deepcopy.Copy(m.StopGracePeriod, o.StopGracePeriod)
+		m.StopGracePeriod = &types.Duration{}
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.StopGracePeriod, o.StopGracePeriod)
 	}
 	if o.PullOptions != nil {
 		m.PullOptions = &ContainerSpec_PullOptions{}
-		deepcopy.Copy(m.PullOptions, o.PullOptions)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.PullOptions, o.PullOptions)
 	}
 	if o.Secrets != nil {
 		m.Secrets = make([]*SecretReference, len(o.Secrets))
 		for i := range m.Secrets {
 			m.Secrets[i] = &SecretReference{}
-			deepcopy.Copy(m.Secrets[i], o.Secrets[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Secrets[i], o.Secrets[i])
 		}
 	}
 
@@ -1159,7 +1662,7 @@ func (m *ContainerSpec) CopyFrom(src interface{}) {
 		m.Configs = make([]*ConfigReference, len(o.Configs))
 		for i := range m.Configs {
 			m.Configs[i] = &ConfigReference{}
-			deepcopy.Copy(m.Configs[i], o.Configs[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Configs[i], o.Configs[i])
 		}
 	}
 
@@ -1170,11 +1673,11 @@ func (m *ContainerSpec) CopyFrom(src interface{}) {
 
 	if o.DNSConfig != nil {
 		m.DNSConfig = &ContainerSpec_DNSConfig{}
-		deepcopy.Copy(m.DNSConfig, o.DNSConfig)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.DNSConfig, o.DNSConfig)
 	}
 	if o.Healthcheck != nil {
 		m.Healthcheck = &HealthConfig{}
-		deepcopy.Copy(m.Healthcheck, o.Healthcheck)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Healthcheck, o.Healthcheck)
 	}
 }
 
@@ -1240,7 +1743,7 @@ func (m *EndpointSpec) CopyFrom(src interface{}) {
 		m.Ports = make([]*PortConfig, len(o.Ports))
 		for i := range m.Ports {
 			m.Ports[i] = &PortConfig{}
-			deepcopy.Copy(m.Ports[i], o.Ports[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Ports[i], o.Ports[i])
 		}
 	}
 
@@ -1259,14 +1762,14 @@ func (m *NetworkSpec) CopyFrom(src interface{}) {
 
 	o := src.(*NetworkSpec)
 	*m = *o
-	deepcopy.Copy(&m.Annotations, &o.Annotations)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
 	if o.DriverConfig != nil {
 		m.DriverConfig = &Driver{}
-		deepcopy.Copy(m.DriverConfig, o.DriverConfig)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.DriverConfig, o.DriverConfig)
 	}
 	if o.IPAM != nil {
 		m.IPAM = &IPAMOptions{}
-		deepcopy.Copy(m.IPAM, o.IPAM)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.IPAM, o.IPAM)
 	}
 	if o.ConfigFrom != nil {
 		switch o.ConfigFrom.(type) {
@@ -1293,14 +1796,14 @@ func (m *ClusterSpec) CopyFrom(src interface{}) {
 
 	o := src.(*ClusterSpec)
 	*m = *o
-	deepcopy.Copy(&m.Annotations, &o.Annotations)
-	deepcopy.Copy(&m.AcceptancePolicy, &o.AcceptancePolicy)
-	deepcopy.Copy(&m.Orchestration, &o.Orchestration)
-	deepcopy.Copy(&m.Raft, &o.Raft)
-	deepcopy.Copy(&m.Dispatcher, &o.Dispatcher)
-	deepcopy.Copy(&m.CAConfig, &o.CAConfig)
-	deepcopy.Copy(&m.TaskDefaults, &o.TaskDefaults)
-	deepcopy.Copy(&m.EncryptionConfig, &o.EncryptionConfig)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.AcceptancePolicy, &o.AcceptancePolicy)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Orchestration, &o.Orchestration)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Raft, &o.Raft)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Dispatcher, &o.Dispatcher)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.CAConfig, &o.CAConfig)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.TaskDefaults, &o.TaskDefaults)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.EncryptionConfig, &o.EncryptionConfig)
 }
 
 func (m *SecretSpec) Copy() *SecretSpec {
@@ -1316,18 +1819,18 @@ func (m *SecretSpec) CopyFrom(src interface{}) {
 
 	o := src.(*SecretSpec)
 	*m = *o
-	deepcopy.Copy(&m.Annotations, &o.Annotations)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
 	if o.Data != nil {
 		m.Data = make([]byte, len(o.Data))
 		copy(m.Data, o.Data)
 	}
 	if o.Templating != nil {
 		m.Templating = &Driver{}
-		deepcopy.Copy(m.Templating, o.Templating)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Templating, o.Templating)
 	}
 	if o.Driver != nil {
 		m.Driver = &Driver{}
-		deepcopy.Copy(m.Driver, o.Driver)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Driver, o.Driver)
 	}
 }
 
@@ -1344,14 +1847,14 @@ func (m *ConfigSpec) CopyFrom(src interface{}) {
 
 	o := src.(*ConfigSpec)
 	*m = *o
-	deepcopy.Copy(&m.Annotations, &o.Annotations)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Annotations, &o.Annotations)
 	if o.Data != nil {
 		m.Data = make([]byte, len(o.Data))
 		copy(m.Data, o.Data)
 	}
 	if o.Templating != nil {
 		m.Templating = &Driver{}
-		deepcopy.Copy(m.Templating, o.Templating)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Templating, o.Templating)
 	}
 }
 
@@ -1392,6 +1895,9 @@ func (m *NodeSpec) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x20
 		i++
 		i = encodeVarintSpecs(dAtA, i, uint64(m.Availability))
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -1476,6 +1982,9 @@ func (m *ServiceSpec) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n7
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1527,6 +2036,9 @@ func (m *ReplicatedService) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintSpecs(dAtA, i, uint64(m.Replicas))
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1545,6 +2057,9 @@ func (m *GlobalService) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1639,6 +2154,9 @@ func (m *TaskSpec) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1710,6 +2228,9 @@ func (m *ResourceReference) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintSpecs(dAtA, i, uint64(m.ResourceType))
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1744,6 +2265,9 @@ func (m *GenericRuntimeSpec) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n18
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1767,6 +2291,9 @@ func (m *NetworkAttachmentSpec) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintSpecs(dAtA, i, uint64(len(m.ContainerID)))
 		i += copy(dAtA[i:], m.ContainerID)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -2064,6 +2591,9 @@ func (m *ContainerSpec) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintSpecs(dAtA, i, uint64(m.PidsLimit))
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -2089,6 +2619,9 @@ func (m *ContainerSpec_PullOptions) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintSpecs(dAtA, i, uint64(len(m.RegistryAuth)))
 		i += copy(dAtA[i:], m.RegistryAuth)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -2153,6 +2686,9 @@ func (m *ContainerSpec_DNSConfig) MarshalTo(dAtA []byte) (int, error) {
 			i += copy(dAtA[i:], s)
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -2187,6 +2723,9 @@ func (m *EndpointSpec) MarshalTo(dAtA []byte) (int, error) {
 			}
 			i += n
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -2281,6 +2820,9 @@ func (m *NetworkSpec) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += nn28
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -2371,6 +2913,9 @@ func (m *ClusterSpec) MarshalTo(dAtA []byte) (int, error) {
 		return 0, err
 	}
 	i += n36
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -2423,6 +2968,9 @@ func (m *SecretSpec) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n39
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -2465,6 +3013,9 @@ func (m *ConfigSpec) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n41
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -2491,6 +3042,9 @@ func (m *NodeSpec) Size() (n int) {
 	}
 	if m.Availability != 0 {
 		n += 1 + sovSpecs(uint64(m.Availability))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2523,6 +3077,9 @@ func (m *ServiceSpec) Size() (n int) {
 		l = m.Rollback.Size()
 		n += 1 + l + sovSpecs(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2550,12 +3107,18 @@ func (m *ReplicatedService) Size() (n int) {
 	if m.Replicas != 0 {
 		n += 1 + sovSpecs(uint64(m.Replicas))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *GlobalService) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2595,6 +3158,9 @@ func (m *TaskSpec) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovSpecs(uint64(l))
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2636,6 +3202,9 @@ func (m *ResourceReference) Size() (n int) {
 	if m.ResourceType != 0 {
 		n += 1 + sovSpecs(uint64(m.ResourceType))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2650,6 +3219,9 @@ func (m *GenericRuntimeSpec) Size() (n int) {
 		l = m.Payload.Size()
 		n += 1 + l + sovSpecs(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2659,6 +3231,9 @@ func (m *NetworkAttachmentSpec) Size() (n int) {
 	l = len(m.ContainerID)
 	if l > 0 {
 		n += 1 + l + sovSpecs(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2781,6 +3356,9 @@ func (m *ContainerSpec) Size() (n int) {
 	if m.PidsLimit != 0 {
 		n += 2 + sovSpecs(uint64(m.PidsLimit))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2790,6 +3368,9 @@ func (m *ContainerSpec_PullOptions) Size() (n int) {
 	l = len(m.RegistryAuth)
 	if l > 0 {
 		n += 2 + l + sovSpecs(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2815,6 +3396,9 @@ func (m *ContainerSpec_DNSConfig) Size() (n int) {
 			n += 1 + l + sovSpecs(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2829,6 +3413,9 @@ func (m *EndpointSpec) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovSpecs(uint64(l))
 		}
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2861,6 +3448,9 @@ func (m *NetworkSpec) Size() (n int) {
 	if m.ConfigFrom != nil {
 		n += m.ConfigFrom.Size()
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2890,6 +3480,9 @@ func (m *ClusterSpec) Size() (n int) {
 	n += 1 + l + sovSpecs(uint64(l))
 	l = m.EncryptionConfig.Size()
 	n += 1 + l + sovSpecs(uint64(l))
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2910,6 +3503,9 @@ func (m *SecretSpec) Size() (n int) {
 		l = m.Driver.Size()
 		n += 1 + l + sovSpecs(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2925,6 +3521,9 @@ func (m *ConfigSpec) Size() (n int) {
 	if m.Templating != nil {
 		l = m.Templating.Size()
 		n += 1 + l + sovSpecs(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2951,6 +3550,7 @@ func (this *NodeSpec) String() string {
 		`DesiredRole:` + fmt.Sprintf("%v", this.DesiredRole) + `,`,
 		`Membership:` + fmt.Sprintf("%v", this.Membership) + `,`,
 		`Availability:` + fmt.Sprintf("%v", this.Availability) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2967,6 +3567,7 @@ func (this *ServiceSpec) String() string {
 		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "NetworkAttachmentConfig", "NetworkAttachmentConfig", 1) + `,`,
 		`Endpoint:` + strings.Replace(fmt.Sprintf("%v", this.Endpoint), "EndpointSpec", "EndpointSpec", 1) + `,`,
 		`Rollback:` + strings.Replace(fmt.Sprintf("%v", this.Rollback), "UpdateConfig", "UpdateConfig", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2997,6 +3598,7 @@ func (this *ReplicatedService) String() string {
 	}
 	s := strings.Join([]string{`&ReplicatedService{`,
 		`Replicas:` + fmt.Sprintf("%v", this.Replicas) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3006,6 +3608,7 @@ func (this *GlobalService) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&GlobalService{`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3023,6 +3626,7 @@ func (this *TaskSpec) String() string {
 		`Networks:` + strings.Replace(fmt.Sprintf("%v", this.Networks), "NetworkAttachmentConfig", "NetworkAttachmentConfig", 1) + `,`,
 		`ForceUpdate:` + fmt.Sprintf("%v", this.ForceUpdate) + `,`,
 		`ResourceReferences:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.ResourceReferences), "ResourceReference", "ResourceReference", 1), `&`, ``, 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3064,6 +3668,7 @@ func (this *ResourceReference) String() string {
 	s := strings.Join([]string{`&ResourceReference{`,
 		`ResourceID:` + fmt.Sprintf("%v", this.ResourceID) + `,`,
 		`ResourceType:` + fmt.Sprintf("%v", this.ResourceType) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3074,7 +3679,8 @@ func (this *GenericRuntimeSpec) String() string {
 	}
 	s := strings.Join([]string{`&GenericRuntimeSpec{`,
 		`Kind:` + fmt.Sprintf("%v", this.Kind) + `,`,
-		`Payload:` + strings.Replace(fmt.Sprintf("%v", this.Payload), "Any", "google_protobuf3.Any", 1) + `,`,
+		`Payload:` + strings.Replace(fmt.Sprintf("%v", this.Payload), "Any", "types.Any", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3085,6 +3691,7 @@ func (this *NetworkAttachmentSpec) String() string {
 	}
 	s := strings.Join([]string{`&NetworkAttachmentSpec{`,
 		`ContainerID:` + fmt.Sprintf("%v", this.ContainerID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3097,7 +3704,7 @@ func (this *ContainerSpec) String() string {
 	for k, _ := range this.Labels {
 		keysForLabels = append(keysForLabels, k)
 	}
-	sortkeys.Strings(keysForLabels)
+	github_com_gogo_protobuf_sortkeys.Strings(keysForLabels)
 	mapStringForLabels := "map[string]string{"
 	for _, k := range keysForLabels {
 		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
@@ -3112,7 +3719,7 @@ func (this *ContainerSpec) String() string {
 		`Dir:` + fmt.Sprintf("%v", this.Dir) + `,`,
 		`User:` + fmt.Sprintf("%v", this.User) + `,`,
 		`Mounts:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Mounts), "Mount", "Mount", 1), `&`, ``, 1) + `,`,
-		`StopGracePeriod:` + strings.Replace(fmt.Sprintf("%v", this.StopGracePeriod), "Duration", "google_protobuf1.Duration", 1) + `,`,
+		`StopGracePeriod:` + strings.Replace(fmt.Sprintf("%v", this.StopGracePeriod), "Duration", "types.Duration", 1) + `,`,
 		`PullOptions:` + strings.Replace(fmt.Sprintf("%v", this.PullOptions), "ContainerSpec_PullOptions", "ContainerSpec_PullOptions", 1) + `,`,
 		`Groups:` + fmt.Sprintf("%v", this.Groups) + `,`,
 		`Secrets:` + strings.Replace(fmt.Sprintf("%v", this.Secrets), "SecretReference", "SecretReference", 1) + `,`,
@@ -3126,9 +3733,10 @@ func (this *ContainerSpec) String() string {
 		`StopSignal:` + fmt.Sprintf("%v", this.StopSignal) + `,`,
 		`Configs:` + strings.Replace(fmt.Sprintf("%v", this.Configs), "ConfigReference", "ConfigReference", 1) + `,`,
 		`Privileges:` + strings.Replace(fmt.Sprintf("%v", this.Privileges), "Privileges", "Privileges", 1) + `,`,
-		`Init:` + strings.Replace(fmt.Sprintf("%v", this.Init), "BoolValue", "google_protobuf4.BoolValue", 1) + `,`,
+		`Init:` + strings.Replace(fmt.Sprintf("%v", this.Init), "BoolValue", "types.BoolValue", 1) + `,`,
 		`Isolation:` + fmt.Sprintf("%v", this.Isolation) + `,`,
 		`PidsLimit:` + fmt.Sprintf("%v", this.PidsLimit) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3139,6 +3747,7 @@ func (this *ContainerSpec_PullOptions) String() string {
 	}
 	s := strings.Join([]string{`&ContainerSpec_PullOptions{`,
 		`RegistryAuth:` + fmt.Sprintf("%v", this.RegistryAuth) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3151,6 +3760,7 @@ func (this *ContainerSpec_DNSConfig) String() string {
 		`Nameservers:` + fmt.Sprintf("%v", this.Nameservers) + `,`,
 		`Search:` + fmt.Sprintf("%v", this.Search) + `,`,
 		`Options:` + fmt.Sprintf("%v", this.Options) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3162,6 +3772,7 @@ func (this *EndpointSpec) String() string {
 	s := strings.Join([]string{`&EndpointSpec{`,
 		`Mode:` + fmt.Sprintf("%v", this.Mode) + `,`,
 		`Ports:` + strings.Replace(fmt.Sprintf("%v", this.Ports), "PortConfig", "PortConfig", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3179,6 +3790,7 @@ func (this *NetworkSpec) String() string {
 		`Attachable:` + fmt.Sprintf("%v", this.Attachable) + `,`,
 		`Ingress:` + fmt.Sprintf("%v", this.Ingress) + `,`,
 		`ConfigFrom:` + fmt.Sprintf("%v", this.ConfigFrom) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3206,6 +3818,7 @@ func (this *ClusterSpec) String() string {
 		`CAConfig:` + strings.Replace(strings.Replace(this.CAConfig.String(), "CAConfig", "CAConfig", 1), `&`, ``, 1) + `,`,
 		`TaskDefaults:` + strings.Replace(strings.Replace(this.TaskDefaults.String(), "TaskDefaults", "TaskDefaults", 1), `&`, ``, 1) + `,`,
 		`EncryptionConfig:` + strings.Replace(strings.Replace(this.EncryptionConfig.String(), "EncryptionConfig", "EncryptionConfig", 1), `&`, ``, 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3219,6 +3832,7 @@ func (this *SecretSpec) String() string {
 		`Data:` + fmt.Sprintf("%v", this.Data) + `,`,
 		`Templating:` + strings.Replace(fmt.Sprintf("%v", this.Templating), "Driver", "Driver", 1) + `,`,
 		`Driver:` + strings.Replace(fmt.Sprintf("%v", this.Driver), "Driver", "Driver", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3231,6 +3845,7 @@ func (this *ConfigSpec) String() string {
 		`Annotations:` + strings.Replace(strings.Replace(this.Annotations.String(), "Annotations", "Annotations", 1), `&`, ``, 1) + `,`,
 		`Data:` + fmt.Sprintf("%v", this.Data) + `,`,
 		`Templating:` + strings.Replace(fmt.Sprintf("%v", this.Templating), "Driver", "Driver", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3371,6 +3986,7 @@ func (m *NodeSpec) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3675,6 +4291,7 @@ func (m *ServiceSpec) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3744,6 +4361,7 @@ func (m *ReplicatedService) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3794,6 +4412,7 @@ func (m *GlobalService) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -4153,6 +4772,7 @@ func (m *TaskSpec) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -4251,6 +4871,7 @@ func (m *ResourceReference) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -4345,7 +4966,7 @@ func (m *GenericRuntimeSpec) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Payload == nil {
-				m.Payload = &google_protobuf3.Any{}
+				m.Payload = &types.Any{}
 			}
 			if err := m.Payload.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -4363,6 +4984,7 @@ func (m *GenericRuntimeSpec) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -4442,6 +5064,7 @@ func (m *NetworkAttachmentSpec) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -4830,7 +5453,7 @@ func (m *ContainerSpec) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.StopGracePeriod == nil {
-				m.StopGracePeriod = &google_protobuf1.Duration{}
+				m.StopGracePeriod = &types.Duration{}
 			}
 			if err := m.StopGracePeriod.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -5233,7 +5856,7 @@ func (m *ContainerSpec) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Init == nil {
-				m.Init = &google_protobuf4.BoolValue{}
+				m.Init = &types.BoolValue{}
 			}
 			if err := m.Init.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -5289,6 +5912,7 @@ func (m *ContainerSpec) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -5368,6 +5992,7 @@ func (m *ContainerSpec_PullOptions) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -5505,6 +6130,7 @@ func (m *ContainerSpec_DNSConfig) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -5605,6 +6231,7 @@ func (m *EndpointSpec) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -5860,6 +6487,7 @@ func (m *NetworkSpec) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -6150,6 +6778,7 @@ func (m *ClusterSpec) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -6327,6 +6956,7 @@ func (m *SecretSpec) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -6471,6 +7101,7 @@ func (m *ConfigSpec) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -6585,9 +7216,11 @@ var (
 	ErrIntOverflowSpecs   = fmt.Errorf("proto: integer overflow")
 )
 
-func init() { proto.RegisterFile("github.com/docker/swarmkit/api/specs.proto", fileDescriptorSpecs) }
+func init() {
+	proto.RegisterFile("github.com/docker/swarmkit/api/specs.proto", fileDescriptor_specs_d9fa10676d63fc55)
+}
 
-var fileDescriptorSpecs = []byte{
+var fileDescriptor_specs_d9fa10676d63fc55 = []byte{
 	// 2131 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x58, 0x4f, 0x6f, 0x1b, 0xc7,
 	0x15, 0x17, 0x25, 0x8a, 0x22, 0xdf, 0x52, 0x36, 0x35, 0x71, 0x9c, 0x15, 0x6d, 0x4b, 0x34, 0xe3,

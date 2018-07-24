@@ -6,8 +6,8 @@ package api
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
+import _ "github.com/gogo/protobuf/gogoproto"
 
 import context "golang.org/x/net/context"
 import grpc "google.golang.org/grpc"
@@ -28,6 +28,12 @@ import io "io"
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type HealthCheckResponse_ServingStatus int32
 
@@ -52,24 +58,86 @@ func (x HealthCheckResponse_ServingStatus) String() string {
 	return proto.EnumName(HealthCheckResponse_ServingStatus_name, int32(x))
 }
 func (HealthCheckResponse_ServingStatus) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptorHealth, []int{1, 0}
+	return fileDescriptor_health_823facc067e075cd, []int{1, 0}
 }
 
 type HealthCheckRequest struct {
-	Service string `protobuf:"bytes,1,opt,name=service,proto3" json:"service,omitempty"`
+	Service              string   `protobuf:"bytes,1,opt,name=service,proto3" json:"service,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *HealthCheckRequest) Reset()                    { *m = HealthCheckRequest{} }
-func (*HealthCheckRequest) ProtoMessage()               {}
-func (*HealthCheckRequest) Descriptor() ([]byte, []int) { return fileDescriptorHealth, []int{0} }
+func (m *HealthCheckRequest) Reset()      { *m = HealthCheckRequest{} }
+func (*HealthCheckRequest) ProtoMessage() {}
+func (*HealthCheckRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_health_823facc067e075cd, []int{0}
+}
+func (m *HealthCheckRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *HealthCheckRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_HealthCheckRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *HealthCheckRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_HealthCheckRequest.Merge(dst, src)
+}
+func (m *HealthCheckRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *HealthCheckRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_HealthCheckRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_HealthCheckRequest proto.InternalMessageInfo
 
 type HealthCheckResponse struct {
-	Status HealthCheckResponse_ServingStatus `protobuf:"varint,1,opt,name=status,proto3,enum=docker.swarmkit.v1.HealthCheckResponse_ServingStatus" json:"status,omitempty"`
+	Status               HealthCheckResponse_ServingStatus `protobuf:"varint,1,opt,name=status,proto3,enum=docker.swarmkit.v1.HealthCheckResponse_ServingStatus" json:"status,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                          `json:"-"`
+	XXX_unrecognized     []byte                            `json:"-"`
+	XXX_sizecache        int32                             `json:"-"`
 }
 
-func (m *HealthCheckResponse) Reset()                    { *m = HealthCheckResponse{} }
-func (*HealthCheckResponse) ProtoMessage()               {}
-func (*HealthCheckResponse) Descriptor() ([]byte, []int) { return fileDescriptorHealth, []int{1} }
+func (m *HealthCheckResponse) Reset()      { *m = HealthCheckResponse{} }
+func (*HealthCheckResponse) ProtoMessage() {}
+func (*HealthCheckResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_health_823facc067e075cd, []int{1}
+}
+func (m *HealthCheckResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *HealthCheckResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_HealthCheckResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *HealthCheckResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_HealthCheckResponse.Merge(dst, src)
+}
+func (m *HealthCheckResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *HealthCheckResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_HealthCheckResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_HealthCheckResponse proto.InternalMessageInfo
 
 func init() {
 	proto.RegisterType((*HealthCheckRequest)(nil), "docker.swarmkit.v1.HealthCheckRequest")
@@ -151,7 +219,7 @@ func NewHealthClient(cc *grpc.ClientConn) HealthClient {
 
 func (c *healthClient) Check(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error) {
 	out := new(HealthCheckResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Health/Check", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Health/Check", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -220,6 +288,9 @@ func (m *HealthCheckRequest) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintHealth(dAtA, i, uint64(len(m.Service)))
 		i += copy(dAtA[i:], m.Service)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -242,6 +313,9 @@ func (m *HealthCheckResponse) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x8
 		i++
 		i = encodeVarintHealth(dAtA, i, uint64(m.Status))
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -370,6 +444,9 @@ func (m *HealthCheckRequest) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovHealth(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -378,6 +455,9 @@ func (m *HealthCheckResponse) Size() (n int) {
 	_ = l
 	if m.Status != 0 {
 		n += 1 + sovHealth(uint64(m.Status))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -401,6 +481,7 @@ func (this *HealthCheckRequest) String() string {
 	}
 	s := strings.Join([]string{`&HealthCheckRequest{`,
 		`Service:` + fmt.Sprintf("%v", this.Service) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -411,6 +492,7 @@ func (this *HealthCheckResponse) String() string {
 	}
 	s := strings.Join([]string{`&HealthCheckResponse{`,
 		`Status:` + fmt.Sprintf("%v", this.Status) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -493,6 +575,7 @@ func (m *HealthCheckRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -562,6 +645,7 @@ func (m *HealthCheckResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -676,9 +760,11 @@ var (
 	ErrIntOverflowHealth   = fmt.Errorf("proto: integer overflow")
 )
 
-func init() { proto.RegisterFile("github.com/docker/swarmkit/api/health.proto", fileDescriptorHealth) }
+func init() {
+	proto.RegisterFile("github.com/docker/swarmkit/api/health.proto", fileDescriptor_health_823facc067e075cd)
+}
 
-var fileDescriptorHealth = []byte{
+var fileDescriptor_health_823facc067e075cd = []byte{
 	// 315 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xd2, 0x4e, 0xcf, 0x2c, 0xc9,
 	0x28, 0x4d, 0xd2, 0x4b, 0xce, 0xcf, 0xd5, 0x4f, 0xc9, 0x4f, 0xce, 0x4e, 0x2d, 0xd2, 0x2f, 0x2e,

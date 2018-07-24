@@ -8,10 +8,10 @@ import fmt "fmt"
 import math "math"
 import raftpb "github.com/coreos/etcd/raft/raftpb"
 
+// skipping weak import plugin "github.com/docker/swarmkit/protobuf/plugin"
 // skipping weak import gogoproto "github.com/gogo/protobuf/gogoproto"
-// skipping weak import docker_protobuf_plugin "github.com/docker/swarmkit/protobuf/plugin"
 
-import deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import context "golang.org/x/net/context"
 import grpc "google.golang.org/grpc"
@@ -32,6 +32,12 @@ import io "io"
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 // StoreActionKind defines the operation to take on the store for the target of
 // a storage action.
@@ -60,7 +66,9 @@ var StoreActionKind_value = map[string]int32{
 func (x StoreActionKind) String() string {
 	return proto.EnumName(StoreActionKind_name, int32(x))
 }
-func (StoreActionKind) EnumDescriptor() ([]byte, []int) { return fileDescriptorRaft, []int{0} }
+func (StoreActionKind) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_raft_125cec1c6d43963e, []int{0}
+}
 
 type RaftMember struct {
 	// RaftID specifies the internal ID used by the manager in a raft context, it can never be modified
@@ -71,21 +79,83 @@ type RaftMember struct {
 	// Addr specifies the address of the member
 	Addr string `protobuf:"bytes,3,opt,name=addr,proto3" json:"addr,omitempty"`
 	// Status provides the current status of the manager from the perspective of another manager.
-	Status RaftMemberStatus `protobuf:"bytes,4,opt,name=status" json:"status"`
+	Status               RaftMemberStatus `protobuf:"bytes,4,opt,name=status" json:"status"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
-func (m *RaftMember) Reset()                    { *m = RaftMember{} }
-func (*RaftMember) ProtoMessage()               {}
-func (*RaftMember) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{0} }
+func (m *RaftMember) Reset()      { *m = RaftMember{} }
+func (*RaftMember) ProtoMessage() {}
+func (*RaftMember) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_125cec1c6d43963e, []int{0}
+}
+func (m *RaftMember) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RaftMember) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RaftMember.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *RaftMember) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RaftMember.Merge(dst, src)
+}
+func (m *RaftMember) XXX_Size() int {
+	return m.Size()
+}
+func (m *RaftMember) XXX_DiscardUnknown() {
+	xxx_messageInfo_RaftMember.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RaftMember proto.InternalMessageInfo
 
 type JoinRequest struct {
 	// Addr specifies the address of the member
-	Addr string `protobuf:"bytes,1,opt,name=addr,proto3" json:"addr,omitempty"`
+	Addr                 string   `protobuf:"bytes,1,opt,name=addr,proto3" json:"addr,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *JoinRequest) Reset()                    { *m = JoinRequest{} }
-func (*JoinRequest) ProtoMessage()               {}
-func (*JoinRequest) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{1} }
+func (m *JoinRequest) Reset()      { *m = JoinRequest{} }
+func (*JoinRequest) ProtoMessage() {}
+func (*JoinRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_125cec1c6d43963e, []int{1}
+}
+func (m *JoinRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *JoinRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_JoinRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *JoinRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_JoinRequest.Merge(dst, src)
+}
+func (m *JoinRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *JoinRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_JoinRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_JoinRequest proto.InternalMessageInfo
 
 type JoinResponse struct {
 	// RaftID is the ID assigned to the new member.
@@ -94,89 +164,399 @@ type JoinResponse struct {
 	Members []*RaftMember `protobuf:"bytes,2,rep,name=members" json:"members,omitempty"`
 	// RemovedMembers is a list of members that have been removed from
 	// the cluster, so the new node can avoid communicating with them.
-	RemovedMembers []uint64 `protobuf:"varint,3,rep,name=removed_members,json=removedMembers" json:"removed_members,omitempty"`
+	RemovedMembers       []uint64 `protobuf:"varint,3,rep,name=removed_members,json=removedMembers" json:"removed_members,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *JoinResponse) Reset()                    { *m = JoinResponse{} }
-func (*JoinResponse) ProtoMessage()               {}
-func (*JoinResponse) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{2} }
+func (m *JoinResponse) Reset()      { *m = JoinResponse{} }
+func (*JoinResponse) ProtoMessage() {}
+func (*JoinResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_125cec1c6d43963e, []int{2}
+}
+func (m *JoinResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *JoinResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_JoinResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *JoinResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_JoinResponse.Merge(dst, src)
+}
+func (m *JoinResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *JoinResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_JoinResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_JoinResponse proto.InternalMessageInfo
 
 type LeaveRequest struct {
-	Node *RaftMember `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
+	Node                 *RaftMember `protobuf:"bytes,1,opt,name=node" json:"node,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
 }
 
-func (m *LeaveRequest) Reset()                    { *m = LeaveRequest{} }
-func (*LeaveRequest) ProtoMessage()               {}
-func (*LeaveRequest) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{3} }
+func (m *LeaveRequest) Reset()      { *m = LeaveRequest{} }
+func (*LeaveRequest) ProtoMessage() {}
+func (*LeaveRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_125cec1c6d43963e, []int{3}
+}
+func (m *LeaveRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaveRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaveRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaveRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaveRequest.Merge(dst, src)
+}
+func (m *LeaveRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaveRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaveRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaveRequest proto.InternalMessageInfo
 
 type LeaveResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *LeaveResponse) Reset()                    { *m = LeaveResponse{} }
-func (*LeaveResponse) ProtoMessage()               {}
-func (*LeaveResponse) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{4} }
+func (m *LeaveResponse) Reset()      { *m = LeaveResponse{} }
+func (*LeaveResponse) ProtoMessage() {}
+func (*LeaveResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_125cec1c6d43963e, []int{4}
+}
+func (m *LeaveResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *LeaveResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_LeaveResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *LeaveResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_LeaveResponse.Merge(dst, src)
+}
+func (m *LeaveResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *LeaveResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_LeaveResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_LeaveResponse proto.InternalMessageInfo
 
 type ProcessRaftMessageRequest struct {
-	Message *raftpb.Message `protobuf:"bytes,1,opt,name=message" json:"message,omitempty"`
+	Message              *raftpb.Message `protobuf:"bytes,1,opt,name=message" json:"message,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *ProcessRaftMessageRequest) Reset()                    { *m = ProcessRaftMessageRequest{} }
-func (*ProcessRaftMessageRequest) ProtoMessage()               {}
-func (*ProcessRaftMessageRequest) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{5} }
+func (m *ProcessRaftMessageRequest) Reset()      { *m = ProcessRaftMessageRequest{} }
+func (*ProcessRaftMessageRequest) ProtoMessage() {}
+func (*ProcessRaftMessageRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_125cec1c6d43963e, []int{5}
+}
+func (m *ProcessRaftMessageRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ProcessRaftMessageRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ProcessRaftMessageRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ProcessRaftMessageRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ProcessRaftMessageRequest.Merge(dst, src)
+}
+func (m *ProcessRaftMessageRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *ProcessRaftMessageRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ProcessRaftMessageRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ProcessRaftMessageRequest proto.InternalMessageInfo
 
 type ProcessRaftMessageResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ProcessRaftMessageResponse) Reset()                    { *m = ProcessRaftMessageResponse{} }
-func (*ProcessRaftMessageResponse) ProtoMessage()               {}
-func (*ProcessRaftMessageResponse) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{6} }
+func (m *ProcessRaftMessageResponse) Reset()      { *m = ProcessRaftMessageResponse{} }
+func (*ProcessRaftMessageResponse) ProtoMessage() {}
+func (*ProcessRaftMessageResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_125cec1c6d43963e, []int{6}
+}
+func (m *ProcessRaftMessageResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ProcessRaftMessageResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ProcessRaftMessageResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ProcessRaftMessageResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ProcessRaftMessageResponse.Merge(dst, src)
+}
+func (m *ProcessRaftMessageResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *ProcessRaftMessageResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ProcessRaftMessageResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ProcessRaftMessageResponse proto.InternalMessageInfo
 
 // Raft message streaming request.
 type StreamRaftMessageRequest struct {
-	Message *raftpb.Message `protobuf:"bytes,1,opt,name=message" json:"message,omitempty"`
+	Message              *raftpb.Message `protobuf:"bytes,1,opt,name=message" json:"message,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *StreamRaftMessageRequest) Reset()                    { *m = StreamRaftMessageRequest{} }
-func (*StreamRaftMessageRequest) ProtoMessage()               {}
-func (*StreamRaftMessageRequest) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{7} }
+func (m *StreamRaftMessageRequest) Reset()      { *m = StreamRaftMessageRequest{} }
+func (*StreamRaftMessageRequest) ProtoMessage() {}
+func (*StreamRaftMessageRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_125cec1c6d43963e, []int{7}
+}
+func (m *StreamRaftMessageRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *StreamRaftMessageRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_StreamRaftMessageRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *StreamRaftMessageRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StreamRaftMessageRequest.Merge(dst, src)
+}
+func (m *StreamRaftMessageRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *StreamRaftMessageRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_StreamRaftMessageRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_StreamRaftMessageRequest proto.InternalMessageInfo
 
 // Raft message streaming response.
 type StreamRaftMessageResponse struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *StreamRaftMessageResponse) Reset()                    { *m = StreamRaftMessageResponse{} }
-func (*StreamRaftMessageResponse) ProtoMessage()               {}
-func (*StreamRaftMessageResponse) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{8} }
+func (m *StreamRaftMessageResponse) Reset()      { *m = StreamRaftMessageResponse{} }
+func (*StreamRaftMessageResponse) ProtoMessage() {}
+func (*StreamRaftMessageResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_125cec1c6d43963e, []int{8}
+}
+func (m *StreamRaftMessageResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *StreamRaftMessageResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_StreamRaftMessageResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *StreamRaftMessageResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StreamRaftMessageResponse.Merge(dst, src)
+}
+func (m *StreamRaftMessageResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *StreamRaftMessageResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_StreamRaftMessageResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_StreamRaftMessageResponse proto.InternalMessageInfo
 
 type ResolveAddressRequest struct {
 	// raft_id is the ID to resolve to an address.
-	RaftID uint64 `protobuf:"varint,1,opt,name=raft_id,json=raftId,proto3" json:"raft_id,omitempty"`
+	RaftID               uint64   `protobuf:"varint,1,opt,name=raft_id,json=raftId,proto3" json:"raft_id,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ResolveAddressRequest) Reset()                    { *m = ResolveAddressRequest{} }
-func (*ResolveAddressRequest) ProtoMessage()               {}
-func (*ResolveAddressRequest) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{9} }
+func (m *ResolveAddressRequest) Reset()      { *m = ResolveAddressRequest{} }
+func (*ResolveAddressRequest) ProtoMessage() {}
+func (*ResolveAddressRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_125cec1c6d43963e, []int{9}
+}
+func (m *ResolveAddressRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ResolveAddressRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ResolveAddressRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ResolveAddressRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResolveAddressRequest.Merge(dst, src)
+}
+func (m *ResolveAddressRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *ResolveAddressRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResolveAddressRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResolveAddressRequest proto.InternalMessageInfo
 
 type ResolveAddressResponse struct {
 	// Addr specifies the address of the member
-	Addr string `protobuf:"bytes,1,opt,name=addr,proto3" json:"addr,omitempty"`
+	Addr                 string   `protobuf:"bytes,1,opt,name=addr,proto3" json:"addr,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ResolveAddressResponse) Reset()                    { *m = ResolveAddressResponse{} }
-func (*ResolveAddressResponse) ProtoMessage()               {}
-func (*ResolveAddressResponse) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{10} }
+func (m *ResolveAddressResponse) Reset()      { *m = ResolveAddressResponse{} }
+func (*ResolveAddressResponse) ProtoMessage() {}
+func (*ResolveAddressResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_125cec1c6d43963e, []int{10}
+}
+func (m *ResolveAddressResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ResolveAddressResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ResolveAddressResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *ResolveAddressResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResolveAddressResponse.Merge(dst, src)
+}
+func (m *ResolveAddressResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *ResolveAddressResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResolveAddressResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResolveAddressResponse proto.InternalMessageInfo
 
 // Contains one of many protobuf encoded objects to replicate
 // over the raft backend with a request ID to track when the
 // action is effectively applied
 type InternalRaftRequest struct {
-	ID     uint64        `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Action []StoreAction `protobuf:"bytes,2,rep,name=action" json:"action"`
+	ID                   uint64        `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Action               []StoreAction `protobuf:"bytes,2,rep,name=action" json:"action"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
 }
 
-func (m *InternalRaftRequest) Reset()                    { *m = InternalRaftRequest{} }
-func (*InternalRaftRequest) ProtoMessage()               {}
-func (*InternalRaftRequest) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{11} }
+func (m *InternalRaftRequest) Reset()      { *m = InternalRaftRequest{} }
+func (*InternalRaftRequest) ProtoMessage() {}
+func (*InternalRaftRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_125cec1c6d43963e, []int{11}
+}
+func (m *InternalRaftRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *InternalRaftRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_InternalRaftRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *InternalRaftRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InternalRaftRequest.Merge(dst, src)
+}
+func (m *InternalRaftRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *InternalRaftRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_InternalRaftRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InternalRaftRequest proto.InternalMessageInfo
 
 // StoreAction defines a target and operation to apply on the storage system.
 type StoreAction struct {
@@ -191,12 +571,43 @@ type StoreAction struct {
 	//	*StoreAction_Resource
 	//	*StoreAction_Extension
 	//	*StoreAction_Config
-	Target isStoreAction_Target `protobuf_oneof:"target"`
+	Target               isStoreAction_Target `protobuf_oneof:"target"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
 }
 
-func (m *StoreAction) Reset()                    { *m = StoreAction{} }
-func (*StoreAction) ProtoMessage()               {}
-func (*StoreAction) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{12} }
+func (m *StoreAction) Reset()      { *m = StoreAction{} }
+func (*StoreAction) ProtoMessage() {}
+func (*StoreAction) Descriptor() ([]byte, []int) {
+	return fileDescriptor_raft_125cec1c6d43963e, []int{12}
+}
+func (m *StoreAction) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *StoreAction) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_StoreAction.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *StoreAction) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StoreAction.Merge(dst, src)
+}
+func (m *StoreAction) XXX_Size() int {
+	return m.Size()
+}
+func (m *StoreAction) XXX_DiscardUnknown() {
+	xxx_messageInfo_StoreAction.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_StoreAction proto.InternalMessageInfo
 
 type isStoreAction_Target interface {
 	isStoreAction_Target()
@@ -469,47 +880,47 @@ func _StoreAction_OneofSizer(msg proto.Message) (n int) {
 	switch x := m.Target.(type) {
 	case *StoreAction_Node:
 		s := proto.Size(x.Node)
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *StoreAction_Service:
 		s := proto.Size(x.Service)
-		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *StoreAction_Task:
 		s := proto.Size(x.Task)
-		n += proto.SizeVarint(4<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *StoreAction_Network:
 		s := proto.Size(x.Network)
-		n += proto.SizeVarint(5<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *StoreAction_Cluster:
 		s := proto.Size(x.Cluster)
-		n += proto.SizeVarint(6<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *StoreAction_Secret:
 		s := proto.Size(x.Secret)
-		n += proto.SizeVarint(7<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *StoreAction_Resource:
 		s := proto.Size(x.Resource)
-		n += proto.SizeVarint(8<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *StoreAction_Extension:
 		s := proto.Size(x.Extension)
-		n += proto.SizeVarint(9<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *StoreAction_Config:
 		s := proto.Size(x.Config)
-		n += proto.SizeVarint(10<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case nil:
@@ -613,7 +1024,7 @@ func (m *RaftMember) CopyFrom(src interface{}) {
 
 	o := src.(*RaftMember)
 	*m = *o
-	deepcopy.Copy(&m.Status, &o.Status)
+	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Status, &o.Status)
 }
 
 func (m *JoinRequest) Copy() *JoinRequest {
@@ -648,7 +1059,7 @@ func (m *JoinResponse) CopyFrom(src interface{}) {
 		m.Members = make([]*RaftMember, len(o.Members))
 		for i := range m.Members {
 			m.Members[i] = &RaftMember{}
-			deepcopy.Copy(m.Members[i], o.Members[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Members[i], o.Members[i])
 		}
 	}
 
@@ -674,7 +1085,7 @@ func (m *LeaveRequest) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Node != nil {
 		m.Node = &RaftMember{}
-		deepcopy.Copy(m.Node, o.Node)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Node, o.Node)
 	}
 }
 
@@ -754,7 +1165,7 @@ func (m *InternalRaftRequest) CopyFrom(src interface{}) {
 	if o.Action != nil {
 		m.Action = make([]StoreAction, len(o.Action))
 		for i := range m.Action {
-			deepcopy.Copy(&m.Action[i], &o.Action[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Action[i], &o.Action[i])
 		}
 	}
 
@@ -779,55 +1190,55 @@ func (m *StoreAction) CopyFrom(src interface{}) {
 			v := StoreAction_Node{
 				Node: &Node{},
 			}
-			deepcopy.Copy(v.Node, o.GetNode())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Node, o.GetNode())
 			m.Target = &v
 		case *StoreAction_Service:
 			v := StoreAction_Service{
 				Service: &Service{},
 			}
-			deepcopy.Copy(v.Service, o.GetService())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Service, o.GetService())
 			m.Target = &v
 		case *StoreAction_Task:
 			v := StoreAction_Task{
 				Task: &Task{},
 			}
-			deepcopy.Copy(v.Task, o.GetTask())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Task, o.GetTask())
 			m.Target = &v
 		case *StoreAction_Network:
 			v := StoreAction_Network{
 				Network: &Network{},
 			}
-			deepcopy.Copy(v.Network, o.GetNetwork())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Network, o.GetNetwork())
 			m.Target = &v
 		case *StoreAction_Cluster:
 			v := StoreAction_Cluster{
 				Cluster: &Cluster{},
 			}
-			deepcopy.Copy(v.Cluster, o.GetCluster())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Cluster, o.GetCluster())
 			m.Target = &v
 		case *StoreAction_Secret:
 			v := StoreAction_Secret{
 				Secret: &Secret{},
 			}
-			deepcopy.Copy(v.Secret, o.GetSecret())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Secret, o.GetSecret())
 			m.Target = &v
 		case *StoreAction_Resource:
 			v := StoreAction_Resource{
 				Resource: &Resource{},
 			}
-			deepcopy.Copy(v.Resource, o.GetResource())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Resource, o.GetResource())
 			m.Target = &v
 		case *StoreAction_Extension:
 			v := StoreAction_Extension{
 				Extension: &Extension{},
 			}
-			deepcopy.Copy(v.Extension, o.GetExtension())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Extension, o.GetExtension())
 			m.Target = &v
 		case *StoreAction_Config:
 			v := StoreAction_Config{
 				Config: &Config{},
 			}
-			deepcopy.Copy(v.Config, o.GetConfig())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Config, o.GetConfig())
 			m.Target = &v
 		}
 	}
@@ -868,7 +1279,7 @@ func NewRaftClient(cc *grpc.ClientConn) RaftClient {
 
 func (c *raftClient) ProcessRaftMessage(ctx context.Context, in *ProcessRaftMessageRequest, opts ...grpc.CallOption) (*ProcessRaftMessageResponse, error) {
 	out := new(ProcessRaftMessageResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Raft/ProcessRaftMessage", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Raft/ProcessRaftMessage", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -876,7 +1287,7 @@ func (c *raftClient) ProcessRaftMessage(ctx context.Context, in *ProcessRaftMess
 }
 
 func (c *raftClient) StreamRaftMessage(ctx context.Context, opts ...grpc.CallOption) (Raft_StreamRaftMessageClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Raft_serviceDesc.Streams[0], c.cc, "/docker.swarmkit.v1.Raft/StreamRaftMessage", opts...)
+	stream, err := c.cc.NewStream(ctx, &_Raft_serviceDesc.Streams[0], "/docker.swarmkit.v1.Raft/StreamRaftMessage", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -911,7 +1322,7 @@ func (x *raftStreamRaftMessageClient) CloseAndRecv() (*StreamRaftMessageResponse
 
 func (c *raftClient) ResolveAddress(ctx context.Context, in *ResolveAddressRequest, opts ...grpc.CallOption) (*ResolveAddressResponse, error) {
 	out := new(ResolveAddressResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Raft/ResolveAddress", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.Raft/ResolveAddress", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1042,7 +1453,7 @@ func NewRaftMembershipClient(cc *grpc.ClientConn) RaftMembershipClient {
 
 func (c *raftMembershipClient) Join(ctx context.Context, in *JoinRequest, opts ...grpc.CallOption) (*JoinResponse, error) {
 	out := new(JoinResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.RaftMembership/Join", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.RaftMembership/Join", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1051,7 +1462,7 @@ func (c *raftMembershipClient) Join(ctx context.Context, in *JoinRequest, opts .
 
 func (c *raftMembershipClient) Leave(ctx context.Context, in *LeaveRequest, opts ...grpc.CallOption) (*LeaveResponse, error) {
 	out := new(LeaveResponse)
-	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.RaftMembership/Leave", in, out, c.cc, opts...)
+	err := c.cc.Invoke(ctx, "/docker.swarmkit.v1.RaftMembership/Leave", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1164,6 +1575,9 @@ func (m *RaftMember) MarshalTo(dAtA []byte) (int, error) {
 		return 0, err
 	}
 	i += n1
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1187,6 +1601,9 @@ func (m *JoinRequest) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintRaft(dAtA, i, uint64(len(m.Addr)))
 		i += copy(dAtA[i:], m.Addr)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -1230,6 +1647,9 @@ func (m *JoinResponse) MarshalTo(dAtA []byte) (int, error) {
 			i = encodeVarintRaft(dAtA, i, uint64(num))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1258,6 +1678,9 @@ func (m *LeaveRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n2
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1276,6 +1699,9 @@ func (m *LeaveResponse) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1304,6 +1730,9 @@ func (m *ProcessRaftMessageRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n3
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1322,6 +1751,9 @@ func (m *ProcessRaftMessageResponse) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1350,6 +1782,9 @@ func (m *StreamRaftMessageRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i += n4
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1368,6 +1803,9 @@ func (m *StreamRaftMessageResponse) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1390,6 +1828,9 @@ func (m *ResolveAddressRequest) MarshalTo(dAtA []byte) (int, error) {
 		dAtA[i] = 0x8
 		i++
 		i = encodeVarintRaft(dAtA, i, uint64(m.RaftID))
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -1414,6 +1855,9 @@ func (m *ResolveAddressResponse) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintRaft(dAtA, i, uint64(len(m.Addr)))
 		i += copy(dAtA[i:], m.Addr)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -1450,6 +1894,9 @@ func (m *InternalRaftRequest) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1479,6 +1926,9 @@ func (m *StoreAction) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += nn5
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -1976,6 +2426,9 @@ func (m *RaftMember) Size() (n int) {
 	}
 	l = m.Status.Size()
 	n += 1 + l + sovRaft(uint64(l))
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -1985,6 +2438,9 @@ func (m *JoinRequest) Size() (n int) {
 	l = len(m.Addr)
 	if l > 0 {
 		n += 1 + l + sovRaft(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2006,6 +2462,9 @@ func (m *JoinResponse) Size() (n int) {
 			n += 1 + sovRaft(uint64(e))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2016,12 +2475,18 @@ func (m *LeaveRequest) Size() (n int) {
 		l = m.Node.Size()
 		n += 1 + l + sovRaft(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *LeaveResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2032,12 +2497,18 @@ func (m *ProcessRaftMessageRequest) Size() (n int) {
 		l = m.Message.Size()
 		n += 1 + l + sovRaft(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *ProcessRaftMessageResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2048,12 +2519,18 @@ func (m *StreamRaftMessageRequest) Size() (n int) {
 		l = m.Message.Size()
 		n += 1 + l + sovRaft(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
 func (m *StreamRaftMessageResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2062,6 +2539,9 @@ func (m *ResolveAddressRequest) Size() (n int) {
 	_ = l
 	if m.RaftID != 0 {
 		n += 1 + sovRaft(uint64(m.RaftID))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2072,6 +2552,9 @@ func (m *ResolveAddressResponse) Size() (n int) {
 	l = len(m.Addr)
 	if l > 0 {
 		n += 1 + l + sovRaft(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2088,6 +2571,9 @@ func (m *InternalRaftRequest) Size() (n int) {
 			n += 1 + l + sovRaft(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2099,6 +2585,9 @@ func (m *StoreAction) Size() (n int) {
 	}
 	if m.Target != nil {
 		n += m.Target.Size()
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2207,6 +2696,7 @@ func (this *RaftMember) String() string {
 		`NodeID:` + fmt.Sprintf("%v", this.NodeID) + `,`,
 		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
 		`Status:` + strings.Replace(strings.Replace(this.Status.String(), "RaftMemberStatus", "RaftMemberStatus", 1), `&`, ``, 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2217,6 +2707,7 @@ func (this *JoinRequest) String() string {
 	}
 	s := strings.Join([]string{`&JoinRequest{`,
 		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2229,6 +2720,7 @@ func (this *JoinResponse) String() string {
 		`RaftID:` + fmt.Sprintf("%v", this.RaftID) + `,`,
 		`Members:` + strings.Replace(fmt.Sprintf("%v", this.Members), "RaftMember", "RaftMember", 1) + `,`,
 		`RemovedMembers:` + fmt.Sprintf("%v", this.RemovedMembers) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2239,6 +2731,7 @@ func (this *LeaveRequest) String() string {
 	}
 	s := strings.Join([]string{`&LeaveRequest{`,
 		`Node:` + strings.Replace(fmt.Sprintf("%v", this.Node), "RaftMember", "RaftMember", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2248,6 +2741,7 @@ func (this *LeaveResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&LeaveResponse{`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2258,6 +2752,7 @@ func (this *ProcessRaftMessageRequest) String() string {
 	}
 	s := strings.Join([]string{`&ProcessRaftMessageRequest{`,
 		`Message:` + strings.Replace(fmt.Sprintf("%v", this.Message), "Message", "raftpb.Message", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2267,6 +2762,7 @@ func (this *ProcessRaftMessageResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ProcessRaftMessageResponse{`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2277,6 +2773,7 @@ func (this *StreamRaftMessageRequest) String() string {
 	}
 	s := strings.Join([]string{`&StreamRaftMessageRequest{`,
 		`Message:` + strings.Replace(fmt.Sprintf("%v", this.Message), "Message", "raftpb.Message", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2286,6 +2783,7 @@ func (this *StreamRaftMessageResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&StreamRaftMessageResponse{`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2296,6 +2794,7 @@ func (this *ResolveAddressRequest) String() string {
 	}
 	s := strings.Join([]string{`&ResolveAddressRequest{`,
 		`RaftID:` + fmt.Sprintf("%v", this.RaftID) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2306,6 +2805,7 @@ func (this *ResolveAddressResponse) String() string {
 	}
 	s := strings.Join([]string{`&ResolveAddressResponse{`,
 		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2317,6 +2817,7 @@ func (this *InternalRaftRequest) String() string {
 	s := strings.Join([]string{`&InternalRaftRequest{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
 		`Action:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Action), "StoreAction", "StoreAction", 1), `&`, ``, 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2328,6 +2829,7 @@ func (this *StoreAction) String() string {
 	s := strings.Join([]string{`&StoreAction{`,
 		`Action:` + fmt.Sprintf("%v", this.Action) + `,`,
 		`Target:` + fmt.Sprintf("%v", this.Target) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2578,6 +3080,7 @@ func (m *RaftMember) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2657,6 +3160,7 @@ func (m *JoinRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2819,6 +3323,7 @@ func (m *JoinResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2902,6 +3407,7 @@ func (m *LeaveRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -2952,6 +3458,7 @@ func (m *LeaveResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3035,6 +3542,7 @@ func (m *ProcessRaftMessageRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3085,6 +3593,7 @@ func (m *ProcessRaftMessageResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3168,6 +3677,7 @@ func (m *StreamRaftMessageRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3218,6 +3728,7 @@ func (m *StreamRaftMessageResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3287,6 +3798,7 @@ func (m *ResolveAddressRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3366,6 +3878,7 @@ func (m *ResolveAddressResponse) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3466,6 +3979,7 @@ func (m *InternalRaftRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3823,6 +4337,7 @@ func (m *StoreAction) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3937,9 +4452,11 @@ var (
 	ErrIntOverflowRaft   = fmt.Errorf("proto: integer overflow")
 )
 
-func init() { proto.RegisterFile("github.com/docker/swarmkit/api/raft.proto", fileDescriptorRaft) }
+func init() {
+	proto.RegisterFile("github.com/docker/swarmkit/api/raft.proto", fileDescriptor_raft_125cec1c6d43963e)
+}
 
-var fileDescriptorRaft = []byte{
+var fileDescriptor_raft_125cec1c6d43963e = []byte{
 	// 1015 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x96, 0xc1, 0x6e, 0x1b, 0x45,
 	0x18, 0xc7, 0x77, 0xed, 0xad, 0xd3, 0x7c, 0x69, 0x93, 0x30, 0x25, 0x61, 0xb3, 0x2d, 0x8e, 0xbb,

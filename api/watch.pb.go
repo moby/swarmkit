@@ -6,10 +6,10 @@ package api
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import _ "github.com/gogo/protobuf/gogoproto"
 import _ "github.com/docker/swarmkit/protobuf/plugin"
+import _ "github.com/gogo/protobuf/gogoproto"
 
-import deepcopy "github.com/docker/swarmkit/api/deepcopy"
+import github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 
 import context "golang.org/x/net/context"
 import grpc "google.golang.org/grpc"
@@ -30,6 +30,12 @@ import io "io"
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 // WatchActionKind distinguishes between creations, updates, and removals. It
 // is structured as a bitmap so multiple kinds of events can be requested with
@@ -59,7 +65,9 @@ var WatchActionKind_value = map[string]int32{
 func (x WatchActionKind) String() string {
 	return proto.EnumName(WatchActionKind_name, int32(x))
 }
-func (WatchActionKind) EnumDescriptor() ([]byte, []int) { return fileDescriptorWatch, []int{0} }
+func (WatchActionKind) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_watch_ee85c69eba521dbc, []int{0}
+}
 
 type Object struct {
 	// Types that are valid to be assigned to Object:
@@ -72,12 +80,43 @@ type Object struct {
 	//	*Object_Resource
 	//	*Object_Extension
 	//	*Object_Config
-	Object isObject_Object `protobuf_oneof:"Object"`
+	Object               isObject_Object `protobuf_oneof:"Object"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
-func (m *Object) Reset()                    { *m = Object{} }
-func (*Object) ProtoMessage()               {}
-func (*Object) Descriptor() ([]byte, []int) { return fileDescriptorWatch, []int{0} }
+func (m *Object) Reset()      { *m = Object{} }
+func (*Object) ProtoMessage() {}
+func (*Object) Descriptor() ([]byte, []int) {
+	return fileDescriptor_watch_ee85c69eba521dbc, []int{0}
+}
+func (m *Object) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Object) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Object.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *Object) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Object.Merge(dst, src)
+}
+func (m *Object) XXX_Size() int {
+	return m.Size()
+}
+func (m *Object) XXX_DiscardUnknown() {
+	xxx_messageInfo_Object.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Object proto.InternalMessageInfo
 
 type isObject_Object interface {
 	isObject_Object()
@@ -350,47 +389,47 @@ func _Object_OneofSizer(msg proto.Message) (n int) {
 	switch x := m.Object.(type) {
 	case *Object_Node:
 		s := proto.Size(x.Node)
-		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *Object_Service:
 		s := proto.Size(x.Service)
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *Object_Network:
 		s := proto.Size(x.Network)
-		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *Object_Task:
 		s := proto.Size(x.Task)
-		n += proto.SizeVarint(4<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *Object_Cluster:
 		s := proto.Size(x.Cluster)
-		n += proto.SizeVarint(5<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *Object_Secret:
 		s := proto.Size(x.Secret)
-		n += proto.SizeVarint(6<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *Object_Resource:
 		s := proto.Size(x.Resource)
-		n += proto.SizeVarint(7<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *Object_Extension:
 		s := proto.Size(x.Extension)
-		n += proto.SizeVarint(8<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *Object_Config:
 		s := proto.Size(x.Config)
-		n += proto.SizeVarint(9<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case nil:
@@ -403,23 +442,85 @@ func _Object_OneofSizer(msg proto.Message) (n int) {
 // FIXME(aaronl): These messages should ideally be embedded in SelectBy, but
 // protoc generates bad code for that.
 type SelectBySlot struct {
-	ServiceID string `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
-	Slot      uint64 `protobuf:"varint,2,opt,name=slot,proto3" json:"slot,omitempty"`
+	ServiceID            string   `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	Slot                 uint64   `protobuf:"varint,2,opt,name=slot,proto3" json:"slot,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SelectBySlot) Reset()                    { *m = SelectBySlot{} }
-func (*SelectBySlot) ProtoMessage()               {}
-func (*SelectBySlot) Descriptor() ([]byte, []int) { return fileDescriptorWatch, []int{1} }
+func (m *SelectBySlot) Reset()      { *m = SelectBySlot{} }
+func (*SelectBySlot) ProtoMessage() {}
+func (*SelectBySlot) Descriptor() ([]byte, []int) {
+	return fileDescriptor_watch_ee85c69eba521dbc, []int{1}
+}
+func (m *SelectBySlot) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SelectBySlot) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_SelectBySlot.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *SelectBySlot) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SelectBySlot.Merge(dst, src)
+}
+func (m *SelectBySlot) XXX_Size() int {
+	return m.Size()
+}
+func (m *SelectBySlot) XXX_DiscardUnknown() {
+	xxx_messageInfo_SelectBySlot.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SelectBySlot proto.InternalMessageInfo
 
 type SelectByCustom struct {
-	Kind  string `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
-	Index string `protobuf:"bytes,2,opt,name=index,proto3" json:"index,omitempty"`
-	Value string `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	Kind                 string   `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	Index                string   `protobuf:"bytes,2,opt,name=index,proto3" json:"index,omitempty"`
+	Value                string   `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SelectByCustom) Reset()                    { *m = SelectByCustom{} }
-func (*SelectByCustom) ProtoMessage()               {}
-func (*SelectByCustom) Descriptor() ([]byte, []int) { return fileDescriptorWatch, []int{2} }
+func (m *SelectByCustom) Reset()      { *m = SelectByCustom{} }
+func (*SelectByCustom) ProtoMessage() {}
+func (*SelectByCustom) Descriptor() ([]byte, []int) {
+	return fileDescriptor_watch_ee85c69eba521dbc, []int{2}
+}
+func (m *SelectByCustom) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SelectByCustom) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_SelectByCustom.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *SelectByCustom) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SelectByCustom.Merge(dst, src)
+}
+func (m *SelectByCustom) XXX_Size() int {
+	return m.Size()
+}
+func (m *SelectByCustom) XXX_DiscardUnknown() {
+	xxx_messageInfo_SelectByCustom.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SelectByCustom proto.InternalMessageInfo
 
 type SelectBy struct {
 	// TODO(aaronl): Are all of these things we want to expose in
@@ -443,12 +544,43 @@ type SelectBy struct {
 	//	*SelectBy_ReferencedSecretID
 	//	*SelectBy_ReferencedConfigID
 	//	*SelectBy_Kind
-	By isSelectBy_By `protobuf_oneof:"By"`
+	By                   isSelectBy_By `protobuf_oneof:"By"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
 }
 
-func (m *SelectBy) Reset()                    { *m = SelectBy{} }
-func (*SelectBy) ProtoMessage()               {}
-func (*SelectBy) Descriptor() ([]byte, []int) { return fileDescriptorWatch, []int{3} }
+func (m *SelectBy) Reset()      { *m = SelectBy{} }
+func (*SelectBy) ProtoMessage() {}
+func (*SelectBy) Descriptor() ([]byte, []int) {
+	return fileDescriptor_watch_ee85c69eba521dbc, []int{3}
+}
+func (m *SelectBy) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *SelectBy) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_SelectBy.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *SelectBy) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SelectBy.Merge(dst, src)
+}
+func (m *SelectBy) XXX_Size() int {
+	return m.Size()
+}
+func (m *SelectBy) XXX_DiscardUnknown() {
+	xxx_messageInfo_SelectBy.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SelectBy proto.InternalMessageInfo
 
 type isSelectBy_By interface {
 	isSelectBy_By()
@@ -856,67 +988,67 @@ func _SelectBy_OneofSizer(msg proto.Message) (n int) {
 	// By
 	switch x := m.By.(type) {
 	case *SelectBy_ID:
-		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(len(x.ID)))
 		n += len(x.ID)
 	case *SelectBy_IDPrefix:
-		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(len(x.IDPrefix)))
 		n += len(x.IDPrefix)
 	case *SelectBy_Name:
-		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(len(x.Name)))
 		n += len(x.Name)
 	case *SelectBy_NamePrefix:
-		n += proto.SizeVarint(4<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(len(x.NamePrefix)))
 		n += len(x.NamePrefix)
 	case *SelectBy_Custom:
 		s := proto.Size(x.Custom)
-		n += proto.SizeVarint(5<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *SelectBy_CustomPrefix:
 		s := proto.Size(x.CustomPrefix)
-		n += proto.SizeVarint(6<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *SelectBy_ServiceID:
-		n += proto.SizeVarint(7<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(len(x.ServiceID)))
 		n += len(x.ServiceID)
 	case *SelectBy_NodeID:
-		n += proto.SizeVarint(8<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(len(x.NodeID)))
 		n += len(x.NodeID)
 	case *SelectBy_Slot:
 		s := proto.Size(x.Slot)
-		n += proto.SizeVarint(9<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(s))
 		n += s
 	case *SelectBy_DesiredState:
-		n += proto.SizeVarint(10<<3 | proto.WireVarint)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(x.DesiredState))
 	case *SelectBy_Role:
-		n += proto.SizeVarint(11<<3 | proto.WireVarint)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(x.Role))
 	case *SelectBy_Membership:
-		n += proto.SizeVarint(12<<3 | proto.WireVarint)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(x.Membership))
 	case *SelectBy_ReferencedNetworkID:
-		n += proto.SizeVarint(13<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(len(x.ReferencedNetworkID)))
 		n += len(x.ReferencedNetworkID)
 	case *SelectBy_ReferencedSecretID:
-		n += proto.SizeVarint(14<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(len(x.ReferencedSecretID)))
 		n += len(x.ReferencedSecretID)
 	case *SelectBy_ReferencedConfigID:
-		n += proto.SizeVarint(16<<3 | proto.WireBytes)
+		n += 2 // tag and wire
 		n += proto.SizeVarint(uint64(len(x.ReferencedConfigID)))
 		n += len(x.ReferencedConfigID)
 	case *SelectBy_Kind:
-		n += proto.SizeVarint(15<<3 | proto.WireBytes)
+		n += 1 // tag and wire
 		n += proto.SizeVarint(uint64(len(x.Kind)))
 		n += len(x.Kind)
 	case nil:
@@ -941,12 +1073,43 @@ type WatchRequest struct {
 	// previous version of the object on updates. Note that only live
 	// changes will include the old object (not historical changes
 	// retrieved using ResumeFrom).
-	IncludeOldObject bool `protobuf:"varint,3,opt,name=include_old_object,json=includeOldObject,proto3" json:"include_old_object,omitempty"`
+	IncludeOldObject     bool     `protobuf:"varint,3,opt,name=include_old_object,json=includeOldObject,proto3" json:"include_old_object,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *WatchRequest) Reset()                    { *m = WatchRequest{} }
-func (*WatchRequest) ProtoMessage()               {}
-func (*WatchRequest) Descriptor() ([]byte, []int) { return fileDescriptorWatch, []int{4} }
+func (m *WatchRequest) Reset()      { *m = WatchRequest{} }
+func (*WatchRequest) ProtoMessage() {}
+func (*WatchRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_watch_ee85c69eba521dbc, []int{4}
+}
+func (m *WatchRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *WatchRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_WatchRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *WatchRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WatchRequest.Merge(dst, src)
+}
+func (m *WatchRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *WatchRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_WatchRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_WatchRequest proto.InternalMessageInfo
 
 type WatchRequest_WatchEntry struct {
 	// Kind can contain a builtin type such as "node", "secret", etc. or
@@ -957,12 +1120,43 @@ type WatchRequest_WatchEntry struct {
 	Action WatchActionKind `protobuf:"varint,2,opt,name=action,proto3,enum=docker.swarmkit.v1.WatchActionKind" json:"action,omitempty"`
 	// Filters are combined using AND logic - an event must match
 	// all of them to pass the filter.
-	Filters []*SelectBy `protobuf:"bytes,3,rep,name=filters" json:"filters,omitempty"`
+	Filters              []*SelectBy `protobuf:"bytes,3,rep,name=filters" json:"filters,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
 }
 
-func (m *WatchRequest_WatchEntry) Reset()                    { *m = WatchRequest_WatchEntry{} }
-func (*WatchRequest_WatchEntry) ProtoMessage()               {}
-func (*WatchRequest_WatchEntry) Descriptor() ([]byte, []int) { return fileDescriptorWatch, []int{4, 0} }
+func (m *WatchRequest_WatchEntry) Reset()      { *m = WatchRequest_WatchEntry{} }
+func (*WatchRequest_WatchEntry) ProtoMessage() {}
+func (*WatchRequest_WatchEntry) Descriptor() ([]byte, []int) {
+	return fileDescriptor_watch_ee85c69eba521dbc, []int{4, 0}
+}
+func (m *WatchRequest_WatchEntry) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *WatchRequest_WatchEntry) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_WatchRequest_WatchEntry.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *WatchRequest_WatchEntry) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WatchRequest_WatchEntry.Merge(dst, src)
+}
+func (m *WatchRequest_WatchEntry) XXX_Size() int {
+	return m.Size()
+}
+func (m *WatchRequest_WatchEntry) XXX_DiscardUnknown() {
+	xxx_messageInfo_WatchRequest_WatchEntry.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_WatchRequest_WatchEntry proto.InternalMessageInfo
 
 // WatchMessage is the type of the stream that's returned to the client by
 // Watch. Note that the first item of this stream will always be a WatchMessage
@@ -971,12 +1165,43 @@ type WatchMessage struct {
 	Events []*WatchMessage_Event `protobuf:"bytes,1,rep,name=events" json:"events,omitempty"`
 	// Index versions this change to the data store. It can be used to
 	// resume the watch from this point.
-	Version *Version `protobuf:"bytes,2,opt,name=version" json:"version,omitempty"`
+	Version              *Version `protobuf:"bytes,2,opt,name=version" json:"version,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *WatchMessage) Reset()                    { *m = WatchMessage{} }
-func (*WatchMessage) ProtoMessage()               {}
-func (*WatchMessage) Descriptor() ([]byte, []int) { return fileDescriptorWatch, []int{5} }
+func (m *WatchMessage) Reset()      { *m = WatchMessage{} }
+func (*WatchMessage) ProtoMessage() {}
+func (*WatchMessage) Descriptor() ([]byte, []int) {
+	return fileDescriptor_watch_ee85c69eba521dbc, []int{5}
+}
+func (m *WatchMessage) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *WatchMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_WatchMessage.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *WatchMessage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WatchMessage.Merge(dst, src)
+}
+func (m *WatchMessage) XXX_Size() int {
+	return m.Size()
+}
+func (m *WatchMessage) XXX_DiscardUnknown() {
+	xxx_messageInfo_WatchMessage.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_WatchMessage proto.InternalMessageInfo
 
 type WatchMessage_Event struct {
 	// Action (create/update/delete)
@@ -988,12 +1213,43 @@ type WatchMessage_Event struct {
 	// For updates, OldObject will optionally be included in the
 	// watch message, containing the previous version of the
 	// object, if IncludeOldObject was set in WatchRequest.
-	OldObject *Object `protobuf:"bytes,3,opt,name=old_object,json=oldObject" json:"old_object,omitempty"`
+	OldObject            *Object  `protobuf:"bytes,3,opt,name=old_object,json=oldObject" json:"old_object,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *WatchMessage_Event) Reset()                    { *m = WatchMessage_Event{} }
-func (*WatchMessage_Event) ProtoMessage()               {}
-func (*WatchMessage_Event) Descriptor() ([]byte, []int) { return fileDescriptorWatch, []int{5, 0} }
+func (m *WatchMessage_Event) Reset()      { *m = WatchMessage_Event{} }
+func (*WatchMessage_Event) ProtoMessage() {}
+func (*WatchMessage_Event) Descriptor() ([]byte, []int) {
+	return fileDescriptor_watch_ee85c69eba521dbc, []int{5, 0}
+}
+func (m *WatchMessage_Event) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *WatchMessage_Event) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_WatchMessage_Event.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalTo(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (dst *WatchMessage_Event) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_WatchMessage_Event.Merge(dst, src)
+}
+func (m *WatchMessage_Event) XXX_Size() int {
+	return m.Size()
+}
+func (m *WatchMessage_Event) XXX_DiscardUnknown() {
+	xxx_messageInfo_WatchMessage_Event.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_WatchMessage_Event proto.InternalMessageInfo
 
 func init() {
 	proto.RegisterType((*Object)(nil), "docker.swarmkit.v1.Object")
@@ -1046,55 +1302,55 @@ func (m *Object) CopyFrom(src interface{}) {
 			v := Object_Node{
 				Node: &Node{},
 			}
-			deepcopy.Copy(v.Node, o.GetNode())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Node, o.GetNode())
 			m.Object = &v
 		case *Object_Service:
 			v := Object_Service{
 				Service: &Service{},
 			}
-			deepcopy.Copy(v.Service, o.GetService())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Service, o.GetService())
 			m.Object = &v
 		case *Object_Network:
 			v := Object_Network{
 				Network: &Network{},
 			}
-			deepcopy.Copy(v.Network, o.GetNetwork())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Network, o.GetNetwork())
 			m.Object = &v
 		case *Object_Task:
 			v := Object_Task{
 				Task: &Task{},
 			}
-			deepcopy.Copy(v.Task, o.GetTask())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Task, o.GetTask())
 			m.Object = &v
 		case *Object_Cluster:
 			v := Object_Cluster{
 				Cluster: &Cluster{},
 			}
-			deepcopy.Copy(v.Cluster, o.GetCluster())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Cluster, o.GetCluster())
 			m.Object = &v
 		case *Object_Secret:
 			v := Object_Secret{
 				Secret: &Secret{},
 			}
-			deepcopy.Copy(v.Secret, o.GetSecret())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Secret, o.GetSecret())
 			m.Object = &v
 		case *Object_Resource:
 			v := Object_Resource{
 				Resource: &Resource{},
 			}
-			deepcopy.Copy(v.Resource, o.GetResource())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Resource, o.GetResource())
 			m.Object = &v
 		case *Object_Extension:
 			v := Object_Extension{
 				Extension: &Extension{},
 			}
-			deepcopy.Copy(v.Extension, o.GetExtension())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Extension, o.GetExtension())
 			m.Object = &v
 		case *Object_Config:
 			v := Object_Config{
 				Config: &Config{},
 			}
-			deepcopy.Copy(v.Config, o.GetConfig())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Config, o.GetConfig())
 			m.Object = &v
 		}
 	}
@@ -1170,13 +1426,13 @@ func (m *SelectBy) CopyFrom(src interface{}) {
 			v := SelectBy_Custom{
 				Custom: &SelectByCustom{},
 			}
-			deepcopy.Copy(v.Custom, o.GetCustom())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Custom, o.GetCustom())
 			m.By = &v
 		case *SelectBy_CustomPrefix:
 			v := SelectBy_CustomPrefix{
 				CustomPrefix: &SelectByCustom{},
 			}
-			deepcopy.Copy(v.CustomPrefix, o.GetCustomPrefix())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.CustomPrefix, o.GetCustomPrefix())
 			m.By = &v
 		case *SelectBy_ServiceID:
 			v := SelectBy_ServiceID{
@@ -1192,7 +1448,7 @@ func (m *SelectBy) CopyFrom(src interface{}) {
 			v := SelectBy_Slot{
 				Slot: &SelectBySlot{},
 			}
-			deepcopy.Copy(v.Slot, o.GetSlot())
+			github_com_docker_swarmkit_api_deepcopy.Copy(v.Slot, o.GetSlot())
 			m.By = &v
 		case *SelectBy_DesiredState:
 			v := SelectBy_DesiredState{
@@ -1251,13 +1507,13 @@ func (m *WatchRequest) CopyFrom(src interface{}) {
 		m.Entries = make([]*WatchRequest_WatchEntry, len(o.Entries))
 		for i := range m.Entries {
 			m.Entries[i] = &WatchRequest_WatchEntry{}
-			deepcopy.Copy(m.Entries[i], o.Entries[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Entries[i], o.Entries[i])
 		}
 	}
 
 	if o.ResumeFrom != nil {
 		m.ResumeFrom = &Version{}
-		deepcopy.Copy(m.ResumeFrom, o.ResumeFrom)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.ResumeFrom, o.ResumeFrom)
 	}
 }
 
@@ -1278,7 +1534,7 @@ func (m *WatchRequest_WatchEntry) CopyFrom(src interface{}) {
 		m.Filters = make([]*SelectBy, len(o.Filters))
 		for i := range m.Filters {
 			m.Filters[i] = &SelectBy{}
-			deepcopy.Copy(m.Filters[i], o.Filters[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Filters[i], o.Filters[i])
 		}
 	}
 
@@ -1301,13 +1557,13 @@ func (m *WatchMessage) CopyFrom(src interface{}) {
 		m.Events = make([]*WatchMessage_Event, len(o.Events))
 		for i := range m.Events {
 			m.Events[i] = &WatchMessage_Event{}
-			deepcopy.Copy(m.Events[i], o.Events[i])
+			github_com_docker_swarmkit_api_deepcopy.Copy(m.Events[i], o.Events[i])
 		}
 	}
 
 	if o.Version != nil {
 		m.Version = &Version{}
-		deepcopy.Copy(m.Version, o.Version)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Version, o.Version)
 	}
 }
 
@@ -1326,11 +1582,11 @@ func (m *WatchMessage_Event) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Object != nil {
 		m.Object = &Object{}
-		deepcopy.Copy(m.Object, o.Object)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.Object, o.Object)
 	}
 	if o.OldObject != nil {
 		m.OldObject = &Object{}
-		deepcopy.Copy(m.OldObject, o.OldObject)
+		github_com_docker_swarmkit_api_deepcopy.Copy(m.OldObject, o.OldObject)
 	}
 }
 
@@ -1362,7 +1618,7 @@ func NewWatchClient(cc *grpc.ClientConn) WatchClient {
 }
 
 func (c *watchClient) Watch(ctx context.Context, in *WatchRequest, opts ...grpc.CallOption) (Watch_WatchClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_Watch_serviceDesc.Streams[0], c.cc, "/docker.swarmkit.v1.Watch/Watch", opts...)
+	stream, err := c.cc.NewStream(ctx, &_Watch_serviceDesc.Streams[0], "/docker.swarmkit.v1.Watch/Watch", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1464,6 +1720,9 @@ func (m *Object) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += nn1
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -1620,6 +1879,9 @@ func (m *SelectBySlot) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintWatch(dAtA, i, uint64(m.Slot))
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1656,6 +1918,9 @@ func (m *SelectByCustom) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintWatch(dAtA, i, uint64(len(m.Value)))
 		i += copy(dAtA[i:], m.Value)
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1680,6 +1945,9 @@ func (m *SelectBy) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += nn11
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -1876,6 +2144,9 @@ func (m *WatchRequest) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i++
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1917,6 +2188,9 @@ func (m *WatchRequest_WatchEntry) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
 	return i, nil
 }
 
@@ -1956,6 +2230,9 @@ func (m *WatchMessage) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n16
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -1999,6 +2276,9 @@ func (m *WatchMessage_Event) MarshalTo(dAtA []byte) (int, error) {
 			return 0, err
 		}
 		i += n18
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
 	return i, nil
 }
@@ -2142,6 +2422,9 @@ func (m *Object) Size() (n int) {
 	if m.Object != nil {
 		n += m.Object.Size()
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2236,6 +2519,9 @@ func (m *SelectBySlot) Size() (n int) {
 	if m.Slot != 0 {
 		n += 1 + sovWatch(uint64(m.Slot))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2254,6 +2540,9 @@ func (m *SelectByCustom) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovWatch(uint64(l))
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2262,6 +2551,9 @@ func (m *SelectBy) Size() (n int) {
 	_ = l
 	if m.By != nil {
 		n += m.By.Size()
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2397,6 +2689,9 @@ func (m *WatchRequest) Size() (n int) {
 	if m.IncludeOldObject {
 		n += 2
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2416,6 +2711,9 @@ func (m *WatchRequest_WatchEntry) Size() (n int) {
 			n += 1 + l + sovWatch(uint64(l))
 		}
 	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
 	return n
 }
 
@@ -2431,6 +2729,9 @@ func (m *WatchMessage) Size() (n int) {
 	if m.Version != nil {
 		l = m.Version.Size()
 		n += 1 + l + sovWatch(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2448,6 +2749,9 @@ func (m *WatchMessage_Event) Size() (n int) {
 	if m.OldObject != nil {
 		l = m.OldObject.Size()
 		n += 1 + l + sovWatch(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
@@ -2471,6 +2775,7 @@ func (this *Object) String() string {
 	}
 	s := strings.Join([]string{`&Object{`,
 		`Object:` + fmt.Sprintf("%v", this.Object) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2572,6 +2877,7 @@ func (this *SelectBySlot) String() string {
 	s := strings.Join([]string{`&SelectBySlot{`,
 		`ServiceID:` + fmt.Sprintf("%v", this.ServiceID) + `,`,
 		`Slot:` + fmt.Sprintf("%v", this.Slot) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2584,6 +2890,7 @@ func (this *SelectByCustom) String() string {
 		`Kind:` + fmt.Sprintf("%v", this.Kind) + `,`,
 		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
 		`Value:` + fmt.Sprintf("%v", this.Value) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2594,6 +2901,7 @@ func (this *SelectBy) String() string {
 	}
 	s := strings.Join([]string{`&SelectBy{`,
 		`By:` + fmt.Sprintf("%v", this.By) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2766,6 +3074,7 @@ func (this *WatchRequest) String() string {
 		`Entries:` + strings.Replace(fmt.Sprintf("%v", this.Entries), "WatchRequest_WatchEntry", "WatchRequest_WatchEntry", 1) + `,`,
 		`ResumeFrom:` + strings.Replace(fmt.Sprintf("%v", this.ResumeFrom), "Version", "Version", 1) + `,`,
 		`IncludeOldObject:` + fmt.Sprintf("%v", this.IncludeOldObject) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2778,6 +3087,7 @@ func (this *WatchRequest_WatchEntry) String() string {
 		`Kind:` + fmt.Sprintf("%v", this.Kind) + `,`,
 		`Action:` + fmt.Sprintf("%v", this.Action) + `,`,
 		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "SelectBy", "SelectBy", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2789,6 +3099,7 @@ func (this *WatchMessage) String() string {
 	s := strings.Join([]string{`&WatchMessage{`,
 		`Events:` + strings.Replace(fmt.Sprintf("%v", this.Events), "WatchMessage_Event", "WatchMessage_Event", 1) + `,`,
 		`Version:` + strings.Replace(fmt.Sprintf("%v", this.Version), "Version", "Version", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2801,6 +3112,7 @@ func (this *WatchMessage_Event) String() string {
 		`Action:` + fmt.Sprintf("%v", this.Action) + `,`,
 		`Object:` + strings.Replace(fmt.Sprintf("%v", this.Object), "Object", "Object", 1) + `,`,
 		`OldObject:` + strings.Replace(fmt.Sprintf("%v", this.OldObject), "Object", "Object", 1) + `,`,
+		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3142,6 +3454,7 @@ func (m *Object) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3240,6 +3553,7 @@ func (m *SelectBySlot) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3377,6 +3691,7 @@ func (m *SelectByCustom) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -3873,6 +4188,7 @@ func (m *SelectBy) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -4007,6 +4323,7 @@ func (m *WatchRequest) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -4136,6 +4453,7 @@ func (m *WatchRequest_WatchEntry) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -4250,6 +4568,7 @@ func (m *WatchMessage) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -4385,6 +4704,7 @@ func (m *WatchMessage_Event) Unmarshal(dAtA []byte) error {
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
 			iNdEx += skippy
 		}
 	}
@@ -4499,9 +4819,11 @@ var (
 	ErrIntOverflowWatch   = fmt.Errorf("proto: integer overflow")
 )
 
-func init() { proto.RegisterFile("github.com/docker/swarmkit/api/watch.proto", fileDescriptorWatch) }
+func init() {
+	proto.RegisterFile("github.com/docker/swarmkit/api/watch.proto", fileDescriptor_watch_ee85c69eba521dbc)
+}
 
-var fileDescriptorWatch = []byte{
+var fileDescriptor_watch_ee85c69eba521dbc = []byte{
 	// 1186 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x96, 0xbd, 0x73, 0x1b, 0xc5,
 	0x1b, 0xc7, 0x75, 0x8a, 0x7c, 0x92, 0x1e, 0xdb, 0x89, 0x67, 0xe3, 0x24, 0xf7, 0xd3, 0x2f, 0xc8,

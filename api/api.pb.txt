@@ -1578,6 +1578,14 @@ file {
     json_name: "goprotoRegistration"
   }
   extension {
+    name: "messagename_all"
+    extendee: ".google.protobuf.FileOptions"
+    number: 63033
+    label: LABEL_OPTIONAL
+    type: TYPE_BOOL
+    json_name: "messagenameAll"
+  }
+  extension {
     name: "goproto_getters"
     extendee: ".google.protobuf.MessageOptions"
     number: 64001
@@ -1760,6 +1768,14 @@ file {
     label: LABEL_OPTIONAL
     type: TYPE_BOOL
     json_name: "typedecl"
+  }
+  extension {
+    name: "messagename"
+    extendee: ".google.protobuf.MessageOptions"
+    number: 64033
+    label: LABEL_OPTIONAL
+    type: TYPE_BOOL
+    json_name: "messagename"
   }
   extension {
     name: "nullable"
