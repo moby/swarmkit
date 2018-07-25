@@ -13,7 +13,7 @@ import (
 )
 
 func newNetworkAllocator(t *testing.T) networkallocator.NetworkAllocator {
-	na, err := New(nil)
+	na, err := New(nil, nil, 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, na)
 	return na
