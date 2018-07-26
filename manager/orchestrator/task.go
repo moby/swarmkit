@@ -166,7 +166,7 @@ func (t TasksByTimestamp) Less(i, j int) bool {
 
 	jTimestamp := t[j].Status.Timestamp
 	if t[j].Status.AppliedAt != nil {
-		iTimestamp = t[j].Status.AppliedAt
+		jTimestamp = t[j].Status.AppliedAt
 	}
 
 	if iTimestamp == nil {
