@@ -1095,11 +1095,8 @@ func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*a
 	d.rpcRW.RLock()
 	defer d.rpcRW.RUnlock()
 
-	// Its OK to call isRunning() here instead of isRunningLocked()
-	// because of the rpcRW readlock above.
-	// TODO(anshul) other uses of isRunningLocked() can probably
-	// also be removed.
-	if !d.isRunning() {
+	// TODO(anshul) Explore if its possible to check context here without locking.
+	if _, err := d.isRunningLocked(); err != nil {
 		return nil, grpc.Errorf(codes.Aborted, "dispatcher is stopped")
 	}
 
