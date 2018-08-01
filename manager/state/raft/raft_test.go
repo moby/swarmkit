@@ -822,7 +822,7 @@ func TestRaftJoinWithIncorrectAddress(t *testing.T) {
 
 	err := n.JoinAndStart(context.Background())
 	assert.NotNil(t, err)
-	assert.Contains(t, grpc.ErrorDesc(err), "could not connect to prospective new cluster member using its advertised address")
+	assert.Contains(t, testutils.ErrorDesc(err), "could not connect to prospective new cluster member using its advertised address")
 
 	// Check if first node still has only itself registered in the memberlist
 	assert.Len(t, nodes[1].GetMemberlist(), 1)

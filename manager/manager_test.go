@@ -88,7 +88,7 @@ func TestManager(t *testing.T) {
 	client := api.NewDispatcherClient(conn)
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		_, err = client.Heartbeat(tc.Context, &api.HeartbeatRequest{})
-		if dispatcher.ErrNodeNotRegistered.Error() != grpc.ErrorDesc(err) {
+		if dispatcher.ErrNodeNotRegistered.Error() != testutils.ErrorDesc(err) {
 			return err
 		}
 		_, err = client.Session(tc.Context, &api.SessionRequest{})
@@ -109,7 +109,7 @@ func TestManager(t *testing.T) {
 
 	client = api.NewDispatcherClient(conn2)
 	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
-	require.Contains(t, grpc.ErrorDesc(err), "Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = Permission denied: remote certificate not part of organization")
+	require.Contains(t, testutils.ErrorDesc(err), "Permission denied: unauthorized peer role: rpc error: code = PermissionDenied desc = Permission denied: remote certificate not part of organization")
 
 	// Verify that requests to the various GRPC services running on TCP
 	// are rejected if they don't have certs.
@@ -210,7 +210,7 @@ func TestManager(t *testing.T) {
 
 	client = api.NewDispatcherClient(conn)
 	_, err = client.Heartbeat(context.Background(), &api.HeartbeatRequest{})
-	require.Contains(t, grpc.ErrorDesc(err), "removed from swarm")
+	require.Contains(t, testutils.ErrorDesc(err), "removed from swarm")
 
 	m.Stop(tc.Context, false)
 
@@ -313,7 +313,7 @@ func TestManagerLockUnlock(t *testing.T) {
 			ClusterVersion: &cluster.Meta.Version,
 			Spec:           spec,
 		})
-		if grpc.ErrorDesc(err) == "update out of sequence" {
+		if testutils.ErrorDesc(err) == "update out of sequence" {
 			continue
 		}
 		// if there is any other type of error, this should fail
@@ -386,7 +386,7 @@ func TestManagerLockUnlock(t *testing.T) {
 			ClusterVersion: &cluster.Meta.Version,
 			Spec:           spec,
 		})
-		if grpc.ErrorDesc(err) == "update out of sequence" {
+		if testutils.ErrorDesc(err) == "update out of sequence" {
 			continue
 		}
 		require.NoError(t, err)

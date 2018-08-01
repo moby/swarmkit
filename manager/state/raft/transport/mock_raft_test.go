@@ -100,7 +100,7 @@ func (r *mockRaft) ProcessRaftMessage(ctx context.Context, req *api.ProcessRaftM
 // StreamRaftMessage is the mock server endpoint for streaming messages of type StreamRaftMessageRequest.
 func (r *mockRaft) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) error {
 	if r.forceErrorStream {
-		return grpc.Errorf(codes.Unimplemented, "streaming not supported")
+		return status.Errorf(codes.Unimplemented, "streaming not supported")
 	}
 	var recvdMsg, assembledMessage *api.StreamRaftMessageRequest
 	var err error

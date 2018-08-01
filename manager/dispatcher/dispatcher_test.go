@@ -267,7 +267,7 @@ func TestRegisterExceedRateLimit(t *testing.T) {
 		assert.NoError(t, err)
 		_, err = stream.Recv()
 		assert.Error(t, err)
-		assert.Equal(t, codes.Unavailable, grpc.Code(err), err.Error())
+		assert.Equal(t, codes.Unavailable, testutils.ErrorCode(err), err.Error())
 	}
 }
 
@@ -311,7 +311,7 @@ func TestHeartbeat(t *testing.T) {
 		resp, err := gd.Clients[0].Heartbeat(context.Background(), &api.HeartbeatRequest{})
 		assert.Nil(t, resp)
 		assert.Error(t, err)
-		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
+		assert.Equal(t, testutils.ErrorCode(err), codes.InvalidArgument)
 	}
 
 	resp, err := gd.Clients[0].Heartbeat(context.Background(), &api.HeartbeatRequest{SessionID: expectedSessionID})
@@ -384,7 +384,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 	resp, err := gd.Clients[0].Heartbeat(context.Background(), &api.HeartbeatRequest{SessionID: expectedSessionID})
 	assert.Nil(t, resp)
 	assert.Error(t, err)
-	assert.Equal(t, grpc.ErrorDesc(err), ErrNodeNotRegistered.Error())
+	assert.Equal(t, testutils.ErrorDesc(err), ErrNodeNotRegistered.Error())
 }
 
 func TestHeartbeatUnregistered(t *testing.T) {
@@ -394,7 +394,7 @@ func TestHeartbeatUnregistered(t *testing.T) {
 	resp, err := gd.Clients[0].Heartbeat(context.Background(), &api.HeartbeatRequest{})
 	assert.Nil(t, resp)
 	assert.Error(t, err)
-	assert.Equal(t, ErrSessionInvalid.Error(), grpc.ErrorDesc(err))
+	assert.Equal(t, ErrSessionInvalid.Error(), testutils.ErrorDesc(err))
 }
 
 // If the session ID is not sent as part of the Assignments request, an error is returned to the stream
@@ -414,7 +414,7 @@ func TestAssignmentsErrorsIfNoSessionID(t *testing.T) {
 	resp, err := stream.Recv()
 	assert.Nil(t, resp)
 	assert.Error(t, err)
-	assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
+	assert.Equal(t, testutils.ErrorCode(err), codes.InvalidArgument)
 }
 
 func TestAssignmentsSecretDriver(t *testing.T) {
@@ -1247,7 +1247,7 @@ func TestTaskUpdate(t *testing.T) {
 		resp, err := gd.Clients[0].UpdateTaskStatus(context.Background(), updReq)
 		assert.Nil(t, resp)
 		assert.Error(t, err)
-		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
+		assert.Equal(t, testutils.ErrorCode(err), codes.InvalidArgument)
 	}
 
 	updReq.SessionID = expectedSessionID
@@ -1266,7 +1266,7 @@ func TestTaskUpdate(t *testing.T) {
 		resp, err := gd.Clients[0].UpdateTaskStatus(context.Background(), updReq)
 		assert.Nil(t, resp)
 		assert.Error(t, err)
-		assert.Equal(t, grpc.Code(err), codes.PermissionDenied)
+		assert.Equal(t, testutils.ErrorCode(err), codes.PermissionDenied)
 	}
 
 	gd.dispatcherServer.processUpdates(context.Background())
@@ -1754,7 +1754,7 @@ func TestOldTasks(t *testing.T) {
 		resp, err := stream.Recv()
 		assert.Nil(t, resp)
 		assert.Error(t, err)
-		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
+		assert.Equal(t, testutils.ErrorCode(err), codes.InvalidArgument)
 	}
 
 	stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{SessionID: expectedSessionID})
@@ -1852,7 +1852,7 @@ func TestOldTasksStatusChange(t *testing.T) {
 		resp, err := stream.Recv()
 		assert.Nil(t, resp)
 		assert.Error(t, err)
-		assert.Equal(t, grpc.Code(err), codes.InvalidArgument)
+		assert.Equal(t, testutils.ErrorCode(err), codes.InvalidArgument)
 	}
 
 	stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{SessionID: expectedSessionID})

@@ -322,7 +322,7 @@ func (c *testCluster) SetNodeRole(id string, role api.NodeRole) error {
 		}); err != nil {
 			// there possible problems on calling update node because redirecting
 			// node or leader might want to shut down
-			if grpc.ErrorDesc(err) == "update out of sequence" {
+			if testutils.ErrorDesc(err) == "update out of sequence" {
 				continue
 			}
 			return err

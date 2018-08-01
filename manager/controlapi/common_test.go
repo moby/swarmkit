@@ -4,15 +4,15 @@ import (
 	"testing"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
 func TestValidateAnnotations(t *testing.T) {
 	err := validateAnnotations(api.Annotations{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	for _, good := range []api.Annotations{
 		{Name: "name"},

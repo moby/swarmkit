@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/docker/swarmkit/testutils"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	"github.com/docker/swarmkit/api"
@@ -37,11 +37,11 @@ func TestGetTask(t *testing.T) {
 
 	_, err := ts.Client.GetTask(context.Background(), &api.GetTaskRequest{})
 	assert.Error(t, err)
-	assert.Equal(t, codes.InvalidArgument, grpc.Code(err))
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	_, err = ts.Client.GetTask(context.Background(), &api.GetTaskRequest{TaskID: "invalid"})
 	assert.Error(t, err)
-	assert.Equal(t, codes.NotFound, grpc.Code(err))
+	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
 	task := createTask(t, ts, api.TaskStateRunning)
 	r, err := ts.Client.GetTask(context.Background(), &api.GetTaskRequest{TaskID: task.ID})

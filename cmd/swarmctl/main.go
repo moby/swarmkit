@@ -13,15 +13,15 @@ import (
 	"github.com/docker/swarmkit/cmd/swarmd/defaults"
 	"github.com/docker/swarmkit/version"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func main() {
 	if c, err := mainCmd.ExecuteC(); err != nil {
-		c.Println("Error:", grpc.ErrorDesc(err))
+		s, _ := status.FromError(err)
+		c.Println("Error:", s.Message())
 		// if it's not a grpc, we assume it's a user error and we display the usage.
-		if grpc.Code(err) == codes.Unknown {
+		if _, ok := status.FromError(err); !ok {
 			c.Println(c.UsageString())
 		}
 
