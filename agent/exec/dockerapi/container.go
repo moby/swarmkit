@@ -399,7 +399,7 @@ func getMountMask(m *api.Mount) string {
 }
 
 // This handles the case of volumes that are defined inside a service Mount
-func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *volume.VolumesCreateBody {
+func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *volume.VolumeCreateBody {
 	var (
 		driverName string
 		driverOpts map[string]string
@@ -412,7 +412,7 @@ func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *volume.VolumesC
 		labels = mount.VolumeOptions.Labels
 	}
 
-	return &volume.VolumesCreateBody{
+	return &volume.VolumeCreateBody{
 		Name:       mount.Source,
 		Driver:     driverName,
 		DriverOpts: driverOpts,
