@@ -6,6 +6,7 @@ import (
 	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"golang.org/x/net/context"
@@ -83,6 +84,8 @@ func New(store *store.MemoryStore, pg plugingetter.PluginGetter) (*Allocator, er
 func (a *Allocator) Run(ctx context.Context) error {
 	// Setup cancel context for all goroutines to use.
 	ctx, cancel := context.WithCancel(ctx)
+	ctx = log.WithModule(ctx, "allocator")
+	log.G(ctx).Info("starting old allocator")
 	var (
 		wg     sync.WaitGroup
 		actors []func() error

@@ -145,6 +145,7 @@ type Manager struct {
 	constraintEnforcer     *constraintenforcer.ConstraintEnforcer
 	scheduler              *scheduler.Scheduler
 	allocator              *allocator.Allocator
+	newallocator           *allocator.NewAllocator
 	keyManager             *keymanager.KeyManager
 	server                 *grpc.Server
 	localserver            *grpc.Server
@@ -981,11 +982,18 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	// shutdown underlying manager processes when leadership is
 	// lost.
 
-	m.allocator, err = allocator.New(s, m.config.PluginGetter)
-	if err != nil {
-		log.G(ctx).WithError(err).Error("failed to create allocator")
-		// TODO(stevvooe): It doesn't seem correct here to fail
-		// creating the allocator but then use it anyway.
+	// TODO(dperny): this is a temporary feature flag so that we can build
+	// swarmkit with the new allocator compiled in, and switch on its use
+	// dynamically
+	if os.Getenv("SWARMKIT_USE_NEW_ALLOCATOR") == "iknowtherisk" {
+		m.newallocator = allocator.NewNew(s, m.config.PluginGetter)
+	} else {
+		m.allocator, err = allocator.New(s, m.config.PluginGetter)
+		if err != nil {
+			log.G(ctx).WithError(err).Error("failed to create allocator")
+			// TODO(stevvooe): It doesn't seem correct here to fail
+			// creating the allocator but then use it anyway.
+		}
 	}
 
 	if m.keyManager != nil {
@@ -1017,12 +1025,23 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	// Start all sub-components in separate goroutines.
 	// TODO(aluzzardi): This should have some kind of error handling so that
 	// any component that goes down would bring the entire manager down.
+
+	// TODO(dperny): this is part of the temporary feature gate for the new
+	// allocator.
 	if m.allocator != nil {
 		go func(allocator *allocator.Allocator) {
 			if err := allocator.Run(ctx); err != nil {
 				log.G(ctx).WithError(err).Error("allocator exited with an error")
 			}
 		}(m.allocator)
+	} else {
+		if m.newallocator != nil {
+			go func(a *allocator.NewAllocator) {
+				if err := a.Run(ctx); err != nil {
+					log.G(ctx).WithError(err).Error("allocator exited with an error")
+				}
+			}(m.newallocator)
+		}
 	}
 
 	go func(scheduler *scheduler.Scheduler) {
@@ -1066,9 +1085,16 @@ func (m *Manager) becomeFollower() {
 	m.logbroker.Stop()
 	m.caserver.Stop()
 
+	// TODO(dperny): we're stopping both allocators, just in case we end up in
+	// a situation where both are running. part of the temporary feature gate
 	if m.allocator != nil {
 		m.allocator.Stop()
 		m.allocator = nil
+	}
+
+	if m.newallocator != nil {
+		m.newallocator.Stop()
+		m.newallocator = nil
 	}
 
 	m.constraintEnforcer.Stop()

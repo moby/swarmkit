@@ -976,10 +976,6 @@ func initializeDrivers(reg *drvregistry.DrvRegistry) error {
 }
 
 func serviceNetworks(s *api.Service) []*api.NetworkAttachmentConfig {
-	// Always prefer NetworkAttachmentConfig in the TaskSpec
-	if len(s.Spec.Task.Networks) == 0 && len(s.Spec.Networks) != 0 {
-		return s.Spec.Networks
-	}
 	return s.Spec.Task.Networks
 }
 

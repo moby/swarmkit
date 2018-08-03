@@ -61,6 +61,7 @@ message NodeSpec {
 // strategy and restart policy, a number of application-level behaviors can be
 // defined.
 message ServiceSpec {
+	reserved 7;
 	Annotations annotations = 1 [(gogoproto.nullable) = false];
 
 	// Task defines the task template this service will spawn.
@@ -78,11 +79,16 @@ message ServiceSpec {
 	UpdateConfig rollback = 9;
 
 	// ServiceSpec.Networks has been deprecated and is replaced by
-	// Networks field in Task (TaskSpec.Networks).
-	// This field (ServiceSpec.Networks) is kept for compatibility.
-	// In case TaskSpec.Networks does not exist, ServiceSpec.Networks
-	// is still honored if it exists.
-	repeated NetworkAttachmentConfig networks = 7 [deprecated=true];
+	// Networks field in Task (TaskSpec.Networks). It has been deprecated, in
+	// various forms, since at least August, 2016, according to the git blame.
+	// Since then, any service updates should have used the new TaskSpec.Networks
+	// field automatically, and a ServiceSpec would only include this field if
+	// it has not been updated since then. I strongly doubt this is the case, and
+	// this field should be safe to remove.
+	//
+	// If it comes to pass that a user _is_ still using this field in a spec
+	// somewhere, a simple service update will fix it.
+	// repeated NetworkAttachmentConfig networks = 7 [deprecated=true];
 
 	// Service endpoint specifies the user provided configuration
 	// to properly discover and load balance a service.
