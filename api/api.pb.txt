@@ -6490,6 +6490,14 @@ file {
         json_name: "labels"
       }
       field {
+        name: "node_labels"
+        number: 7
+        label: LABEL_REPEATED
+        type: TYPE_MESSAGE
+        type_name: ".docker.swarmkit.v1.ListNodesRequest.Filters.NodeLabelsEntry"
+        json_name: "nodeLabels"
+      }
+      field {
         name: "memberships"
         number: 4
         label: LABEL_REPEATED
@@ -6520,6 +6528,26 @@ file {
       }
       nested_type {
         name: "LabelsEntry"
+        field {
+          name: "key"
+          number: 1
+          label: LABEL_OPTIONAL
+          type: TYPE_STRING
+          json_name: "key"
+        }
+        field {
+          name: "value"
+          number: 2
+          label: LABEL_OPTIONAL
+          type: TYPE_STRING
+          json_name: "value"
+        }
+        options {
+          map_entry: true
+        }
+      }
+      nested_type {
+        name: "NodeLabelsEntry"
         field {
           name: "key"
           number: 1
