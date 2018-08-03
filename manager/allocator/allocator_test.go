@@ -13,6 +13,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
+	stateutils "github.com/docker/swarmkit/manager/state/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -979,8 +980,13 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 // services and tasks that were preallocated are allocated correctly
 // followed by the allocation of unallocated networks prior to the
 // restart.
+// Also tests that the allocator initialization does not recommit
+// previously committed networks.
+// Note that 'commited' here means written to store.
+// The test basically verifies that the network object created before
+// the allocator is initialzied has its version unchanged after allocator init.
 func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
-	s := store.NewMemoryStore(nil)
+	s := store.NewMemoryStore(&stateutils.MockProposer{})
 	assert.NotNil(t, s)
 	defer s.Close()
 	// Create 3 services with 1 task each
@@ -1008,7 +1014,9 @@ func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
 			},
 		}
 		assert.NoError(t, store.CreateNetwork(tx, in))
+		in = store.GetNetwork(tx, in.GetID())
 
+		// Allocated network has subnet/gateway populated.
 		n1 = &api.Network{
 			ID: "testID1",
 			Spec: api.NetworkSpec{
@@ -1029,6 +1037,7 @@ func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
 		}
 		assert.NoError(t, store.CreateNetwork(tx, n1))
 
+		// Unallocated network has no subnet/gateway.
 		n2 = &api.Network{
 			// Intentionally named testID0 so that in restore this network
 			// is looked into first
@@ -1174,6 +1183,16 @@ func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
 		watchTask(t, s, taskWatch, false, hasNoIPOverlapTasks)
 		watchService(t, serviceWatch, false, hasNoIPOverlapServices)
 	}
+
+	s.View(func(readTx store.ReadTx) {
+		// Previously allocated network is not re-committed.
+		n12 := store.GetNetwork(readTx, n1.GetID())
+		assert.Equal(t, n1.GetMeta().Version, n12.GetMeta().Version)
+
+		// Partially allocated network is re-committed.
+		n22 := store.GetNetwork(readTx, n2.GetID())
+		assert.NotEqual(t, n2.GetMeta().Version, n22.GetMeta().Version)
+	})
 }
 
 func TestNodeAllocator(t *testing.T) {
