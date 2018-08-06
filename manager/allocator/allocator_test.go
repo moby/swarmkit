@@ -1214,13 +1214,27 @@ func TestNodeAllocator(t *testing.T) {
 		}
 		assert.NoError(t, store.CreateNetwork(tx, n1))
 
+		// this network will never be used for any task
+		nUnused := &api.Network{
+			ID: "overlayIDUnused",
+			Spec: api.NetworkSpec{
+				Annotations: api.Annotations{
+					Name: "overlayIDUnused",
+				},
+			},
+		}
+		assert.NoError(t, store.CreateNetwork(tx, nUnused))
+
 		assert.NoError(t, store.CreateNode(tx, node1))
+
 		return nil
 	}))
 
 	nodeWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateNode{}, api.EventDeleteNode{})
 	defer cancel()
 	netWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
+	defer cancel()
+	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 
 	// Start allocator
@@ -1229,12 +1243,36 @@ func TestNodeAllocator(t *testing.T) {
 	}()
 	defer a.Stop()
 
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		// create a task assigned to this node that has a network attachment on
+		// n1
+		t1 := &api.Task{
+			ID:           "task1",
+			NodeID:       node1.ID,
+			DesiredState: api.TaskStateRunning,
+			Spec: api.TaskSpec{
+				Networks: []*api.NetworkAttachmentConfig{
+					{
+						Target: "overlayID1",
+					},
+				},
+			},
+		}
+
+		return store.CreateTask(tx, t1)
+	}))
+
+	// validate that the task is created
+	watchTask(t, s, taskWatch, false, isValidTask)
+
 	// Validate node has 2 LB IP address (1 for each network).
 	watchNetwork(t, netWatch, false, isValidNetwork)                                      // ingress
 	watchNetwork(t, netWatch, false, isValidNetwork)                                      // overlayID1
+	watchNetwork(t, netWatch, false, isValidNetwork)                                      // overlayIDUnused
 	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
 
-	// Add a node and validate it gets a LB ip on each network.
+	// Add a node and validate it gets a LB ip only on ingress, as it has no
+	// tasks assigned.
 	node2 := &api.Node{
 		ID: "nodeID2",
 	}
@@ -1242,9 +1280,9 @@ func TestNodeAllocator(t *testing.T) {
 		assert.NoError(t, store.CreateNode(tx, node2))
 		return nil
 	}))
-	watchNode(t, nodeWatch, false, isValidNode, node2, []string{"ingress", "overlayID1"}) // node2
+	watchNode(t, nodeWatch, false, isValidNode, node2, []string{"ingress"}) // node2
 
-	// Add a network and validate each node has 3 LB IP addresses
+	// Add a network and validate that nothing has changed in the nodes
 	n2 := &api.Network{
 		ID: "overlayID2",
 		Spec: api.NetworkSpec{
@@ -1257,18 +1295,86 @@ func TestNodeAllocator(t *testing.T) {
 		assert.NoError(t, store.CreateNetwork(tx, n2))
 		return nil
 	}))
-	watchNetwork(t, netWatch, false, isValidNetwork)                                                    // overlayID2
-	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress", "overlayID1", "overlayID3"}) // node1
-	watchNode(t, nodeWatch, false, isValidNode, node2, []string{"ingress", "overlayID1", "overlayID3"}) // node2
+	watchNetwork(t, netWatch, false, isValidNetwork) // overlayID2
+	// nothing should change, no updates
+	watchNode(t, nodeWatch, true, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
+	watchNode(t, nodeWatch, true, isValidNode, node2, []string{"ingress"})               // node2
 
-	// Remove a network and validate each node has 2 LB IP addresses
+	// add a task and validate that the node gets the network for the task
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteNetwork(tx, n2.ID))
+		// create a task assigned to this node that has a network attachment on
+		// n1
+		t2 := &api.Task{
+			ID:           "task2",
+			NodeID:       node2.ID,
+			DesiredState: api.TaskStateRunning,
+			Spec: api.TaskSpec{
+				Networks: []*api.NetworkAttachmentConfig{
+					{
+						Target: "overlayID2",
+					},
+				},
+			},
+		}
+
+		return store.CreateTask(tx, t2)
+	}))
+	// validate that the task is created
+	watchTask(t, s, taskWatch, false, isValidTask)
+
+	// validate that node2 gets a new attachment and node1 stays the same
+	watchNode(t, nodeWatch, false, isValidNode, node2, []string{"ingress", "overlayID2"}) // node2
+	watchNode(t, nodeWatch, true, isValidNode, node1, []string{"ingress", "overlayID1"})  // node1
+
+	// add another task with the same network to a node and validate that it
+	// still only has 1 attachment for that network
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		// create a task assigned to this node that has a network attachment on
+		// n1
+		t3 := &api.Task{
+			ID:           "task3",
+			NodeID:       node1.ID,
+			DesiredState: api.TaskStateRunning,
+			Spec: api.TaskSpec{
+				Networks: []*api.NetworkAttachmentConfig{
+					{
+						Target: "overlayID1",
+					},
+				},
+			},
+		}
+
+		return store.CreateTask(tx, t3)
+	}))
+
+	// validate that the task is created
+	watchTask(t, s, taskWatch, false, isValidTask)
+
+	// validate that nothing changes
+	watchNode(t, nodeWatch, true, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
+	watchNode(t, nodeWatch, true, isValidNode, node2, []string{"ingress", "overlayID2"}) // node2
+
+	// now remove that task we just created, and validate that the node still
+	// has an attachment for the other task
+	// Remove a node and validate remaining node has 2 LB IP addresses
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteTask(tx, "task1"))
 		return nil
 	}))
-	watchNetwork(t, netWatch, false, isValidNetwork)                                      // overlayID2
-	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
-	watchNode(t, nodeWatch, false, isValidNode, node2, []string{"ingress", "overlayID1"}) // node2
+
+	// validate that nothing changes
+	watchNode(t, nodeWatch, true, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
+	watchNode(t, nodeWatch, true, isValidNode, node2, []string{"ingress", "overlayID2"}) // node2
+
+	// now remove another task. this time the attachment on the node should be
+	// removed as well
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteTask(tx, "task2"))
+		return nil
+	}))
+
+	watchNode(t, nodeWatch, false, isValidNode, node2, []string{"ingress"})              // node2
+	watchNode(t, nodeWatch, true, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
 
 	// Remove a node and validate remaining node has 2 LB IP addresses
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
@@ -1418,13 +1524,13 @@ func watchNode(t *testing.T, watch chan events.Event, expectTimeout bool,
 				}
 			}
 
-		case <-time.After(1 * time.Millisecond):
+		case <-time.After(getWatchTimeout(expectTimeout)):
 			if !expectTimeout {
 				if node != nil && fn != nil {
 					fn(t, originalNode, node, networks)
 				}
 
-				t.Fatal("timed out before watchNode found expected node state")
+				t.Fatal("timed out before watchNode found expected node state", string(debug.Stack()))
 			}
 
 			return
@@ -1457,7 +1563,7 @@ func watchNetwork(t *testing.T, watch chan events.Event, expectTimeout bool, fn 
 					fn(t, network)
 				}
 
-				t.Fatal("timed out before watchNetwork found expected network state")
+				t.Fatal("timed out before watchNetwork found expected network state", string(debug.Stack()))
 			}
 
 			return
