@@ -20,7 +20,7 @@ import (
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/allocator"
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
+	"github.com/docker/swarmkit/manager/allocator/network"
 	"github.com/docker/swarmkit/manager/controlapi"
 	"github.com/docker/swarmkit/manager/dispatcher"
 	"github.com/docker/swarmkit/manager/drivers"
@@ -961,8 +961,8 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		// are known to be present in each cluster node. This is needed
 		// in order to allow running services on the predefined docker
 		// networks like `bridge` and `host`.
-		for _, p := range allocator.PredefinedNetworks() {
-			if err := store.CreateNetwork(tx, newPredefinedNetwork(p.Name, p.Driver)); err != nil && err != store.ErrNameConflict {
+		for _, p := range network.PredefinedNetworks() {
+			if err := store.CreateNetwork(tx, newPredefinedNetwork(p.Name, p.Driver)); err != store.ErrNameConflict {
 				log.G(ctx).WithError(err).Error("failed to create predefined network " + p.Name)
 			}
 		}
@@ -981,7 +981,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	// shutdown underlying manager processes when leadership is
 	// lost.
 
-	m.allocator, err = allocator.New(s, m.config.PluginGetter)
+	m.allocator = allocator.New(s, m.config.PluginGetter)
 	if err != nil {
 		log.G(ctx).WithError(err).Error("failed to create allocator")
 		// TODO(stevvooe): It doesn't seem correct here to fail
@@ -1017,13 +1017,12 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	// Start all sub-components in separate goroutines.
 	// TODO(aluzzardi): This should have some kind of error handling so that
 	// any component that goes down would bring the entire manager down.
-	if m.allocator != nil {
-		go func(allocator *allocator.Allocator) {
-			if err := allocator.Run(ctx); err != nil {
-				log.G(ctx).WithError(err).Error("allocator exited with an error")
-			}
-		}(m.allocator)
-	}
+
+	go func(allocator *allocator.Allocator) {
+		if err := allocator.Run(ctx); err != nil {
+			log.G(ctx).WithError(err).Error("allocator exited with an error")
+		}
+	}(m.allocator)
 
 	go func(scheduler *scheduler.Scheduler) {
 		if err := scheduler.Run(ctx); err != nil {
@@ -1196,7 +1195,7 @@ func newPredefinedNetwork(name, driver string) *api.Network {
 			Annotations: api.Annotations{
 				Name: name,
 				Labels: map[string]string{
-					networkallocator.PredefinedLabel: "true",
+					network.PredefinedLabel: "true",
 				},
 			},
 			DriverConfig: &api.Driver{Name: driver},

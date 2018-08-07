@@ -8,8 +8,7 @@ import (
 	"github.com/docker/libnetwork/ipamapi"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/allocator"
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
+	"github.com/docker/swarmkit/manager/allocator/helpers"
 	"github.com/docker/swarmkit/manager/state/store"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -88,9 +87,9 @@ func validateNetworkSpec(spec *api.NetworkSpec, pg plugingetter.PluginGetter) er
 		return err
 	}
 
-	if _, ok := spec.Annotations.Labels[networkallocator.PredefinedLabel]; ok {
+	if _, ok := spec.Annotations.Labels[helpers.PredefinedLabel]; ok {
 		return status.Errorf(codes.PermissionDenied, "label %s is for internally created predefined networks and cannot be applied by users",
-			networkallocator.PredefinedLabel)
+			helpers.PredefinedLabel)
 	}
 	if err := validateDriver(spec.DriverConfig, pg, driverapi.NetworkPluginEndpointType); err != nil {
 		return err
@@ -116,9 +115,9 @@ func (s *Server) CreateNetwork(ctx context.Context, request *api.CreateNetworkRe
 
 	err := s.store.Update(func(tx store.Tx) error {
 		if request.Spec.Ingress {
-			if n, err := allocator.GetIngressNetwork(s.store); err == nil {
+			if n, err := s.getIngressNetwork(tx); err == nil {
 				return status.Errorf(codes.AlreadyExists, "ingress network (%s) is already present", n.ID)
-			} else if err != allocator.ErrNoIngress {
+			} else if err != errNoIngress {
 				return status.Errorf(codes.Internal, "failed ingress network presence check: %v", err)
 			}
 		}
@@ -174,11 +173,11 @@ func (s *Server) RemoveNetwork(ctx context.Context, request *api.RemoveNetworkRe
 		return nil, status.Errorf(codes.NotFound, "network %s not found", request.NetworkID)
 	}
 
-	if allocator.IsIngressNetwork(n) {
+	if helpers.IsIngress(n) {
 		rm = s.removeIngressNetwork
 	}
 
-	if v, ok := n.Spec.Annotations.Labels[networkallocator.PredefinedLabel]; ok && v == "true" {
+	if v, ok := n.Spec.Annotations.Labels[helpers.PredefinedLabel]; ok && v == "true" {
 		return nil, status.Errorf(codes.FailedPrecondition, "network %s (%s) is a swarm predefined network and cannot be removed",
 			request.NetworkID, n.Spec.Annotations.Name)
 	}
@@ -225,7 +224,7 @@ func (s *Server) removeIngressNetwork(id string) error {
 			return status.Errorf(codes.Internal, "could not find services using network %s: %v", id, err)
 		}
 		for _, srv := range services {
-			if allocator.IsIngressNetworkNeeded(srv) {
+			if srv != nil && srv.Endpoint != nil && helpers.IsIngressNetworkNeeded(srv.Endpoint.Spec) {
 				return status.Errorf(codes.FailedPrecondition, "ingress network cannot be removed because service %s depends on it", srv.ID)
 			}
 		}

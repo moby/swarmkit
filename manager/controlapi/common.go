@@ -8,8 +8,9 @@ import (
 	"github.com/docker/libnetwork/driverapi"
 	"github.com/docker/libnetwork/ipamapi"
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/allocator"
+	"github.com/docker/swarmkit/manager/allocator/helpers"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -18,6 +19,8 @@ var isValidDNSName = regexp.MustCompile(`^[a-zA-Z0-9](?:[-_]*[A-Za-z0-9]+)*$`)
 
 // configs and secrets have different naming requirements from tasks and services
 var isValidConfigOrSecretName = regexp.MustCompile(`^[a-zA-Z0-9]+(?:[a-zA-Z0-9-_.]*[a-zA-Z0-9])?$`)
+
+var errNoIngress = errors.New("no ingress network found")
 
 func buildFilters(by func(string) store.By, values []string) store.By {
 	filters := make([]store.By, 0, len(values))
@@ -112,7 +115,7 @@ func validateDriver(driver *api.Driver, pg plugingetter.PluginGetter, pluginType
 			return nil
 		}
 	case driverapi.NetworkPluginEndpointType:
-		if allocator.IsBuiltInNetworkDriver(driver.Name) {
+		if helpers.IsBuiltInNetworkDriver(driver.Name) {
 			return nil
 		}
 	default:
@@ -132,4 +135,24 @@ func validateDriver(driver *api.Driver, pg plugingetter.PluginGetter, pluginType
 	}
 
 	return nil
+}
+
+// getIngressNetwork returns the ingress network present in the store, if i
+// exists, or an error otherwise.
+//
+// previously, this functionality was present in the allocator package, but it
+// is only used in the control api and has been moved here
+func (s *Server) getIngressNetwork(tx store.ReadTx) (*api.Network, error) {
+	networks, err := store.FindNetworks(tx, store.All)
+
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range networks {
+		if helpers.IsIngress(n) {
+			return n, nil
+		}
+	}
+
+	return nil, errNoIngress
 }

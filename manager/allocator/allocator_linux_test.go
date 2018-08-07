@@ -16,8 +16,7 @@ func TestIPAMNotNil(t *testing.T) {
 	assert.NotNil(t, s)
 	defer s.Close()
 
-	a, err := New(s, nil)
-	assert.NoError(t, err)
+	a := New(s, nil)
 	assert.NotNil(t, a)
 
 	// Predefined node-local network
