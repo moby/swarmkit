@@ -16,7 +16,7 @@ func TestIPAMNotNil(t *testing.T) {
 	assert.NotNil(t, s)
 	defer s.Close()
 
-	a, err := New(s, nil)
+	a, err := New(s, nil, nil, 0)
 	assert.NoError(t, err)
 	assert.NotNil(t, a)
 

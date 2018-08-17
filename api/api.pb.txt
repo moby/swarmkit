@@ -2491,8 +2491,8 @@ file {
         label: LABEL_OPTIONAL
         type: TYPE_UINT32
         options {
-          65003: "os.FileMode"
           65001: 0
+          65003: "os.FileMode"
         }
         json_name: "mode"
       }
@@ -2639,8 +2639,8 @@ file {
       type: TYPE_MESSAGE
       type_name: ".google.protobuf.Duration"
       options {
-        65011: 1
         65001: 0
+        65011: 1
       }
       json_name: "delay"
     }
@@ -3083,8 +3083,8 @@ file {
         }
       }
       options {
-        62023: "PublishMode"
         62001: 0
+        62023: "PublishMode"
       }
     }
   }
@@ -3783,8 +3783,8 @@ file {
       label: LABEL_OPTIONAL
       type: TYPE_UINT32
       options {
-        65003: "os.FileMode"
         65001: 0
+        65003: "os.FileMode"
       }
       json_name: "mode"
     }
@@ -4200,8 +4200,8 @@ file {
       }
     }
     options {
-      62023: "NodeRole"
       62001: 0
+      62023: "NodeRole"
     }
   }
   syntax: "proto3"
@@ -6178,6 +6178,20 @@ file {
       }
       json_name: "fips"
     }
+    field {
+      name: "defaultAddressPool"
+      number: 11
+      label: LABEL_REPEATED
+      type: TYPE_STRING
+      json_name: "defaultAddressPool"
+    }
+    field {
+      name: "subnetSize"
+      number: 12
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT32
+      json_name: "subnetSize"
+    }
     nested_type {
       name: "BlacklistedCertificatesEntry"
       field {
@@ -8009,8 +8023,8 @@ file {
       type: TYPE_MESSAGE
       type_name: ".google.protobuf.Duration"
       options {
-        65011: 1
         65001: 0
+        65011: 1
       }
       json_name: "period"
     }
@@ -9057,11 +9071,11 @@ file {
     }
   }
   options {
-    63017: 1
-    63020: 1
-    63018: 1
     63001: 0
     63002: 0
+    63017: 1
+    63018: 1
+    63020: 1
   }
 }
 file {
