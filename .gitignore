@@ -31,3 +31,9 @@ bin/swarmkitstate
 
 # ignore code coverage output
 *coverage.txt
+
+# ignore GoLand IDEA files
+.idea/
+
+# ignore Mac OS X files
+.DS_Store
