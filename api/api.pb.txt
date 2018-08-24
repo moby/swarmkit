@@ -4098,6 +4098,54 @@ file {
       }
     }
   }
+  message_type {
+    name: "Device"
+    field {
+      name: "device_class_id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "deviceClassId"
+    }
+    field {
+      name: "path_on_host"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "pathOnHost"
+    }
+  }
+  message_type {
+    name: "DeviceAttachment"
+    field {
+      name: "device_class_id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "deviceClassId"
+    }
+    field {
+      name: "path_on_host"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "pathOnHost"
+    }
+    field {
+      name: "path_in_task"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "pathInTask"
+    }
+    field {
+      name: "device_cgroup_rules"
+      number: 16
+      label: LABEL_REPEATED
+      type: TYPE_STRING
+      json_name: "deviceCgroupRules"
+    }
+  }
   enum_type {
     name: "ResourceType"
     value {
@@ -4420,6 +4468,14 @@ file {
       type_name: ".docker.swarmkit.v1.NodeSpec.Availability"
       json_name: "availability"
     }
+    field {
+      name: "devices"
+      number: 5
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Device"
+      json_name: "devices"
+    }
     enum_type {
       name: "Membership"
       value {
@@ -4687,6 +4743,30 @@ file {
       type: TYPE_MESSAGE
       type_name: ".google.protobuf.Any"
       json_name: "payload"
+    }
+  }
+  message_type {
+    name: "DeviceAttachmentSpec"
+    field {
+      name: "device_class"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "deviceClass"
+    }
+    field {
+      name: "path"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "path"
+    }
+    field {
+      name: "device_cgroup_rules"
+      number: 16
+      label: LABEL_REPEATED
+      type: TYPE_STRING
+      json_name: "deviceCgroupRules"
     }
   }
   message_type {
@@ -5289,6 +5369,27 @@ file {
       type: TYPE_MESSAGE
       type_name: ".docker.swarmkit.v1.Driver"
       json_name: "templating"
+    }
+  }
+  message_type {
+    name: "DeviceClassSpec"
+    field {
+      name: "annotations"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Annotations"
+      options {
+        65001: 0
+      }
+      json_name: "annotations"
+    }
+    field {
+      name: "shared"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      json_name: "shared"
     }
   }
   syntax: "proto3"
@@ -6053,6 +6154,14 @@ file {
       type_name: ".docker.swarmkit.v1.GenericResource"
       json_name: "assignedGenericResources"
     }
+    field {
+      name: "devices"
+      number: 16
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.DeviceAttachment"
+      json_name: "devices"
+    }
     options {
       70001 {
         1 {
@@ -6425,6 +6534,38 @@ file {
           6: 1
         }
       }
+    }
+  }
+  message_type {
+    name: "DeviceClass"
+    field {
+      name: "id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "id"
+    }
+    field {
+      name: "meta"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Meta"
+      options {
+        65001: 0
+      }
+      json_name: "meta"
+    }
+    field {
+      name: "spec"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.DeviceClassSpec"
+      options {
+        65001: 0
+      }
+      json_name: "spec"
     }
   }
   message_type {

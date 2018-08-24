@@ -1090,3 +1090,39 @@ message Privileges {
 	}
 	SELinuxContext selinux_context = 2 [(gogoproto.customname) = "SELinuxContext"];
 }
+
+// Device represents a particular available device on a node. It is one
+// particular instance of a DeviceClass, and is interchangeable with other
+// devices in the DeviceClass
+message Device {
+	// DeviceClassID is the ID of the device class that this device belongs to.
+	string device_class_id = 1;
+
+	// PathOnHost is the path in the host's filesystem that this device should be
+	// mounted from.  For example, a block device may have this value as
+	// "/dev/sda". A particular device may belong to only 1 device class;
+	// assigning a device to more than one class may cause it to be conflictingly
+	// scheduled.
+	string path_on_host = 2;
+}
+
+// DeviceAttachment represents the run-time configuration of a device in use.
+// It includes both the path on the host and the path in the Task of the
+// device, because a Task may have many devices of the same class reserved, and
+// those reservations would be otherwise indistinguishable.
+message DeviceAttachment {
+	// DeviceClassID is the ID of the device class used for this device
+	string device_class_id = 1;
+
+	// PathOnHost is the path on the host's filesystem of the device to be used
+	// by the task.
+	string path_on_host = 2;
+
+	// PathInTask is the path in the task's filesystem that the device will be
+	// mounted at.
+	string path_in_task = 3;
+
+	// DeviceCgroupRules represents the Cgroup rules that should be applied to
+	// this device.
+	repeated string device_cgroup_rules = 16;
+}
