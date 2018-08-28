@@ -27,7 +27,7 @@ func TestAllocator(t *testing.T) {
 	assert.NotNil(t, s)
 	defer s.Close()
 
-	a, err := New(s, nil, nil, 0)
+	a, err := New(s, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, a)
 
@@ -668,7 +668,7 @@ func TestNoDuplicateIPs(t *testing.T) {
 
 			return nil
 		}))
-		a, err := New(s, nil, nil, 0)
+		a, err := New(s, nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, a)
 
@@ -800,7 +800,7 @@ func TestAllocatorRestoreForDuplicateIPs(t *testing.T) {
 		return true
 	}
 
-	a, err := New(s, nil, nil, 0)
+	a, err := New(s, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, a)
 	// Start allocator
@@ -950,7 +950,7 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 		return true
 	}
 
-	a, err := New(s, nil, nil, 0)
+	a, err := New(s, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, a)
 	// Start allocator
@@ -1154,7 +1154,7 @@ func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
 		return true
 	}
 
-	a, err := New(s, nil, nil, 0)
+	a, err := New(s, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, a)
 	// Start allocator
@@ -1181,7 +1181,7 @@ func TestNodeAllocator(t *testing.T) {
 	assert.NotNil(t, s)
 	defer s.Close()
 
-	a, err := New(s, nil, nil, 0)
+	a, err := New(s, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, a)
 
