@@ -18,24 +18,44 @@ import (
 // connection to a remote manager selected with weighted randomization, or a
 // local gRPC connection to the local manager.
 type Broker struct {
-	mu        sync.Mutex
-	remotes   remotes.Remotes
-	localConn *grpc.ClientConn
+	mu                 sync.Mutex
+	remotes            remotes.Remotes
+	localConn          *grpc.ClientConn
+	defaultDialOptions []grpc.DialOption
 }
 
 // New creates a new connection broker.
-func New(remotes remotes.Remotes) *Broker {
+func New(remotes remotes.Remotes, opts ...grpc.DialOption) *Broker {
 	return &Broker{
-		remotes: remotes,
+		remotes:            remotes,
+		defaultDialOptions: opts,
 	}
 }
 
 // SetLocalConn changes the local gRPC connection used by the connection broker.
-func (b *Broker) SetLocalConn(localConn *grpc.ClientConn) {
+func (b *Broker) SetLocalConn(address string, dialOptions ...grpc.DialOption) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
+	var localConn *grpc.ClientConn
+	if len(address) > 0 {
+		// Adding the default dial options
+		dialOptions = append(dialOptions, b.defaultDialOptions...)
+
+		var err error
+		localConn, err = grpc.Dial(address, dialOptions...)
+		if err != nil {
+			return err
+		}
+	}
+
 	b.localConn = localConn
+	return nil
+}
+
+// GetLocalConn returns the broker local connection
+func (b *Broker) GetLocalConn() *grpc.ClientConn {
+	return b.localConn
 }
 
 // Select a manager from the set of available managers, and return a connection.
@@ -62,6 +82,9 @@ func (b *Broker) SelectRemote(dialOpts ...grpc.DialOption) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Adding the default dial options
+	dialOpts = append(dialOpts, b.defaultDialOptions...)
 
 	// gRPC dialer connects to proxy first. Provide a custom dialer here avoid that.
 	// TODO(anshul) Add an option to configure this.

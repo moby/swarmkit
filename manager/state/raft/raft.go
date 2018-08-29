@@ -199,6 +199,9 @@ type NodeOptions struct {
 
 	// FIPS specifies whether the raft encryption should be FIPS compliant
 	FIPS bool
+
+	// TransportDefaultDialOptions is a slice of Dial Options set to the raft node
+	TransportDefaultDialOptions []grpc.DialOption
 }
 
 func init() {
@@ -363,10 +366,11 @@ func (n *Node) WithContext(ctx context.Context) (context.Context, context.Cancel
 
 func (n *Node) initTransport() {
 	transportConfig := &transport.Config{
-		HeartbeatInterval: time.Duration(n.Config.ElectionTick) * n.opts.TickInterval,
-		SendTimeout:       n.opts.SendTimeout,
-		Credentials:       n.opts.TLSCredentials,
-		Raft:              n,
+		HeartbeatInterval:  time.Duration(n.Config.ElectionTick) * n.opts.TickInterval,
+		SendTimeout:        n.opts.SendTimeout,
+		Credentials:        n.opts.TLSCredentials,
+		Raft:               n,
+		DefaultDialOptions: n.opts.TransportDefaultDialOptions,
 	}
 	n.transport = transport.New(transportConfig)
 }

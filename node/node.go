@@ -15,9 +15,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/swarmkit/ca/keyutils"
-	"github.com/docker/swarmkit/identity"
-
 	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/go-metrics"
 	"github.com/docker/libnetwork/drivers/overlay/overlayutils"
@@ -25,7 +22,9 @@ import (
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
+	"github.com/docker/swarmkit/ca/keyutils"
 	"github.com/docker/swarmkit/connectionbroker"
+	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/ioutils"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager"
@@ -137,6 +136,9 @@ type Config struct {
 
 	// FIPS is a boolean stating whether the node is FIPS enabled
 	FIPS bool
+
+	// ConnectionDialOptions is a slice of Dial Options set to the connection broker
+	ConnectionDialOptions []grpc.DialOption
 }
 
 // Node implements the primary node functionality for a member of a swarm
@@ -227,7 +229,7 @@ func New(c *Config) (*Node, error) {
 		}
 	}
 
-	n.connBroker = connectionbroker.New(n.remotes)
+	n.connBroker = connectionbroker.New(n.remotes, n.config.ConnectionDialOptions...)
 
 	n.roleCond = sync.NewCond(n.RLocker())
 	n.connCond = sync.NewCond(n.RLocker())
@@ -678,15 +680,22 @@ func (n *Node) Ready() <-chan struct{} {
 	return n.ready
 }
 
-func (n *Node) setControlSocket(conn *grpc.ClientConn) {
+func (n *Node) setControlSocket(controlAPIAddr string, opts ...grpc.DialOption) error {
 	n.Lock()
 	if n.conn != nil {
 		n.conn.Close()
 	}
-	n.conn = conn
-	n.connBroker.SetLocalConn(conn)
+
+	err := n.connBroker.SetLocalConn(controlAPIAddr, opts...)
+	if err != nil {
+		return err
+	}
+
+	n.conn = n.connBroker.GetLocalConn()
+
 	n.connCond.Broadcast()
 	n.Unlock()
+	return nil
 }
 
 // ListenControlSocket listens changes of a connection for managing the
@@ -918,11 +927,13 @@ func (n *Node) initManagerConnection(ctx context.Context, ready chan<- struct{})
 		func(addr string, timeout time.Duration) (net.Conn, error) {
 			return xnet.DialTimeoutLocal(addr, timeout)
 		}))
-	conn, err := grpc.Dial(addr, opts...)
+
+	err := n.setControlSocket(addr, opts...)
 	if err != nil {
 		return err
 	}
-	client := api.NewHealthClient(conn)
+
+	client := api.NewHealthClient(n.conn)
 	for {
 		resp, err := client.Check(ctx, &api.HealthCheckRequest{Service: "ControlAPI"})
 		if err != nil {
@@ -933,7 +944,7 @@ func (n *Node) initManagerConnection(ctx context.Context, ready chan<- struct{})
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	n.setControlSocket(conn)
+
 	if ready != nil {
 		close(ready)
 	}
@@ -997,23 +1008,24 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 	}
 
 	m, err := manager.New(&manager.Config{
-		ForceNewCluster:  n.config.ForceNewCluster,
-		RemoteAPI:        remoteAPI,
-		ControlAPI:       n.config.ListenControlAPI,
-		SecurityConfig:   securityConfig,
-		ExternalCAs:      n.config.ExternalCAs,
-		JoinRaft:         joinAddr,
-		ForceJoin:        n.config.JoinAddr != "",
-		StateDir:         n.config.StateDir,
-		HeartbeatTick:    n.config.HeartbeatTick,
-		ElectionTick:     n.config.ElectionTick,
-		AutoLockManagers: n.config.AutoLockManagers,
-		UnlockKey:        n.unlockKey,
-		Availability:     n.config.Availability,
-		PluginGetter:     n.config.PluginGetter,
-		RootCAPaths:      rootPaths,
-		FIPS:             n.config.FIPS,
-		NetworkConfig:    n.config.NetworkConfig,
+		ForceNewCluster:       n.config.ForceNewCluster,
+		RemoteAPI:             remoteAPI,
+		ControlAPI:            n.config.ListenControlAPI,
+		SecurityConfig:        securityConfig,
+		ExternalCAs:           n.config.ExternalCAs,
+		JoinRaft:              joinAddr,
+		ForceJoin:             n.config.JoinAddr != "",
+		StateDir:              n.config.StateDir,
+		HeartbeatTick:         n.config.HeartbeatTick,
+		ElectionTick:          n.config.ElectionTick,
+		AutoLockManagers:      n.config.AutoLockManagers,
+		UnlockKey:             n.unlockKey,
+		Availability:          n.config.Availability,
+		PluginGetter:          n.config.PluginGetter,
+		RootCAPaths:           rootPaths,
+		FIPS:                  n.config.FIPS,
+		NetworkConfig:         n.config.NetworkConfig,
+		ConnectionDialOptions: n.config.ConnectionDialOptions,
 	})
 	if err != nil {
 		return false, err
@@ -1044,7 +1056,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 		n.Unlock()
 		m.Stop(ctx, clearData)
 		<-done
-		n.setControlSocket(nil)
+		n.setControlSocket("")
 	}()
 
 	n.Lock()

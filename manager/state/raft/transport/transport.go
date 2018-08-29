@@ -38,6 +38,8 @@ type Config struct {
 	SendTimeout       time.Duration
 	Credentials       credentials.TransportCredentials
 	RaftID            string
+	// DefaultDialOptions is a slice of Dial Options set to the raft transport
+	DefaultDialOptions []grpc.DialOption
 
 	Raft
 }
@@ -338,6 +340,7 @@ func (t *Transport) dial(addr string) (*grpc.ClientConn, error) {
 		grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
 		grpc.WithBackoffMaxDelay(8 * time.Second),
 	}
+	grpcOptions = append(grpcOptions, t.config.DefaultDialOptions...)
 	if t.config.Credentials != nil {
 		grpcOptions = append(grpcOptions, grpc.WithTransportCredentials(t.config.Credentials))
 	} else {

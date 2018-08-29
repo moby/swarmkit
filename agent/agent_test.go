@@ -11,9 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-
 	events "github.com/docker/go-events"
 	agentutils "github.com/docker/swarmkit/agent/testutils"
 	"github.com/docker/swarmkit/api"
@@ -26,6 +23,8 @@ import (
 	"github.com/docker/swarmkit/xnet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var localDispatcher = false
@@ -341,7 +340,7 @@ func TestSessionReconnectsIfDispatcherErrors(t *testing.T) {
 	}, 2*time.Second))
 	tester.stopDispatcher()
 	tester.remotes.setPeer(api.Peer{Addr: anotherDispatcher.Addr})
-	tester.agent.config.ConnBroker.SetLocalConn(nil)
+	tester.agent.config.ConnBroker.SetLocalConn("")
 
 	// It should have connected with the second dispatcher 3 times - first because the first dispatcher died,
 	// second because the dispatcher returned an error, third time because the session timed out.  So there should
@@ -512,10 +511,10 @@ func agentTestEnv(t *testing.T, nodeChangeCh chan *NodeChanges, tlsChangeCh chan
 	cleanup = append(cleanup, mockDispatcherStop)
 
 	fr := &fakeRemotes{}
-	broker := connectionbroker.New(fr)
+	broker := connectionbroker.New(fr, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(4200000)))
 	if localDispatcher {
 		insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
-		conn, err := grpc.Dial(
+		err := broker.SetLocalConn(
 			mockDispatcher.Addr,
 			grpc.WithTransportCredentials(insecureCreds),
 			grpc.WithDialer(
@@ -524,9 +523,8 @@ func agentTestEnv(t *testing.T, nodeChangeCh chan *NodeChanges, tlsChangeCh chan
 				}),
 		)
 		require.NoError(t, err)
+		conn := broker.GetLocalConn()
 		cleanup = append(cleanup, func() { conn.Close() })
-
-		broker.SetLocalConn(conn)
 	} else {
 		fr.setPeer(api.Peer{Addr: mockDispatcher.Addr})
 	}
