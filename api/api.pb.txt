@@ -788,6 +788,20 @@ file {
       json_name: "phpNamespace"
     }
     field {
+      name: "php_metadata_namespace"
+      number: 44
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "phpMetadataNamespace"
+    }
+    field {
+      name: "ruby_package"
+      number: 45
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "rubyPackage"
+    }
+    field {
       name: "uninterpreted_option"
       number: 999
       label: LABEL_REPEATED

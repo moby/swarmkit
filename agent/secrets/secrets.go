@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/identity"
 )
 
 // secrets is a map that keeps all the currently available secrets to the agent
@@ -62,6 +63,7 @@ func (s *secrets) Reset() {
 type taskRestrictedSecretsProvider struct {
 	secrets   exec.SecretGetter
 	secretIDs map[string]struct{} // allow list of secret ids
+	taskID    string              // ID of the task the provider restricts for
 }
 
 func (sp *taskRestrictedSecretsProvider) Get(secretID string) (*api.Secret, error) {
@@ -69,7 +71,12 @@ func (sp *taskRestrictedSecretsProvider) Get(secretID string) (*api.Secret, erro
 		return nil, fmt.Errorf("task not authorized to access secret %s", secretID)
 	}
 
-	return sp.secrets.Get(secretID)
+	secret, err := sp.secrets.Get(identity.XorIDs(secretID, sp.taskID))
+	if err != nil {
+		return sp.secrets.Get(secretID)
+	}
+	secret.ID = secretID
+	return secret, err
 }
 
 // Restrict provides a getter that only allows access to the secrets
@@ -84,5 +91,5 @@ func Restrict(secrets exec.SecretGetter, t *api.Task) exec.SecretGetter {
 		}
 	}
 
-	return &taskRestrictedSecretsProvider{secrets: secrets, secretIDs: sids}
+	return &taskRestrictedSecretsProvider{secrets: secrets, secretIDs: sids, taskID: t.ID}
 }
