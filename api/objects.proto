@@ -445,6 +445,17 @@ message Config {
 // node is provided by the node. A particular device may only belong to one
 // device class.
 message DeviceClass {
+	option (docker.protobuf.plugin.store_object) = {
+		watch_selectors: {
+			id: true
+			id_prefix: true
+			name: true
+			name_prefix: true
+			custom: true
+			custom_prefix: true
+		}
+	};
+
 	string id = 1;
 
 	Meta meta = 2 [(gogoproto.nullable) = false];

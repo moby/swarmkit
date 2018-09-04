@@ -86,6 +86,16 @@
 		CreateConfigResponse
 		RemoveConfigRequest
 		RemoveConfigResponse
+		GetDeviceClassRequest
+		GetDeviceClassResponse
+		UpdateDeviceClassRequest
+		UpdateDeviceClassResponse
+		ListDeviceClassesRequest
+		ListDeviceClassesResponse
+		CreateDeviceClassRequest
+		CreateDeviceClassResponse
+		RemoveDeviceClassRequest
+		RemoveDeviceClassResponse
 		SessionRequest
 		SessionMessage
 		HeartbeatRequest
