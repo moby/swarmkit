@@ -52,6 +52,9 @@ message NodeSpec {
 	// Availability allows a user to control the current scheduling status of a
 	// node.
 	Availability availability = 4;
+
+	// Devices defines the devices available on this node.
+	repeated Device devices = 5;
 }
 
 // ServiceSpec defines the properties of a service.
@@ -149,6 +152,21 @@ message ResourceReference {
 message GenericRuntimeSpec {
 	string kind = 1;
 	google.protobuf.Any payload = 2;
+}
+
+// DeviceAttachmentSpec represents the spec for a device attachment
+message DeviceAttachmentSpec {
+	// DeviceClass is the ID or name of the device class that is to be used for
+	// this spec. The actual device may be any device of this class on any node.
+	string device_class = 1;
+
+	// Path represents the path in the task's filesystem that this device should
+	// be mounted at.
+	string path = 2;
+
+	// DeviceCgroupRules represents the cgroup rules that should be applied to
+	// this device.
+	repeated string device_cgroup_rules = 16;
 }
 
 // NetworkAttachmentSpec specifies runtime parameters required to attach
@@ -468,4 +486,18 @@ message ConfigSpec {
 	// The currently recognized values are:
 	// - golang: Go templating
 	Driver templating = 3;
+}
+
+// DeviceClassSpec specifies information about a class of devices available for
+// use by services.
+message DeviceClassSpec {
+	Annotations annotations = 1 [(gogoproto.nullable) = false];
+
+	// Shared represents whether this device can be shared between many tasks, or
+	// whether it should be uniquely mapped to a particular task. Shared devices
+	// may have any number of tasks assigned to them.
+	//
+	// Note that Shared has strong security risks; shared devices may be used by
+	// tasks to communicate with one another.
+	bool shared = 3;
 }
