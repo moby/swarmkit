@@ -342,6 +342,13 @@ func (d *Dispatcher) Stop() error {
 	d.cancel()
 	d.mu.Unlock()
 
+	d.processUpdatesLock.Lock()
+	// In case there are any waiters. There is no chance of any starting
+	// after this point, because they check if the context is canceled
+	// before waiting.
+	d.processUpdatesCond.Broadcast()
+	d.processUpdatesLock.Unlock()
+
 	// The active nodes list can be cleaned out only when all
 	// existing RPCs have finished.
 	// RPCs that start after rpcRW.Unlock() should find the context
@@ -350,13 +357,6 @@ func (d *Dispatcher) Stop() error {
 	d.nodes.Clean()
 	d.downNodes.Clean()
 	d.rpcRW.Unlock()
-
-	d.processUpdatesLock.Lock()
-	// In case there are any waiters. There is no chance of any starting
-	// after this point, because they check if the context is canceled
-	// before waiting.
-	d.processUpdatesCond.Broadcast()
-	d.processUpdatesLock.Unlock()
 
 	d.clusterUpdateQueue.Close()
 
