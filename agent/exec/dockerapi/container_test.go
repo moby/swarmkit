@@ -29,6 +29,10 @@ func TestVolumesAndBinds(t *testing.T) {
 			enginemount.Mount{Type: enginemount.TypeVolume, Source: "banana", Target: "/kerfluffle", VolumeOptions: &enginemount.VolumeOptions{NoCopy: true}}},
 		{"Volume with no source", api.Mount{Type: api.MountTypeVolume, Target: "/kerfluffle"},
 			enginemount.Mount{Type: enginemount.TypeVolume, Target: "/kerfluffle"}},
+		{"Named pipe using Windows format", api.Mount{Type: api.MountTypeNamedPipe, Source: `\\.\pipe\foo`, Target: `\\.\pipe\foo`},
+			enginemount.Mount{Type: enginemount.TypeNamedPipe, Source: `\\.\pipe\foo`, Target: `\\.\pipe\foo`}},
+		{"Named pipe using Unix format", api.Mount{Type: api.MountTypeNamedPipe, Source: "//./pipe/foo", Target: "//./pipe/foo"},
+			enginemount.Mount{Type: enginemount.TypeNamedPipe, Source: "//./pipe/foo", Target: "//./pipe/foo"}},
 	}
 
 	for _, c := range cases {

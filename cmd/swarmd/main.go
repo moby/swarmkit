@@ -256,7 +256,7 @@ func init() {
 	mainCmd.Flags().StringP("log-level", "l", "info", "Log level (options \"debug\", \"info\", \"warn\", \"error\", \"fatal\", \"panic\")")
 	mainCmd.Flags().StringP("state-dir", "d", defaults.StateDir, "State directory")
 	mainCmd.Flags().StringP("join-token", "", "", "Specifies the secret token required to join the cluster")
-	mainCmd.Flags().String("engine-addr", "unix:///var/run/docker.sock", "Address of engine instance of agent.")
+	mainCmd.Flags().String("engine-addr", defaults.EngineAddr, "Address of engine instance of agent.")
 	mainCmd.Flags().String("hostname", "", "Override reported agent hostname")
 	mainCmd.Flags().String("advertise-remote-api", "", "Advertise address for remote API")
 	mainCmd.Flags().String("listen-remote-api", "0.0.0.0:4242", "Listen address for remote API")

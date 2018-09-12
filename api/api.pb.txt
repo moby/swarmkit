@@ -2520,6 +2520,13 @@ file {
           66001: "MountTypeTmpfs"
         }
       }
+      value {
+        name: "NPIPE"
+        number: 3
+        options {
+          66001: "MountTypeNamedPipe"
+        }
+      }
       options {
         62001: 0
         62023: "MountType"
