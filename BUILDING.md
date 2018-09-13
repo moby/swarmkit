@@ -113,3 +113,15 @@ NB: As of version 3.0.0-7 the Debian `protobuf-compiler` package lacks
 a dependency on `libprotobuf-dev` which contains some standard proto
 definitions, be sure to install both packages. This is [Debian bug
 #842158](https://bugs.debian.org/842158).
+
+### Build in a container instead of your local environment
+
+You can also choose to use a container to build SwarmKit and run tests. Simply
+set the `DOCKER_SWARMKIT_USE_CONTAINER` environment variable to any value,
+export it, then run `make` targets as you would have done within your local
+environment.
+
+Additionally, if your OS is not Linux, you might want to set and export the
+`DOCKER_SWARMKIT_USE_DOCKER_SYNC` environment variable, which will make use of
+[docker-sync](https://github.com/EugenMayer/docker-sync) to sync the code to
+the container, instead of native mounted volumes.
