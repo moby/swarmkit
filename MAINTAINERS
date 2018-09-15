@@ -16,7 +16,6 @@
 			"dongluochen",
 			"dperny",
 			"lk4d4",
-			"nishanttotla",
 			"stevvooe",
 			"tonistiigi",
 			"vieux",
@@ -103,11 +102,6 @@
 	Name = "Misty Stanley-Jones"
 	Email = "misty@docker.com"
 	GitHub = "mistyhacks"
-
-	[people.nishanttotla]
-	Name = "Nishant Totla"
-	Email = "nishanttotla@gmail.com"
-	GitHub = "nishanttotla"
 
 	[people.stevvooe]
 	Name = "Stephen Day"
