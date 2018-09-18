@@ -7,9 +7,11 @@
 		"vet",
 		"misspell",
 		"gofmt",
+		"goimports",
 		"golint",
 		"ineffassign",
-		"deadcode"
+		"deadcode",
+		"unconvert"
 	],
 	"Deadline": "2m"
 }
