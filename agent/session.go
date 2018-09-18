@@ -17,7 +17,6 @@ import (
 
 var (
 	dispatcherRPCTimeout = 5 * time.Second
-	errSessionDisconnect = errors.New("agent: session disconnect") // instructed to disconnect
 	errSessionClosed     = errors.New("agent: session closed")
 )
 
