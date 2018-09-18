@@ -1091,7 +1091,7 @@ func (p *raftProxyRouteGuideServer) ListFeatures(r *Rectangle, stream RouteGuide
 			}
 			streamWrapper := RouteGuide_ListFeaturesServerWrapper{
 				RouteGuide_ListFeaturesServer: stream,
-				ctx: ctx,
+				ctx:                           ctx,
 			}
 			return p.local.ListFeatures(r, streamWrapper)
 		}
@@ -1142,7 +1142,7 @@ func (p *raftProxyRouteGuideServer) RecordRoute(stream RouteGuide_RecordRouteSer
 			}
 			streamWrapper := RouteGuide_RecordRouteServerWrapper{
 				RouteGuide_RecordRouteServer: stream,
-				ctx: ctx,
+				ctx:                          ctx,
 			}
 			return p.local.RecordRoute(streamWrapper)
 		}
@@ -1199,7 +1199,7 @@ func (p *raftProxyRouteGuideServer) RouteChat(stream RouteGuide_RouteChatServer)
 			}
 			streamWrapper := RouteGuide_RouteChatServerWrapper{
 				RouteGuide_RouteChatServer: stream,
-				ctx: ctx,
+				ctx:                        ctx,
 			}
 			return p.local.RouteChat(streamWrapper)
 		}
