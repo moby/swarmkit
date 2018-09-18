@@ -2087,7 +2087,6 @@ func (m *mockPluginGetter) GetAllManagedPluginsByCap(capability string) []plugin
 	return nil
 }
 func (m *mockPluginGetter) Handle(capability string, callback func(string, *plugins.Client)) {
-	return
 }
 
 // MockPlugin mocks a v2 docker plugin

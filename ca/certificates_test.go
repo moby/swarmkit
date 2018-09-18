@@ -705,12 +705,10 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	var node *api.Node
 	// wait for a new node to show up
 	for node == nil {
-		select {
-		case event := <-updates: // we want to skip the first node, which is the test CA
-			n := event.(api.EventCreateNode).Node.Copy()
-			if n.Certificate.Status.State == api.IssuanceStatePending {
-				node = n
-			}
+		event := <-updates // we want to skip the first node, which is the test CA
+		n := event.(api.EventCreateNode).Node.Copy()
+		if n.Certificate.Status.State == api.IssuanceStatePending {
+			node = n
 		}
 	}
 

@@ -1055,14 +1055,10 @@ func (d *Dispatcher) moveTasksToOrphaned(nodeID string) error {
 				task.Status.State = api.TaskStateOrphaned
 			}
 
-			if err := batch.Update(func(tx store.Tx) error {
-				err := store.UpdateTask(tx, task)
-				if err != nil {
-					return err
-				}
-
-				return nil
-			}); err != nil {
+			err := batch.Update(func(tx store.Tx) error {
+				return store.UpdateTask(tx, task)
+			})
+			if err != nil {
 				return err
 			}
 

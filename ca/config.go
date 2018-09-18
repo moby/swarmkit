@@ -627,7 +627,7 @@ func calculateRandomExpiry(validFrom, validUntil time.Time) time.Duration {
 		randomExpiry = rand.Intn(maxValidity-minValidity) + minValidity
 	}
 
-	expiry := validFrom.Add(time.Duration(randomExpiry) * time.Minute).Sub(time.Now())
+	expiry := time.Until(validFrom.Add(time.Duration(randomExpiry) * time.Minute))
 	if expiry < 0 {
 		return 0
 	}
