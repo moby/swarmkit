@@ -1,13 +1,13 @@
 package watchapi
 
 import (
+	"context"
 	"testing"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 )
 
 func TestWatch(t *testing.T) {

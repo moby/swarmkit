@@ -2,13 +2,13 @@ package keymanager
 
 import (
 	"bytes"
+	"context"
 	"testing"
 	"time"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 func createClusterSpec(name string) *api.ClusterSpec {

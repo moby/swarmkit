@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"runtime"
@@ -18,7 +19,6 @@ import (
 	"github.com/docker/swarmkit/watch"
 	gogotypes "github.com/gogo/protobuf/types"
 	memdb "github.com/hashicorp/go-memdb"
-	"golang.org/x/net/context"
 )
 
 const (

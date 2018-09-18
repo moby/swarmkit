@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"runtime"
@@ -10,7 +11,6 @@ import (
 	"github.com/docker/swarmkit/log"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 func TestResolve(t *testing.T) {

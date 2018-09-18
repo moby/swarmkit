@@ -1,6 +1,8 @@
 package global
 
 import (
+	"context"
+
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/constraint"
@@ -9,7 +11,6 @@ import (
 	"github.com/docker/swarmkit/manager/orchestrator/taskinit"
 	"github.com/docker/swarmkit/manager/orchestrator/update"
 	"github.com/docker/swarmkit/manager/state/store"
-	"golang.org/x/net/context"
 )
 
 type globalService struct {

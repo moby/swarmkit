@@ -1,6 +1,7 @@
 package cnmallocator
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -16,7 +17,6 @@ import (
 	"github.com/docker/swarmkit/manager/allocator/networkallocator"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 )
 
 const (

@@ -1,10 +1,10 @@
 package config
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/docker/swarmkit/api"
-	"golang.org/x/net/context"
 )
 
 func getConfig(ctx context.Context, c api.ControlClient, input string) (*api.Config, error) {

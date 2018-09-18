@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	_ "expvar"
 	"fmt"
 	"net"
@@ -23,7 +24,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var externalCAOpt cli.ExternalCAOpt
