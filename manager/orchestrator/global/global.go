@@ -586,11 +586,3 @@ func (g *Orchestrator) SlotTuple(t *api.Task) orchestrator.SlotTuple {
 		NodeID:    t.NodeID,
 	}
 }
-
-func isTaskCompleted(t *api.Task, restartPolicy api.RestartPolicy_RestartCondition) bool {
-	if t == nil || t.DesiredState <= api.TaskStateRunning {
-		return false
-	}
-	return restartPolicy == api.RestartOnNone ||
-		(restartPolicy == api.RestartOnFailure && t.Status.State == api.TaskStateCompleted)
-}

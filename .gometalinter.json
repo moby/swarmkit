@@ -8,7 +8,8 @@
 		"misspell",
 		"gofmt",
 		"golint",
-		"ineffassign"
+		"ineffassign",
+		"deadcode"
 	],
 	"Deadline": "2m"
 }

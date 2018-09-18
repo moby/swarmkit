@@ -31,7 +31,6 @@ const (
 	rootCAKeyFilename   = "swarm-root-ca.key"
 	nodeTLSCertFilename = "swarm-node.crt"
 	nodeTLSKeyFilename  = "swarm-node.key"
-	nodeCSRFilename     = "swarm-node.csr"
 
 	// DefaultRootCN represents the root CN that we should create roots CAs with by default
 	DefaultRootCN = "swarm-ca"

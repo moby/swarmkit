@@ -55,44 +55,6 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 	return nil
 }
 
-func changeNodeMembership(cmd *cobra.Command, args []string, membership api.NodeSpec_Membership) error {
-	if len(args) == 0 {
-		return errors.New("missing node ID")
-	}
-
-	if len(args) > 1 {
-		return errors.New("command takes exactly 1 argument")
-	}
-
-	c, err := common.Dial(cmd)
-	if err != nil {
-		return err
-	}
-	node, err := getNode(common.Context(cmd), c, args[0])
-	if err != nil {
-		return err
-	}
-	spec := &node.Spec
-
-	if spec.Membership == membership {
-		return errNoChange
-	}
-
-	spec.Membership = membership
-
-	_, err = c.UpdateNode(common.Context(cmd), &api.UpdateNodeRequest{
-		NodeID:      node.ID,
-		NodeVersion: &node.Meta.Version,
-		Spec:        spec,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func changeNodeRole(cmd *cobra.Command, args []string, role api.NodeRole) error {
 	if len(args) == 0 {
 		return errors.New("missing node ID")
