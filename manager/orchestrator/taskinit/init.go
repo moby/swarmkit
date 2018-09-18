@@ -80,7 +80,7 @@ func CheckTasks(ctx context.Context, s *store.MemoryStore, readTx store.ReadTx, 
 				}
 				if err == nil {
 					restartTime := timestamp.Add(restartDelay)
-					calculatedRestartDelay := restartTime.Sub(time.Now())
+					calculatedRestartDelay := time.Until(restartTime)
 					if calculatedRestartDelay < restartDelay {
 						restartDelay = calculatedRestartDelay
 					}

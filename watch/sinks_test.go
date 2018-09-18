@@ -39,8 +39,7 @@ func TestTimeoutDropErrSinkGen(t *testing.T) {
 	<-ch2.Done()
 
 	// Make sure that closing a sink closes the channel
-	var errClose error
-	errClose = sink.Close()
+	errClose := sink.Close()
 	<-ch.Done()
 	require.NoError(errClose)
 

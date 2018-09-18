@@ -23,10 +23,7 @@ type Collector struct {
 func (c *Collector) Listen(port int) error {
 	var err error
 	c.ln, err = net.Listen("tcp", ":"+strconv.Itoa(port))
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // Collect blocks until `count` tasks phoned home.
