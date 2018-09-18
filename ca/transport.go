@@ -18,12 +18,6 @@ var (
 	alpnProtoStr = []string{"h2"}
 )
 
-type timeoutError struct{}
-
-func (timeoutError) Error() string   { return "mutablecredentials: Dial timed out" }
-func (timeoutError) Timeout() bool   { return true }
-func (timeoutError) Temporary() bool { return true }
-
 // MutableTLSCreds is the credentials required for authenticating a connection using TLS.
 type MutableTLSCreds struct {
 	// Mutex for the tls config
