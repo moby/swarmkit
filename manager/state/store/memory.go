@@ -689,7 +689,7 @@ func (tx readTx) findIterators(table string, by By, checkType func(By) error) ([
 		}
 		return []memdb.ResultIterator{it}, nil
 	case bySlot:
-		it, err := tx.memDBTx.Get(table, indexSlot, v.serviceID+"\x00"+strconv.FormatUint(uint64(v.slot), 10))
+		it, err := tx.memDBTx.Get(table, indexSlot, v.serviceID+"\x00"+strconv.FormatUint(v.slot, 10))
 		if err != nil {
 			return nil, err
 		}
