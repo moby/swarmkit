@@ -1182,11 +1182,8 @@ func (n *Node) CanRemoveMember(id uint64) bool {
 	}
 
 	nquorum := (len(members)-1)/2 + 1
-	if nreachable < nquorum {
-		return false
-	}
 
-	return true
+	return nreachable >= nquorum
 }
 
 func (n *Node) removeMember(ctx context.Context, id uint64) error {
@@ -1591,10 +1588,7 @@ func (n *Node) ProposeValue(ctx context.Context, storeAction []api.StoreAction, 
 	defer cancel()
 	_, err := n.processInternalRaftRequest(ctx, &api.InternalRaftRequest{Action: storeAction}, cb)
 
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // GetVersion returns the sequence information for the current raft round.

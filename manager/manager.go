@@ -1002,9 +1002,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 			cluster = store.GetCluster(tx, clusterID)
 		})
 		if cluster.DefaultAddressPool != nil {
-			for _, address := range cluster.DefaultAddressPool {
-				m.config.NetworkConfig.DefaultAddrPool = append(m.config.NetworkConfig.DefaultAddrPool, address)
-			}
+			m.config.NetworkConfig.DefaultAddrPool = append(m.config.NetworkConfig.DefaultAddrPool, cluster.DefaultAddressPool...)
 			m.config.NetworkConfig.SubnetSize = cluster.SubnetSize
 		}
 	}
