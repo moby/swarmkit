@@ -48,11 +48,7 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 		Spec:        spec,
 	})
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func changeNodeRole(cmd *cobra.Command, args []string, role api.NodeRole) error {
@@ -86,11 +82,7 @@ func changeNodeRole(cmd *cobra.Command, args []string, role api.NodeRole) error 
 		Spec:        spec,
 	})
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func getNode(ctx context.Context, c api.ControlClient, input string) (*api.Node, error) {
@@ -169,9 +161,5 @@ func updateNode(cmd *cobra.Command, args []string) error {
 		Spec:        spec,
 	})
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }

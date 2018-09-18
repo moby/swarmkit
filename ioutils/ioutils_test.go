@@ -25,7 +25,7 @@ func TestAtomicWriteToFile(t *testing.T) {
 		t.Fatalf("Error reading from file: %v", err)
 	}
 
-	if bytes.Compare(actual, expected) != 0 {
+	if !bytes.Equal(actual, expected) {
 		t.Fatalf("Data mismatch, expected %q, got %q", expected, actual)
 	}
 }

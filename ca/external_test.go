@@ -113,9 +113,7 @@ func TestExternalCASignRequestTimesOut(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(http.ResponseWriter, *http.Request) {
 		// hang forever
-		select {
-		case <-allDone:
-		}
+		<-allDone
 	})
 
 	server := httptest.NewServer(mux)

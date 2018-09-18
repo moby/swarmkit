@@ -51,38 +51,36 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	go func() {
 		failedLast := false
 		for {
-			select {
-			case e := <-watchUpdate:
-				task := e.(api.EventUpdateTask).Task
-				if task.DesiredState == task.Status.State {
-					continue
-				}
-				if task.DesiredState == api.TaskStateRunning && task.Status.State != api.TaskStateFailed && task.Status.State != api.TaskStateRunning {
-					err := s.Update(func(tx store.Tx) error {
-						task = store.GetTask(tx, task.ID)
-						// Never fail two image2 tasks in a row, so there's a mix of
-						// failed and successful tasks for the rollback.
-						if task.Spec.GetContainer().Image == "image1" && atomic.LoadUint32(&failImage1) == 1 {
-							task.Status.State = api.TaskStateFailed
-							failedLast = true
-						} else if task.Spec.GetContainer().Image == "image2" && atomic.LoadUint32(&failImage2) == 1 && !failedLast {
-							task.Status.State = api.TaskStateFailed
-							failedLast = true
-						} else {
-							task.Status.State = task.DesiredState
-							failedLast = false
-						}
-						return store.UpdateTask(tx, task)
-					})
-					assert.NoError(t, err)
-				} else if task.DesiredState > api.TaskStateRunning {
-					err := s.Update(func(tx store.Tx) error {
-						task = store.GetTask(tx, task.ID)
+			e := <-watchUpdate
+			task := e.(api.EventUpdateTask).Task
+			if task.DesiredState == task.Status.State {
+				continue
+			}
+			if task.DesiredState == api.TaskStateRunning && task.Status.State != api.TaskStateFailed && task.Status.State != api.TaskStateRunning {
+				err := s.Update(func(tx store.Tx) error {
+					task = store.GetTask(tx, task.ID)
+					// Never fail two image2 tasks in a row, so there's a mix of
+					// failed and successful tasks for the rollback.
+					if task.Spec.GetContainer().Image == "image1" && atomic.LoadUint32(&failImage1) == 1 {
+						task.Status.State = api.TaskStateFailed
+						failedLast = true
+					} else if task.Spec.GetContainer().Image == "image2" && atomic.LoadUint32(&failImage2) == 1 && !failedLast {
+						task.Status.State = api.TaskStateFailed
+						failedLast = true
+					} else {
 						task.Status.State = task.DesiredState
-						return store.UpdateTask(tx, task)
-					})
-					assert.NoError(t, err)
-				}
+						failedLast = false
+					}
+					return store.UpdateTask(tx, task)
+				})
+				assert.NoError(t, err)
+			} else if task.DesiredState > api.TaskStateRunning {
+				err := s.Update(func(tx store.Tx) error {
+					task = store.GetTask(tx, task.ID)
+					task.Status.State = task.DesiredState
+					return store.UpdateTask(tx, task)
+				})
+				assert.NoError(t, err)
 			}
 		}
 	}()

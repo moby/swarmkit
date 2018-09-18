@@ -140,17 +140,13 @@ func (m *MockDispatcher) UpdateTaskStatus(context.Context, *api.UpdateTaskStatus
 
 // Tasks keeps an open stream until canceled
 func (m *MockDispatcher) Tasks(_ *api.TasksRequest, stream api.Dispatcher_TasksServer) error {
-	select {
-	case <-stream.Context().Done():
-	}
+	<-stream.Context().Done()
 	return nil
 }
 
 // Assignments keeps an open stream until canceled
 func (m *MockDispatcher) Assignments(_ *api.AssignmentsRequest, stream api.Dispatcher_AssignmentsServer) error {
-	select {
-	case <-stream.Context().Done():
-	}
+	<-stream.Context().Done()
 	return nil
 }
 
