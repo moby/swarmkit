@@ -1,9 +1,6 @@
 .DEFAULT_GOAL = all
 .PHONY: all
-all: check binaries test integration-tests ## run fmt, vet, lint, build the binaries and run the tests
-
-.PHONY: check
-check: fmt vet lint ineffassign misspell
+all: check binaries test integration-tests ## run check, build the binaries and run the tests
 
 .PHONY: ci
 ci: check binaries checkprotos coverage coverage-integration ## to be used by the CI
@@ -20,10 +17,8 @@ version/version.go:
 setup: ## install dependencies
 	@echo "🐳 $@"
 	# TODO(stevvooe): Install these from the vendor directory
-	@go get -u github.com/golang/lint/golint
-	#@go get -u github.com/kisielk/errcheck
-	@go get -u github.com/gordonklaus/ineffassign
-	@go get -u github.com/client9/misspell/cmd/misspell
+	@go get -u github.com/alecthomas/gometalinter
+	@gometalinter --install
 	@go get -u github.com/lk4d4/vndr
 	@go get -u github.com/stevvooe/protobuild
 
@@ -44,41 +39,18 @@ checkprotos: generate ## check if protobufs needs to be generated again
 		((git diff | cat) && \
 		(echo "👹 please run 'make generate' when making changes to proto files" && false))
 
-# Depends on binaries because vet will silently fail if it can't load compiled
-# imports
-.PHONY: vet
-vet: binaries ## run go vet
+.PHONY: check
+check: fmt-proto
+check: ## Run various source code validation tools
 	@echo "🐳 $@"
-	@test -z "$$(go vet ${PACKAGES} 2>&1 | grep -v 'constant [0-9]* not a string in call to Errorf' | egrep -v '(timestamp_test.go|duration_test.go|exit status 1)' | tee /dev/stderr)"
+	@gometalinter ./...
 
-.PHONY: misspell
-misspell:
-	@echo "🐳 $@"
-	@test -z "$$(find . -type f | grep -v vendor/ | grep -v bin/ | grep -v .git/ | grep -v MAINTAINERS | xargs misspell | tee /dev/stderr)"
-
-.PHONY: fmt
-fmt: ## run go fmt
-	@echo "🐳 $@"
-	@test -z "$$(gofmt -s -l . | grep -v vendor/ | grep -v ".pb.go$$" | tee /dev/stderr)" || \
-		(echo "👹 please format Go code with 'gofmt -s -w'" && false)
+.PHONY: fmt-proto
+fmt-proto:
 	@test -z "$$(find . -path ./vendor -prune -o ! -name timestamp.proto ! -name duration.proto -name '*.proto' -type f -exec grep -Hn -e "^ " {} \; | tee /dev/stderr)" || \
 		(echo "👹 please indent proto files with tabs only" && false)
 	@test -z "$$(find . -path ./vendor -prune -o -name '*.proto' -type f -exec grep -Hn "Meta meta = " {} \; | grep -v '(gogoproto.nullable) = false' | tee /dev/stderr)" || \
 		(echo "👹 meta fields in proto files must have option (gogoproto.nullable) = false" && false)
-
-.PHONY: lint
-lint: ## run go lint
-	@echo "🐳 $@"
-	@test -z "$$(golint ./... | grep -v vendor/ | grep -v ".pb.go:" | tee /dev/stderr)"
-
-.PHONY: ineffassign
-ineffassign: ## run ineffassign
-	@echo "🐳 $@"
-	@test -z "$$(ineffassign . | grep -v vendor/ | grep -v ".pb.go:" | tee /dev/stderr)"
-
-#errcheck: ## run go errcheck
-#	@echo "🐳 $@"
-#	@test -z "$$(errcheck ./... | grep -v vendor/ | grep -v ".pb.go:" | tee /dev/stderr)"
 
 .PHONY: build
 build: ## build the go packages
