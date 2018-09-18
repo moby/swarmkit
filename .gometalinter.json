@@ -1,0 +1,14 @@
+{
+	"Vendor": true,
+	"Exclude": [
+		".*\\.pb\\.go"
+	],
+	"Enable": [
+		"vet",
+		"misspell",
+		"gofmt",
+		"golint",
+		"ineffassign"
+	],
+	"Deadline": "2m"
+}
