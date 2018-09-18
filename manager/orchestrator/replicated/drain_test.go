@@ -1,6 +1,7 @@
 package replicated
 
 import (
+	"context"
 	"testing"
 
 	"github.com/docker/swarmkit/api"
@@ -8,7 +9,6 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 func TestDrain(t *testing.T) {

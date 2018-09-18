@@ -1,11 +1,10 @@
 package manager
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"testing"
-
-	"golang.org/x/net/context"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"

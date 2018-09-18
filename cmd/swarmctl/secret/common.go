@@ -1,10 +1,10 @@
 package secret
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/docker/swarmkit/api"
-	"golang.org/x/net/context"
 )
 
 func getSecret(ctx context.Context, c api.ControlClient, input string) (*api.Secret, error) {

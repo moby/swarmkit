@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"testing"
 
 	"github.com/docker/swarmkit/agent/exec"
@@ -9,7 +10,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	bolt "go.etcd.io/bbolt"
-	"golang.org/x/net/context"
 )
 
 type testPublisherProvider struct {

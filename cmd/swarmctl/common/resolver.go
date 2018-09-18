@@ -1,11 +1,11 @@
 package common
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 // Resolver provides ID to Name resolution.

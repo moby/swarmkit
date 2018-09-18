@@ -1,6 +1,7 @@
 package ca
 
 import (
+	"context"
 	cryptorand "crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
@@ -23,8 +24,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/credentials"
-
-	"golang.org/x/net/context"
 )
 
 const (

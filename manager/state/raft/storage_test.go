@@ -1,6 +1,7 @@
 package raft_test
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -18,7 +19,6 @@ import (
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 )
 
 func TestRaftSnapshot(t *testing.T) {
@@ -276,8 +276,9 @@ func TestRaftSnapshotForceNewCluster(t *testing.T) {
 	assert.NoError(t, err)
 	raftClient := api.NewRaftMembershipClient(cc)
 	defer cc.Close()
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[2].Config.ID}})
+	cancel()
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -502,12 +503,13 @@ func proposeLargeValue(t *testing.T, raftNode *raftutils.TestNode, time time.Dur
 		},
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), time)
+	ctx, cancel := context.WithTimeout(context.Background(), time)
 
 	err := raftNode.ProposeValue(ctx, storeActions, func() {
 		err := raftNode.MemoryStore().ApplyStoreActions(storeActions)
 		assert.NoError(t, err, "error applying actions")
 	})
+	cancel()
 	if err != nil {
 		return nil, err
 	}

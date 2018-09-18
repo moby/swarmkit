@@ -1,12 +1,12 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"os"
 	"time"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var (

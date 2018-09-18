@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"net"
 	"testing"
 	"time"
@@ -8,8 +9,6 @@ import (
 	"github.com/docker/swarmkit/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"golang.org/x/net/context"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

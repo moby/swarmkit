@@ -1,11 +1,11 @@
 package testutils
 
 import (
+	"context"
 	"errors"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state"
-	"golang.org/x/net/context"
 )
 
 // MockProposer is a simple proposer implementation for use in tests.

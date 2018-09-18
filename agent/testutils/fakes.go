@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"context"
 	"io/ioutil"
 	"net"
 	"os"
@@ -17,7 +18,6 @@ import (
 	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/log"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 )
 
 // TestExecutor is executor for integration tests
