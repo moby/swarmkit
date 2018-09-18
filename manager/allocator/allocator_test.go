@@ -1,13 +1,12 @@
 package allocator
 
 import (
+	"context"
 	"net"
 	"runtime/debug"
 	"strconv"
 	"testing"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"

@@ -1,6 +1,7 @@
 package ca_test
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	cryptorand "crypto/rand"
@@ -38,7 +39,6 @@ import (
 	"github.com/phayes/permbits"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 )
 
 func init() {
@@ -747,7 +747,8 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	// make sure if we time out the GetRemoteSignedCertificate call, it cancels immediately and doesn't keep
 	// polling the status
 	go func() {
-		ctx, _ := context.WithTimeout(tc.Context, 1*time.Second)
+		ctx, cancel := context.WithTimeout(tc.Context, 1*time.Second)
+		defer cancel()
 		_, err := ca.GetRemoteSignedCertificate(ctx, csr, tc.RootCA.Pool,
 			ca.CertificateRequestConfig{
 				Token:      tc.WorkerToken,

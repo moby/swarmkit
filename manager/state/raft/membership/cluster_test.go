@@ -1,6 +1,7 @@
 package membership_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -8,8 +9,6 @@ import (
 	"os"
 	"testing"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"google.golang.org/grpc/grpclog"
 
@@ -279,7 +278,8 @@ func TestCanRemoveMember(t *testing.T) {
 
 	// Removing nodes at this point fails because we lost quorum
 	for i := 1; i <= 3; i++ {
-		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 		err := nodes[1].RemoveMember(ctx, uint64(i))
 		assert.Error(t, err)
 		members := nodes[1].GetMemberlist()
@@ -341,15 +341,17 @@ func TestCanRemoveMember(t *testing.T) {
 	}))
 
 	// Removing node 2 should fail (this would break the quorum)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	err := nodes[leader].RemoveMember(ctx, nodes[2].Config.ID)
+	cancel()
 	assert.EqualError(t, err, raft.ErrCannotRemoveMember.Error())
 	members := nodes[leader].GetMemberlist()
 	assert.Equal(t, len(members), 3)
 
 	// Removing node 3 works fine because it is already unreachable
-	ctx, _ = context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	err = nodes[leader].RemoveMember(ctx, nodes[3].Config.ID)
+	cancel()
 	assert.NoError(t, err)
 	members = nodes[leader].GetMemberlist()
 	assert.Nil(t, members[nodes[3].Config.ID])
@@ -380,16 +382,18 @@ func TestCanRemoveMember(t *testing.T) {
 	}))
 
 	// Removing node 3 should succeed
-	ctx, _ = context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	err = nodes[leader].RemoveMember(ctx, nodes[3].Config.ID)
+	cancel()
 	assert.NoError(t, err)
 	members = nodes[leader].GetMemberlist()
 	assert.Nil(t, members[nodes[3].Config.ID])
 	assert.Equal(t, len(members), 2)
 
 	// Removing node 2 should succeed
-	ctx, _ = context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	err = nodes[leader].RemoveMember(ctx, nodes[2].Config.ID)
+	cancel()
 	assert.NoError(t, err)
 	members = nodes[leader].GetMemberlist()
 	assert.Nil(t, members[nodes[2].Config.ID])

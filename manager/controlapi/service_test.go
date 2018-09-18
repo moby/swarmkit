@@ -1,6 +1,7 @@
 package controlapi
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -10,7 +11,6 @@ import (
 	"github.com/docker/swarmkit/manager/state/store"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )

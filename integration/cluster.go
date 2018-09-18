@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"math/rand"
@@ -19,7 +20,6 @@ import (
 	"github.com/docker/swarmkit/node"
 	"github.com/docker/swarmkit/testutils"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 )
 
 const opsTimeout = 64 * time.Second

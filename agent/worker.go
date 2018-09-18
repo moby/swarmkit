@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"sync"
 
 	"github.com/boltdb/bolt"
@@ -9,7 +10,6 @@ import (
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/watch"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 )
 
 // Worker implements the core task management logic and persistence. It

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -9,7 +10,6 @@ import (
 	"github.com/docker/swarmkit/cmd/swarmctl/common"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var (

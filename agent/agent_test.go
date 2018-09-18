@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -25,7 +26,6 @@ import (
 	"github.com/docker/swarmkit/xnet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 )
 
 var localDispatcher = false
@@ -90,7 +90,8 @@ func TestAgentStartStop(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, agent)
 
-	ctx, _ := context.WithTimeout(tc.Context, 5000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(tc.Context, 5000*time.Millisecond)
+	defer cancel()
 
 	assert.Equal(t, errAgentNotStarted, agent.Stop(ctx))
 	assert.NoError(t, agent.Start(ctx))

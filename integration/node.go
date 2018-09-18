@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,7 +16,6 @@ import (
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/node"
 	"github.com/docker/swarmkit/testutils"
-	"golang.org/x/net/context"
 )
 
 // TestNode is representation of *agent.Node. It stores listeners, connections,

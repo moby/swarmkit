@@ -1,6 +1,7 @@
 package containerd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,7 +21,6 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 )
 
 var (

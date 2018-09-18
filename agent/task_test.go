@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 func init() {

@@ -1,6 +1,7 @@
 package controlapi
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"strings"
@@ -18,7 +19,6 @@ import (
 	"github.com/docker/swarmkit/protobuf/ptypes"
 	"github.com/docker/swarmkit/template"
 	gogotypes "github.com/gogo/protobuf/types"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

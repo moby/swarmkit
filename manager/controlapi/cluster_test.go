@@ -1,6 +1,7 @@
 package controlapi
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -13,7 +14,6 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )

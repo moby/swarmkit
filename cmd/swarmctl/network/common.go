@@ -1,10 +1,10 @@
 package network
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/docker/swarmkit/api"
-	"golang.org/x/net/context"
 )
 
 // GetNetwork tries to query for a network as an ID and if it can't be

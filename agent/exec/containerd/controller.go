@@ -1,6 +1,7 @@
 package containerd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/containerd/containerd"
@@ -8,7 +9,6 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 type controller struct {

@@ -1,6 +1,7 @@
 package allocator
 
 import (
+	"context"
 	"sync"
 
 	"github.com/docker/docker/pkg/plugingetter"
@@ -8,7 +9,6 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
-	"golang.org/x/net/context"
 )
 
 // Allocator controls how the allocation stage in the manager is handled.

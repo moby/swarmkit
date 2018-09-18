@@ -1,6 +1,7 @@
 package raft_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -17,8 +18,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/status"
-
-	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/wal"
@@ -112,8 +111,9 @@ func TestRaftJoinTwice(t *testing.T) {
 	assert.NoError(t, err)
 	raftClient := api.NewRaftMembershipClient(cc)
 	defer cc.Close()
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	_, err = raftClient.Join(ctx, &api.JoinRequest{Addr: l.Addr().String()})
+	cancel()
 	assert.NoError(t, err)
 
 	// Propose a value and wait for it to propagate
@@ -369,8 +369,9 @@ func TestRaftFollowerLeave(t *testing.T) {
 	assert.NoError(t, err)
 	raftClient := api.NewRaftMembershipClient(cc)
 	defer cc.Close()
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[5].Config.ID}})
+	cancel()
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
@@ -414,8 +415,8 @@ func TestRaftLeaderLeave(t *testing.T) {
 	raftClient := api.NewRaftMembershipClient(cc)
 	defer cc.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[1].Config.ID}})
+	cancel()
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 

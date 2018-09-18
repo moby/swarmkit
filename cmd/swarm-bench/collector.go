@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/docker/swarmkit/log"
 	"github.com/rcrowley/go-metrics"
-	"golang.org/x/net/context"
 )
 
 // Collector waits for tasks to phone home while collecting statistics.

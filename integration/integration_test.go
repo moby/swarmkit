@@ -2,6 +2,7 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -13,8 +14,6 @@ import (
 	"time"
 
 	"github.com/docker/swarmkit/node"
-
-	"golang.org/x/net/context"
 
 	"reflect"
 

@@ -1,6 +1,7 @@
 package dispatcher
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strconv"
@@ -21,7 +22,6 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/transport"

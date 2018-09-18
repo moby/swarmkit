@@ -1,13 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/docker/swarmkit/api"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 

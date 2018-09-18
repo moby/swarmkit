@@ -1,10 +1,9 @@
 package transport
 
 import (
+	"context"
 	"math"
 	"testing"
-
-	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/stretchr/testify/assert"

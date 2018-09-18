@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"testing"
 
 	"github.com/boltdb/bolt"
@@ -9,7 +10,6 @@ import (
 	"github.com/docker/swarmkit/log"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 type testPublisherProvider struct {

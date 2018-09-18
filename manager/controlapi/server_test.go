@@ -1,6 +1,7 @@
 package controlapi
 
 import (
+	"context"
 	"io/ioutil"
 	"net"
 	"os"
@@ -15,7 +16,6 @@ import (
 	"github.com/docker/swarmkit/manager/state/store"
 	stateutils "github.com/docker/swarmkit/manager/state/testutils"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 type testServer struct {

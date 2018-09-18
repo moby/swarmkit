@@ -1,12 +1,11 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-
-	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/wal/walpb"

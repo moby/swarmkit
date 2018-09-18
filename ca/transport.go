@@ -1,6 +1,7 @@
 package ca
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -9,7 +10,6 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc/credentials"
 )
 

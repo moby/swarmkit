@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -44,7 +45,6 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )

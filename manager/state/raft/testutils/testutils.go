@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"context"
 	"io/ioutil"
 	"net"
 	"os"
@@ -8,8 +9,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"google.golang.org/grpc"
 
@@ -526,12 +525,13 @@ func ProposeValue(t *testing.T, raftNode *TestNode, time time.Duration, nodeID .
 		},
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), time)
+	ctx, cancel := context.WithTimeout(context.Background(), time)
 
 	err := raftNode.ProposeValue(ctx, storeActions, func() {
 		err := raftNode.MemoryStore().ApplyStoreActions(storeActions)
 		assert.NoError(t, err, "error applying actions")
 	})
+	cancel()
 	if err != nil {
 		return nil, err
 	}
