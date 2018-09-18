@@ -83,7 +83,7 @@ ineffassign: ## run ineffassign
 .PHONY: build
 build: ## build the go packages
 	@echo "🐳 $@"
-	@go build -i -tags "${DOCKER_BUILDTAGS}" -v ${GO_LDFLAGS} ${GO_GCFLAGS} ${PACKAGES}
+	@go build -tags "${DOCKER_BUILDTAGS}" -v ${GO_LDFLAGS} ${GO_GCFLAGS} ${PACKAGES}
 
 .PHONY: test
 test: ## run tests, except integration tests
@@ -100,7 +100,7 @@ bin/%: cmd/% .FORCE
 	@test $$(go list) = "${PROJECT_ROOT}" || \
 		(echo "👹 Please correctly set up your Go build environment. This project must be located at <GOPATH>/src/${PROJECT_ROOT}" && false)
 	@echo "🐳 $@"
-	@go build -i -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./$<
+	@go build -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./$<
 
 .PHONY: .FORCE
 .FORCE:
@@ -129,7 +129,7 @@ uninstall:
 coverage: ## generate coverprofiles from the unit tests
 	@echo "🐳 $@"
 	@( for pkg in $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES}); do \
-		go test -i ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
+		go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
 		go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
 	done )
 
