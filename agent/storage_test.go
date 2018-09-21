@@ -8,10 +8,10 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/boltdb/bolt"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
 	"github.com/stretchr/testify/assert"
+	bolt "go.etcd.io/bbolt"
 )
 
 func TestStorageInit(t *testing.T) {
