@@ -1047,7 +1047,16 @@ func (a *Allocator) commitAllocatedTask(ctx context.Context, batch *store.Batch,
 			}
 			err = store.UpdateTask(tx, storeTask)
 		}
+		// somehow, it is possible for a task to be deleted in between the time
+		// it is allocated and the time we go to commit. if that happens,
+		// release the task resources and return no error
+		if err == store.ErrNotExist {
+			if err := a.netCtx.nwkAllocator.DeallocateTask(t); err != nil {
+				return errors.Wrapf(err, "error deallocating task %v that was deleted", t.ID)
+			}
+		}
 
+		// return the error anyway -- all we do is log things
 		return errors.Wrapf(err, "failed updating state in store transaction for task %s", t.ID)
 	})
 }
