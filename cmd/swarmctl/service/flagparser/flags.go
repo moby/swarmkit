@@ -16,6 +16,7 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.StringSlice("label", nil, "service label (key=value)")
 
 	flags.Uint64("replicas", 1, "number of replicas for the service (only works in replicated service mode)")
+	flags.Uint64("replicas-max-per-node", 0, "maximum number of replicas for per node (only works in replicated service mode) (default 0 = unlimited)")
 
 	flags.String("image", "", "container image")
 	flags.String("hostname", "", "container hostname")
