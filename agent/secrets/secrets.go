@@ -84,5 +84,11 @@ func Restrict(secrets exec.SecretGetter, t *api.Task) exec.SecretGetter {
 		}
 	}
 
+	for _, ref := range t.Spec.ResourceReferences {
+		if ref.ResourceType == api.ResourceType_SECRET {
+			sids[ref.ResourceID] = struct{}{}
+		}
+	}
+
 	return &taskRestrictedSecretsProvider{secrets: secrets, secretIDs: sids}
 }
