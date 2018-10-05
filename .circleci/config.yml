@@ -12,8 +12,6 @@ jobs:
       OS: linux
       ARCH: amd64
       GOVERSION: 1.11
-      # Needed to install protoc
-      PROTOC_VERSION: 3.6.1
 
     # Note(cyli): We create a tmpfs mount to be used for temporary files created by tests
     # to mitigate the excessive I/O latencies that sometimes cause the tests to fail.
@@ -59,17 +57,8 @@ jobs:
             env
 
     - run:
-        name: Install protoc
-        command: |
-            curl --silent --show-error --location --output protoc.zip \
-            https://github.com/google/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip \
-            && sudo unzip -d /usr/local protoc.zip include/\* bin\/* \
-            && sudo chmod -R a+r /usr/local/include/google/protobuf/
-            rm -f protoc.zip
-
-    - run:
         name: Install test/lint dependencies
-        command: make setup
+        command: make ci-prep
 
     - run:
         name: Validate dependency vendoring
