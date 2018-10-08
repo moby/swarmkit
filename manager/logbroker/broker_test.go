@@ -1,6 +1,7 @@
 package logbroker
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -8,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	"github.com/docker/swarmkit/api"

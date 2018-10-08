@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"math/rand"
@@ -19,7 +20,6 @@ import (
 	"github.com/docker/swarmkit/node"
 	"github.com/docker/swarmkit/testutils"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 )
 
 const opsTimeout = 64 * time.Second
@@ -38,23 +38,6 @@ type testCluster struct {
 }
 
 var testnameKey struct{}
-
-// NewCluster creates new cluster to which nodes can be added.
-// AcceptancePolicy is set to most permissive mode on first manager node added.
-func newTestCluster(testname string, fips bool) *testCluster {
-	ctx, cancel := context.WithCancel(context.Background())
-	ctx = context.WithValue(ctx, testnameKey, testname)
-	c := &testCluster{
-		ctx:        ctx,
-		cancel:     cancel,
-		nodes:      make(map[string]*testNode),
-		nodesOrder: make(map[string]int),
-		errs:       make(chan error, 1024),
-		fips:       fips,
-	}
-	c.api = &dummyAPI{c: c}
-	return c
-}
 
 // Stop makes best effort to stop all nodes and close connections to them.
 func (c *testCluster) Stop() error {

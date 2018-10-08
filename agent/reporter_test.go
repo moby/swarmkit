@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 type uniqueStatus struct {

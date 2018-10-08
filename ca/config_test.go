@@ -2,6 +2,7 @@ package ca_test
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -15,8 +16,6 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-
-	"golang.org/x/net/context"
 
 	cfconfig "github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/helpers"
@@ -788,24 +787,22 @@ func TestRenewTLSConfigUpdatesRootNonUnknownAuthError(t *testing.T) {
 	go func() {
 		updates, cancel := state.Watch(tc.MemoryStore.WatchQueue(), api.EventCreateNode{})
 		defer cancel()
-		select {
-		case event := <-updates: // we want to skip the first node, which is the test CA
-			n := event.(api.EventCreateNode).Node
-			if n.Certificate.Status.State == api.IssuanceStatePending {
-				signErr <- tc.MemoryStore.Update(func(tx store.Tx) error {
-					node := store.GetNode(tx, n.ID)
-					certChain, err := rootCA.ParseValidateAndSignCSR(node.Certificate.CSR, node.Certificate.CN, ca.WorkerRole, tc.Organization)
-					if err != nil {
-						return err
-					}
-					node.Certificate.Certificate = cautils.ReDateCert(t, certChain, cert, key, time.Now().Add(-5*time.Hour), time.Now().Add(-4*time.Hour))
-					node.Certificate.Status = api.IssuanceStatus{
-						State: api.IssuanceStateIssued,
-					}
-					return store.UpdateNode(tx, node)
-				})
-				return
-			}
+		event := <-updates // we want to skip the first node, which is the test CA
+		n := event.(api.EventCreateNode).Node
+		if n.Certificate.Status.State == api.IssuanceStatePending {
+			signErr <- tc.MemoryStore.Update(func(tx store.Tx) error {
+				node := store.GetNode(tx, n.ID)
+				certChain, err := rootCA.ParseValidateAndSignCSR(node.Certificate.CSR, node.Certificate.CN, ca.WorkerRole, tc.Organization)
+				if err != nil {
+					return err
+				}
+				node.Certificate.Certificate = cautils.ReDateCert(t, certChain, cert, key, time.Now().Add(-5*time.Hour), time.Now().Add(-4*time.Hour))
+				node.Certificate.Status = api.IssuanceStatus{
+					State: api.IssuanceStateIssued,
+				}
+				return store.UpdateNode(tx, node)
+			})
+			return
 		}
 	}()
 

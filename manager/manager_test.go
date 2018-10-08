@@ -2,6 +2,7 @@ package manager
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/pem"
 	"errors"
@@ -11,8 +12,6 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"

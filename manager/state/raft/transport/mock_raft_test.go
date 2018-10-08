@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"context"
 	"io"
 	"net"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/health"
 	"github.com/docker/swarmkit/manager/state/raft/membership"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
