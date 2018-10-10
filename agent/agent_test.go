@@ -355,7 +355,7 @@ func TestSessionReconnectsIfDispatcherErrors(t *testing.T) {
 			return fmt.Errorf("expecting 2 closed sessions, got %d", len(closedSessions))
 		}
 		return nil
-	}, 5*time.Second))
+	}, 10*time.Second))
 }
 
 type testSessionTracker struct {
