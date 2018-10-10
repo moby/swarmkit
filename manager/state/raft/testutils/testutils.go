@@ -61,13 +61,15 @@ func AdvanceTicks(clockSource *fakeclock.FakeClock, ticks int) {
 func WaitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint64]*TestNode) {
 	err := testutils.PollFunc(clockSource, func() error {
 		var prev *etcdraft.Status
+		var leadNode *TestNode
 	nodeLoop:
 		for _, n := range nodes {
 			if prev == nil {
 				prev = new(etcdraft.Status)
 				*prev = n.Status()
 				for _, n2 := range nodes {
-					if n2.Config.ID == prev.Lead && n2.ReadyForProposals() {
+					if n2.Config.ID == prev.Lead {
+						leadNode = n2
 						continue nodeLoop
 					}
 				}
@@ -85,7 +87,14 @@ func WaitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[ui
 			}
 			return errors.New("did not find leader in member list")
 		}
-		return nil
+		// Don't raise error just because test machine is running slowly
+		for i := 0; i < 5; i++ {
+			if leadNode.ReadyForProposals() {
+				return nil
+			}
+			time.Sleep(2 * time.Second)
+		}
+		return errors.New("leader is not ready")
 	})
 	require.NoError(t, err)
 }
