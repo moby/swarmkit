@@ -230,6 +230,11 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 			expectErrorString: "there must be at least one valid, reachable external CA corresponding to the next CA certificate",
 		},
 		{
+			rootCA:            initialExternalRootCA,
+			caConfig:          api.CAConfig{}, // removing the current external CA is not supported
+			expectErrorString: "there must be at least one valid, reachable external CA corresponding to the current CA certificate",
+		},
+		{
 			rootCA: initialExternalRootCA,
 			caConfig: api.CAConfig{
 				SigningCACert: rotationCert,
@@ -417,7 +422,17 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 		return init
 	}
 
-	// These require no rotation, because the cert is exactly the same.
+	// no change in the CAConfig spec means no rotation
+	runValidTestCases(t, []*rootCARotationTestCase{
+		{
+			description:  "no specified config changes results no root rotation",
+			rootCA:       initialLocalRootCA,
+			caConfig:     api.CAConfig{},
+			expectRootCA: initialLocalRootCA,
+		},
+	}, &localRootCA)
+
+	// These require no rotation, because the cert is exactly the same or there is no change specified.
 	testcases := []*rootCARotationTestCase{
 		{
 			description: "same desired cert and key as current Root CA results in no root rotation",
@@ -430,17 +445,12 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 			expectRootCA: getExpectedRootCA(true),
 		},
 		{
-			description: "same desired cert as current Root CA but external->internal results in no root rotation and no key -> key",
+			description: "same desired cert as current Root CA but external->internal (remove external CA is ok) results in no root rotation and no key -> key",
 			rootCA:      initialExternalRootCA,
 			caConfig: api.CAConfig{
 				SigningCACert: uglifyOnePEM(initialLocalRootCA.CACert),
 				SigningCAKey:  initialLocalRootCA.CAKey,
 				ForceRotate:   5,
-				ExternalCAs: []*api.ExternalCA{
-					{
-						URL: initExtServer.URL,
-					},
-				},
 			},
 			expectRootCA: getExpectedRootCA(true),
 		},
@@ -459,18 +469,36 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 			},
 			expectRootCA: getExpectedRootCA(false),
 		},
+		{
+			description: "same desired cert and key as current Root CA but adding an external CA results in no root rotation and no key change",
+			rootCA:      initialLocalRootCA,
+			caConfig: api.CAConfig{
+				SigningCACert: initialLocalRootCA.CACert,
+				SigningCAKey:  initialLocalRootCA.CAKey,
+				ExternalCAs: []*api.ExternalCA{
+					{
+						URL:    initExtServer.URL,
+						CACert: uglifyOnePEM(initialLocalRootCA.CACert),
+					},
+				},
+				ForceRotate: 5,
+			},
+			expectRootCA: getExpectedRootCA(true),
+		},
 	}
 	runValidTestCases(t, testcases, &localRootCA)
 
-	// These will abort root rotation because the desired cert is the same as the current RootCA cert
+	// These are the same test cases as above, but we are testing that it will abort root rotation because
+	// the desired cert is the same as the current RootCA cert
 	crossSigned, err := localRootCA.CrossSignCACertificate(rotationCert)
 	require.NoError(t, err)
 	for _, testcase := range testcases {
 		testcase.rootCA = getRootCAWithRotation(testcase.rootCA, rotationCert, rotationKey, crossSigned)
 	}
 	testcases[0].description = "same desired cert and key as current RootCA results in aborting root rotation"
-	testcases[1].description = "same desired cert, even if external->internal, as current RootCA results in aborting root rotation and no key -> key"
+	testcases[1].description = "same desired cert as current Root CA but external->internal (remove external CA is ok) results in aborting root rotation and no key -> key"
 	testcases[2].description = "same desired cert, even if internal->external, as current RootCA results in aborting root rotation and key -> no key"
+	testcases[3].description = "same desired cert and key as current Root CA but adding an external CA results in aborting root rotation and no key change"
 	runValidTestCases(t, testcases, &localRootCA)
 
 	// These will not change the root rotation because the desired cert is the same as the current to-be-rotated-to cert
