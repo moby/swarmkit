@@ -48,7 +48,7 @@ func assignSecret(a *assignmentSet, readTx store.ReadTx, mapKey typeAndID, t *ap
 		}).Debug("failed to fetch secret")
 		return
 	}
-	// If a driver is used, give a unique ID per task to allow different values for different tasks
+	// If the secret should not be reused for other tasks, give it a unique ID for the task to allow different values for different tasks.
 	if doNotReuse {
 		// Give the secret a new ID and mark it as internal
 		originalSecretID := secret.ID
@@ -306,7 +306,9 @@ func (a *assignmentSet) message() api.AssignmentsMessage {
 }
 
 // secret populates the secret value from raft store. For external secrets, the value is populated
-// from the secret driver.
+// from the secret driver. The function returns: a secret object; an indication of whether the value
+// is to be reused across tasks; and an error if the secret is not found in the store, if the secret
+// driver responds with one or if the payload does not pass validation.
 func (a *assignmentSet) secret(readTx store.ReadTx, task *api.Task, secretID string) (*api.Secret, bool, error) {
 	secret := store.GetSecret(readTx, secretID)
 	if secret == nil {

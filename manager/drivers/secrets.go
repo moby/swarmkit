@@ -25,7 +25,10 @@ func NewSecretDriver(plugin plugingetter.CompatPlugin) *SecretDriver {
 	return &SecretDriver{plugin: plugin}
 }
 
-// Get gets a secret from the secret provider
+// Get gets a secret from the secret provider. The function returns: the secret value;
+// a bool indicating whether the value should be reused across different tasks (defaults to false);
+// and an error if either the spec or task are nil, if calling the driver returns an error, or if
+// the driver returns an error in the payload.
 func (d *SecretDriver) Get(spec *api.SecretSpec, task *api.Task) ([]byte, bool, error) {
 	if spec == nil {
 		return nil, false, fmt.Errorf("secret spec is nil")

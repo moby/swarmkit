@@ -59,7 +59,7 @@ func NewID() string {
 // Note that XorIDs is not guaranteed to produce an ID of the same length as
 // NewID, or with the same properties.
 func XorIDs(id1, id2 string) string {
-	// first, we convert the ids back to big.Int, so we can do math on them
+	// First, we convert the ids back to big.Int, so we can do math on them
 	id1int, success := (&big.Int{}).SetString(id1, randomIDBase)
 	if !success {
 		panic(fmt.Errorf("Failed to convert first ID to big.Int{}"))
@@ -69,13 +69,14 @@ func XorIDs(id1, id2 string) string {
 		panic(fmt.Errorf("Failed to convert second ID to big.Int{}"))
 	}
 
-	// now, we xor the two numbers together.
+	// Now, we xor the two numbers together.
 	xorint := (&big.Int{}).Xor(id1int, id2int)
-	// if there are leading 0s in the result, they might get omitted, but we
-	// want to keep them affirmatively. thus, if the resulting string is less
+	// If there are leading 0s in the result, they might get omitted, but we
+	// want to keep them affirmatively. Thus, if the resulting string is less
 	// than maxRandomIDLength, then we should leading pad with 0s to make it
+	// the same length as other IDs.
 	xorstr := xorint.Text(randomIDBase)
-	for len(xorstr) < maxRandomIDLength {
+	for i := len(xorstr); i < maxRandomIDLength; i++ {
 		xorstr = "0" + xorstr
 	}
 	return xorstr

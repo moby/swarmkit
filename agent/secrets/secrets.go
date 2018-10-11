@@ -71,10 +71,14 @@ func (sp *taskRestrictedSecretsProvider) Get(secretID string) (*api.Secret, erro
 		return nil, fmt.Errorf("task not authorized to access secret %s", secretID)
 	}
 
+	// First check if the secret is available with the task specific ID, which is the XOR of the original secret ID and the task ID.
+	// That is the case when a secret driver has returned DoNotReuse == true for a secret value.
 	secret, err := sp.secrets.Get(identity.XorIDs(secretID, sp.taskID))
 	if err != nil {
+		// Otherwise, which is the default case, the secret is retrieved by its original ID.
 		return sp.secrets.Get(secretID)
 	}
+	// For all intents and purposes, the rest of the flow should deal with the original secret ID.
 	secret.ID = secretID
 	return secret, err
 }
