@@ -549,8 +549,8 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 		} else if s.ID == "driverDoNotReuseSecret" {
 			assert.Fail(t, "Secret with DoNotReuse==true should not retain its original ID in the assignment", "%s != %s", "driverDoNotReuseSecret", s.ID)
 		} else {
-			xorID := identity.XorIDs("driverDoNotReuseSecret", task.ID)
-			assert.Equal(t, xorID, s.ID)
+			taskSpecificID := fmt.Sprintf("%s.%s", "driverDoNotReuseSecret", task.ID)
+			assert.Equal(t, taskSpecificID, s.ID)
 			assert.Equal(t, doNotReuseSecretValue, s.Spec.Data)
 		}
 	}
