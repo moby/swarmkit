@@ -256,7 +256,7 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 
 func removeNodeAttachments(tx store.Tx, nodeID string) error {
 	// orphan the node's attached containers. if we don't do this, the
-	// network these attachments are connected to will never be removeable
+	// network these attachments are connected to will never be removable
 	tasks, err := store.FindTasks(tx, store.ByNodeID(nodeID))
 	if err != nil {
 		return err
