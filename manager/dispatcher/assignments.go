@@ -6,6 +6,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/equality"
 	"github.com/docker/swarmkit/api/validation"
+	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/drivers"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/sirupsen/logrus"
@@ -51,7 +52,7 @@ func assignSecret(a *assignmentSet, readTx store.ReadTx, mapKey typeAndID, t *ap
 	if doNotReuse {
 		// Give the secret a new ID and mark it as internal
 		originalSecretID := secret.ID
-		taskSpecificID := fmt.Sprintf("%s.%s", originalSecretID, t.ID)
+		taskSpecificID := identity.CombineTwoIDs(originalSecretID, t.ID)
 		secret.ID = taskSpecificID
 		secret.Internal = true
 		// Create a new mapKey with the new ID and insert it into the dependencies map for the task.

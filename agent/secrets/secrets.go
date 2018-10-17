@@ -6,6 +6,7 @@ import (
 
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/identity"
 )
 
 // secrets is a map that keeps all the currently available secrets to the agent
@@ -73,7 +74,7 @@ func (sp *taskRestrictedSecretsProvider) Get(secretID string) (*api.Secret, erro
 	// First check if the secret is available with the task specific ID, which is the concatenation
 	// of the original secret ID and the task ID with a dot in between.
 	// That is the case when a secret driver has returned DoNotReuse == true for a secret value.
-	taskSpecificID := fmt.Sprintf("%s.%s", secretID, sp.taskID)
+	taskSpecificID := identity.CombineTwoIDs(secretID, sp.taskID)
 	secret, err := sp.secrets.Get(taskSpecificID)
 	if err != nil {
 		// Otherwise, which is the default case, the secret is retrieved by its original ID.
