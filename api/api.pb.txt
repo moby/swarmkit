@@ -3555,6 +3555,13 @@ file {
       type_name: ".docker.swarmkit.v1.Platform"
       json_name: "platforms"
     }
+    field {
+      name: "max_replicas"
+      number: 4
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "maxReplicas"
+    }
   }
   message_type {
     name: "JoinTokens"
