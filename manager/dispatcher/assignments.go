@@ -120,6 +120,11 @@ func (a *assignmentSet) addTaskDependencies(readTx store.ReadTx, t *api.Task) {
 		secretID := secretRef.SecretID
 		mapKey := typeAndID{objType: api.ResourceType_SECRET, id: secretID}
 
+		// This checks for the presence of each task in the dependency map for the
+		// secret. This is currently only done for secrets since the other types of
+		// dependencies do not support driver plugins. Arguably, the same task would
+		// not have the same secret as a dependency more than once, but this check
+		// makes sure the task only gets the secret assigned once.
 		if _, exists := a.tasksUsingDependency[mapKey][t.ID]; !exists {
 			assignSecret(a, readTx, mapKey, t)
 		}
