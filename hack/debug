@@ -1,0 +1,71 @@
+#!/bin/bash
+
+## Installs delve, then runs it as a headless server
+## Keeps running until killed
+## Also adds some goodies: delve servers ignore interrupts, which is annoying...
+## and also once a debugging session is done, the server just hangs there, which
+## is equally annoying.
+## This script takes care of both these things
+
+SUBSHELL_PID=
+DLV_PID_FILE=
+RUNNING=true
+
+main() {
+  [ "$1" ] || usage
+
+  ensure_delve_installed || exit $?
+
+  local PORT="$DOCKER_SWARMKIT_DELVE_PORT"
+  [ "$PORT" ] || PORT=2345
+
+  local DLV_CMD="dlv test --accept-multiclient --headless --listen=:$PORT --api-version=2 --log $@"
+  echo $DLV_CMD
+
+  trap handle_interrupt INT
+
+  DLV_PID_FILE=$(mktemp /tmp/dlv.XXXXXX.pid)
+  local DLV_OUTPUT_FILE=$(mktemp /tmp/dlv.XXXXXX.out)
+
+  # the weird regex is because we keep the output colored
+  local HALTING_REGEX='^\e\[37mDEBU\e\[0m\[[0-9]+\] halting\s+\e\[37mlayer\e\[0m=debugger'
+  while $RUNNING; do
+    # using `script` to keep colored output, and `exec` to get the PID from the
+    # subshell
+    script --flush --quiet "$DLV_OUTPUT_FILE" --command 'printf $$ > '"$DLV_PID_FILE && exec $DLV_CMD" &
+    SUBSHELL_PID=$!
+
+    # wait for either the subshell to die, or for the "halting" line to appear
+    # in the output
+    tail --follow --pid="$SUBSHELL_PID" --sleep-interval=0.1 "$DLV_OUTPUT_FILE" 2> /dev/null | grep --perl-regex --line-buffered "$HALTING_REGEX" | ( read && kill_delve )
+
+    wait "$SUBSHELL_PID"
+  done
+
+  rm -f "$DLV_PID_FILE" "$DLV_OUTPUT_FILE"
+}
+
+handle_interrupt() {
+  RUNNING=false
+  kill_delve
+}
+
+kill_delve() {
+  if [ -r "$DLV_PID_FILE" ]; then
+    local DLV_PID=$(cat "$DLV_PID_FILE")
+    [ "$DLV_PID" ] && kill "$DLV_PID" &> /dev/null
+  fi
+
+  [ "$SUBSHELL_PID" ] && kill $SUBSHELL_PID &> /dev/null
+}
+
+ensure_delve_installed() {
+  which dlv &> /dev/null || go get -u github.com/derekparker/delve/cmd/dlv
+}
+
+usage() {
+  echo "Usage: $0 name/of/go/package [additional dlv test options]"
+  exit 1
+}
+
+main "$@"
