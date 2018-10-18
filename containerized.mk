@@ -2,6 +2,8 @@ IMAGE_NAME=docker/swarmkit
 GOPATH=/go
 DOCKER_IMAGE_DIR=${GOPATH}/src/${PROJECT_ROOT}
 
+DOCKER_SWARMKIT_DELVE_PORT ?= 2345
+
 # don't bother writing every single make target. just pass the call through to
 # docker and make
 # we prefer `%:` to `.DEFAULT` as the latter doesn't run phony deps
@@ -40,10 +42,16 @@ run: ensure_image_exists
 	@ [ "$$DOCKER_SWARMKIT_DOCKER_RUN_CMD" ] || exit 1
 	@ DOCKER_RUN_COMMAND="docker run -t -v swarmkit-cache:${GOPATH}" \
 		&& if [ "$$DOCKER_SWARMKIT_USE_DOCKER_SYNC" ]; then \
-			$(MAKE) ensure_sync_started && DOCKER_RUN_COMMAND="$$DOCKER_RUN_COMMAND -v swarmkit-sync:${DOCKER_IMAGE_DIR}"; \
+			$(MAKE) ensure_sync_started && DOCKER_RUN_COMMAND+=" -v swarmkit-sync:${DOCKER_IMAGE_DIR}"; \
 		else \
-			DOCKER_RUN_COMMAND="$$DOCKER_RUN_COMMAND -v ${ROOTDIR}:${DOCKER_IMAGE_DIR}"; \
+			DOCKER_RUN_COMMAND+=" -v ${ROOTDIR}:${DOCKER_IMAGE_DIR}"; \
 		fi \
-		&& DOCKER_RUN_COMMAND="$$DOCKER_RUN_COMMAND $$DOCKER_SWARMKIT_DOCKER_RUN_FLAGS ${IMAGE_NAME} $$DOCKER_SWARMKIT_DOCKER_RUN_CMD" \
+		&& if [ "$$DOCKER_SWARMKIT_USE_DELVE" ]; then \
+			DOCKER_RUN_COMMAND="DOCKER_SWARMKIT_DELVE_PORT=${DOCKER_SWARMKIT_DELVE_PORT} $$DOCKER_RUN_COMMAND" ; \
+			DOCKER_RUN_COMMAND+=" -p ${DOCKER_SWARMKIT_DELVE_PORT}:${DOCKER_SWARMKIT_DELVE_PORT} -e DOCKER_SWARMKIT_DELVE_PORT"; \
+			`# see https://github.com/derekparker/delve/issues/515#issuecomment-214911481'` ; \
+			DOCKER_RUN_COMMAND+=" --security-opt=seccomp:unconfined"; \
+		fi \
+		&& DOCKER_RUN_COMMAND+=" $$DOCKER_SWARMKIT_DOCKER_RUN_FLAGS ${IMAGE_NAME} $$DOCKER_SWARMKIT_DOCKER_RUN_CMD" \
 		&& echo $$DOCKER_RUN_COMMAND \
-		&& $$DOCKER_RUN_COMMAND
+		&& eval $$DOCKER_RUN_COMMAND
