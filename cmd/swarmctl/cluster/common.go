@@ -1,9 +1,8 @@
 package cluster
 
 import (
+	"context"
 	"fmt"
-
-	"golang.org/x/net/context"
 
 	"github.com/docker/swarmkit/api"
 )

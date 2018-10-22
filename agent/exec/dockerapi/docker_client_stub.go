@@ -1,16 +1,17 @@
 package dockerapi
 
 import (
+	"context"
+	"io"
+	"runtime"
+	"strings"
+	"time"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"golang.org/x/net/context"
-	"io"
-	"runtime"
-	"strings"
-	"time"
 )
 
 // StubAPIClient implements the client.APIClient interface, but allows

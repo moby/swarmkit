@@ -1,11 +1,12 @@
 package orchestrator
 
 import (
-	google_protobuf "github.com/gogo/protobuf/types"
-	"github.com/stretchr/testify/assert"
 	"sort"
 	"strconv"
 	"testing"
+
+	google_protobuf "github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/docker/swarmkit/api"
 )

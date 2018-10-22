@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/docker/swarmkit/log"
 	"github.com/rcrowley/go-metrics"
-	"golang.org/x/net/context"
 )
 
 // Collector waits for tasks to phone home while collecting statistics.
@@ -23,10 +23,7 @@ type Collector struct {
 func (c *Collector) Listen(port int) error {
 	var err error
 	c.ln, err = net.Listen("tcp", ":"+strconv.Itoa(port))
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // Collect blocks until `count` tasks phoned home.

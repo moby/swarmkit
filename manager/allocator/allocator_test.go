@@ -1,13 +1,12 @@
 package allocator
 
 import (
+	"context"
 	"net"
 	"runtime/debug"
 	"strconv"
 	"testing"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
@@ -1412,6 +1411,126 @@ func TestNodeAllocator(t *testing.T) {
 	})
 
 	isValidNode(t, node1, node1FromStore, []string{"ingress", "overlayID1"})
+}
+
+// TestNodeAttachmentOnLeadershipChange tests that a Node which is only partly
+// allocated during a leadership change is correctly allocated afterward
+func TestNodeAttachmentOnLeadershipChange(t *testing.T) {
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	a, err := New(s, nil, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, a)
+
+	net1 := &api.Network{
+		ID: "ingress",
+		Spec: api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "ingress",
+			},
+			Ingress: true,
+		},
+	}
+
+	net2 := &api.Network{
+		ID: "net2",
+		Spec: api.NetworkSpec{
+			Annotations: api.Annotations{
+				Name: "net2",
+			},
+		},
+	}
+
+	node1 := &api.Node{
+		ID: "node1",
+	}
+
+	task1 := &api.Task{
+		ID:           "task1",
+		NodeID:       node1.ID,
+		DesiredState: api.TaskStateRunning,
+		Spec:         api.TaskSpec{},
+	}
+
+	// this task is not yet assigned. we will assign it to node1 after running
+	// the allocator a 2nd time. we should create it now so that its network
+	// attachments are allocated.
+	task2 := &api.Task{
+		ID:           "task2",
+		DesiredState: api.TaskStateRunning,
+		Spec: api.TaskSpec{
+			Networks: []*api.NetworkAttachmentConfig{
+				{
+					Target: "net2",
+				},
+			},
+		},
+	}
+
+	// before starting the allocator, populate with these
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		require.NoError(t, store.CreateNetwork(tx, net1))
+		require.NoError(t, store.CreateNetwork(tx, net2))
+		require.NoError(t, store.CreateNode(tx, node1))
+		require.NoError(t, store.CreateTask(tx, task1))
+		require.NoError(t, store.CreateTask(tx, task2))
+		return nil
+	}))
+
+	// now start the allocator, let it allocate all of these objects, and then
+	// stop it. it's easier to do this than to manually assign all of the
+	// values
+
+	nodeWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateNode{}, api.EventDeleteNode{})
+	defer cancel()
+	netWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
+	defer cancel()
+	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
+	defer cancel()
+
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	go func() {
+		assert.NoError(t, a.Run(ctx))
+	}()
+
+	// validate that everything gets allocated
+	watchNetwork(t, netWatch, false, isValidNetwork)
+	watchNetwork(t, netWatch, false, isValidNetwork)
+	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress"})
+	watchTask(t, s, taskWatch, false, isValidTask)
+
+	// once everything is created, go ahead and stop the allocator
+	a.Stop()
+	ctxCancel()
+
+	// now update task2 to assign it to node1
+	s.Update(func(tx store.Tx) error {
+		task := store.GetTask(tx, task2.ID)
+		require.NotNil(t, task)
+		// make sure it has 1 network attachment
+		assert.Len(t, task.Networks, 1)
+		task.NodeID = node1.ID
+		require.NoError(t, store.UpdateTask(tx, task))
+		return nil
+	})
+
+	// and now we'll start a new allocator.
+	a2, err := New(s, nil, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, a2)
+
+	ctx2, cancel2 := context.WithCancel(context.Background())
+	go func() {
+		assert.NoError(t, a2.Run(ctx2))
+	}()
+	defer a2.Stop()
+	defer cancel2()
+
+	// now we should see the node get allocated
+	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress"})
+	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress", "net2"})
 }
 
 func isValidNode(t assert.TestingT, originalNode, updatedNode *api.Node, networks []string) bool {

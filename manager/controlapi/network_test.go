@@ -1,10 +1,10 @@
 package controlapi
 
 import (
+	"context"
 	"testing"
 
 	"github.com/docker/swarmkit/testutils"
-	"golang.org/x/net/context"
 
 	"google.golang.org/grpc/codes"
 

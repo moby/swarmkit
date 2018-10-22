@@ -1,8 +1,9 @@
 package integration
 
 import (
+	"context"
+
 	"github.com/docker/swarmkit/api"
-	"golang.org/x/net/context"
 )
 
 type dummyAPI struct {

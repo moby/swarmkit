@@ -1,6 +1,7 @@
 package dockerapi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,7 +17,6 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	"golang.org/x/time/rate"
 )
 
@@ -144,15 +144,13 @@ func (c *containerAdapter) removeNetworks(ctx context.Context) error {
 }
 
 func (c *containerAdapter) create(ctx context.Context) error {
-	if _, err := c.client.ContainerCreate(ctx,
+	_, err := c.client.ContainerCreate(ctx,
 		c.container.config(),
 		c.container.hostConfig(),
 		c.container.networkingConfig(),
-		c.container.name()); err != nil {
-		return err
-	}
+		c.container.name())
 
-	return nil
+	return err
 }
 
 func (c *containerAdapter) start(ctx context.Context) error {

@@ -2,6 +2,7 @@ package node
 
 import (
 	"bytes"
+	"context"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -25,7 +26,6 @@ import (
 	"github.com/docker/swarmkit/testutils"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 )
 
 func getLoggingContext(t *testing.T) context.Context {

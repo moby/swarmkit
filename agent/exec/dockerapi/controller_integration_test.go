@@ -1,6 +1,7 @@
 package dockerapi
 
 import (
+	"context"
 	"flag"
 	"testing"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/genericresource"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 )
 
 var (
