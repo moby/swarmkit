@@ -420,13 +420,16 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 	t.Parallel()
 
 	const (
-		secretDriver        = "secret-driver"
-		existingSecretName  = "existing-secret"
-		serviceName         = "service-name"
-		serviceHostname     = "service-hostname"
-		serviceEndpointMode = 2
+		secretDriver                 = "secret-driver"
+		existingSecretName           = "existing-secret"
+		doNotReuseExistingSecretName = "do-not-reuse-existing-secret"
+		errSecretName                = "err-secret"
+		serviceName                  = "service-name"
+		serviceHostname              = "service-hostname"
+		serviceEndpointMode          = 2
 	)
 	secretValue := []byte("custom-secret-value")
+	doNotReuseSecretValue := []byte("custom-do-not-reuse-secret-value")
 	serviceLabels := map[string]string{
 		"label-name": "label-value",
 	}
@@ -434,7 +437,9 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 	portConfig := drivers.PortConfig{Name: "port", PublishMode: 5, TargetPort: 80, Protocol: 10, PublishedPort: 8080}
 
 	responses := map[string]*drivers.SecretsProviderResponse{
-		existingSecretName: {Value: secretValue},
+		existingSecretName:           {Value: secretValue},
+		doNotReuseExistingSecretName: {Value: doNotReuseSecretValue, DoNotReuse: true},
+		errSecretName:                {Err: "Error from driver"},
 	}
 
 	mux := http.NewServeMux()
@@ -471,13 +476,27 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 			Driver:      &api.Driver{Name: secretDriver},
 		},
 	}
+	doNotReuseSecret := &api.Secret{
+		ID: "driverDoNotReuseSecret",
+		Spec: api.SecretSpec{
+			Annotations: api.Annotations{Name: doNotReuseExistingSecretName},
+			Driver:      &api.Driver{Name: secretDriver},
+		},
+	}
+	errSecret := &api.Secret{
+		ID: "driverErrSecret",
+		Spec: api.SecretSpec{
+			Annotations: api.Annotations{Name: errSecretName},
+			Driver:      &api.Driver{Name: secretDriver},
+		},
+	}
 	config := &api.Config{
 		ID: "config",
 		Spec: api.ConfigSpec{
 			Data: []byte("config"),
 		},
 	}
-	spec := taskSpecFromDependencies(secret, config)
+	spec := taskSpecFromDependencies(secret, doNotReuseSecret, errSecret, config)
 	spec.GetContainer().Hostname = serviceHostname
 	task := &api.Task{
 		NodeID:       nodeID,
@@ -507,6 +526,8 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 
 	err = gd.Store.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateSecret(tx, secret))
+		assert.NoError(t, store.CreateSecret(tx, doNotReuseSecret))
+		assert.NoError(t, store.CreateSecret(tx, errSecret))
 		assert.NoError(t, store.CreateConfig(tx, config))
 		assert.NoError(t, store.CreateTask(tx, task))
 		return nil
@@ -521,9 +542,17 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, _, secretChanges := splitChanges(resp.Changes)
-	assert.Len(t, secretChanges, 1)
+	assert.Len(t, secretChanges, 2)
 	for _, s := range secretChanges {
-		assert.Equal(t, secretValue, s.Spec.Data)
+		if s.ID == "driverSecret" {
+			assert.Equal(t, secretValue, s.Spec.Data)
+		} else if s.ID == "driverDoNotReuseSecret" {
+			assert.Fail(t, "Secret with DoNotReuse==true should not retain its original ID in the assignment", "%s != %s", "driverDoNotReuseSecret", s.ID)
+		} else {
+			taskSpecificID := fmt.Sprintf("%s.%s", "driverDoNotReuseSecret", task.ID)
+			assert.Equal(t, taskSpecificID, s.ID)
+			assert.Equal(t, doNotReuseSecretValue, s.Spec.Data)
+		}
 	}
 }
 
