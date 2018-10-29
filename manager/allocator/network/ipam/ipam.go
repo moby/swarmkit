@@ -167,7 +167,7 @@ func (a *allocator) Restore(networks []*api.Network, endpoints []*api.Endpoint, 
 				if err != nil {
 					return errors.ErrBadState(
 						"error requesting already assigned gateway address %v: %v",
-						err,
+						config.Gateway, err,
 					)
 				}
 				// NOTE(dperny): this check was originally here:

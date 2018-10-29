@@ -30,11 +30,17 @@ type Allocator interface {
 	DeallocateService(*api.Service) error
 
 	AllocateTask(*api.Task) error
+	AddTaskNode(*api.Task)
 	DeallocateTask(*api.Task) error
 
-	AllocateNode(*api.Node, map[string]struct{}) error
+	AllocateNode(*api.Node) error
 	DeallocateNode(*api.Node) error
 }
+
+// these new types aren't used for any compile-time type-checking. they're just
+// to make the map key and value representations more apparent.
+type taskSet map[string]struct{}
+type networkSet map[string]taskSet
 
 type allocator struct {
 	// in order to figure out if the dependencies of a task are fulfilled, we
@@ -51,6 +57,19 @@ type allocator struct {
 	// This is roughly analogous to the networks map in the IPAM allocator but
 	// with a different set of networks
 	nodeLocalNetworks map[string]*api.Network
+
+	// we need to be able to determine what networks a node should have
+	// attachments for. a node should have an attachment for every network in
+	// use by at least 1 task.
+
+	// nodeNetworks maps a nodeID to a set of networkIDs, which is used for
+	// determining if a node needs attachments allocated or deallocated
+	//
+	// this is, at its core, a nested map. it is important to note the code
+	// assumes that if the key exists, then the value is non-nil. if this isn't
+	// the case, and one of the sub-maps is nil, the program will attempt to
+	// add an entry to a nil map and crash.
+	nodeNetworks map[string]networkSet
 
 	// also attachments don't need to be kept track of, because nothing depends
 	// on them.
@@ -75,6 +94,7 @@ func newAllocatorWithComponents(ipamAlloc ipam.Allocator, driverAlloc driver.All
 		ipam:              ipamAlloc,
 		driver:            driverAlloc,
 		port:              portAlloc,
+		nodeNetworks:      map[string]networkSet{},
 	}
 }
 
@@ -109,6 +129,7 @@ func NewAllocator(pg plugingetter.PluginGetter) Allocator {
 		port:              port.NewAllocator(),
 		ipam:              ipam.NewAllocator(reg),
 		driver:            driver.NewAllocator(reg),
+		nodeNetworks:      map[string]networkSet{},
 	}
 }
 
@@ -215,6 +236,7 @@ func (a *allocator) Restore(networks []*api.Network, services []*api.Service, ta
 				attachments = append(attachments, attachment)
 			}
 		}
+		a.addToNodeNetworkSet(task)
 	}
 
 	for _, node := range nodes {
@@ -229,6 +251,19 @@ func (a *allocator) Restore(networks []*api.Network, services []*api.Service, ta
 		// TODO(dperny): remove code that handles the singular node attachment
 		if node.Attachment != nil {
 			attachments = append(attachments, node.Attachment)
+		}
+
+		// make sure that every node has an entry in the nodeNetworks set. if
+		// not, add one
+		if _, ok := a.nodeNetworks[node.ID]; !ok {
+			a.nodeNetworks[node.ID] = networkSet{}
+		}
+		// additionally, every node should have an empty taskSet for the
+		// ingress networ, if an ingress network exists, because every node
+		// needs to be allocated on the ingress network. having an empty
+		// taskSet simplifies allocation code later on
+		if a.ingressID != "" {
+			a.nodeNetworks[node.ID][a.ingressID] = taskSet{}
 		}
 	}
 
@@ -597,42 +632,79 @@ func (a *allocator) AllocateTask(task *api.Task) (rerr error) {
 	}
 
 	task.Networks = append(finalAttachments, localAttachments...)
+	// before we return, if this task has a node assigned already (for example,
+	// if it is a global task) then we should add it to the nodeNetworks set so
+	// that next time we reallocate its node, that node has network attachments
+	// for the task
+	if task.NodeID != "" {
+		a.addToNodeNetworkSet(task)
+	}
+
 	return nil
+}
+
+// AddTaskNode informs the allocator that a task has been scheduled on a node.
+// It should be called whenever a task that has already been allocated receives
+// a node assignment. AddTaskNode is idempotent, and call be called multiple
+// times on the same task, unless the task has already been removed.
+//
+// There is no corresponding RemoveTaskNode method, because that operation is
+// performed as part of DeallocateTask
+func (a *allocator) AddTaskNode(task *api.Task) {
+	if task.NodeID != "" {
+		a.addToNodeNetworkSet(task)
+	}
 }
 
 // DeallocateTask takes a task and frees its network resources.
 func (a *allocator) DeallocateTask(task *api.Task) error {
+	// in addition to deallocaing the network attachments, we should remove
+	// the task's entries in the nodeNetworks.
+	a.removeFromNodeNetworkSet(task)
 	return a.deallocateAttachments(task.Networks)
 }
 
-// AllocateNode allocates the network attachments for a node. The second
-// argument, a set of networks, is used to indicate which networks the node
-// needs to be attached to. This is necessary because the node's attachments
-// are informed by its task allocations, which is a list not available in this
-// context.
+// AllocateNode allocates a node with the correct set of networks required,
+// based on which tasks have been allocated. Despite its name, AllocateNode may
+// also deallocate attachments no longer needed.
 //
-// If this method returns nil, then the node has been fully allocated, and
-// should be committed. Otherwise, the node will not be altered.
-func (a *allocator) AllocateNode(node *api.Node, requestedNetworks map[string]struct{}) (rerr error) {
+// If the node has been successfully allocated and should be committed, then
+// this method returns nil. If the node is correctly allocated already and
+// nothing new has been added, it returns errors.ErrAlreadyAllocated.
+// Otherwise, it returns an error indicating what went wrong with allocation.
+func (a *allocator) AllocateNode(node *api.Node) (rerr error) {
 	// TODO(dperny): After the initial version, we should remove the code
 	// supporting the singular "attachment" field, and require all upgrades
 	// past this version to pass through this version in order to reallocate
 	// out of that field.
-	networks := map[string]struct{}{}
 
-	// copy the networks map so we can safely mutate it
-	for nw := range requestedNetworks {
-		networks[nw] = struct{}{}
+	// get the networkSet for the node.
+	nodeNets := a.nodeNetworks[node.ID]
+
+	// if there is no networkSet for the node, we need to create one
+	if nodeNets == nil {
+		nodeNets = networkSet{}
+		a.nodeNetworks[node.ID] = nodeNets
 	}
 
 	// the node always needs a network attachment to the ingress network. if it
-	// exists, add the ingress network to the list of requested networks now.
-	// it may already be in the requested networks, but we if it is, then
-	// nothing has been altered.
+	// exists, add the ingress network to the set of required networks now. it
+	// may already be in that list, but it may have been removed when removing
+	// tasks
 	if a.ingressID != "" {
-		// if for some reason, the caller has already added the ingress network
-		// to the networks list, this will do nothing, which isn't a problem.
-		networks[a.ingressID] = struct{}{}
+		// we only need to add an empty taskSet if no taskSet for the ingress
+		// network exists. otherwise, we might cover up tasks that are attached
+		// to the ingress network
+		if _, ok := nodeNets[a.ingressID]; !ok {
+			nodeNets[a.ingressID] = taskSet{}
+		}
+	}
+
+	networks := map[string]struct{}{}
+	// now, copy all the networkIDs from the node's networkSet, so we can
+	// figure out what needs to be newly allocated
+	for netID := range nodeNets {
+		networks[netID] = struct{}{}
 	}
 
 	// first, figure out which networks we keep and which we throw away from
@@ -735,6 +807,10 @@ func (a *allocator) DeallocateNode(node *api.Node) error {
 	if err := a.deallocateAttachments(node.Attachments); err != nil {
 		finalErr = err
 	}
+
+	// before returning, remove the node's entry in the nodeNetworks set
+	delete(a.nodeNetworks, node.ID)
+
 	return finalErr
 }
 
@@ -853,4 +929,88 @@ func (a *allocator) isServiceFullyAllocated(service *api.Service) bool {
 		return false
 	}
 	return true
+}
+
+// addToNodeNetworkSet adds a task's networks to a node's network set. it is a
+// helper method just to avoid making the AllocateTask method even bigger
+func (a *allocator) addToNodeNetworkSet(task *api.Task) {
+	// double or triple check that this task has an actual nodeID, not just
+	// emptyString. emptyString is a valid map key, and adding entries to it
+	// will break everything.
+	if task.NodeID == "" {
+		return
+	}
+
+	// if the task is assigned to a node, we need to add the task's
+	// networks to the node's set
+	// get the node's networkSet, if it yet exists
+	nodeNets, ok := a.nodeNetworks[task.NodeID]
+	if !ok {
+		// if there isn't yet a networkSet for this node, create
+		// one now.
+		nodeNets = networkSet{}
+		a.nodeNetworks[task.NodeID] = nodeNets
+	}
+
+	for _, attachment := range task.Networks {
+		if attachment.Network == nil {
+			continue
+		}
+		// if the network is node-local, it does not need to have an attachment
+		// allocated on the node, so we don't track it.
+		if _, ok := a.nodeLocalNetworks[attachment.Network.ID]; ok {
+			continue
+		}
+
+		// now, check if this node has a taskSet for this network.
+		netTasks, ok := nodeNets[attachment.Network.ID]
+		// if not, create one now
+		if !ok {
+			netTasks = taskSet{}
+			nodeNets[attachment.Network.ID] = netTasks
+		}
+		// and, finally, add this task to the network's taskSet
+		netTasks[task.ID] = struct{}{}
+	}
+}
+
+// removeFromNodeNetworkSet removes the task's networks from the node's network
+// set, and cleans up any now-empty network sets. this should work even if it
+// has already been called on this task; that is, it should be idempotent.
+func (a *allocator) removeFromNodeNetworkSet(task *api.Task) {
+	// like in addTo, we cannot ever do anything if a NodeID is emptystring
+	if task.NodeID == "" {
+		return
+	}
+
+	nodeNets, ok := a.nodeNetworks[task.NodeID]
+	// if for some reason, there is not networkSet for this node, we can just
+	// return, as there is nothing to do
+	if !ok {
+		return
+	}
+
+	for _, attachment := range task.Networks {
+		// handle the rare error case where an attachment's Network is nil.
+		// this should never occur, but bugs were hit in the old allocator
+		// where it did, and dereferencing a nil pointer thus causing a crash
+		// is a _very_ undesirable outcome
+		if attachment.Network == nil {
+			continue
+		}
+		netTasks, ok := nodeNets[attachment.Network.ID]
+		// if there is no taskSet for this network, then there is nothing to do
+		if !ok {
+			return
+		}
+		delete(netTasks, task.ID)
+
+		// if there are no more tasks in this taskSet, delete the network from
+		// the networkSet.
+		if len(netTasks) == 0 {
+			delete(nodeNets, attachment.Network.ID)
+		}
+		// we do not need to delete the node and its networkSet from the
+		// top-level a.nodeNetworks object.
+	}
 }
