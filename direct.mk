@@ -1,3 +1,7 @@
+PROTOC_VERSION := 3.6.1
+# TODO(kolyshkin): support other arches
+PROTOC_URL := https://github.com/google/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip
+
 .DEFAULT_GOAL = all
 .PHONY: all
 all: check binaries test integration-tests ## run check, build the binaries and run the tests
@@ -13,14 +17,21 @@ AUTHORS: .mailmap .git/HEAD
 version/version.go:
 	./version/version.sh > $@
 
-.PHONY: setup
-setup: ## install dependencies
+.PHONY: ci-prep
+ci-prep: install-protoc ## install additional software required for CI/testing
 	@echo "🐳 $@"
 	# TODO(stevvooe): Install these from the vendor directory
 	@go get -u github.com/alecthomas/gometalinter
 	@gometalinter --install
 	@go get -u github.com/lk4d4/vndr
 	@go get -u github.com/stevvooe/protobuild
+
+.PHONY: install-protoc
+install-protoc: ## install protoc
+	@echo "🐳 $@"
+	@curl --silent --show-error --location --output protoc.zip ${PROTOC_URL}
+	@unzip -q -d /usr/local protoc.zip include/\* bin/\*
+	@rm -f protoc.zip
 
 .PHONY: generate
 generate: protos
