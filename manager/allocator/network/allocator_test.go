@@ -441,7 +441,7 @@ var _ = Describe("network.Allocator", func() {
 			// Before we start, do a restore of all of these pre-populated
 			// items.
 
-			// NOTE(dperny): this doens't actually do a whole bunch for us,
+			// NOTE(dperny): this doesn't actually do a whole bunch for us,
 			// because the only state persisted in this version of the
 			// Allocator is that of allocated services, but this future-proofs
 			// the test at basically no cost.
@@ -1250,7 +1250,7 @@ var _ = Describe("network.Allocator", func() {
 			})
 		})
 
-		Describe("tasks", func() {
+		FDescribe("tasks", func() {
 			var (
 				ingress, localnet, nw1, nw2 *api.Network
 			)
@@ -1429,6 +1429,29 @@ var _ = Describe("network.Allocator", func() {
 					It("should populate the task's endpoint with the service's endpoint", func() {
 						Expect(task.Endpoint).To(Equal(service.Endpoint))
 					})
+
+					Context("when the task has a node assignment", func() {
+						BeforeEach(func() {
+							task.NodeID = "somenode"
+						})
+
+						It("should add that task's networks to the nodeNetworks set", func() {
+							Expect(a.nodeNetworks).To(HaveLen(1))
+							Expect(a.nodeNetworks).To(HaveKeyWithValue(
+								"somenode", networkSet{
+									nw1.ID: taskSet{
+										task.ID: struct{}{},
+									},
+									nw2.ID: taskSet{
+										task.ID: struct{}{},
+									},
+									ingress.ID: taskSet{
+										task.ID: struct{}{},
+									},
+								},
+							))
+						})
+					})
 				})
 			})
 
@@ -1512,9 +1535,9 @@ var _ = Describe("network.Allocator", func() {
 			})
 		})
 
-		Describe("nodes", func() {
+		FDescribe("nodes", func() {
 			var (
-				ingress, nw1, nw2 *api.Network
+				ingress, nw1, nw2, nw3 *api.Network
 			)
 
 			BeforeEach(func() {
@@ -1531,29 +1554,67 @@ var _ = Describe("network.Allocator", func() {
 				nw2 = &api.Network{
 					ID: "allocNodesNw2",
 				}
+				nw3 = &api.Network{
+					ID: "allocNodesNw3",
+				}
 
-				initNetworks = append(initNetworks, ingress, nw1, nw2)
+				initNetworks = append(initNetworks, ingress, nw1, nw2, nw3)
 			})
 
 			Describe("allocating", func() {
 				var (
-					node     *api.Node
-					networks map[string]struct{}
-					err      error
+					node         *api.Node
+					err          error
+					task1, task2 *api.Task
 				)
 				BeforeEach(func() {
-					networks = map[string]struct{}{
-						"allocNodesIngress": {},
-						"allocNodesNw1":     {},
-						"allocNodesNw2":     {},
+					node = &api.Node{
+						ID: "node1",
 					}
 
-					node = &api.Node{}
+					task1 = &api.Task{
+						ID:     "task1",
+						NodeID: "node1",
+						Spec: api.TaskSpec{
+							Networks: []*api.NetworkAttachmentConfig{
+								{
+									Target: nw1.ID,
+								},
+							},
+						},
+						Networks: []*api.NetworkAttachment{
+							{
+								Network: nw1,
+							},
+						},
+					}
+
+					task2 = &api.Task{
+						ID:     "task2",
+						NodeID: "node1",
+						Spec: api.TaskSpec{
+							Networks: []*api.NetworkAttachmentConfig{
+								{
+									Target: nw2.ID,
+								},
+							},
+						},
+						Networks: []*api.NetworkAttachment{
+							{
+								Network: nw2,
+							},
+						},
+					}
+					initTasks = append(initTasks, task1, task2)
+
+					// Note that nw3 is not in use by any task, and so should
+					// not be added to a node.
 				})
 
 				JustBeforeEach(func() {
-					err = a.AllocateNode(node, networks)
+					err = a.AllocateNode(node)
 				})
+
 				Context("when a new node is successfully allocated", func() {
 					BeforeEach(func() {
 						mockIpam.EXPECT().AllocateAttachment(
@@ -1617,6 +1678,7 @@ var _ = Describe("network.Allocator", func() {
 						Expect(err).To(WithTransform(errors.IsErrAlreadyAllocated, BeTrue()))
 					})
 				})
+
 				Context("when the node has a deprecated singular network attachment", func() {
 					BeforeEach(func() {
 						node.Attachment = &api.NetworkAttachment{
@@ -1654,13 +1716,14 @@ var _ = Describe("network.Allocator", func() {
 
 				})
 
+				// TODO(dperny): convert to work with task-based allocation
 				Context("when the node only has a deprecated singular network attachment", func() {
 					// this test covers the specific case of just reallocating
-					// the ingres network and not adding more networks
+					// the ingress network and not adding more networks
 					BeforeEach(func() {
+						task1.NodeID = "nonode"
+						task2.NodeID = "nonode"
 						// leave just the ingress network
-						delete(networks, nw1.ID)
-						delete(networks, nw2.ID)
 						node.Attachment = &api.NetworkAttachment{
 							Network: ingress,
 						}
@@ -1718,6 +1781,8 @@ var _ = Describe("network.Allocator", func() {
 
 				Context("when a network is removed from an existing node", func() {
 					BeforeEach(func() {
+						task2.NodeID = "notanode"
+
 						node.Attachments = []*api.NetworkAttachment{
 							{
 								Network:              nw1,
@@ -1731,7 +1796,6 @@ var _ = Describe("network.Allocator", func() {
 								Network: nw2,
 							},
 						}
-						delete(networks, nw2.ID)
 
 						mockIpam.EXPECT().DeallocateAttachment(
 							&api.NetworkAttachment{Network: nw2},
@@ -1753,6 +1817,7 @@ var _ = Describe("network.Allocator", func() {
 						))
 					})
 				})
+
 				Context("when a node includes networks that aren't allocated", func() {
 					BeforeEach(func() {
 						node.Attachments = []*api.NetworkAttachment{
@@ -1770,8 +1835,9 @@ var _ = Describe("network.Allocator", func() {
 								},
 							},
 						}
+
 						// don't include nw2 in our allocation
-						delete(networks, nw2.ID)
+						task2.NodeID = "notanode"
 
 						mockIpam.EXPECT().DeallocateAttachment(
 							node.Attachments[2],
