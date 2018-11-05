@@ -2510,6 +2510,13 @@ file {
         }
         json_name: "mode"
       }
+      field {
+        name: "options"
+        number: 3
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "options"
+      }
     }
     enum_type {
       name: "Type"

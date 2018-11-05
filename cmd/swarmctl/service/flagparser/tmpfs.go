@@ -97,6 +97,10 @@ func parseTmpfs(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 						m.ReadOnly = true
 					case flag == "rw":
 						m.ReadOnly = false
+					case flag == "exec":
+						opts.Options = "exec"
+					case flag == "noexec":
+						opts.Options = "noexec"
 					default:
 						return errors.New("unsupported flag")
 					}
