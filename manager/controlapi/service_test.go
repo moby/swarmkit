@@ -615,6 +615,14 @@ func TestCreateService(t *testing.T) {
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
+
+	spec = createSpec("notunique", "image", 1)
+	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	assert.NoError(t, err)
+
+	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
+	assert.Error(t, err)
+	assert.Equal(t, codes.AlreadyExists, testutils.ErrorCode(err))
 }
 
 func TestSecretValidation(t *testing.T) {
@@ -869,6 +877,16 @@ func TestUpdateService(t *testing.T) {
 		ServiceVersion: version,
 	})
 	assert.Error(t, err)
+
+	// Attempt to update service name; renaming is not implemented
+	r.Service.Spec.Annotations.Name = "newname"
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
+		ServiceID:      service.ID,
+		Spec:           &r.Service.Spec,
+		ServiceVersion: version,
+	})
+	assert.Error(t, err)
+	assert.Equal(t, codes.Unimplemented, testutils.ErrorCode(err))
 
 	// test port conflicts
 	spec2 := createSpec("name2", "image", 1)
