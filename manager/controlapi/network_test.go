@@ -191,9 +191,28 @@ func TestRemoveNetworkWithAttachedService(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEqual(t, nr.Network, nil)
 	assert.NotEqual(t, nr.Network.ID, "")
-	createServiceInNetwork(t, ts, "name", "image", nr.Network.ID, 1)
+	createServiceInNetwork(t, ts, "service1", "image", nr.Network.ID, 1)
 	_, err = ts.Client.RemoveNetwork(context.Background(), &api.RemoveNetworkRequest{NetworkID: nr.Network.ID})
 	assert.Error(t, err)
+}
+
+func TestRemoveNetworkWithAttachedServiceMarkedForRemoval(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+	nr, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
+		Spec: createNetworkSpec("testnet5"),
+	})
+	assert.NoError(t, err)
+	assert.NotEqual(t, nr.Network, nil)
+	assert.NotEqual(t, nr.Network.ID, "")
+	service := createServiceInNetwork(t, ts, "service2", "image", nr.Network.ID, 1)
+	// then let's delete the service
+	r, err := ts.Client.RemoveService(context.Background(), &api.RemoveServiceRequest{ServiceID: service.ID})
+	assert.NoError(t, err)
+	assert.NotNil(t, r)
+	// now we should be able to delete the network
+	_, err = ts.Client.RemoveNetwork(context.Background(), &api.RemoveNetworkRequest{NetworkID: nr.Network.ID})
+	assert.NoError(t, err)
 }
 
 func TestCreateNetworkInvalidDriver(t *testing.T) {

@@ -916,6 +916,19 @@ func TestUpdateService(t *testing.T) {
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 }
 
+func TestUpdateServiceMarkedForRemoval(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+
+	service := createService(t, ts, "name", "image", 1)
+	r, err := ts.Client.RemoveService(context.Background(), &api.RemoveServiceRequest{ServiceID: service.ID})
+	assert.NoError(t, err)
+	assert.NotNil(t, r)
+
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: &service.Spec, ServiceVersion: &service.Meta.Version})
+	assert.Equal(t, codes.FailedPrecondition, testutils.ErrorCode(err))
+}
+
 func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()

@@ -557,9 +557,11 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
 
-	// Delete the service. This should trigger both the task desired statuses to be set to REMOVE.
+	// Mark the service for deletion. This should trigger both the task desired
+	// statuses to be set to REMOVE.
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteService(tx, service1.ID))
+		service1.PendingDelete = true
+		assert.NoError(t, store.UpdateService(tx, service1))
 		return nil
 	})
 
@@ -720,13 +722,14 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	assert.Equal(t, api.TaskStateCompleted, observedTask4.Status.State)
 	assert.Equal(t, "original", observedTask4.ServiceAnnotations.Name)
 
-	// Delete the service.
+	// Mark the service for deletion.
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteService(tx, service1.ID))
+		service1.PendingDelete = true
+		assert.NoError(t, store.UpdateService(tx, service1))
 		return nil
 	})
 
-	// Service delete should trigger both the task desired statuses
+	// That should trigger both the task desired statuses
 	// to be set to REMOVE.
 	observedTask3 = testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, api.TaskStateRemove, observedTask3.DesiredState)
