@@ -94,6 +94,9 @@ type NetworkConfig struct {
 	// SubnetSize specifies the subnet size of the networks created from
 	// the default subnet pool
 	SubnetSize uint32
+
+	// VxlanUDPPort specifies VxLAN UDP port number for VxLAN traffic
+	VxlanUDPPort uint32
 }
 
 // New returns a new NetworkAllocator handle

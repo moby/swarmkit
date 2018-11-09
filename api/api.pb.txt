@@ -5760,6 +5760,13 @@ file {
       type_name: ".docker.swarmkit.v1.NetworkAttachment"
       json_name: "attachments"
     }
+    field {
+      name: "vxlanUDPPort"
+      number: 11
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT32
+      json_name: "vxlanUDPPort"
+    }
     options {
       70001 {
         1 {
@@ -6283,6 +6290,13 @@ file {
       label: LABEL_OPTIONAL
       type: TYPE_UINT32
       json_name: "subnetSize"
+    }
+    field {
+      name: "vxlanUDPPort"
+      number: 13
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT32
+      json_name: "vxlanUDPPort"
     }
     nested_type {
       name: "BlacklistedCertificatesEntry"

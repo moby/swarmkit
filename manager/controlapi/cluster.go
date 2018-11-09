@@ -21,6 +21,8 @@ const (
 	expiredCertGrace = 24 * time.Hour * 7
 	// inbuilt default subnet size
 	inbuiltSubnetSize = 24
+	// VxLan default port
+	defaultVxlanPort = 4789
 )
 
 var (
@@ -274,12 +276,16 @@ func redactClusters(clusters []*api.Cluster) []*api.Cluster {
 			BlacklistedCertificates: cluster.BlacklistedCertificates,
 			DefaultAddressPool:      cluster.DefaultAddressPool,
 			SubnetSize:              cluster.SubnetSize,
+			VxlanUDPPort:            cluster.VxlanUDPPort,
 		}
 		if newCluster.DefaultAddressPool == nil {
 			// This is just for CLI display. Set the inbuilt default pool for
 			// user reference.
 			newCluster.DefaultAddressPool = inbuiltDefaultAddressPool
 			newCluster.SubnetSize = inbuiltSubnetSize
+		}
+		if newCluster.VxlanUDPPort == 0 {
+			newCluster.VxlanUDPPort = defaultVxlanPort
 		}
 		redactedClusters = append(redactedClusters, newCluster)
 	}
