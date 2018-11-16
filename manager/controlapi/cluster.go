@@ -22,7 +22,7 @@ const (
 	// inbuilt default subnet size
 	inbuiltSubnetSize = 24
 	// VxLan default port
-	defaultVxlanPort = 4789
+	defaultVXLANPort = 4789
 )
 
 var (
@@ -285,7 +285,7 @@ func redactClusters(clusters []*api.Cluster) []*api.Cluster {
 			newCluster.SubnetSize = inbuiltSubnetSize
 		}
 		if newCluster.VxlanUDPPort == 0 {
-			newCluster.VxlanUDPPort = defaultVxlanPort
+			newCluster.VxlanUDPPort = defaultVXLANPort
 		}
 		redactedClusters = append(redactedClusters, newCluster)
 	}

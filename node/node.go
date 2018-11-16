@@ -271,9 +271,9 @@ func (n *Node) currentRole() api.NodeRole {
 	return currentRole
 }
 
-// configVxlanUDPPort sets vxlan port in libnetwork
-func configVxlanUDPPort(ctx context.Context, vxlanUDPPort uint32) {
-	if err := overlayutils.ConfigVxlanUDPPort(vxlanUDPPort); err != nil {
+// configVXLANUDPPort sets vxlan port in libnetwork
+func configVXLANUDPPort(ctx context.Context, vxlanUDPPort uint32) {
+	if err := overlayutils.ConfigVXLANUDPPort(vxlanUDPPort); err != nil {
 		log.G(ctx).WithError(err).Error("Configuring VxLAN port failed")
 	}
 	logrus.Infof(" Swarm successfully initialized VxLAN UDP Port to %d ", vxlanUDPPort)
@@ -370,7 +370,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 				if nodeChanges.Node != nil {
 					if nodeChanges.Node.VxlanUDPPort != 0 {
 						n.vxlanUDPPort = nodeChanges.Node.VxlanUDPPort
-						configVxlanUDPPort(ctx, n.vxlanUDPPort)
+						configVXLANUDPPort(ctx, n.vxlanUDPPort)
 					}
 					// This is a bit complex to be backward compatible with older CAs that
 					// don't support the Node.Role field. They only use what's presently

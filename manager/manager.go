@@ -953,8 +953,8 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 				clusterObj.SubnetSize = m.config.NetworkConfig.SubnetSize
 			}
 
-			if m.config.NetworkConfig.VxlanUDPPort != 0 {
-				clusterObj.VxlanUDPPort = m.config.NetworkConfig.VxlanUDPPort
+			if m.config.NetworkConfig.VXLANUDPPort != 0 {
+				clusterObj.VxlanUDPPort = m.config.NetworkConfig.VXLANUDPPort
 			}
 		}
 		err := store.CreateCluster(tx, clusterObj)
@@ -998,13 +998,13 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	m.roleManager = newRoleManager(s, m.raftNode)
 
 	// TODO(stevvooe): Allocate a context that can be used to
-	// shutdown underlying manager processes when leadership is
+	// shutdown underlying manager processes when leadership isTestUpdaterRollback
 	// lost.
 
 	// If DefaultAddrPool is null, Read from store and check if
 	// DefaultAddrPool info is stored in cluster object
 	// If VxlanUDPPort is 0, read it from the store - cluster object
-	if m.config.NetworkConfig == nil || m.config.NetworkConfig.DefaultAddrPool == nil || m.config.NetworkConfig.VxlanUDPPort == 0 {
+	if m.config.NetworkConfig == nil || m.config.NetworkConfig.DefaultAddrPool == nil || m.config.NetworkConfig.VXLANUDPPort == 0 {
 		var cluster *api.Cluster
 		s.View(func(tx store.ReadTx) {
 			cluster = store.GetCluster(tx, clusterID)
@@ -1014,7 +1014,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 			m.config.NetworkConfig.SubnetSize = cluster.SubnetSize
 		}
 		if cluster.VxlanUDPPort != 0 {
-			m.config.NetworkConfig.VxlanUDPPort = cluster.VxlanUDPPort
+			m.config.NetworkConfig.VXLANUDPPort = cluster.VxlanUDPPort
 		}
 	}
 
