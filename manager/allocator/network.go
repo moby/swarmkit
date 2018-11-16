@@ -77,13 +77,13 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 			netConfig = &cnmallocator.NetworkConfig{
 				DefaultAddrPool: a.networkConfig.DefaultAddrPool,
 				SubnetSize:      a.networkConfig.SubnetSize,
-				VxlanUDPPort:    a.networkConfig.VxlanUDPPort,
+				VXLANUDPPort:    a.networkConfig.VXLANUDPPort,
 			}
-		} else if a.networkConfig.VxlanUDPPort != 0 {
+		} else if a.networkConfig.VXLANUDPPort != 0 {
 			netConfig = &cnmallocator.NetworkConfig{
 				DefaultAddrPool: nil,
 				SubnetSize:      0,
-				VxlanUDPPort:    a.networkConfig.VxlanUDPPort,
+				VXLANUDPPort:    a.networkConfig.VXLANUDPPort,
 			}
 		}
 	}
