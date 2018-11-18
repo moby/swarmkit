@@ -274,9 +274,9 @@ func (n *Node) currentRole() api.NodeRole {
 // configVXLANUDPPort sets vxlan port in libnetwork
 func configVXLANUDPPort(ctx context.Context, vxlanUDPPort uint32) {
 	if err := overlayutils.ConfigVXLANUDPPort(vxlanUDPPort); err != nil {
-		log.G(ctx).WithError(err).Error("Configuring VxLAN port failed")
+		log.G(ctx).WithError(err).Error("Configuring VXLAN port failed")
 	}
-	logrus.Infof(" Swarm successfully initialized VxLAN UDP Port to %d ", vxlanUDPPort)
+	logrus.Infof(" Swarm successfully initialized VXLAN UDP Port to %d ", vxlanUDPPort)
 }
 
 func (n *Node) run(ctx context.Context) (err error) {
@@ -368,8 +368,8 @@ func (n *Node) run(ctx context.Context) (err error) {
 				return
 			case nodeChanges := <-n.notifyNodeChange:
 				if nodeChanges.Node != nil {
-					if nodeChanges.Node.VxlanUDPPort != 0 {
-						n.vxlanUDPPort = nodeChanges.Node.VxlanUDPPort
+					if nodeChanges.Node.VXLANUDPPort != 0 {
+						n.vxlanUDPPort = nodeChanges.Node.VXLANUDPPort
 						configVXLANUDPPort(ctx, n.vxlanUDPPort)
 					}
 					// This is a bit complex to be backward compatible with older CAs that

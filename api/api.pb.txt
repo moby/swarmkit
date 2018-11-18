@@ -5761,11 +5761,11 @@ file {
       json_name: "attachments"
     }
     field {
-      name: "vxlanUDPPort"
+      name: "VXLANUDPPort"
       number: 11
       label: LABEL_OPTIONAL
       type: TYPE_UINT32
-      json_name: "vxlanUDPPort"
+      json_name: "VXLANUDPPort"
     }
     options {
       70001 {
@@ -6292,11 +6292,11 @@ file {
       json_name: "subnetSize"
     }
     field {
-      name: "vxlanUDPPort"
+      name: "VXLANUDPPort"
       number: 13
       label: LABEL_OPTIONAL
       type: TYPE_UINT32
-      json_name: "vxlanUDPPort"
+      json_name: "VXLANUDPPort"
     }
     nested_type {
       name: "BlacklistedCertificatesEntry"

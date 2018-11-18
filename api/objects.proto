@@ -82,9 +82,9 @@ message Node {
 	// network, including ingress network, will have an NetworkAttachment.
 	repeated NetworkAttachment attachments = 10;
 
-	// vxlanUDPPort This flag specifies the vxlan udp port for vxlan traffic.
+	// VXLANUDPPort specifies the UDP port for VXLAN traffic.
 	// This information is passed from cluster object to individual nodes.
-	uint32 vxlanUDPPort = 11;
+	uint32 VXLANUDPPort = 11;
 }
 
 message Service {
@@ -380,8 +380,8 @@ message Cluster {
 	// the length of the subnet masks for every such network
 	uint32 subnetSize = 12;
 
-	// vxlanUDPPort specifies the vxlan udp port for vxlan traffic.
-	uint32 vxlanUDPPort = 13;
+	// VXLANUDPPort specifies the UDP port for VXLAN traffic.
+	uint32 VXLANUDPPort = 13;
 }
 
 // Secret represents a secret that should be passed to a container or a node,
