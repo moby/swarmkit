@@ -95,7 +95,7 @@ type NetworkConfig struct {
 	// the default subnet pool
 	SubnetSize uint32
 
-	// VXLANUDPPort specifies VxLAN UDP port number for VxLAN traffic
+	// VXLANUDPPort specifies the UDP port number for VXLAN traffic
 	VXLANUDPPort uint32
 }
 

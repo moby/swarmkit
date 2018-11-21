@@ -946,7 +946,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 			0)
 
 		// If defaultAddrPool is valid we update cluster object with new value
-		// If VxlanUDPPort is not 0 then we call update cluster object with new value
+		// If VXLANUDPPort is not 0 then we call update cluster object with new value
 		if m.config.NetworkConfig != nil {
 			if m.config.NetworkConfig.DefaultAddrPool != nil {
 				clusterObj.DefaultAddressPool = m.config.NetworkConfig.DefaultAddrPool
@@ -954,7 +954,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 			}
 
 			if m.config.NetworkConfig.VXLANUDPPort != 0 {
-				clusterObj.VxlanUDPPort = m.config.NetworkConfig.VXLANUDPPort
+				clusterObj.VXLANUDPPort = m.config.NetworkConfig.VXLANUDPPort
 			}
 		}
 		err := store.CreateCluster(tx, clusterObj)
@@ -965,7 +965,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 
 		// Add Node entry for ourself, if one
 		// doesn't exist already.
-		freshCluster := nil == store.CreateNode(tx, managerNode(nodeID, m.config.Availability, clusterObj.VxlanUDPPort))
+		freshCluster := nil == store.CreateNode(tx, managerNode(nodeID, m.config.Availability, clusterObj.VXLANUDPPort))
 
 		if freshCluster {
 			// This is a fresh swarm cluster. Add to store now any initial
@@ -1003,7 +1003,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 
 	// If DefaultAddrPool is null, Read from store and check if
 	// DefaultAddrPool info is stored in cluster object
-	// If VxlanUDPPort is 0, read it from the store - cluster object
+	// If VXLANUDPPort is 0, read it from the store - cluster object
 	if m.config.NetworkConfig == nil || m.config.NetworkConfig.DefaultAddrPool == nil || m.config.NetworkConfig.VXLANUDPPort == 0 {
 		var cluster *api.Cluster
 		s.View(func(tx store.ReadTx) {
@@ -1013,8 +1013,8 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 			m.config.NetworkConfig.DefaultAddrPool = append(m.config.NetworkConfig.DefaultAddrPool, cluster.DefaultAddressPool...)
 			m.config.NetworkConfig.SubnetSize = cluster.SubnetSize
 		}
-		if cluster.VxlanUDPPort != 0 {
-			m.config.NetworkConfig.VXLANUDPPort = cluster.VxlanUDPPort
+		if cluster.VXLANUDPPort != 0 {
+			m.config.NetworkConfig.VXLANUDPPort = cluster.VXLANUDPPort
 		}
 	}
 
@@ -1178,7 +1178,7 @@ func defaultClusterObject(
 		FIPS:               fips,
 		DefaultAddressPool: defaultAddressPool,
 		SubnetSize:         subnetSize,
-		VxlanUDPPort:       vxlanUDPPort,
+		VXLANUDPPort:       vxlanUDPPort,
 	}
 }
 
@@ -1198,7 +1198,7 @@ func managerNode(nodeID string, availability api.NodeSpec_Availability, vxlanPor
 			Membership:   api.NodeMembershipAccepted,
 			Availability: availability,
 		},
-		VxlanUDPPort: vxlanPort,
+		VXLANUDPPort: vxlanPort,
 	}
 }
 
