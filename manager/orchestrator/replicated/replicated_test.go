@@ -68,25 +68,26 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
 
 	// Create a second service.
-	err = s.Update(func(tx store.Tx) error {
-		s2 := &api.Service{
-			ID: "id2",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
-					Name: "name2",
-				},
-				Task: api.TaskSpec{
-					Runtime: &api.TaskSpec_Container{
-						Container: &api.ContainerSpec{},
-					},
-				},
-				Mode: &api.ServiceSpec_Replicated{
-					Replicated: &api.ReplicatedService{
-						Replicas: 1,
-					},
+	s2SpecMode := &api.ServiceSpec_Replicated{
+		Replicated: &api.ReplicatedService{
+			Replicas: 1,
+		},
+	}
+	s2 := &api.Service{
+		ID: "id2",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "name2",
+			},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
 				},
 			},
-		}
+			Mode: s2SpecMode,
+		},
+	}
+	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateService(tx, s2))
 		return nil
 	})
@@ -98,24 +99,7 @@ func TestReplicatedOrchestrator(t *testing.T) {
 
 	// Update a service to scale it out to 3 instances
 	err = s.Update(func(tx store.Tx) error {
-		s2 := &api.Service{
-			ID: "id2",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
-					Name: "name2",
-				},
-				Task: api.TaskSpec{
-					Runtime: &api.TaskSpec_Container{
-						Container: &api.ContainerSpec{},
-					},
-				},
-				Mode: &api.ServiceSpec_Replicated{
-					Replicated: &api.ReplicatedService{
-						Replicas: 3,
-					},
-				},
-			},
-		}
+		s2SpecMode.Replicated.Replicas = 3
 		assert.NoError(t, store.UpdateService(tx, s2))
 		return nil
 	})
@@ -131,24 +115,7 @@ func TestReplicatedOrchestrator(t *testing.T) {
 
 	// Now scale it back down to 1 instance
 	err = s.Update(func(tx store.Tx) error {
-		s2 := &api.Service{
-			ID: "id2",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
-					Name: "name2",
-				},
-				Task: api.TaskSpec{
-					Runtime: &api.TaskSpec_Container{
-						Container: &api.ContainerSpec{},
-					},
-				},
-				Mode: &api.ServiceSpec_Replicated{
-					Replicated: &api.ReplicatedService{
-						Replicas: 1,
-					},
-				},
-			},
-		}
+		s2SpecMode.Replicated.Replicas = 1
 		assert.NoError(t, store.UpdateService(tx, s2))
 		return nil
 	})
@@ -188,9 +155,10 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	assert.Equal(t, observedTask6.Status.State, api.TaskStateNew)
 	assert.Equal(t, observedTask6.ServiceAnnotations.Name, "name2")
 
-	// Delete the service. Its remaining task should go away.
+	// Mark the service for deletion. Its remaining task should go away.
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteService(tx, "id2"))
+		s2.PendingDelete = true
+		assert.NoError(t, store.UpdateService(tx, s2))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -929,4 +897,68 @@ func TestInitializationDelayStart(t *testing.T) {
 	if after.Sub(before) < 100*time.Millisecond {
 		t.Fatalf("restart delay should have elapsed. Got: %v", after.Sub(before))
 	}
+}
+
+func TestInitializationRemovesTasksForServicesMarkedForRemoval(t *testing.T) {
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	service := &api.Service{
+		ID: "serviceid",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "name",
+			},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+			},
+			Mode: &api.ServiceSpec_Replicated{
+				Replicated: &api.ReplicatedService{
+					Replicas: 2,
+				},
+			},
+		},
+		PendingDelete: true,
+	}
+
+	task := &api.Task{
+		ID:           "task",
+		Slot:         1,
+		DesiredState: api.TaskStateRunning,
+		Status: api.TaskStatus{
+			State: api.TaskStateNew,
+		},
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{},
+			},
+		},
+		ServiceAnnotations: api.Annotations{
+			Name: "task1",
+		},
+		ServiceID: service.ID,
+	}
+
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateService(tx, service))
+		assert.NoError(t, store.CreateTask(tx, task))
+		return nil
+	}))
+
+	// watch orchestration events
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
+	defer cancel()
+
+	orchestrator := NewReplicatedOrchestrator(s)
+	defer orchestrator.Stop()
+
+	go func() {
+		assert.NoError(t, orchestrator.Run(context.Background()))
+	}()
+
+	observedTask := testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, api.TaskStateRemove, observedTask.DesiredState)
 }

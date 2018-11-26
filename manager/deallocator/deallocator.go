@@ -2,6 +2,7 @@ package deallocator
 
 import (
 	"context"
+	"sync"
 
 	"github.com/docker/go-events"
 	"github.com/docker/swarmkit/api"
@@ -31,6 +32,9 @@ import (
 // https://github.com/docker/swarmkit/compare/a84c01f49091167dd086c26b45dc18b38d52e4d9...wk8:wk8/generic_deallocator#diff-75f4f75eee6a6a7a7268c672203ea0ac
 type Deallocator struct {
 	store *store.MemoryStore
+
+	// closeOnce ensures that stopChan is closed only once
+	closeOnce sync.Once
 
 	// for services that are shutting down, we keep track of how many
 	// tasks still exist for them
@@ -94,6 +98,7 @@ func (deallocator *Deallocator) Run(ctx context.Context) error {
 
 			return
 		},
+		api.EventUpdateTask{},
 		api.EventDeleteTask{},
 		api.EventUpdateService{},
 		api.EventUpdateNetwork{})
@@ -129,7 +134,7 @@ func (deallocator *Deallocator) Run(ctx context.Context) error {
 	for {
 		select {
 		case event := <-eventsChan:
-			if updated, err := deallocator.processNewEvent(ctx, event); err == nil {
+			if updated, err := deallocator.handleEvent(ctx, event); err == nil {
 				deallocator.notifyEventChan(updated)
 			} else {
 				log.G(ctx).WithError(err).Errorf("error processing deallocator event %#v", event)
@@ -142,11 +147,16 @@ func (deallocator *Deallocator) Run(ctx context.Context) error {
 	}
 }
 
-// Stop stops the deallocator's routine
-// FIXME (jrouge): see the comment on TaskReaper.Stop() and see when to properly stop this
-// plus unit test on this!
+// Stop stops the deallocator's routine and wait for the main loop to exit
+// Stop can be called in two cases. One when the manager is
+// shutting down, and the other when the manager (the leader) is
+// becoming a follower. Since these two instances could race with
+// each other, we use closeOnce here to ensure that TaskReaper.Stop()
+// is called only once to avoid a panic.
 func (deallocator *Deallocator) Stop() {
-	close(deallocator.stopChan)
+	deallocator.closeOnce.Do(func() {
+		close(deallocator.stopChan)
+	})
 	<-deallocator.doneChan
 }
 
@@ -180,11 +190,21 @@ func (deallocator *Deallocator) processService(ctx context.Context, service *api
 		// better to clean up resources that shouldn't be cleaned up yet
 		// than ending up with a service and some resources lost in limbo forever
 		return true, deallocator.deallocateService(ctx, service)
-	} else if len(tasks) == 0 {
+	}
+
+	remainingTasks := 0
+	for _, task := range tasks {
+		if isTaskStillAlive(task) {
+			remainingTasks++
+		}
+	}
+
+	if remainingTasks == 0 {
 		// no tasks remaining for this service, we can clean it up
 		return true, deallocator.deallocateService(ctx, service)
 	}
-	deallocator.services[service.ID] = &serviceWithTaskCounts{service: service, taskCount: len(tasks)}
+
+	deallocator.services[service.ID] = &serviceWithTaskCounts{service: service, taskCount: remainingTasks}
 	return false, nil
 }
 
@@ -263,24 +283,16 @@ func (deallocator *Deallocator) processNetwork(ctx context.Context, tx store.Tx,
 	return
 }
 
-// Processes new events, and dispatches to the right method depending on what
+// Handles new events, and dispatches to the right method depending on what
 // type of event it is.
 // The boolean part of the return tuple indicates whether anything was actually
 // removed from the store
-func (deallocator *Deallocator) processNewEvent(ctx context.Context, event events.Event) (bool, error) {
+func (deallocator *Deallocator) handleEvent(ctx context.Context, event events.Event) (bool, error) {
 	switch typedEvent := event.(type) {
+	case api.EventUpdateTask:
+		return deallocator.processTaskEvent(ctx, typedEvent.Task, typedEvent.OldTask)
 	case api.EventDeleteTask:
-		serviceID := typedEvent.Task.ServiceID
-
-		if serviceWithCount, present := deallocator.services[serviceID]; present {
-			if serviceWithCount.taskCount <= 1 {
-				delete(deallocator.services, serviceID)
-				return deallocator.processService(ctx, serviceWithCount.service)
-			}
-			serviceWithCount.taskCount--
-		}
-
-		return false, nil
+		return deallocator.processTaskEvent(ctx, nil, typedEvent.Task)
 	case api.EventUpdateService:
 		return deallocator.processService(ctx, typedEvent.Service)
 	case api.EventUpdateNetwork:
@@ -288,4 +300,33 @@ func (deallocator *Deallocator) processNewEvent(ctx context.Context, event event
 	default:
 		return false, nil
 	}
+}
+
+// Common logic for handling task update/delete events
+// oldTask is the task object as it was before its update or deletion
+// newTask is nil for delete events, and the new object for updates
+func (deallocator *Deallocator) processTaskEvent(ctx context.Context, newTask, oldTask *api.Task) (bool, error) {
+	serviceID := oldTask.ServiceID
+	serviceWithCount, present := deallocator.services[serviceID]
+
+	if present && isTaskStillAlive(oldTask) && (newTask == nil || !isTaskStillAlive(newTask)) {
+		// this task belongs to a service that's shutting down, and in addition,
+		// prior to  its update or deletion it was still alive, but now it's
+		// not alive any more, so we decrement the counter of alive tasks for
+		// this service
+
+		if serviceWithCount.taskCount <= 1 {
+			delete(deallocator.services, serviceID)
+			return deallocator.processService(ctx, serviceWithCount.service)
+		}
+		serviceWithCount.taskCount--
+	}
+
+	return false, nil
+}
+
+// simple helper function to distinguish tasks that are still running
+// from ones that are done
+func isTaskStillAlive(task *api.Task) bool {
+	return task.Status.State <= api.TaskStateRunning
 }
