@@ -95,6 +95,16 @@ func DeleteDeviceClass(tx Tx, id string) error {
 	return tx.delete(tableDeviceClass, id)
 }
 
+// GetDeviceClass looks up a DeviceClass by ID.
+// Returns nil if the DeviceClass doesn't exist
+func GetDeviceClass(tx ReadTx, id string) *api.DeviceClass {
+	dc := tx.get(tableDeviceClass, id)
+	if dc == nil {
+		return nil
+	}
+	return dc.(*api.DeviceClass)
+}
+
 // FindDeviceClasses selects a set of DeviceClasses and returns them
 // Returns ErrInvalidFindBy if the By isn't a supported index for DeviceClass
 func FindDeviceClasses(tx ReadTx, by By) ([]*api.DeviceClass, error) {

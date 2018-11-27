@@ -4108,11 +4108,11 @@ file {
       json_name: "deviceClassId"
     }
     field {
-      name: "path_on_host"
+      name: "path"
       number: 2
       label: LABEL_OPTIONAL
       type: TYPE_STRING
-      json_name: "pathOnHost"
+      json_name: "path"
     }
   }
   message_type {
@@ -4705,6 +4705,14 @@ file {
       }
       json_name: "resourceReferences"
     }
+    field {
+      name: "devices"
+      number: 12
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.DeviceAttachmentSpec"
+      json_name: "devices"
+    }
     oneof_decl {
       name: "runtime"
     }
@@ -4748,11 +4756,11 @@ file {
   message_type {
     name: "DeviceAttachmentSpec"
     field {
-      name: "device_class"
+      name: "device_class_id"
       number: 1
       label: LABEL_OPTIONAL
       type: TYPE_STRING
-      json_name: "deviceClass"
+      json_name: "deviceClassId"
     }
     field {
       name: "path"
@@ -8384,6 +8392,16 @@ file {
       name: "CreateDeviceClass"
       input_type: ".docker.swarmkit.v1.CreateDeviceClassRequest"
       output_type: ".docker.swarmkit.v1.CreateDeviceClassResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "UpdateDeviceClass"
+      input_type: ".docker.swarmkit.v1.UpdateDeviceClassRequest"
+      output_type: ".docker.swarmkit.v1.UpdateDeviceClassResponse"
       options {
         73626345 {
           1: "swarm-manager"

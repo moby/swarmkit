@@ -142,6 +142,9 @@ message TaskSpec {
 	//
 	// ResourceReferences is a list of ResourceReferences used by the task.
 	repeated ResourceReference resource_references = 11 [(gogoproto.nullable) = false];
+
+	// Devices indicates the devices requested for this task.
+	repeated DeviceAttachmentSpec devices = 12;
 }
 
 message ResourceReference {
@@ -156,9 +159,9 @@ message GenericRuntimeSpec {
 
 // DeviceAttachmentSpec represents the spec for a device attachment
 message DeviceAttachmentSpec {
-	// DeviceClass is the ID or name of the device class that is to be used for
-	// this spec. The actual device may be any device of this class on any node.
-	string device_class = 1;
+	// DeviceClass is the ID the device class that is to be used for this spec.
+	// The actual device may be any device of this class on any node.
+	string device_class_id = 1;
 
 	// Path represents the path in the task's filesystem that this device should
 	// be mounted at.
@@ -176,7 +179,6 @@ message NetworkAttachmentSpec {
 	// this attachment is for.
 	string container_id = 1;
 }
-
 
 // Container specifies runtime parameters for a container.
 message ContainerSpec {
@@ -505,7 +507,7 @@ message DeviceClassSpec {
 	// whether it should be uniquely mapped to a particular task. Shared devices
 	// may have any number of tasks assigned to them.
 	//
-	// Note that Shared has strong security risks; shared devices may be used by
-	// tasks to communicate with one another.
+	// Note that Shared has strong security implications; for example, shared
+	// devices may be used by tasks to communicate with one another.
 	bool shared = 3;
 }

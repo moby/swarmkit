@@ -170,7 +170,7 @@ service Control {
 	// - Returns `InvalidArgument` if the `GetDeviceClassRequest.DeviceClassID` is empty.
 	// - Returns an error if getting fails.
 	rpc GetDeviceClass(GetDeviceClassRequest) returns (GetDeviceClassResponse) {
-	 	option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	}
 
 	// ListDeviceClasses returns a `ListDeviceClassesRequest` with a list of
@@ -181,15 +181,24 @@ service Control {
 	// `ListDeviceClassesRequest.IDPrefixes`.
 	// - Returns an error if listing fails.
 	rpc ListDeviceClasses(ListDeviceClassesRequest) returns (ListDeviceClassesResponse) {
-	 	option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	}
-	
+
 	// CreateDeviceClass creates and return a `CreateDeviceClassResponse` with a `DeviceClass` based
 	// on the provided `CreateDeviceClassRequest.DeviceClassSpec`.
 	// - Returns `InvalidArgument` if the `CreateDeviceClassRequest.DeviceClassSpec` is malformed,
 	//   or if the config data is too long or contains invalid characters.
 	// - Returns an error if the creation fails.
 	rpc CreateDeviceClass(CreateDeviceClassRequest) returns (CreateDeviceClassResponse) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	}
+
+	// UpdateDeviceClass returns a `UpdateDeviceClassResponse` with a
+	// `DeviceClass` with the same id as `UpdateDeviceClassRequest.DeviceClassID`
+	// - Returns `NotFound` if the DeviceClass with the given id is not found.
+	// - Returns `InvalidArgument` if the `UpdateDeviceClassRequest.DeviceClassID` is empty.
+	// - Returns an error if updating fails.
+	rpc UpdateDeviceClass(UpdateDeviceClassRequest) returns (UpdateDeviceClassResponse) {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	}
 

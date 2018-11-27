@@ -1109,3 +1109,137 @@ func TestRemoveNodeAttachments(t *testing.T) {
 		}
 	})
 }
+
+// TestValidateDevices tests that when updating a Node spec with new Devices,
+// the controlapi correctly validates the devices. This tests the private
+// validateDevices function
+func TestValidateDevices(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+
+	// alias context.Background() for ergonomics
+	ctx := context.Background()
+
+	// before we run this test, we need to have two DeviceClasses in the object
+	// store.
+	deviceClass1 := &api.DeviceClass{
+		ID: identity.NewID(),
+		Spec: api.DeviceClassSpec{
+			Annotations: api.Annotations{
+				Name: "deviceClass1",
+			},
+		},
+	}
+	deviceClass2 := &api.DeviceClass{
+		ID: identity.NewID(),
+		Spec: api.DeviceClassSpec{
+			Annotations: api.Annotations{
+				Name: "deviceClass2",
+			},
+		},
+	}
+	err := ts.Store.Update(func(tx store.Tx) error {
+		if err := store.CreateDeviceClass(tx, deviceClass1); err != nil {
+			return err
+		}
+		return store.CreateDeviceClass(tx, deviceClass2)
+	})
+	// use require, as if this operation fails, there's no point to the rest of
+	// the test.
+	require.NoError(t, err)
+	// additionally, we'll need a node to update.
+	node := createNode(
+		t, ts, identity.NewID(), api.NodeRoleManager,
+		api.NodeMembershipAccepted, api.NodeStatus_READY,
+	)
+
+	// base slice of valid devices. we'll add some throughout the test
+	validDevices := []*api.Device{
+		&api.Device{
+			DeviceClassID: deviceClass1.ID,
+			Path:          "/dev/foo",
+		},
+	}
+
+	// now, try updating the node by adding a valid device, which belongs to
+	// the specified DeviceClass
+	node.Spec.Devices = validDevices
+
+	resp, err := ts.Client.UpdateNode(ctx, &api.UpdateNodeRequest{
+		NodeID:      node.ID,
+		NodeVersion: &node.Meta.Version,
+		Spec:        &node.Spec,
+	})
+	assert.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.NotNil(t, resp.Node)
+
+	node = resp.Node
+
+	// Now, run through some successful update cases
+	for _, tc := range []struct {
+		name   string
+		device *api.Device
+	}{
+		{
+			"SameClassDifferentPath",
+			&api.Device{DeviceClassID: deviceClass1.ID, Path: "/dev/bar"},
+		},
+		{
+			"DifferentClassSamePath",
+			&api.Device{DeviceClassID: deviceClass2.ID, Path: "/dev/foo"},
+		},
+		{
+			"DifferentClassDifferentPath",
+			&api.Device{DeviceClassID: deviceClass2.ID, Path: "/dev/foo"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// do not t.Parallel() these cases!
+
+			node.Spec.Devices = append(validDevices, tc.device)
+
+			resp, err := ts.Client.UpdateNode(ctx, &api.UpdateNodeRequest{
+				NodeID:      node.ID,
+				NodeVersion: &node.Meta.Version,
+				Spec:        &node.Spec,
+			})
+			assert.NoError(t, err)
+			require.NotNil(t, resp)
+			assert.NotNil(t, resp.Node)
+
+			// update the `node` variable with the latest object, so we have the
+			// latest Version
+			node = resp.Node
+		})
+	}
+
+	// Now run through some failed update cases
+	for _, tc := range []struct {
+		name   string
+		device *api.Device
+	}{
+		{
+			"NonexistentClass",
+			&api.Device{DeviceClassID: "notreal", Path: "/dev/bar"},
+		},
+		{
+			"SameClassSamePath",
+			&api.Device{DeviceClassID: deviceClass1.ID, Path: "/dev/foo"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// do not t.Parallel() these cases!
+
+			node.Spec.Devices = append(validDevices, tc.device)
+
+			_, err := ts.Client.UpdateNode(ctx, &api.UpdateNodeRequest{
+				NodeID:      node.ID,
+				NodeVersion: &node.Meta.Version,
+				Spec:        &node.Spec,
+			})
+			assert.Error(t, err)
+			assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
+		})
+	}
+}
