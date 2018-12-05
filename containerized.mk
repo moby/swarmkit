@@ -52,6 +52,6 @@ run: ensure_image_exists
 			`# see https://github.com/derekparker/delve/issues/515#issuecomment-214911481'` ; \
 			DOCKER_RUN_COMMAND+=" --security-opt=seccomp:unconfined"; \
 		fi \
-		&& DOCKER_RUN_COMMAND+=" $$DOCKER_SWARMKIT_DOCKER_RUN_FLAGS ${IMAGE_NAME} $$DOCKER_SWARMKIT_DOCKER_RUN_CMD" \
+		&& DOCKER_RUN_COMMAND+=" $$DOCKER_SWARMKIT_DOCKER_RUN_FLAGS $$DOCKER_SWARMKIT_EXTRA_RUN_FLAGS ${IMAGE_NAME} $$DOCKER_SWARMKIT_DOCKER_RUN_CMD" \
 		&& echo $$DOCKER_RUN_COMMAND \
 		&& eval $$DOCKER_RUN_COMMAND
