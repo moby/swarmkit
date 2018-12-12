@@ -384,3 +384,58 @@ func (f *MaxReplicasFilter) Check(n *NodeInfo) bool {
 func (f *MaxReplicasFilter) Explain(nodes int) string {
 	return "max replicas per node limit exceed"
 }
+
+// DeviceFilter is a filter for choosing a device on a node
+type DeviceFilter struct {
+	task *api.Task
+}
+
+func (f *DeviceFilter) SetTask(t *api.Task) bool {
+	if t != nil && len(t.Spec.Devices) > 0 {
+		f.task = t
+		return true
+	}
+	return false
+}
+
+func (f *DeviceFilter) Check(n *NodeInfo) bool {
+	// pendingDeviceAssignments keeps track of which devices we'd be using to
+	// fulfill the task's requested devices. this is necessary to ensure that a
+	// if a task has multiple device requests that can be fulfilled by the same
+	// device, we still only use that device once.
+	//
+	// note that the devices here may not actually be the ones used when we
+	// finally schedule the task, if we schedule it to this node.
+	pendingDeviceAssignments := map[string]struct{}{}
+	for _, requestedDevice := range f.task.Spec.Devices {
+		if requestedDevice == nil {
+			// a nil device means the task spec is broken
+			return false
+		}
+		// iterate through every device in the nodeDeviceClasses
+		for dev := range n.nodeDeviceClasses[requestedDevice.DeviceClassID] {
+			// check if the device is in use by getting it from the nodeDevices
+			// set and seeing if it has an ID set
+			checkInUse := n.nodeDevices[dev]
+			// and, additionally, check if the device is already chosen for
+			// this task.
+			_, isAlreadyUsed := pendingDeviceAssignments[dev]
+			// if it's not in use by this task or any other, then add it to the
+			// pending assignments
+			if checkInUse == "" && !isAlreadyUsed {
+				pendingDeviceAssignments[dev] = struct{}{}
+				// break out of this loop, because we've chosen a device to
+				// fulfill this request
+				break
+			}
+		}
+	}
+	// when all is said and done, we should have a pendingDeviceAssignments
+	// that is equal to the number of device requests in the task spec. if not,
+	// that means there aren't enough devices available on this node
+	return len(pendingDeviceAssignments) == len(f.task.Spec.Devices)
+}
+
+func (f *DeviceFilter) Explain(nodes int) string {
+	return "no node available with a free device"
+}
