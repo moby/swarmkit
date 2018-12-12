@@ -43,7 +43,7 @@ run: ensure_image_exists
 	@ DOCKER_RUN_COMMAND="docker run -t -v swarmkit-cache:${GOPATH}" \
 		&& if [ "$$DOCKER_SWARMKIT_USE_DOCKER_SYNC" ]; then \
 			$(MAKE) ensure_sync_started && DOCKER_RUN_COMMAND+=" -v swarmkit-sync:${DOCKER_IMAGE_DIR}"; \
-		else \
+		elif [ ! "$$DOCKER_SWARMKIT_NOMOUNT" ] \
 			DOCKER_RUN_COMMAND+=" -v ${ROOTDIR}:${DOCKER_IMAGE_DIR}"; \
 		fi \
 		&& if [ "$$DOCKER_SWARMKIT_USE_DELVE" ]; then \
