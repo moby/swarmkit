@@ -1101,12 +1101,12 @@ message Device {
 	// Path is the path in the host's filesystem that this device should be
 	// mounted from.  For example, a block device may have this value as
 	// "/dev/sda".
-  //
-  // The PathOnHost is the primary identifier for a specific device. A device
-  // may belong to many DeviceClasses, but will only be in use by 1 Task at a
-  // time. Though a Path may belong to many DeviceClasses on the same node, it
-  // cannot be specified multiple times on the same node for the same
-  // DeviceClass.
+	//
+	// The PathOnHost is the primary identifier for a specific device. A device
+	// may belong to many DeviceClasses, but will only be in use by 1 Task at a
+	// time. Though a Path may belong to many DeviceClasses on the same node, it
+	// cannot be specified multiple times on the same node for the same
+	// DeviceClass.
 	string path = 2;
 }
 

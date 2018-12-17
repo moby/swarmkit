@@ -390,6 +390,7 @@ type DeviceFilter struct {
 	task *api.Task
 }
 
+// SetTask sets the task that this DeviceFilter will be checking for
 func (f *DeviceFilter) SetTask(t *api.Task) bool {
 	if t != nil && len(t.Spec.Devices) > 0 {
 		f.task = t
@@ -398,6 +399,7 @@ func (f *DeviceFilter) SetTask(t *api.Task) bool {
 	return false
 }
 
+// Check checks if the node has enough free devices to accommodate the task.
 func (f *DeviceFilter) Check(n *NodeInfo) bool {
 	// pendingDeviceAssignments keeps track of which devices we'd be using to
 	// fulfill the task's requested devices. this is necessary to ensure that a
@@ -436,6 +438,7 @@ func (f *DeviceFilter) Check(n *NodeInfo) bool {
 	return len(pendingDeviceAssignments) == len(f.task.Spec.Devices)
 }
 
+// Explain explains why the filter failed.
 func (f *DeviceFilter) Explain(nodes int) string {
 	return "no node available with a free device"
 }

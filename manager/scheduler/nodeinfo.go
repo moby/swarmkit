@@ -142,7 +142,16 @@ func (nodeInfo *NodeInfo) removeTask(t *api.Task) bool {
 }
 
 // addTask adds or updates a task on nodeInfo, and returns true if nodeInfo was
-// modified. the task may be modified.
+// modified. the task may be modified, and so should be written to the store
+// afterward.
+//
+// NOTE(dperny): Caveat programmator: addTask suffers from a design flaw,
+// shared with the scheduler, which has been a source of many problems in the
+// past: it functions as both initialization of the NodeInfo object, and
+// updating the NodeInfo object with new data. This means that before addTask
+// is called on new tasks, it must first be called and correctly execute for
+// every existing task. If this is done incorrectly, then the scheduler may
+// assign the same device to more than one task.
 func (nodeInfo *NodeInfo) addTask(t *api.Task) bool {
 	oldTask, ok := nodeInfo.Tasks[t.ID]
 	if ok {
