@@ -623,6 +623,10 @@ func TestCreateService(t *testing.T) {
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
 	assert.Error(t, err)
 	assert.Equal(t, codes.AlreadyExists, testutils.ErrorCode(err))
+
+	// Make sure the error contains "name conflicts with an existing object" for
+	// backward-compatibility with older clients doing string-matching...
+	assert.Contains(t, err.Error(), "name conflicts with an existing object")
 }
 
 func TestSecretValidation(t *testing.T) {
