@@ -403,7 +403,7 @@ func TestDesiredStateRemoveOnlyNonterminal(t *testing.T) {
 		api.TaskStateFailed,
 		api.TaskStateRejected,
 		api.TaskStateRemove,
-		// no TaskStateOrphaned becaused that's not a state the task can be in
+		// no TaskStateOrphaned because that's not a state the task can be in
 		// on the agent
 	} {
 		// capture state variable here to run in parallel
