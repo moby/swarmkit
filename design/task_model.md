@@ -142,7 +142,7 @@ by the user. When this happens, the agent proceeds to shut the task down.
 The task is removed from the store by the task reaper only after the shutdown succeeds.
 This ensures that resources associated with the task are not released before
 the task has shut down.
-Tasks that were removed becacuse of service removal or scale down
+Tasks that were removed because of service removal or scale down
 are not kept around in task history.
 
 The task state can never move backwards - it only increases monotonically.
