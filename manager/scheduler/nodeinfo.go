@@ -41,6 +41,18 @@ type NodeInfo struct {
 	// lastCleanup is the last time recentFailures was cleaned up. This is
 	// done periodically to avoid recentFailures growing without any limit.
 	lastCleanup time.Time
+
+	// nodeDevices is a map of all devices on the node to the tasks that are
+	// using those devices
+	nodeDevices map[string]string
+
+	// nodeDeviceClasses maps a DeviceClass ID to a set of Devices in that
+	// class. this lets the filter check which devices belong to a class;
+	// however, the filter will still need to check which devices are actually
+	// free, as a device can belong to more than one class
+	// this is a map of a map, instead of a map of a slice, to enforce a
+	// randomization of device selection during iteration
+	nodeDeviceClasses map[string]map[string]struct{}
 }
 
 func newNodeInfo(n *api.Node, tasks map[string]*api.Task, availableResources api.Resources) NodeInfo {
@@ -52,6 +64,23 @@ func newNodeInfo(n *api.Node, tasks map[string]*api.Task, availableResources api
 		usedHostPorts:             make(map[hostPortSpec]struct{}),
 		recentFailures:            make(map[versionedService][]time.Time),
 		lastCleanup:               time.Now(),
+		nodeDevices:               make(map[string]string),
+		nodeDeviceClasses:         make(map[string]map[string]struct{}),
+	}
+
+	// create the local nodeDevices tracking. we need to do this before we add
+	// tasks so that adding tasks proceeds correctly.
+	for _, dev := range n.Spec.Devices {
+		if dev != nil {
+			nodeInfo.nodeDevices[dev.Path] = ""
+		}
+		// check if the nodeDeviceClasses yet has a set for this deviceClass.
+		// if not, create one now
+		if _, ok := nodeInfo.nodeDeviceClasses[dev.DeviceClassID]; !ok {
+			nodeInfo.nodeDeviceClasses[dev.DeviceClassID] = map[string]struct{}{}
+		}
+		// then, add this device to the deviceClasses set
+		nodeInfo.nodeDeviceClasses[dev.DeviceClassID][dev.Path] = struct{}{}
 	}
 
 	for _, t := range tasks {
@@ -100,11 +129,29 @@ func (nodeInfo *NodeInfo) removeTask(t *api.Task) bool {
 	nodeRes := nodeInfo.Description.Resources.Generic
 	genericresource.Reclaim(nodeAvailableResources, taskAssigned, nodeRes)
 
+	// additionally, release the device attachments.
+	for dev, task := range nodeInfo.nodeDevices {
+		if task == t.ID {
+			// if a device is in use by this task, then set it to emptystring,
+			// because it's no longer in use
+			nodeInfo.nodeDevices[dev] = ""
+		}
+	}
+
 	return true
 }
 
 // addTask adds or updates a task on nodeInfo, and returns true if nodeInfo was
-// modified.
+// modified. the task may be modified, and so should be written to the store
+// afterward.
+//
+// NOTE(dperny): Caveat programmator: addTask suffers from a design flaw,
+// shared with the scheduler, which has been a source of many problems in the
+// past: it functions as both initialization of the NodeInfo object, and
+// updating the NodeInfo object with new data. This means that before addTask
+// is called on new tasks, it must first be called and correctly execute for
+// every existing task. If this is done incorrectly, then the scheduler may
+// assign the same device to more than one task.
 func (nodeInfo *NodeInfo) addTask(t *api.Task) bool {
 	oldTask, ok := nodeInfo.Tasks[t.ID]
 	if ok {
@@ -141,6 +188,54 @@ func (nodeInfo *NodeInfo) addTask(t *api.Task) bool {
 			if port.PublishMode == api.PublishModeHost && port.PublishedPort != 0 {
 				portSpec := hostPortSpec{protocol: port.Protocol, publishedPort: port.PublishedPort}
 				nodeInfo.usedHostPorts[portSpec] = struct{}{}
+			}
+		}
+	}
+
+	// check if the Task already has devices assigned. if so, just reassign
+	// those devices. we should only have entries in t.Devices if the task
+	// actually has devices assigned.
+	if len(t.Devices) > 0 {
+		// if this is the case, all we need to do is update the nodeDevices to
+		// reflect current device assignment
+		for _, device := range t.Devices {
+			nodeInfo.nodeDevices[device.PathOnHost] = t.ID
+		}
+	} else {
+		// claim all of the devices we're using. we already know that this node
+		// has enough free devices, because it's already passed all the
+		// filters.
+		for _, device := range t.Spec.Devices {
+			if device == nil {
+				// device should never be nil, but skip if it is so we don't
+				// segfault
+				continue
+			}
+			// now, get the set of all node devices in this class, and go
+			// through each of them
+			for dev := range nodeInfo.nodeDeviceClasses[device.DeviceClassID] {
+				// find the task that this device is in use by.
+				inUseBy := nodeInfo.nodeDevices[dev]
+				if inUseBy == "" {
+					// if this device isn't in use, then set it for this task.
+					nodeInfo.nodeDevices[dev] = t.ID
+
+					deviceAttachment := &api.DeviceAttachment{
+						DeviceClassID:     device.DeviceClassID,
+						DeviceCgroupRules: device.DeviceCgroupRules,
+						PathInTask:        device.Path,
+						PathOnHost:        dev,
+					}
+					// additionally, add the device assignments to the task.
+					// this is safe even if t.Devices is nil because append
+					// works on nil slices
+					t.Devices = append(t.Devices, deviceAttachment)
+					// finally, break out of this loop, because we've found a
+					// device for this task.
+					break
+				}
+				// otherwise, we'll be continuing to the next device on the
+				// node
 			}
 		}
 	}

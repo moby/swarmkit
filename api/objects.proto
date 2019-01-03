@@ -261,6 +261,10 @@ message Task {
 	Driver log_driver = 13;
 
 	repeated GenericResource assigned_generic_resources = 15;
+
+	// Devices represents the actual device attachment instructions for a
+	// particular task.
+	repeated DeviceAttachment devices = 16;
 }
 
 // NetworkAttachment specifies the network parameters of attachment to
@@ -431,6 +435,34 @@ message Config {
 	// Spec contains the actual config data, as well as any context around the
 	// config data that the user provides.
 	ConfigSpec spec = 3  [(gogoproto.nullable) = false];
+}
+
+// DeviceClass is a specification for a particular device, zero or more of
+// which may be available on the cluster. It refers to the general class of
+// devices that the user wishes to be assumed as interchangeably usable. For
+// example, a cluster may have many possible block devices on many nodes, but
+// any of them are valid. The specific implementation of a specific device on a
+// node is provided by the node. A particular device may only belong to one
+// device class.
+message DeviceClass {
+	option (docker.protobuf.plugin.store_object) = {
+		watch_selectors: {
+			id: true
+			id_prefix: true
+			name: true
+			name_prefix: true
+			custom: true
+			custom_prefix: true
+		}
+	};
+
+	string id = 1;
+
+	Meta meta = 2 [(gogoproto.nullable) = false];
+
+	// Spec contains the user defined spec of this device class, including the
+	// name of the device class and any configuration options the user has set.
+	DeviceClassSpec spec = 3 [(gogoproto.nullable) = false];
 }
 
 // Resource is a top-level object with externally defined content and indexing.

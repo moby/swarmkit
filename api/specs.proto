@@ -52,6 +52,9 @@ message NodeSpec {
 	// Availability allows a user to control the current scheduling status of a
 	// node.
 	Availability availability = 4;
+
+	// Devices defines the devices available on this node.
+	repeated Device devices = 5;
 }
 
 // ServiceSpec defines the properties of a service.
@@ -139,6 +142,9 @@ message TaskSpec {
 	//
 	// ResourceReferences is a list of ResourceReferences used by the task.
 	repeated ResourceReference resource_references = 11 [(gogoproto.nullable) = false];
+
+	// Devices indicates the devices requested for this task.
+	repeated DeviceAttachmentSpec devices = 12;
 }
 
 message ResourceReference {
@@ -151,6 +157,21 @@ message GenericRuntimeSpec {
 	google.protobuf.Any payload = 2;
 }
 
+// DeviceAttachmentSpec represents the spec for a device attachment
+message DeviceAttachmentSpec {
+	// DeviceClass is the ID the device class that is to be used for this spec.
+	// The actual device may be any device of this class on any node.
+	string device_class_id = 1;
+
+	// Path represents the path in the task's filesystem that this device should
+	// be mounted at.
+	string path = 2;
+
+	// DeviceCgroupRules represents the cgroup rules that should be applied to
+	// this device.
+	repeated string device_cgroup_rules = 16;
+}
+
 // NetworkAttachmentSpec specifies runtime parameters required to attach
 // a container to a network.
 message NetworkAttachmentSpec {
@@ -158,7 +179,6 @@ message NetworkAttachmentSpec {
 	// this attachment is for.
 	string container_id = 1;
 }
-
 
 // Container specifies runtime parameters for a container.
 message ContainerSpec {
@@ -476,4 +496,18 @@ message ConfigSpec {
 	// The currently recognized values are:
 	// - golang: Go templating
 	Driver templating = 3;
+}
+
+// DeviceClassSpec specifies information about a class of devices available for
+// use by services.
+message DeviceClassSpec {
+	Annotations annotations = 1 [(gogoproto.nullable) = false];
+
+	// Shared represents whether this device can be shared between many tasks, or
+	// whether it should be uniquely mapped to a particular task. Shared devices
+	// may have any number of tasks assigned to them.
+	//
+	// Note that Shared has strong security implications; for example, shared
+	// devices may be used by tasks to communicate with one another.
+	bool shared = 3;
 }

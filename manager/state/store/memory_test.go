@@ -299,6 +299,44 @@ var (
 		},
 	}
 
+	deviceClassSet = []*api.DeviceClass{
+		{
+			ID: "id1",
+			Spec: api.DeviceClassSpec{
+				Annotations: api.Annotations{
+					Name: "name1",
+				},
+			},
+		},
+		{
+			ID: "id2",
+			Spec: api.DeviceClassSpec{
+				Annotations: api.Annotations{
+					Name: "name2",
+				},
+			},
+		},
+		{
+			ID: "id3",
+			Spec: api.DeviceClassSpec{
+				Annotations: api.Annotations{
+					Name: "name3",
+				},
+			},
+		},
+	}
+
+	altDeviceClassSet = []*api.DeviceClass{
+		{
+			ID: "alt-id1",
+			Spec: api.DeviceClassSpec{
+				Annotations: api.Annotations{
+					Name: "alt-name1",
+				},
+			},
+		},
+	}
+
 	extensionSet = []*api.Extension{
 		{
 			ID: "id1",
@@ -365,12 +403,12 @@ var (
 func setupTestStore(t *testing.T, s *MemoryStore) {
 	populateTestStore(t, s,
 		clusterSet, nodeSet, serviceSet, taskSet, networkSet, configSet, secretSet,
-		extensionSet, resourceSet)
+		deviceClassSet, extensionSet, resourceSet)
 }
 
 func populateTestStore(t *testing.T, s *MemoryStore,
 	clusters []*api.Cluster, nodes []*api.Node, services []*api.Service, tasks []*api.Task, networks []*api.Network,
-	configs []*api.Config, secrets []*api.Secret, extensions []*api.Extension, resources []*api.Resource) {
+	configs []*api.Config, secrets []*api.Secret, deviceClasses []*api.DeviceClass, extensions []*api.Extension, resources []*api.Resource) {
 	err := s.Update(func(tx Tx) error {
 		// Prepoulate clusters
 		for _, c := range clusters {
@@ -401,6 +439,10 @@ func populateTestStore(t *testing.T, s *MemoryStore,
 		// Prepopulate secrets
 		for _, s := range secrets {
 			assert.NoError(t, CreateSecret(tx, s))
+		}
+		// Prepopulate device classes
+		for _, dc := range deviceClasses {
+			assert.NoError(t, CreateDeviceClass(tx, dc))
 		}
 		// Prepopulate extensions
 		for _, c := range extensions {
@@ -1411,6 +1453,8 @@ func TestStoreSaveRestore(t *testing.T) {
 	cf.Meta.Version = version
 	sk := secretSet[0].Copy()
 	sk.Meta.Version = version
+	dc := deviceClassSet[0].Copy()
+	dc.Meta.Version = version
 	ext := extensionSet[0].Copy()
 	ext.Meta.Version = version
 	r := resourceSet[0].Copy()
@@ -1423,6 +1467,7 @@ func TestStoreSaveRestore(t *testing.T) {
 		append(altNetworkSet, nw),
 		append(altConfigSet, cf),
 		append(altSecretSet, sk),
+		append(altDeviceClassSet, dc),
 		append(altExtensionSet, ext),
 		append(altResourceSet, r),
 	)
@@ -1487,6 +1532,13 @@ func TestStoreSaveRestore(t *testing.T) {
 			assert.Equal(t, allSecrets[i], secretSet[i])
 		}
 
+		allDeviceClasses, err := FindDeviceClasses(tx, All)
+		assert.NoError(t, err)
+		assert.Len(t, allDeviceClasses, len(deviceClassSet))
+		for i := range allDeviceClasses {
+			assert.Equal(t, allDeviceClasses[i], deviceClassSet[i])
+		}
+
 		allExtensions, err := FindExtensions(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allExtensions, len(extensionSet))
@@ -1514,6 +1566,7 @@ func TestStoreSaveRestore(t *testing.T) {
 		networkUpdates, networkCreates, networkDeletes,
 		configUpdates, configCreates, configDeletes,
 		secretUpdates, secretCreates, secretDeletes,
+		deviceClassUpdates, deviceClassCreates, deviceClassDeletes,
 		extensionUpdates, extensionCreates, extensionDeletes,
 		resourceUpdates, resourceCreates, resourceDeletes []api.StoreObject
 	)
@@ -1578,6 +1631,13 @@ waitForAllEvents:
 		case api.EventDeleteSecret:
 			secretDeletes = append(secretDeletes, e.Secret)
 
+		case api.EventUpdateDeviceClass:
+			deviceClassUpdates = append(deviceClassUpdates, e.DeviceClass)
+		case api.EventCreateDeviceClass:
+			deviceClassCreates = append(deviceClassCreates, e.DeviceClass)
+		case api.EventDeleteDeviceClass:
+			deviceClassDeletes = append(deviceClassDeletes, e.DeviceClass)
+
 		case api.EventUpdateExtension:
 			extensionUpdates = append(extensionUpdates, e.Extension)
 		case api.EventCreateExtension:
@@ -1602,6 +1662,7 @@ waitForAllEvents:
 			networkUpdates, networkDeletes,
 			configUpdates, configDeletes,
 			secretUpdates, secretDeletes,
+			deviceClassUpdates, deviceClassDeletes,
 			extensionUpdates, extensionDeletes,
 			resourceUpdates, resourceDeletes,
 		} {
@@ -1618,6 +1679,7 @@ waitForAllEvents:
 			networkCreates,
 			configCreates,
 			secretCreates,
+			deviceClassCreates,
 			extensionCreates,
 			resourceCreates,
 		} {
@@ -1695,6 +1757,14 @@ waitForAllEvents:
 		cantCastArrays[i] = x
 	}
 	assertHasSameIDs(secretCreates, cantCastArrays...)
+
+	assertHasSameIDs(deviceClassUpdates, deviceClassSet[0])
+	assertHasSameIDs(deviceClassDeletes, altDeviceClassSet[0])
+	cantCastArrays = make([]api.StoreObject, len(deviceClassSet[1:]))
+	for i, x := range deviceClassSet[1:] {
+		cantCastArrays[i] = x
+	}
+	assertHasSameIDs(deviceClassCreates, cantCastArrays...)
 
 	assertHasSameIDs(extensionUpdates, extensionSet[0])
 	assertHasSameIDs(extensionDeletes, altExtensionSet[0])

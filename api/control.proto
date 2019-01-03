@@ -161,6 +161,54 @@ service Control {
 	rpc RemoveConfig(RemoveConfigRequest) returns (RemoveConfigResponse) {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	}
+
+	// --- DeviceClass APIs ---
+
+	// GetDeviceClass returns a `GetDeviceClassResponse` with a `DeviceClass` with the same
+	// id as `GetDeviceClassRequest.DeviceClassID`
+	// - Returns `NotFound` if the DeviceClass with the given id is not found.
+	// - Returns `InvalidArgument` if the `GetDeviceClassRequest.DeviceClassID` is empty.
+	// - Returns an error if getting fails.
+	rpc GetDeviceClass(GetDeviceClassRequest) returns (GetDeviceClassResponse) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	}
+
+	// ListDeviceClasses returns a `ListDeviceClassesRequest` with a list of
+	// `DeviceClass`s being managed, or all device classes matching any name in
+	// `ListDeviceClassesRequest.Names`, any name prefix in
+	// `ListDeviceClassesRequest.NamePrefixes`, any id in
+	// `ListDeviceClassesRequest.DeviceClassIDs`, or any id prefix in
+	// `ListDeviceClassesRequest.IDPrefixes`.
+	// - Returns an error if listing fails.
+	rpc ListDeviceClasses(ListDeviceClassesRequest) returns (ListDeviceClassesResponse) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	}
+
+	// CreateDeviceClass creates and return a `CreateDeviceClassResponse` with a `DeviceClass` based
+	// on the provided `CreateDeviceClassRequest.DeviceClassSpec`.
+	// - Returns `InvalidArgument` if the `CreateDeviceClassRequest.DeviceClassSpec` is malformed,
+	//   or if the config data is too long or contains invalid characters.
+	// - Returns an error if the creation fails.
+	rpc CreateDeviceClass(CreateDeviceClassRequest) returns (CreateDeviceClassResponse) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	}
+
+	// UpdateDeviceClass returns a `UpdateDeviceClassResponse` with a
+	// `DeviceClass` with the same id as `UpdateDeviceClassRequest.DeviceClassID`
+	// - Returns `NotFound` if the DeviceClass with the given id is not found.
+	// - Returns `InvalidArgument` if the `UpdateDeviceClassRequest.DeviceClassID` is empty.
+	// - Returns an error if updating fails.
+	rpc UpdateDeviceClass(UpdateDeviceClassRequest) returns (UpdateDeviceClassResponse) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	}
+
+	// RemoveDeviceClass removes the config referenced by `RemoveDeviceClassRequest.ID`.
+	// - Returns `InvalidArgument` if `RemoveDeviceClassRequest.ID` is empty.
+	// - Returns `NotFound` if the a config named `RemoveDeviceClassRequest.ID` is not found.
+	// - Returns an error if the deletion fails.
+	rpc RemoveDeviceClass(RemoveDeviceClassRequest) returns (RemoveDeviceClassResponse) {
+		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
+	}
 }
 
 message GetNodeRequest {
@@ -556,3 +604,54 @@ message RemoveConfigRequest {
 // RemoveConfigResponse is an empty object indicating the successful removal of
 // a config.
 message RemoveConfigResponse {}
+
+// GetDeviceClassRequest is the request to get a DeviceClass with the given
+// ID.
+message GetDeviceClassRequest {
+	string device_class_id = 1;
+}
+
+message GetDeviceClassResponse {
+	DeviceClass device_class = 1;
+}
+
+// GetDeviceClassResponse contains the DeviceClass corresponding to the ID in
+// `GetDeviceClassRequest
+message UpdateDeviceClassRequest {
+	string device_class_id = 1;
+	Version device_class_version = 2;
+	DeviceClassSpec spec = 3;
+}
+
+message UpdateDeviceClassResponse {
+	DeviceClass device_class = 1;
+}
+
+message ListDeviceClassesRequest {
+	message Filters {
+		repeated string names = 1;
+		repeated string id_prefixes = 2;
+		map<string, string> labels = 3;
+		repeated string name_prefixes = 4;
+	}
+
+	Filters filters = 1;
+}
+
+message ListDeviceClassesResponse {
+	repeated DeviceClass device_classes = 1;
+}
+
+message CreateDeviceClassRequest {
+	DeviceClassSpec spec = 1;
+}
+
+message CreateDeviceClassResponse {
+	DeviceClass device_class = 1;
+}
+
+message RemoveDeviceClassRequest {
+	string device_class_id = 1;
+}
+
+message RemoveDeviceClassResponse {}

@@ -712,6 +712,112 @@ func (m *RemoveConfigResponse) Reset()                    { *m = RemoveConfigRes
 func (*RemoveConfigResponse) ProtoMessage()               {}
 func (*RemoveConfigResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{58} }
 
+// GetDeviceClassRequest is the request to get a DeviceClass with the given
+// ID.
+type GetDeviceClassRequest struct {
+	DeviceClassID string `protobuf:"bytes,1,opt,name=device_class_id,json=deviceClassId,proto3" json:"device_class_id,omitempty"`
+}
+
+func (m *GetDeviceClassRequest) Reset()                    { *m = GetDeviceClassRequest{} }
+func (*GetDeviceClassRequest) ProtoMessage()               {}
+func (*GetDeviceClassRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{59} }
+
+type GetDeviceClassResponse struct {
+	DeviceClass *DeviceClass `protobuf:"bytes,1,opt,name=device_class,json=deviceClass" json:"device_class,omitempty"`
+}
+
+func (m *GetDeviceClassResponse) Reset()                    { *m = GetDeviceClassResponse{} }
+func (*GetDeviceClassResponse) ProtoMessage()               {}
+func (*GetDeviceClassResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{60} }
+
+// GetDeviceClassResponse contains the DeviceClass corresponding to the ID in
+// `GetDeviceClassRequest
+type UpdateDeviceClassRequest struct {
+	DeviceClassID      string           `protobuf:"bytes,1,opt,name=device_class_id,json=deviceClassId,proto3" json:"device_class_id,omitempty"`
+	DeviceClassVersion *Version         `protobuf:"bytes,2,opt,name=device_class_version,json=deviceClassVersion" json:"device_class_version,omitempty"`
+	Spec               *DeviceClassSpec `protobuf:"bytes,3,opt,name=spec" json:"spec,omitempty"`
+}
+
+func (m *UpdateDeviceClassRequest) Reset()                    { *m = UpdateDeviceClassRequest{} }
+func (*UpdateDeviceClassRequest) ProtoMessage()               {}
+func (*UpdateDeviceClassRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{61} }
+
+type UpdateDeviceClassResponse struct {
+	DeviceClass *DeviceClass `protobuf:"bytes,1,opt,name=device_class,json=deviceClass" json:"device_class,omitempty"`
+}
+
+func (m *UpdateDeviceClassResponse) Reset()      { *m = UpdateDeviceClassResponse{} }
+func (*UpdateDeviceClassResponse) ProtoMessage() {}
+func (*UpdateDeviceClassResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{62}
+}
+
+type ListDeviceClassesRequest struct {
+	Filters *ListDeviceClassesRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+}
+
+func (m *ListDeviceClassesRequest) Reset()                    { *m = ListDeviceClassesRequest{} }
+func (*ListDeviceClassesRequest) ProtoMessage()               {}
+func (*ListDeviceClassesRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{63} }
+
+type ListDeviceClassesRequest_Filters struct {
+	Names        []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
+	IDPrefixes   []string          `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
+	Labels       map[string]string `protobuf:"bytes,3,rep,name=labels" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	NamePrefixes []string          `protobuf:"bytes,4,rep,name=name_prefixes,json=namePrefixes" json:"name_prefixes,omitempty"`
+}
+
+func (m *ListDeviceClassesRequest_Filters) Reset()      { *m = ListDeviceClassesRequest_Filters{} }
+func (*ListDeviceClassesRequest_Filters) ProtoMessage() {}
+func (*ListDeviceClassesRequest_Filters) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{63, 0}
+}
+
+type ListDeviceClassesResponse struct {
+	DeviceClasses []*DeviceClass `protobuf:"bytes,1,rep,name=device_classes,json=deviceClasses" json:"device_classes,omitempty"`
+}
+
+func (m *ListDeviceClassesResponse) Reset()      { *m = ListDeviceClassesResponse{} }
+func (*ListDeviceClassesResponse) ProtoMessage() {}
+func (*ListDeviceClassesResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{64}
+}
+
+type CreateDeviceClassRequest struct {
+	Spec *DeviceClassSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+}
+
+func (m *CreateDeviceClassRequest) Reset()                    { *m = CreateDeviceClassRequest{} }
+func (*CreateDeviceClassRequest) ProtoMessage()               {}
+func (*CreateDeviceClassRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{65} }
+
+type CreateDeviceClassResponse struct {
+	DeviceClass *DeviceClass `protobuf:"bytes,1,opt,name=device_class,json=deviceClass" json:"device_class,omitempty"`
+}
+
+func (m *CreateDeviceClassResponse) Reset()      { *m = CreateDeviceClassResponse{} }
+func (*CreateDeviceClassResponse) ProtoMessage() {}
+func (*CreateDeviceClassResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{66}
+}
+
+type RemoveDeviceClassRequest struct {
+	DeviceClassID string `protobuf:"bytes,1,opt,name=device_class_id,json=deviceClassId,proto3" json:"device_class_id,omitempty"`
+}
+
+func (m *RemoveDeviceClassRequest) Reset()                    { *m = RemoveDeviceClassRequest{} }
+func (*RemoveDeviceClassRequest) ProtoMessage()               {}
+func (*RemoveDeviceClassRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{67} }
+
+type RemoveDeviceClassResponse struct {
+}
+
+func (m *RemoveDeviceClassResponse) Reset()      { *m = RemoveDeviceClassResponse{} }
+func (*RemoveDeviceClassResponse) ProtoMessage() {}
+func (*RemoveDeviceClassResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{68}
+}
+
 func init() {
 	proto.RegisterType((*GetNodeRequest)(nil), "docker.swarmkit.v1.GetNodeRequest")
 	proto.RegisterType((*GetNodeResponse)(nil), "docker.swarmkit.v1.GetNodeResponse")
@@ -779,6 +885,17 @@ func init() {
 	proto.RegisterType((*CreateConfigResponse)(nil), "docker.swarmkit.v1.CreateConfigResponse")
 	proto.RegisterType((*RemoveConfigRequest)(nil), "docker.swarmkit.v1.RemoveConfigRequest")
 	proto.RegisterType((*RemoveConfigResponse)(nil), "docker.swarmkit.v1.RemoveConfigResponse")
+	proto.RegisterType((*GetDeviceClassRequest)(nil), "docker.swarmkit.v1.GetDeviceClassRequest")
+	proto.RegisterType((*GetDeviceClassResponse)(nil), "docker.swarmkit.v1.GetDeviceClassResponse")
+	proto.RegisterType((*UpdateDeviceClassRequest)(nil), "docker.swarmkit.v1.UpdateDeviceClassRequest")
+	proto.RegisterType((*UpdateDeviceClassResponse)(nil), "docker.swarmkit.v1.UpdateDeviceClassResponse")
+	proto.RegisterType((*ListDeviceClassesRequest)(nil), "docker.swarmkit.v1.ListDeviceClassesRequest")
+	proto.RegisterType((*ListDeviceClassesRequest_Filters)(nil), "docker.swarmkit.v1.ListDeviceClassesRequest.Filters")
+	proto.RegisterType((*ListDeviceClassesResponse)(nil), "docker.swarmkit.v1.ListDeviceClassesResponse")
+	proto.RegisterType((*CreateDeviceClassRequest)(nil), "docker.swarmkit.v1.CreateDeviceClassRequest")
+	proto.RegisterType((*CreateDeviceClassResponse)(nil), "docker.swarmkit.v1.CreateDeviceClassResponse")
+	proto.RegisterType((*RemoveDeviceClassRequest)(nil), "docker.swarmkit.v1.RemoveDeviceClassRequest")
+	proto.RegisterType((*RemoveDeviceClassResponse)(nil), "docker.swarmkit.v1.RemoveDeviceClassResponse")
 	proto.RegisterEnum("docker.swarmkit.v1.UpdateServiceRequest_Rollback", UpdateServiceRequest_Rollback_name, UpdateServiceRequest_Rollback_value)
 }
 
@@ -1024,6 +1141,46 @@ func (p *authenticatedWrapperControlServer) RemoveConfig(ctx context.Context, r 
 		return nil, err
 	}
 	return p.local.RemoveConfig(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) GetDeviceClass(ctx context.Context, r *GetDeviceClassRequest) (*GetDeviceClassResponse, error) {
+
+	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
+		return nil, err
+	}
+	return p.local.GetDeviceClass(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) ListDeviceClasses(ctx context.Context, r *ListDeviceClassesRequest) (*ListDeviceClassesResponse, error) {
+
+	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
+		return nil, err
+	}
+	return p.local.ListDeviceClasses(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) CreateDeviceClass(ctx context.Context, r *CreateDeviceClassRequest) (*CreateDeviceClassResponse, error) {
+
+	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
+		return nil, err
+	}
+	return p.local.CreateDeviceClass(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) UpdateDeviceClass(ctx context.Context, r *UpdateDeviceClassRequest) (*UpdateDeviceClassResponse, error) {
+
+	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
+		return nil, err
+	}
+	return p.local.UpdateDeviceClass(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) RemoveDeviceClass(ctx context.Context, r *RemoveDeviceClassRequest) (*RemoveDeviceClassResponse, error) {
+
+	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
+		return nil, err
+	}
+	return p.local.RemoveDeviceClass(ctx, r)
 }
 
 func (m *GetNodeRequest) Copy() *GetNodeRequest {
@@ -2387,6 +2544,224 @@ func (m *RemoveConfigResponse) Copy() *RemoveConfigResponse {
 }
 
 func (m *RemoveConfigResponse) CopyFrom(src interface{}) {}
+func (m *GetDeviceClassRequest) Copy() *GetDeviceClassRequest {
+	if m == nil {
+		return nil
+	}
+	o := &GetDeviceClassRequest{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *GetDeviceClassRequest) CopyFrom(src interface{}) {
+
+	o := src.(*GetDeviceClassRequest)
+	*m = *o
+}
+
+func (m *GetDeviceClassResponse) Copy() *GetDeviceClassResponse {
+	if m == nil {
+		return nil
+	}
+	o := &GetDeviceClassResponse{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *GetDeviceClassResponse) CopyFrom(src interface{}) {
+
+	o := src.(*GetDeviceClassResponse)
+	*m = *o
+	if o.DeviceClass != nil {
+		m.DeviceClass = &DeviceClass{}
+		deepcopy.Copy(m.DeviceClass, o.DeviceClass)
+	}
+}
+
+func (m *UpdateDeviceClassRequest) Copy() *UpdateDeviceClassRequest {
+	if m == nil {
+		return nil
+	}
+	o := &UpdateDeviceClassRequest{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *UpdateDeviceClassRequest) CopyFrom(src interface{}) {
+
+	o := src.(*UpdateDeviceClassRequest)
+	*m = *o
+	if o.DeviceClassVersion != nil {
+		m.DeviceClassVersion = &Version{}
+		deepcopy.Copy(m.DeviceClassVersion, o.DeviceClassVersion)
+	}
+	if o.Spec != nil {
+		m.Spec = &DeviceClassSpec{}
+		deepcopy.Copy(m.Spec, o.Spec)
+	}
+}
+
+func (m *UpdateDeviceClassResponse) Copy() *UpdateDeviceClassResponse {
+	if m == nil {
+		return nil
+	}
+	o := &UpdateDeviceClassResponse{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *UpdateDeviceClassResponse) CopyFrom(src interface{}) {
+
+	o := src.(*UpdateDeviceClassResponse)
+	*m = *o
+	if o.DeviceClass != nil {
+		m.DeviceClass = &DeviceClass{}
+		deepcopy.Copy(m.DeviceClass, o.DeviceClass)
+	}
+}
+
+func (m *ListDeviceClassesRequest) Copy() *ListDeviceClassesRequest {
+	if m == nil {
+		return nil
+	}
+	o := &ListDeviceClassesRequest{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *ListDeviceClassesRequest) CopyFrom(src interface{}) {
+
+	o := src.(*ListDeviceClassesRequest)
+	*m = *o
+	if o.Filters != nil {
+		m.Filters = &ListDeviceClassesRequest_Filters{}
+		deepcopy.Copy(m.Filters, o.Filters)
+	}
+}
+
+func (m *ListDeviceClassesRequest_Filters) Copy() *ListDeviceClassesRequest_Filters {
+	if m == nil {
+		return nil
+	}
+	o := &ListDeviceClassesRequest_Filters{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *ListDeviceClassesRequest_Filters) CopyFrom(src interface{}) {
+
+	o := src.(*ListDeviceClassesRequest_Filters)
+	*m = *o
+	if o.Names != nil {
+		m.Names = make([]string, len(o.Names))
+		copy(m.Names, o.Names)
+	}
+
+	if o.IDPrefixes != nil {
+		m.IDPrefixes = make([]string, len(o.IDPrefixes))
+		copy(m.IDPrefixes, o.IDPrefixes)
+	}
+
+	if o.Labels != nil {
+		m.Labels = make(map[string]string, len(o.Labels))
+		for k, v := range o.Labels {
+			m.Labels[k] = v
+		}
+	}
+
+	if o.NamePrefixes != nil {
+		m.NamePrefixes = make([]string, len(o.NamePrefixes))
+		copy(m.NamePrefixes, o.NamePrefixes)
+	}
+
+}
+
+func (m *ListDeviceClassesResponse) Copy() *ListDeviceClassesResponse {
+	if m == nil {
+		return nil
+	}
+	o := &ListDeviceClassesResponse{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *ListDeviceClassesResponse) CopyFrom(src interface{}) {
+
+	o := src.(*ListDeviceClassesResponse)
+	*m = *o
+	if o.DeviceClasses != nil {
+		m.DeviceClasses = make([]*DeviceClass, len(o.DeviceClasses))
+		for i := range m.DeviceClasses {
+			m.DeviceClasses[i] = &DeviceClass{}
+			deepcopy.Copy(m.DeviceClasses[i], o.DeviceClasses[i])
+		}
+	}
+
+}
+
+func (m *CreateDeviceClassRequest) Copy() *CreateDeviceClassRequest {
+	if m == nil {
+		return nil
+	}
+	o := &CreateDeviceClassRequest{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *CreateDeviceClassRequest) CopyFrom(src interface{}) {
+
+	o := src.(*CreateDeviceClassRequest)
+	*m = *o
+	if o.Spec != nil {
+		m.Spec = &DeviceClassSpec{}
+		deepcopy.Copy(m.Spec, o.Spec)
+	}
+}
+
+func (m *CreateDeviceClassResponse) Copy() *CreateDeviceClassResponse {
+	if m == nil {
+		return nil
+	}
+	o := &CreateDeviceClassResponse{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *CreateDeviceClassResponse) CopyFrom(src interface{}) {
+
+	o := src.(*CreateDeviceClassResponse)
+	*m = *o
+	if o.DeviceClass != nil {
+		m.DeviceClass = &DeviceClass{}
+		deepcopy.Copy(m.DeviceClass, o.DeviceClass)
+	}
+}
+
+func (m *RemoveDeviceClassRequest) Copy() *RemoveDeviceClassRequest {
+	if m == nil {
+		return nil
+	}
+	o := &RemoveDeviceClassRequest{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *RemoveDeviceClassRequest) CopyFrom(src interface{}) {
+
+	o := src.(*RemoveDeviceClassRequest)
+	*m = *o
+}
+
+func (m *RemoveDeviceClassResponse) Copy() *RemoveDeviceClassResponse {
+	if m == nil {
+		return nil
+	}
+	o := &RemoveDeviceClassResponse{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *RemoveDeviceClassResponse) CopyFrom(src interface{}) {}
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
@@ -2476,6 +2851,37 @@ type ControlClient interface {
 	// - Returns `NotFound` if the a config named `RemoveConfigRequest.ID` is not found.
 	// - Returns an error if the deletion fails.
 	RemoveConfig(ctx context.Context, in *RemoveConfigRequest, opts ...grpc.CallOption) (*RemoveConfigResponse, error)
+	// GetDeviceClass returns a `GetDeviceClassResponse` with a `DeviceClass` with the same
+	// id as `GetDeviceClassRequest.DeviceClassID`
+	// - Returns `NotFound` if the DeviceClass with the given id is not found.
+	// - Returns `InvalidArgument` if the `GetDeviceClassRequest.DeviceClassID` is empty.
+	// - Returns an error if getting fails.
+	GetDeviceClass(ctx context.Context, in *GetDeviceClassRequest, opts ...grpc.CallOption) (*GetDeviceClassResponse, error)
+	// ListDeviceClasses returns a `ListDeviceClassesRequest` with a list of
+	// `DeviceClass`s being managed, or all device classes matching any name in
+	// `ListDeviceClassesRequest.Names`, any name prefix in
+	// `ListDeviceClassesRequest.NamePrefixes`, any id in
+	// `ListDeviceClassesRequest.DeviceClassIDs`, or any id prefix in
+	// `ListDeviceClassesRequest.IDPrefixes`.
+	// - Returns an error if listing fails.
+	ListDeviceClasses(ctx context.Context, in *ListDeviceClassesRequest, opts ...grpc.CallOption) (*ListDeviceClassesResponse, error)
+	// CreateDeviceClass creates and return a `CreateDeviceClassResponse` with a `DeviceClass` based
+	// on the provided `CreateDeviceClassRequest.DeviceClassSpec`.
+	// - Returns `InvalidArgument` if the `CreateDeviceClassRequest.DeviceClassSpec` is malformed,
+	//   or if the config data is too long or contains invalid characters.
+	// - Returns an error if the creation fails.
+	CreateDeviceClass(ctx context.Context, in *CreateDeviceClassRequest, opts ...grpc.CallOption) (*CreateDeviceClassResponse, error)
+	// UpdateDeviceClass returns a `UpdateDeviceClassResponse` with a
+	// `DeviceClass` with the same id as `UpdateDeviceClassRequest.DeviceClassID`
+	// - Returns `NotFound` if the DeviceClass with the given id is not found.
+	// - Returns `InvalidArgument` if the `UpdateDeviceClassRequest.DeviceClassID` is empty.
+	// - Returns an error if updating fails.
+	UpdateDeviceClass(ctx context.Context, in *UpdateDeviceClassRequest, opts ...grpc.CallOption) (*UpdateDeviceClassResponse, error)
+	// RemoveDeviceClass removes the config referenced by `RemoveDeviceClassRequest.ID`.
+	// - Returns `InvalidArgument` if `RemoveDeviceClassRequest.ID` is empty.
+	// - Returns `NotFound` if the a config named `RemoveDeviceClassRequest.ID` is not found.
+	// - Returns an error if the deletion fails.
+	RemoveDeviceClass(ctx context.Context, in *RemoveDeviceClassRequest, opts ...grpc.CallOption) (*RemoveDeviceClassResponse, error)
 }
 
 type controlClient struct {
@@ -2747,6 +3153,51 @@ func (c *controlClient) RemoveConfig(ctx context.Context, in *RemoveConfigReques
 	return out, nil
 }
 
+func (c *controlClient) GetDeviceClass(ctx context.Context, in *GetDeviceClassRequest, opts ...grpc.CallOption) (*GetDeviceClassResponse, error) {
+	out := new(GetDeviceClassResponse)
+	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetDeviceClass", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controlClient) ListDeviceClasses(ctx context.Context, in *ListDeviceClassesRequest, opts ...grpc.CallOption) (*ListDeviceClassesResponse, error) {
+	out := new(ListDeviceClassesResponse)
+	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListDeviceClasses", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controlClient) CreateDeviceClass(ctx context.Context, in *CreateDeviceClassRequest, opts ...grpc.CallOption) (*CreateDeviceClassResponse, error) {
+	out := new(CreateDeviceClassResponse)
+	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/CreateDeviceClass", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controlClient) UpdateDeviceClass(ctx context.Context, in *UpdateDeviceClassRequest, opts ...grpc.CallOption) (*UpdateDeviceClassResponse, error) {
+	out := new(UpdateDeviceClassResponse)
+	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/UpdateDeviceClass", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controlClient) RemoveDeviceClass(ctx context.Context, in *RemoveDeviceClassRequest, opts ...grpc.CallOption) (*RemoveDeviceClassResponse, error) {
+	out := new(RemoveDeviceClassResponse)
+	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/RemoveDeviceClass", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for Control service
 
 type ControlServer interface {
@@ -2827,6 +3278,37 @@ type ControlServer interface {
 	// - Returns `NotFound` if the a config named `RemoveConfigRequest.ID` is not found.
 	// - Returns an error if the deletion fails.
 	RemoveConfig(context.Context, *RemoveConfigRequest) (*RemoveConfigResponse, error)
+	// GetDeviceClass returns a `GetDeviceClassResponse` with a `DeviceClass` with the same
+	// id as `GetDeviceClassRequest.DeviceClassID`
+	// - Returns `NotFound` if the DeviceClass with the given id is not found.
+	// - Returns `InvalidArgument` if the `GetDeviceClassRequest.DeviceClassID` is empty.
+	// - Returns an error if getting fails.
+	GetDeviceClass(context.Context, *GetDeviceClassRequest) (*GetDeviceClassResponse, error)
+	// ListDeviceClasses returns a `ListDeviceClassesRequest` with a list of
+	// `DeviceClass`s being managed, or all device classes matching any name in
+	// `ListDeviceClassesRequest.Names`, any name prefix in
+	// `ListDeviceClassesRequest.NamePrefixes`, any id in
+	// `ListDeviceClassesRequest.DeviceClassIDs`, or any id prefix in
+	// `ListDeviceClassesRequest.IDPrefixes`.
+	// - Returns an error if listing fails.
+	ListDeviceClasses(context.Context, *ListDeviceClassesRequest) (*ListDeviceClassesResponse, error)
+	// CreateDeviceClass creates and return a `CreateDeviceClassResponse` with a `DeviceClass` based
+	// on the provided `CreateDeviceClassRequest.DeviceClassSpec`.
+	// - Returns `InvalidArgument` if the `CreateDeviceClassRequest.DeviceClassSpec` is malformed,
+	//   or if the config data is too long or contains invalid characters.
+	// - Returns an error if the creation fails.
+	CreateDeviceClass(context.Context, *CreateDeviceClassRequest) (*CreateDeviceClassResponse, error)
+	// UpdateDeviceClass returns a `UpdateDeviceClassResponse` with a
+	// `DeviceClass` with the same id as `UpdateDeviceClassRequest.DeviceClassID`
+	// - Returns `NotFound` if the DeviceClass with the given id is not found.
+	// - Returns `InvalidArgument` if the `UpdateDeviceClassRequest.DeviceClassID` is empty.
+	// - Returns an error if updating fails.
+	UpdateDeviceClass(context.Context, *UpdateDeviceClassRequest) (*UpdateDeviceClassResponse, error)
+	// RemoveDeviceClass removes the config referenced by `RemoveDeviceClassRequest.ID`.
+	// - Returns `InvalidArgument` if `RemoveDeviceClassRequest.ID` is empty.
+	// - Returns `NotFound` if the a config named `RemoveDeviceClassRequest.ID` is not found.
+	// - Returns an error if the deletion fails.
+	RemoveDeviceClass(context.Context, *RemoveDeviceClassRequest) (*RemoveDeviceClassResponse, error)
 }
 
 func RegisterControlServer(s *grpc.Server, srv ControlServer) {
@@ -3355,6 +3837,96 @@ func _Control_RemoveConfig_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Control_GetDeviceClass_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDeviceClassRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).GetDeviceClass(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.swarmkit.v1.Control/GetDeviceClass",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).GetDeviceClass(ctx, req.(*GetDeviceClassRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Control_ListDeviceClasses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDeviceClassesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).ListDeviceClasses(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.swarmkit.v1.Control/ListDeviceClasses",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).ListDeviceClasses(ctx, req.(*ListDeviceClassesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Control_CreateDeviceClass_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateDeviceClassRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).CreateDeviceClass(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.swarmkit.v1.Control/CreateDeviceClass",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).CreateDeviceClass(ctx, req.(*CreateDeviceClassRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Control_UpdateDeviceClass_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateDeviceClassRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).UpdateDeviceClass(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.swarmkit.v1.Control/UpdateDeviceClass",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).UpdateDeviceClass(ctx, req.(*UpdateDeviceClassRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Control_RemoveDeviceClass_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveDeviceClassRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).RemoveDeviceClass(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.swarmkit.v1.Control/RemoveDeviceClass",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).RemoveDeviceClass(ctx, req.(*RemoveDeviceClassRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Control_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "docker.swarmkit.v1.Control",
 	HandlerType: (*ControlServer)(nil),
@@ -3474,6 +4046,26 @@ var _Control_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveConfig",
 			Handler:    _Control_RemoveConfig_Handler,
+		},
+		{
+			MethodName: "GetDeviceClass",
+			Handler:    _Control_GetDeviceClass_Handler,
+		},
+		{
+			MethodName: "ListDeviceClasses",
+			Handler:    _Control_ListDeviceClasses_Handler,
+		},
+		{
+			MethodName: "CreateDeviceClass",
+			Handler:    _Control_CreateDeviceClass_Handler,
+		},
+		{
+			MethodName: "UpdateDeviceClass",
+			Handler:    _Control_UpdateDeviceClass_Handler,
+		},
+		{
+			MethodName: "RemoveDeviceClass",
+			Handler:    _Control_RemoveDeviceClass_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -5847,6 +6439,366 @@ func (m *RemoveConfigResponse) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
+func (m *GetDeviceClassRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetDeviceClassRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.DeviceClassID) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(len(m.DeviceClassID)))
+		i += copy(dAtA[i:], m.DeviceClassID)
+	}
+	return i, nil
+}
+
+func (m *GetDeviceClassResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetDeviceClassResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.DeviceClass != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(m.DeviceClass.Size()))
+		n39, err := m.DeviceClass.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n39
+	}
+	return i, nil
+}
+
+func (m *UpdateDeviceClassRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *UpdateDeviceClassRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.DeviceClassID) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(len(m.DeviceClassID)))
+		i += copy(dAtA[i:], m.DeviceClassID)
+	}
+	if m.DeviceClassVersion != nil {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(m.DeviceClassVersion.Size()))
+		n40, err := m.DeviceClassVersion.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n40
+	}
+	if m.Spec != nil {
+		dAtA[i] = 0x1a
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(m.Spec.Size()))
+		n41, err := m.Spec.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n41
+	}
+	return i, nil
+}
+
+func (m *UpdateDeviceClassResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *UpdateDeviceClassResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.DeviceClass != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(m.DeviceClass.Size()))
+		n42, err := m.DeviceClass.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n42
+	}
+	return i, nil
+}
+
+func (m *ListDeviceClassesRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ListDeviceClassesRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Filters != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(m.Filters.Size()))
+		n43, err := m.Filters.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n43
+	}
+	return i, nil
+}
+
+func (m *ListDeviceClassesRequest_Filters) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ListDeviceClassesRequest_Filters) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			dAtA[i] = 0xa
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			dAtA[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
+	}
+	if len(m.Labels) > 0 {
+		for k, _ := range m.Labels {
+			dAtA[i] = 0x1a
+			i++
+			v := m.Labels[k]
+			mapSize := 1 + len(k) + sovControl(uint64(len(k))) + 1 + len(v) + sovControl(uint64(len(v)))
+			i = encodeVarintControl(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintControl(dAtA, i, uint64(len(k)))
+			i += copy(dAtA[i:], k)
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintControl(dAtA, i, uint64(len(v)))
+			i += copy(dAtA[i:], v)
+		}
+	}
+	if len(m.NamePrefixes) > 0 {
+		for _, s := range m.NamePrefixes {
+			dAtA[i] = 0x22
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
+	}
+	return i, nil
+}
+
+func (m *ListDeviceClassesResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ListDeviceClassesResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.DeviceClasses) > 0 {
+		for _, msg := range m.DeviceClasses {
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintControl(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
+func (m *CreateDeviceClassRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *CreateDeviceClassRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Spec != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(m.Spec.Size()))
+		n44, err := m.Spec.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n44
+	}
+	return i, nil
+}
+
+func (m *CreateDeviceClassResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *CreateDeviceClassResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.DeviceClass != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(m.DeviceClass.Size()))
+		n45, err := m.DeviceClass.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n45
+	}
+	return i, nil
+}
+
+func (m *RemoveDeviceClassRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RemoveDeviceClassRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.DeviceClassID) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(len(m.DeviceClassID)))
+		i += copy(dAtA[i:], m.DeviceClassID)
+	}
+	return i, nil
+}
+
+func (m *RemoveDeviceClassResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RemoveDeviceClassResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
 func encodeVarintControl(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
@@ -6944,6 +7896,181 @@ func (p *raftProxyControlServer) RemoveConfig(ctx context.Context, r *RemoveConf
 	return resp, err
 }
 
+func (p *raftProxyControlServer) GetDeviceClass(ctx context.Context, r *GetDeviceClassRequest) (*GetDeviceClassResponse, error) {
+
+	conn, err := p.connSelector.LeaderConn(ctx)
+	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
+			return p.local.GetDeviceClass(ctx, r)
+		}
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := NewControlClient(conn).GetDeviceClass(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.GetDeviceClass(ctx, r)
+			}
+			return nil, err
+		}
+		return NewControlClient(conn).GetDeviceClass(modCtx, r)
+	}
+	return resp, err
+}
+
+func (p *raftProxyControlServer) ListDeviceClasses(ctx context.Context, r *ListDeviceClassesRequest) (*ListDeviceClassesResponse, error) {
+
+	conn, err := p.connSelector.LeaderConn(ctx)
+	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
+			return p.local.ListDeviceClasses(ctx, r)
+		}
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := NewControlClient(conn).ListDeviceClasses(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.ListDeviceClasses(ctx, r)
+			}
+			return nil, err
+		}
+		return NewControlClient(conn).ListDeviceClasses(modCtx, r)
+	}
+	return resp, err
+}
+
+func (p *raftProxyControlServer) CreateDeviceClass(ctx context.Context, r *CreateDeviceClassRequest) (*CreateDeviceClassResponse, error) {
+
+	conn, err := p.connSelector.LeaderConn(ctx)
+	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
+			return p.local.CreateDeviceClass(ctx, r)
+		}
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := NewControlClient(conn).CreateDeviceClass(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.CreateDeviceClass(ctx, r)
+			}
+			return nil, err
+		}
+		return NewControlClient(conn).CreateDeviceClass(modCtx, r)
+	}
+	return resp, err
+}
+
+func (p *raftProxyControlServer) UpdateDeviceClass(ctx context.Context, r *UpdateDeviceClassRequest) (*UpdateDeviceClassResponse, error) {
+
+	conn, err := p.connSelector.LeaderConn(ctx)
+	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
+			return p.local.UpdateDeviceClass(ctx, r)
+		}
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := NewControlClient(conn).UpdateDeviceClass(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.UpdateDeviceClass(ctx, r)
+			}
+			return nil, err
+		}
+		return NewControlClient(conn).UpdateDeviceClass(modCtx, r)
+	}
+	return resp, err
+}
+
+func (p *raftProxyControlServer) RemoveDeviceClass(ctx context.Context, r *RemoveDeviceClassRequest) (*RemoveDeviceClassResponse, error) {
+
+	conn, err := p.connSelector.LeaderConn(ctx)
+	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
+			return p.local.RemoveDeviceClass(ctx, r)
+		}
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := NewControlClient(conn).RemoveDeviceClass(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.RemoveDeviceClass(ctx, r)
+			}
+			return nil, err
+		}
+		return NewControlClient(conn).RemoveDeviceClass(modCtx, r)
+	}
+	return resp, err
+}
+
 func (m *GetNodeRequest) Size() (n int) {
 	var l int
 	_ = l
@@ -7862,6 +8989,144 @@ func (m *RemoveConfigResponse) Size() (n int) {
 	return n
 }
 
+func (m *GetDeviceClassRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.DeviceClassID)
+	if l > 0 {
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *GetDeviceClassResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.DeviceClass != nil {
+		l = m.DeviceClass.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *UpdateDeviceClassRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.DeviceClassID)
+	if l > 0 {
+		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.DeviceClassVersion != nil {
+		l = m.DeviceClassVersion.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	if m.Spec != nil {
+		l = m.Spec.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *UpdateDeviceClassResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.DeviceClass != nil {
+		l = m.DeviceClass.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *ListDeviceClassesRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Filters != nil {
+		l = m.Filters.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *ListDeviceClassesRequest_Filters) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	if len(m.Labels) > 0 {
+		for k, v := range m.Labels {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + len(k) + sovControl(uint64(len(k))) + 1 + len(v) + sovControl(uint64(len(v)))
+			n += mapEntrySize + 1 + sovControl(uint64(mapEntrySize))
+		}
+	}
+	if len(m.NamePrefixes) > 0 {
+		for _, s := range m.NamePrefixes {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *ListDeviceClassesResponse) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.DeviceClasses) > 0 {
+		for _, e := range m.DeviceClasses {
+			l = e.Size()
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *CreateDeviceClassRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Spec != nil {
+		l = m.Spec.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *CreateDeviceClassResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.DeviceClass != nil {
+		l = m.DeviceClass.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *RemoveDeviceClassRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.DeviceClassID)
+	if l > 0 {
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *RemoveDeviceClassResponse) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
 func sovControl(x uint64) (n int) {
 	for {
 		n++
@@ -8653,6 +9918,130 @@ func (this *RemoveConfigResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&RemoveConfigResponse{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *GetDeviceClassRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&GetDeviceClassRequest{`,
+		`DeviceClassID:` + fmt.Sprintf("%v", this.DeviceClassID) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *GetDeviceClassResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&GetDeviceClassResponse{`,
+		`DeviceClass:` + strings.Replace(fmt.Sprintf("%v", this.DeviceClass), "DeviceClass", "DeviceClass", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateDeviceClassRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateDeviceClassRequest{`,
+		`DeviceClassID:` + fmt.Sprintf("%v", this.DeviceClassID) + `,`,
+		`DeviceClassVersion:` + strings.Replace(fmt.Sprintf("%v", this.DeviceClassVersion), "Version", "Version", 1) + `,`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "DeviceClassSpec", "DeviceClassSpec", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateDeviceClassResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateDeviceClassResponse{`,
+		`DeviceClass:` + strings.Replace(fmt.Sprintf("%v", this.DeviceClass), "DeviceClass", "DeviceClass", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListDeviceClassesRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListDeviceClassesRequest{`,
+		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListDeviceClassesRequest_Filters", "ListDeviceClassesRequest_Filters", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListDeviceClassesRequest_Filters) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForLabels := make([]string, 0, len(this.Labels))
+	for k, _ := range this.Labels {
+		keysForLabels = append(keysForLabels, k)
+	}
+	sortkeys.Strings(keysForLabels)
+	mapStringForLabels := "map[string]string{"
+	for _, k := range keysForLabels {
+		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
+	}
+	mapStringForLabels += "}"
+	s := strings.Join([]string{`&ListDeviceClassesRequest_Filters{`,
+		`Names:` + fmt.Sprintf("%v", this.Names) + `,`,
+		`IDPrefixes:` + fmt.Sprintf("%v", this.IDPrefixes) + `,`,
+		`Labels:` + mapStringForLabels + `,`,
+		`NamePrefixes:` + fmt.Sprintf("%v", this.NamePrefixes) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListDeviceClassesResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListDeviceClassesResponse{`,
+		`DeviceClasses:` + strings.Replace(fmt.Sprintf("%v", this.DeviceClasses), "DeviceClass", "DeviceClass", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *CreateDeviceClassRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&CreateDeviceClassRequest{`,
+		`Spec:` + strings.Replace(fmt.Sprintf("%v", this.Spec), "DeviceClassSpec", "DeviceClassSpec", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *CreateDeviceClassResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&CreateDeviceClassResponse{`,
+		`DeviceClass:` + strings.Replace(fmt.Sprintf("%v", this.DeviceClass), "DeviceClass", "DeviceClass", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RemoveDeviceClassRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RemoveDeviceClassRequest{`,
+		`DeviceClassID:` + fmt.Sprintf("%v", this.DeviceClassID) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RemoveDeviceClassResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RemoveDeviceClassResponse{`,
 		`}`,
 	}, "")
 	return s
@@ -16007,6 +17396,1110 @@ func (m *RemoveConfigResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *GetDeviceClassRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetDeviceClassRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetDeviceClassRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DeviceClassID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DeviceClassID = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetDeviceClassResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetDeviceClassResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetDeviceClassResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DeviceClass", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.DeviceClass == nil {
+				m.DeviceClass = &DeviceClass{}
+			}
+			if err := m.DeviceClass.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UpdateDeviceClassRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UpdateDeviceClassRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UpdateDeviceClassRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DeviceClassID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DeviceClassID = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DeviceClassVersion", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.DeviceClassVersion == nil {
+				m.DeviceClassVersion = &Version{}
+			}
+			if err := m.DeviceClassVersion.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Spec == nil {
+				m.Spec = &DeviceClassSpec{}
+			}
+			if err := m.Spec.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UpdateDeviceClassResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UpdateDeviceClassResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UpdateDeviceClassResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DeviceClass", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.DeviceClass == nil {
+				m.DeviceClass = &DeviceClass{}
+			}
+			if err := m.DeviceClass.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListDeviceClassesRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListDeviceClassesRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListDeviceClassesRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Filters", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Filters == nil {
+				m.Filters = &ListDeviceClassesRequest_Filters{}
+			}
+			if err := m.Filters.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListDeviceClassesRequest_Filters) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Filters: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Filters: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Names", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Names = append(m.Names, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IDPrefixes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.IDPrefixes = append(m.IDPrefixes, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Labels", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Labels == nil {
+				m.Labels = make(map[string]string)
+			}
+			var mapkey string
+			var mapvalue string
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowControl
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					var stringLenmapkey uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowControl
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						stringLenmapkey |= (uint64(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intStringLenmapkey := int(stringLenmapkey)
+					if intStringLenmapkey < 0 {
+						return ErrInvalidLengthControl
+					}
+					postStringIndexmapkey := iNdEx + intStringLenmapkey
+					if postStringIndexmapkey > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
+					iNdEx = postStringIndexmapkey
+				} else if fieldNum == 2 {
+					var stringLenmapvalue uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowControl
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						stringLenmapvalue |= (uint64(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intStringLenmapvalue := int(stringLenmapvalue)
+					if intStringLenmapvalue < 0 {
+						return ErrInvalidLengthControl
+					}
+					postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+					if postStringIndexmapvalue > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = string(dAtA[iNdEx:postStringIndexmapvalue])
+					iNdEx = postStringIndexmapvalue
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipControl(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthControl
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.Labels[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NamePrefixes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NamePrefixes = append(m.NamePrefixes, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListDeviceClassesResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListDeviceClassesResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListDeviceClassesResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DeviceClasses", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DeviceClasses = append(m.DeviceClasses, &DeviceClass{})
+			if err := m.DeviceClasses[len(m.DeviceClasses)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *CreateDeviceClassRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CreateDeviceClassRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CreateDeviceClassRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Spec == nil {
+				m.Spec = &DeviceClassSpec{}
+			}
+			if err := m.Spec.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *CreateDeviceClassResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CreateDeviceClassResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CreateDeviceClassResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DeviceClass", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.DeviceClass == nil {
+				m.DeviceClass = &DeviceClass{}
+			}
+			if err := m.DeviceClass.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RemoveDeviceClassRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RemoveDeviceClassRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RemoveDeviceClassRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DeviceClassID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DeviceClassID = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RemoveDeviceClassResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RemoveDeviceClassResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RemoveDeviceClassResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func skipControl(dAtA []byte) (n int, err error) {
 	l := len(dAtA)
 	iNdEx := 0
@@ -16115,141 +18608,159 @@ var (
 func init() { proto.RegisterFile("github.com/docker/swarmkit/api/control.proto", fileDescriptorControl) }
 
 var fileDescriptorControl = []byte{
-	// 2167 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x5a, 0x4d, 0x73, 0x1b, 0x49,
-	0x19, 0xb6, 0x3e, 0x6c, 0xc9, 0xaf, 0x6c, 0xd9, 0xee, 0x78, 0x41, 0xa5, 0x04, 0x3b, 0x35, 0x21,
-	0x89, 0xb2, 0x65, 0x24, 0x56, 0x61, 0xd9, 0xb0, 0xb0, 0xc0, 0xda, 0xce, 0x66, 0xb5, 0xde, 0x38,
-	0xa9, 0x71, 0xb2, 0xc5, 0x85, 0x52, 0xc9, 0x52, 0xdb, 0x3b, 0x91, 0xac, 0x11, 0x33, 0x23, 0xef,
-	0xba, 0xb8, 0x00, 0x15, 0x7e, 0x02, 0x55, 0x5c, 0x39, 0x51, 0xc5, 0x81, 0x03, 0x27, 0x0e, 0xfc,
-	0x80, 0x14, 0x27, 0x8e, 0x9c, 0x0c, 0xab, 0x2a, 0xaa, 0x38, 0xf1, 0x1b, 0xa8, 0xee, 0x7e, 0x7b,
-	0xbe, 0xd4, 0x33, 0xa3, 0x0f, 0x57, 0x79, 0x4f, 0x96, 0x7a, 0x9e, 0xf7, 0xa3, 0xfb, 0x7d, 0xfa,
-	0x51, 0xf7, 0x3b, 0x86, 0x9d, 0x53, 0xc3, 0xf9, 0x7c, 0x78, 0x5c, 0x6d, 0x9b, 0x67, 0xb5, 0x8e,
-	0xd9, 0xee, 0x52, 0xab, 0x66, 0x7f, 0xd1, 0xb2, 0xce, 0xba, 0x86, 0x53, 0x6b, 0x0d, 0x8c, 0x5a,
-	0xdb, 0xec, 0x3b, 0x96, 0xd9, 0xab, 0x0e, 0x2c, 0xd3, 0x31, 0x09, 0x11, 0x90, 0xaa, 0x84, 0x54,
-	0xcf, 0xdf, 0x29, 0xbf, 0x9d, 0xe0, 0xc1, 0x1e, 0xd0, 0xb6, 0x2d, 0xec, 0xcb, 0x49, 0xd1, 0xcc,
-	0xe3, 0x57, 0xb4, 0xed, 0x48, 0x74, 0x92, 0x67, 0xe7, 0x62, 0x40, 0x25, 0x76, 0xf3, 0xd4, 0x3c,
-	0x35, 0xf9, 0xc7, 0x1a, 0xfb, 0x84, 0xa3, 0xef, 0xc5, 0x78, 0xe0, 0x88, 0xe3, 0xe1, 0x49, 0x6d,
-	0xd0, 0x1b, 0x9e, 0x1a, 0x7d, 0xfc, 0x23, 0x0c, 0xb5, 0x77, 0xa1, 0xf8, 0x84, 0x3a, 0x87, 0x66,
-	0x87, 0xea, 0xf4, 0x17, 0x43, 0x6a, 0x3b, 0xe4, 0x0e, 0xe4, 0xfa, 0x66, 0x87, 0x36, 0x8d, 0x4e,
-	0x29, 0x75, 0x3b, 0x55, 0x59, 0xde, 0x85, 0xd1, 0xe5, 0xf6, 0x12, 0x43, 0x34, 0xf6, 0xf5, 0x25,
-	0xf6, 0xa8, 0xd1, 0xd1, 0x7e, 0x02, 0x6b, 0xae, 0x99, 0x3d, 0x30, 0xfb, 0x36, 0x25, 0x3b, 0x90,
-	0x65, 0x0f, 0xb9, 0x51, 0xa1, 0x5e, 0xaa, 0x8e, 0xaf, 0x60, 0x95, 0xe3, 0x39, 0x4a, 0x7b, 0xbd,
-	0x08, 0xeb, 0x9f, 0x1a, 0x36, 0x77, 0x61, 0xcb, 0xd0, 0x1f, 0x41, 0xee, 0xc4, 0xe8, 0x39, 0xd4,
-	0xb2, 0xd1, 0xcb, 0x8e, 0xca, 0x4b, 0xd8, 0xac, 0xfa, 0x91, 0xb0, 0xd1, 0xa5, 0x71, 0xf9, 0x8f,
-	0x59, 0xc8, 0xe1, 0x20, 0xd9, 0x84, 0xc5, 0x7e, 0xeb, 0x8c, 0x32, 0x8f, 0x99, 0xca, 0xb2, 0x2e,
-	0xbe, 0x90, 0x1a, 0x14, 0x8c, 0x4e, 0x73, 0x60, 0xd1, 0x13, 0xe3, 0x4b, 0x6a, 0x97, 0xd2, 0xec,
-	0xd9, 0x6e, 0x71, 0x74, 0xb9, 0x0d, 0x8d, 0xfd, 0xe7, 0x38, 0xaa, 0x83, 0xd1, 0x91, 0x9f, 0xc9,
-	0x73, 0x58, 0xea, 0xb5, 0x8e, 0x69, 0xcf, 0x2e, 0x65, 0x6e, 0x67, 0x2a, 0x85, 0xfa, 0xa3, 0x69,
-	0x32, 0xab, 0x7e, 0xca, 0x4d, 0x1f, 0xf7, 0x1d, 0xeb, 0x42, 0x47, 0x3f, 0xe4, 0x29, 0x14, 0xce,
-	0xe8, 0xd9, 0x31, 0xb5, 0xec, 0xcf, 0x8d, 0x81, 0x5d, 0xca, 0xde, 0xce, 0x54, 0x8a, 0xf5, 0xfb,
-	0x51, 0xcb, 0x76, 0x34, 0xa0, 0xed, 0xea, 0x53, 0x17, 0xbf, 0x9b, 0x5e, 0x5f, 0xd0, 0xfd, 0xf6,
-	0xe4, 0xfb, 0xb0, 0x68, 0x99, 0x3d, 0x6a, 0x97, 0x16, 0xb9, 0xa3, 0x5b, 0x91, 0xeb, 0x6f, 0xf6,
-	0x28, 0xb7, 0x16, 0x70, 0x72, 0x07, 0x56, 0xd9, 0x92, 0x78, 0x6b, 0xb1, 0xc4, 0xd7, 0x69, 0x85,
-	0x0d, 0xba, 0xb3, 0xff, 0x39, 0x14, 0x38, 0x27, 0x70, 0x09, 0x72, 0x7c, 0x09, 0x7e, 0x34, 0xd5,
-	0x12, 0xb0, 0x41, 0xff, 0x32, 0x40, 0xdf, 0x1d, 0x28, 0xff, 0x00, 0x0a, 0xbe, 0x47, 0x64, 0x1d,
-	0x32, 0x5d, 0x7a, 0x21, 0xd8, 0xa7, 0xb3, 0x8f, 0xac, 0x88, 0xe7, 0xad, 0xde, 0x90, 0x96, 0xd2,
-	0x7c, 0x4c, 0x7c, 0x79, 0x3f, 0xfd, 0x28, 0x55, 0xfe, 0x00, 0xd6, 0x42, 0x9e, 0xa7, 0x31, 0xd7,
-	0xf6, 0x60, 0xc3, 0x97, 0x31, 0x32, 0xb9, 0x0a, 0x8b, 0x2c, 0x39, 0x41, 0x99, 0x38, 0x2a, 0x0b,
-	0x98, 0xf6, 0xa7, 0x14, 0x6c, 0xbc, 0x1c, 0x74, 0x5a, 0x0e, 0x9d, 0x76, 0x1f, 0x91, 0x1f, 0xc3,
-	0x0a, 0x07, 0x9d, 0x53, 0xcb, 0x36, 0xcc, 0x3e, 0x4f, 0xb0, 0x50, 0xbf, 0xa9, 0x8a, 0xf8, 0x99,
-	0x80, 0xe8, 0xbc, 0x12, 0xf8, 0x85, 0x7c, 0x17, 0xb2, 0x4c, 0x76, 0x4a, 0x19, 0x6e, 0x77, 0x2b,
-	0x8e, 0x3d, 0x3a, 0x47, 0x6a, 0xbb, 0x40, 0xfc, 0xb9, 0xce, 0xb4, 0x79, 0x0f, 0x61, 0x43, 0xa7,
-	0x67, 0xe6, 0xf9, 0xf4, 0xf3, 0xdd, 0x84, 0xc5, 0x13, 0xd3, 0x6a, 0x8b, 0x4a, 0xe4, 0x75, 0xf1,
-	0x45, 0xdb, 0x04, 0xe2, 0xf7, 0x27, 0x72, 0x42, 0x69, 0x7a, 0xd1, 0xb2, 0xbb, 0xbe, 0x10, 0x4e,
-	0xcb, 0xee, 0x86, 0x42, 0x30, 0x04, 0x0b, 0xc1, 0x1e, 0xb9, 0xd2, 0x24, 0xcc, 0xbc, 0xd9, 0xb1,
-	0x87, 0x71, 0xb3, 0xe3, 0x78, 0x8e, 0xd2, 0x1e, 0xc9, 0xd9, 0x4d, 0x1d, 0xda, 0x9d, 0x87, 0x3f,
-	0xba, 0xf6, 0xb7, 0xac, 0x90, 0x3a, 0x36, 0x38, 0x83, 0xd4, 0xf9, 0xcd, 0xc6, 0xa5, 0xee, 0x5f,
-	0x99, 0xeb, 0x93, 0x3a, 0x55, 0x66, 0x4a, 0xa9, 0xab, 0x41, 0xc1, 0xa6, 0xd6, 0xb9, 0xd1, 0x66,
-	0xec, 0x10, 0x52, 0x87, 0x29, 0x1c, 0x89, 0xe1, 0xc6, 0xbe, 0xad, 0x03, 0x42, 0x1a, 0x1d, 0x9b,
-	0xdc, 0x83, 0x3c, 0x72, 0x49, 0xe8, 0xd9, 0xf2, 0x6e, 0x61, 0x74, 0xb9, 0x9d, 0x13, 0x64, 0xb2,
-	0xf5, 0x9c, 0x60, 0x93, 0x4d, 0x3e, 0x86, 0x62, 0x87, 0xda, 0x86, 0x45, 0x3b, 0x4d, 0xdb, 0x69,
-	0x39, 0xa8, 0x5e, 0xc5, 0xfa, 0xb7, 0xa2, 0x4a, 0x7c, 0xc4, 0x50, 0x5c, 0xfe, 0x56, 0xd1, 0x90,
-	0x8f, 0x28, 0x64, 0x30, 0xa7, 0x90, 0xc1, 0x5b, 0x00, 0xc3, 0x41, 0xd3, 0x31, 0x9b, 0x6c, 0xff,
-	0x94, 0xf2, 0x9c, 0xc2, 0xf9, 0xe1, 0xe0, 0x85, 0xb9, 0xdf, 0x72, 0x28, 0x29, 0x43, 0xde, 0x1a,
-	0xf6, 0x1d, 0x83, 0x55, 0x60, 0x99, 0x5b, 0xbb, 0xdf, 0xe7, 0x50, 0x38, 0x29, 0x51, 0xb8, 0xd8,
-	0x9e, 0x44, 0x31, 0xce, 0xc5, 0x4a, 0x14, 0x27, 0xa1, 0x80, 0x69, 0x07, 0xb0, 0xb9, 0x67, 0xd1,
-	0x96, 0x43, 0x71, 0xc1, 0x25, 0x0d, 0x1f, 0xa2, 0x7e, 0x08, 0x0e, 0x6e, 0xab, 0xdc, 0xa0, 0x85,
-	0x4f, 0x42, 0x0e, 0xe1, 0xad, 0x90, 0x33, 0xcc, 0xea, 0x5d, 0xc8, 0x61, 0x11, 0xd1, 0xe1, 0xcd,
-	0x18, 0x87, 0xba, 0xc4, 0x6a, 0xaf, 0x60, 0xe3, 0x09, 0x75, 0x42, 0x99, 0xed, 0x00, 0x78, 0x9c,
-	0xc1, 0x3d, 0xb7, 0x3a, 0xba, 0xdc, 0x5e, 0x76, 0x29, 0xa3, 0x2f, 0xbb, 0x8c, 0x21, 0xf7, 0x61,
-	0xcd, 0xe8, 0xdb, 0xd4, 0x72, 0x9a, 0x1d, 0x7a, 0xd2, 0x1a, 0xf6, 0x1c, 0x1b, 0x15, 0xa6, 0x28,
-	0x86, 0xf7, 0x71, 0x54, 0x3b, 0x00, 0xe2, 0x8f, 0x35, 0x5f, 0xe2, 0x7f, 0x49, 0xc3, 0xa6, 0x10,
-	0xd3, 0xb9, 0x92, 0xdf, 0x87, 0x35, 0x89, 0x9e, 0xe2, 0x77, 0xa0, 0x88, 0x36, 0xf2, 0xa7, 0xe0,
-	0x61, 0xe0, 0xa7, 0x60, 0xb2, 0x52, 0x92, 0xa7, 0x90, 0xb7, 0xcc, 0x5e, 0xef, 0xb8, 0xd5, 0xee,
-	0x96, 0xb2, 0xb7, 0x53, 0x95, 0x62, 0xfd, 0x1d, 0x95, 0xa1, 0x6a, 0x92, 0x55, 0x1d, 0x0d, 0x75,
-	0xd7, 0x85, 0xa6, 0x41, 0x5e, 0x8e, 0x92, 0x3c, 0x64, 0x0f, 0x9f, 0x1d, 0x3e, 0x5e, 0x5f, 0x20,
-	0x2b, 0x90, 0x7f, 0xae, 0x3f, 0xfe, 0xac, 0xf1, 0xec, 0xe5, 0xd1, 0x7a, 0x8a, 0xb1, 0x27, 0xe4,
-	0x6e, 0xbe, 0x22, 0xec, 0xc3, 0xa6, 0x10, 0xdd, 0x79, 0x6a, 0xa0, 0x7d, 0x13, 0xde, 0x0a, 0x79,
-	0x41, 0xf5, 0x7e, 0x9d, 0x81, 0x1b, 0x6c, 0xff, 0xe1, 0xb8, 0x2b, 0xe0, 0x8d, 0xb0, 0x80, 0xd7,
-	0xa2, 0x64, 0x32, 0x64, 0x39, 0xae, 0xe1, 0x7f, 0x48, 0x5f, 0xb9, 0x86, 0x1f, 0x85, 0x34, 0xfc,
-	0x87, 0x53, 0x26, 0xa7, 0x94, 0xf1, 0x31, 0x8d, 0xcc, 0x2a, 0x34, 0xd2, 0xaf, 0x82, 0x8b, 0x57,
-	0xa7, 0x82, 0xcf, 0x60, 0x33, 0x98, 0x2e, 0x92, 0xe6, 0x3d, 0xc8, 0x63, 0x11, 0xa5, 0x16, 0xc6,
-	0xb2, 0xc6, 0x05, 0x7b, 0x8a, 0x78, 0x48, 0x9d, 0x2f, 0x4c, 0xab, 0x3b, 0x85, 0x22, 0xa2, 0x85,
-	0x4a, 0x11, 0x5d, 0x67, 0x1e, 0xa7, 0xfb, 0x62, 0x28, 0x8e, 0xd3, 0xd2, 0x4a, 0x62, 0xb5, 0x97,
-	0x5c, 0x11, 0x43, 0x99, 0x11, 0xc8, 0xb2, 0x95, 0xc6, 0xf5, 0xe2, 0x9f, 0x19, 0xc9, 0xd1, 0x86,
-	0x91, 0x3c, 0xed, 0x91, 0x1c, 0x6d, 0x19, 0xc9, 0x11, 0xd0, 0xe8, 0xa0, 0xf8, 0x5d, 0x51, 0x8e,
-	0x3f, 0x93, 0xfb, 0xee, 0xca, 0xd3, 0x74, 0xf7, 0x62, 0x28, 0x53, 0xed, 0xbf, 0x69, 0xb1, 0x17,
-	0x71, 0x7c, 0x86, 0xbd, 0x18, 0xb2, 0x1c, 0xdf, 0x8b, 0xbf, 0xbd, 0xc6, 0xbd, 0x18, 0x91, 0xdc,
-	0xcc, 0x7b, 0xf1, 0x0a, 0xf6, 0x9b, 0x97, 0x92, 0xb7, 0xdf, 0xb0, 0x50, 0xb1, 0xfb, 0x4d, 0x56,
-	0xce, 0x05, 0x6b, 0x1f, 0x72, 0x4a, 0xef, 0xf5, 0x86, 0xb6, 0x43, 0x2d, 0x9f, 0x46, 0xb7, 0xc5,
-	0x48, 0x48, 0xa3, 0x11, 0xc7, 0x78, 0x81, 0x00, 0x97, 0xbe, 0xae, 0x0b, 0x8f, 0xbe, 0x08, 0x89,
-	0xa3, 0xaf, 0xb4, 0x92, 0x58, 0x97, 0x4b, 0xf8, 0x60, 0x06, 0x2e, 0x85, 0x2c, 0xbf, 0x5e, 0x5c,
-	0x8a, 0x48, 0xee, 0x3a, 0xb9, 0xe4, 0xa5, 0xe4, 0x71, 0x09, 0xab, 0x11, 0xcb, 0x25, 0x59, 0x3a,
-	0x17, 0xac, 0xfd, 0x2e, 0x05, 0x85, 0x03, 0x7a, 0xa1, 0x9b, 0x4e, 0xcb, 0x61, 0x47, 0x9f, 0xb7,
-	0x61, 0x83, 0x91, 0x8c, 0x5a, 0xcd, 0x57, 0xa6, 0xd1, 0x6f, 0x3a, 0x66, 0x97, 0xf6, 0x79, 0x6a,
-	0x79, 0x7d, 0x4d, 0x3c, 0xf8, 0xc4, 0x34, 0xfa, 0x2f, 0xd8, 0x30, 0xd9, 0x01, 0x72, 0xd6, 0xea,
-	0xb7, 0x4e, 0x83, 0x60, 0x71, 0x58, 0x5c, 0xc7, 0x27, 0x4a, 0xf4, 0xb0, 0xdf, 0x33, 0xdb, 0xdd,
-	0x26, 0x9b, 0x75, 0x26, 0x80, 0x7e, 0xc9, 0x1f, 0x1c, 0xd0, 0x0b, 0xed, 0x37, 0xee, 0x79, 0x70,
-	0x1e, 0x9e, 0xb3, 0xf3, 0xa0, 0x44, 0x4f, 0x73, 0x1e, 0x44, 0x9b, 0x29, 0xce, 0x83, 0x18, 0xdd,
-	0x77, 0x1e, 0xfc, 0x90, 0x9d, 0x07, 0xc5, 0xaa, 0xf2, 0xf3, 0x60, 0x84, 0xa1, 0x6f, 0xf1, 0x77,
-	0xb3, 0x6f, 0x2e, 0xb7, 0x17, 0x74, 0xd7, 0xcc, 0x3b, 0xdf, 0x5d, 0xd1, 0x46, 0xfd, 0x00, 0xd6,
-	0xf9, 0x89, 0xbd, 0x6d, 0x51, 0x47, 0xae, 0xe7, 0x03, 0x58, 0xb6, 0xf9, 0x80, 0xb7, 0x9c, 0x2b,
-	0xa3, 0xcb, 0xed, 0xbc, 0x40, 0x35, 0xf6, 0xd9, 0xef, 0x3c, 0xff, 0xd4, 0xd1, 0x9e, 0xe0, 0xe5,
-	0x42, 0x98, 0x63, 0x2a, 0x75, 0x58, 0x12, 0x00, 0xcc, 0xa4, 0xac, 0x3e, 0x33, 0x70, 0x1b, 0x44,
-	0x6a, 0x7f, 0x4d, 0xc1, 0x0d, 0x79, 0x70, 0x9d, 0x2d, 0x17, 0xb2, 0x0b, 0x45, 0x84, 0x4e, 0x51,
-	0xd7, 0x55, 0x61, 0x22, 0xcb, 0x5a, 0x0f, 0x94, 0x75, 0x2b, 0x3a, 0x71, 0xdf, 0xf1, 0xe4, 0x13,
-	0xef, 0x9a, 0x32, 0xf7, 0x32, 0xfc, 0x27, 0x0d, 0x44, 0x9c, 0xc4, 0xd8, 0x57, 0x57, 0x36, 0x3f,
-	0x0e, 0xcb, 0x66, 0x35, 0xfa, 0xc4, 0xe9, 0x37, 0x1c, 0x57, 0xcd, 0xd7, 0x57, 0xaf, 0x9a, 0x7a,
-	0x48, 0x35, 0xdf, 0x9f, 0x2e, 0xb7, 0x6b, 0x11, 0xcd, 0x03, 0x79, 0xed, 0xc0, 0x8c, 0xb0, 0x64,
-	0xdf, 0x63, 0x97, 0x24, 0x3e, 0x84, 0x92, 0x19, 0x57, 0x33, 0x09, 0xd5, 0x1a, 0x70, 0x43, 0xde,
-	0xd8, 0xfd, 0xd4, 0xad, 0x07, 0xce, 0xba, 0x13, 0x73, 0x29, 0xe8, 0x6a, 0x0e, 0x2e, 0xfd, 0x14,
-	0x6e, 0xc8, 0x4b, 0xd7, 0x8c, 0xbb, 0xfb, 0x1b, 0xde, 0xe5, 0xcf, 0x9f, 0x0d, 0x8a, 0xc6, 0x9e,
-	0xd9, 0x3f, 0x31, 0x4e, 0x7d, 0x6e, 0xdb, 0x7c, 0x20, 0xe4, 0x56, 0xa0, 0x98, 0x5b, 0xf1, 0xd8,
-	0x15, 0x0d, 0x69, 0xee, 0xcd, 0x50, 0x00, 0xe2, 0x66, 0x88, 0x36, 0x88, 0xf4, 0x89, 0xc6, 0xac,
-	0xb9, 0x30, 0xd1, 0x40, 0xe8, 0x34, 0xa2, 0x21, 0x4c, 0xa6, 0x10, 0x0d, 0x11, 0x59, 0x25, 0x1a,
-	0x57, 0xb0, 0x0c, 0x52, 0x34, 0xc4, 0xf0, 0x0c, 0xa2, 0x11, 0x34, 0xfc, 0x7a, 0x89, 0x86, 0x3a,
-	0xb7, 0xeb, 0x14, 0x0d, 0x37, 0x23, 0x4f, 0x34, 0x44, 0x21, 0x62, 0x45, 0x03, 0x6b, 0x26, 0xa1,
-	0x9e, 0x68, 0x04, 0xa9, 0x3b, 0x81, 0x68, 0xa8, 0xb8, 0x14, 0x74, 0x35, 0x07, 0x97, 0x5c, 0xd1,
-	0x98, 0x79, 0x77, 0xbb, 0xa2, 0x11, 0xcc, 0xa6, 0xfe, 0xeb, 0x9b, 0x90, 0xdb, 0x13, 0xaf, 0x81,
-	0x89, 0x01, 0x39, 0x7c, 0xc1, 0x49, 0x34, 0x55, 0x52, 0xc1, 0x97, 0xa6, 0xe5, 0x3b, 0xb1, 0x18,
-	0x14, 0xa5, 0xb7, 0xfe, 0xfe, 0xe7, 0xff, 0xfd, 0x3e, 0xbd, 0x06, 0xab, 0x1c, 0xf4, 0x1d, 0x3c,
-	0x3e, 0x12, 0x13, 0x96, 0xdd, 0x77, 0x50, 0xe4, 0xdb, 0x93, 0xbc, 0x54, 0x2b, 0xdf, 0x4d, 0x40,
-	0xc5, 0x07, 0xb4, 0x00, 0xbc, 0x57, 0x40, 0xe4, 0x6e, 0x74, 0xc3, 0xcf, 0x3f, 0xc3, 0x7b, 0x49,
-	0xb0, 0xc4, 0x98, 0xde, 0x2b, 0x1e, 0x75, 0xcc, 0xb1, 0x57, 0x4a, 0xea, 0x98, 0x8a, 0x37, 0x45,
-	0x11, 0x31, 0x45, 0x0d, 0x5f, 0xb4, 0xec, 0x6e, 0x64, 0x0d, 0x7d, 0xaf, 0x78, 0x22, 0x6b, 0x18,
-	0x78, 0x99, 0x13, 0x5f, 0x43, 0xde, 0xa4, 0x8f, 0xae, 0xa1, 0xff, 0x85, 0x49, 0x74, 0x0d, 0x03,
-	0x9d, 0xfe, 0xc4, 0xf5, 0xe4, 0xd3, 0x8b, 0x59, 0x4f, 0xff, 0x0c, 0xef, 0x25, 0xc1, 0x12, 0x63,
-	0x7a, 0xbd, 0x73, 0x75, 0xcc, 0xb1, 0x3e, 0xbe, 0x3a, 0xe6, 0x78, 0x0b, 0x3e, 0x2a, 0xe6, 0x97,
-	0xb0, 0xe2, 0xef, 0xfb, 0x91, 0xfb, 0x13, 0x36, 0x32, 0xcb, 0x95, 0x64, 0x60, 0x7c, 0xe4, 0x5f,
-	0xc2, 0x6a, 0xe0, 0x2d, 0x07, 0x51, 0x7a, 0x54, 0xbd, 0x55, 0x29, 0x3f, 0x98, 0x00, 0x99, 0x18,
-	0x3c, 0xd0, 0x24, 0x57, 0x07, 0x57, 0xb5, 0xe5, 0xd5, 0xc1, 0x95, 0x1d, 0xf7, 0x98, 0xe0, 0x81,
-	0x5e, 0xb8, 0x3a, 0xb8, 0xaa, 0xe9, 0xae, 0x0e, 0xae, 0x6e, 0xac, 0xc7, 0x92, 0x0c, 0xfb, 0x47,
-	0x91, 0x24, 0x0b, 0xf6, 0x1c, 0x23, 0x49, 0x16, 0x6e, 0x20, 0xc6, 0x93, 0x4c, 0x36, 0xbb, 0xa2,
-	0x49, 0x16, 0xea, 0xd0, 0x45, 0x93, 0x2c, 0xdc, 0x37, 0x4b, 0x24, 0x99, 0x9c, 0x70, 0x0c, 0xc9,
-	0x42, 0x73, 0x7e, 0x30, 0x01, 0x72, 0xc2, 0x3a, 0xc7, 0x06, 0x57, 0x35, 0x79, 0xe3, 0xea, 0x3c,
-	0x61, 0x70, 0x51, 0x67, 0xbc, 0xed, 0x47, 0xd6, 0x39, 0xd8, 0x47, 0x89, 0xac, 0x73, 0xa8, 0xd5,
-	0x90, 0x50, 0x67, 0xd9, 0x88, 0x8a, 0xae, 0x73, 0xa8, 0x7b, 0x16, 0x5d, 0xe7, 0x70, 0x4f, 0x2b,
-	0x71, 0x3f, 0xcb, 0x09, 0xc7, 0xec, 0xe7, 0xd0, 0x9c, 0x1f, 0x4c, 0x80, 0x4c, 0xfc, 0x71, 0x72,
-	0x5b, 0x20, 0xea, 0x1f, 0xa7, 0x70, 0x83, 0xa5, 0x7c, 0x37, 0x01, 0x95, 0xb8, 0xce, 0xfe, 0x7e,
-	0x83, 0x7a, 0x9d, 0x15, 0xbd, 0x94, 0x72, 0x25, 0x19, 0x18, 0x1f, 0x79, 0x08, 0x05, 0xdf, 0xad,
-	0x99, 0xdc, 0x9b, 0xec, 0xa2, 0x5f, 0xbe, 0x9f, 0x88, 0x4b, 0x9c, 0xb0, 0xff, 0x52, 0xac, 0x9e,
-	0xb0, 0xe2, 0x06, 0x5e, 0xae, 0x24, 0x03, 0x13, 0x23, 0xfb, 0x2f, 0xc0, 0xea, 0xc8, 0x8a, 0x4b,
-	0x76, 0xb9, 0x92, 0x0c, 0x9c, 0x84, 0x55, 0xe2, 0x08, 0x1d, 0xc9, 0xaa, 0xc0, 0x19, 0x3d, 0x92,
-	0x55, 0xc1, 0x73, 0x78, 0x22, 0xab, 0x30, 0x66, 0x0c, 0xab, 0x82, 0x61, 0x2b, 0xc9, 0xc0, 0x89,
-	0x58, 0x85, 0xd7, 0xaa, 0x68, 0x56, 0x05, 0x6f, 0x82, 0xd1, 0xac, 0x0a, 0xdd, 0xcf, 0x12, 0x59,
-	0x15, 0x37, 0x61, 0xc5, 0x15, 0x2d, 0x8e, 0x55, 0x13, 0x2f, 0xb5, 0xff, 0x86, 0x14, 0xc7, 0xaa,
-	0x09, 0x22, 0xab, 0x2e, 0x5b, 0x11, 0x91, 0x77, 0x4b, 0x6f, 0xbe, 0xda, 0x5a, 0xf8, 0xe7, 0x57,
-	0x5b, 0x0b, 0xbf, 0x1a, 0x6d, 0xa5, 0xde, 0x8c, 0xb6, 0x52, 0xff, 0x18, 0x6d, 0xa5, 0xfe, 0x3d,
-	0xda, 0x4a, 0x1d, 0x2f, 0xf1, 0x7f, 0x58, 0x7d, 0xf8, 0xff, 0x00, 0x00, 0x00, 0xff, 0xff, 0x96,
-	0x0e, 0xd9, 0x9f, 0xc9, 0x2b, 0x00, 0x00,
+	// 2449 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x5b, 0xcd, 0x6f, 0x1b, 0xc7,
+	0x15, 0x37, 0x29, 0x4a, 0xa4, 0x1e, 0x25, 0x4a, 0x1a, 0xcb, 0x29, 0x4d, 0xbb, 0x92, 0xb0, 0xae,
+	0x6d, 0xca, 0x50, 0xa8, 0x86, 0x4e, 0x6a, 0x27, 0x6d, 0xda, 0x44, 0xa2, 0xed, 0x30, 0x8a, 0x65,
+	0x63, 0x65, 0x05, 0x39, 0xb4, 0x20, 0x28, 0x72, 0xa4, 0xac, 0x49, 0x71, 0xd9, 0xdd, 0xa5, 0x12,
+	0xa1, 0x40, 0x51, 0x14, 0x2e, 0x0a, 0xf4, 0x5e, 0xa0, 0xd7, 0x9e, 0x8a, 0xf6, 0xd0, 0x43, 0x4f,
+	0x3d, 0xf4, 0x0f, 0x30, 0x7a, 0xea, 0xb1, 0x97, 0xaa, 0x0d, 0x81, 0x02, 0x3d, 0xf5, 0xda, 0x6b,
+	0x31, 0x1f, 0xbb, 0x3b, 0xbb, 0x9c, 0xd9, 0xe5, 0x17, 0xa0, 0x9c, 0x2c, 0xce, 0xfe, 0xde, 0xc7,
+	0xcc, 0xfb, 0xcd, 0x8f, 0xb3, 0x6f, 0x68, 0xd8, 0x3a, 0x31, 0x9c, 0xcf, 0x7b, 0x47, 0xa5, 0x86,
+	0x79, 0xba, 0xdd, 0x34, 0x1b, 0x2d, 0x6c, 0x6d, 0xdb, 0x5f, 0xd4, 0xad, 0xd3, 0x96, 0xe1, 0x6c,
+	0xd7, 0xbb, 0xc6, 0x76, 0xc3, 0xec, 0x38, 0x96, 0xd9, 0x2e, 0x75, 0x2d, 0xd3, 0x31, 0x11, 0x62,
+	0x90, 0x92, 0x0b, 0x29, 0x9d, 0xbd, 0x55, 0xb8, 0x17, 0xe3, 0xc1, 0xee, 0xe2, 0x86, 0xcd, 0xec,
+	0x0b, 0x71, 0xd1, 0xcc, 0xa3, 0x97, 0xb8, 0xe1, 0xb8, 0xe8, 0x38, 0xcf, 0xce, 0x79, 0x17, 0xbb,
+	0xd8, 0xd5, 0x13, 0xf3, 0xc4, 0xa4, 0x7f, 0x6e, 0x93, 0xbf, 0xf8, 0xe8, 0x83, 0x08, 0x0f, 0x14,
+	0x71, 0xd4, 0x3b, 0xde, 0xee, 0xb6, 0x7b, 0x27, 0x46, 0x87, 0xff, 0xc3, 0x0c, 0xb5, 0x77, 0x20,
+	0xf7, 0x04, 0x3b, 0xfb, 0x66, 0x13, 0xeb, 0xf8, 0xc7, 0x3d, 0x6c, 0x3b, 0xe8, 0x16, 0xa4, 0x3b,
+	0x66, 0x13, 0xd7, 0x8c, 0x66, 0x3e, 0xb1, 0x91, 0x28, 0xce, 0xef, 0x40, 0xff, 0x62, 0x7d, 0x8e,
+	0x20, 0xaa, 0x15, 0x7d, 0x8e, 0x3c, 0xaa, 0x36, 0xb5, 0x1f, 0xc0, 0x92, 0x67, 0x66, 0x77, 0xcd,
+	0x8e, 0x8d, 0xd1, 0x16, 0xa4, 0xc8, 0x43, 0x6a, 0x94, 0x2d, 0xe7, 0x4b, 0x83, 0x2b, 0x58, 0xa2,
+	0x78, 0x8a, 0xd2, 0x5e, 0xcd, 0xc2, 0xf2, 0x27, 0x86, 0x4d, 0x5d, 0xd8, 0x6e, 0xe8, 0xc7, 0x90,
+	0x3e, 0x36, 0xda, 0x0e, 0xb6, 0x6c, 0xee, 0x65, 0x4b, 0xe6, 0x25, 0x6c, 0x56, 0x7a, 0xcc, 0x6c,
+	0x74, 0xd7, 0xb8, 0xf0, 0xbb, 0x14, 0xa4, 0xf9, 0x20, 0x5a, 0x85, 0xd9, 0x4e, 0xfd, 0x14, 0x13,
+	0x8f, 0x33, 0xc5, 0x79, 0x9d, 0x7d, 0x40, 0xdb, 0x90, 0x35, 0x9a, 0xb5, 0xae, 0x85, 0x8f, 0x8d,
+	0x2f, 0xb1, 0x9d, 0x4f, 0x92, 0x67, 0x3b, 0xb9, 0xfe, 0xc5, 0x3a, 0x54, 0x2b, 0xcf, 0xf9, 0xa8,
+	0x0e, 0x46, 0xd3, 0xfd, 0x1b, 0x3d, 0x87, 0xb9, 0x76, 0xfd, 0x08, 0xb7, 0xed, 0xfc, 0xcc, 0xc6,
+	0x4c, 0x31, 0x5b, 0x7e, 0x38, 0x4a, 0x66, 0xa5, 0x4f, 0xa8, 0xe9, 0xa3, 0x8e, 0x63, 0x9d, 0xeb,
+	0xdc, 0x0f, 0x7a, 0x0a, 0xd9, 0x53, 0x7c, 0x7a, 0x84, 0x2d, 0xfb, 0x73, 0xa3, 0x6b, 0xe7, 0x53,
+	0x1b, 0x33, 0xc5, 0x5c, 0xf9, 0xae, 0x6a, 0xd9, 0x0e, 0xba, 0xb8, 0x51, 0x7a, 0xea, 0xe1, 0x77,
+	0x92, 0xcb, 0x57, 0x74, 0xd1, 0x1e, 0x7d, 0x07, 0x66, 0x2d, 0xb3, 0x8d, 0xed, 0xfc, 0x2c, 0x75,
+	0x74, 0x53, 0xb9, 0xfe, 0x66, 0x1b, 0x53, 0x6b, 0x06, 0x47, 0xb7, 0x60, 0x91, 0x2c, 0x89, 0xbf,
+	0x16, 0x73, 0x74, 0x9d, 0x16, 0xc8, 0xa0, 0x37, 0xfb, 0x1f, 0x41, 0x96, 0x72, 0x82, 0x2f, 0x41,
+	0x9a, 0x2e, 0xc1, 0xf7, 0x46, 0x5a, 0x02, 0x32, 0x28, 0x2e, 0x03, 0x74, 0xbc, 0x81, 0xc2, 0xbb,
+	0x90, 0x15, 0x1e, 0xa1, 0x65, 0x98, 0x69, 0xe1, 0x73, 0xc6, 0x3e, 0x9d, 0xfc, 0x49, 0x8a, 0x78,
+	0x56, 0x6f, 0xf7, 0x70, 0x3e, 0x49, 0xc7, 0xd8, 0x87, 0xf7, 0x92, 0x0f, 0x13, 0x85, 0xf7, 0x61,
+	0x29, 0xe4, 0x79, 0x14, 0x73, 0x6d, 0x17, 0x56, 0x84, 0x8c, 0x39, 0x93, 0x4b, 0x30, 0x4b, 0x92,
+	0x63, 0x94, 0x89, 0xa2, 0x32, 0x83, 0x69, 0x7f, 0x48, 0xc0, 0xca, 0x61, 0xb7, 0x59, 0x77, 0xf0,
+	0xa8, 0xfb, 0x08, 0x7d, 0x1f, 0x16, 0x28, 0xe8, 0x0c, 0x5b, 0xb6, 0x61, 0x76, 0x68, 0x82, 0xd9,
+	0xf2, 0x0d, 0x59, 0xc4, 0x4f, 0x19, 0x44, 0xa7, 0x95, 0xe0, 0x1f, 0xd0, 0xb7, 0x21, 0x45, 0x64,
+	0x27, 0x3f, 0x43, 0xed, 0x6e, 0x46, 0xb1, 0x47, 0xa7, 0x48, 0x6d, 0x07, 0x90, 0x98, 0xeb, 0x58,
+	0x9b, 0x77, 0x1f, 0x56, 0x74, 0x7c, 0x6a, 0x9e, 0x8d, 0x3e, 0xdf, 0x55, 0x98, 0x3d, 0x36, 0xad,
+	0x06, 0xab, 0x44, 0x46, 0x67, 0x1f, 0xb4, 0x55, 0x40, 0xa2, 0x3f, 0x96, 0x13, 0x97, 0xa6, 0x17,
+	0x75, 0xbb, 0x25, 0x84, 0x70, 0xea, 0x76, 0x2b, 0x14, 0x82, 0x20, 0x48, 0x08, 0xf2, 0xc8, 0x93,
+	0x26, 0x66, 0xe6, 0xcf, 0x8e, 0x3c, 0x8c, 0x9a, 0x1d, 0xc5, 0x53, 0x94, 0xf6, 0xd0, 0x9d, 0xdd,
+	0xc8, 0xa1, 0xbd, 0x79, 0x88, 0xd1, 0xb5, 0xbf, 0xa4, 0x98, 0xd4, 0x91, 0xc1, 0x31, 0xa4, 0x4e,
+	0x34, 0x1b, 0x94, 0xba, 0x7f, 0xce, 0x5c, 0x9e, 0xd4, 0xc9, 0x32, 0x93, 0x4a, 0xdd, 0x36, 0x64,
+	0x6d, 0x6c, 0x9d, 0x19, 0x0d, 0xc2, 0x0e, 0x26, 0x75, 0x3c, 0x85, 0x03, 0x36, 0x5c, 0xad, 0xd8,
+	0x3a, 0x70, 0x48, 0xb5, 0x69, 0xa3, 0x3b, 0x90, 0xe1, 0x5c, 0x62, 0x7a, 0x36, 0xbf, 0x93, 0xed,
+	0x5f, 0xac, 0xa7, 0x19, 0x99, 0x6c, 0x3d, 0xcd, 0xd8, 0x64, 0xa3, 0x8f, 0x20, 0xd7, 0xc4, 0xb6,
+	0x61, 0xe1, 0x66, 0xcd, 0x76, 0xea, 0x0e, 0x57, 0xaf, 0x5c, 0xf9, 0x9b, 0xaa, 0x12, 0x1f, 0x10,
+	0x14, 0x95, 0xbf, 0x45, 0x6e, 0x48, 0x47, 0x24, 0x32, 0x98, 0x96, 0xc8, 0xe0, 0x4d, 0x80, 0x5e,
+	0xb7, 0xe6, 0x98, 0x35, 0xb2, 0x7f, 0xf2, 0x19, 0x4a, 0xe1, 0x4c, 0xaf, 0xfb, 0xc2, 0xac, 0xd4,
+	0x1d, 0x8c, 0x0a, 0x90, 0xb1, 0x7a, 0x1d, 0xc7, 0x20, 0x15, 0x98, 0xa7, 0xd6, 0xde, 0xe7, 0x09,
+	0x14, 0xce, 0x95, 0x28, 0xbe, 0xd8, 0xbe, 0x44, 0x11, 0xce, 0x45, 0x4a, 0x14, 0x25, 0x21, 0x83,
+	0x69, 0x7b, 0xb0, 0xba, 0x6b, 0xe1, 0xba, 0x83, 0xf9, 0x82, 0xbb, 0x34, 0xbc, 0xcf, 0xf5, 0x83,
+	0x71, 0x70, 0x5d, 0xe6, 0x86, 0x5b, 0x08, 0x12, 0xb2, 0x0f, 0xd7, 0x42, 0xce, 0x78, 0x56, 0xef,
+	0x40, 0x9a, 0x17, 0x91, 0x3b, 0xbc, 0x11, 0xe1, 0x50, 0x77, 0xb1, 0xda, 0x4b, 0x58, 0x79, 0x82,
+	0x9d, 0x50, 0x66, 0x5b, 0x00, 0x3e, 0x67, 0xf8, 0x9e, 0x5b, 0xec, 0x5f, 0xac, 0xcf, 0x7b, 0x94,
+	0xd1, 0xe7, 0x3d, 0xc6, 0xa0, 0xbb, 0xb0, 0x64, 0x74, 0x6c, 0x6c, 0x39, 0xb5, 0x26, 0x3e, 0xae,
+	0xf7, 0xda, 0x8e, 0xcd, 0x15, 0x26, 0xc7, 0x86, 0x2b, 0x7c, 0x54, 0xdb, 0x03, 0x24, 0xc6, 0x9a,
+	0x2c, 0xf1, 0x3f, 0x25, 0x61, 0x95, 0x89, 0xe9, 0x44, 0xc9, 0x57, 0x60, 0xc9, 0x45, 0x8f, 0xf0,
+	0x3d, 0x90, 0xe3, 0x36, 0xee, 0x57, 0xc1, 0xfd, 0xc0, 0x57, 0xc1, 0x70, 0xa5, 0x44, 0x4f, 0x21,
+	0x63, 0x99, 0xed, 0xf6, 0x51, 0xbd, 0xd1, 0xca, 0xa7, 0x36, 0x12, 0xc5, 0x5c, 0xf9, 0x2d, 0x99,
+	0xa1, 0x6c, 0x92, 0x25, 0x9d, 0x1b, 0xea, 0x9e, 0x0b, 0x4d, 0x83, 0x8c, 0x3b, 0x8a, 0x32, 0x90,
+	0xda, 0x7f, 0xb6, 0xff, 0x68, 0xf9, 0x0a, 0x5a, 0x80, 0xcc, 0x73, 0xfd, 0xd1, 0xa7, 0xd5, 0x67,
+	0x87, 0x07, 0xcb, 0x09, 0xc2, 0x9e, 0x90, 0xbb, 0xc9, 0x8a, 0x50, 0x81, 0x55, 0x26, 0xba, 0x93,
+	0xd4, 0x40, 0xfb, 0x06, 0x5c, 0x0b, 0x79, 0xe1, 0xea, 0xfd, 0x6a, 0x06, 0xae, 0x92, 0xfd, 0xc7,
+	0xc7, 0x3d, 0x01, 0xaf, 0x86, 0x05, 0x7c, 0x5b, 0x25, 0x93, 0x21, 0xcb, 0x41, 0x0d, 0xff, 0x6d,
+	0x72, 0xea, 0x1a, 0x7e, 0x10, 0xd2, 0xf0, 0xef, 0x8e, 0x98, 0x9c, 0x54, 0xc6, 0x07, 0x34, 0x32,
+	0x25, 0xd1, 0x48, 0x51, 0x05, 0x67, 0xa7, 0xa7, 0x82, 0xcf, 0x60, 0x35, 0x98, 0x2e, 0x27, 0xcd,
+	0x03, 0xc8, 0xf0, 0x22, 0xba, 0x5a, 0x18, 0xc9, 0x1a, 0x0f, 0xec, 0x2b, 0xe2, 0x3e, 0x76, 0xbe,
+	0x30, 0xad, 0xd6, 0x08, 0x8a, 0xc8, 0x2d, 0x64, 0x8a, 0xe8, 0x39, 0xf3, 0x39, 0xdd, 0x61, 0x43,
+	0x51, 0x9c, 0x76, 0xad, 0x5c, 0xac, 0x76, 0x48, 0x15, 0x31, 0x94, 0x19, 0x82, 0x14, 0x59, 0x69,
+	0xbe, 0x5e, 0xf4, 0x6f, 0x42, 0x72, 0x6e, 0x43, 0x48, 0x9e, 0xf4, 0x49, 0xce, 0x6d, 0x09, 0xc9,
+	0x39, 0xa0, 0xda, 0xe4, 0xe2, 0x37, 0xa5, 0x1c, 0x3f, 0x73, 0xf7, 0xdd, 0xd4, 0xd3, 0xf4, 0xf6,
+	0x62, 0x28, 0x53, 0xed, 0x3f, 0x49, 0xb6, 0x17, 0xf9, 0xf8, 0x18, 0x7b, 0x31, 0x64, 0x39, 0xb8,
+	0x17, 0x7f, 0x71, 0x89, 0x7b, 0x51, 0x91, 0xdc, 0xd8, 0x7b, 0x71, 0x0a, 0xfb, 0xcd, 0x4f, 0xc9,
+	0xdf, 0x6f, 0xbc, 0x50, 0x91, 0xfb, 0xcd, 0xad, 0x9c, 0x07, 0xd6, 0x3e, 0xa4, 0x94, 0xde, 0x6d,
+	0xf7, 0x6c, 0x07, 0x5b, 0x82, 0x46, 0x37, 0xd8, 0x48, 0x48, 0xa3, 0x39, 0x8e, 0xf0, 0x82, 0x03,
+	0x3c, 0xfa, 0x7a, 0x2e, 0x7c, 0xfa, 0x72, 0x48, 0x14, 0x7d, 0x5d, 0x2b, 0x17, 0xeb, 0x71, 0x89,
+	0x3f, 0x18, 0x83, 0x4b, 0x21, 0xcb, 0xaf, 0x17, 0x97, 0x14, 0xc9, 0x5d, 0x26, 0x97, 0xfc, 0x94,
+	0x7c, 0x2e, 0xf1, 0x6a, 0x44, 0x72, 0xc9, 0x2d, 0x9d, 0x07, 0xd6, 0x7e, 0x9d, 0x80, 0xec, 0x1e,
+	0x3e, 0xd7, 0x4d, 0xa7, 0xee, 0x90, 0xa3, 0xcf, 0x3d, 0x58, 0x21, 0x24, 0xc3, 0x56, 0xed, 0xa5,
+	0x69, 0x74, 0x6a, 0x8e, 0xd9, 0xc2, 0x1d, 0x9a, 0x5a, 0x46, 0x5f, 0x62, 0x0f, 0x3e, 0x36, 0x8d,
+	0xce, 0x0b, 0x32, 0x8c, 0xb6, 0x00, 0x9d, 0xd6, 0x3b, 0xf5, 0x93, 0x20, 0x98, 0x1d, 0x16, 0x97,
+	0xf9, 0x13, 0x29, 0xba, 0xd7, 0x69, 0x9b, 0x8d, 0x56, 0x8d, 0xcc, 0x7a, 0x26, 0x80, 0x3e, 0xa4,
+	0x0f, 0xf6, 0xf0, 0xb9, 0xf6, 0x73, 0xef, 0x3c, 0x38, 0x09, 0xcf, 0xc9, 0x79, 0xd0, 0x45, 0x8f,
+	0x72, 0x1e, 0xe4, 0x36, 0x23, 0x9c, 0x07, 0x79, 0x74, 0xe1, 0x3c, 0xf8, 0x21, 0x39, 0x0f, 0xb2,
+	0x55, 0xa5, 0xe7, 0x41, 0x85, 0xa1, 0xb0, 0xf8, 0x3b, 0xa9, 0xd7, 0x17, 0xeb, 0x57, 0x74, 0xcf,
+	0xcc, 0x3f, 0xdf, 0x4d, 0x69, 0xa3, 0xbe, 0x0f, 0xcb, 0xf4, 0xc4, 0xde, 0xb0, 0xb0, 0xe3, 0xae,
+	0xe7, 0x26, 0xcc, 0xdb, 0x74, 0xc0, 0x5f, 0xce, 0x85, 0xfe, 0xc5, 0x7a, 0x86, 0xa1, 0xaa, 0x15,
+	0xf2, 0x3d, 0x4f, 0xff, 0x6a, 0x6a, 0x4f, 0xf8, 0xcb, 0x05, 0x33, 0xe7, 0xa9, 0x94, 0x61, 0x8e,
+	0x01, 0x78, 0x26, 0x05, 0xf9, 0x99, 0x81, 0xda, 0x70, 0xa4, 0xf6, 0xe7, 0x04, 0x5c, 0x75, 0x0f,
+	0xae, 0xe3, 0xe5, 0x82, 0x76, 0x20, 0xc7, 0xa1, 0x23, 0xd4, 0x75, 0x91, 0x99, 0xb8, 0x65, 0x2d,
+	0x07, 0xca, 0xba, 0xa6, 0x4e, 0x5c, 0x38, 0x9e, 0x7c, 0xec, 0xbf, 0xa6, 0x4c, 0xbc, 0x0c, 0xff,
+	0x4e, 0x02, 0x62, 0x27, 0x31, 0xf2, 0xd1, 0x93, 0xcd, 0x8f, 0xc2, 0xb2, 0x59, 0x52, 0x9f, 0x38,
+	0x45, 0xc3, 0x41, 0xd5, 0x7c, 0x35, 0x7d, 0xd5, 0xd4, 0x43, 0xaa, 0xf9, 0xde, 0x68, 0xb9, 0x5d,
+	0x8a, 0x68, 0xee, 0xb9, 0xaf, 0x1d, 0x3c, 0x23, 0x5e, 0xb2, 0xb7, 0xc9, 0x4b, 0x12, 0x1d, 0xe2,
+	0x92, 0x19, 0x55, 0x33, 0x17, 0xaa, 0x55, 0xe1, 0xaa, 0xfb, 0xc6, 0x2e, 0x52, 0xb7, 0x1c, 0x38,
+	0xeb, 0x0e, 0xcd, 0xa5, 0xa0, 0xab, 0x09, 0xb8, 0xf4, 0x01, 0x5c, 0x75, 0x5f, 0xba, 0xc6, 0xdc,
+	0xdd, 0x6f, 0xf8, 0x2f, 0x7f, 0x62, 0x36, 0x5c, 0x34, 0x76, 0xcd, 0xce, 0xb1, 0x71, 0x22, 0xb8,
+	0x6d, 0xd0, 0x81, 0x90, 0x5b, 0x86, 0x22, 0x6e, 0xd9, 0x63, 0x4f, 0x34, 0x5c, 0x73, 0x7f, 0x86,
+	0x0c, 0x10, 0x35, 0x43, 0x6e, 0xc3, 0x91, 0x82, 0x68, 0x8c, 0x9b, 0x0b, 0x11, 0x0d, 0x0e, 0x1d,
+	0x45, 0x34, 0x98, 0xc9, 0x08, 0xa2, 0xc1, 0x22, 0xcb, 0x44, 0x63, 0x0a, 0xcb, 0xe0, 0x8a, 0x06,
+	0x1b, 0x1e, 0x43, 0x34, 0x82, 0x86, 0x5f, 0x2f, 0xd1, 0x90, 0xe7, 0x76, 0x99, 0xa2, 0xe1, 0x65,
+	0xe4, 0x8b, 0x06, 0x2b, 0x44, 0xa4, 0x68, 0xf0, 0x9a, 0xb9, 0x50, 0x5f, 0x34, 0x82, 0xd4, 0x1d,
+	0x42, 0x34, 0x64, 0x5c, 0x0a, 0xba, 0x9a, 0x80, 0x4b, 0x9e, 0x68, 0x8c, 0xbd, 0xbb, 0x3d, 0xd1,
+	0x08, 0x66, 0xa3, 0xe9, 0x70, 0xed, 0x09, 0x76, 0x2a, 0xf8, 0xcc, 0x68, 0xe0, 0xdd, 0x76, 0xdd,
+	0xf6, 0x78, 0xfa, 0x2e, 0x2c, 0x35, 0xe9, 0x68, 0xad, 0x41, 0x86, 0xfd, 0x08, 0x2b, 0xfd, 0x8b,
+	0xf5, 0x45, 0xc1, 0xa0, 0x5a, 0xd1, 0x17, 0x9b, 0xc2, 0xc7, 0xa6, 0xf6, 0x43, 0x78, 0x23, 0xec,
+	0x93, 0xcf, 0x7d, 0x07, 0x16, 0x44, 0xa7, 0x51, 0x0d, 0x07, 0xd1, 0x3c, 0x2b, 0xf8, 0xd7, 0xfe,
+	0x91, 0x80, 0x3c, 0xdb, 0xa4, 0x53, 0xcd, 0x1a, 0x3d, 0x85, 0xd5, 0x80, 0xe9, 0x08, 0xca, 0x83,
+	0x04, 0x4f, 0xae, 0xfc, 0x3c, 0x08, 0xc8, 0xcf, 0xad, 0x98, 0x29, 0x0a, 0xbc, 0xa9, 0xc1, 0x75,
+	0xc9, 0xf4, 0xa6, 0xb8, 0x80, 0xff, 0x4b, 0x42, 0x9e, 0xec, 0x18, 0x01, 0xe0, 0xb7, 0xf8, 0xf6,
+	0xc3, 0xf2, 0xf4, 0xb6, 0x4a, 0x02, 0x64, 0xe6, 0x83, 0x22, 0xf5, 0xab, 0xe9, 0x8b, 0xd4, 0x67,
+	0x21, 0x91, 0xfa, 0x60, 0x9c, 0x0c, 0x2f, 0x45, 0xaa, 0x1a, 0x70, 0x5d, 0x92, 0x17, 0x2f, 0xed,
+	0x63, 0xc8, 0x89, 0xa5, 0xf5, 0x7a, 0x7b, 0xb1, 0xc5, 0x15, 0x79, 0x8c, 0x6d, 0xed, 0x00, 0xf2,
+	0x4c, 0x77, 0x24, 0xdb, 0xe3, 0x41, 0x40, 0xc7, 0x46, 0x23, 0xa5, 0xc4, 0xe9, 0x14, 0x49, 0x79,
+	0x08, 0x79, 0xa6, 0x4f, 0xd3, 0x95, 0xa2, 0x1b, 0x70, 0x5d, 0xe2, 0x96, 0xe5, 0x5d, 0xfe, 0xfd,
+	0x06, 0xa4, 0x77, 0xd9, 0x4f, 0x60, 0x90, 0x01, 0x69, 0xfe, 0xe3, 0x0e, 0xa4, 0xc9, 0x12, 0x0f,
+	0xfe, 0x60, 0xa4, 0x70, 0x2b, 0x12, 0xc3, 0xb5, 0xf5, 0xda, 0x5f, 0xff, 0xf8, 0xdf, 0xdf, 0x24,
+	0x97, 0x60, 0x91, 0x82, 0xde, 0xe4, 0xaf, 0xce, 0xc8, 0x84, 0x79, 0xef, 0xfe, 0x1d, 0x7d, 0x6b,
+	0x98, 0x1f, 0x14, 0x14, 0x6e, 0xc7, 0xa0, 0xa2, 0x03, 0x5a, 0x00, 0xfe, 0xf5, 0x37, 0xba, 0xad,
+	0xbe, 0xec, 0x10, 0x67, 0x78, 0x27, 0x0e, 0x16, 0x1b, 0xd3, 0xbf, 0xde, 0x96, 0xc7, 0x1c, 0xb8,
+	0x4e, 0x97, 0xc7, 0x94, 0xdc, 0x92, 0x2b, 0x62, 0xb2, 0x1a, 0xbe, 0xa8, 0xdb, 0x2d, 0x65, 0x0d,
+	0x85, 0xeb, 0x6d, 0x65, 0x0d, 0x03, 0x17, 0xd9, 0xd1, 0x35, 0xa4, 0x17, 0x94, 0xea, 0x1a, 0x8a,
+	0x97, 0xc5, 0xea, 0x1a, 0x06, 0x6e, 0x39, 0x63, 0xd7, 0x93, 0x4e, 0x2f, 0x62, 0x3d, 0xc5, 0x19,
+	0xde, 0x89, 0x83, 0xc5, 0xc6, 0xf4, 0xef, 0x0d, 0xe5, 0x31, 0x07, 0xee, 0x30, 0xe5, 0x31, 0x07,
+	0xaf, 0x1f, 0x55, 0x31, 0xbf, 0x84, 0x05, 0xf1, 0xce, 0x03, 0xdd, 0x1d, 0xf2, 0x12, 0xa7, 0x50,
+	0x8c, 0x07, 0x46, 0x47, 0xfe, 0x09, 0x2c, 0x06, 0x6e, 0x78, 0x91, 0xd4, 0xa3, 0xec, 0x46, 0xb9,
+	0xb0, 0x39, 0x04, 0x32, 0x36, 0x78, 0xe0, 0x82, 0x50, 0x1e, 0x5c, 0x76, 0x25, 0x29, 0x0f, 0x2e,
+	0xbd, 0x6d, 0x8c, 0x08, 0x1e, 0xb8, 0x07, 0x94, 0x07, 0x97, 0x5d, 0x38, 0xca, 0x83, 0xcb, 0x2f,
+	0x15, 0x23, 0x49, 0xc6, 0x7b, 0xe7, 0x4a, 0x92, 0x05, 0xef, 0x5b, 0x94, 0x24, 0x0b, 0x5f, 0x9e,
+	0x44, 0x93, 0xcc, 0x6d, 0xf4, 0xab, 0x49, 0x16, 0xba, 0x9d, 0x50, 0x93, 0x2c, 0x7c, 0x67, 0x10,
+	0x4b, 0x32, 0x77, 0xc2, 0x11, 0x24, 0x0b, 0xcd, 0x79, 0x73, 0x08, 0xe4, 0x90, 0x75, 0x8e, 0x0c,
+	0x2e, 0xbb, 0xe0, 0x8a, 0xaa, 0xf3, 0x90, 0xc1, 0x59, 0x9d, 0x79, 0xa7, 0x53, 0x59, 0xe7, 0x60,
+	0x0f, 0x59, 0x59, 0xe7, 0x50, 0x9b, 0x35, 0xa6, 0xce, 0x6e, 0x13, 0x5e, 0x5d, 0xe7, 0xd0, 0xcd,
+	0x81, 0xba, 0xce, 0xe1, 0x7e, 0x7e, 0xec, 0x7e, 0x76, 0x27, 0x1c, 0xb1, 0x9f, 0x43, 0x73, 0xde,
+	0x1c, 0x02, 0x19, 0xfb, 0xe5, 0xe4, 0xb5, 0x7f, 0xe5, 0x5f, 0x4e, 0xe1, 0xe6, 0x72, 0xe1, 0x76,
+	0x0c, 0x2a, 0x76, 0x9d, 0xc5, 0x5e, 0xab, 0x7c, 0x9d, 0x25, 0x7d, 0xe4, 0x42, 0x31, 0x1e, 0x18,
+	0x1d, 0xb9, 0x07, 0x59, 0xa1, 0x63, 0x88, 0xee, 0x0c, 0xd7, 0xe4, 0x2c, 0xdc, 0x8d, 0xc5, 0xc5,
+	0x4e, 0x58, 0x6c, 0x08, 0xca, 0x27, 0x2c, 0xe9, 0x3e, 0x16, 0x8a, 0xf1, 0xc0, 0xd8, 0xc8, 0x62,
+	0xf3, 0x4f, 0x1e, 0x59, 0xd2, 0x60, 0x2c, 0x14, 0xe3, 0x81, 0xc3, 0xb0, 0x8a, 0xb5, 0x0f, 0x94,
+	0xac, 0x0a, 0xf4, 0x27, 0x94, 0xac, 0x0a, 0xf5, 0x20, 0xe2, 0x58, 0xc5, 0x63, 0x46, 0xb0, 0x2a,
+	0x18, 0xb6, 0x18, 0x0f, 0x1c, 0x8a, 0x55, 0xbc, 0xa5, 0xa4, 0x66, 0x55, 0xb0, 0x0b, 0xa6, 0x66,
+	0x55, 0xa8, 0x37, 0x15, 0xcb, 0xaa, 0xa8, 0x09, 0x4b, 0xda, 0x53, 0x51, 0xac, 0x1a, 0x7a, 0xa9,
+	0xc5, 0xee, 0x50, 0x14, 0xab, 0x86, 0x88, 0x2c, 0x6d, 0x34, 0x29, 0x22, 0xff, 0x94, 0xfe, 0xe0,
+	0x55, 0x78, 0x3b, 0x43, 0x9b, 0x0a, 0xd2, 0x0c, 0xbe, 0x18, 0x16, 0xee, 0x0d, 0x03, 0x8d, 0x8e,
+	0xff, 0xcb, 0x04, 0xfb, 0xa9, 0x61, 0xe0, 0x9d, 0x1c, 0x6d, 0x8d, 0xd2, 0x52, 0x28, 0xbc, 0x39,
+	0x24, 0x3a, 0x3e, 0x93, 0x81, 0x77, 0x6c, 0x79, 0x26, 0xaa, 0xf7, 0x7b, 0x79, 0x26, 0xca, 0x17,
+	0xf7, 0xa8, 0x4c, 0x06, 0x5a, 0x50, 0xf2, 0x4c, 0x54, 0x8d, 0x38, 0x79, 0x26, 0xca, 0xbe, 0x56,
+	0x54, 0x26, 0x03, 0xef, 0xef, 0xf2, 0x4c, 0x54, 0xdd, 0x03, 0x79, 0x26, 0xca, 0xa6, 0x80, 0x22,
+	0x93, 0x9d, 0xfc, 0xeb, 0xaf, 0xd6, 0xae, 0xfc, 0xfd, 0xab, 0xb5, 0x2b, 0x3f, 0xeb, 0xaf, 0x25,
+	0x5e, 0xf7, 0xd7, 0x12, 0x7f, 0xeb, 0xaf, 0x25, 0xfe, 0xd5, 0x5f, 0x4b, 0x1c, 0xcd, 0xd1, 0xff,
+	0x54, 0x72, 0xff, 0xff, 0x01, 0x00, 0x00, 0xff, 0xff, 0xeb, 0x03, 0xc4, 0xd5, 0x6d, 0x33, 0x00,
+	0x00,
 }

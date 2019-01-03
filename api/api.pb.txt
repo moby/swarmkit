@@ -4098,6 +4098,54 @@ file {
       }
     }
   }
+  message_type {
+    name: "Device"
+    field {
+      name: "device_class_id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "deviceClassId"
+    }
+    field {
+      name: "path"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "path"
+    }
+  }
+  message_type {
+    name: "DeviceAttachment"
+    field {
+      name: "device_class_id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "deviceClassId"
+    }
+    field {
+      name: "path_on_host"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "pathOnHost"
+    }
+    field {
+      name: "path_in_task"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "pathInTask"
+    }
+    field {
+      name: "device_cgroup_rules"
+      number: 16
+      label: LABEL_REPEATED
+      type: TYPE_STRING
+      json_name: "deviceCgroupRules"
+    }
+  }
   enum_type {
     name: "ResourceType"
     value {
@@ -4420,6 +4468,14 @@ file {
       type_name: ".docker.swarmkit.v1.NodeSpec.Availability"
       json_name: "availability"
     }
+    field {
+      name: "devices"
+      number: 5
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Device"
+      json_name: "devices"
+    }
     enum_type {
       name: "Membership"
       value {
@@ -4649,6 +4705,14 @@ file {
       }
       json_name: "resourceReferences"
     }
+    field {
+      name: "devices"
+      number: 12
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.DeviceAttachmentSpec"
+      json_name: "devices"
+    }
     oneof_decl {
       name: "runtime"
     }
@@ -4687,6 +4751,30 @@ file {
       type: TYPE_MESSAGE
       type_name: ".google.protobuf.Any"
       json_name: "payload"
+    }
+  }
+  message_type {
+    name: "DeviceAttachmentSpec"
+    field {
+      name: "device_class_id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "deviceClassId"
+    }
+    field {
+      name: "path"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "path"
+    }
+    field {
+      name: "device_cgroup_rules"
+      number: 16
+      label: LABEL_REPEATED
+      type: TYPE_STRING
+      json_name: "deviceCgroupRules"
     }
   }
   message_type {
@@ -5289,6 +5377,27 @@ file {
       type: TYPE_MESSAGE
       type_name: ".docker.swarmkit.v1.Driver"
       json_name: "templating"
+    }
+  }
+  message_type {
+    name: "DeviceClassSpec"
+    field {
+      name: "annotations"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Annotations"
+      options {
+        65001: 0
+      }
+      json_name: "annotations"
+    }
+    field {
+      name: "shared"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      json_name: "shared"
     }
   }
   syntax: "proto3"
@@ -6053,6 +6162,14 @@ file {
       type_name: ".docker.swarmkit.v1.GenericResource"
       json_name: "assignedGenericResources"
     }
+    field {
+      name: "devices"
+      number: 16
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.DeviceAttachment"
+      json_name: "devices"
+    }
     options {
       70001 {
         1 {
@@ -6409,6 +6526,50 @@ file {
       label: LABEL_OPTIONAL
       type: TYPE_MESSAGE
       type_name: ".docker.swarmkit.v1.ConfigSpec"
+      options {
+        65001: 0
+      }
+      json_name: "spec"
+    }
+    options {
+      70001 {
+        1 {
+          1: 1
+          2: 1
+          3: 1
+          4: 1
+          5: 1
+          6: 1
+        }
+      }
+    }
+  }
+  message_type {
+    name: "DeviceClass"
+    field {
+      name: "id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "id"
+    }
+    field {
+      name: "meta"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Meta"
+      options {
+        65001: 0
+      }
+      json_name: "meta"
+    }
+    field {
+      name: "spec"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.DeviceClassSpec"
       options {
         65001: 0
       }
@@ -7748,6 +7909,173 @@ file {
   message_type {
     name: "RemoveConfigResponse"
   }
+  message_type {
+    name: "GetDeviceClassRequest"
+    field {
+      name: "device_class_id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "deviceClassId"
+    }
+  }
+  message_type {
+    name: "GetDeviceClassResponse"
+    field {
+      name: "device_class"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.DeviceClass"
+      json_name: "deviceClass"
+    }
+  }
+  message_type {
+    name: "UpdateDeviceClassRequest"
+    field {
+      name: "device_class_id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "deviceClassId"
+    }
+    field {
+      name: "device_class_version"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Version"
+      json_name: "deviceClassVersion"
+    }
+    field {
+      name: "spec"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.DeviceClassSpec"
+      json_name: "spec"
+    }
+  }
+  message_type {
+    name: "UpdateDeviceClassResponse"
+    field {
+      name: "device_class"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.DeviceClass"
+      json_name: "deviceClass"
+    }
+  }
+  message_type {
+    name: "ListDeviceClassesRequest"
+    field {
+      name: "filters"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.ListDeviceClassesRequest.Filters"
+      json_name: "filters"
+    }
+    nested_type {
+      name: "Filters"
+      field {
+        name: "names"
+        number: 1
+        label: LABEL_REPEATED
+        type: TYPE_STRING
+        json_name: "names"
+      }
+      field {
+        name: "id_prefixes"
+        number: 2
+        label: LABEL_REPEATED
+        type: TYPE_STRING
+        json_name: "idPrefixes"
+      }
+      field {
+        name: "labels"
+        number: 3
+        label: LABEL_REPEATED
+        type: TYPE_MESSAGE
+        type_name: ".docker.swarmkit.v1.ListDeviceClassesRequest.Filters.LabelsEntry"
+        json_name: "labels"
+      }
+      field {
+        name: "name_prefixes"
+        number: 4
+        label: LABEL_REPEATED
+        type: TYPE_STRING
+        json_name: "namePrefixes"
+      }
+      nested_type {
+        name: "LabelsEntry"
+        field {
+          name: "key"
+          number: 1
+          label: LABEL_OPTIONAL
+          type: TYPE_STRING
+          json_name: "key"
+        }
+        field {
+          name: "value"
+          number: 2
+          label: LABEL_OPTIONAL
+          type: TYPE_STRING
+          json_name: "value"
+        }
+        options {
+          map_entry: true
+        }
+      }
+    }
+  }
+  message_type {
+    name: "ListDeviceClassesResponse"
+    field {
+      name: "device_classes"
+      number: 1
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.DeviceClass"
+      json_name: "deviceClasses"
+    }
+  }
+  message_type {
+    name: "CreateDeviceClassRequest"
+    field {
+      name: "spec"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.DeviceClassSpec"
+      json_name: "spec"
+    }
+  }
+  message_type {
+    name: "CreateDeviceClassResponse"
+    field {
+      name: "device_class"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.DeviceClass"
+      json_name: "deviceClass"
+    }
+  }
+  message_type {
+    name: "RemoveDeviceClassRequest"
+    field {
+      name: "device_class_id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "deviceClassId"
+    }
+  }
+  message_type {
+    name: "RemoveDeviceClassResponse"
+  }
   service {
     name: "Control"
     method {
@@ -8034,6 +8362,56 @@ file {
       name: "RemoveConfig"
       input_type: ".docker.swarmkit.v1.RemoveConfigRequest"
       output_type: ".docker.swarmkit.v1.RemoveConfigResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "GetDeviceClass"
+      input_type: ".docker.swarmkit.v1.GetDeviceClassRequest"
+      output_type: ".docker.swarmkit.v1.GetDeviceClassResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "ListDeviceClasses"
+      input_type: ".docker.swarmkit.v1.ListDeviceClassesRequest"
+      output_type: ".docker.swarmkit.v1.ListDeviceClassesResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "CreateDeviceClass"
+      input_type: ".docker.swarmkit.v1.CreateDeviceClassRequest"
+      output_type: ".docker.swarmkit.v1.CreateDeviceClassResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "UpdateDeviceClass"
+      input_type: ".docker.swarmkit.v1.UpdateDeviceClassRequest"
+      output_type: ".docker.swarmkit.v1.UpdateDeviceClassResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "RemoveDeviceClass"
+      input_type: ".docker.swarmkit.v1.RemoveDeviceClassRequest"
+      output_type: ".docker.swarmkit.v1.RemoveDeviceClassResponse"
       options {
         73626345 {
           1: "swarm-manager"
@@ -9445,6 +9823,15 @@ file {
       oneof_index: 0
       json_name: "config"
     }
+    field {
+      name: "deviceClass"
+      number: 11
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.DeviceClass"
+      oneof_index: 0
+      json_name: "deviceClass"
+    }
     oneof_decl {
       name: "target"
     }
@@ -9699,6 +10086,14 @@ file {
       type_name: ".docker.swarmkit.v1.Config"
       json_name: "configs"
     }
+    field {
+      name: "device_classes"
+      number: 10
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.DeviceClass"
+      json_name: "deviceClasses"
+    }
   }
   message_type {
     name: "ClusterSnapshot"
@@ -9854,6 +10249,15 @@ file {
       type_name: ".docker.swarmkit.v1.Config"
       oneof_index: 0
       json_name: "config"
+    }
+    field {
+      name: "device_class"
+      number: 10
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.DeviceClass"
+      oneof_index: 0
+      json_name: "deviceClass"
     }
     oneof_decl {
       name: "Object"

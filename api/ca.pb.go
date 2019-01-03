@@ -86,6 +86,16 @@
 		CreateConfigResponse
 		RemoveConfigRequest
 		RemoveConfigResponse
+		GetDeviceClassRequest
+		GetDeviceClassResponse
+		UpdateDeviceClassRequest
+		UpdateDeviceClassResponse
+		ListDeviceClassesRequest
+		ListDeviceClassesResponse
+		CreateDeviceClassRequest
+		CreateDeviceClassResponse
+		RemoveDeviceClassRequest
+		RemoveDeviceClassResponse
 		SessionRequest
 		SessionMessage
 		HeartbeatRequest
@@ -121,6 +131,7 @@
 		Cluster
 		Secret
 		Config
+		DeviceClass
 		Resource
 		Extension
 		RaftMember
@@ -150,6 +161,7 @@
 		TaskSpec
 		ResourceReference
 		GenericRuntimeSpec
+		DeviceAttachmentSpec
 		NetworkAttachmentSpec
 		ContainerSpec
 		EndpointSpec
@@ -157,6 +169,7 @@
 		ClusterSpec
 		SecretSpec
 		ConfigSpec
+		DeviceClassSpec
 		Version
 		IndexEntry
 		Annotations
@@ -212,6 +225,8 @@
 		MaybeEncryptedRecord
 		RootRotation
 		Privileges
+		Device
+		DeviceAttachment
 		Object
 		SelectBySlot
 		SelectByCustom

@@ -20,6 +20,57 @@ func validateNodeSpec(spec *api.NodeSpec) error {
 	return nil
 }
 
+// validateDevices validates that the devices on the node spec are all
+// consistent and correct. this checks:
+//
+//   * the DeviceClass exists in the store
+//   * the Path is unique for the DeviceClass on this node
+//
+// Returns InvalidArgument if the devices are incorrect
+//
+// the spec must not be nil
+func validateDevices(tx store.Tx, spec *api.NodeSpec) error {
+	// we need to make sure that a particular Path is only used once per
+	// DeviceClass, so keep a mapping to check for duplicates
+	paths := map[string]map[string]struct{}{}
+
+	for _, device := range spec.Devices {
+		deviceClass := store.GetDeviceClass(tx, device.DeviceClassID)
+		if deviceClass == nil {
+			return status.Errorf(
+				codes.InvalidArgument,
+				"device class %v for device %v does not exist",
+				device.DeviceClassID, device.Path,
+			)
+		}
+		// check if we have created a set of DeviceClasses for this Path yet.
+		// if not, create that set now
+		if _, ok := paths[device.Path]; !ok {
+			paths[device.Path] = map[string]struct{}{device.DeviceClassID: struct{}{}}
+		} else {
+			// we can skip the rest of this loop if we have just created the
+			// set, because we know we only have 1
+
+			// Check that the DeviceClassID is unique for the Path. that is, the
+			// same Path can be used for many DeviceClassIDs, but cannot be used
+			// for the same DeviceClassID twice
+			if _, ok := paths[device.Path][device.DeviceClassID]; ok {
+				return status.Errorf(
+					codes.InvalidArgument,
+					"device %v is specified for DeviceClass %v more than once",
+					device.Path, device.DeviceClassID,
+				)
+			}
+
+			// if everything checks out, add this DeviceClassID to the Path's set
+			// so we know we've already used it
+			paths[device.Path][device.DeviceClassID] = struct{}{}
+		}
+	}
+
+	return nil
+}
+
 // GetNode returns a Node given a NodeID.
 // - Returns `InvalidArgument` if NodeID is not provided.
 // - Returns `NotFound` if the Node is not found.
@@ -239,6 +290,11 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 			if !s.raft.CanRemoveMember(member.RaftID) {
 				return status.Errorf(codes.FailedPrecondition, "can't remove member from the raft: this would result in a loss of quorum")
 			}
+		}
+
+		// validate that device classes exist
+		if err := validateDevices(tx, request.Spec); err != nil {
+			return err
 		}
 
 		node.Meta.Version = *request.NodeVersion
