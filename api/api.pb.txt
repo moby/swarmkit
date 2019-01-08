@@ -7811,6 +7811,17 @@ file {
       }
     }
     method {
+      name: "ListTasksStream"
+      input_type: ".docker.swarmkit.v1.ListTasksRequest"
+      output_type: ".docker.swarmkit.v1.ListTasksResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+      server_streaming: true
+    }
+    method {
       name: "RemoveTask"
       input_type: ".docker.swarmkit.v1.RemoveTaskRequest"
       output_type: ".docker.swarmkit.v1.RemoveTaskResponse"
