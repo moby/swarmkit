@@ -2391,6 +2391,16 @@ file {
         type_name: ".docker.swarmkit.v1.Mount.BindOptions.Propagation"
         json_name: "propagation"
       }
+      field {
+        name: "nonrecursive"
+        number: 2
+        label: LABEL_OPTIONAL
+        type: TYPE_BOOL
+        options {
+          65004: "NonRecursive"
+        }
+        json_name: "nonrecursive"
+      }
       enum_type {
         name: "Propagation"
         value {
@@ -9029,6 +9039,13 @@ file {
       type: TYPE_UINT64
       json_name: "nodes"
     }
+    field {
+      name: "learners"
+      number: 2
+      label: LABEL_REPEATED
+      type: TYPE_UINT64
+      json_name: "learners"
+    }
   }
   message_type {
     name: "ConfChange"
@@ -9174,6 +9191,10 @@ file {
     value {
       name: "ConfChangeUpdateNode"
       number: 2
+    }
+    value {
+      name: "ConfChangeAddLearnerNode"
+      number: 3
     }
   }
   options {

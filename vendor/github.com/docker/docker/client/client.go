@@ -173,10 +173,17 @@ func WithTLSClientConfig(cacertPath, certPath, keyPath string) func(*Client) err
 
 // WithDialer applies the dialer.DialContext to the client transport. This can be
 // used to set the Timeout and KeepAlive settings of the client.
+// Deprecated: use WithDialContext
 func WithDialer(dialer *net.Dialer) func(*Client) error {
+	return WithDialContext(dialer.DialContext)
+}
+
+// WithDialContext applies the dialer to the client transport. This can be
+// used to set the Timeout and KeepAlive settings of the client.
+func WithDialContext(dialContext func(ctx context.Context, network, addr string) (net.Conn, error)) func(*Client) error {
 	return func(c *Client) error {
 		if transport, ok := c.client.Transport.(*http.Transport); ok {
-			transport.DialContext = dialer.DialContext
+			transport.DialContext = dialContext
 			return nil
 		}
 		return errors.Errorf("cannot apply dialer to transport: %T", c.client.Transport)
@@ -227,6 +234,14 @@ func WithHTTPHeaders(headers map[string]string) func(*Client) error {
 	}
 }
 
+// WithScheme overrides the client scheme with the specified one
+func WithScheme(scheme string) func(*Client) error {
+	return func(c *Client) error {
+		c.scheme = scheme
+		return nil
+	}
+}
+
 // NewClientWithOpts initializes a new API client with default values. It takes functors
 // to modify values when creating it, like `NewClientWithOpts(WithVersion(…))`
 // It also initializes the custom http headers to add to each request.
@@ -242,7 +257,6 @@ func NewClientWithOpts(ops ...func(*Client) error) (*Client, error) {
 	c := &Client{
 		host:    DefaultDockerHost,
 		version: api.DefaultVersion,
-		scheme:  "http",
 		client:  client,
 		proto:   defaultProto,
 		addr:    defaultAddr,
@@ -257,14 +271,18 @@ func NewClientWithOpts(ops ...func(*Client) error) (*Client, error) {
 	if _, ok := c.client.Transport.(http.RoundTripper); !ok {
 		return nil, fmt.Errorf("unable to verify TLS configuration, invalid transport %v", c.client.Transport)
 	}
-	tlsConfig := resolveTLSConfig(c.client.Transport)
-	if tlsConfig != nil {
-		// TODO(stevvooe): This isn't really the right way to write clients in Go.
-		// `NewClient` should probably only take an `*http.Client` and work from there.
-		// Unfortunately, the model of having a host-ish/url-thingy as the connection
-		// string has us confusing protocol and transport layers. We continue doing
-		// this to avoid breaking existing clients but this should be addressed.
-		c.scheme = "https"
+	if c.scheme == "" {
+		c.scheme = "http"
+
+		tlsConfig := resolveTLSConfig(c.client.Transport)
+		if tlsConfig != nil {
+			// TODO(stevvooe): This isn't really the right way to write clients in Go.
+			// `NewClient` should probably only take an `*http.Client` and work from there.
+			// Unfortunately, the model of having a host-ish/url-thingy as the connection
+			// string has us confusing protocol and transport layers. We continue doing
+			// this to avoid breaking existing clients but this should be addressed.
+			c.scheme = "https"
+		}
 	}
 
 	return c, nil
@@ -399,4 +417,17 @@ func (cli *Client) CustomHTTPHeaders() map[string]string {
 // Deprecated: use WithHTTPHeaders when creating the client.
 func (cli *Client) SetCustomHTTPHeaders(headers map[string]string) {
 	cli.customHTTPHeaders = headers
+}
+
+// Dialer returns a dialer for a raw stream connection, with HTTP/1.1 header, that can be used for proxying the daemon connection.
+// Used by `docker dial-stdio` (docker/cli#889).
+func (cli *Client) Dialer() func(context.Context) (net.Conn, error) {
+	return func(ctx context.Context) (net.Conn, error) {
+		if transport, ok := cli.client.Transport.(*http.Transport); ok {
+			if transport.DialContext != nil && transport.TLSClientConfig == nil {
+				return transport.DialContext(ctx, cli.proto, cli.addr)
+			}
+		}
+		return fallbackDial(cli.proto, cli.addr, resolveTLSConfig(cli.client.Transport))
+	}
 }
