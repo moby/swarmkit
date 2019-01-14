@@ -3,6 +3,7 @@ package controlapi
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"time"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state/raft/membership"
@@ -248,25 +249,35 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 	}, nil
 }
 
-func removeNodeAttachments(tx store.Tx, nodeID string) error {
-	// orphan the node's attached containers. if we don't do this, the
-	// network these attachments are connected to will never be removeable
+func orphanNodeTasks(tx store.Tx, nodeID string) error {
+	// when a node is deleted, all of its tasks are irrecoverably removed.
+	// additionally, the Dispatcher can no longer be relied on to update the
+	// task status. Therefore, when the node is removed, we must additionally
+	// move all of its assigned tasks to the Orphaned state, so that their
+	// resources can be cleaned up.
 	tasks, err := store.FindTasks(tx, store.ByNodeID(nodeID))
 	if err != nil {
 		return err
 	}
 	for _, task := range tasks {
-		// if the task is an attachment, then we just delete it. the allocator
-		// will do the heavy lifting. basically, GetAttachment will return the
-		// attachment if that's the kind of runtime, or nil if it's not.
-		if task.Spec.GetAttachment() != nil {
-			// don't delete the task. instead, update it to `ORPHANED` so that
-			// the taskreaper will clean it up.
-			task.Status.State = api.TaskStateOrphaned
-			if err := store.UpdateTask(tx, task); err != nil {
-				return err
-			}
+		// this code was backported from a later version. in the later version,
+		// gogotypes has a function TimestampNow, which returns a
+		// gogotypes.Timestamp for the current time. this version of the
+		// swarmkit code uses an earlier version of gogotypes, which means we
+		// don't have access to that function. however, this code is
+		// esssentially equivalent.
+		//
+		// we're ignoring the error value of TimestampProto, because it's
+		// probably a catastrophic error if time.Now doesn't return a valid
+		// time, and gogotypes.TimestampNow just panics if the conversion
+		// fails anyway.
+		timestamp, _ := gogotypes.TimestampProto(time.Now())
+		task.Status = api.TaskStatus{
+			Timestamp: timestamp,
+			State:     api.TaskStateOrphaned,
+			Message:   "Task belonged to a node that has been deleted",
 		}
+		store.UpdateTask(tx, task)
 	}
 	return nil
 }
@@ -336,7 +347,7 @@ func (s *Server) RemoveNode(ctx context.Context, request *api.RemoveNodeRequest)
 			return err
 		}
 
-		if err := removeNodeAttachments(tx, request.NodeID); err != nil {
+		if err := orphanNodeTasks(tx, request.NodeID); err != nil {
 			return err
 		}
 
