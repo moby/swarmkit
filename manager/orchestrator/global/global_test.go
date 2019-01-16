@@ -115,9 +115,9 @@ func setup(t *testing.T, store *store.MemoryStore, watch chan events.Event) *Orc
 	ctx := context.Background()
 	// Start the global orchestrator.
 	global := NewGlobalOrchestrator(store)
-	go func() {
+	testutils.EnsureRuns(func() {
 		assert.NoError(t, global.Run(ctx))
-	}()
+	})
 
 	addService(t, store, service1)
 	testutils.Expect(t, watch, api.EventCreateService{})
@@ -579,9 +579,9 @@ func TestInitializationRejectedTasks(t *testing.T) {
 	orchestrator := NewGlobalOrchestrator(s)
 	defer orchestrator.Stop()
 
-	go func() {
+	testutils.EnsureRuns(func() {
 		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	})
 
 	observedTask1 := testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, observedTask1.ID, "task1")
@@ -642,9 +642,9 @@ func TestInitializationFailedTasks(t *testing.T) {
 	orchestrator := NewGlobalOrchestrator(s)
 	defer orchestrator.Stop()
 
-	go func() {
+	testutils.EnsureRuns(func() {
 		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	})
 
 	observedTask1 := testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, observedTask1.ID, "task1")
@@ -734,9 +734,9 @@ func TestInitializationExtraTask(t *testing.T) {
 	orchestrator := NewGlobalOrchestrator(s)
 	defer orchestrator.Stop()
 
-	go func() {
+	testutils.EnsureRuns(func() {
 		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	})
 
 	observedTask1 := testutils.WatchTaskUpdate(t, watch)
 	assert.True(t, observedTask1.ID == "task1" || observedTask1.ID == "task2")
@@ -814,9 +814,9 @@ func TestInitializationMultipleServices(t *testing.T) {
 	orchestrator := NewGlobalOrchestrator(s)
 	defer orchestrator.Stop()
 
-	go func() {
+	testutils.EnsureRuns(func() {
 		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	})
 
 	// Nothing should happen because both tasks are up to date.
 	select {
@@ -955,9 +955,9 @@ func TestInitializationTaskWithoutService(t *testing.T) {
 	orchestrator := NewGlobalOrchestrator(s)
 	defer orchestrator.Stop()
 
-	go func() {
+	testutils.EnsureRuns(func() {
 		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	})
 
 	observedTask1 := testutils.WatchTaskDelete(t, watch)
 	assert.Equal(t, observedTask1.ID, "task2")
@@ -1013,9 +1013,9 @@ func TestInitializationTaskOnDrainedNode(t *testing.T) {
 	orchestrator := NewGlobalOrchestrator(s)
 	defer orchestrator.Stop()
 
-	go func() {
+	testutils.EnsureRuns(func() {
 		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	})
 
 	observedTask1 := testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, observedTask1.ID, "task1")
@@ -1085,9 +1085,9 @@ func TestInitializationTaskOnNonexistentNode(t *testing.T) {
 	orchestrator := NewGlobalOrchestrator(s)
 	defer orchestrator.Stop()
 
-	go func() {
+	testutils.EnsureRuns(func() {
 		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	})
 
 	observedTask1 := testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, observedTask1.ID, "task1")
@@ -1254,9 +1254,9 @@ func TestInitializationRestartHistory(t *testing.T) {
 	orchestrator := NewGlobalOrchestrator(s)
 	defer orchestrator.Stop()
 
-	go func() {
+	testutils.EnsureRuns(func() {
 		assert.NoError(t, orchestrator.Run(ctx))
-	}()
+	})
 
 	// Fail the running task
 	s.Update(func(tx store.Tx) error {
