@@ -173,7 +173,7 @@ func TestTaskReaperInit(t *testing.T) {
 	reaper := New(s)
 
 	// Now, start the reaper
-	go reaper.Run(ctx)
+	testutils.EnsureRuns(func() { reaper.Run(ctx) })
 
 	// And then stop the reaper. This will cause the reaper to run through its
 	// whole init phase and then immediately enter the loop body, get the stop
@@ -259,10 +259,10 @@ func TestTaskHistory(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start the orchestrator.
-	go func() {
+	testutils.EnsureRuns(func() {
 		assert.NoError(t, orchestrator.Run(ctx))
-	}()
-	go taskReaper.Run(ctx)
+	})
+	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
@@ -394,10 +394,8 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start the orchestrator.
-	go func() {
-		assert.NoError(t, orchestrator.Run(ctx))
-	}()
-	go taskReaper.Run(ctx)
+	testutils.EnsureRuns(func() { assert.NoError(t, orchestrator.Run(ctx)) })
+	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
@@ -526,10 +524,10 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start the orchestrator.
-	go func() {
+	testutils.EnsureRuns(func() {
 		assert.NoError(t, orchestrator.Run(ctx))
-	}()
-	go taskReaper.Run(ctx)
+	})
+	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
@@ -664,10 +662,10 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start the orchestrator and the reaper.
-	go func() {
+	testutils.EnsureRuns(func() {
 		assert.NoError(t, orchestrator.Run(ctx))
-	}()
-	go taskReaper.Run(ctx)
+	})
+	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, api.TaskStateNew, observedTask1.Status.State)
@@ -843,7 +841,7 @@ func TestTaskReaperBatching(t *testing.T) {
 	taskReaper := New(s)
 	taskReaper.tickSignal = make(chan struct{}, 1)
 	defer taskReaper.Stop()
-	go taskReaper.Run(ctx)
+	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	// None of the tasks we've created are eligible for deletion. We should
 	// see no task delete events. Wait for a tick signal, or 500ms to pass, to
@@ -1010,10 +1008,10 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Start the orchestrator.
-	go func() {
+	testutils.EnsureRuns(func() {
 		assert.NoError(t, orchestrator.Run(ctx))
-	}()
-	go taskReaper.Run(ctx)
+	})
+	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, api.TaskStateNew, observedTask1.Status.State)
