@@ -3835,6 +3835,9 @@ file {
     }
   }
   message_type {
+    name: "RuntimeTarget"
+  }
+  message_type {
     name: "SecretReference"
     field {
       name: "secret_id"
@@ -3887,6 +3890,15 @@ file {
       type_name: ".docker.swarmkit.v1.FileTarget"
       oneof_index: 0
       json_name: "file"
+    }
+    field {
+      name: "runtime"
+      number: 4
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.RuntimeTarget"
+      oneof_index: 0
+      json_name: "runtime"
     }
     oneof_decl {
       name: "target"
@@ -4064,6 +4076,14 @@ file {
         type: TYPE_STRING
         oneof_index: 0
         json_name: "registry"
+      }
+      field {
+        name: "Config"
+        number: 3
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        oneof_index: 0
+        json_name: "Config"
       }
       oneof_decl {
         name: "source"
