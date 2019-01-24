@@ -9,7 +9,6 @@
 		"gofmt",
 		"goimports",
 		"golint",
-		"gosimple",
 		"ineffassign",
 		"deadcode",
 		"unconvert"
