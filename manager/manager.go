@@ -959,7 +959,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		}
 		err := store.CreateCluster(tx, clusterObj)
 
-		if err != nil && err != store.ErrExist {
+		if err != nil && (err != store.ErrExist || err != store.ErrNameConflict) {
 			log.G(ctx).WithError(err).Errorf("error creating cluster object")
 		}
 
