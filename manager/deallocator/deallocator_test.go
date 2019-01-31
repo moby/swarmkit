@@ -225,11 +225,11 @@ func TestNetworkNotMarkedForDeletion(t *testing.T) {
 		false)
 }
 
-// this tests that the deallocator also works with the "old" style of storing
+// this test that the deallocator also works with the "old" style of storing
 // networks directly on the  service spec (instead of the task spec)
 // TODO: as said in the source file, we should really add a helper
 // on services objects itself, and test it there instead
-func TestWithOldStyleNetworks(t *testing.T) {
+func TestDeallocatorWithOldStyleNetworks(t *testing.T) {
 	s := store.NewMemoryStore(nil)
 	require.NotNil(t, s)
 	defer s.Close()
@@ -260,81 +260,6 @@ func TestWithOldStyleNetworks(t *testing.T) {
 		require.Nil(t, store.GetService(tx, service.ID))
 		require.Nil(t, store.GetNetwork(tx, network1.ID))
 		require.NotNil(t, store.GetNetwork(tx, network2.ID))
-	})
-}
-
-// this tests that when deciding whether a service has fully shut
-// down, the deallocator only cares about tasks whose actual status
-// is <= RUNNING
-func TestIgnoresTasksThatAreNotRunning(t *testing.T) {
-	s := store.NewMemoryStore(nil)
-	require.NotNil(t, s)
-	defer s.Close()
-
-	service := newService("service", true)
-
-	task1 := newTaskWithState("task1", service, api.TaskStateCompleted)
-	task2 := newTaskWithState("task2", service, api.TaskStateFailed)
-
-	createDBObjects(t, s, service, task1, task2)
-
-	deallocator, ran := startNewDeallocator(t, s, true)
-	defer stopDeallocator(t, deallocator, ran)
-
-	s.View(func(tx store.ReadTx) {
-		assert.Nil(t, store.GetService(tx, service.ID))
-	})
-}
-
-// this tests that the deallocator also listens to task update events
-// and correctly processes them - i.e. that a service which still has
-// tasks but none that are still running is properly cleaned up
-func TestListensToTaskUpdates(t *testing.T) {
-	s := store.NewMemoryStore(nil)
-	require.NotNil(t, s)
-	defer s.Close()
-
-	service := newService("service", true)
-
-	task1 := newTaskWithState("task1", service, api.TaskStateRunning)
-	task2 := newTaskWithState("task2", service, api.TaskStateRunning)
-
-	createDBObjects(t, s, service, task1, task2)
-
-	deallocator, ran := startNewDeallocator(t, s, false)
-	defer stopDeallocator(t, deallocator, ran)
-
-	// the service should still be there
-	s.View(func(tx store.ReadTx) {
-		assert.NotNil(t, store.GetService(tx, service.ID))
-	})
-
-	// moving one task to state FAILED shouldn't do anything
-	updateStoreAndWaitForEvent(t, deallocator, func(tx store.Tx) {
-		task1.Status.State = api.TaskStateFailed
-		require.NoError(t, store.UpdateTask(tx, task1))
-	}, false)
-	s.View(func(tx store.ReadTx) {
-		assert.NotNil(t, store.GetService(tx, service.ID))
-	})
-
-	// nor should moving the same task to state REMOVE
-	updateStoreAndWaitForEvent(t, deallocator, func(tx store.Tx) {
-		task1.Status.State = api.TaskStateRemove
-		require.NoError(t, store.UpdateTask(tx, task1))
-	}, false)
-	s.View(func(tx store.ReadTx) {
-		assert.NotNil(t, store.GetService(tx, service.ID))
-	})
-
-	// but then moving the 2nd task to state COMPLETED should
-	// trigger the service clean up
-	updateStoreAndWaitForEvent(t, deallocator, func(tx store.Tx) {
-		task2.Status.State = api.TaskStateCompleted
-		require.NoError(t, store.UpdateTask(tx, task2))
-	}, true)
-	s.View(func(tx store.ReadTx) {
-		assert.Nil(t, store.GetService(tx, service.ID))
 	})
 }
 
@@ -414,8 +339,6 @@ func createDBObjects(t *testing.T, s *store.MemoryStore, objects ...interface{})
 				e = store.CreateTask(tx, typedObject)
 			case *api.Network:
 				e = store.CreateNetwork(tx, typedObject)
-			default:
-				t.Fatalf("Don't know how to create DB object %v", object)
 			}
 			require.NoError(t, e, "Unable to create DB object %v", object)
 		}
@@ -476,15 +399,8 @@ func newNetworkConfigs(networks ...*api.Network) []*api.NetworkAttachmentConfig 
 }
 
 func newTask(id string, service *api.Service) *api.Task {
-	return newTaskWithState(id, service, api.TaskStateNew)
-}
-
-func newTaskWithState(id string, service *api.Service, state api.TaskState) *api.Task {
 	return &api.Task{
 		ID:        id,
 		ServiceID: service.ID,
-		Status: api.TaskStatus{
-			State: state,
-		},
 	}
 }

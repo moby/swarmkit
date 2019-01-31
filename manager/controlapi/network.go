@@ -199,10 +199,8 @@ func (s *Server) removeNetwork(id string) error {
 			return status.Errorf(codes.Internal, "could not find services using network %s: %v", id, err)
 		}
 
-		for _, service := range services {
-			if !service.PendingDelete {
-				return status.Errorf(codes.FailedPrecondition, "network %s is in use by service %s", id, service.ID)
-			}
+		if len(services) != 0 {
+			return status.Errorf(codes.FailedPrecondition, "network %s is in use by service %s", id, services[0].ID)
 		}
 
 		tasks, err := store.FindTasks(tx, store.ByReferencedNetworkID(id))
@@ -216,12 +214,7 @@ func (s *Server) removeNetwork(id string) error {
 			}
 		}
 
-		network := store.GetNetwork(tx, id)
-		if network == nil {
-			return status.Errorf(codes.NotFound, "network %s not found", id)
-		}
-		network.PendingDelete = true
-		return store.UpdateNetwork(tx, network)
+		return store.DeleteNetwork(tx, id)
 	})
 }
 

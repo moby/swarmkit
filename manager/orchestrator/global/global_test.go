@@ -328,7 +328,7 @@ func TestDeleteService(t *testing.T) {
 
 	testutils.WatchTaskCreate(t, watch)
 
-	markServiceForDeletion(t, store, service1)
+	deleteService(t, store, service1)
 	// task should be deleted
 	observedTask := testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, observedTask.ServiceAnnotations.Name, "name1")
@@ -468,11 +468,9 @@ func updateService(t *testing.T, s *store.MemoryStore, service *api.Service, for
 	})
 }
 
-func markServiceForDeletion(t *testing.T, s *store.MemoryStore, service *api.Service) {
+func deleteService(t *testing.T, s *store.MemoryStore, service *api.Service) {
 	s.Update(func(tx store.Tx) error {
-		serviceCopy := service.Copy()
-		serviceCopy.PendingDelete = true
-		assert.NoError(t, store.UpdateService(tx, serviceCopy))
+		assert.NoError(t, store.DeleteService(tx, service.ID))
 		return nil
 	})
 }
@@ -542,7 +540,7 @@ func TestInitializationRejectedTasks(t *testing.T) {
 	defer s.Close()
 
 	// create nodes, services and tasks in store directly
-	// when orchestrator runs, it should fix tasks to declarative state
+	// where orchestrator runs, it should fix tasks to declarative state
 	addNode(t, s, node1)
 	addService(t, s, service1)
 	tasks := []*api.Task{
