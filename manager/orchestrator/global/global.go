@@ -109,14 +109,8 @@ func (g *Orchestrator) Run(ctx context.Context) error {
 	var reconcileServiceIDs []string
 	for _, s := range existingServices {
 		if orchestrator.IsGlobalService(s) {
-			if s.PendingDelete {
-				// this service is marked for removal, we ask its tasks
-				// to shut down
-				orchestrator.SetServiceTasksRemove(ctx, g.store, s)
-			} else {
-				g.updateService(s)
-				reconcileServiceIDs = append(reconcileServiceIDs, s.ID)
-			}
+			g.updateService(s)
+			reconcileServiceIDs = append(reconcileServiceIDs, s.ID)
 		}
 	}
 
@@ -134,6 +128,7 @@ func (g *Orchestrator) Run(ctx context.Context) error {
 	for {
 		select {
 		case event := <-watcher:
+			// TODO(stevvooe): Use ctx to limit running time of operation.
 			switch v := event.(type) {
 			case api.EventUpdateCluster:
 				g.cluster = v.Cluster
@@ -147,16 +142,16 @@ func (g *Orchestrator) Run(ctx context.Context) error {
 				if !orchestrator.IsGlobalService(v.Service) {
 					continue
 				}
-				if v.Service.PendingDelete {
-					// ask the tasks to shut down
-					orchestrator.SetServiceTasksRemove(ctx, g.store, v.Service)
-					// delete the service from service map
-					delete(g.globalServices, v.Service.ID)
-					g.restarts.ClearServiceHistory(v.Service.ID)
-				} else {
-					g.updateService(v.Service)
-					g.reconcileServices(ctx, []string{v.Service.ID})
+				g.updateService(v.Service)
+				g.reconcileServices(ctx, []string{v.Service.ID})
+			case api.EventDeleteService:
+				if !orchestrator.IsGlobalService(v.Service) {
+					continue
 				}
+				orchestrator.SetServiceTasksRemove(ctx, g.store, v.Service)
+				// delete the service from service map
+				delete(g.globalServices, v.Service.ID)
+				g.restarts.ClearServiceHistory(v.Service.ID)
 			case api.EventCreateNode:
 				g.updateNode(v.Node)
 				g.reconcileOneNode(ctx, v.Node)
@@ -171,8 +166,6 @@ func (g *Orchestrator) Run(ctx context.Context) error {
 			}
 		case <-g.stopChan:
 			return nil
-		case <-ctx.Done():
-			return ctx.Err()
 		}
 		g.tickTasks(ctx)
 	}
