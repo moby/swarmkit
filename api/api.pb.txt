@@ -4078,12 +4078,12 @@ file {
         json_name: "registry"
       }
       field {
-        name: "Config"
+        name: "config"
         number: 3
         label: LABEL_OPTIONAL
         type: TYPE_STRING
         oneof_index: 0
-        json_name: "Config"
+        json_name: "config"
       }
       oneof_decl {
         name: "source"
