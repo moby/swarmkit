@@ -109,8 +109,14 @@ func (g *Orchestrator) Run(ctx context.Context) error {
 	var reconcileServiceIDs []string
 	for _, s := range existingServices {
 		if orchestrator.IsGlobalService(s) {
-			g.updateService(s)
-			reconcileServiceIDs = append(reconcileServiceIDs, s.ID)
+			if s.PendingDelete {
+				// this service is marked for removal, we ask its tasks
+				// to shut down
+				orchestrator.SetServiceTasksRemove(ctx, g.store, s)
+			} else {
+				g.updateService(s)
+				reconcileServiceIDs = append(reconcileServiceIDs, s.ID)
+			}
 		}
 	}
 
@@ -128,7 +134,6 @@ func (g *Orchestrator) Run(ctx context.Context) error {
 	for {
 		select {
 		case event := <-watcher:
-			// TODO(stevvooe): Use ctx to limit running time of operation.
 			switch v := event.(type) {
 			case api.EventUpdateCluster:
 				g.cluster = v.Cluster
@@ -142,16 +147,20 @@ func (g *Orchestrator) Run(ctx context.Context) error {
 				if !orchestrator.IsGlobalService(v.Service) {
 					continue
 				}
-				g.updateService(v.Service)
-				g.reconcileServices(ctx, []string{v.Service.ID})
+				if v.Service.PendingDelete {
+					g.handleServiceRemoval(ctx, v.Service)
+				} else {
+					g.updateService(v.Service)
+					g.reconcileServices(ctx, []string{v.Service.ID})
+				}
 			case api.EventDeleteService:
-				if !orchestrator.IsGlobalService(v.Service) {
+				// regarding the second part of the condition: if the service is marked
+				// for removal, it means it was removed asynchronously, and so it should
+				// already have been processed when updated to be marked for removal
+				if !orchestrator.IsGlobalService(v.Service) || v.Service.PendingDelete {
 					continue
 				}
-				orchestrator.SetServiceTasksRemove(ctx, g.store, v.Service)
-				// delete the service from service map
-				delete(g.globalServices, v.Service.ID)
-				g.restarts.ClearServiceHistory(v.Service.ID)
+				g.handleServiceRemoval(ctx, v.Service)
 			case api.EventCreateNode:
 				g.updateNode(v.Node)
 				g.reconcileOneNode(ctx, v.Node)
@@ -166,6 +175,8 @@ func (g *Orchestrator) Run(ctx context.Context) error {
 			}
 		case <-g.stopChan:
 			return nil
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 		g.tickTasks(ctx)
 	}
@@ -197,6 +208,16 @@ func (g *Orchestrator) FixTask(ctx context.Context, batch *store.Batch, t *api.T
 	if t.Status.State > api.TaskStateRunning {
 		g.restartTasks[t.ID] = struct{}{}
 	}
+}
+
+// handleServiceRemoval is called when a service is being removed (either synchronously
+// or asynchronously); in which case we need to ask its tasks to shut down, and then
+// remove that service from our internal state
+func (g *Orchestrator) handleServiceRemoval(ctx context.Context, service *api.Service) {
+	orchestrator.SetServiceTasksRemove(ctx, g.store, service)
+	// delete the service from service map
+	delete(g.globalServices, service.ID)
+	g.restarts.ClearServiceHistory(service.ID)
 }
 
 // handleTaskChange defines what orchestrator does when a task is updated by agent

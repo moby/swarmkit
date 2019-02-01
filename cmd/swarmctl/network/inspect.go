@@ -51,6 +51,10 @@ func printNetworkSummary(network *api.Network) {
 	common.FprintfIfNotEmpty(w, "ID\t: %s\n", network.ID)
 	common.FprintfIfNotEmpty(w, "Name\t: %s\n", spec.Annotations.Name)
 
+	if network.PendingDelete {
+		common.FprintfIfNotEmpty(w, "[Network %s marked for removal]\n", spec.Annotations.Name)
+	}
+
 	fmt.Fprintln(w, "Spec:\t")
 	if len(spec.Annotations.Labels) > 0 {
 		fmt.Fprintln(w, "  Labels:\t")

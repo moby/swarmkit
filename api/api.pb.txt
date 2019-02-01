@@ -7048,6 +7048,13 @@ file {
       type: TYPE_STRING
       json_name: "serviceId"
     }
+    field {
+      name: "with_soft_delete"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      json_name: "withSoftDelete"
+    }
   }
   message_type {
     name: "RemoveServiceResponse"
@@ -7198,6 +7205,13 @@ file {
       label: LABEL_OPTIONAL
       type: TYPE_STRING
       json_name: "networkId"
+    }
+    field {
+      name: "with_soft_delete"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      json_name: "withSoftDelete"
     }
   }
   message_type {

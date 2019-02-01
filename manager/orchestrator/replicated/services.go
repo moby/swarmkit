@@ -31,14 +31,18 @@ func (r *Orchestrator) initCluster(readTx store.ReadTx) error {
 	return nil
 }
 
-func (r *Orchestrator) initServices(readTx store.ReadTx) error {
+func (r *Orchestrator) initServices(ctx context.Context, readTx store.ReadTx) error {
 	services, err := store.FindServices(readTx, store.All)
 	if err != nil {
 		return err
 	}
 	for _, s := range services {
 		if orchestrator.IsReplicatedService(s) {
-			r.reconcileServices[s.ID] = s
+			if s.PendingDelete {
+				orchestrator.SetServiceTasksRemove(ctx, r.store, s)
+			} else {
+				r.reconcileServices[s.ID] = s
+			}
 		}
 	}
 	return nil
@@ -46,13 +50,6 @@ func (r *Orchestrator) initServices(readTx store.ReadTx) error {
 
 func (r *Orchestrator) handleServiceEvent(ctx context.Context, event events.Event) {
 	switch v := event.(type) {
-	case api.EventDeleteService:
-		if !orchestrator.IsReplicatedService(v.Service) {
-			return
-		}
-		orchestrator.SetServiceTasksRemove(ctx, r.store, v.Service)
-		r.restarts.ClearServiceHistory(v.Service.ID)
-		delete(r.reconcileServices, v.Service.ID)
 	case api.EventCreateService:
 		if !orchestrator.IsReplicatedService(v.Service) {
 			return
@@ -62,8 +59,29 @@ func (r *Orchestrator) handleServiceEvent(ctx context.Context, event events.Even
 		if !orchestrator.IsReplicatedService(v.Service) {
 			return
 		}
-		r.reconcileServices[v.Service.ID] = v.Service
+		if v.Service.PendingDelete {
+			r.handleServiceRemoval(ctx, v.Service)
+		} else {
+			r.reconcileServices[v.Service.ID] = v.Service
+		}
+	case api.EventDeleteService:
+		// regarding the second part of the condition: if the service is marked
+		// for removal, it means it was removed asynchronously, and so it should
+		// already have been processed when updated to be marked for removal
+		if !orchestrator.IsReplicatedService(v.Service) || v.Service.PendingDelete {
+			return
+		}
+		r.handleServiceRemoval(ctx, v.Service)
 	}
+}
+
+// handleServiceRemoval is called when a service is being removed (either synchronously
+// or asynchronously); in which case we need to ask its tasks to shut down, and then
+// remove that service from our internal state
+func (r *Orchestrator) handleServiceRemoval(ctx context.Context, service *api.Service) {
+	orchestrator.SetServiceTasksRemove(ctx, r.store, service)
+	r.restarts.ClearServiceHistory(service.ID)
+	delete(r.reconcileServices, service.ID)
 }
 
 func (r *Orchestrator) tickServices(ctx context.Context) {

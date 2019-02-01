@@ -300,6 +300,10 @@ message UpdateServiceResponse {
 
 message RemoveServiceRequest {
 	string service_id = 1;
+	// WithSoftDelete marks whether the user has requested a soft, ie asynchronous removal
+	// In that case, the service will only be removed after all of its containers
+	// have safely shut down, instead of being removed right away
+	bool with_soft_delete = 2;
 }
 
 message RemoveServiceResponse {
@@ -342,6 +346,10 @@ message GetNetworkResponse {
 message RemoveNetworkRequest {
 	string name = 1;
 	string network_id = 2;
+	// WithSoftDelete marks whether the user has requested a soft, ie asynchronous removal
+	// In that case, the network will only be removed after all the containers using it
+	// have safely shut down, instead of being removed right away
+	bool with_soft_delete = 3;
 }
 
 message RemoveNetworkResponse {}
