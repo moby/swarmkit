@@ -4575,8 +4575,79 @@ file {
       type_name: ".docker.swarmkit.v1.EndpointSpec"
       json_name: "endpoint"
     }
+    field {
+      name: "AutoRange"
+      number: 10
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.AutoRange"
+      json_name: "AutoRange"
+    }
     oneof_decl {
       name: "mode"
+    }
+  }
+  message_type {
+    name: "Range"
+    field {
+      name: "Step"
+      number: 1
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Range.StepEntry"
+      json_name: "Step"
+    }
+    nested_type {
+      name: "StepEntry"
+      field {
+        name: "key"
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "key"
+      }
+      field {
+        name: "value"
+        number: 2
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "value"
+      }
+      options {
+        map_entry: true
+      }
+    }
+  }
+  message_type {
+    name: "AutoRange"
+    field {
+      name: "Range"
+      number: 1
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.AutoRange.RangeEntry"
+      json_name: "Range"
+    }
+    nested_type {
+      name: "RangeEntry"
+      field {
+        name: "key"
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "key"
+      }
+      field {
+        name: "value"
+        number: 2
+        label: LABEL_OPTIONAL
+        type: TYPE_MESSAGE
+        type_name: ".docker.swarmkit.v1.Range"
+        json_name: "value"
+      }
+      options {
+        map_entry: true
+      }
     }
   }
   message_type {
@@ -4678,6 +4749,14 @@ file {
         65001: 0
       }
       json_name: "resourceReferences"
+    }
+    field {
+      name: "AutoRange"
+      number: 12
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.AutoRange"
+      json_name: "AutoRange"
     }
     oneof_decl {
       name: "runtime"
@@ -4948,6 +5027,14 @@ file {
       type: TYPE_MESSAGE
       type_name: ".google.protobuf.Int64Value"
       json_name: "memorySwappiness"
+    }
+    field {
+      name: "AutoRange"
+      number: 29
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.AutoRange"
+      json_name: "AutoRange"
     }
     nested_type {
       name: "LabelsEntry"
