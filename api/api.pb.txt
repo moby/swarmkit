@@ -61,6 +61,110 @@ file {
   syntax: "proto3"
 }
 file {
+  name: "google/protobuf/wrappers.proto"
+  package: "google.protobuf"
+  message_type {
+    name: "DoubleValue"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_DOUBLE
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "FloatValue"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_FLOAT
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "Int64Value"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_INT64
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "UInt64Value"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "Int32Value"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_INT32
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "UInt32Value"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT32
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "BoolValue"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "StringValue"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "BytesValue"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_BYTES
+      json_name: "value"
+    }
+  }
+  options {
+    java_package: "com.google.protobuf"
+    java_outer_classname: "WrappersProto"
+    java_multiple_files: true
+    go_package: "github.com/golang/protobuf/ptypes/wrappers"
+    cc_enable_arenas: true
+    objc_class_prefix: "GPB"
+    csharp_namespace: "Google.Protobuf.WellKnownTypes"
+  }
+  syntax: "proto3"
+}
+file {
   name: "google/protobuf/descriptor.proto"
   package: "google.protobuf"
   message_type {
@@ -1874,6 +1978,7 @@ file {
   package: "docker.swarmkit.v1"
   dependency: "google/protobuf/timestamp.proto"
   dependency: "google/protobuf/duration.proto"
+  dependency: "google/protobuf/wrappers.proto"
   dependency: "gogoproto/gogo.proto"
   message_type {
     name: "Version"
@@ -2054,6 +2159,22 @@ file {
       type: TYPE_MESSAGE
       type_name: ".docker.swarmkit.v1.Resources"
       json_name: "reservations"
+    }
+    field {
+      name: "swap_bytes"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".google.protobuf.Int64Value"
+      json_name: "swapBytes"
+    }
+    field {
+      name: "memory_swappiness"
+      number: 4
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".google.protobuf.Int64Value"
+      json_name: "memorySwappiness"
     }
   }
   message_type {
@@ -4302,110 +4423,6 @@ file {
   syntax: "proto3"
 }
 file {
-  name: "google/protobuf/wrappers.proto"
-  package: "google.protobuf"
-  message_type {
-    name: "DoubleValue"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_DOUBLE
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "FloatValue"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_FLOAT
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "Int64Value"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_INT64
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "UInt64Value"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_UINT64
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "Int32Value"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_INT32
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "UInt32Value"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_UINT32
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "BoolValue"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_BOOL
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "StringValue"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_STRING
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "BytesValue"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_BYTES
-      json_name: "value"
-    }
-  }
-  options {
-    java_package: "com.google.protobuf"
-    java_outer_classname: "WrappersProto"
-    java_multiple_files: true
-    go_package: "github.com/golang/protobuf/ptypes/wrappers"
-    cc_enable_arenas: true
-    objc_class_prefix: "GPB"
-    csharp_namespace: "Google.Protobuf.WellKnownTypes"
-  }
-  syntax: "proto3"
-}
-file {
   name: "github.com/docker/swarmkit/api/specs.proto"
   package: "docker.swarmkit.v1"
   dependency: "github.com/docker/swarmkit/api/types.proto"
@@ -4933,21 +4950,6 @@ file {
       type: TYPE_MESSAGE
       type_name: ".docker.swarmkit.v1.ContainerSpec.SysctlsEntry"
       json_name: "sysctls"
-    }
-    field {
-      name: "memory_swap"
-      number: 27
-      label: LABEL_OPTIONAL
-      type: TYPE_INT64
-      json_name: "memorySwap"
-    }
-    field {
-      name: "memory_swappiness"
-      number: 28
-      label: LABEL_OPTIONAL
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.Int64Value"
-      json_name: "memorySwappiness"
     }
     nested_type {
       name: "LabelsEntry"
