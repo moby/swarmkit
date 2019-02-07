@@ -807,8 +807,8 @@ type ResourceRequirements struct {
 	Reservations *Resources `protobuf:"bytes,2,opt,name=reservations" json:"reservations,omitempty"`
 	// Amount of swap in bytes - can only be used together with a memory limit
 	// -1 means unlimited
-	// a null pointer keeps the default behaviour of granting twice the memory
-	// amount in swap
+	// a null pointer indicates that the default behaviour of granting twice
+	// the memory is maintained
 	SwapBytes *google_protobuf2.Int64Value `protobuf:"bytes,3,opt,name=swap_bytes,json=swapBytes" json:"swap_bytes,omitempty"`
 	// Tune container memory swappiness (0 to 100) - if not specified, defaults
 	// to the container OS's default - generally 60, or the value predefined in
