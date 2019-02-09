@@ -730,9 +730,10 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 	// TODO(aluzzardi): Consider using `Name` as a primary key to handle
 	// duplicate creations. See #65
 	service := &api.Service{
-		ID:          identity.NewID(),
-		Spec:        *request.Spec,
-		SpecVersion: &api.Version{},
+		ID:           identity.NewID(),
+		Spec:         *request.Spec,
+		SpecVersion:  &api.Version{},
+		UpdateStatus: &api.UpdateStatus{},
 	}
 
 	if isJobSpec(request.Spec) {
