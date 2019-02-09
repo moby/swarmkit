@@ -1053,19 +1053,19 @@ func (a *Allocator) allocateNode(ctx context.Context, node *api.Node, existingAd
 	// wiki on github:
 	// https://github.com/golang/go/wiki/SliceTricks#filtering-without-allocating
 	attachments := node.Attachments[:0]
-	for _, attach := range node.Attachments {
-		if _, ok := nwIDs[attach.Network.ID]; ok {
+	for _, na := range node.Attachments {
+		if _, ok := nwIDs[na.Network.ID]; ok {
 			// attachment belongs to one of the networks, so keep it
-			attachments = append(attachments, attach)
+			attachments = append(attachments, na)
 		} else {
 			// free the attachment and remove it from the node's attachments by
 			// re-slicing
-			if err := a.netCtx.nwkAllocator.DeallocateAttachment(node, attach); err != nil {
+			if err := a.netCtx.nwkAllocator.DeallocateAttachment(node, na); err != nil {
 				// if deallocation fails, there's nothing we can do besides log
 				// an error and keep going
 				log.G(ctx).WithError(err).Errorf(
 					"error deallocating attachment for network %v on node %v",
-					attach.Network.ID, node.ID,
+					na.Network.ID, node.ID,
 				)
 			}
 			// strictly speaking, nothing was allocated, but something was
