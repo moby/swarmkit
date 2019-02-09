@@ -1026,7 +1026,7 @@ func (a *Allocator) allocateNode(ctx context.Context, node *api.Node, existingAd
 
 		lbAttachment.Network = network.Copy()
 		if err := a.netCtx.nwkAllocator.AllocateAttachment(node, lbAttachment); err != nil {
-			log.G(ctx).WithError(err).Errorf("Failed to allocate network resources for node %s", node.ID)
+			log.G(ctx).WithError(err).WithField("network.id", lbAttachment.Network.ID).Errorf("failed to allocate network resources for node %s", node.ID)
 			// TODO: Should we add a unallocatedNode and retry allocating resources like we do for network, tasks, services?
 			// right now, we will only retry allocating network resources for the node when the node is updated.
 			continue
@@ -1059,8 +1059,7 @@ func (a *Allocator) allocateNode(ctx context.Context, node *api.Node, existingAd
 
 		if err := a.netCtx.nwkAllocator.DeallocateAttachment(node, na); err != nil {
 			// failed to deallocate; there's nothing we can do besides log an error and keep going
-			log.G(ctx).WithError(err).Errorf("error deallocating attachment for network %v on node %v",
-				na.Network.ID, node.ID)
+			log.G(ctx).WithError(err).WithField("network.id", na.Network.ID).Errorf("failed to deallocate network resources on node %s", node.ID)
 		}
 
 		// strictly speaking, nothing was allocated, but something was
