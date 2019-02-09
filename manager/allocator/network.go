@@ -1008,23 +1008,20 @@ func (a *Allocator) allocateNode(ctx context.Context, node *api.Node, existingAd
 			}
 		}
 
-		if lbAttachment != nil {
-			if nc.nwkAllocator.IsAttachmentAllocated(node, lbAttachment) {
-				continue
-			}
+		if existingAddressesOnly && (lbAttachment == nil || len(lbAttachment.Addresses) == 0) {
+			// we're restoring state, don't allocate new (or empty) attachments
+			continue
+		}
+
+		if nc.nwkAllocator.IsAttachmentAllocated(node, lbAttachment) {
+			// already allocated; we're done
+			continue
 		}
 
 		if lbAttachment == nil {
-			// if we're restoring state, we should not add an attachment here.
-			if existingAddressesOnly {
-				continue
-			}
+			// network was not yet allocated to the node, so create a new attachment
 			lbAttachment = &api.NetworkAttachment{}
 			node.Attachments = append(node.Attachments, lbAttachment)
-		}
-
-		if existingAddressesOnly && len(lbAttachment.Addresses) == 0 {
-			continue
 		}
 
 		lbAttachment.Network = network.Copy()
