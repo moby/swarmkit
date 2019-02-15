@@ -1037,6 +1037,9 @@ func (a *Allocator) allocateNode(ctx context.Context, node *api.Node, existingAd
 	// https://github.com/golang/go/wiki/SliceTricks#filtering-without-allocating
 	attachments := node.Attachments[:0]
 	for _, attach := range node.Attachments {
+		if attach.Network == nil {
+			continue
+		}
 		// for every attachment, go through every network. if the attachment
 		// belongs to one of the networks, then go to the next attachment. if
 		// no network matches, then the the attachment should be removed.
