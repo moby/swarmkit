@@ -316,23 +316,30 @@ func TestAddService(t *testing.T) {
 }
 
 func TestDeleteService(t *testing.T) {
-	store := store.NewMemoryStore(nil)
-	assert.NotNil(t, store)
-	defer store.Close()
+	for testName, deleteFunc := range map[string]func(*testing.T, *store.MemoryStore, *api.Service){
+		"with synchronous removal":  deleteService,
+		"with asynchronous removal": markServiceForDeletion,
+	} {
+		t.Run(testName, func(t *testing.T) {
+			store := store.NewMemoryStore(nil)
+			assert.NotNil(t, store)
+			defer store.Close()
 
-	watch, cancel := state.Watch(store.WatchQueue())
-	defer cancel()
+			watch, cancel := state.Watch(store.WatchQueue())
+			defer cancel()
 
-	orchestrator := setup(t, store, watch)
-	defer orchestrator.Stop()
+			orchestrator := setup(t, store, watch)
+			defer orchestrator.Stop()
 
-	testutils.WatchTaskCreate(t, watch)
+			testutils.WatchTaskCreate(t, watch)
 
-	deleteService(t, store, service1)
-	// task should be deleted
-	observedTask := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask.ServiceAnnotations.Name, "name1")
-	assert.Equal(t, observedTask.NodeID, "nodeid1")
+			deleteFunc(t, store, service1)
+			// task should be deleted
+			observedTask := testutils.WatchTaskUpdate(t, watch)
+			assert.Equal(t, observedTask.ServiceAnnotations.Name, "name1")
+			assert.Equal(t, observedTask.NodeID, "nodeid1")
+		})
+	}
 }
 
 func TestRemoveTask(t *testing.T) {
@@ -450,14 +457,14 @@ func TestTaskFailure(t *testing.T) {
 }
 
 func addService(t *testing.T, s *store.MemoryStore, service *api.Service) {
-	s.Update(func(tx store.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateService(tx, service.Copy()))
 		return nil
-	})
+	}))
 }
 
 func updateService(t *testing.T, s *store.MemoryStore, service *api.Service, force bool) {
-	s.Update(func(tx store.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		service := store.GetService(tx, service.ID)
 		require.NotNil(t, service)
 		if force {
@@ -465,72 +472,81 @@ func updateService(t *testing.T, s *store.MemoryStore, service *api.Service, for
 		}
 		assert.NoError(t, store.UpdateService(tx, service))
 		return nil
-	})
+	}))
 }
 
 func deleteService(t *testing.T, s *store.MemoryStore, service *api.Service) {
-	s.Update(func(tx store.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.DeleteService(tx, service.ID))
 		return nil
-	})
+	}))
+}
+
+func markServiceForDeletion(t *testing.T, s *store.MemoryStore, service *api.Service) {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		serviceCopy := service.Copy()
+		serviceCopy.PendingDelete = true
+		assert.NoError(t, store.UpdateService(tx, serviceCopy))
+		return nil
+	}))
 }
 
 func addNode(t *testing.T, s *store.MemoryStore, node *api.Node) {
-	s.Update(func(tx store.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateNode(tx, node.Copy()))
 		return nil
-	})
+	}))
 }
 
 func updateNodeAvailability(t *testing.T, s *store.MemoryStore, node *api.Node, avail api.NodeSpec_Availability) {
-	s.Update(func(tx store.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		node := store.GetNode(tx, node.ID)
 		require.NotNil(t, node)
 		node.Spec.Availability = avail
 		assert.NoError(t, store.UpdateNode(tx, node))
 		return nil
-	})
+	}))
 }
 
 func updateNodeState(t *testing.T, s *store.MemoryStore, node *api.Node, state api.NodeStatus_State) {
-	s.Update(func(tx store.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		node := store.GetNode(tx, node.ID)
 		require.NotNil(t, node)
 		node.Status.State = state
 		assert.NoError(t, store.UpdateNode(tx, node))
 		return nil
-	})
+	}))
 }
 
 func deleteNode(t *testing.T, s *store.MemoryStore, node *api.Node) {
-	s.Update(func(tx store.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.DeleteNode(tx, node.ID))
 		return nil
-	})
+	}))
 }
 
 func addTask(t *testing.T, s *store.MemoryStore, task *api.Task) {
-	s.Update(func(tx store.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateTask(tx, task))
 		return nil
-	})
+	}))
 }
 
 func deleteTask(t *testing.T, s *store.MemoryStore, task *api.Task) {
-	s.Update(func(tx store.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.DeleteTask(tx, task.ID))
 		return nil
-	})
+	}))
 }
 
 func failTask(t *testing.T, s *store.MemoryStore, task *api.Task) {
-	s.Update(func(tx store.Tx) error {
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		task := store.GetTask(tx, task.ID)
 		require.NotNil(t, task)
 		task.Status.State = api.TaskStateFailed
 		assert.NoError(t, store.UpdateTask(tx, task))
 		return nil
-	})
+	}))
 }
 
 func TestInitializationRejectedTasks(t *testing.T) {
@@ -540,7 +556,7 @@ func TestInitializationRejectedTasks(t *testing.T) {
 	defer s.Close()
 
 	// create nodes, services and tasks in store directly
-	// where orchestrator runs, it should fix tasks to declarative state
+	// when orchestrator runs, it should fix tasks to declarative state
 	addNode(t, s, node1)
 	addService(t, s, service1)
 	tasks := []*api.Task{

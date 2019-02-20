@@ -164,7 +164,7 @@ func (s *Server) RemoveNetwork(ctx context.Context, request *api.RemoveNetworkRe
 
 	var (
 		n  *api.Network
-		rm = s.removeNetwork
+		rm = func(networkID string) error { return s.removeNetwork(networkID, request.WithSoftDelete) }
 	)
 
 	s.store.View(func(tx store.ReadTx) {
@@ -192,15 +192,26 @@ func (s *Server) RemoveNetwork(ctx context.Context, request *api.RemoveNetworkRe
 	return &api.RemoveNetworkResponse{}, nil
 }
 
-func (s *Server) removeNetwork(id string) error {
+func (s *Server) removeNetwork(id string, withSoftDelete bool) error {
 	return s.store.Update(func(tx store.Tx) error {
 		services, err := store.FindServices(tx, store.ByReferencedNetworkID(id))
 		if err != nil {
 			return status.Errorf(codes.Internal, "could not find services using network %s: %v", id, err)
 		}
 
-		if len(services) != 0 {
-			return status.Errorf(codes.FailedPrecondition, "network %s is in use by service %s", id, services[0].ID)
+		var stillInUseByService *api.Service
+		if withSoftDelete {
+			for _, service := range services {
+				if !service.PendingDelete {
+					stillInUseByService = service
+					break
+				}
+			}
+		} else if len(services) != 0 {
+			stillInUseByService = services[0]
+		}
+		if stillInUseByService != nil {
+			return status.Errorf(codes.FailedPrecondition, "network %s is in use by service %s", id, stillInUseByService.ID)
 		}
 
 		tasks, err := store.FindTasks(tx, store.ByReferencedNetworkID(id))
@@ -214,6 +225,14 @@ func (s *Server) removeNetwork(id string) error {
 			}
 		}
 
+		if withSoftDelete {
+			network := store.GetNetwork(tx, id)
+			if network == nil {
+				return status.Errorf(codes.NotFound, "network %s not found", id)
+			}
+			network.PendingDelete = true
+			return store.UpdateNetwork(tx, network)
+		}
 		return store.DeleteNetwork(tx, id)
 	})
 }

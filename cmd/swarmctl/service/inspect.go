@@ -22,12 +22,17 @@ func printServiceSummary(service *api.Service, running int) {
 	w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
 	defer w.Flush()
 
-	task := service.Spec.Task
+	spec := service.Spec
 	common.FprintfIfNotEmpty(w, "ID\t: %s\n", service.ID)
-	common.FprintfIfNotEmpty(w, "Name\t: %s\n", service.Spec.Annotations.Name)
-	if len(service.Spec.Annotations.Labels) > 0 {
+	common.FprintfIfNotEmpty(w, "Name\t: %s\n", spec.Annotations.Name)
+
+	if service.PendingDelete {
+		common.FprintfIfNotEmpty(w, "[Service %s marked for removal]\n", spec.Annotations.Name)
+	}
+
+	if len(spec.Annotations.Labels) > 0 {
 		fmt.Fprintln(w, "Labels\t")
-		for k, v := range service.Spec.Annotations.Labels {
+		for k, v := range spec.Annotations.Labels {
 			fmt.Fprintf(w, "  %s\t: %s\n", k, v)
 		}
 	}
@@ -51,7 +56,8 @@ func printServiceSummary(service *api.Service, running int) {
 
 	fmt.Fprintln(w, "Template\t")
 	fmt.Fprintln(w, " Container\t")
-	ctr := service.Spec.Task.GetContainer()
+	task := spec.Task
+	ctr := task.GetContainer()
 	common.FprintfIfNotEmpty(w, "  Image\t: %s\n", ctr.Image)
 	common.FprintfIfNotEmpty(w, "  Command\t: %q\n", strings.Join(ctr.Command, " "))
 	common.FprintfIfNotEmpty(w, "  Args\t: [%s]\n", strings.Join(ctr.Args, ", "))
@@ -90,7 +96,7 @@ func printServiceSummary(service *api.Service, running int) {
 			printResources(w, res.Limits)
 		}
 	}
-	if len(service.Spec.Task.Networks) > 0 {
+	if len(spec.Task.Networks) > 0 {
 		fmt.Fprint(w, "  Networks:")
 		for _, n := range service.Spec.Task.Networks {
 			fmt.Fprintf(w, " %s", n.Target)
