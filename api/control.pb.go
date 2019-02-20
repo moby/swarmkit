@@ -720,6 +720,173 @@ func (m *RemoveConfigResponse) Reset()                    { *m = RemoveConfigRes
 func (*RemoveConfigResponse) ProtoMessage()               {}
 func (*RemoveConfigResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{58} }
 
+// CreateExtensionRequest creates a new extension specified by the included
+// extension object. An existing extension will not be updated.
+type CreateExtensionRequest struct {
+	Extension *Extension `protobuf:"bytes,1,opt,name=extension" json:"extension,omitempty"`
+}
+
+func (m *CreateExtensionRequest) Reset()                    { *m = CreateExtensionRequest{} }
+func (*CreateExtensionRequest) ProtoMessage()               {}
+func (*CreateExtensionRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{59} }
+
+// CreateExtensionResponse is an empty object indicating the successful creation
+// of an extension.
+type CreateExtensionResponse struct {
+}
+
+func (m *CreateExtensionResponse) Reset()                    { *m = CreateExtensionResponse{} }
+func (*CreateExtensionResponse) ProtoMessage()               {}
+func (*CreateExtensionResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{60} }
+
+// RemoveExtensionRequest contains the ID of the extension that should be removed. This
+// removes all versions of the extension.
+type RemoveExtensionRequest struct {
+	ExtensionID string `protobuf:"bytes,1,opt,name=extension_id,json=extensionId,proto3" json:"extension_id,omitempty"`
+}
+
+func (m *RemoveExtensionRequest) Reset()                    { *m = RemoveExtensionRequest{} }
+func (*RemoveExtensionRequest) ProtoMessage()               {}
+func (*RemoveExtensionRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{61} }
+
+// RemoveExtensionResponse is an empty object indicating the successful removal
+// of an extension.
+type RemoveExtensionResponse struct {
+}
+
+func (m *RemoveExtensionResponse) Reset()                    { *m = RemoveExtensionResponse{} }
+func (*RemoveExtensionResponse) ProtoMessage()               {}
+func (*RemoveExtensionResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{62} }
+
+// GetResourceRequest is the request to get a Extension object given a extension id.
+type GetExtensionRequest struct {
+	ExtensionID string `protobuf:"bytes,1,opt,name=extension_id,json=extensionId,proto3" json:"extension_id,omitempty"`
+}
+
+func (m *GetExtensionRequest) Reset()                    { *m = GetExtensionRequest{} }
+func (*GetExtensionRequest) ProtoMessage()               {}
+func (*GetExtensionRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{63} }
+
+// GetExtensionResponse contains the Extension corresponding to the id in
+// `GetExtensionRequest`.
+type GetExtensionResponse struct {
+	Extension *Extension `protobuf:"bytes,1,opt,name=extension" json:"extension,omitempty"`
+}
+
+func (m *GetExtensionResponse) Reset()                    { *m = GetExtensionResponse{} }
+func (*GetExtensionResponse) ProtoMessage()               {}
+func (*GetExtensionResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{64} }
+
+// CreateResourceRequest creates a new resource specified by the included
+// resource object. An existing resource will not be updated.
+type CreateResourceRequest struct {
+	Resource *Resource `protobuf:"bytes,1,opt,name=resource" json:"resource,omitempty"`
+}
+
+func (m *CreateResourceRequest) Reset()                    { *m = CreateResourceRequest{} }
+func (*CreateResourceRequest) ProtoMessage()               {}
+func (*CreateResourceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{65} }
+
+// CreateResourceResponse is an empty object indicating the successful creation
+// of a resource.
+type CreateResourceResponse struct {
+}
+
+func (m *CreateResourceResponse) Reset()                    { *m = CreateResourceResponse{} }
+func (*CreateResourceResponse) ProtoMessage()               {}
+func (*CreateResourceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{66} }
+
+// RemoveResourceRequest contains the ID of the resource that should be removed. This
+// removes all versions of the resource.
+type RemoveResourceRequest struct {
+	ResourceID string `protobuf:"bytes,1,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+}
+
+func (m *RemoveResourceRequest) Reset()                    { *m = RemoveResourceRequest{} }
+func (*RemoveResourceRequest) ProtoMessage()               {}
+func (*RemoveResourceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{67} }
+
+// RemoveResourceResponse is an empty object indicating the successful removal
+// of a resource.
+type RemoveResourceResponse struct {
+}
+
+func (m *RemoveResourceResponse) Reset()                    { *m = RemoveResourceResponse{} }
+func (*RemoveResourceResponse) ProtoMessage()               {}
+func (*RemoveResourceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{68} }
+
+// UpdateResourceRequest updates the resource specified by the given resource object.
+type UpdateResourceRequest struct {
+	// Resource to update.
+	Resource *Resource `protobuf:"bytes,1,opt,name=resource" json:"resource,omitempty"`
+}
+
+func (m *UpdateResourceRequest) Reset()                    { *m = UpdateResourceRequest{} }
+func (*UpdateResourceRequest) ProtoMessage()               {}
+func (*UpdateResourceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{69} }
+
+// UpdateResourceResponse is an empty object indicating the successful update
+// of a resource.
+type UpdateResourceResponse struct {
+}
+
+func (m *UpdateResourceResponse) Reset()                    { *m = UpdateResourceResponse{} }
+func (*UpdateResourceResponse) ProtoMessage()               {}
+func (*UpdateResourceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{70} }
+
+// GetResourceRequest is the request to get a Resource object given a resource id.
+type GetResourceRequest struct {
+	ResourceID string `protobuf:"bytes,1,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+}
+
+func (m *GetResourceRequest) Reset()                    { *m = GetResourceRequest{} }
+func (*GetResourceRequest) ProtoMessage()               {}
+func (*GetResourceRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{71} }
+
+// GetResourceResponse contains the Resource corresponding to the id in
+// `GetResourceRequest`.
+type GetResourceResponse struct {
+	Resource *Resource `protobuf:"bytes,1,opt,name=resource" json:"resource,omitempty"`
+}
+
+func (m *GetResourceResponse) Reset()                    { *m = GetResourceResponse{} }
+func (*GetResourceResponse) ProtoMessage()               {}
+func (*GetResourceResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{72} }
+
+// ListResourcesRequest is the request to list all resources in the raft store,
+// or all resources filtered by (name or name prefix or id prefix), labels and extension.
+type ListResourcesRequest struct {
+	Filters *ListResourcesRequest_Filters `protobuf:"bytes,1,opt,name=filters" json:"filters,omitempty"`
+}
+
+func (m *ListResourcesRequest) Reset()                    { *m = ListResourcesRequest{} }
+func (*ListResourcesRequest) ProtoMessage()               {}
+func (*ListResourcesRequest) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{73} }
+
+type ListResourcesRequest_Filters struct {
+	Names        []string          `protobuf:"bytes,1,rep,name=names" json:"names,omitempty"`
+	IDPrefixes   []string          `protobuf:"bytes,2,rep,name=id_prefixes,json=idPrefixes" json:"id_prefixes,omitempty"`
+	Labels       map[string]string `protobuf:"bytes,3,rep,name=labels" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	NamePrefixes []string          `protobuf:"bytes,4,rep,name=name_prefixes,json=namePrefixes" json:"name_prefixes,omitempty"`
+	Extension    string            `protobuf:"bytes,5,opt,name=extension,proto3" json:"extension,omitempty"`
+}
+
+func (m *ListResourcesRequest_Filters) Reset()      { *m = ListResourcesRequest_Filters{} }
+func (*ListResourcesRequest_Filters) ProtoMessage() {}
+func (*ListResourcesRequest_Filters) Descriptor() ([]byte, []int) {
+	return fileDescriptorControl, []int{73, 0}
+}
+
+// ListResourcesResponse contains a list of all the resources that match the name or
+// name prefix filters provided in `ListResourcesRequest`.
+type ListResourcesResponse struct {
+	Resources []*Resource `protobuf:"bytes,1,rep,name=resources" json:"resources,omitempty"`
+}
+
+func (m *ListResourcesResponse) Reset()                    { *m = ListResourcesResponse{} }
+func (*ListResourcesResponse) ProtoMessage()               {}
+func (*ListResourcesResponse) Descriptor() ([]byte, []int) { return fileDescriptorControl, []int{74} }
+
 func init() {
 	proto.RegisterType((*GetNodeRequest)(nil), "docker.swarmkit.v1.GetNodeRequest")
 	proto.RegisterType((*GetNodeResponse)(nil), "docker.swarmkit.v1.GetNodeResponse")
@@ -787,6 +954,23 @@ func init() {
 	proto.RegisterType((*CreateConfigResponse)(nil), "docker.swarmkit.v1.CreateConfigResponse")
 	proto.RegisterType((*RemoveConfigRequest)(nil), "docker.swarmkit.v1.RemoveConfigRequest")
 	proto.RegisterType((*RemoveConfigResponse)(nil), "docker.swarmkit.v1.RemoveConfigResponse")
+	proto.RegisterType((*CreateExtensionRequest)(nil), "docker.swarmkit.v1.CreateExtensionRequest")
+	proto.RegisterType((*CreateExtensionResponse)(nil), "docker.swarmkit.v1.CreateExtensionResponse")
+	proto.RegisterType((*RemoveExtensionRequest)(nil), "docker.swarmkit.v1.RemoveExtensionRequest")
+	proto.RegisterType((*RemoveExtensionResponse)(nil), "docker.swarmkit.v1.RemoveExtensionResponse")
+	proto.RegisterType((*GetExtensionRequest)(nil), "docker.swarmkit.v1.GetExtensionRequest")
+	proto.RegisterType((*GetExtensionResponse)(nil), "docker.swarmkit.v1.GetExtensionResponse")
+	proto.RegisterType((*CreateResourceRequest)(nil), "docker.swarmkit.v1.CreateResourceRequest")
+	proto.RegisterType((*CreateResourceResponse)(nil), "docker.swarmkit.v1.CreateResourceResponse")
+	proto.RegisterType((*RemoveResourceRequest)(nil), "docker.swarmkit.v1.RemoveResourceRequest")
+	proto.RegisterType((*RemoveResourceResponse)(nil), "docker.swarmkit.v1.RemoveResourceResponse")
+	proto.RegisterType((*UpdateResourceRequest)(nil), "docker.swarmkit.v1.UpdateResourceRequest")
+	proto.RegisterType((*UpdateResourceResponse)(nil), "docker.swarmkit.v1.UpdateResourceResponse")
+	proto.RegisterType((*GetResourceRequest)(nil), "docker.swarmkit.v1.GetResourceRequest")
+	proto.RegisterType((*GetResourceResponse)(nil), "docker.swarmkit.v1.GetResourceResponse")
+	proto.RegisterType((*ListResourcesRequest)(nil), "docker.swarmkit.v1.ListResourcesRequest")
+	proto.RegisterType((*ListResourcesRequest_Filters)(nil), "docker.swarmkit.v1.ListResourcesRequest.Filters")
+	proto.RegisterType((*ListResourcesResponse)(nil), "docker.swarmkit.v1.ListResourcesResponse")
 	proto.RegisterEnum("docker.swarmkit.v1.UpdateServiceRequest_Rollback", UpdateServiceRequest_Rollback_name, UpdateServiceRequest_Rollback_value)
 }
 
@@ -1032,6 +1216,70 @@ func (p *authenticatedWrapperControlServer) RemoveConfig(ctx context.Context, r 
 		return nil, err
 	}
 	return p.local.RemoveConfig(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) GetExtension(ctx context.Context, r *GetExtensionRequest) (*GetExtensionResponse, error) {
+
+	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
+		return nil, err
+	}
+	return p.local.GetExtension(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) CreateExtension(ctx context.Context, r *CreateExtensionRequest) (*CreateExtensionResponse, error) {
+
+	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
+		return nil, err
+	}
+	return p.local.CreateExtension(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) RemoveExtension(ctx context.Context, r *RemoveExtensionRequest) (*RemoveExtensionResponse, error) {
+
+	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
+		return nil, err
+	}
+	return p.local.RemoveExtension(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) GetResource(ctx context.Context, r *GetResourceRequest) (*GetResourceResponse, error) {
+
+	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
+		return nil, err
+	}
+	return p.local.GetResource(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) UpdateResource(ctx context.Context, r *UpdateResourceRequest) (*UpdateResourceResponse, error) {
+
+	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
+		return nil, err
+	}
+	return p.local.UpdateResource(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) ListResources(ctx context.Context, r *ListResourcesRequest) (*ListResourcesResponse, error) {
+
+	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
+		return nil, err
+	}
+	return p.local.ListResources(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) CreateResource(ctx context.Context, r *CreateResourceRequest) (*CreateResourceResponse, error) {
+
+	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
+		return nil, err
+	}
+	return p.local.CreateResource(ctx, r)
+}
+
+func (p *authenticatedWrapperControlServer) RemoveResource(ctx context.Context, r *RemoveResourceRequest) (*RemoveResourceResponse, error) {
+
+	if err := p.authorize(ctx, []string{"swarm-manager"}); err != nil {
+		return nil, err
+	}
+	return p.local.RemoveResource(ctx, r)
 }
 
 func (m *GetNodeRequest) Copy() *GetNodeRequest {
@@ -2395,6 +2643,289 @@ func (m *RemoveConfigResponse) Copy() *RemoveConfigResponse {
 }
 
 func (m *RemoveConfigResponse) CopyFrom(src interface{}) {}
+func (m *CreateExtensionRequest) Copy() *CreateExtensionRequest {
+	if m == nil {
+		return nil
+	}
+	o := &CreateExtensionRequest{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *CreateExtensionRequest) CopyFrom(src interface{}) {
+
+	o := src.(*CreateExtensionRequest)
+	*m = *o
+	if o.Extension != nil {
+		m.Extension = &Extension{}
+		deepcopy.Copy(m.Extension, o.Extension)
+	}
+}
+
+func (m *CreateExtensionResponse) Copy() *CreateExtensionResponse {
+	if m == nil {
+		return nil
+	}
+	o := &CreateExtensionResponse{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *CreateExtensionResponse) CopyFrom(src interface{}) {}
+func (m *RemoveExtensionRequest) Copy() *RemoveExtensionRequest {
+	if m == nil {
+		return nil
+	}
+	o := &RemoveExtensionRequest{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *RemoveExtensionRequest) CopyFrom(src interface{}) {
+
+	o := src.(*RemoveExtensionRequest)
+	*m = *o
+}
+
+func (m *RemoveExtensionResponse) Copy() *RemoveExtensionResponse {
+	if m == nil {
+		return nil
+	}
+	o := &RemoveExtensionResponse{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *RemoveExtensionResponse) CopyFrom(src interface{}) {}
+func (m *GetExtensionRequest) Copy() *GetExtensionRequest {
+	if m == nil {
+		return nil
+	}
+	o := &GetExtensionRequest{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *GetExtensionRequest) CopyFrom(src interface{}) {
+
+	o := src.(*GetExtensionRequest)
+	*m = *o
+}
+
+func (m *GetExtensionResponse) Copy() *GetExtensionResponse {
+	if m == nil {
+		return nil
+	}
+	o := &GetExtensionResponse{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *GetExtensionResponse) CopyFrom(src interface{}) {
+
+	o := src.(*GetExtensionResponse)
+	*m = *o
+	if o.Extension != nil {
+		m.Extension = &Extension{}
+		deepcopy.Copy(m.Extension, o.Extension)
+	}
+}
+
+func (m *CreateResourceRequest) Copy() *CreateResourceRequest {
+	if m == nil {
+		return nil
+	}
+	o := &CreateResourceRequest{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *CreateResourceRequest) CopyFrom(src interface{}) {
+
+	o := src.(*CreateResourceRequest)
+	*m = *o
+	if o.Resource != nil {
+		m.Resource = &Resource{}
+		deepcopy.Copy(m.Resource, o.Resource)
+	}
+}
+
+func (m *CreateResourceResponse) Copy() *CreateResourceResponse {
+	if m == nil {
+		return nil
+	}
+	o := &CreateResourceResponse{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *CreateResourceResponse) CopyFrom(src interface{}) {}
+func (m *RemoveResourceRequest) Copy() *RemoveResourceRequest {
+	if m == nil {
+		return nil
+	}
+	o := &RemoveResourceRequest{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *RemoveResourceRequest) CopyFrom(src interface{}) {
+
+	o := src.(*RemoveResourceRequest)
+	*m = *o
+}
+
+func (m *RemoveResourceResponse) Copy() *RemoveResourceResponse {
+	if m == nil {
+		return nil
+	}
+	o := &RemoveResourceResponse{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *RemoveResourceResponse) CopyFrom(src interface{}) {}
+func (m *UpdateResourceRequest) Copy() *UpdateResourceRequest {
+	if m == nil {
+		return nil
+	}
+	o := &UpdateResourceRequest{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *UpdateResourceRequest) CopyFrom(src interface{}) {
+
+	o := src.(*UpdateResourceRequest)
+	*m = *o
+	if o.Resource != nil {
+		m.Resource = &Resource{}
+		deepcopy.Copy(m.Resource, o.Resource)
+	}
+}
+
+func (m *UpdateResourceResponse) Copy() *UpdateResourceResponse {
+	if m == nil {
+		return nil
+	}
+	o := &UpdateResourceResponse{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *UpdateResourceResponse) CopyFrom(src interface{}) {}
+func (m *GetResourceRequest) Copy() *GetResourceRequest {
+	if m == nil {
+		return nil
+	}
+	o := &GetResourceRequest{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *GetResourceRequest) CopyFrom(src interface{}) {
+
+	o := src.(*GetResourceRequest)
+	*m = *o
+}
+
+func (m *GetResourceResponse) Copy() *GetResourceResponse {
+	if m == nil {
+		return nil
+	}
+	o := &GetResourceResponse{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *GetResourceResponse) CopyFrom(src interface{}) {
+
+	o := src.(*GetResourceResponse)
+	*m = *o
+	if o.Resource != nil {
+		m.Resource = &Resource{}
+		deepcopy.Copy(m.Resource, o.Resource)
+	}
+}
+
+func (m *ListResourcesRequest) Copy() *ListResourcesRequest {
+	if m == nil {
+		return nil
+	}
+	o := &ListResourcesRequest{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *ListResourcesRequest) CopyFrom(src interface{}) {
+
+	o := src.(*ListResourcesRequest)
+	*m = *o
+	if o.Filters != nil {
+		m.Filters = &ListResourcesRequest_Filters{}
+		deepcopy.Copy(m.Filters, o.Filters)
+	}
+}
+
+func (m *ListResourcesRequest_Filters) Copy() *ListResourcesRequest_Filters {
+	if m == nil {
+		return nil
+	}
+	o := &ListResourcesRequest_Filters{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *ListResourcesRequest_Filters) CopyFrom(src interface{}) {
+
+	o := src.(*ListResourcesRequest_Filters)
+	*m = *o
+	if o.Names != nil {
+		m.Names = make([]string, len(o.Names))
+		copy(m.Names, o.Names)
+	}
+
+	if o.IDPrefixes != nil {
+		m.IDPrefixes = make([]string, len(o.IDPrefixes))
+		copy(m.IDPrefixes, o.IDPrefixes)
+	}
+
+	if o.Labels != nil {
+		m.Labels = make(map[string]string, len(o.Labels))
+		for k, v := range o.Labels {
+			m.Labels[k] = v
+		}
+	}
+
+	if o.NamePrefixes != nil {
+		m.NamePrefixes = make([]string, len(o.NamePrefixes))
+		copy(m.NamePrefixes, o.NamePrefixes)
+	}
+
+}
+
+func (m *ListResourcesResponse) Copy() *ListResourcesResponse {
+	if m == nil {
+		return nil
+	}
+	o := &ListResourcesResponse{}
+	o.CopyFrom(m)
+	return o
+}
+
+func (m *ListResourcesResponse) CopyFrom(src interface{}) {
+
+	o := src.(*ListResourcesResponse)
+	*m = *o
+	if o.Resources != nil {
+		m.Resources = make([]*Resource, len(o.Resources))
+		for i := range m.Resources {
+			m.Resources[i] = &Resource{}
+			deepcopy.Copy(m.Resources[i], o.Resources[i])
+		}
+	}
+
+}
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
@@ -2484,6 +3015,52 @@ type ControlClient interface {
 	// - Returns `NotFound` if the a config named `RemoveConfigRequest.ID` is not found.
 	// - Returns an error if the deletion fails.
 	RemoveConfig(ctx context.Context, in *RemoveConfigRequest, opts ...grpc.CallOption) (*RemoveConfigResponse, error)
+	// GetExtension returns a `GetExtensionResponse` with a `Extension` with the same
+	// id as `GetExtensionRequest.ExtensionId`
+	// - Returns `NotFound` if the Extension with the given id is not found.
+	// - Returns `InvalidArgument` if the `GetExtensionRequest.ExtensionId` is empty.
+	// - Returns an error if the get fails.
+	GetExtension(ctx context.Context, in *GetExtensionRequest, opts ...grpc.CallOption) (*GetExtensionResponse, error)
+	// CreateExtension creates an `Extension` based on the provided `CreateExtensionRequest.Extension`
+	// and returns a `CreateExtensionResponse`.
+	// - Returns `InvalidArgument` if the `CreateExtensionRequest.Extension` is malformed,
+	//   or fails validation.
+	// - Returns an error if the creation fails.
+	CreateExtension(ctx context.Context, in *CreateExtensionRequest, opts ...grpc.CallOption) (*CreateExtensionResponse, error)
+	// RemoveExtension removes the extension referenced by `RemoveExtensionRequest.ID`.
+	// - Returns `InvalidArgument` if `RemoveExtensionRequest.ExtensionId` is empty.
+	// - Returns `NotFound` if the an extension named `RemoveExtensionRequest.ExtensionId` is not found.
+	// - Returns an error if the deletion fails.
+	RemoveExtension(ctx context.Context, in *RemoveExtensionRequest, opts ...grpc.CallOption) (*RemoveExtensionResponse, error)
+	// GetResource returns a `GetResourceResponse` with a `Resource` with the same
+	// id as `GetResourceRequest.Resource`
+	// - Returns `NotFound` if the Resource with the given id is not found.
+	// - Returns `InvalidArgument` if the `GetResourceRequest.Resource` is empty.
+	// - Returns an error if getting fails.
+	GetResource(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*GetResourceResponse, error)
+	// UpdateResource updates the resource with the given `UpdateResourceRequest.Resource.Id` using the given `UpdateResourceRequest.Resource` and returns a `UpdateResourceResponse`.
+	// - Returns `NotFound` if the Resource with the given `UpdateResourceRequest.Resource.Id` is not found.
+	// - Returns `InvalidArgument` if the UpdateResourceRequest.Resource.Id` is empty.
+	// - Returns an error if updating fails.
+	UpdateResource(ctx context.Context, in *UpdateResourceRequest, opts ...grpc.CallOption) (*UpdateResourceResponse, error)
+	// ListResources returns a `ListResourcesResponse` with a list of `Resource`s stored in the raft store,
+	// or all resources matching any name in `ListConfigsRequest.Names`, any
+	// name prefix in `ListResourcesRequest.NamePrefixes`, any id in
+	// `ListResourcesRequest.ResourceIDs`, or any id prefix in `ListResourcesRequest.IDPrefixes`,
+	// extension name equal to `ListResourcesRequest.Extension`.
+	// - Returns an error if listing fails.
+	ListResources(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*ListResourcesResponse, error)
+	// CreateResource returns a `CreateResourceResponse` after creating a `Resource` based
+	// on the provided `CreateResourceRequest.Resource`.
+	// - Returns `InvalidArgument` if the `CreateResourceRequest.Resource` is malformed,
+	//   or if the config data is too long or contains invalid characters.
+	// - Returns an error if the creation fails.
+	CreateResource(ctx context.Context, in *CreateResourceRequest, opts ...grpc.CallOption) (*CreateResourceResponse, error)
+	// RemoveResource removes the `Resource` referenced by `RemoveResourceRequest.ResourceID`.
+	// - Returns `InvalidArgument` if `RemoveResourceRequest.ResourceID` is empty.
+	// - Returns `NotFound` if the a resource named `RemoveResourceRequest.ResourceID` is not found.
+	// - Returns an error if the deletion fails.
+	RemoveResource(ctx context.Context, in *RemoveResourceRequest, opts ...grpc.CallOption) (*RemoveResourceResponse, error)
 }
 
 type controlClient struct {
@@ -2755,6 +3332,78 @@ func (c *controlClient) RemoveConfig(ctx context.Context, in *RemoveConfigReques
 	return out, nil
 }
 
+func (c *controlClient) GetExtension(ctx context.Context, in *GetExtensionRequest, opts ...grpc.CallOption) (*GetExtensionResponse, error) {
+	out := new(GetExtensionResponse)
+	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetExtension", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controlClient) CreateExtension(ctx context.Context, in *CreateExtensionRequest, opts ...grpc.CallOption) (*CreateExtensionResponse, error) {
+	out := new(CreateExtensionResponse)
+	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/CreateExtension", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controlClient) RemoveExtension(ctx context.Context, in *RemoveExtensionRequest, opts ...grpc.CallOption) (*RemoveExtensionResponse, error) {
+	out := new(RemoveExtensionResponse)
+	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/RemoveExtension", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controlClient) GetResource(ctx context.Context, in *GetResourceRequest, opts ...grpc.CallOption) (*GetResourceResponse, error) {
+	out := new(GetResourceResponse)
+	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/GetResource", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controlClient) UpdateResource(ctx context.Context, in *UpdateResourceRequest, opts ...grpc.CallOption) (*UpdateResourceResponse, error) {
+	out := new(UpdateResourceResponse)
+	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/UpdateResource", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controlClient) ListResources(ctx context.Context, in *ListResourcesRequest, opts ...grpc.CallOption) (*ListResourcesResponse, error) {
+	out := new(ListResourcesResponse)
+	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/ListResources", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controlClient) CreateResource(ctx context.Context, in *CreateResourceRequest, opts ...grpc.CallOption) (*CreateResourceResponse, error) {
+	out := new(CreateResourceResponse)
+	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/CreateResource", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controlClient) RemoveResource(ctx context.Context, in *RemoveResourceRequest, opts ...grpc.CallOption) (*RemoveResourceResponse, error) {
+	out := new(RemoveResourceResponse)
+	err := grpc.Invoke(ctx, "/docker.swarmkit.v1.Control/RemoveResource", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for Control service
 
 type ControlServer interface {
@@ -2835,6 +3484,52 @@ type ControlServer interface {
 	// - Returns `NotFound` if the a config named `RemoveConfigRequest.ID` is not found.
 	// - Returns an error if the deletion fails.
 	RemoveConfig(context.Context, *RemoveConfigRequest) (*RemoveConfigResponse, error)
+	// GetExtension returns a `GetExtensionResponse` with a `Extension` with the same
+	// id as `GetExtensionRequest.ExtensionId`
+	// - Returns `NotFound` if the Extension with the given id is not found.
+	// - Returns `InvalidArgument` if the `GetExtensionRequest.ExtensionId` is empty.
+	// - Returns an error if the get fails.
+	GetExtension(context.Context, *GetExtensionRequest) (*GetExtensionResponse, error)
+	// CreateExtension creates an `Extension` based on the provided `CreateExtensionRequest.Extension`
+	// and returns a `CreateExtensionResponse`.
+	// - Returns `InvalidArgument` if the `CreateExtensionRequest.Extension` is malformed,
+	//   or fails validation.
+	// - Returns an error if the creation fails.
+	CreateExtension(context.Context, *CreateExtensionRequest) (*CreateExtensionResponse, error)
+	// RemoveExtension removes the extension referenced by `RemoveExtensionRequest.ID`.
+	// - Returns `InvalidArgument` if `RemoveExtensionRequest.ExtensionId` is empty.
+	// - Returns `NotFound` if the an extension named `RemoveExtensionRequest.ExtensionId` is not found.
+	// - Returns an error if the deletion fails.
+	RemoveExtension(context.Context, *RemoveExtensionRequest) (*RemoveExtensionResponse, error)
+	// GetResource returns a `GetResourceResponse` with a `Resource` with the same
+	// id as `GetResourceRequest.Resource`
+	// - Returns `NotFound` if the Resource with the given id is not found.
+	// - Returns `InvalidArgument` if the `GetResourceRequest.Resource` is empty.
+	// - Returns an error if getting fails.
+	GetResource(context.Context, *GetResourceRequest) (*GetResourceResponse, error)
+	// UpdateResource updates the resource with the given `UpdateResourceRequest.Resource.Id` using the given `UpdateResourceRequest.Resource` and returns a `UpdateResourceResponse`.
+	// - Returns `NotFound` if the Resource with the given `UpdateResourceRequest.Resource.Id` is not found.
+	// - Returns `InvalidArgument` if the UpdateResourceRequest.Resource.Id` is empty.
+	// - Returns an error if updating fails.
+	UpdateResource(context.Context, *UpdateResourceRequest) (*UpdateResourceResponse, error)
+	// ListResources returns a `ListResourcesResponse` with a list of `Resource`s stored in the raft store,
+	// or all resources matching any name in `ListConfigsRequest.Names`, any
+	// name prefix in `ListResourcesRequest.NamePrefixes`, any id in
+	// `ListResourcesRequest.ResourceIDs`, or any id prefix in `ListResourcesRequest.IDPrefixes`,
+	// extension name equal to `ListResourcesRequest.Extension`.
+	// - Returns an error if listing fails.
+	ListResources(context.Context, *ListResourcesRequest) (*ListResourcesResponse, error)
+	// CreateResource returns a `CreateResourceResponse` after creating a `Resource` based
+	// on the provided `CreateResourceRequest.Resource`.
+	// - Returns `InvalidArgument` if the `CreateResourceRequest.Resource` is malformed,
+	//   or if the config data is too long or contains invalid characters.
+	// - Returns an error if the creation fails.
+	CreateResource(context.Context, *CreateResourceRequest) (*CreateResourceResponse, error)
+	// RemoveResource removes the `Resource` referenced by `RemoveResourceRequest.ResourceID`.
+	// - Returns `InvalidArgument` if `RemoveResourceRequest.ResourceID` is empty.
+	// - Returns `NotFound` if the a resource named `RemoveResourceRequest.ResourceID` is not found.
+	// - Returns an error if the deletion fails.
+	RemoveResource(context.Context, *RemoveResourceRequest) (*RemoveResourceResponse, error)
 }
 
 func RegisterControlServer(s *grpc.Server, srv ControlServer) {
@@ -3363,6 +4058,150 @@ func _Control_RemoveConfig_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Control_GetExtension_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetExtensionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).GetExtension(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.swarmkit.v1.Control/GetExtension",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).GetExtension(ctx, req.(*GetExtensionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Control_CreateExtension_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateExtensionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).CreateExtension(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.swarmkit.v1.Control/CreateExtension",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).CreateExtension(ctx, req.(*CreateExtensionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Control_RemoveExtension_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveExtensionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).RemoveExtension(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.swarmkit.v1.Control/RemoveExtension",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).RemoveExtension(ctx, req.(*RemoveExtensionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Control_GetResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetResourceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).GetResource(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.swarmkit.v1.Control/GetResource",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).GetResource(ctx, req.(*GetResourceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Control_UpdateResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateResourceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).UpdateResource(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.swarmkit.v1.Control/UpdateResource",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).UpdateResource(ctx, req.(*UpdateResourceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Control_ListResources_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListResourcesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).ListResources(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.swarmkit.v1.Control/ListResources",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).ListResources(ctx, req.(*ListResourcesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Control_CreateResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateResourceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).CreateResource(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.swarmkit.v1.Control/CreateResource",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).CreateResource(ctx, req.(*CreateResourceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Control_RemoveResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveResourceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControlServer).RemoveResource(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/docker.swarmkit.v1.Control/RemoveResource",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControlServer).RemoveResource(ctx, req.(*RemoveResourceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Control_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "docker.swarmkit.v1.Control",
 	HandlerType: (*ControlServer)(nil),
@@ -3482,6 +4321,38 @@ var _Control_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveConfig",
 			Handler:    _Control_RemoveConfig_Handler,
+		},
+		{
+			MethodName: "GetExtension",
+			Handler:    _Control_GetExtension_Handler,
+		},
+		{
+			MethodName: "CreateExtension",
+			Handler:    _Control_CreateExtension_Handler,
+		},
+		{
+			MethodName: "RemoveExtension",
+			Handler:    _Control_RemoveExtension_Handler,
+		},
+		{
+			MethodName: "GetResource",
+			Handler:    _Control_GetResource_Handler,
+		},
+		{
+			MethodName: "UpdateResource",
+			Handler:    _Control_UpdateResource_Handler,
+		},
+		{
+			MethodName: "ListResources",
+			Handler:    _Control_ListResources_Handler,
+		},
+		{
+			MethodName: "CreateResource",
+			Handler:    _Control_CreateResource_Handler,
+		},
+		{
+			MethodName: "RemoveResource",
+			Handler:    _Control_RemoveResource_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -5875,6 +6746,476 @@ func (m *RemoveConfigResponse) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
+func (m *CreateExtensionRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *CreateExtensionRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Extension != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(m.Extension.Size()))
+		n39, err := m.Extension.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n39
+	}
+	return i, nil
+}
+
+func (m *CreateExtensionResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *CreateExtensionResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *RemoveExtensionRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RemoveExtensionRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.ExtensionID) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(len(m.ExtensionID)))
+		i += copy(dAtA[i:], m.ExtensionID)
+	}
+	return i, nil
+}
+
+func (m *RemoveExtensionResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RemoveExtensionResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *GetExtensionRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetExtensionRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.ExtensionID) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(len(m.ExtensionID)))
+		i += copy(dAtA[i:], m.ExtensionID)
+	}
+	return i, nil
+}
+
+func (m *GetExtensionResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetExtensionResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Extension != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(m.Extension.Size()))
+		n40, err := m.Extension.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n40
+	}
+	return i, nil
+}
+
+func (m *CreateResourceRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *CreateResourceRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Resource != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(m.Resource.Size()))
+		n41, err := m.Resource.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n41
+	}
+	return i, nil
+}
+
+func (m *CreateResourceResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *CreateResourceResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *RemoveResourceRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RemoveResourceRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.ResourceID) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(len(m.ResourceID)))
+		i += copy(dAtA[i:], m.ResourceID)
+	}
+	return i, nil
+}
+
+func (m *RemoveResourceResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RemoveResourceResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *UpdateResourceRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *UpdateResourceRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Resource != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(m.Resource.Size()))
+		n42, err := m.Resource.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n42
+	}
+	return i, nil
+}
+
+func (m *UpdateResourceResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *UpdateResourceResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *GetResourceRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetResourceRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.ResourceID) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(len(m.ResourceID)))
+		i += copy(dAtA[i:], m.ResourceID)
+	}
+	return i, nil
+}
+
+func (m *GetResourceResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GetResourceResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Resource != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(m.Resource.Size()))
+		n43, err := m.Resource.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n43
+	}
+	return i, nil
+}
+
+func (m *ListResourcesRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ListResourcesRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Filters != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(m.Filters.Size()))
+		n44, err := m.Filters.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n44
+	}
+	return i, nil
+}
+
+func (m *ListResourcesRequest_Filters) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ListResourcesRequest_Filters) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			dAtA[i] = 0xa
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			dAtA[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
+	}
+	if len(m.Labels) > 0 {
+		for k, _ := range m.Labels {
+			dAtA[i] = 0x1a
+			i++
+			v := m.Labels[k]
+			mapSize := 1 + len(k) + sovControl(uint64(len(k))) + 1 + len(v) + sovControl(uint64(len(v)))
+			i = encodeVarintControl(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintControl(dAtA, i, uint64(len(k)))
+			i += copy(dAtA[i:], k)
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintControl(dAtA, i, uint64(len(v)))
+			i += copy(dAtA[i:], v)
+		}
+	}
+	if len(m.NamePrefixes) > 0 {
+		for _, s := range m.NamePrefixes {
+			dAtA[i] = 0x22
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
+	}
+	if len(m.Extension) > 0 {
+		dAtA[i] = 0x2a
+		i++
+		i = encodeVarintControl(dAtA, i, uint64(len(m.Extension)))
+		i += copy(dAtA[i:], m.Extension)
+	}
+	return i, nil
+}
+
+func (m *ListResourcesResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ListResourcesResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Resources) > 0 {
+		for _, msg := range m.Resources {
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintControl(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
 func encodeVarintControl(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
@@ -6972,6 +8313,286 @@ func (p *raftProxyControlServer) RemoveConfig(ctx context.Context, r *RemoveConf
 	return resp, err
 }
 
+func (p *raftProxyControlServer) GetExtension(ctx context.Context, r *GetExtensionRequest) (*GetExtensionResponse, error) {
+
+	conn, err := p.connSelector.LeaderConn(ctx)
+	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
+			return p.local.GetExtension(ctx, r)
+		}
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := NewControlClient(conn).GetExtension(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.GetExtension(ctx, r)
+			}
+			return nil, err
+		}
+		return NewControlClient(conn).GetExtension(modCtx, r)
+	}
+	return resp, err
+}
+
+func (p *raftProxyControlServer) CreateExtension(ctx context.Context, r *CreateExtensionRequest) (*CreateExtensionResponse, error) {
+
+	conn, err := p.connSelector.LeaderConn(ctx)
+	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
+			return p.local.CreateExtension(ctx, r)
+		}
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := NewControlClient(conn).CreateExtension(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.CreateExtension(ctx, r)
+			}
+			return nil, err
+		}
+		return NewControlClient(conn).CreateExtension(modCtx, r)
+	}
+	return resp, err
+}
+
+func (p *raftProxyControlServer) RemoveExtension(ctx context.Context, r *RemoveExtensionRequest) (*RemoveExtensionResponse, error) {
+
+	conn, err := p.connSelector.LeaderConn(ctx)
+	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
+			return p.local.RemoveExtension(ctx, r)
+		}
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := NewControlClient(conn).RemoveExtension(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.RemoveExtension(ctx, r)
+			}
+			return nil, err
+		}
+		return NewControlClient(conn).RemoveExtension(modCtx, r)
+	}
+	return resp, err
+}
+
+func (p *raftProxyControlServer) GetResource(ctx context.Context, r *GetResourceRequest) (*GetResourceResponse, error) {
+
+	conn, err := p.connSelector.LeaderConn(ctx)
+	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
+			return p.local.GetResource(ctx, r)
+		}
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := NewControlClient(conn).GetResource(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.GetResource(ctx, r)
+			}
+			return nil, err
+		}
+		return NewControlClient(conn).GetResource(modCtx, r)
+	}
+	return resp, err
+}
+
+func (p *raftProxyControlServer) UpdateResource(ctx context.Context, r *UpdateResourceRequest) (*UpdateResourceResponse, error) {
+
+	conn, err := p.connSelector.LeaderConn(ctx)
+	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
+			return p.local.UpdateResource(ctx, r)
+		}
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := NewControlClient(conn).UpdateResource(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.UpdateResource(ctx, r)
+			}
+			return nil, err
+		}
+		return NewControlClient(conn).UpdateResource(modCtx, r)
+	}
+	return resp, err
+}
+
+func (p *raftProxyControlServer) ListResources(ctx context.Context, r *ListResourcesRequest) (*ListResourcesResponse, error) {
+
+	conn, err := p.connSelector.LeaderConn(ctx)
+	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
+			return p.local.ListResources(ctx, r)
+		}
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := NewControlClient(conn).ListResources(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.ListResources(ctx, r)
+			}
+			return nil, err
+		}
+		return NewControlClient(conn).ListResources(modCtx, r)
+	}
+	return resp, err
+}
+
+func (p *raftProxyControlServer) CreateResource(ctx context.Context, r *CreateResourceRequest) (*CreateResourceResponse, error) {
+
+	conn, err := p.connSelector.LeaderConn(ctx)
+	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
+			return p.local.CreateResource(ctx, r)
+		}
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := NewControlClient(conn).CreateResource(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.CreateResource(ctx, r)
+			}
+			return nil, err
+		}
+		return NewControlClient(conn).CreateResource(modCtx, r)
+	}
+	return resp, err
+}
+
+func (p *raftProxyControlServer) RemoveResource(ctx context.Context, r *RemoveResourceRequest) (*RemoveResourceResponse, error) {
+
+	conn, err := p.connSelector.LeaderConn(ctx)
+	if err != nil {
+		if err == raftselector.ErrIsLeader {
+			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
+			if err != nil {
+				return nil, err
+			}
+			return p.local.RemoveResource(ctx, r)
+		}
+		return nil, err
+	}
+	modCtx, err := p.runCtxMods(ctx, p.remoteCtxMods)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := NewControlClient(conn).RemoveResource(modCtx, r)
+	if err != nil {
+		if !strings.Contains(err.Error(), "is closing") && !strings.Contains(err.Error(), "the connection is unavailable") && !strings.Contains(err.Error(), "connection error") {
+			return resp, err
+		}
+		conn, err := p.pollNewLeaderConn(ctx)
+		if err != nil {
+			if err == raftselector.ErrIsLeader {
+				return p.local.RemoveResource(ctx, r)
+			}
+			return nil, err
+		}
+		return NewControlClient(conn).RemoveResource(modCtx, r)
+	}
+	return resp, err
+}
+
 func (m *GetNodeRequest) Size() (n int) {
 	var l int
 	_ = l
@@ -7896,6 +9517,184 @@ func (m *RemoveConfigResponse) Size() (n int) {
 	return n
 }
 
+func (m *CreateExtensionRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Extension != nil {
+		l = m.Extension.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *CreateExtensionResponse) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RemoveExtensionRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.ExtensionID)
+	if l > 0 {
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *RemoveExtensionResponse) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func (m *GetExtensionRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.ExtensionID)
+	if l > 0 {
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *GetExtensionResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.Extension != nil {
+		l = m.Extension.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *CreateResourceRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Resource != nil {
+		l = m.Resource.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *CreateResourceResponse) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func (m *RemoveResourceRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.ResourceID)
+	if l > 0 {
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *RemoveResourceResponse) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func (m *UpdateResourceRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Resource != nil {
+		l = m.Resource.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *UpdateResourceResponse) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func (m *GetResourceRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.ResourceID)
+	if l > 0 {
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *GetResourceResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.Resource != nil {
+		l = m.Resource.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *ListResourcesRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Filters != nil {
+		l = m.Filters.Size()
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *ListResourcesRequest_Filters) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	if len(m.IDPrefixes) > 0 {
+		for _, s := range m.IDPrefixes {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	if len(m.Labels) > 0 {
+		for k, v := range m.Labels {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + len(k) + sovControl(uint64(len(k))) + 1 + len(v) + sovControl(uint64(len(v)))
+			n += mapEntrySize + 1 + sovControl(uint64(mapEntrySize))
+		}
+	}
+	if len(m.NamePrefixes) > 0 {
+		for _, s := range m.NamePrefixes {
+			l = len(s)
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	l = len(m.Extension)
+	if l > 0 {
+		n += 1 + l + sovControl(uint64(l))
+	}
+	return n
+}
+
+func (m *ListResourcesResponse) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Resources) > 0 {
+		for _, e := range m.Resources {
+			l = e.Size()
+			n += 1 + l + sovControl(uint64(l))
+		}
+	}
+	return n
+}
+
 func sovControl(x uint64) (n int) {
 	for {
 		n++
@@ -8689,6 +10488,185 @@ func (this *RemoveConfigResponse) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&RemoveConfigResponse{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *CreateExtensionRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&CreateExtensionRequest{`,
+		`Extension:` + strings.Replace(fmt.Sprintf("%v", this.Extension), "Extension", "Extension", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *CreateExtensionResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&CreateExtensionResponse{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RemoveExtensionRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RemoveExtensionRequest{`,
+		`ExtensionID:` + fmt.Sprintf("%v", this.ExtensionID) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RemoveExtensionResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RemoveExtensionResponse{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *GetExtensionRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&GetExtensionRequest{`,
+		`ExtensionID:` + fmt.Sprintf("%v", this.ExtensionID) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *GetExtensionResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&GetExtensionResponse{`,
+		`Extension:` + strings.Replace(fmt.Sprintf("%v", this.Extension), "Extension", "Extension", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *CreateResourceRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&CreateResourceRequest{`,
+		`Resource:` + strings.Replace(fmt.Sprintf("%v", this.Resource), "Resource", "Resource", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *CreateResourceResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&CreateResourceResponse{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RemoveResourceRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RemoveResourceRequest{`,
+		`ResourceID:` + fmt.Sprintf("%v", this.ResourceID) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RemoveResourceResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RemoveResourceResponse{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateResourceRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateResourceRequest{`,
+		`Resource:` + strings.Replace(fmt.Sprintf("%v", this.Resource), "Resource", "Resource", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateResourceResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateResourceResponse{`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *GetResourceRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&GetResourceRequest{`,
+		`ResourceID:` + fmt.Sprintf("%v", this.ResourceID) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *GetResourceResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&GetResourceResponse{`,
+		`Resource:` + strings.Replace(fmt.Sprintf("%v", this.Resource), "Resource", "Resource", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListResourcesRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListResourcesRequest{`,
+		`Filters:` + strings.Replace(fmt.Sprintf("%v", this.Filters), "ListResourcesRequest_Filters", "ListResourcesRequest_Filters", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListResourcesRequest_Filters) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForLabels := make([]string, 0, len(this.Labels))
+	for k, _ := range this.Labels {
+		keysForLabels = append(keysForLabels, k)
+	}
+	sortkeys.Strings(keysForLabels)
+	mapStringForLabels := "map[string]string{"
+	for _, k := range keysForLabels {
+		mapStringForLabels += fmt.Sprintf("%v: %v,", k, this.Labels[k])
+	}
+	mapStringForLabels += "}"
+	s := strings.Join([]string{`&ListResourcesRequest_Filters{`,
+		`Names:` + fmt.Sprintf("%v", this.Names) + `,`,
+		`IDPrefixes:` + fmt.Sprintf("%v", this.IDPrefixes) + `,`,
+		`Labels:` + mapStringForLabels + `,`,
+		`NamePrefixes:` + fmt.Sprintf("%v", this.NamePrefixes) + `,`,
+		`Extension:` + fmt.Sprintf("%v", this.Extension) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ListResourcesResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ListResourcesResponse{`,
+		`Resources:` + strings.Replace(fmt.Sprintf("%v", this.Resources), "Resource", "Resource", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -16083,6 +18061,1435 @@ func (m *RemoveConfigResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *CreateExtensionRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CreateExtensionRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CreateExtensionRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Extension", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Extension == nil {
+				m.Extension = &Extension{}
+			}
+			if err := m.Extension.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *CreateExtensionResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CreateExtensionResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CreateExtensionResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RemoveExtensionRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RemoveExtensionRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RemoveExtensionRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExtensionID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ExtensionID = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RemoveExtensionResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RemoveExtensionResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RemoveExtensionResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetExtensionRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetExtensionRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetExtensionRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExtensionID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ExtensionID = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetExtensionResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetExtensionResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetExtensionResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Extension", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Extension == nil {
+				m.Extension = &Extension{}
+			}
+			if err := m.Extension.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *CreateResourceRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CreateResourceRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CreateResourceRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Resource", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Resource == nil {
+				m.Resource = &Resource{}
+			}
+			if err := m.Resource.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *CreateResourceResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CreateResourceResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CreateResourceResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RemoveResourceRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RemoveResourceRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RemoveResourceRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ResourceID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ResourceID = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RemoveResourceResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RemoveResourceResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RemoveResourceResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UpdateResourceRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UpdateResourceRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UpdateResourceRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Resource", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Resource == nil {
+				m.Resource = &Resource{}
+			}
+			if err := m.Resource.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *UpdateResourceResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UpdateResourceResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UpdateResourceResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetResourceRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetResourceRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetResourceRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ResourceID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ResourceID = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GetResourceResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GetResourceResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GetResourceResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Resource", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Resource == nil {
+				m.Resource = &Resource{}
+			}
+			if err := m.Resource.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListResourcesRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListResourcesRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListResourcesRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Filters", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Filters == nil {
+				m.Filters = &ListResourcesRequest_Filters{}
+			}
+			if err := m.Filters.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListResourcesRequest_Filters) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Filters: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Filters: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Names", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Names = append(m.Names, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IDPrefixes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.IDPrefixes = append(m.IDPrefixes, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Labels", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Labels == nil {
+				m.Labels = make(map[string]string)
+			}
+			var mapkey string
+			var mapvalue string
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowControl
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					var stringLenmapkey uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowControl
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						stringLenmapkey |= (uint64(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intStringLenmapkey := int(stringLenmapkey)
+					if intStringLenmapkey < 0 {
+						return ErrInvalidLengthControl
+					}
+					postStringIndexmapkey := iNdEx + intStringLenmapkey
+					if postStringIndexmapkey > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
+					iNdEx = postStringIndexmapkey
+				} else if fieldNum == 2 {
+					var stringLenmapvalue uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowControl
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						stringLenmapvalue |= (uint64(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intStringLenmapvalue := int(stringLenmapvalue)
+					if intStringLenmapvalue < 0 {
+						return ErrInvalidLengthControl
+					}
+					postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+					if postStringIndexmapvalue > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = string(dAtA[iNdEx:postStringIndexmapvalue])
+					iNdEx = postStringIndexmapvalue
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipControl(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthControl
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.Labels[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NamePrefixes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NamePrefixes = append(m.NamePrefixes, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Extension", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Extension = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListResourcesResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowControl
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListResourcesResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListResourcesResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Resources", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowControl
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthControl
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Resources = append(m.Resources, &Resource{})
+			if err := m.Resources[len(m.Resources)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipControl(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthControl
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func skipControl(dAtA []byte) (n int, err error) {
 	l := len(dAtA)
 	iNdEx := 0
@@ -16191,143 +19598,165 @@ var (
 func init() { proto.RegisterFile("github.com/docker/swarmkit/api/control.proto", fileDescriptorControl) }
 
 var fileDescriptorControl = []byte{
-	// 2196 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x5a, 0xcd, 0x73, 0x1b, 0x49,
-	0x15, 0xb7, 0x3e, 0x6c, 0xc9, 0x4f, 0xb6, 0x6c, 0x77, 0x1c, 0x50, 0x4d, 0x82, 0x9d, 0x9a, 0x90,
-	0x44, 0xd9, 0x32, 0x12, 0xab, 0xb0, 0x6c, 0x58, 0x58, 0x60, 0x6d, 0x67, 0xb3, 0x5a, 0x6f, 0x9c,
-	0xd4, 0x38, 0xd9, 0x1b, 0xa5, 0x1a, 0x4b, 0x6d, 0x67, 0x22, 0x79, 0x46, 0xcc, 0x8c, 0x9c, 0x75,
-	0x71, 0x81, 0xad, 0xf0, 0x27, 0x50, 0xc5, 0x95, 0x13, 0x55, 0x1c, 0x38, 0x70, 0xe2, 0xc0, 0x1f,
-	0x90, 0xe2, 0xc4, 0x91, 0x93, 0x61, 0x55, 0x45, 0x15, 0x27, 0xfe, 0x06, 0xaa, 0xbf, 0xe6, 0x4b,
-	0x3d, 0x33, 0xfa, 0xaa, 0x72, 0x4e, 0xd6, 0xf4, 0xfc, 0x5e, 0xbf, 0xd7, 0xfd, 0x7e, 0xfd, 0x9b,
-	0xee, 0xd7, 0x86, 0x9d, 0x53, 0xc3, 0x7d, 0x39, 0x38, 0xae, 0xb5, 0xad, 0xb3, 0x7a, 0xc7, 0x6a,
-	0x77, 0xb1, 0x5d, 0x77, 0x5e, 0xeb, 0xf6, 0x59, 0xd7, 0x70, 0xeb, 0x7a, 0xdf, 0xa8, 0xb7, 0x2d,
-	0xd3, 0xb5, 0xad, 0x5e, 0xad, 0x6f, 0x5b, 0xae, 0x85, 0x10, 0x83, 0xd4, 0x04, 0xa4, 0x76, 0xfe,
-	0xbe, 0xf2, 0x5e, 0x4a, 0x0f, 0x4e, 0x1f, 0xb7, 0x1d, 0x66, 0xaf, 0xa4, 0x79, 0xb3, 0x8e, 0x5f,
-	0xe1, 0xb6, 0x2b, 0xd0, 0x69, 0x3d, 0xbb, 0x17, 0x7d, 0x2c, 0xb0, 0x9b, 0xa7, 0xd6, 0xa9, 0x45,
-	0x7f, 0xd6, 0xc9, 0x2f, 0xde, 0xfa, 0x61, 0x42, 0x0f, 0x14, 0x71, 0x3c, 0x38, 0xa9, 0xf7, 0x7b,
-	0x83, 0x53, 0xc3, 0xe4, 0x7f, 0x98, 0xa1, 0xfa, 0x01, 0x94, 0x1f, 0x63, 0xf7, 0xd0, 0xea, 0x60,
-	0x0d, 0xff, 0x72, 0x80, 0x1d, 0x17, 0xdd, 0x86, 0x82, 0x69, 0x75, 0x70, 0xcb, 0xe8, 0x54, 0x32,
-	0xb7, 0x32, 0xd5, 0xe5, 0x5d, 0x18, 0x5e, 0x6e, 0x2f, 0x11, 0x44, 0x73, 0x5f, 0x5b, 0x22, 0xaf,
-	0x9a, 0x1d, 0xf5, 0x67, 0xb0, 0xe6, 0x99, 0x39, 0x7d, 0xcb, 0x74, 0x30, 0xda, 0x81, 0x3c, 0x79,
-	0x49, 0x8d, 0x4a, 0x8d, 0x4a, 0x6d, 0x74, 0x06, 0x6b, 0x14, 0x4f, 0x51, 0xea, 0x9b, 0x45, 0x58,
-	0xff, 0xc2, 0x70, 0x68, 0x17, 0x8e, 0x70, 0xfd, 0x29, 0x14, 0x4e, 0x8c, 0x9e, 0x8b, 0x6d, 0x87,
-	0xf7, 0xb2, 0x23, 0xeb, 0x25, 0x6a, 0x56, 0xfb, 0x94, 0xd9, 0x68, 0xc2, 0x58, 0xf9, 0x63, 0x1e,
-	0x0a, 0xbc, 0x11, 0x6d, 0xc2, 0xa2, 0xa9, 0x9f, 0x61, 0xd2, 0x63, 0xae, 0xba, 0xac, 0xb1, 0x07,
-	0x54, 0x87, 0x92, 0xd1, 0x69, 0xf5, 0x6d, 0x7c, 0x62, 0x7c, 0x85, 0x9d, 0x4a, 0x96, 0xbc, 0xdb,
-	0x2d, 0x0f, 0x2f, 0xb7, 0xa1, 0xb9, 0xff, 0x8c, 0xb7, 0x6a, 0x60, 0x74, 0xc4, 0x6f, 0xf4, 0x0c,
-	0x96, 0x7a, 0xfa, 0x31, 0xee, 0x39, 0x95, 0xdc, 0xad, 0x5c, 0xb5, 0xd4, 0x78, 0x38, 0x49, 0x64,
-	0xb5, 0x2f, 0xa8, 0xe9, 0x23, 0xd3, 0xb5, 0x2f, 0x34, 0xde, 0x0f, 0x7a, 0x02, 0xa5, 0x33, 0x7c,
-	0x76, 0x8c, 0x6d, 0xe7, 0xa5, 0xd1, 0x77, 0x2a, 0xf9, 0x5b, 0xb9, 0x6a, 0xb9, 0x71, 0x2f, 0x6e,
-	0xda, 0x8e, 0xfa, 0xb8, 0x5d, 0x7b, 0xe2, 0xe1, 0x77, 0xb3, 0xeb, 0x0b, 0x5a, 0xd0, 0x1e, 0xfd,
-	0x10, 0x16, 0x6d, 0xab, 0x87, 0x9d, 0xca, 0x22, 0xed, 0xe8, 0x66, 0xec, 0xfc, 0x5b, 0x3d, 0x4c,
-	0xad, 0x19, 0x1c, 0xdd, 0x86, 0x55, 0x32, 0x25, 0xfe, 0x5c, 0x2c, 0xd1, 0x79, 0x5a, 0x21, 0x8d,
-	0xde, 0xe8, 0x7f, 0x01, 0x25, 0xca, 0x09, 0x3e, 0x05, 0x05, 0x3a, 0x05, 0x3f, 0x99, 0x68, 0x0a,
-	0x48, 0x63, 0x70, 0x1a, 0xc0, 0xf4, 0x1a, 0x94, 0x1f, 0x41, 0x29, 0xf0, 0x0a, 0xad, 0x43, 0xae,
-	0x8b, 0x2f, 0x18, 0xfb, 0x34, 0xf2, 0x93, 0x24, 0xf1, 0x5c, 0xef, 0x0d, 0x70, 0x25, 0x4b, 0xdb,
-	0xd8, 0xc3, 0x47, 0xd9, 0x87, 0x19, 0xe5, 0x63, 0x58, 0x8b, 0xf4, 0x3c, 0x89, 0xb9, 0xba, 0x07,
-	0x1b, 0x81, 0x88, 0x39, 0x93, 0x6b, 0xb0, 0x48, 0x82, 0x63, 0x94, 0x49, 0xa2, 0x32, 0x83, 0xa9,
-	0x7f, 0xca, 0xc0, 0xc6, 0x8b, 0x7e, 0x47, 0x77, 0xf1, 0xa4, 0xeb, 0x08, 0xfd, 0x14, 0x56, 0x28,
-	0xe8, 0x1c, 0xdb, 0x8e, 0x61, 0x99, 0x34, 0xc0, 0x52, 0xe3, 0x86, 0xcc, 0xe3, 0x97, 0x0c, 0xa2,
-	0xd1, 0x4c, 0xf0, 0x07, 0xf4, 0x7d, 0xc8, 0x13, 0xd9, 0xa9, 0xe4, 0xa8, 0xdd, 0xcd, 0x24, 0xf6,
-	0x68, 0x14, 0xa9, 0xee, 0x02, 0x0a, 0xc6, 0x3a, 0xd5, 0xe2, 0x3d, 0x84, 0x0d, 0x0d, 0x9f, 0x59,
-	0xe7, 0x93, 0x8f, 0x77, 0x13, 0x16, 0x4f, 0x2c, 0xbb, 0xcd, 0x32, 0x51, 0xd4, 0xd8, 0x83, 0xba,
-	0x09, 0x28, 0xd8, 0x1f, 0x8b, 0x89, 0x4b, 0xd3, 0x73, 0xdd, 0xe9, 0x06, 0x5c, 0xb8, 0xba, 0xd3,
-	0x8d, 0xb8, 0x20, 0x08, 0xe2, 0x82, 0xbc, 0xf2, 0xa4, 0x89, 0x99, 0xf9, 0xa3, 0x23, 0x2f, 0x93,
-	0x46, 0x47, 0xf1, 0x14, 0xa5, 0x3e, 0x14, 0xa3, 0x9b, 0xd8, 0xb5, 0x37, 0x8e, 0xa0, 0x77, 0xf5,
-	0x6f, 0x79, 0x26, 0x75, 0xa4, 0x71, 0x0a, 0xa9, 0x0b, 0x9a, 0x8d, 0x4a, 0xdd, 0xbf, 0x72, 0x57,
-	0x27, 0x75, 0xb2, 0xc8, 0xa4, 0x52, 0x57, 0x87, 0x92, 0x83, 0xed, 0x73, 0xa3, 0x4d, 0xd8, 0xc1,
-	0xa4, 0x8e, 0x87, 0x70, 0xc4, 0x9a, 0x9b, 0xfb, 0x8e, 0x06, 0x1c, 0xd2, 0xec, 0x38, 0xe8, 0x2e,
-	0x14, 0x39, 0x97, 0x98, 0x9e, 0x2d, 0xef, 0x96, 0x86, 0x97, 0xdb, 0x05, 0x46, 0x26, 0x47, 0x2b,
-	0x30, 0x36, 0x39, 0xe8, 0x33, 0x28, 0x77, 0xb0, 0x63, 0xd8, 0xb8, 0xd3, 0x72, 0x5c, 0xdd, 0xe5,
-	0xea, 0x55, 0x6e, 0x7c, 0x27, 0x2e, 0xc5, 0x47, 0x04, 0x45, 0xe5, 0x6f, 0x95, 0x1b, 0xd2, 0x16,
-	0x89, 0x0c, 0x16, 0x24, 0x32, 0x78, 0x13, 0x60, 0xd0, 0x6f, 0xb9, 0x56, 0x8b, 0xac, 0x9f, 0x4a,
-	0x91, 0x52, 0xb8, 0x38, 0xe8, 0x3f, 0xb7, 0xf6, 0x75, 0x17, 0x23, 0x05, 0x8a, 0xf6, 0xc0, 0x74,
-	0x0d, 0x92, 0x81, 0x65, 0x6a, 0xed, 0x3d, 0xcf, 0xa0, 0x70, 0x42, 0xa2, 0xf8, 0x64, 0xfb, 0x12,
-	0x45, 0x38, 0x97, 0x28, 0x51, 0x94, 0x84, 0x0c, 0xa6, 0x1e, 0xc0, 0xe6, 0x9e, 0x8d, 0x75, 0x17,
-	0xf3, 0x09, 0x17, 0x34, 0x7c, 0xc0, 0xf5, 0x83, 0x71, 0x70, 0x5b, 0xd6, 0x0d, 0xb7, 0x08, 0x48,
-	0xc8, 0x21, 0x5c, 0x8f, 0x74, 0xc6, 0xa3, 0xfa, 0x00, 0x0a, 0x3c, 0x89, 0xbc, 0xc3, 0x1b, 0x09,
-	0x1d, 0x6a, 0x02, 0xab, 0xbe, 0x82, 0x8d, 0xc7, 0xd8, 0x8d, 0x44, 0xb6, 0x03, 0xe0, 0x73, 0x86,
-	0xaf, 0xb9, 0xd5, 0xe1, 0xe5, 0xf6, 0xb2, 0x47, 0x19, 0x6d, 0xd9, 0x63, 0x0c, 0xba, 0x07, 0x6b,
-	0x86, 0xe9, 0x60, 0xdb, 0x6d, 0x75, 0xf0, 0x89, 0x3e, 0xe8, 0xb9, 0x0e, 0x57, 0x98, 0x32, 0x6b,
-	0xde, 0xe7, 0xad, 0xea, 0x01, 0xa0, 0xa0, 0xaf, 0xd9, 0x02, 0xff, 0x4b, 0x16, 0x36, 0x99, 0x98,
-	0xce, 0x14, 0xfc, 0x3e, 0xac, 0x09, 0xf4, 0x04, 0xdf, 0x81, 0x32, 0xb7, 0x11, 0x9f, 0x82, 0x07,
-	0xa1, 0x4f, 0xc1, 0x78, 0xa9, 0x44, 0x4f, 0xa0, 0x68, 0x5b, 0xbd, 0xde, 0xb1, 0xde, 0xee, 0x56,
-	0xf2, 0xb7, 0x32, 0xd5, 0x72, 0xe3, 0x7d, 0x99, 0xa1, 0x6c, 0x90, 0x35, 0x8d, 0x1b, 0x6a, 0x5e,
-	0x17, 0xaa, 0x0a, 0x45, 0xd1, 0x8a, 0x8a, 0x90, 0x3f, 0x7c, 0x7a, 0xf8, 0x68, 0x7d, 0x01, 0xad,
-	0x40, 0xf1, 0x99, 0xf6, 0xe8, 0xcb, 0xe6, 0xd3, 0x17, 0x47, 0xeb, 0x19, 0xc2, 0x9e, 0x48, 0x77,
-	0xb3, 0x25, 0xc1, 0x84, 0x4d, 0x26, 0xba, 0x33, 0xe5, 0xa0, 0x0a, 0xeb, 0xaf, 0x0d, 0xf7, 0x65,
-	0xcb, 0xb1, 0x4e, 0x08, 0x87, 0x7a, 0xd8, 0x15, 0xdf, 0xa8, 0x32, 0x69, 0x3f, 0xb2, 0x4e, 0xdc,
-	0x7d, 0xda, 0xaa, 0x7e, 0x1b, 0xae, 0x47, 0xfc, 0x71, 0x9d, 0x7f, 0x93, 0x83, 0x6b, 0x64, 0xa5,
-	0xf2, 0x76, 0x4f, 0xea, 0x9b, 0x51, 0xa9, 0xaf, 0xc7, 0x09, 0x6a, 0xc4, 0x72, 0x54, 0xed, 0xff,
-	0x90, 0x9d, 0xbb, 0xda, 0x1f, 0x45, 0xd4, 0xfe, 0xc7, 0x13, 0x06, 0x27, 0x15, 0xfc, 0x11, 0x35,
-	0xcd, 0x4b, 0xd4, 0x34, 0xa8, 0x97, 0x8b, 0xf3, 0xd3, 0xcb, 0xa7, 0xb0, 0x19, 0x0e, 0x97, 0xd3,
-	0xeb, 0x43, 0x28, 0xf2, 0x74, 0x0b, 0xd5, 0x4c, 0xe4, 0x97, 0x07, 0xf6, 0xb5, 0xf3, 0x10, 0xbb,
-	0xaf, 0x2d, 0xbb, 0x3b, 0x81, 0x76, 0x72, 0x0b, 0x99, 0x76, 0x7a, 0x9d, 0xf9, 0xec, 0x37, 0x59,
-	0x53, 0x12, 0xfb, 0x85, 0x95, 0xc0, 0xaa, 0x2f, 0xa8, 0x76, 0x46, 0x22, 0x43, 0x90, 0x27, 0x33,
-	0xcd, 0xe7, 0x8b, 0xfe, 0x26, 0xcb, 0x81, 0xdb, 0x90, 0xe5, 0x90, 0xf5, 0x97, 0x03, 0xb7, 0x25,
-	0xcb, 0x81, 0x03, 0x9a, 0x1d, 0x2e, 0x93, 0x73, 0x8a, 0xf1, 0xeb, 0x8c, 0x58, 0xa2, 0xf3, 0x8e,
-	0x53, 0xba, 0x6c, 0x73, 0xc9, 0xcb, 0x36, 0x32, 0x28, 0xf5, 0xbf, 0x59, 0xb6, 0x6c, 0x79, 0xfb,
-	0x14, 0xcb, 0x36, 0x62, 0x39, 0xba, 0x6c, 0x7f, 0x7b, 0x85, 0xcb, 0x36, 0x26, 0xb8, 0xa9, 0x97,
-	0xed, 0x1c, 0x96, 0xa6, 0x1f, 0x92, 0xbf, 0x34, 0x79, 0x4a, 0x13, 0x97, 0xa6, 0xc8, 0x9c, 0x07,
-	0x56, 0x3f, 0xa1, 0xec, 0xdf, 0xeb, 0x0d, 0x1c, 0x17, 0xdb, 0x01, 0xe1, 0x6f, 0xb3, 0x96, 0x88,
-	0xf0, 0x73, 0x1c, 0x61, 0x10, 0x07, 0x78, 0x4c, 0xf7, 0xba, 0xf0, 0x99, 0xce, 0x21, 0x49, 0x4c,
-	0x17, 0x56, 0x02, 0xeb, 0x71, 0x89, 0xbf, 0x98, 0x82, 0x4b, 0x11, 0xcb, 0x77, 0x8b, 0x4b, 0x31,
-	0xc1, 0x5d, 0x25, 0x97, 0xfc, 0x90, 0x7c, 0x2e, 0xf1, 0x6c, 0x24, 0x72, 0x49, 0xa4, 0xce, 0x03,
-	0xab, 0xbf, 0xcb, 0x40, 0xe9, 0x00, 0x5f, 0x68, 0x96, 0xab, 0xbb, 0x64, 0x3f, 0xf5, 0x1e, 0x6c,
-	0x10, 0x92, 0x61, 0xbb, 0xf5, 0xca, 0x32, 0xcc, 0x96, 0x6b, 0x75, 0xb1, 0x49, 0x43, 0x2b, 0x6a,
-	0x6b, 0xec, 0xc5, 0xe7, 0x96, 0x61, 0x3e, 0x27, 0xcd, 0x68, 0x07, 0xd0, 0x99, 0x6e, 0xea, 0xa7,
-	0x61, 0x30, 0xdb, 0x3f, 0xac, 0xf3, 0x37, 0x52, 0xf4, 0xc0, 0xec, 0x59, 0xed, 0x6e, 0x8b, 0x8c,
-	0x3a, 0x17, 0x42, 0xbf, 0xa0, 0x2f, 0x0e, 0xf0, 0x85, 0xfa, 0xb5, 0xb7, 0xc9, 0x9c, 0x85, 0xe7,
-	0x64, 0x93, 0x29, 0xd0, 0x93, 0x6c, 0x32, 0xb9, 0xcd, 0x04, 0x9b, 0x4c, 0xee, 0x3d, 0xb0, 0xc9,
-	0xfc, 0x84, 0x6c, 0x32, 0xd9, 0xac, 0xd2, 0x4d, 0x66, 0x8c, 0x61, 0x60, 0xf2, 0x77, 0xf3, 0x6f,
-	0x2f, 0xb7, 0x17, 0x34, 0xcf, 0xcc, 0xdf, 0x34, 0xce, 0x69, 0xa1, 0x7e, 0x0c, 0xeb, 0xf4, 0x18,
-	0xd0, 0xb6, 0xb1, 0x2b, 0xe6, 0xf3, 0x3e, 0x2c, 0x3b, 0xb4, 0xc1, 0x9f, 0xce, 0x95, 0xe1, 0xe5,
-	0x76, 0x91, 0xa1, 0x9a, 0xfb, 0x64, 0x4b, 0x40, 0x7f, 0x75, 0xd4, 0xc7, 0xfc, 0xc4, 0xc2, 0xcc,
-	0x79, 0x28, 0x0d, 0x58, 0x62, 0x00, 0x1e, 0x89, 0x22, 0xdf, 0x5e, 0x50, 0x1b, 0x8e, 0x54, 0xff,
-	0x9a, 0x81, 0x6b, 0x62, 0x37, 0x3c, 0x5d, 0x2c, 0x68, 0x17, 0xca, 0x1c, 0x3a, 0x41, 0x5e, 0x57,
-	0x99, 0x89, 0x48, 0x6b, 0x23, 0x94, 0xd6, 0xad, 0xf8, 0xc0, 0x03, 0x3b, 0x99, 0xcf, 0xfd, 0xb3,
-	0xcf, 0xcc, 0xd3, 0xf0, 0x9f, 0x2c, 0x20, 0xb6, 0x69, 0x23, 0x8f, 0x9e, 0x6c, 0x7e, 0x16, 0x95,
-	0xcd, 0x5a, 0xfc, 0xe6, 0x34, 0x68, 0x38, 0xaa, 0x9a, 0x6f, 0xe6, 0xaf, 0x9a, 0x5a, 0x44, 0x35,
-	0x3f, 0x9a, 0x2c, 0xb6, 0x2b, 0x11, 0xcd, 0x03, 0x71, 0x42, 0xe1, 0x11, 0xf1, 0x94, 0xfd, 0x80,
-	0x9c, 0xbc, 0x68, 0x13, 0x97, 0xcc, 0xa4, 0x9c, 0x09, 0xa8, 0xda, 0x84, 0x6b, 0xa2, 0x0c, 0x10,
-	0xa4, 0x6e, 0x23, 0xb4, 0x2d, 0x1e, 0x9b, 0x4b, 0xe1, 0xae, 0x66, 0xe0, 0xd2, 0xcf, 0xe1, 0x9a,
-	0x38, 0x9f, 0x4d, 0xb9, 0xba, 0xbf, 0xe5, 0x9f, 0x28, 0x83, 0xd1, 0x70, 0xd1, 0xd8, 0xb3, 0xcc,
-	0x13, 0xe3, 0x34, 0xd0, 0x6d, 0x9b, 0x36, 0x44, 0xba, 0x65, 0x28, 0xd2, 0x2d, 0x7b, 0xed, 0x89,
-	0x86, 0x30, 0xf7, 0x47, 0xc8, 0x00, 0x49, 0x23, 0xe4, 0x36, 0x1c, 0x19, 0x10, 0x8d, 0x69, 0x63,
-	0x21, 0xa2, 0xc1, 0xa1, 0x93, 0x88, 0x06, 0x33, 0x99, 0x40, 0x34, 0x98, 0x67, 0x99, 0x68, 0xcc,
-	0x61, 0x1a, 0x84, 0x68, 0xb0, 0xe6, 0x29, 0x44, 0x23, 0x6c, 0xf8, 0x6e, 0x89, 0x86, 0x3c, 0xb6,
-	0xab, 0x14, 0x0d, 0x2f, 0x22, 0x5f, 0x34, 0x58, 0x22, 0x12, 0x45, 0x83, 0xe7, 0x4c, 0x40, 0x7d,
-	0xd1, 0x08, 0x53, 0x77, 0x0c, 0xd1, 0x90, 0x71, 0x29, 0xdc, 0xd5, 0x0c, 0x5c, 0xf2, 0x44, 0x63,
-	0xea, 0xd5, 0xed, 0x89, 0x46, 0x38, 0x9a, 0xc6, 0x6f, 0x6e, 0x40, 0x61, 0x8f, 0xdd, 0x2d, 0x23,
-	0x03, 0x0a, 0xfc, 0xd6, 0x14, 0xa9, 0xb2, 0xa0, 0xc2, 0x37, 0xb1, 0xca, 0xed, 0x44, 0x0c, 0x17,
-	0xa5, 0xeb, 0x7f, 0xff, 0xf3, 0xff, 0x7e, 0x9f, 0x5d, 0x83, 0x55, 0x0a, 0xfa, 0x1e, 0xdf, 0x3e,
-	0x22, 0x0b, 0x96, 0xbd, 0x8b, 0x2d, 0xf4, 0xdd, 0x71, 0x6e, 0xea, 0x94, 0x3b, 0x29, 0xa8, 0x64,
-	0x87, 0x36, 0x80, 0x7f, 0xaf, 0x84, 0xee, 0xc4, 0x57, 0x11, 0x83, 0x23, 0xbc, 0x9b, 0x06, 0x4b,
-	0xf5, 0xe9, 0xdf, 0x1b, 0xc9, 0x7d, 0x8e, 0xdc, 0x53, 0xc9, 0x7d, 0x4a, 0xae, 0x9f, 0x62, 0x7c,
-	0xb2, 0x1c, 0x3e, 0xd7, 0x9d, 0x6e, 0x6c, 0x0e, 0x03, 0xf7, 0x46, 0xb1, 0x39, 0x0c, 0xdd, 0x10,
-	0x25, 0xe7, 0x90, 0x56, 0xfe, 0xe3, 0x73, 0x18, 0xbc, 0x85, 0x89, 0xcf, 0x61, 0xe8, 0xfa, 0x20,
-	0x75, 0x3e, 0xe9, 0xf0, 0x12, 0xe6, 0x33, 0x38, 0xc2, 0xbb, 0x69, 0xb0, 0x54, 0x9f, 0x7e, 0x41,
-	0x5e, 0xee, 0x73, 0xe4, 0x72, 0x40, 0xee, 0x73, 0xb4, 0xae, 0x1f, 0xe7, 0xf3, 0x2b, 0x58, 0x09,
-	0x96, 0x08, 0xd1, 0xbd, 0x31, 0x6b, 0x9e, 0x4a, 0x35, 0x1d, 0x98, 0xec, 0xf9, 0x57, 0xb0, 0x1a,
-	0xba, 0x3a, 0x41, 0xd2, 0x1e, 0x65, 0x57, 0x35, 0xca, 0xfd, 0x31, 0x90, 0xa9, 0xce, 0x43, 0x95,
-	0x77, 0xb9, 0x73, 0x59, 0xad, 0x5f, 0xee, 0x5c, 0x5a, 0xc6, 0x4f, 0x70, 0x1e, 0x2a, 0x9b, 0xcb,
-	0x9d, 0xcb, 0x2a, 0xf9, 0x72, 0xe7, 0xf2, 0x1a, 0x7c, 0x22, 0xc9, 0x78, 0xfd, 0x28, 0x96, 0x64,
-	0xe1, 0xea, 0x64, 0x2c, 0xc9, 0xa2, 0x05, 0xc4, 0x64, 0x92, 0x89, 0x62, 0x57, 0x3c, 0xc9, 0x22,
-	0x15, 0xba, 0x78, 0x92, 0x45, 0xeb, 0x66, 0xa9, 0x24, 0x13, 0x03, 0x4e, 0x20, 0x59, 0x64, 0xcc,
-	0xf7, 0xc7, 0x40, 0x8e, 0x99, 0xe7, 0x44, 0xe7, 0xb2, 0x72, 0x70, 0x52, 0x9e, 0xc7, 0x74, 0xce,
-	0xf2, 0xcc, 0x4f, 0xfb, 0xb1, 0x79, 0x0e, 0xd7, 0x51, 0x62, 0xf3, 0x1c, 0x29, 0x35, 0xa4, 0xe4,
-	0x59, 0x14, 0xa2, 0xe2, 0xf3, 0x1c, 0xa9, 0x9e, 0xc5, 0xe7, 0x39, 0x5a, 0xd3, 0x4a, 0x5d, 0xcf,
-	0x62, 0xc0, 0x09, 0xeb, 0x39, 0x32, 0xe6, 0xfb, 0x63, 0x20, 0x53, 0x3f, 0x4e, 0x5e, 0x09, 0x44,
-	0xfe, 0x71, 0x8a, 0x16, 0x58, 0x94, 0x3b, 0x29, 0xa8, 0xd4, 0x79, 0x0e, 0xd6, 0x1b, 0xe4, 0xf3,
-	0x2c, 0xa9, 0xa5, 0x28, 0xd5, 0x74, 0x60, 0xb2, 0xe7, 0x01, 0x94, 0x02, 0xa7, 0x66, 0x74, 0x77,
-	0xbc, 0x83, 0xbe, 0x72, 0x2f, 0x15, 0x97, 0x3a, 0xe0, 0xe0, 0xa1, 0x58, 0x3e, 0x60, 0xc9, 0x09,
-	0x5c, 0xa9, 0xa6, 0x03, 0x53, 0x3d, 0x07, 0x0f, 0xc0, 0x72, 0xcf, 0x92, 0x43, 0xb6, 0x52, 0x4d,
-	0x07, 0x8e, 0xc3, 0x2a, 0xb6, 0x85, 0x8e, 0x65, 0x55, 0x68, 0x8f, 0x1e, 0xcb, 0xaa, 0xf0, 0x3e,
-	0x3c, 0x95, 0x55, 0xdc, 0x67, 0x02, 0xab, 0xc2, 0x6e, 0xab, 0xe9, 0xc0, 0xb1, 0x58, 0xc5, 0x8f,
-	0x55, 0xf1, 0xac, 0x0a, 0x9f, 0x04, 0xe3, 0x59, 0x15, 0x39, 0x9f, 0xa5, 0xb2, 0x2a, 0x69, 0xc0,
-	0x92, 0x23, 0x5a, 0x12, 0xab, 0xc6, 0x9e, 0xea, 0xe0, 0x09, 0x29, 0x89, 0x55, 0x63, 0x78, 0x96,
-	0x1d, 0xb6, 0x62, 0x3c, 0xef, 0x56, 0xde, 0x7e, 0xb3, 0xb5, 0xf0, 0xcf, 0x6f, 0xb6, 0x16, 0x7e,
-	0x3d, 0xdc, 0xca, 0xbc, 0x1d, 0x6e, 0x65, 0xfe, 0x31, 0xdc, 0xca, 0xfc, 0x7b, 0xb8, 0x95, 0x39,
-	0x5e, 0xa2, 0xff, 0x05, 0xfb, 0xe0, 0xff, 0x01, 0x00, 0x00, 0xff, 0xff, 0x82, 0xc3, 0x42, 0xbe,
-	0x1e, 0x2c, 0x00, 0x00,
+	// 2557 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x5b, 0xcb, 0x8f, 0x1b, 0x49,
+	0x19, 0x8f, 0xc7, 0x9e, 0xb1, 0xfd, 0x79, 0xc6, 0x33, 0xa9, 0x4c, 0xb2, 0xc6, 0x1b, 0x66, 0xa2,
+	0x0e, 0x49, 0x9c, 0x10, 0xec, 0x5d, 0x87, 0x65, 0x43, 0x76, 0x17, 0xd8, 0x89, 0xb3, 0x89, 0xf3,
+	0x98, 0x64, 0x7b, 0x92, 0xbd, 0x21, 0xcb, 0x63, 0xd7, 0x4c, 0x3a, 0xf6, 0xb8, 0x4d, 0x77, 0x3b,
+	0x0f, 0x21, 0x21, 0x58, 0x85, 0x03, 0x7f, 0x00, 0x12, 0x57, 0x24, 0x24, 0x24, 0x0e, 0x1c, 0x38,
+	0x71, 0xe0, 0x0f, 0x88, 0x38, 0x71, 0xe4, 0x34, 0xb0, 0x96, 0x90, 0x38, 0x71, 0xe5, 0xba, 0xaa,
+	0x57, 0x3f, 0xca, 0xd5, 0x0f, 0x3f, 0xa4, 0xec, 0x29, 0x76, 0xf5, 0xef, 0x7b, 0x54, 0x7d, 0xbf,
+	0xfa, 0x75, 0xf9, 0xab, 0x09, 0x5c, 0x3d, 0x34, 0x9c, 0xa7, 0xa3, 0xfd, 0x6a, 0xc7, 0x3c, 0xaa,
+	0x75, 0xcd, 0x4e, 0x0f, 0x5b, 0x35, 0xfb, 0x45, 0xdb, 0x3a, 0xea, 0x19, 0x4e, 0xad, 0x3d, 0x34,
+	0x6a, 0x1d, 0x73, 0xe0, 0x58, 0x66, 0xbf, 0x3a, 0xb4, 0x4c, 0xc7, 0x44, 0x88, 0x41, 0xaa, 0x02,
+	0x52, 0x7d, 0xfe, 0x7e, 0xf9, 0x4a, 0x8c, 0x07, 0x7b, 0x88, 0x3b, 0x36, 0xb3, 0x2f, 0xc7, 0x45,
+	0x33, 0xf7, 0x9f, 0xe1, 0x8e, 0x23, 0xd0, 0x71, 0x9e, 0x9d, 0x57, 0x43, 0x2c, 0xb0, 0x9b, 0x87,
+	0xe6, 0xa1, 0x49, 0x3f, 0xd6, 0xc8, 0x27, 0x3e, 0xfa, 0x61, 0x84, 0x07, 0x8a, 0xd8, 0x1f, 0x1d,
+	0xd4, 0x86, 0xfd, 0xd1, 0xa1, 0x31, 0xe0, 0xff, 0x30, 0x43, 0xed, 0x03, 0x28, 0xde, 0xc6, 0xce,
+	0xae, 0xd9, 0xc5, 0x3a, 0xfe, 0xd9, 0x08, 0xdb, 0x0e, 0x3a, 0x0f, 0xd9, 0x81, 0xd9, 0xc5, 0x2d,
+	0xa3, 0x5b, 0x4a, 0x9d, 0x4b, 0x55, 0xf2, 0x3b, 0x30, 0x3e, 0xde, 0x5e, 0x21, 0x88, 0x66, 0x43,
+	0x5f, 0x21, 0x8f, 0x9a, 0x5d, 0xed, 0xc7, 0xb0, 0xee, 0x9a, 0xd9, 0x43, 0x73, 0x60, 0x63, 0x74,
+	0x15, 0x32, 0xe4, 0x21, 0x35, 0x2a, 0xd4, 0x4b, 0xd5, 0xc9, 0x15, 0xac, 0x52, 0x3c, 0x45, 0x69,
+	0xaf, 0x97, 0x61, 0xe3, 0xbe, 0x61, 0x53, 0x17, 0xb6, 0x08, 0xfd, 0x19, 0x64, 0x0f, 0x8c, 0xbe,
+	0x83, 0x2d, 0x9b, 0x7b, 0xb9, 0xaa, 0xf2, 0x22, 0x9b, 0x55, 0x3f, 0x63, 0x36, 0xba, 0x30, 0x2e,
+	0xff, 0x31, 0x03, 0x59, 0x3e, 0x88, 0x36, 0x61, 0x79, 0xd0, 0x3e, 0xc2, 0xc4, 0x63, 0xba, 0x92,
+	0xd7, 0xd9, 0x17, 0x54, 0x83, 0x82, 0xd1, 0x6d, 0x0d, 0x2d, 0x7c, 0x60, 0xbc, 0xc4, 0x76, 0x69,
+	0x89, 0x3c, 0xdb, 0x29, 0x8e, 0x8f, 0xb7, 0xa1, 0xd9, 0x78, 0xc4, 0x47, 0x75, 0x30, 0xba, 0xe2,
+	0x33, 0x7a, 0x04, 0x2b, 0xfd, 0xf6, 0x3e, 0xee, 0xdb, 0xa5, 0xf4, 0xb9, 0x74, 0xa5, 0x50, 0xbf,
+	0x3e, 0x4d, 0x66, 0xd5, 0xfb, 0xd4, 0xf4, 0xd6, 0xc0, 0xb1, 0x5e, 0xe9, 0xdc, 0x0f, 0x7a, 0x00,
+	0x85, 0x23, 0x7c, 0xb4, 0x8f, 0x2d, 0xfb, 0xa9, 0x31, 0xb4, 0x4b, 0x99, 0x73, 0xe9, 0x4a, 0xb1,
+	0x7e, 0x29, 0x6c, 0xd9, 0xf6, 0x86, 0xb8, 0x53, 0x7d, 0xe0, 0xe2, 0x77, 0x96, 0x36, 0x4e, 0xe8,
+	0x7e, 0x7b, 0xf4, 0x03, 0x58, 0xb6, 0xcc, 0x3e, 0xb6, 0x4b, 0xcb, 0xd4, 0xd1, 0xd9, 0xd0, 0xf5,
+	0x37, 0xfb, 0x98, 0x5a, 0x33, 0x38, 0x3a, 0x0f, 0x6b, 0x64, 0x49, 0xbc, 0xb5, 0x58, 0xa1, 0xeb,
+	0xb4, 0x4a, 0x06, 0xdd, 0xd9, 0xff, 0x14, 0x0a, 0x94, 0x13, 0x7c, 0x09, 0xb2, 0x74, 0x09, 0x3e,
+	0x9e, 0x6a, 0x09, 0xc8, 0xa0, 0x7f, 0x19, 0x60, 0xe0, 0x0e, 0x94, 0x7f, 0x08, 0x05, 0xdf, 0x23,
+	0xb4, 0x01, 0xe9, 0x1e, 0x7e, 0xc5, 0xd8, 0xa7, 0x93, 0x8f, 0xa4, 0x88, 0xcf, 0xdb, 0xfd, 0x11,
+	0x2e, 0x2d, 0xd1, 0x31, 0xf6, 0xe5, 0xc6, 0xd2, 0xf5, 0x54, 0xf9, 0x13, 0x58, 0x97, 0x3c, 0x4f,
+	0x63, 0xae, 0xdd, 0x84, 0x93, 0xbe, 0x8c, 0x39, 0x93, 0xab, 0xb0, 0x4c, 0x92, 0x63, 0x94, 0x89,
+	0xa2, 0x32, 0x83, 0x69, 0x7f, 0x4a, 0xc1, 0xc9, 0x27, 0xc3, 0x6e, 0xdb, 0xc1, 0xd3, 0xee, 0x23,
+	0xf4, 0x23, 0x58, 0xa5, 0xa0, 0xe7, 0xd8, 0xb2, 0x0d, 0x73, 0x40, 0x13, 0x2c, 0xd4, 0xdf, 0x55,
+	0x45, 0xfc, 0x82, 0x41, 0x74, 0x5a, 0x09, 0xfe, 0x05, 0xbd, 0x07, 0x19, 0x22, 0x3b, 0xa5, 0x34,
+	0xb5, 0x3b, 0x1b, 0xc5, 0x1e, 0x9d, 0x22, 0xb5, 0x1d, 0x40, 0xfe, 0x5c, 0x67, 0xda, 0xbc, 0xbb,
+	0x70, 0x52, 0xc7, 0x47, 0xe6, 0xf3, 0xe9, 0xe7, 0xbb, 0x09, 0xcb, 0x07, 0xa6, 0xd5, 0x61, 0x95,
+	0xc8, 0xe9, 0xec, 0x8b, 0xb6, 0x09, 0xc8, 0xef, 0x8f, 0xe5, 0xc4, 0xa5, 0xe9, 0x71, 0xdb, 0xee,
+	0xf9, 0x42, 0x38, 0x6d, 0xbb, 0x27, 0x85, 0x20, 0x08, 0x12, 0x82, 0x3c, 0x72, 0xa5, 0x89, 0x99,
+	0x79, 0xb3, 0x23, 0x0f, 0xa3, 0x66, 0x47, 0xf1, 0x14, 0xa5, 0x5d, 0x17, 0xb3, 0x9b, 0x3a, 0xb4,
+	0x3b, 0x0f, 0x7f, 0x74, 0xed, 0x6f, 0x19, 0x26, 0x75, 0x64, 0x70, 0x06, 0xa9, 0xf3, 0x9b, 0x4d,
+	0x4a, 0xdd, 0xbf, 0xd2, 0x6f, 0x4f, 0xea, 0x54, 0x99, 0x29, 0xa5, 0xae, 0x06, 0x05, 0x1b, 0x5b,
+	0xcf, 0x8d, 0x0e, 0x61, 0x07, 0x93, 0x3a, 0x9e, 0xc2, 0x1e, 0x1b, 0x6e, 0x36, 0x6c, 0x1d, 0x38,
+	0xa4, 0xd9, 0xb5, 0xd1, 0x45, 0xc8, 0x71, 0x2e, 0x31, 0x3d, 0xcb, 0xef, 0x14, 0xc6, 0xc7, 0xdb,
+	0x59, 0x46, 0x26, 0x5b, 0xcf, 0x32, 0x36, 0xd9, 0xe8, 0x0e, 0x14, 0xbb, 0xd8, 0x36, 0x2c, 0xdc,
+	0x6d, 0xd9, 0x4e, 0xdb, 0xe1, 0xea, 0x55, 0xac, 0x7f, 0x3b, 0xac, 0xc4, 0x7b, 0x04, 0x45, 0xe5,
+	0x6f, 0x8d, 0x1b, 0xd2, 0x11, 0x85, 0x0c, 0x66, 0x15, 0x32, 0x78, 0x16, 0x60, 0x34, 0x6c, 0x39,
+	0x66, 0x8b, 0xec, 0x9f, 0x52, 0x8e, 0x52, 0x38, 0x37, 0x1a, 0x3e, 0x36, 0x1b, 0x6d, 0x07, 0xa3,
+	0x32, 0xe4, 0xac, 0xd1, 0xc0, 0x31, 0x48, 0x05, 0xf2, 0xd4, 0xda, 0xfd, 0x3e, 0x87, 0xc2, 0x09,
+	0x89, 0xe2, 0x8b, 0xed, 0x49, 0x14, 0xe1, 0x5c, 0xa4, 0x44, 0x51, 0x12, 0x32, 0x98, 0x76, 0x0f,
+	0x36, 0x6f, 0x5a, 0xb8, 0xed, 0x60, 0xbe, 0xe0, 0x82, 0x86, 0xd7, 0xb8, 0x7e, 0x30, 0x0e, 0x6e,
+	0xab, 0xdc, 0x70, 0x0b, 0x9f, 0x84, 0xec, 0xc2, 0x69, 0xc9, 0x19, 0xcf, 0xea, 0x03, 0xc8, 0xf2,
+	0x22, 0x72, 0x87, 0xef, 0x46, 0x38, 0xd4, 0x05, 0x56, 0x7b, 0x06, 0x27, 0x6f, 0x63, 0x47, 0xca,
+	0xec, 0x2a, 0x80, 0xc7, 0x19, 0xbe, 0xe7, 0xd6, 0xc6, 0xc7, 0xdb, 0x79, 0x97, 0x32, 0x7a, 0xde,
+	0x65, 0x0c, 0xba, 0x04, 0xeb, 0xc6, 0xc0, 0xc6, 0x96, 0xd3, 0xea, 0xe2, 0x83, 0xf6, 0xa8, 0xef,
+	0xd8, 0x5c, 0x61, 0x8a, 0x6c, 0xb8, 0xc1, 0x47, 0xb5, 0x7b, 0x80, 0xfc, 0xb1, 0xe6, 0x4b, 0xfc,
+	0x2f, 0x4b, 0xb0, 0xc9, 0xc4, 0x74, 0xae, 0xe4, 0x1b, 0xb0, 0x2e, 0xd0, 0x53, 0xbc, 0x07, 0x8a,
+	0xdc, 0x46, 0xbc, 0x0a, 0xae, 0x05, 0x5e, 0x05, 0xc9, 0x4a, 0x89, 0x1e, 0x40, 0xce, 0x32, 0xfb,
+	0xfd, 0xfd, 0x76, 0xa7, 0x57, 0xca, 0x9c, 0x4b, 0x55, 0x8a, 0xf5, 0xf7, 0x55, 0x86, 0xaa, 0x49,
+	0x56, 0x75, 0x6e, 0xa8, 0xbb, 0x2e, 0x34, 0x0d, 0x72, 0x62, 0x14, 0xe5, 0x20, 0xb3, 0xfb, 0x70,
+	0xf7, 0xd6, 0xc6, 0x09, 0xb4, 0x0a, 0xb9, 0x47, 0xfa, 0xad, 0x2f, 0x9a, 0x0f, 0x9f, 0xec, 0x6d,
+	0xa4, 0x08, 0x7b, 0x24, 0x77, 0xf3, 0x15, 0x61, 0x00, 0x9b, 0x4c, 0x74, 0xe7, 0xaa, 0x41, 0x05,
+	0x36, 0x5e, 0x18, 0xce, 0xd3, 0x96, 0x6d, 0x1e, 0x10, 0x0e, 0xf5, 0xb1, 0x23, 0xde, 0x51, 0x45,
+	0x32, 0xbe, 0x67, 0x1e, 0x38, 0x0d, 0x3a, 0xaa, 0xbd, 0x03, 0xa7, 0xa5, 0x78, 0x5c, 0xe7, 0x5f,
+	0xa7, 0xe1, 0x14, 0xd9, 0xa9, 0x7c, 0xdc, 0x95, 0xfa, 0xa6, 0x2c, 0xf5, 0xb5, 0x30, 0x41, 0x95,
+	0x2c, 0x27, 0xd5, 0xfe, 0xf7, 0x4b, 0x0b, 0x57, 0xfb, 0x3d, 0x49, 0xed, 0x3f, 0x9a, 0x32, 0x39,
+	0xa5, 0xe0, 0x4f, 0xa8, 0x69, 0x46, 0xa1, 0xa6, 0x7e, 0xbd, 0x5c, 0x5e, 0x9c, 0x5e, 0x3e, 0x84,
+	0xcd, 0x60, 0xba, 0x9c, 0x5e, 0x1f, 0x42, 0x8e, 0x97, 0x5b, 0xa8, 0x66, 0x24, 0xbf, 0x5c, 0xb0,
+	0xa7, 0x9d, 0xbb, 0xd8, 0x79, 0x61, 0x5a, 0xbd, 0x29, 0xb4, 0x93, 0x5b, 0xa8, 0xb4, 0xd3, 0x75,
+	0xe6, 0xb1, 0x7f, 0xc0, 0x86, 0xa2, 0xd8, 0x2f, 0xac, 0x04, 0x56, 0x7b, 0x42, 0xb5, 0x53, 0xca,
+	0x0c, 0x41, 0x86, 0xac, 0x34, 0x5f, 0x2f, 0xfa, 0x99, 0x6c, 0x07, 0x6e, 0x43, 0xb6, 0xc3, 0x92,
+	0xb7, 0x1d, 0xb8, 0x2d, 0xd9, 0x0e, 0x1c, 0xd0, 0xec, 0x72, 0x99, 0x5c, 0x50, 0x8e, 0x5f, 0xa6,
+	0xc4, 0x16, 0x5d, 0x74, 0x9e, 0xca, 0x6d, 0x9b, 0x8e, 0xde, 0xb6, 0xd2, 0xa4, 0xb4, 0xff, 0x2e,
+	0xb1, 0x6d, 0xcb, 0xc7, 0x67, 0xd8, 0xb6, 0x92, 0xe5, 0xe4, 0xb6, 0xfd, 0xf5, 0x5b, 0xdc, 0xb6,
+	0x21, 0xc9, 0xcd, 0xbc, 0x6d, 0x17, 0xb0, 0x35, 0xbd, 0x94, 0xbc, 0xad, 0xc9, 0x4b, 0x1a, 0xb9,
+	0x35, 0x45, 0xe5, 0x5c, 0xb0, 0xf6, 0x29, 0x65, 0xff, 0xcd, 0xfe, 0xc8, 0x76, 0xb0, 0xe5, 0x13,
+	0xfe, 0x0e, 0x1b, 0x91, 0x84, 0x9f, 0xe3, 0x08, 0x83, 0x38, 0xc0, 0x65, 0xba, 0xeb, 0xc2, 0x63,
+	0x3a, 0x87, 0x44, 0x31, 0x5d, 0x58, 0x09, 0xac, 0xcb, 0x25, 0xfe, 0x60, 0x06, 0x2e, 0x49, 0x96,
+	0xdf, 0x2c, 0x2e, 0x85, 0x24, 0xf7, 0x36, 0xb9, 0xe4, 0xa5, 0xe4, 0x71, 0x89, 0x57, 0x23, 0x92,
+	0x4b, 0xa2, 0x74, 0x2e, 0x58, 0xfb, 0x6d, 0x0a, 0x0a, 0xf7, 0xf0, 0x2b, 0xdd, 0x74, 0xda, 0x0e,
+	0x39, 0x4f, 0x5d, 0x81, 0x93, 0x84, 0x64, 0xd8, 0x6a, 0x3d, 0x33, 0x8d, 0x41, 0xcb, 0x31, 0x7b,
+	0x78, 0x40, 0x53, 0xcb, 0xe9, 0xeb, 0xec, 0xc1, 0x5d, 0xd3, 0x18, 0x3c, 0x26, 0xc3, 0xe8, 0x2a,
+	0xa0, 0xa3, 0xf6, 0xa0, 0x7d, 0x18, 0x04, 0xb3, 0xf3, 0xc3, 0x06, 0x7f, 0xa2, 0x44, 0x8f, 0x06,
+	0x7d, 0xb3, 0xd3, 0x6b, 0x91, 0x59, 0xa7, 0x03, 0xe8, 0x27, 0xf4, 0xc1, 0x3d, 0xfc, 0x4a, 0xfb,
+	0xd2, 0x3d, 0x64, 0xce, 0xc3, 0x73, 0x72, 0xc8, 0x14, 0xe8, 0x69, 0x0e, 0x99, 0xdc, 0x66, 0x8a,
+	0x43, 0x26, 0x8f, 0xee, 0x3b, 0x64, 0x7e, 0x4a, 0x0e, 0x99, 0x6c, 0x55, 0xe9, 0x21, 0x33, 0xc4,
+	0xd0, 0xb7, 0xf8, 0x3b, 0x99, 0x37, 0xc7, 0xdb, 0x27, 0x74, 0xd7, 0xcc, 0x3b, 0x34, 0x2e, 0x68,
+	0xa3, 0x7e, 0x02, 0x1b, 0xf4, 0x67, 0x40, 0xc7, 0xc2, 0x8e, 0x58, 0xcf, 0xcb, 0x90, 0xb7, 0xe9,
+	0x80, 0xb7, 0x9c, 0xab, 0xe3, 0xe3, 0xed, 0x1c, 0x43, 0x35, 0x1b, 0xe4, 0x48, 0x40, 0x3f, 0x75,
+	0xb5, 0xdb, 0xfc, 0x17, 0x0b, 0x33, 0xe7, 0xa9, 0xd4, 0x61, 0x85, 0x01, 0x78, 0x26, 0x65, 0xf5,
+	0xf1, 0x82, 0xda, 0x70, 0xa4, 0xf6, 0xd7, 0x14, 0x9c, 0x12, 0xa7, 0xe1, 0xd9, 0x72, 0x41, 0x3b,
+	0x50, 0xe4, 0xd0, 0x29, 0xea, 0xba, 0xc6, 0x4c, 0x44, 0x59, 0xeb, 0x81, 0xb2, 0x6e, 0x85, 0x27,
+	0xee, 0x3b, 0xc9, 0xdc, 0xf5, 0x7e, 0xfb, 0xcc, 0xbd, 0x0c, 0xff, 0x59, 0x02, 0xc4, 0x0e, 0x6d,
+	0xe4, 0xab, 0x2b, 0x9b, 0x77, 0x64, 0xd9, 0xac, 0x86, 0x1f, 0x4e, 0xfd, 0x86, 0x93, 0xaa, 0xf9,
+	0x7a, 0xf1, 0xaa, 0xa9, 0x4b, 0xaa, 0x79, 0x63, 0xba, 0xdc, 0xde, 0x8a, 0x68, 0xde, 0x13, 0xbf,
+	0x50, 0x78, 0x46, 0xbc, 0x64, 0xdf, 0x27, 0xbf, 0xbc, 0xe8, 0x10, 0x97, 0xcc, 0xa8, 0x9a, 0x09,
+	0xa8, 0xd6, 0x84, 0x53, 0xa2, 0x0d, 0xe0, 0xa7, 0x6e, 0x3d, 0x70, 0x2c, 0x4e, 0xcc, 0xa5, 0xa0,
+	0xab, 0x39, 0xb8, 0xf4, 0x13, 0x38, 0x25, 0x7e, 0x9f, 0xcd, 0xb8, 0xbb, 0xcf, 0x78, 0xbf, 0x28,
+	0xfd, 0xd9, 0x70, 0xd1, 0xb8, 0x69, 0x0e, 0x0e, 0x8c, 0x43, 0x9f, 0xdb, 0x0e, 0x1d, 0x90, 0xdc,
+	0x32, 0x14, 0x71, 0xcb, 0x1e, 0xbb, 0xa2, 0x21, 0xcc, 0xbd, 0x19, 0x32, 0x40, 0xd4, 0x0c, 0xb9,
+	0x0d, 0x47, 0xfa, 0x44, 0x63, 0xd6, 0x5c, 0x88, 0x68, 0x70, 0xe8, 0x34, 0xa2, 0xc1, 0x4c, 0xa6,
+	0x10, 0x0d, 0x16, 0x59, 0x25, 0x1a, 0x0b, 0x58, 0x06, 0x21, 0x1a, 0x6c, 0x78, 0x06, 0xd1, 0x08,
+	0x1a, 0x7e, 0xb3, 0x44, 0x43, 0x9d, 0xdb, 0xdb, 0x14, 0x0d, 0x37, 0x23, 0x4f, 0x34, 0x58, 0x21,
+	0x22, 0x45, 0x83, 0xd7, 0x4c, 0x40, 0x3d, 0xd1, 0x08, 0x52, 0x37, 0x81, 0x68, 0xa8, 0xb8, 0x14,
+	0x74, 0x35, 0x07, 0x97, 0x5c, 0xd1, 0x98, 0x79, 0x77, 0xbb, 0xa2, 0x11, 0xcc, 0x46, 0x7b, 0x02,
+	0x67, 0x58, 0x96, 0xb7, 0x5e, 0x3a, 0x78, 0x40, 0xf7, 0x11, 0x77, 0xfe, 0x11, 0xe4, 0xb1, 0x18,
+	0xe3, 0xa9, 0x2a, 0xfb, 0xd6, 0x9e, 0xa1, 0x87, 0xd7, 0xbe, 0x05, 0xef, 0x4c, 0xb8, 0xe5, 0x11,
+	0xef, 0xc3, 0x19, 0x96, 0xc9, 0x44, 0xc4, 0x3a, 0xac, 0xba, 0x1e, 0xbc, 0x19, 0xad, 0x8f, 0x8f,
+	0xb7, 0x0b, 0x2e, 0xb6, 0xd9, 0xd0, 0x0b, 0x2e, 0xa8, 0xd9, 0x25, 0x81, 0x26, 0xbc, 0xf1, 0x40,
+	0x4d, 0x38, 0x75, 0x1b, 0x3b, 0x0b, 0x89, 0xb2, 0x07, 0x9b, 0x41, 0x57, 0xbc, 0x96, 0x73, 0xad,
+	0xd1, 0xe7, 0xa2, 0xd7, 0xa2, 0x63, 0xdb, 0x1c, 0x59, 0x5e, 0x6b, 0xf0, 0x3a, 0xe4, 0x2c, 0x3e,
+	0xc4, 0x9d, 0x2a, 0x6f, 0xce, 0x5c, 0x33, 0x17, 0xad, 0x95, 0x44, 0x35, 0x3d, 0x97, 0x7c, 0x31,
+	0xee, 0x88, 0xfe, 0x82, 0x1c, 0xac, 0x06, 0x05, 0x61, 0xee, 0xad, 0x06, 0xd5, 0x08, 0x81, 0x6c,
+	0x36, 0x74, 0x10, 0x90, 0x66, 0x97, 0xc4, 0x90, 0x3d, 0xf1, 0x18, 0x9f, 0x8b, 0x53, 0xf0, 0x42,
+	0x27, 0x24, 0xbb, 0xe4, 0xc1, 0x6e, 0xd1, 0x1f, 0xc6, 0x73, 0xcf, 0xe6, 0x21, 0x25, 0x89, 0xec,
+	0x7d, 0x8e, 0x8c, 0x7f, 0x93, 0x66, 0xbf, 0xfc, 0xc4, 0x23, 0x57, 0xf8, 0xef, 0xca, 0xc2, 0xff,
+	0x5e, 0x98, 0xb8, 0xca, 0xa6, 0x93, 0xd2, 0xff, 0x87, 0xc5, 0x4b, 0xff, 0x63, 0x49, 0xfa, 0x3f,
+	0x9e, 0x36, 0xbb, 0xd9, 0x3b, 0xad, 0x67, 0xfd, 0xbb, 0x68, 0x99, 0xea, 0xbb, 0x37, 0x30, 0xcf,
+	0xab, 0x61, 0x0f, 0x4e, 0x4b, 0x19, 0xf3, 0xf2, 0xde, 0x80, 0xbc, 0x28, 0x98, 0x78, 0x3d, 0x44,
+	0xd7, 0xd7, 0x83, 0xd7, 0xff, 0xaf, 0x41, 0xf6, 0x26, 0xfb, 0x6b, 0x1c, 0x64, 0x40, 0x96, 0xff,
+	0x9d, 0x09, 0xd2, 0x54, 0xf6, 0xc1, 0xbf, 0x5d, 0x29, 0x9f, 0x8f, 0xc4, 0x70, 0x62, 0x9f, 0xfe,
+	0xfb, 0x9f, 0xff, 0xf7, 0xbb, 0xa5, 0x75, 0x58, 0xa3, 0xa0, 0xef, 0xf1, 0x1f, 0xdc, 0xc8, 0x84,
+	0xbc, 0xfb, 0xa7, 0x00, 0xe8, 0x3b, 0x49, 0xfe, 0xb6, 0xa1, 0x7c, 0x21, 0x06, 0x15, 0x1d, 0xd0,
+	0x02, 0xf0, 0x6e, 0xe2, 0xd1, 0x85, 0xf0, 0x7b, 0x17, 0xff, 0x0c, 0x2f, 0xc6, 0xc1, 0x62, 0x63,
+	0x7a, 0x37, 0xed, 0xea, 0x98, 0x13, 0x37, 0xfb, 0xea, 0x98, 0x8a, 0x0b, 0xfb, 0x90, 0x98, 0xac,
+	0x86, 0x8f, 0xdb, 0x76, 0x2f, 0xb4, 0x86, 0xbe, 0x9b, 0xf6, 0xd0, 0x1a, 0x06, 0xee, 0xd4, 0xa3,
+	0x6b, 0x48, 0xef, 0x4a, 0xc3, 0x6b, 0xe8, 0xbf, 0xb7, 0x0e, 0xaf, 0x61, 0xe0, 0xc2, 0x35, 0x76,
+	0x3d, 0xe9, 0xf4, 0x22, 0xd6, 0xd3, 0x3f, 0xc3, 0x8b, 0x71, 0xb0, 0xd8, 0x98, 0xde, 0x15, 0xa6,
+	0x3a, 0xe6, 0xc4, 0x75, 0xaa, 0x3a, 0xe6, 0xe4, 0x4d, 0x68, 0x58, 0xcc, 0x97, 0xb0, 0xea, 0xbf,
+	0x54, 0x41, 0x97, 0x12, 0xde, 0x12, 0x95, 0x2b, 0xf1, 0xc0, 0xe8, 0xc8, 0x3f, 0x87, 0xb5, 0xc0,
+	0x65, 0x33, 0x52, 0x7a, 0x54, 0x5d, 0x6e, 0x97, 0x2f, 0x27, 0x40, 0xc6, 0x06, 0x0f, 0xdc, 0x55,
+	0xaa, 0x83, 0xab, 0x6e, 0x47, 0xd5, 0xc1, 0x95, 0x17, 0x9f, 0x11, 0xc1, 0x03, 0x17, 0x8d, 0xea,
+	0xe0, 0xaa, 0xbb, 0x4f, 0x75, 0x70, 0xf5, 0xad, 0x65, 0x24, 0xc9, 0x78, 0xc7, 0x3d, 0x94, 0x64,
+	0xc1, 0xfb, 0x9c, 0x50, 0x92, 0xc9, 0x57, 0x2e, 0xd1, 0x24, 0x13, 0xd7, 0x03, 0xe1, 0x24, 0x93,
+	0xee, 0x34, 0xc2, 0x49, 0x26, 0xdf, 0x34, 0xc4, 0x92, 0x4c, 0x4c, 0x38, 0x82, 0x64, 0xd2, 0x9c,
+	0x2f, 0x27, 0x40, 0x26, 0xac, 0x73, 0x64, 0x70, 0xd5, 0x05, 0x5a, 0x54, 0x9d, 0x13, 0x06, 0x67,
+	0x75, 0xe6, 0xfd, 0xd1, 0xd0, 0x3a, 0x07, 0x3b, 0xcf, 0xa1, 0x75, 0x96, 0x9a, 0xb3, 0x31, 0x75,
+	0x16, 0xad, 0xfb, 0xf0, 0x3a, 0x4b, 0xf7, 0x0d, 0xe1, 0x75, 0x96, 0x6f, 0x01, 0x62, 0xf7, 0xb3,
+	0x98, 0x70, 0xc4, 0x7e, 0x96, 0xe6, 0x7c, 0x39, 0x01, 0x32, 0xf6, 0xe5, 0xe4, 0x36, 0x8d, 0xd5,
+	0x2f, 0x27, 0xb9, 0x25, 0x5d, 0xbe, 0x10, 0x83, 0x8a, 0x5d, 0x67, 0x7f, 0x87, 0x56, 0xbd, 0xce,
+	0x8a, 0xee, 0x73, 0xb9, 0x12, 0x0f, 0x8c, 0x8e, 0x3c, 0x82, 0x82, 0xaf, 0xcf, 0x88, 0x2e, 0x26,
+	0x6b, 0x8d, 0x96, 0x2f, 0xc5, 0xe2, 0x62, 0x27, 0xec, 0x6f, 0x23, 0xaa, 0x27, 0xac, 0xe8, 0x59,
+	0x96, 0x2b, 0xf1, 0xc0, 0xd8, 0xc8, 0xfe, 0x96, 0xa1, 0x3a, 0xb2, 0xa2, 0x2d, 0x59, 0xae, 0xc4,
+	0x03, 0x93, 0xb0, 0x8a, 0x35, 0x1d, 0x42, 0x59, 0x15, 0xe8, 0x6a, 0x84, 0xb2, 0x4a, 0xea, 0x5c,
+	0xc4, 0xb1, 0x8a, 0xc7, 0x8c, 0x60, 0x55, 0x30, 0x6c, 0x25, 0x1e, 0x98, 0x88, 0x55, 0xbc, 0x11,
+	0x15, 0xce, 0xaa, 0x60, 0xef, 0x2c, 0x9c, 0x55, 0x52, 0x47, 0x2b, 0x96, 0x55, 0x51, 0x13, 0x56,
+	0x34, 0xb5, 0xa2, 0x58, 0x95, 0x78, 0xa9, 0xfd, 0x3d, 0xa5, 0x28, 0x56, 0x25, 0x88, 0xac, 0x6c,
+	0x4f, 0x85, 0x47, 0xf6, 0xf7, 0x63, 0xd4, 0x91, 0x15, 0xcd, 0x1f, 0x75, 0x64, 0x55, 0x6b, 0x27,
+	0x2c, 0xf2, 0xaf, 0x52, 0xb0, 0x2e, 0x75, 0xb6, 0xd0, 0x95, 0xf0, 0x85, 0x9c, 0x48, 0xe0, 0xbb,
+	0x89, 0xb0, 0xf1, 0x39, 0x48, 0x4d, 0x2f, 0x75, 0x0e, 0xea, 0x3e, 0x9b, 0x3a, 0x87, 0xb0, 0x2e,
+	0x5a, 0x38, 0xd9, 0x7d, 0x7d, 0x13, 0x14, 0xf6, 0xca, 0x95, 0xfa, 0x33, 0xe5, 0x4b, 0xb1, 0xb8,
+	0xe8, 0xb0, 0xbf, 0x80, 0x62, 0xb0, 0x1f, 0x84, 0x22, 0x5e, 0x7c, 0x72, 0xf0, 0x2b, 0x49, 0xa0,
+	0xb1, 0x6f, 0xe8, 0x40, 0x47, 0x01, 0x55, 0x92, 0xb6, 0x49, 0xd4, 0x6f, 0x68, 0x65, 0x7b, 0x22,
+	0x62, 0xf2, 0xc1, 0xee, 0x1e, 0x8a, 0x38, 0xdd, 0x25, 0x9a, 0x7c, 0x48, 0xb3, 0x30, 0x3c, 0x7e,
+	0xb0, 0xf3, 0x87, 0x22, 0x0e, 0x78, 0x89, 0xe2, 0x87, 0x34, 0x12, 0xd5, 0xf1, 0x77, 0x4a, 0x6f,
+	0xbe, 0xda, 0x3a, 0xf1, 0xcf, 0xaf, 0xb6, 0x4e, 0xfc, 0x72, 0xbc, 0x95, 0x7a, 0x33, 0xde, 0x4a,
+	0xfd, 0x63, 0xbc, 0x95, 0xfa, 0xf7, 0x78, 0x2b, 0xb5, 0xbf, 0x42, 0xff, 0xb7, 0xd0, 0xb5, 0xaf,
+	0x03, 0x00, 0x00, 0xff, 0xff, 0x9a, 0x44, 0x48, 0x12, 0x46, 0x35, 0x00, 0x00,
 }

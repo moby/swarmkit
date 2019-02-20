@@ -61,6 +61,110 @@ file {
   syntax: "proto3"
 }
 file {
+  name: "google/protobuf/wrappers.proto"
+  package: "google.protobuf"
+  message_type {
+    name: "DoubleValue"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_DOUBLE
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "FloatValue"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_FLOAT
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "Int64Value"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_INT64
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "UInt64Value"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "Int32Value"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_INT32
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "UInt32Value"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT32
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "BoolValue"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "StringValue"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "value"
+    }
+  }
+  message_type {
+    name: "BytesValue"
+    field {
+      name: "value"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_BYTES
+      json_name: "value"
+    }
+  }
+  options {
+    java_package: "com.google.protobuf"
+    java_outer_classname: "WrappersProto"
+    java_multiple_files: true
+    go_package: "github.com/golang/protobuf/ptypes/wrappers"
+    cc_enable_arenas: true
+    objc_class_prefix: "GPB"
+    csharp_namespace: "Google.Protobuf.WellKnownTypes"
+  }
+  syntax: "proto3"
+}
+file {
   name: "google/protobuf/descriptor.proto"
   package: "google.protobuf"
   message_type {
@@ -1874,6 +1978,7 @@ file {
   package: "docker.swarmkit.v1"
   dependency: "google/protobuf/timestamp.proto"
   dependency: "google/protobuf/duration.proto"
+  dependency: "google/protobuf/wrappers.proto"
   dependency: "gogoproto/gogo.proto"
   message_type {
     name: "Version"
@@ -2054,6 +2159,22 @@ file {
       type: TYPE_MESSAGE
       type_name: ".docker.swarmkit.v1.Resources"
       json_name: "reservations"
+    }
+    field {
+      name: "swap_bytes"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".google.protobuf.Int64Value"
+      json_name: "swapBytes"
+    }
+    field {
+      name: "memory_swappiness"
+      number: 4
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".google.protobuf.Int64Value"
+      json_name: "memorySwappiness"
     }
   }
   message_type {
@@ -4078,12 +4199,12 @@ file {
         json_name: "registry"
       }
       field {
-        name: "Config"
+        name: "config"
         number: 3
         label: LABEL_OPTIONAL
         type: TYPE_STRING
         oneof_index: 0
-        json_name: "Config"
+        json_name: "config"
       }
       oneof_decl {
         name: "source"
@@ -4296,110 +4417,6 @@ file {
     java_outer_classname: "AnyProto"
     java_multiple_files: true
     go_package: "github.com/golang/protobuf/ptypes/any"
-    objc_class_prefix: "GPB"
-    csharp_namespace: "Google.Protobuf.WellKnownTypes"
-  }
-  syntax: "proto3"
-}
-file {
-  name: "google/protobuf/wrappers.proto"
-  package: "google.protobuf"
-  message_type {
-    name: "DoubleValue"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_DOUBLE
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "FloatValue"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_FLOAT
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "Int64Value"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_INT64
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "UInt64Value"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_UINT64
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "Int32Value"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_INT32
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "UInt32Value"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_UINT32
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "BoolValue"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_BOOL
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "StringValue"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_STRING
-      json_name: "value"
-    }
-  }
-  message_type {
-    name: "BytesValue"
-    field {
-      name: "value"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_BYTES
-      json_name: "value"
-    }
-  }
-  options {
-    java_package: "com.google.protobuf"
-    java_outer_classname: "WrappersProto"
-    java_multiple_files: true
-    go_package: "github.com/golang/protobuf/ptypes/wrappers"
-    cc_enable_arenas: true
     objc_class_prefix: "GPB"
     csharp_namespace: "Google.Protobuf.WellKnownTypes"
   }
@@ -4933,21 +4950,6 @@ file {
       type: TYPE_MESSAGE
       type_name: ".docker.swarmkit.v1.ContainerSpec.SysctlsEntry"
       json_name: "sysctls"
-    }
-    field {
-      name: "memory_swap"
-      number: 27
-      label: LABEL_OPTIONAL
-      type: TYPE_INT64
-      json_name: "memorySwap"
-    }
-    field {
-      name: "memory_swappiness"
-      number: 28
-      label: LABEL_OPTIONAL
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.Int64Value"
-      json_name: "memorySwappiness"
     }
     nested_type {
       name: "LabelsEntry"
@@ -7792,6 +7794,197 @@ file {
   message_type {
     name: "RemoveConfigResponse"
   }
+  message_type {
+    name: "CreateExtensionRequest"
+    field {
+      name: "extension"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Extension"
+      json_name: "extension"
+    }
+  }
+  message_type {
+    name: "CreateExtensionResponse"
+  }
+  message_type {
+    name: "RemoveExtensionRequest"
+    field {
+      name: "extension_id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "extensionId"
+    }
+  }
+  message_type {
+    name: "RemoveExtensionResponse"
+  }
+  message_type {
+    name: "GetExtensionRequest"
+    field {
+      name: "extension_id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "extensionId"
+    }
+  }
+  message_type {
+    name: "GetExtensionResponse"
+    field {
+      name: "extension"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Extension"
+      json_name: "extension"
+    }
+  }
+  message_type {
+    name: "CreateResourceRequest"
+    field {
+      name: "resource"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Resource"
+      json_name: "resource"
+    }
+  }
+  message_type {
+    name: "CreateResourceResponse"
+  }
+  message_type {
+    name: "RemoveResourceRequest"
+    field {
+      name: "resource_id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "resourceId"
+    }
+  }
+  message_type {
+    name: "RemoveResourceResponse"
+  }
+  message_type {
+    name: "UpdateResourceRequest"
+    field {
+      name: "resource"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Resource"
+      json_name: "resource"
+    }
+  }
+  message_type {
+    name: "UpdateResourceResponse"
+  }
+  message_type {
+    name: "GetResourceRequest"
+    field {
+      name: "resource_id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "resourceId"
+    }
+  }
+  message_type {
+    name: "GetResourceResponse"
+    field {
+      name: "resource"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Resource"
+      json_name: "resource"
+    }
+  }
+  message_type {
+    name: "ListResourcesRequest"
+    field {
+      name: "filters"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.ListResourcesRequest.Filters"
+      json_name: "filters"
+    }
+    nested_type {
+      name: "Filters"
+      field {
+        name: "names"
+        number: 1
+        label: LABEL_REPEATED
+        type: TYPE_STRING
+        json_name: "names"
+      }
+      field {
+        name: "id_prefixes"
+        number: 2
+        label: LABEL_REPEATED
+        type: TYPE_STRING
+        json_name: "idPrefixes"
+      }
+      field {
+        name: "labels"
+        number: 3
+        label: LABEL_REPEATED
+        type: TYPE_MESSAGE
+        type_name: ".docker.swarmkit.v1.ListResourcesRequest.Filters.LabelsEntry"
+        json_name: "labels"
+      }
+      field {
+        name: "name_prefixes"
+        number: 4
+        label: LABEL_REPEATED
+        type: TYPE_STRING
+        json_name: "namePrefixes"
+      }
+      field {
+        name: "extension"
+        number: 5
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "extension"
+      }
+      nested_type {
+        name: "LabelsEntry"
+        field {
+          name: "key"
+          number: 1
+          label: LABEL_OPTIONAL
+          type: TYPE_STRING
+          json_name: "key"
+        }
+        field {
+          name: "value"
+          number: 2
+          label: LABEL_OPTIONAL
+          type: TYPE_STRING
+          json_name: "value"
+        }
+        options {
+          map_entry: true
+        }
+      }
+    }
+  }
+  message_type {
+    name: "ListResourcesResponse"
+    field {
+      name: "resources"
+      number: 1
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Resource"
+      json_name: "resources"
+    }
+  }
   service {
     name: "Control"
     method {
@@ -8078,6 +8271,86 @@ file {
       name: "RemoveConfig"
       input_type: ".docker.swarmkit.v1.RemoveConfigRequest"
       output_type: ".docker.swarmkit.v1.RemoveConfigResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "GetExtension"
+      input_type: ".docker.swarmkit.v1.GetExtensionRequest"
+      output_type: ".docker.swarmkit.v1.GetExtensionResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "CreateExtension"
+      input_type: ".docker.swarmkit.v1.CreateExtensionRequest"
+      output_type: ".docker.swarmkit.v1.CreateExtensionResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "RemoveExtension"
+      input_type: ".docker.swarmkit.v1.RemoveExtensionRequest"
+      output_type: ".docker.swarmkit.v1.RemoveExtensionResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "GetResource"
+      input_type: ".docker.swarmkit.v1.GetResourceRequest"
+      output_type: ".docker.swarmkit.v1.GetResourceResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "UpdateResource"
+      input_type: ".docker.swarmkit.v1.UpdateResourceRequest"
+      output_type: ".docker.swarmkit.v1.UpdateResourceResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "ListResources"
+      input_type: ".docker.swarmkit.v1.ListResourcesRequest"
+      output_type: ".docker.swarmkit.v1.ListResourcesResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "CreateResource"
+      input_type: ".docker.swarmkit.v1.CreateResourceRequest"
+      output_type: ".docker.swarmkit.v1.CreateResourceResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "RemoveResource"
+      input_type: ".docker.swarmkit.v1.RemoveResourceRequest"
+      output_type: ".docker.swarmkit.v1.RemoveResourceResponse"
       options {
         73626345 {
           1: "swarm-manager"
