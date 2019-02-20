@@ -645,9 +645,10 @@ message CreateExtensionRequest {
 	Extension extension = 1;
 }
 
-// CreateExtensionResponse is an empty object indicating the successful creation
-// of an extension.
+// CreateExtensionResponse contains the newly created `Extension` corresponding 
+// to the extension in the CreateExtensionRequest.
 message CreateExtensionResponse {
+	Extension extension = 1;
 }
 
 // RemoveExtensionRequest contains the ID of the extension that should be removed. This
@@ -678,9 +679,10 @@ message CreateResourceRequest {
 	Resource resource = 1;
 }
 
-// CreateResourceResponse is an empty object indicating the successful creation
-// of a resource.
+// CreateResourceResponse contains the newly created `Resource` corresponding 
+// to the resource in the CreateResourceRequest.
 message CreateResourceResponse {
+	Resource resource = 1;
 }
 
 // RemoveResourceRequest contains the ID of the resource that should be removed. This
