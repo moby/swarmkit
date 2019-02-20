@@ -7793,6 +7793,14 @@ file {
   }
   message_type {
     name: "CreateExtensionResponse"
+    field {
+      name: "extension"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Extension"
+      json_name: "extension"
+    }
   }
   message_type {
     name: "RemoveExtensionRequest"
@@ -7841,6 +7849,14 @@ file {
   }
   message_type {
     name: "CreateResourceResponse"
+    field {
+      name: "resource"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Resource"
+      json_name: "resource"
+    }
   }
   message_type {
     name: "RemoveResourceRequest"
