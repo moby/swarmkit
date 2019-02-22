@@ -4,11 +4,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc/codes"
+
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/testutils"
-	"github.com/stretchr/testify/assert"
-	"google.golang.org/grpc/codes"
 )
 
 func TestCreateExtension(t *testing.T) {
@@ -52,6 +53,19 @@ func TestCreateExtension(t *testing.T) {
 	_, err = ts.Client.CreateExtension(context.Background(), &validRequest)
 	assert.Error(t, err)
 	assert.Equal(t, codes.AlreadyExists, testutils.ErrorCode(err), testutils.ErrorDesc(err))
+
+	// creating an extension with an empty string as a name fails
+	hasNoName := api.CreateExtensionRequest{
+		Annotations: &api.Annotations{
+			Labels: map[string]string{"name": "nope"},
+		},
+		Description: "some text",
+	}
+	_, err = ts.Client.CreateExtension(
+		context.Background(), &hasNoName,
+	)
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 }
 
 func TestGetExtension(t *testing.T) {

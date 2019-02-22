@@ -44,7 +44,7 @@ func (s *Server) CreateExtension(ctx context.Context, request *api.CreateExtensi
 
 		return &api.CreateExtensionResponse{Extension: extension}, nil
 	default:
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "could not create extension: %v", err.Error())
 	}
 }
 

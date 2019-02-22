@@ -8002,11 +8002,11 @@ file {
         json_name: "namePrefixes"
       }
       field {
-        name: "extension"
+        name: "kind"
         number: 5
         label: LABEL_OPTIONAL
         type: TYPE_STRING
-        json_name: "extension"
+        json_name: "kind"
       }
       nested_type {
         name: "LabelsEntry"

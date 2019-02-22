@@ -671,8 +671,8 @@ message GetExtensionResponse {
 // resource object. An existing resource will not be updated.
 message CreateResourceRequest {
 	Annotations annotations = 1;
-  string kind = 2;
-  google.protobuf.Any payload = 3;
+	string kind = 2;
+	google.protobuf.Any payload = 3;
 }
 
 // CreateResourceResponse contains the newly created `Resource` corresponding
@@ -728,7 +728,7 @@ message ListResourcesRequest {
 		repeated string id_prefixes = 2;
 		map<string, string> labels = 3;
 		repeated string name_prefixes = 4;
-		string extension = 5;
+		string kind = 5;
 	}
 
 	Filters filters = 1;
