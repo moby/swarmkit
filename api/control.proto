@@ -6,6 +6,7 @@ import "github.com/docker/swarmkit/api/specs.proto";
 import "github.com/docker/swarmkit/api/objects.proto";
 import "github.com/docker/swarmkit/api/types.proto";
 import "gogoproto/gogo.proto";
+import "google/protobuf/any.proto";
 import "github.com/docker/swarmkit/protobuf/plugin/plugin.proto";
 
 // Control defines the RPC methods for controlling a cluster.
@@ -668,7 +669,9 @@ message GetExtensionResponse {
 // CreateResourceRequest creates a new resource specified by the included
 // resource object. An existing resource will not be updated.
 message CreateResourceRequest {
-	Resource resource = 1;
+	Annotations annotations = 1;
+  string kind = 2;
+  google.protobuf.Any payload = 3;
 }
 
 // CreateResourceResponse contains the newly created `Resource` corresponding 
@@ -690,13 +693,19 @@ message RemoveResourceResponse {
 
 // UpdateResourceRequest updates the resource specified by the given resource object.
 message UpdateResourceRequest {
-	// Resource to update.
-	Resource resource = 1;
+	string resource_id = 1;
+	Version resource_version = 2;
+	// Annotations describes the annotations to update. If the Annotations should
+	// be unchanged, then this field should be left empty. Note that the name of
+	// a Resource cannot be changed, only its labels.
+	Annotations annotations = 3;
+	// Payload describes the new payload of the resource. If the Payload should
+	// be unchanged, then this field should be left empty.
+	google.protobuf.Any payload = 4;
 }
 
-// UpdateResourceResponse is an empty object indicating the successful update
-// of a resource.
 message UpdateResourceResponse {
+	Resource resource = 1;
 }
 
 // GetResourceRequest is the request to get a Resource object given a resource id.

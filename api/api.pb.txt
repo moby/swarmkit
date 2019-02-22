@@ -6585,6 +6585,7 @@ file {
   dependency: "github.com/docker/swarmkit/api/objects.proto"
   dependency: "github.com/docker/swarmkit/api/types.proto"
   dependency: "gogoproto/gogo.proto"
+  dependency: "google/protobuf/any.proto"
   dependency: "github.com/docker/swarmkit/protobuf/plugin/plugin.proto"
   message_type {
     name: "GetNodeRequest"
@@ -7839,12 +7840,27 @@ file {
   message_type {
     name: "CreateResourceRequest"
     field {
-      name: "resource"
+      name: "annotations"
       number: 1
       label: LABEL_OPTIONAL
       type: TYPE_MESSAGE
-      type_name: ".docker.swarmkit.v1.Resource"
-      json_name: "resource"
+      type_name: ".docker.swarmkit.v1.Annotations"
+      json_name: "annotations"
+    }
+    field {
+      name: "kind"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "kind"
+    }
+    field {
+      name: "payload"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".google.protobuf.Any"
+      json_name: "payload"
     }
   }
   message_type {
@@ -7874,6 +7890,40 @@ file {
   message_type {
     name: "UpdateResourceRequest"
     field {
+      name: "resource_id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "resourceId"
+    }
+    field {
+      name: "resource_version"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Version"
+      json_name: "resourceVersion"
+    }
+    field {
+      name: "annotations"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Annotations"
+      json_name: "annotations"
+    }
+    field {
+      name: "payload"
+      number: 4
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".google.protobuf.Any"
+      json_name: "payload"
+    }
+  }
+  message_type {
+    name: "UpdateResourceResponse"
+    field {
       name: "resource"
       number: 1
       label: LABEL_OPTIONAL
@@ -7881,9 +7931,6 @@ file {
       type_name: ".docker.swarmkit.v1.Resource"
       json_name: "resource"
     }
-  }
-  message_type {
-    name: "UpdateResourceResponse"
   }
   message_type {
     name: "GetResourceRequest"
