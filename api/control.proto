@@ -174,7 +174,7 @@ service Control {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	}
 
-	// CreateExtension creates an `Extension` based on the provided `CreateExtensionRequest.Extension` 
+	// CreateExtension creates an `Extension` based on the provided `CreateExtensionRequest.Extension`
 	// and returns a `CreateExtensionResponse`.
 	// - Returns `InvalidArgument` if the `CreateExtensionRequest.Extension` is malformed,
 	//   or fails validation.
@@ -632,14 +632,15 @@ message RemoveConfigRequest {
 // a config.
 message RemoveConfigResponse {}
 
-// CreateExtensionRequest creates a new extension specified by the included
-// extension object. An existing extension will not be updated.
+// CreateExtensionRequest creates a new extension as specified by the provided
+// parameters
 message CreateExtensionRequest {
-	Extension extension = 1;
+	Annotations annotations = 1;
+	string description = 2;
 }
 
-// CreateExtensionResponse contains the newly created `Extension` corresponding 
-// to the extension in the CreateExtensionRequest.
+// CreateExtensionResponse contains the newly created `Extension` corresponding
+// to the parameters in the CreateExtensionRequest.
 message CreateExtensionResponse {
 	Extension extension = 1;
 }
@@ -674,7 +675,7 @@ message CreateResourceRequest {
   google.protobuf.Any payload = 3;
 }
 
-// CreateResourceResponse contains the newly created `Resource` corresponding 
+// CreateResourceResponse contains the newly created `Resource` corresponding
 // to the resource in the CreateResourceRequest.
 message CreateResourceResponse {
 	Resource resource = 1;

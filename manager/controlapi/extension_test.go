@@ -15,15 +15,26 @@ func TestCreateExtension(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 
-	// ---- CreateExtensionRequest with an empty extension fails ----
-	_, err := ts.Client.CreateExtension(context.Background(), &api.CreateExtensionRequest{Extension: nil})
+	// ---- CreateExtensionRequest with no Annotations fails ----
+	_, err := ts.Client.CreateExtension(context.Background(), &api.CreateExtensionRequest{})
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
+
+	// --- With no name also fails
+	_, err = ts.Client.CreateExtension(context.Background(),
+		&api.CreateExtensionRequest{
+			Annotations: &api.Annotations{
+				Name:   "",
+				Labels: map[string]string{"foo": "bar"},
+			},
+		},
+	)
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	extensionName := "extension1"
 	// ---- creating an extension with a valid extension object passed in succeeds ----
-	extension := api.Extension{Annotations: api.Annotations{Name: extensionName}}
-	validRequest := api.CreateExtensionRequest{Extension: &extension}
+	validRequest := api.CreateExtensionRequest{Annotations: &api.Annotations{Name: extensionName}}
 
 	resp, err := ts.Client.CreateExtension(context.Background(), &validRequest)
 	assert.NoError(t, err)
@@ -59,8 +70,7 @@ func TestGetExtension(t *testing.T) {
 
 	// ---- getting an existing extension returns the extension ----
 	extensionName := "extension1"
-	extension := api.Extension{Annotations: api.Annotations{Name: extensionName}}
-	validRequest := api.CreateExtensionRequest{Extension: &extension}
+	validRequest := api.CreateExtensionRequest{Annotations: &api.Annotations{Name: extensionName}}
 	resp, err := ts.Client.CreateExtension(context.Background(), &validRequest)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -69,7 +79,7 @@ func TestGetExtension(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, resp1)
 	assert.NotNil(t, resp1)
-	assert.Equal(t, extension.Annotations.Name, resp1.Extension.Annotations.Name)
+	assert.Equal(t, validRequest.Annotations.Name, resp1.Extension.Annotations.Name)
 }
 
 // Test removing an extension that has no resources of that kind present.
@@ -84,8 +94,7 @@ func TestRemoveUnreferencedExtension(t *testing.T) {
 
 	// removing an extension that exists succeeds
 	extensionName := "extension1"
-	extension := api.Extension{Annotations: api.Annotations{Name: extensionName}}
-	validRequest := api.CreateExtensionRequest{Extension: &extension}
+	validRequest := api.CreateExtensionRequest{Annotations: &api.Annotations{Name: extensionName}}
 	resp, err := ts.Client.CreateExtension(context.Background(), &validRequest)
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)

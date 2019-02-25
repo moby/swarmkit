@@ -7784,12 +7784,19 @@ file {
   message_type {
     name: "CreateExtensionRequest"
     field {
-      name: "extension"
+      name: "annotations"
       number: 1
       label: LABEL_OPTIONAL
       type: TYPE_MESSAGE
-      type_name: ".docker.swarmkit.v1.Extension"
-      json_name: "extension"
+      type_name: ".docker.swarmkit.v1.Annotations"
+      json_name: "annotations"
+    }
+    field {
+      name: "description"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "description"
     }
   }
   message_type {
