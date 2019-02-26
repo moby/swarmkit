@@ -6,6 +6,7 @@ import "github.com/docker/swarmkit/api/specs.proto";
 import "github.com/docker/swarmkit/api/objects.proto";
 import "github.com/docker/swarmkit/api/types.proto";
 import "gogoproto/gogo.proto";
+import "google/protobuf/any.proto";
 import "github.com/docker/swarmkit/protobuf/plugin/plugin.proto";
 
 // Control defines the RPC methods for controlling a cluster.
@@ -173,7 +174,7 @@ service Control {
 		option (docker.protobuf.plugin.tls_authorization) = { roles: "swarm-manager" };
 	}
 
-	// CreateExtension creates an `Extension` based on the provided `CreateExtensionRequest.Extension` 
+	// CreateExtension creates an `Extension` based on the provided `CreateExtensionRequest.Extension`
 	// and returns a `CreateExtensionResponse`.
 	// - Returns `InvalidArgument` if the `CreateExtensionRequest.Extension` is malformed,
 	//   or fails validation.
@@ -631,14 +632,15 @@ message RemoveConfigRequest {
 // a config.
 message RemoveConfigResponse {}
 
-// CreateExtensionRequest creates a new extension specified by the included
-// extension object. An existing extension will not be updated.
+// CreateExtensionRequest creates a new extension as specified by the provided
+// parameters
 message CreateExtensionRequest {
-	Extension extension = 1;
+	Annotations annotations = 1;
+	string description = 2;
 }
 
-// CreateExtensionResponse contains the newly created `Extension` corresponding 
-// to the extension in the CreateExtensionRequest.
+// CreateExtensionResponse contains the newly created `Extension` corresponding
+// to the parameters in the CreateExtensionRequest.
 message CreateExtensionResponse {
 	Extension extension = 1;
 }
@@ -668,10 +670,12 @@ message GetExtensionResponse {
 // CreateResourceRequest creates a new resource specified by the included
 // resource object. An existing resource will not be updated.
 message CreateResourceRequest {
-	Resource resource = 1;
+	Annotations annotations = 1;
+	string kind = 2;
+	google.protobuf.Any payload = 3;
 }
 
-// CreateResourceResponse contains the newly created `Resource` corresponding 
+// CreateResourceResponse contains the newly created `Resource` corresponding
 // to the resource in the CreateResourceRequest.
 message CreateResourceResponse {
 	Resource resource = 1;
@@ -690,13 +694,19 @@ message RemoveResourceResponse {
 
 // UpdateResourceRequest updates the resource specified by the given resource object.
 message UpdateResourceRequest {
-	// Resource to update.
-	Resource resource = 1;
+	string resource_id = 1;
+	Version resource_version = 2;
+	// Annotations describes the annotations to update. If the Annotations should
+	// be unchanged, then this field should be left empty. Note that the name of
+	// a Resource cannot be changed, only its labels.
+	Annotations annotations = 3;
+	// Payload describes the new payload of the resource. If the Payload should
+	// be unchanged, then this field should be left empty.
+	google.protobuf.Any payload = 4;
 }
 
-// UpdateResourceResponse is an empty object indicating the successful update
-// of a resource.
 message UpdateResourceResponse {
+	Resource resource = 1;
 }
 
 // GetResourceRequest is the request to get a Resource object given a resource id.
@@ -718,7 +728,7 @@ message ListResourcesRequest {
 		repeated string id_prefixes = 2;
 		map<string, string> labels = 3;
 		repeated string name_prefixes = 4;
-		string extension = 5;
+		string kind = 5;
 	}
 
 	Filters filters = 1;

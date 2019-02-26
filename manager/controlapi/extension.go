@@ -19,32 +19,32 @@ import (
 //   or fails validation.
 // - Returns an error if the creation fails.
 func (s *Server) CreateExtension(ctx context.Context, request *api.CreateExtensionRequest) (*api.CreateExtensionResponse, error) {
-	if request.Extension == nil {
-		return nil, status.Errorf(codes.InvalidArgument, "extension must be provided")
+	if request.Annotations == nil || request.Annotations.Name == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "extension name must be provided")
 	}
 
-	var testMeta api.Meta
-	if request.Extension.ID != "" || request.Extension.Meta != testMeta {
-		return nil, status.Errorf(codes.InvalidArgument, "ID and Meta fields should not be populated")
+	extension := &api.Extension{
+		ID:          identity.NewID(),
+		Annotations: *request.Annotations,
+		Description: request.Description,
 	}
 
-	request.Extension.ID = identity.NewID()
 	err := s.store.Update(func(tx store.Tx) error {
-		return store.CreateExtension(tx, request.Extension)
+		return store.CreateExtension(tx, extension)
 	})
 
 	switch err {
 	case store.ErrNameConflict:
-		return nil, status.Errorf(codes.AlreadyExists, "extension %s already exists", request.Extension.Annotations.Name)
+		return nil, status.Errorf(codes.AlreadyExists, "extension %s already exists", request.Annotations.Name)
 	case nil:
 		log.G(ctx).WithFields(logrus.Fields{
-			"extension.Name": request.Extension.Annotations.Name,
+			"extension.Name": request.Annotations.Name,
 			"method":         "CreateExtension",
 		}).Debugf("extension created")
 
-		return &api.CreateExtensionResponse{Extension: request.Extension}, nil
+		return &api.CreateExtensionResponse{Extension: extension}, nil
 	default:
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "could not create extension: %v", err.Error())
 	}
 }
 
