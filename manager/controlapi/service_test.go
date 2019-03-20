@@ -788,6 +788,21 @@ func TestConfigValidation(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
+	// test CredentialSpec without ConfigReference
+	serviceSpec = createSpec("missingruntimetarget", "imagemissingruntimetarget", 1)
+	serviceSpec.Task.GetContainer().Privileges = &api.Privileges{
+		CredentialSpec: &api.Privileges_CredentialSpec{
+			Source: &api.Privileges_CredentialSpec_Config{
+				Config: configRefCredSpec.ConfigID,
+			},
+		},
+	}
+	_, err = ts.Client.CreateService(
+		context.Background(), &api.CreateServiceRequest{Spec: serviceSpec},
+	)
+	t.Logf("error when missing configreference: %v", err)
+	assert.Error(t, err)
+
 	// test config target conflicts on update
 	serviceSpec1 := createServiceSpecWithConfigs("service5", configRef2, configRef3)
 	// Copy this service, but delete the configs for creation
