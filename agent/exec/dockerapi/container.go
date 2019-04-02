@@ -442,7 +442,7 @@ func (c *containerConfig) resources() enginecontainer.Resources {
 	// set pids limit
 	pidsLimit := c.spec().PidsLimit
 	if pidsLimit > 0 {
-		resources.PidsLimit = pidsLimit
+		resources.PidsLimit = &pidsLimit
 	}
 
 	// If no limits are specified let the engine use its defaults.

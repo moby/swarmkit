@@ -190,7 +190,7 @@ func TestPidLimit(t *testing.T) {
 	expected := int64(10)
 	actual := hostConfig.PidsLimit
 
-	if expected != actual {
+	if expected != *actual {
 		t.Fatalf("expected %d, got %d", expected, actual)
 	}
 }
