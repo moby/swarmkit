@@ -4,15 +4,16 @@
 package test
 
 import (
-	fmt "fmt"
+	"fmt"
+	"math"
+	math_rand "math/rand"
+	"testing"
+	"time"
+
 	_ "github.com/gogo/protobuf/gogoproto"
 	github_com_gogo_protobuf_jsonpb "github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
-	proto "github.com/gogo/protobuf/proto"
-	math "math"
-	math_rand "math/rand"
-	testing "testing"
-	time "time"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
