@@ -31,23 +31,25 @@ func (ft *fakeTimer) C() <-chan time.Time {
 	return ft.channel
 }
 
-func (ft *fakeTimer) Reset(d time.Duration) bool {
+func (ft *fakeTimer) reset(d time.Duration) bool {
 	currentTime := ft.clock.Now()
 
 	ft.mutex.Lock()
 	active := !ft.completionTime.IsZero()
 	ft.completionTime = currentTime.Add(d)
 	ft.mutex.Unlock()
+	return active
+}
 
+func (ft *fakeTimer) Reset(d time.Duration) bool {
+	active := ft.reset(d)
 	ft.clock.addTimeWatcher(ft)
-
 	return active
 }
 
 func (ft *fakeTimer) Stop() bool {
 	ft.mutex.Lock()
 	active := !ft.completionTime.IsZero()
-	ft.completionTime = time.Time{}
 	ft.mutex.Unlock()
 
 	ft.clock.removeTimeWatcher(ft)
@@ -55,25 +57,31 @@ func (ft *fakeTimer) Stop() bool {
 	return active
 }
 
-func (ft *fakeTimer) timeUpdated(now time.Time) {
-	var fire bool
-
+func (ft *fakeTimer) shouldFire(now time.Time) bool {
 	ft.mutex.Lock()
-	if !ft.completionTime.IsZero() {
-		fire = now.After(ft.completionTime) || now.Equal(ft.completionTime)
+	defer ft.mutex.Unlock()
+
+	if ft.completionTime.IsZero() {
+		return false
 	}
-	ft.mutex.Unlock()
 
-	if fire {
-		select {
-		case ft.channel <- now:
-			ft.Stop()
+	return now.After(ft.completionTime) || now.Equal(ft.completionTime)
+}
 
-		default:
-		}
+func (ft *fakeTimer) repeatable() bool {
+	return ft.repeat
+}
 
-		if ft.repeat {
-			ft.Reset(ft.duration)
-		}
+func (ft *fakeTimer) timeUpdated(now time.Time) {
+	select {
+	case ft.channel <- now:
+	default:
+		// drop on the floor. timers have a buffered channel anyway. according to
+		// godoc of the `time' package a ticker can loose ticks in case of a slow
+		// receiver
+	}
+
+	if ft.repeatable() {
+		ft.reset(ft.duration)
 	}
 }
