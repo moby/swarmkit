@@ -12,6 +12,7 @@ import (
 
 	"google.golang.org/grpc"
 
+	"code.cloudfoundry.org/clock/fakeclock"
 	etcdraft "github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/docker/swarmkit/api"
@@ -22,7 +23,6 @@ import (
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/testutils"
-	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

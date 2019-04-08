@@ -3,7 +3,7 @@ package testutils
 import (
 	"time"
 
-	"github.com/pivotal-golang/clock/fakeclock"
+	"code.cloudfoundry.org/clock/fakeclock"
 	"github.com/pkg/errors"
 )
 

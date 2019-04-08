@@ -50,7 +50,7 @@ build:
     github.com/docker/swarmkit/vendor/github.com/stretchr/testify/assert
     github.com/docker/swarmkit/ca/testutils
     github.com/docker/swarmkit/cmd/swarmd
-    github.com/docker/swarmkit/vendor/github.com/pivotal-golang/clock/fakeclock
+    github.com/docker/swarmkit/vendor/code.cloudfoundry.org/clock/fakeclock
     github.com/docker/swarmkit/vendor/github.com/stretchr/testify/require
     github.com/docker/swarmkit/manager/state/raft/testutils
     github.com/docker/swarmkit/manager/testcluster
