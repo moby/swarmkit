@@ -103,10 +103,14 @@ var External bool
 // connections and security configs.
 func NewTestCA(t *testing.T, krwGenerators ...func(ca.CertPaths) *ca.KeyReadWriter) *TestCA {
 	tempdir, err := ioutil.TempDir("", "swarm-ca-test-")
-	require.NoError(t, err)
+	if t != nil {
+		require.NoError(t, err)
+	}
 
 	cert, key, err := CreateRootCertAndKey("swarm-test-CA")
-	require.NoError(t, err)
+	if t != nil {
+		require.NoError(t, err)
+	}
 	apiRootCA := api.RootCA{
 		CACert: cert,
 		CAKey:  key,
@@ -119,10 +123,14 @@ func NewTestCA(t *testing.T, krwGenerators ...func(ca.CertPaths) *ca.KeyReadWrit
 // connections and security configs.
 func NewFIPSTestCA(t *testing.T) *TestCA {
 	tempdir, err := ioutil.TempDir("", "swarm-ca-test-")
-	require.NoError(t, err)
+	if t != nil {
+		require.NoError(t, err)
+	}
 
 	cert, key, err := CreateRootCertAndKey("swarm-test-CA")
-	require.NoError(t, err)
+	if t != nil {
+		require.NoError(t, err)
+	}
 	apiRootCA := api.RootCA{
 		CACert: cert,
 		CAKey:  key,
@@ -162,10 +170,15 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 			apiRootCA.CACert, apiRootCA.CACert, apiRootCA.CAKey, ca.DefaultNodeCertExpiration, nil)
 
 	}
-	require.NoError(t, err)
+	if t != nil {
+		require.NoError(t, err)
+	}
 
 	// Write the root certificate to disk, using decent permissions
-	require.NoError(t, ioutils.AtomicWriteFile(paths.RootCA.Cert, apiRootCA.CACert, 0644))
+	err = ioutils.AtomicWriteFile(paths.RootCA.Cert, apiRootCA.CACert, 0644)
+	if t != nil {
+		require.NoError(t, err)
+	}
 
 	if External {
 		// Start the CA API server - ensure that the external server doesn't have any intermediates
@@ -181,10 +194,14 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 			// remove the key from the API root CA so that once the CA server starts up, it won't have a local signer
 			apiRootCA.CAKey = nil
 		}
-		require.NoError(t, err)
+		if t != nil {
+			require.NoError(t, err)
+		}
 
 		externalSigningServer, err = NewExternalSigningServer(extRootCA, tempBaseDir)
-		require.NoError(t, err)
+		if t != nil {
+			require.NoError(t, err)
+		}
 
 		externalCAs = []*api.ExternalCA{
 			{
@@ -201,16 +218,24 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 	}
 
 	managerConfig, qClose1, err := genSecurityConfig(s, rootCA, krw, ca.ManagerRole, organization, "", External)
-	assert.NoError(t, err)
+	if t != nil {
+		assert.NoError(t, err)
+	}
 
 	managerDiffOrgConfig, qClose2, err := genSecurityConfig(s, rootCA, krw, ca.ManagerRole, "swarm-test-org-2", "", External)
-	assert.NoError(t, err)
+	if t != nil {
+		assert.NoError(t, err)
+	}
 
 	workerConfig, qClose3, err := genSecurityConfig(s, rootCA, krw, ca.WorkerRole, organization, "", External)
-	assert.NoError(t, err)
+	if t != nil {
+		assert.NoError(t, err)
+	}
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
-	assert.NoError(t, err)
+	if t != nil {
+		assert.NoError(t, err)
+	}
 
 	baseOpts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
 	insecureClientOpts := append(baseOpts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})))
@@ -219,16 +244,24 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 	managerDiffOrgOpts := append(baseOpts, grpc.WithTransportCredentials(managerDiffOrgConfig.ClientTLSCreds))
 
 	conn1, err := grpc.Dial(l.Addr().String(), insecureClientOpts...)
-	assert.NoError(t, err)
+	if t != nil {
+		assert.NoError(t, err)
+	}
 
 	conn2, err := grpc.Dial(l.Addr().String(), clientOpts...)
-	assert.NoError(t, err)
+	if t != nil {
+		assert.NoError(t, err)
+	}
 
 	conn3, err := grpc.Dial(l.Addr().String(), managerOpts...)
-	assert.NoError(t, err)
+	if t != nil {
+		assert.NoError(t, err)
+	}
 
 	conn4, err := grpc.Dial(l.Addr().String(), managerDiffOrgOpts...)
-	assert.NoError(t, err)
+	if t != nil {
+		assert.NoError(t, err)
+	}
 
 	serverOpts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(serverOpts...)
@@ -400,10 +433,13 @@ func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, a
 	if cluster.RootCA.JoinTokens.Manager == "" {
 		cluster.RootCA.JoinTokens.Manager = ca.GenerateJoinToken(caRootCA, fips)
 	}
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	err := s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, cluster)
 		return nil
-	}))
+	})
+	if t != nil {
+		assert.NoError(t, err)
+	}
 	return cluster
 }
 
