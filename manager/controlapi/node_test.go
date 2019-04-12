@@ -468,7 +468,7 @@ func getMap(t *testing.T, nodes []*api.Node) map[uint64]*api.ManagerStatus {
 func TestListManagerNodes(t *testing.T) {
 	t.Parallel()
 
-	tc := cautils.NewTestCA(nil)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 	ts := newTestServer(t)
 	defer ts.Stop()
@@ -653,7 +653,7 @@ func TestListManagerNodes(t *testing.T) {
 }
 
 func TestUpdateNode(t *testing.T) {
-	tc := cautils.NewTestCA(nil)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 	ts := newTestServer(t)
 	defer ts.Stop()
@@ -744,7 +744,7 @@ func TestUpdateNode(t *testing.T) {
 }
 
 func testUpdateNodeDemote(t *testing.T) {
-	tc := cautils.NewTestCA(nil)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 	ts := newTestServer(t)
 	defer ts.Stop()

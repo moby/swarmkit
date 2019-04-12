@@ -17,7 +17,7 @@ import (
 func TestRoleManagerRemovesDemotedNodesAndAddsPromotedNodes(t *testing.T) {
 	t.Parallel()
 
-	tc := cautils.NewTestCA(nil)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	nodes, fc := raftutils.NewRaftCluster(t, tc)
@@ -106,7 +106,7 @@ func TestRoleManagerRemovesDemotedNodesAndAddsPromotedNodes(t *testing.T) {
 func TestRoleManagerRemovesDemotedNodesOnStartup(t *testing.T) {
 	t.Parallel()
 
-	tc := cautils.NewTestCA(nil)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	nodes, fc := raftutils.NewRaftCluster(t, tc)
@@ -167,7 +167,7 @@ func TestRoleManagerRemovesDemotedNodesOnStartup(t *testing.T) {
 func TestRoleManagerRemovesDeletedNodes(t *testing.T) {
 	t.Parallel()
 
-	tc := cautils.NewTestCA(nil)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	nodes, fc := raftutils.NewRaftCluster(t, tc)
@@ -230,7 +230,7 @@ func TestRoleManagerRemovesDeletedNodes(t *testing.T) {
 func TestRoleManagerRemovesDeletedNodesOnStartup(t *testing.T) {
 	t.Parallel()
 
-	tc := cautils.NewTestCA(nil)
+	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
 	nodes, fc := raftutils.NewRaftCluster(t, tc)

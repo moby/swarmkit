@@ -42,7 +42,7 @@ func newTestServer(t *testing.T) *testServer {
 	ts := &testServer{}
 
 	// Create a testCA just to get a usable RootCA object
-	tc := cautils.NewTestCA(nil)
+	tc := cautils.NewTestCA(t)
 	tc.Stop()
 
 	ts.Store = store.NewMemoryStore(&stateutils.MockProposer{})

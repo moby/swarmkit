@@ -40,7 +40,7 @@ func newTestServer(t *testing.T) *testServer {
 	ts := &testServer{}
 
 	// Create a testCA just to get a usable RootCA object
-	tc := cautils.NewTestCA(nil)
+	tc := cautils.NewTestCA(t)
 	securityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
 	tc.Stop()
 	assert.NoError(t, err)
