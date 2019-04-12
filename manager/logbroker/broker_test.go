@@ -721,7 +721,7 @@ func TestLogBrokerNoFollowDisconnect(t *testing.T) {
 func testLogBrokerEnv(t *testing.T) (context.Context, *testutils.TestCA, *LogBroker, string, string, func()) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	tca := testutils.NewTestCA(nil)
+	tca := testutils.NewTestCA(t)
 	broker := New(tca.MemoryStore)
 
 	// Log Server

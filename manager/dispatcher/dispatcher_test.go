@@ -128,26 +128,22 @@ func (t *testCluster) MemoryStore() *store.MemoryStore {
 	return t.store
 }
 
-func startDispatcher(c *Config) (*grpcDispatcher, error) {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return nil, err
-	}
+func startDispatcher(t *testing.T, c *Config) *grpcDispatcher {
+	t.Helper()
 
-	tca := cautils.NewTestCA(nil)
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(t, err)
+
+	tca := cautils.NewTestCA(t)
 	tca.CAServer.Stop() // there is no need for the CA server to be running
 	agentSecurityConfig1, err := tca.NewNodeConfig(ca.WorkerRole)
-	if err != nil {
-		return nil, err
-	}
+	assert.NoError(t, err)
+
 	agentSecurityConfig2, err := tca.NewNodeConfig(ca.WorkerRole)
-	if err != nil {
-		return nil, err
-	}
+	assert.NoError(t, err)
+
 	managerSecurityConfig, err := tca.NewNodeConfig(ca.ManagerRole)
-	if err != nil {
-		return nil, err
-	}
+	assert.NoError(t, err)
 
 	serverOpts := []grpc.ServerOption{grpc.Creds(managerSecurityConfig.ServerTLSCreds)}
 
@@ -169,16 +165,15 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 		_ = s.Serve(l)
 	}()
 	go d.Run(context.Background())
-	if err := testutils.PollFuncWithTimeout(nil, func() error {
+	err = testutils.PollFuncWithTimeout(nil, func() error {
 		d.mu.Lock()
 		defer d.mu.Unlock()
 		if !d.isRunning() {
 			return fmt.Errorf("dispatcher is not running")
 		}
 		return nil
-	}, 5*time.Second); err != nil {
-		return nil, err
-	}
+	}, 5*time.Second)
+	assert.NoError(t, err)
 
 	clientOpts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
 	clientOpts1 := append(clientOpts, grpc.WithTransportCredentials(agentSecurityConfig1.ClientTLSCreds))
@@ -186,19 +181,13 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 	clientOpts3 := append(clientOpts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})))
 
 	conn1, err := grpc.Dial(l.Addr().String(), clientOpts1...)
-	if err != nil {
-		return nil, err
-	}
+	assert.NoError(t, err)
 
 	conn2, err := grpc.Dial(l.Addr().String(), clientOpts2...)
-	if err != nil {
-		return nil, err
-	}
+	assert.NoError(t, err)
 
 	conn3, err := grpc.Dial(l.Addr().String(), clientOpts3...)
-	if err != nil {
-		return nil, err
-	}
+	assert.NoError(t, err)
 
 	clients := []api.DispatcherClient{api.NewDispatcherClient(conn1), api.NewDispatcherClient(conn2), api.NewDispatcherClient(conn3)}
 	securityConfigs := []*ca.SecurityConfig{agentSecurityConfig1, agentSecurityConfig2, managerSecurityConfig}
@@ -213,14 +202,13 @@ func startDispatcher(c *Config) (*grpcDispatcher, error) {
 		testCA:           tca,
 		testCluster:      tc,
 		PluginGetter:     driverGetter,
-	}, nil
+	}
 }
 
 func TestRegisterTwice(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.RateLimitPeriod = 0
-	gd, err := startDispatcher(cfg)
-	assert.NoError(t, err)
+	gd := startDispatcher(t, cfg)
 	defer gd.Close()
 
 	var expectedSessionID string
@@ -248,8 +236,7 @@ func TestRegisterTwice(t *testing.T) {
 func TestRegisterExceedRateLimit(t *testing.T) {
 	t.Parallel()
 
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	for i := 0; i < 3; i++ {
@@ -271,8 +258,7 @@ func TestRegisterExceedRateLimit(t *testing.T) {
 }
 
 func TestRegisterNoCert(t *testing.T) {
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	// This client has no certificates, this should fail
@@ -288,8 +274,7 @@ func TestHeartbeat(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.HeartbeatPeriod = 500 * time.Millisecond
 	cfg.HeartbeatEpsilon = 0
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	var expectedSessionID string
@@ -334,8 +319,7 @@ func TestHeartbeat(t *testing.T) {
 }
 
 func TestHeartbeatNoCert(t *testing.T) {
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	// heartbeat without correct SessionID should fail
@@ -350,8 +334,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.HeartbeatPeriod = 100 * time.Millisecond
 	cfg.HeartbeatEpsilon = 0
-	gd, err := startDispatcher(cfg)
-	assert.NoError(t, err)
+	gd := startDispatcher(t, cfg)
 	defer gd.Close()
 
 	var expectedSessionID string
@@ -387,8 +370,7 @@ func TestHeartbeatTimeout(t *testing.T) {
 }
 
 func TestHeartbeatUnregistered(t *testing.T) {
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 	resp, err := gd.Clients[0].Heartbeat(context.Background(), &api.HeartbeatRequest{})
 	assert.Nil(t, resp)
@@ -400,8 +382,7 @@ func TestHeartbeatUnregistered(t *testing.T) {
 func TestAssignmentsErrorsIfNoSessionID(t *testing.T) {
 	t.Parallel()
 
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	// without correct SessionID should fail
@@ -462,10 +443,9 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 		w.Write(resp)
 	})
 
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
-	assert.NoError(t, gd.PluginGetter.SetupPlugin(secretDriver, mux))
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
+	assert.NoError(t, gd.PluginGetter.SetupPlugin(secretDriver, mux))
 
 	expectedSessionID, nodeID := getSessionAndNodeID(t, gd.Clients[0])
 
@@ -524,7 +504,7 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 		},
 	}
 
-	err = gd.Store.Update(func(tx store.Tx) error {
+	err := gd.Store.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateSecret(tx, secret))
 		assert.NoError(t, store.CreateSecret(tx, doNotReuseSecret))
 		assert.NoError(t, store.CreateSecret(tx, errSecret))
@@ -573,15 +553,14 @@ func TestAssignmentsInitialNodeTasks(t *testing.T) {
 }
 
 func testAssignmentsInitialNodeTasksWithGivenTasks(t *testing.T, genTasks taskGeneratorFunc) {
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	expectedSessionID, nodeID := getSessionAndNodeID(t, gd.Clients[0])
 
 	// create the relevant secrets and tasks
 	secrets, configs, resourceRefs, tasks := genTasks(t, nodeID)
-	err = gd.Store.Update(func(tx store.Tx) error {
+	err := gd.Store.Update(func(tx store.Tx) error {
 		for _, secret := range secrets {
 			assert.NoError(t, store.CreateSecret(tx, secret))
 		}
@@ -777,8 +756,7 @@ func TestAssignmentsAddingTasks(t *testing.T) {
 }
 
 func testAssignmentsAddingTasksWithGivenTasks(t *testing.T, genTasks taskGeneratorFunc) {
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	expectedSessionID, nodeID := getSessionAndNodeID(t, gd.Clients[0])
@@ -908,15 +886,14 @@ func TestAssignmentsDependencyUpdateAndDeletion(t *testing.T) {
 }
 
 func testAssignmentsDependencyUpdateAndDeletionWithGivenTasks(t *testing.T, genTasks taskGeneratorFunc) {
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	expectedSessionID, nodeID := getSessionAndNodeID(t, gd.Clients[0])
 
 	// create the relevant secrets and tasks
 	secrets, configs, resourceRefs, tasks := genTasks(t, nodeID)
-	err = gd.Store.Update(func(tx store.Tx) error {
+	err := gd.Store.Update(func(tx store.Tx) error {
 		for _, secret := range secrets {
 			if store.GetSecret(tx, secret.ID) == nil {
 				assert.NoError(t, store.CreateSecret(tx, secret))
@@ -1023,8 +1000,7 @@ func testAssignmentsDependencyUpdateAndDeletionWithGivenTasks(t *testing.T, genT
 func TestTasksStatusChange(t *testing.T) {
 	t.Parallel()
 
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	var expectedSessionID string
@@ -1114,8 +1090,7 @@ func TestTasksStatusChange(t *testing.T) {
 }
 
 func TestTasksBatch(t *testing.T) {
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	var expectedSessionID string
@@ -1184,8 +1159,7 @@ func TestTasksBatch(t *testing.T) {
 }
 
 func TestTasksNoCert(t *testing.T) {
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	stream, err := gd.Clients[2].Assignments(context.Background(), &api.AssignmentsRequest{})
@@ -1197,8 +1171,7 @@ func TestTasksNoCert(t *testing.T) {
 }
 
 func TestTaskUpdate(t *testing.T) {
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	var (
@@ -1240,7 +1213,7 @@ func TestTaskUpdate(t *testing.T) {
 			State: api.TaskStateShutdown,
 		},
 	}
-	err = gd.Store.Update(func(tx store.Tx) error {
+	err := gd.Store.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateTask(tx, testTask1))
 		assert.NoError(t, store.CreateTask(tx, testTask2))
 		assert.NoError(t, store.CreateTask(tx, testTask3))
@@ -1321,14 +1294,13 @@ func TestTaskUpdate(t *testing.T) {
 }
 
 func TestTaskUpdateNoCert(t *testing.T) {
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	testTask1 := &api.Task{
 		ID: "testTask1",
 	}
-	err = gd.Store.Update(func(tx store.Tx) error {
+	err := gd.Store.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateTask(tx, testTask1))
 		return nil
 	})
@@ -1351,9 +1323,7 @@ func TestTaskUpdateNoCert(t *testing.T) {
 }
 
 func TestSession(t *testing.T) {
-	cfg := DefaultConfig()
-	gd, err := startDispatcher(cfg)
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
@@ -1366,9 +1336,7 @@ func TestSession(t *testing.T) {
 }
 
 func TestSessionNoCert(t *testing.T) {
-	cfg := DefaultConfig()
-	gd, err := startDispatcher(cfg)
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	stream, err := gd.Clients[2].Session(context.Background(), &api.SessionRequest{})
@@ -1744,8 +1712,7 @@ var taskStatesInOrder = []api.TaskState{
 func TestOldTasks(t *testing.T) {
 	t.Parallel()
 
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	var expectedSessionID string
@@ -1842,8 +1809,7 @@ func TestOldTasks(t *testing.T) {
 func TestOldTasksStatusChange(t *testing.T) {
 	t.Parallel()
 
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	var expectedSessionID string
@@ -1932,8 +1898,7 @@ func TestOldTasksStatusChange(t *testing.T) {
 }
 
 func TestOldTasksBatch(t *testing.T) {
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	var expectedSessionID string
@@ -1989,8 +1954,7 @@ func TestOldTasksBatch(t *testing.T) {
 }
 
 func TestOldTasksNoCert(t *testing.T) {
-	gd, err := startDispatcher(DefaultConfig())
-	assert.NoError(t, err)
+	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
 	stream, err := gd.Clients[2].Tasks(context.Background(), &api.TasksRequest{})
@@ -2004,8 +1968,7 @@ func TestOldTasksNoCert(t *testing.T) {
 func TestClusterUpdatesSendMessages(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.RateLimitPeriod = 0
-	gd, err := startDispatcher(cfg)
-	require.NoError(t, err)
+	gd := startDispatcher(t, cfg)
 	defer gd.Close()
 
 	stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
