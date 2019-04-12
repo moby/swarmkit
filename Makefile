@@ -45,7 +45,6 @@ setup: ## install dependencies
 	# TODO(stevvooe): Install these from the vendor directory
 	@go get -u github.com/golang/lint/golint
 	#@go get -u github.com/kisielk/errcheck
-	@go get -u github.com/golang/mock/mockgen
 	@go get -u github.com/gordonklaus/ineffassign
 	@go get -u github.com/client9/misspell/cmd/misspell
 	@go get -u github.com/lk4d4/vndr
@@ -81,15 +80,15 @@ fmt: ## run go fmt
 
 lint: ## run go lint
 	@echo "🐳 $@"
-	@test -z "$$(golint ./... | grep -v vendor/ | grep -v ".pb.go:" | grep -v ".mock.go" | tee /dev/stderr)"
+	@test -z "$$(golint ./... | grep -v vendor/ | grep -v ".pb.go:" | tee /dev/stderr)"
 
 ineffassign: ## run ineffassign
 	@echo "🐳 $@"
-	@test -z "$$(ineffassign . | grep -v vendor/ | grep -v ".pb.go:" | grep -v ".mock.go" | tee /dev/stderr)"
+	@test -z "$$(ineffassign . | grep -v vendor/ | grep -v ".pb.go:" | tee /dev/stderr)"
 
 #errcheck: ## run go errcheck
 #	@echo "🐳 $@"
-#	@test -z "$$(errcheck ./... | grep -v vendor/ | grep -v ".pb.go:" | grep -v ".mock.go" | tee /dev/stderr)"
+#	@test -z "$$(errcheck ./... | grep -v vendor/ | grep -v ".pb.go:" | tee /dev/stderr)"
 
 build: ## build the go packages
 	@echo "🐳 $@"
