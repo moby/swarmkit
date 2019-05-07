@@ -29,7 +29,6 @@ import (
 	"github.com/moby/swarmkit/v2/ioutils"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager"
-	"github.com/moby/swarmkit/v2/manager/allocator/cnmallocator"
 	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/moby/swarmkit/v2/remotes"
 	"github.com/moby/swarmkit/v2/xnet"
@@ -106,8 +105,19 @@ type Config struct {
 	// for connections to the remote API (including the raft service).
 	AdvertiseRemoteAPI string
 
-	// NetworkConfig stores network related config for the cluster
-	NetworkConfig *cnmallocator.NetworkConfig
+	// DefaultAddrPool specifies default subnet pool for global scope networks
+	// This duplicates information found in a type deeper in the stack
+	// (manager/allocation/cnmallocator.NetworkConfig) but is brought up to
+	// the top level in this config file to avoid creating a dependency from
+	// this node package to any deeper levels.
+	DefaultAddrPool []string
+
+	// SubnetSize specifies the subnet size of the networks created from
+	// the default subnet pool
+	SubnetSize uint32
+
+	// VXLANUDPPort specifies the UDP port number for VXLAN traffic
+	VXLANUDPPort uint32
 
 	// Executor specifies the executor to use for the agent.
 	Executor exec.Executor
@@ -1014,7 +1024,9 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 		PluginGetter:     n.config.PluginGetter,
 		RootCAPaths:      rootPaths,
 		FIPS:             n.config.FIPS,
-		NetworkConfig:    n.config.NetworkConfig,
+		DefaultAddrPool:  n.config.DefaultAddrPool,
+		SubnetSize:       n.config.SubnetSize,
+		VXLANUDPPort:     n.config.VXLANUDPPort,
 	})
 	if err != nil {
 		return false, err
