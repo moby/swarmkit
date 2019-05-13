@@ -209,6 +209,7 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 		PortBindings: c.portBindings(),
 		Init:         c.init(),
 		Isolation:    c.isolation(),
+		Capabilities: c.spec().Capabilities,
 	}
 
 	// The format of extra hosts on swarmkit is specified in:
@@ -442,7 +443,7 @@ func (c *containerConfig) resources() enginecontainer.Resources {
 	// set pids limit
 	pidsLimit := c.spec().PidsLimit
 	if pidsLimit > 0 {
-		resources.PidsLimit = pidsLimit
+		resources.PidsLimit = &pidsLimit
 	}
 
 	// If no limits are specified let the engine use its defaults.

@@ -190,7 +190,7 @@ func TestPidLimit(t *testing.T) {
 	expected := int64(10)
 	actual := hostConfig.PidsLimit
 
-	if expected != actual {
+	if expected != *actual {
 		t.Fatalf("expected %d, got %d", expected, actual)
 	}
 }
@@ -253,6 +253,26 @@ func TestIsolation(t *testing.T) {
 	expected := "hyperv"
 	actual := string(c.hostConfig().Isolation)
 	if actual != expected {
+		t.Fatalf("expected %s, got %s", expected, actual)
+	}
+}
+
+func TestCapabilities(t *testing.T) {
+	c := containerConfig{
+		task: &api.Task{
+			Spec: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{
+						Capabilities: []string{"CAP_NET_RAW", "CAP_SYS_CHROOT"},
+					},
+				},
+			},
+		},
+	}
+
+	expected := []string{"CAP_NET_RAW", "CAP_SYS_CHROOT"}
+	actual := c.hostConfig().Capabilities
+	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("expected %s, got %s", expected, actual)
 	}
 }

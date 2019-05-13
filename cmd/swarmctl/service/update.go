@@ -54,6 +54,13 @@ var (
 				return err
 			}
 
+			if err := flagparser.ParseAddCapability(cmd, spec, "add-capability"); err != nil {
+				return err
+			}
+			if err := flagparser.ParseRemoveCapability(cmd, spec, "rm-capability"); err != nil {
+				return err
+			}
+
 			if reflect.DeepEqual(spec, &service.Spec) {
 				return errors.New("no changes detected")
 			}
@@ -77,6 +84,8 @@ func init() {
 	updateCmd.Flags().StringSlice("rm-secret", nil, "remove a secret from the service")
 	updateCmd.Flags().StringSlice("add-config", nil, "add a new config to the service")
 	updateCmd.Flags().StringSlice("rm-config", nil, "remove a config from the service")
+	updateCmd.Flags().StringSlice("add-capability", nil, "add a new capability to the service")
+	updateCmd.Flags().StringSlice("rm-capability", nil, "remove a capability from the service")
 	updateCmd.Flags().Bool("force", false, "force tasks to restart even if nothing has changed")
 	flagparser.AddServiceFlags(updateCmd.Flags())
 }
