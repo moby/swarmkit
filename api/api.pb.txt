@@ -7144,6 +7144,51 @@ file {
     }
   }
   message_type {
+    name: "ListServiceStatusesRequest"
+    field {
+      name: "services"
+      number: 1
+      label: LABEL_REPEATED
+      type: TYPE_STRING
+      json_name: "services"
+    }
+  }
+  message_type {
+    name: "ListServiceStatusesResponse"
+    field {
+      name: "statuses"
+      number: 1
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.ListServiceStatusesResponse.ServiceStatus"
+      json_name: "statuses"
+    }
+    nested_type {
+      name: "ServiceStatus"
+      field {
+        name: "service_id"
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "serviceId"
+      }
+      field {
+        name: "desired_tasks"
+        number: 2
+        label: LABEL_OPTIONAL
+        type: TYPE_UINT64
+        json_name: "desiredTasks"
+      }
+      field {
+        name: "running_tasks"
+        number: 3
+        label: LABEL_OPTIONAL
+        type: TYPE_UINT64
+        json_name: "runningTasks"
+      }
+    }
+  }
+  message_type {
     name: "CreateNetworkRequest"
     field {
       name: "spec"
@@ -8164,6 +8209,16 @@ file {
       name: "RemoveService"
       input_type: ".docker.swarmkit.v1.RemoveServiceRequest"
       output_type: ".docker.swarmkit.v1.RemoveServiceResponse"
+      options {
+        73626345 {
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "ListServiceStatuses"
+      input_type: ".docker.swarmkit.v1.ListServiceStatusesRequest"
+      output_type: ".docker.swarmkit.v1.ListServiceStatusesResponse"
       options {
         73626345 {
           1: "swarm-manager"

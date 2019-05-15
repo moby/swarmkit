@@ -3,11 +3,13 @@ package controlapi
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/identity"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/testutils"
 	gogotypes "github.com/gogo/protobuf/types"
@@ -1382,4 +1384,217 @@ func TestListServices(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r.Services))
+}
+
+func TestListServiceStatuses(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+
+	// Test listing no services is empty and has no error
+	r, err := ts.Client.ListServiceStatuses(
+		context.Background(),
+		&api.ListServiceStatusesRequest{},
+	)
+	assert.NoError(t, err, "error when listing no services against an empty store")
+	assert.NotNil(t, r, "response against an empty store was nil")
+	assert.Empty(t, r.Statuses, "response statuses was not empty")
+
+	// Test listing services that do not exist. We should still get a response,
+	// but both desired and actual should be 0
+	r, err = ts.Client.ListServiceStatuses(
+		context.Background(),
+		&api.ListServiceStatusesRequest{Services: []string{"foo"}},
+	)
+	assert.NoError(t, err, "error listing services that do not exist")
+	assert.NotNil(t, r, "response for nonexistant services was nil")
+	assert.Len(t, r.Statuses, 1, "expected 1 status")
+	assert.Equal(
+		t, r.Statuses[0],
+		&api.ListServiceStatusesResponse_ServiceStatus{ServiceID: "foo"},
+	)
+
+	// now test that listing service statuses actually works.
+
+	// justRight will be converged
+	justRight := createService(t, ts, "justRight", "image", 3)
+	// notEnough will not have enough tasks in running
+	notEnough := createService(t, ts, "notEnough", "image", 7)
+
+	// no shortcut for creating a global service
+	globalSpec := createSpec("global", "image", 0)
+	globalSpec.Mode = &api.ServiceSpec_Global{Global: &api.GlobalService{}}
+
+	svcResp, svcErr := ts.Client.CreateService(
+		context.Background(), &api.CreateServiceRequest{Spec: globalSpec},
+	)
+	assert.NoError(t, svcErr)
+
+	// global will have the right number of tasks
+	global := svcResp.Service
+
+	global2Spec := globalSpec.Copy()
+	global2Spec.Annotations.Name = "global2"
+
+	svcResp, svcErr = ts.Client.CreateService(
+		context.Background(), &api.CreateServiceRequest{Spec: global2Spec},
+	)
+	assert.NoError(t, svcErr)
+
+	// global2 will not have enough tasks
+	global2 := svcResp.Service
+
+	// over will have too many tasks running (as would be seen in a scale-down
+	over := createService(t, ts, "over", "image", 2)
+
+	// now create some tasks. use a quick helper function for this
+	createTask := func(s *api.Service, actual api.TaskState, desired api.TaskState) *api.Task {
+		task := &api.Task{
+			ID:           identity.NewID(),
+			DesiredState: desired,
+			Spec:         s.Spec.Task,
+			Status: api.TaskStatus{
+				State: actual,
+			},
+			ServiceID: s.ID,
+		}
+
+		err := ts.Store.Update(func(tx store.Tx) error {
+			return store.CreateTask(tx, task)
+		})
+		assert.NoError(t, err)
+		return task
+	}
+
+	// alias task states for brevity
+	running := api.TaskStateRunning
+	shutdown := api.TaskStateShutdown
+	newt := api.TaskStateNew
+	failed := api.TaskStateFailed
+
+	// create 3 running tasks for justRight
+	for i := 0; i < 3; i++ {
+		createTask(justRight, running, running)
+	}
+	// create 2 failed and 2 shutdown tasks
+	for i := 0; i < 2; i++ {
+		createTask(justRight, failed, shutdown)
+		createTask(justRight, shutdown, shutdown)
+	}
+
+	// create 4 tasks for notEnough
+	for i := 0; i < 4; i++ {
+		createTask(notEnough, running, running)
+	}
+	// create 3 tasks in new state
+	for i := 0; i < 3; i++ {
+		createTask(notEnough, newt, running)
+	}
+	// create 1 failed and 1 shutdown task
+	createTask(notEnough, failed, shutdown)
+	createTask(notEnough, shutdown, shutdown)
+
+	// create 2 tasks out of 2 desired for global
+	for i := 0; i < 2; i++ {
+		createTask(global, running, running)
+	}
+	// create 3 shutdown tasks for global
+	for i := 0; i < 3; i++ {
+		createTask(global, shutdown, shutdown)
+	}
+
+	// create 4 out of 5 tasks for global2
+	for i := 0; i < 4; i++ {
+		createTask(global2, running, running)
+	}
+	createTask(global2, newt, running)
+
+	// create 6 failed tasks
+	for i := 0; i < 6; i++ {
+		createTask(global2, failed, shutdown)
+	}
+
+	// create 4 out of 2 tasks. no shutdown or failed tasks.  this would be the
+	// case if you did a call immediately after updating the service, before
+	// the orchestrator had updated the task desired states
+	for i := 0; i < 4; i++ {
+		createTask(over, running, running)
+	}
+
+	// now, create a service that has already been deleted, but has dangling
+	// tasks
+	goneSpec := createSpec("gone", "image", 3)
+	gone := &api.Service{
+		ID:   identity.NewID(),
+		Spec: *goneSpec,
+	}
+
+	for i := 0; i < 3; i++ {
+		createTask(gone, running, shutdown)
+		createTask(gone, shutdown, shutdown)
+	}
+
+	// now list service statuses
+	r, err = ts.Client.ListServiceStatuses(
+		context.Background(),
+		&api.ListServiceStatusesRequest{Services: []string{
+			justRight.ID, notEnough.ID, global.ID, global2.ID, over.ID, gone.ID,
+		}},
+	)
+	assert.NoError(t, err, "error getting service statuses")
+	assert.NotNil(t, r, "service status response is nil")
+	assert.Len(t, r.Statuses, 6)
+
+	expected := map[string]*api.ListServiceStatusesResponse_ServiceStatus{
+		"justRight": {
+			ServiceID:    justRight.ID,
+			DesiredTasks: 3,
+			RunningTasks: 3,
+		},
+		"notEnough": {
+			ServiceID:    notEnough.ID,
+			DesiredTasks: 7,
+			RunningTasks: 4,
+		},
+		"global": {
+			ServiceID:    global.ID,
+			DesiredTasks: 2,
+			RunningTasks: 2,
+		},
+		"global2": {
+			ServiceID:    global2.ID,
+			DesiredTasks: 5,
+			RunningTasks: 4,
+		},
+		"over": {
+			ServiceID:    over.ID,
+			DesiredTasks: 2,
+			RunningTasks: 4,
+		},
+		"gone": {
+			ServiceID:    gone.ID,
+			DesiredTasks: 0,
+			RunningTasks: 3,
+		},
+	}
+
+	// compare expected and actual values. make sure all are used by keeping
+	// track of which we visited. i borrowed this pattern from
+	// assert.ElementsMatch, which is in a newer version of that library
+	visited := make([]bool, len(expected))
+	for name, expect := range expected {
+		found := false
+		for i := 0; i < len(r.Statuses); i++ {
+			if visited[i] {
+				continue
+			}
+			if reflect.DeepEqual(expect, r.Statuses[i]) {
+				visited[i] = true
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("did not find status for %v in response", name)
+		}
+	}
 }
