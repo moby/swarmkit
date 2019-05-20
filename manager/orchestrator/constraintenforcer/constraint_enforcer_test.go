@@ -8,6 +8,7 @@ import (
 	"github.com/docker/swarmkit/manager/state"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConstraintEnforcer(t *testing.T) {
@@ -167,4 +168,111 @@ func TestConstraintEnforcer(t *testing.T) {
 	shutdown3 := testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, "id4", shutdown3.ID)
 	assert.Equal(t, api.TaskStateRejected, shutdown3.Status.State)
+}
+
+// TestOutdatedPlacementConstraints tests the following scenario: If a task is
+// associacted with a service then we must use the constraints from the current
+// service spec rather than the constraints from the task spec because they may
+// be outdated. This will happen if the service was previously updated in a way
+// which only changes the placement constraints and the node matched the
+// placement constraints both before and after that update. In the case of such
+// updates, the tasks are not considered "dirty" and are not restarted but it
+// will mean that the task spec's placement constraints are outdated. Consider
+// this example:
+// - A service is created with no constraints and a task is scheduled
+//   to a node.
+// - The node is updated to add a label, this doesn't affect the task
+//   on that node because it has no constraints.
+// - The service is updated to add a node label constraint which
+//   matches the label which was just added to the node. The updater
+//   does not shut down the task because the only the constraints have
+//   changed and the node still matches the updated constraints.
+// This test initializes a new in-memory store with the expected state from
+// above, starts a new constraint enforcer, and then updates the node to remove
+// the node label. Since the node no longer satisfies the placement constraints
+// of the service spec, the task should be shutdown despite the fact that the
+// task's own spec still has the original placement constraints.
+func TestOutdatedTaskPlacementConstraints(t *testing.T) {
+	node := &api.Node{
+		ID: "id0",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node1",
+				Labels: map[string]string{
+					"foo": "bar",
+				},
+			},
+			Availability: api.NodeAvailabilityActive,
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+		Role: api.NodeRoleWorker,
+	}
+
+	service := &api.Service{
+		ID: "id1",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "service1",
+			},
+			Task: api.TaskSpec{
+				Placement: &api.Placement{
+					Constraints: []string{
+						"node.labels.foo == bar",
+					},
+				},
+			},
+		},
+	}
+
+	task := &api.Task{
+		ID: "id2",
+		Spec: api.TaskSpec{
+			Placement: nil, // Note: No placement constraints.
+		},
+		ServiceID: service.ID,
+		NodeID:    node.ID,
+		Status: api.TaskStatus{
+			State: api.TaskStateRunning,
+		},
+		DesiredState: api.TaskStateRunning,
+	}
+
+	s := store.NewMemoryStore(nil)
+	require.NotNil(t, s)
+	defer s.Close()
+
+	require.NoError(t, s.Update(func(tx store.Tx) error {
+		// Prepoulate node, service, and task.
+		for _, err := range []error{
+			store.CreateNode(tx, node),
+			store.CreateService(tx, service),
+			store.CreateTask(tx, task),
+		} {
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}))
+
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
+	defer cancel()
+
+	constraintEnforcer := New(s)
+	defer constraintEnforcer.Stop()
+
+	go constraintEnforcer.Run()
+
+	// Update the node to remove the node label.
+	require.NoError(t, s.Update(func(tx store.Tx) error {
+		node = store.GetNode(tx, node.ID)
+		delete(node.Spec.Annotations.Labels, "foo")
+		return store.UpdateNode(tx, node)
+	}))
+
+	// The task should be rejected immediately.
+	task = testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, api.TaskStateRejected, task.Status.State)
 }
