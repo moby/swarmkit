@@ -269,6 +269,7 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 	assert.NoError(t, err)
 
 	type Data struct {
+		name   string
 		input  *api.Service
 		expect bool
 	}
@@ -276,6 +277,7 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 	testCases := []Data{
 		{
 			// both Endpoint and Spec.Endpoint are nil
+			name: "NilEndpointAndSpec",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: nil,
@@ -286,6 +288,7 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 		},
 		{
 			// non host mode does not impact
+			name: "NonHostModePort",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: &api.EndpointSpec{
@@ -305,6 +308,7 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 		},
 		{
 			// publish mode is different
+			name: "PublishModeDifferent",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: &api.EndpointSpec{
@@ -333,6 +337,7 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 			expect: true,
 		},
 		{
+			name: "NothingChanged",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: &api.EndpointSpec{
@@ -365,6 +370,7 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 			// published port not specified
 			// we are not in charge of allocating one, for us it
 			// is as allocated, we need to skip the allocation
+			name: "PublishPortNotSpecified",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: &api.EndpointSpec{
@@ -394,6 +400,7 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 		{
 			// one published port not specified, the other specified
 			// we are still in charge of allocating one
+			name: "OnePublishPortSpecifiedButDone",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: &api.EndpointSpec{
@@ -436,6 +443,7 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 		{
 			// one published port not specified, the other specified
 			// we are still in charge of allocating one and we did.
+			name: "OnePublishPortSpecifiedButDone",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: &api.EndpointSpec{
@@ -478,8 +486,10 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 		},
 	}
 	for _, singleTest := range testCases {
-		actual := pa.hostPublishPortsNeedUpdate(singleTest.input)
-		assert.Equal(t, singleTest.expect, actual)
+		t.Run(singleTest.name, func(t *testing.T) {
+			actual := pa.hostPublishPortsNeedUpdate(singleTest.input)
+			assert.Equal(t, singleTest.expect, actual)
+		})
 	}
 }
 
@@ -488,6 +498,7 @@ func TestIsPortsAllocated(t *testing.T) {
 	assert.NoError(t, err)
 
 	type Data struct {
+		name   string
 		input  *api.Service
 		expect bool
 	}
@@ -495,6 +506,7 @@ func TestIsPortsAllocated(t *testing.T) {
 	testCases := []Data{
 		{
 			// both Endpoint and Spec.Endpoint are nil
+			name: "BothNil",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: nil,
@@ -505,6 +517,7 @@ func TestIsPortsAllocated(t *testing.T) {
 		},
 		{
 			// Endpoint is non-nil and Spec.Endpoint is nil
+			name: "NilSpec",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: &api.EndpointSpec{
@@ -524,6 +537,7 @@ func TestIsPortsAllocated(t *testing.T) {
 		},
 		{
 			// Endpoint is nil and Spec.Endpoint is non-nil
+			name: "NilEndpoint",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: nil,
@@ -543,6 +557,7 @@ func TestIsPortsAllocated(t *testing.T) {
 		},
 		{
 			// Endpoint and Spec.Endpoint have different length
+			name: "DifferentLengths",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: &api.EndpointSpec{
@@ -577,6 +592,7 @@ func TestIsPortsAllocated(t *testing.T) {
 		},
 		{
 			// Endpoint and Spec.Endpoint have different TargetPort
+			name: "DifferentTargetPort",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: &api.EndpointSpec{
@@ -605,6 +621,7 @@ func TestIsPortsAllocated(t *testing.T) {
 		},
 		{
 			// Endpoint and Spec.Endpoint have different PublishedPort
+			name: "DifferentPublishedPort",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: &api.EndpointSpec{
@@ -633,6 +650,7 @@ func TestIsPortsAllocated(t *testing.T) {
 		},
 		{
 			// Endpoint and Spec.Endpoint are the same and PublishedPort is 0
+			name: "NotYetAssignedPublishedPort",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: &api.EndpointSpec{
@@ -661,6 +679,7 @@ func TestIsPortsAllocated(t *testing.T) {
 		},
 		{
 			// Endpoint and Spec.Endpoint are the same and PublishedPort is non-0
+			name: "NonzeroPublishedPort",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: &api.EndpointSpec{
@@ -689,6 +708,7 @@ func TestIsPortsAllocated(t *testing.T) {
 		},
 		{
 			// Endpoint and Spec.Endpoint are the same except PublishedPort, and PublishedPort in Endpoint is non-0
+			name: "AlreadyAssignedPublishedPort",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: &api.EndpointSpec{
@@ -717,6 +737,7 @@ func TestIsPortsAllocated(t *testing.T) {
 		},
 		{
 			// Endpoint and Spec.Endpoint are the same except the ports are in different order
+			name: "DifferentOrders",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: &api.EndpointSpec{
@@ -772,6 +793,7 @@ func TestIsPortsAllocated(t *testing.T) {
 		{
 			// Endpoint and Spec.Endpoint have multiple PublishedPort
 			// See docker/docker#29730
+			name: "MultiplePublishedPort",
 			input: &api.Service{
 				Spec: api.ServiceSpec{
 					Endpoint: &api.EndpointSpec{
@@ -826,11 +848,40 @@ func TestIsPortsAllocated(t *testing.T) {
 			},
 			expect: true,
 		},
+		{
+			// one published host port is removed and another is added
+			name: "DifferentTargetPortHostMode",
+			input: &api.Service{
+				Spec: api.ServiceSpec{
+					Endpoint: &api.EndpointSpec{
+						Ports: []*api.PortConfig{
+							{
+								Protocol:    api.ProtocolTCP,
+								TargetPort:  99,
+								PublishMode: api.PublishModeHost,
+							},
+						},
+					},
+				},
+				Endpoint: &api.Endpoint{
+					Ports: []*api.PortConfig{
+						{
+							Protocol:    api.ProtocolTCP,
+							TargetPort:  77,
+							PublishMode: api.PublishModeHost,
+						},
+					},
+				},
+			},
+			expect: false,
+		},
 	}
 
 	for _, singleTest := range testCases {
-		expect := pa.isPortsAllocated(singleTest.input)
-		assert.Equal(t, expect, singleTest.expect)
+		t.Run(singleTest.name, func(t *testing.T) {
+			expect := pa.isPortsAllocated(singleTest.input)
+			assert.Equal(t, expect, singleTest.expect)
+		})
 	}
 }
 
