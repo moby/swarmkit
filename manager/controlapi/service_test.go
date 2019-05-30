@@ -193,11 +193,11 @@ func TestValidateResources(t *testing.T) {
 
 func TestValidateResourceRequirements(t *testing.T) {
 	bad := []*api.ResourceRequirements{
-		{Limits: &api.Resources{MemoryBytes: 1}},
+		{Limits: &api.Limits{Resources: &api.Resources{MemoryBytes: 1}}},
 		{Reservations: &api.Resources{MemoryBytes: 1}},
 	}
 	good := []*api.ResourceRequirements{
-		{Limits: &api.Resources{NanoCPUs: 1e9}},
+		{Limits: &api.Limits{Resources: &api.Resources{NanoCPUs: 1e9}}},
 		{Reservations: &api.Resources{NanoCPUs: 1e9}},
 	}
 	for _, b := range bad {

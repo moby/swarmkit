@@ -61,9 +61,12 @@ func parseResource(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			spec.Task.Resources = &api.ResourceRequirements{}
 		}
 		if spec.Task.Resources.Limits == nil {
-			spec.Task.Resources.Limits = &api.Resources{}
+			spec.Task.Resources.Limits = &api.Limits{}
 		}
-		if err := parseResourceMemory(flags, spec.Task.Resources.Limits, "memory-limit"); err != nil {
+		if spec.Task.Resources.Limits.Resources == nil {
+			spec.Task.Resources.Limits.Resources = &api.Resources{}
+		}
+		if err := parseResourceMemory(flags, spec.Task.Resources.Limits.Resources, "memory-limit"); err != nil {
 			return err
 		}
 	}
@@ -85,9 +88,12 @@ func parseResource(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			spec.Task.Resources = &api.ResourceRequirements{}
 		}
 		if spec.Task.Resources.Limits == nil {
-			spec.Task.Resources.Limits = &api.Resources{}
+			spec.Task.Resources.Limits = &api.Limits{}
 		}
-		if err := parseResourceCPU(flags, spec.Task.Resources.Limits, "cpu-limit"); err != nil {
+		if spec.Task.Resources.Limits.Resources == nil {
+			spec.Task.Resources.Limits.Resources = &api.Resources{}
+		}
+		if err := parseResourceCPU(flags, spec.Task.Resources.Limits.Resources, "cpu-limit"); err != nil {
 			return err
 		}
 	}

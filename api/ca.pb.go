@@ -182,6 +182,7 @@
 		DiscreteGenericResource
 		GenericResource
 		Resources
+		Limits
 		ResourceRequirements
 		Platform
 		PluginDescription

@@ -451,18 +451,18 @@ func (c *containerConfig) resources() enginecontainer.Resources {
 	// TODO(aluzzardi): We might want to set some limits anyway otherwise
 	// "unlimited" tasks will step over the reservation of other tasks.
 	r := c.task.Spec.Resources
-	if r == nil || r.Limits == nil {
+	if r == nil || r.Limits == nil || r.Limits.Resources == nil {
 		return resources
 	}
 
-	if r.Limits.MemoryBytes > 0 {
-		resources.Memory = r.Limits.MemoryBytes
+	if r.Limits.Resources.MemoryBytes > 0 {
+		resources.Memory = r.Limits.Resources.MemoryBytes
 	}
 
-	if r.Limits.NanoCPUs > 0 {
+	if r.Limits.Resources.NanoCPUs > 0 {
 		// CPU Period must be set in microseconds.
 		resources.CPUPeriod = int64(cpuQuotaPeriod / time.Microsecond)
-		resources.CPUQuota = r.Limits.NanoCPUs * resources.CPUPeriod / 1e9
+		resources.CPUQuota = r.Limits.Resources.NanoCPUs * resources.CPUPeriod / 1e9
 	}
 
 	return resources

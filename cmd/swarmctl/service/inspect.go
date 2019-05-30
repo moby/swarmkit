@@ -87,7 +87,16 @@ func printServiceSummary(service *api.Service, running int) {
 		}
 		if res.Limits != nil {
 			fmt.Fprintln(w, "    Limits:\t")
-			printResources(w, res.Limits)
+			if res.Limits.Resources != nil {
+				printResources(w, res.Limits.Resources)
+			}
+			if res.Limits.SwapBytes != nil {
+				swapSize := "unlimited"
+				if res.Limits.SwapBytes.Value >= 0 {
+					swapSize = humanize.IBytes(uint64(res.Limits.SwapBytes.Value))
+				}
+				fmt.Fprintf(w, "      Swap\t: %s\n", swapSize)
+			}
 		}
 	}
 	if len(service.Spec.Task.Networks) > 0 {

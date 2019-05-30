@@ -53,8 +53,10 @@ func validateResourceRequirements(r *api.ResourceRequirements) error {
 	if r == nil {
 		return nil
 	}
-	if err := validateResources(r.Limits); err != nil {
-		return err
+	if r.Limits != nil {
+		if err := validateResources(r.Limits.Resources); err != nil {
+			return err
+		}
 	}
 	return validateResources(r.Reservations)
 }
