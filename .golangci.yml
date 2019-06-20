@@ -1,0 +1,14 @@
+run:
+  tests: false
+linters: 
+  disable-all: true
+  enable:
+    - misspell
+    - gofmt
+    - goimports
+    - golint
+    - ineffassign
+    - deadcode
+    - unconvert
+    - govet
+      
