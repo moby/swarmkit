@@ -39,8 +39,8 @@ version/version.go:
 setup: ## install dependencies
 	@echo "🐳 $@"
 	# TODO(stevvooe): Install these from the vendor directory
-	@go get -u github.com/alecthomas/gometalinter
-	@gometalinter --install
+	# install golangci-lint version 1.17.1 to ./bin/golangci-lint
+	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.17.1
 	@go get -u github.com/lk4d4/vndr
 	@go get -u github.com/stevvooe/protobuild
 
@@ -65,7 +65,7 @@ checkprotos: generate ## check if protobufs needs to be generated again
 check: fmt-proto
 check: ## Run various source code validation tools
 	@echo "🐳 $@"
-	@gometalinter ./...
+	@./bin/golangci-lint run
 
 .PHONY: fmt-proto
 fmt-proto:
