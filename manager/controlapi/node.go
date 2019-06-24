@@ -260,24 +260,35 @@ func orphanNodeTasks(tx store.Tx, nodeID string) error {
 		return err
 	}
 	for _, task := range tasks {
-		// this code was backported from a later version. in the later version,
-		// gogotypes has a function TimestampNow, which returns a
-		// gogotypes.Timestamp for the current time. this version of the
-		// swarmkit code uses an earlier version of gogotypes, which means we
-		// don't have access to that function. however, this code is
-		// esssentially equivalent.
+		// this operation must occur within the same transaction boundary. If
+		// we cannot accomplish this task orphaning in the same transaction, we
+		// could crash or die between transactions and not get a chance to do
+		// this. however, in cases were there is an exceptionally large number
+		// of tasks for a node, this may cause the transaction to exceed the
+		// max message size.
 		//
-		// we're ignoring the error value of TimestampProto, because it's
-		// probably a catastrophic error if time.Now doesn't return a valid
-		// time, and gogotypes.TimestampNow just panics if the conversion
-		// fails anyway.
-		timestamp, _ := gogotypes.TimestampProto(time.Now())
-		task.Status = api.TaskStatus{
-			Timestamp: timestamp,
-			State:     api.TaskStateOrphaned,
-			Message:   "Task belonged to a node that has been deleted",
+		// therefore, we restrict updating to only tasks in a non-terminal
+		// state. Tasks in a terminal state do not need to be updated.
+		if task.Status.State < api.TaskStateCompleted {
+			// this code was backported from a later version. in the later version,
+			// gogotypes has a function TimestampNow, which returns a
+			// gogotypes.Timestamp for the current time. this version of the
+			// swarmkit code uses an earlier version of gogotypes, which means we
+			// don't have access to that function. however, this code is
+			// esssentially equivalent.
+			//
+			// we're ignoring the error value of TimestampProto, because it's
+			// probably a catastrophic error if time.Now doesn't return a valid
+			// time, and gogotypes.TimestampNow just panics if the conversion
+			// fails anyway.
+			timestamp, _ := gogotypes.TimestampProto(time.Now())
+			task.Status = api.TaskStatus{
+				Timestamp: timestamp,
+				State:     api.TaskStateOrphaned,
+				Message:   "Task belonged to a node that has been deleted",
+			}
+			store.UpdateTask(tx, task)
 		}
-		store.UpdateTask(tx, task)
 	}
 	return nil
 }
