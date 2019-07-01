@@ -4305,6 +4305,28 @@ file {
       }
     }
   }
+  message_type {
+    name: "JobStatus"
+    field {
+      name: "job_iteration"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Version"
+      options {
+        65001: 0
+      }
+      json_name: "jobIteration"
+    }
+    field {
+      name: "last_execution"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".google.protobuf.Timestamp"
+      json_name: "lastExecution"
+    }
+  }
   enum_type {
     name: "ResourceType"
     value {
@@ -4614,6 +4636,24 @@ file {
       json_name: "global"
     }
     field {
+      name: "replicated_job"
+      number: 10
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.ReplicatedJob"
+      oneof_index: 0
+      json_name: "replicatedJob"
+    }
+    field {
+      name: "global_job"
+      number: 11
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.GlobalJob"
+      oneof_index: 0
+      json_name: "globalJob"
+    }
+    field {
       name: "update"
       number: 6
       label: LABEL_OPTIONAL
@@ -4664,6 +4704,26 @@ file {
   }
   message_type {
     name: "GlobalService"
+  }
+  message_type {
+    name: "ReplicatedJob"
+    field {
+      name: "max_concurrent"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "maxConcurrent"
+    }
+    field {
+      name: "total_completions"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "totalCompletions"
+    }
+  }
+  message_type {
+    name: "GlobalJob"
   }
   message_type {
     name: "TaskSpec"
@@ -5949,6 +6009,14 @@ file {
       json_name: "updateStatus"
     }
     field {
+      name: "job_status"
+      number: 12
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.JobStatus"
+      json_name: "jobStatus"
+    }
+    field {
       name: "pending_delete"
       number: 7
       label: LABEL_OPTIONAL
@@ -6147,6 +6215,14 @@ file {
       type: TYPE_MESSAGE
       type_name: ".docker.swarmkit.v1.GenericResource"
       json_name: "assignedGenericResources"
+    }
+    field {
+      name: "job_iteration"
+      number: 16
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Version"
+      json_name: "jobIteration"
     }
     options {
       70001 {
