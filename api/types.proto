@@ -1115,3 +1115,18 @@ message Privileges {
 	}
 	SELinuxContext selinux_context = 2 [(gogoproto.customname) = "SELinuxContext"];
 }
+
+// JobStatus indicates the status of a Service that is in one of the Job modes.
+message JobStatus {
+	// JobIteration is the count of how many times the Job has been excecuted,
+	// successfully or otherwise. "Executed" refers to the job as a whole being
+	// started, not to the individual Tasks being launched. This is used to
+	// disambiguate which Tasks belong to which iteration of a Job.
+	Version job_iteration = 1 [(gogoproto.nullable) = false];
+
+	// LastExecution is the time that the job was last executed. This is set by
+	// the orchestrator in the same transaction that JobIteration is incremented,
+	// so that we can affirmatively determine which tasks were created as part of
+	// the last execution.
+	google.protobuf.Timestamp last_execution = 2;
+}
