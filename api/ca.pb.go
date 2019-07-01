@@ -165,6 +165,8 @@
 		ServiceSpec
 		ReplicatedService
 		GlobalService
+		ReplicatedJob
+		GlobalJob
 		TaskSpec
 		ResourceReference
 		GenericRuntimeSpec
@@ -231,6 +233,7 @@
 		MaybeEncryptedRecord
 		RootRotation
 		Privileges
+		JobStatus
 		Object
 		SelectBySlot
 		SelectByCustom
