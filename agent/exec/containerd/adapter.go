@@ -310,7 +310,7 @@ func (c *containerAdapter) shutdown(ctx context.Context) error {
 
 	var (
 		sig     syscall.Signal
-		timeout = time.Duration(10 * time.Second)
+		timeout = 10 * time.Second
 		err     error
 	)
 
