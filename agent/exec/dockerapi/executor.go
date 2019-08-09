@@ -3,6 +3,7 @@ package dockerapi
 import (
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/docker/docker/api/types/filters"
 	engineapi "github.com/docker/docker/client"
@@ -11,7 +12,6 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"golang.org/x/net/context"
-	"sync"
 )
 
 type executor struct {
