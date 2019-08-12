@@ -1685,7 +1685,7 @@ func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher
 			}
 			streamWrapper := Dispatcher_SessionServerWrapper{
 				Dispatcher_SessionServer: stream,
-				ctx: ctx,
+				ctx:                      ctx,
 			}
 			return p.local.Session(r, streamWrapper)
 		}
@@ -1806,7 +1806,7 @@ func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_Tas
 			}
 			streamWrapper := Dispatcher_TasksServerWrapper{
 				Dispatcher_TasksServer: stream,
-				ctx: ctx,
+				ctx:                    ctx,
 			}
 			return p.local.Tasks(r, streamWrapper)
 		}
@@ -1857,7 +1857,7 @@ func (p *raftProxyDispatcherServer) Assignments(r *AssignmentsRequest, stream Di
 			}
 			streamWrapper := Dispatcher_AssignmentsServerWrapper{
 				Dispatcher_AssignmentsServer: stream,
-				ctx: ctx,
+				ctx:                          ctx,
 			}
 			return p.local.Assignments(r, streamWrapper)
 		}

@@ -1,0 +1,9 @@
+version: "2"
+
+options:
+  verbose: true
+syncs:
+  # should stay the same as the volume name used in `containerized.mk`'s `run` target
+  swarmkit-sync:
+    src: '.'
+    sync_excludes: ['_obj', '_test', 'bin']

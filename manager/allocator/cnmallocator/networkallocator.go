@@ -805,8 +805,7 @@ func (na *cnmNetworkAllocator) resolveDriver(n *api.Network) (*networkDriver, er
 
 	d, drvcap := na.drvRegistry.Driver(dName)
 	if d == nil {
-		var err error
-		err = na.loadDriver(dName)
+		err := na.loadDriver(dName)
 		if err != nil {
 			return nil, err
 		}

@@ -17,7 +17,7 @@ import (
 	"github.com/docker/swarmkit/api/naming"
 	"github.com/docker/swarmkit/log"
 	gogotypes "github.com/gogo/protobuf/types"
-	"github.com/opencontainers/runtime-spec/specs-go"
+	specs "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -310,7 +310,7 @@ func (c *containerAdapter) shutdown(ctx context.Context) error {
 
 	var (
 		sig     syscall.Signal
-		timeout = time.Duration(10 * time.Second)
+		timeout = 10 * time.Second
 		err     error
 	)
 

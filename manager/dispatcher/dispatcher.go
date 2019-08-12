@@ -230,7 +230,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-			if err == nil && len(clusters) == 1 {
+			if len(clusters) == 1 {
 				heartbeatPeriod, err := gogotypes.DurationFromProto(clusters[0].Spec.Dispatcher.HeartbeatPeriod)
 				if err == nil && heartbeatPeriod > 0 {
 					d.config.HeartbeatPeriod = heartbeatPeriod
@@ -1055,14 +1055,10 @@ func (d *Dispatcher) moveTasksToOrphaned(nodeID string) error {
 				task.Status.State = api.TaskStateOrphaned
 			}
 
-			if err := batch.Update(func(tx store.Tx) error {
-				err := store.UpdateTask(tx, task)
-				if err != nil {
-					return err
-				}
-
-				return nil
-			}); err != nil {
+			err := batch.Update(func(tx store.Tx) error {
+				return store.UpdateTask(tx, task)
+			})
+			if err != nil {
 				return err
 			}
 
