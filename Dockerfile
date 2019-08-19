@@ -1,5 +1,5 @@
 # NOTE(dperny): for some reason, alpine was giving me trouble
-FROM golang:1.11.13-stretch
+FROM golang:1.12.9-stretch
 
 RUN apt-get update && apt-get install -y make git unzip
 
