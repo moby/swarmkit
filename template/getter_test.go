@@ -160,7 +160,7 @@ func TestTemplatedSecret(t *testing.T) {
 				Data:       []byte("SECRET_VAL={{secret \"unknowntarget\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
 			},
-			expectedErr: `failed to expand templated secret templatedsecret: template: expansion:1:13: executing "expansion" at <secret "unknowntarge...>: error calling secret: secret target unknowntarget not found`,
+			expectedErr: `failed to expand templated secret templatedsecret: template: expansion:1:13: executing "expansion" at <secret "unknowntarget">: error calling secret: secret target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -185,7 +185,7 @@ func TestTemplatedSecret(t *testing.T) {
 				Data:       []byte("CONFIG_VAL={{config \"unknowntarget\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
 			},
-			expectedErr: `failed to expand templated secret templatedsecret: template: expansion:1:13: executing "expansion" at <config "unknowntarge...>: error calling config: config target unknowntarget not found`,
+			expectedErr: `failed to expand templated secret templatedsecret: template: expansion:1:13: executing "expansion" at <config "unknowntarget">: error calling config: config target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -440,7 +440,7 @@ func TestTemplatedConfig(t *testing.T) {
 				Data:       []byte("SECRET_VAL={{secret \"unknowntarget\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
 			},
-			expectedErr: `failed to expand templated config templatedconfig: template: expansion:1:13: executing "expansion" at <secret "unknowntarge...>: error calling secret: secret target unknowntarget not found`,
+			expectedErr: `failed to expand templated config templatedconfig: template: expansion:1:13: executing "expansion" at <secret "unknowntarget">: error calling secret: secret target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
@@ -465,7 +465,7 @@ func TestTemplatedConfig(t *testing.T) {
 				Data:       []byte("CONFIG_VAL={{config \"unknowntarget\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
 			},
-			expectedErr: `failed to expand templated config templatedconfig: template: expansion:1:13: executing "expansion" at <config "unknowntarge...>: error calling config: config target unknowntarget not found`,
+			expectedErr: `failed to expand templated config templatedconfig: template: expansion:1:13: executing "expansion" at <config "unknowntarget">: error calling config: config target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
 				t.Spec = api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
