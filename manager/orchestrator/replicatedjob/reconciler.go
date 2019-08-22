@@ -19,17 +19,12 @@ type reconciler interface {
 type reconcilerObj struct {
 	// we need the store, of course, to do updates
 	store *store.MemoryStore
-
-	// a copy of the cluster is needed, because we need it when creating tasks
-	// to set the default log driver
-	cluster *api.Cluster
 }
 
 // newReconciler creates a new reconciler object
-func newReconciler(store *store.MemoryStore, cluster *api.Cluster) reconciler {
+func newReconciler(store *store.MemoryStore) reconciler {
 	return &reconcilerObj{
-		store:   store,
-		cluster: cluster,
+		store: store,
 	}
 }
 
@@ -41,6 +36,7 @@ func (r *reconcilerObj) ReconcileService(id string) error {
 	var (
 		service *api.Service
 		tasks   []*api.Task
+		cluster *api.Cluster
 		viewErr error
 	)
 	// first, get the service and all of its tasks
@@ -48,6 +44,19 @@ func (r *reconcilerObj) ReconcileService(id string) error {
 		service = store.GetService(tx, id)
 
 		tasks, viewErr = store.FindTasks(tx, store.ByServiceID(id))
+
+		// there should only ever be 1 cluster object, but for reasons
+		// forgotten by me, it needs to be retrieved in a rather roundabout way
+		// from the store
+		var clusters []*api.Cluster
+		clusters, viewErr = store.FindClusters(tx, store.All)
+		if len(clusters) == 1 {
+			cluster = clusters[0]
+		} else if len(clusters) > 1 {
+			// this should never happen, and indicates that the system is
+			// broken.
+			panic("there should never be more than one cluster object")
+		}
 	})
 
 	// errors during view should only happen in a few rather catastrophic
@@ -181,7 +190,7 @@ func (r *reconcilerObj) ReconcileService(id string) error {
 					}
 				}
 
-				task := orchestrator.NewTask(r.cluster, service, slot, "")
+				task := orchestrator.NewTask(cluster, service, slot, "")
 				// when we create the task, we also need to set the
 				// JobIteration.
 				task.JobIteration = &api.Version{Index: jobVersion}

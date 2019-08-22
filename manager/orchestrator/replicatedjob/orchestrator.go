@@ -15,10 +15,6 @@ type Orchestrator struct {
 	// we need the store, of course, to do updates
 	store *store.MemoryStore
 
-	// a copy of the cluster is needed, because we need it when creating tasks
-	// to set the default log driver
-	cluster *api.Cluster
-
 	// reconciler holds the logic of actually operating on a service.
 	reconciler reconciler
 
@@ -53,27 +49,21 @@ func (o *Orchestrator) Run(ctx context.Context) {
 		services []*api.Service
 	)
 
-	o.store.View(func(tx store.ReadTx) {
+	watchChan, cancel, _ := store.ViewAndWatch(o.store, func(tx store.ReadTx) error {
 		// TODO(dperny): figure out what to do about the error return value
 		// from FindServices
 		services, _ = store.FindServices(tx, store.All)
-
-		// there should only ever be 1 cluster object, but for reasons
-		// forgotten by me, it needs to be retrieved in a rather roundabout way
-		// from the store
-		// TODO(dperny): figure out what to do with this error too
-		clusters, _ := store.FindClusters(tx, store.All)
-		if len(clusters) == 1 {
-			o.cluster = clusters[0]
-		}
+		return nil
 	})
+
+	defer cancel()
 
 	// for testing purposes, if a reconciler already exists on the
 	// orchestrator, we will not set it up. this allows injecting a fake
 	// reconciler.
 	if o.reconciler == nil {
 		// the cluster might be nil, but that doesn't matter.
-		o.reconciler = newReconciler(o.store, o.cluster)
+		o.reconciler = newReconciler(o.store)
 	}
 
 	for _, service := range services {
@@ -84,9 +74,37 @@ func (o *Orchestrator) Run(ctx context.Context) {
 		}
 	}
 
-	// TODO(dperny): this will be a case in the main select loop, but for now
-	// just block until stopChan is closed.
-	<-o.stopChan
+	for {
+		// first, before taking any action, see if we should stop the
+		// orchestrator. if both the stop channel and the watch channel are
+		// available to read, the channel that gets read is picked at random,
+		// but we always want to stop if it's possible.
+		select {
+		case <-o.stopChan:
+			return
+		default:
+		}
+
+		select {
+		case event := <-watchChan:
+			var service *api.Service
+
+			switch ev := event.(type) {
+			case api.EventCreateService:
+				service = ev.Service
+			case api.EventUpdateService:
+				service = ev.Service
+			}
+
+			if service != nil {
+				o.reconciler.ReconcileService(service.ID)
+			}
+		case <-o.stopChan:
+			// we also need to check for stop in here, in case there are no
+			// updates to cause the loop to turn over.
+			return
+		}
+	}
 }
 
 // Stop stops the Orchestrator
