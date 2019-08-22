@@ -6,6 +6,7 @@ import (
 
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/orchestrator/testutils"
@@ -15,6 +16,8 @@ import (
 // fakeReconciler implements the reconciler interface for testing the
 // orchestrator.
 type fakeReconciler struct {
+	sync.Mutex
+
 	// serviceErrors contains a mapping of ids to errors that should be
 	// returned if that ID is passed to reconcileService
 	serviceErrors map[string]error
@@ -28,11 +31,25 @@ type fakeReconciler struct {
 // just records what arguments it has been passed, and maybe also returns an
 // error if desired.
 func (f *fakeReconciler) ReconcileService(id string) error {
+	f.Lock()
+	defer f.Unlock()
 	f.servicesReconciled = append(f.servicesReconciled, id)
 	if err, ok := f.serviceErrors[id]; ok {
 		return err
 	}
 	return nil
+}
+
+func (f *fakeReconciler) getServicesReconciled() []string {
+	f.Lock()
+	defer f.Unlock()
+	// we can't just return the slice, because then we'd be accessing it
+	// outside of the protection of the mutex anyway. instead, we'll copy its
+	// contents. this is fine because this is only the tests, and the slice is
+	// almost certainly rather short.
+	returnSet := make([]string, len(f.servicesReconciled))
+	copy(returnSet, f.servicesReconciled)
+	return returnSet
 }
 
 var _ = Describe("Replicated job orchestrator", func() {
@@ -52,11 +69,14 @@ var _ = Describe("Replicated job orchestrator", func() {
 	})
 
 	Describe("Starting and stopping", func() {
-		It("should stop when Stop is called", func(done Done) {
+		It("should stop when Stop is called", func() {
 			stopped := testutils.EnsureRuns(func() { o.Run(context.Background()) })
 			o.Stop()
-			Expect(stopped).To(BeClosed())
-			close(done)
+			// Eventually here will repeatedly run the matcher against the
+			// argument. This means that we will keep checking if stopped is
+			// closed until the test times out. Using Eventually instead of
+			// Expect ensure we can't race on "stopped".
+			Eventually(stopped).Should(BeClosed())
 		})
 	})
 
@@ -94,20 +114,7 @@ var _ = Describe("Replicated job orchestrator", func() {
 						},
 					},
 				}
-				if err := store.CreateService(tx, globalJob); err != nil {
-					return err
-				}
-
-				cluster := &api.Cluster{
-					ID: "someCluster",
-					Spec: api.ClusterSpec{
-						Annotations: api.Annotations{
-							Name: "someName",
-						},
-					},
-				}
-
-				return store.CreateCluster(tx, cluster)
+				return store.CreateService(tx, globalJob)
 			})
 
 			Expect(err).ToNot(HaveOccurred())
@@ -123,13 +130,6 @@ var _ = Describe("Replicated job orchestrator", func() {
 			// not interruptible, this will cause only the initialization to
 			// occur.
 			o.Stop()
-		})
-
-		It("should pick up the cluster object", func() {
-			// this is a white-box test which looks to see that o.cluster is
-			// set correctly.
-			Expect(o.cluster).ToNot(BeNil())
-			Expect(o.cluster.ID).To(Equal("someCluster"))
 		})
 
 		It("should reconcile each replicated job service that already exists", func() {
@@ -167,7 +167,89 @@ var _ = Describe("Replicated job orchestrator", func() {
 	})
 
 	Describe("receiving events", func() {
-		It("should reconcile each time it receives an event", func() {
+		var stopped <-chan struct{}
+		BeforeEach(func() {
+			stopped = testutils.EnsureRuns(func() { o.Run(context.Background()) })
+		})
+
+		AfterEach(func() {
+			// If a test needs to stop early, that's no problem, because
+			// repeated calls to Stop have no effect.
+			o.Stop()
+			Eventually(stopped).Should(BeClosed())
+		})
+
+		It("should reconcile each replicated job service received", func() {
+			// Create some services. Wait a moment, and then check that they
+			// are reconciled.
+			err := s.Update(func(tx store.Tx) error {
+				for i := 0; i < 3; i++ {
+					service := &api.Service{
+						ID: fmt.Sprintf("service%v", i),
+						Spec: api.ServiceSpec{
+							Annotations: api.Annotations{
+								Name: fmt.Sprintf("service%v", i),
+							},
+							Mode: &api.ServiceSpec_ReplicatedJob{
+								ReplicatedJob: &api.ReplicatedJob{},
+							},
+						},
+					}
+
+					if err := store.CreateService(tx, service); err != nil {
+						return err
+					}
+				}
+				return nil
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(f.getServicesReconciled).Should(ConsistOf(
+				"service0", "service1", "service2",
+			))
+		})
+
+		It("should not reconcile anything after calling Stop", func() {
+			err := s.Update(func(tx store.Tx) error {
+				service := &api.Service{
+					ID: fmt.Sprintf("service0"),
+					Spec: api.ServiceSpec{
+						Annotations: api.Annotations{
+							Name: fmt.Sprintf("service0"),
+						},
+						Mode: &api.ServiceSpec_ReplicatedJob{
+							ReplicatedJob: &api.ReplicatedJob{},
+						},
+					},
+				}
+
+				return store.CreateService(tx, service)
+			})
+
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(f.getServicesReconciled).Should(ConsistOf("service0"))
+
+			o.Stop()
+
+			err = s.Update(func(tx store.Tx) error {
+				service := &api.Service{
+					ID: fmt.Sprintf("service1"),
+					Spec: api.ServiceSpec{
+						Annotations: api.Annotations{
+							Name: fmt.Sprintf("service1"),
+						},
+						Mode: &api.ServiceSpec_ReplicatedJob{
+							ReplicatedJob: &api.ReplicatedJob{},
+						},
+					},
+				}
+
+				return store.CreateService(tx, service)
+			})
+
+			// service1 should never be reconciled.
+			Consistently(f.getServicesReconciled).Should(ConsistOf("service0"))
 		})
 	})
 })

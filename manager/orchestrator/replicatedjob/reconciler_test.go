@@ -56,8 +56,9 @@ func AllTasks(s *store.MemoryStore) []*api.Task {
 
 var _ = Describe("Replicated Job reconciler", func() {
 	var (
-		r *reconcilerObj
-		s *store.MemoryStore
+		r       *reconcilerObj
+		s       *store.MemoryStore
+		cluster *api.Cluster
 	)
 
 	Describe("ReconcileService", func() {
@@ -66,8 +67,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 			Expect(s).ToNot(BeNil())
 
 			r = &reconcilerObj{
-				store:   s,
-				cluster: nil,
+				store: s,
 			}
 		})
 
@@ -97,12 +97,31 @@ var _ = Describe("Replicated Job reconciler", func() {
 					},
 				}
 
+				cluster = &api.Cluster{
+					ID: "someCluster",
+					Spec: api.ClusterSpec{
+						Annotations: api.Annotations{
+							Name: "someCluster",
+						},
+						TaskDefaults: api.TaskDefaults{
+							LogDriver: &api.Driver{
+								Name: "someDriver",
+							},
+						},
+					},
+				}
+
 			})
 
 			JustBeforeEach(func() {
 				err := s.Update(func(tx store.Tx) error {
 					if service != nil {
-						return store.CreateService(tx, service)
+						if err := store.CreateService(tx, service); err != nil {
+							return err
+						}
+					}
+					if cluster != nil {
+						return store.CreateCluster(tx, cluster)
 					}
 					return nil
 				})
@@ -141,6 +160,13 @@ var _ = Describe("Replicated Job reconciler", func() {
 						Expect(task.DesiredState).To(Equal(api.TaskStateCompleted))
 					}
 				})
+
+				It("should use the cluster to set the default log driver", func() {
+					tasks := AllTasks(s)
+					Expect(len(tasks) >= 1).To(BeTrue())
+
+					Expect(tasks[0].LogDriver).To(Equal(cluster.Spec.TaskDefaults.LogDriver))
+				})
 			})
 
 			When("the job has some tasks already in progress", func() {
@@ -150,7 +176,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 						// also, to fully exercise the slot picking code, we'll
 						// assign these tasks to every other slot
 						for i := uint64(0); i < 12; i += 2 {
-							task := orchestrator.NewTask(r.cluster, service, i, "")
+							task := orchestrator.NewTask(cluster, service, i, "")
 							task.JobIteration = &api.Version{}
 							task.DesiredState = api.TaskStateCompleted
 
@@ -179,7 +205,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 				BeforeEach(func() {
 					err := s.Update(func(tx store.Tx) error {
 						for i := uint64(0); i < maxConcurrent; i++ {
-							task := orchestrator.NewTask(r.cluster, service, i, "")
+							task := orchestrator.NewTask(cluster, service, i, "")
 							task.JobIteration = &api.Version{}
 							task.DesiredState = api.TaskStateShutdown
 
