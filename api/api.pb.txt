@@ -2143,13 +2143,32 @@ file {
     }
   }
   message_type {
+    name: "Limits"
+    field {
+      name: "resources"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Resources"
+      json_name: "resources"
+    }
+    field {
+      name: "swap_bytes"
+      number: 4
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".google.protobuf.Int64Value"
+      json_name: "swapBytes"
+    }
+  }
+  message_type {
     name: "ResourceRequirements"
     field {
       name: "limits"
       number: 1
       label: LABEL_OPTIONAL
       type: TYPE_MESSAGE
-      type_name: ".docker.swarmkit.v1.Resources"
+      type_name: ".docker.swarmkit.v1.Limits"
       json_name: "limits"
     }
     field {
@@ -2159,14 +2178,6 @@ file {
       type: TYPE_MESSAGE
       type_name: ".docker.swarmkit.v1.Resources"
       json_name: "reservations"
-    }
-    field {
-      name: "swap_bytes"
-      number: 3
-      label: LABEL_OPTIONAL
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.Int64Value"
-      json_name: "swapBytes"
     }
     field {
       name: "memory_swappiness"

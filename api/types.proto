@@ -75,15 +75,19 @@ message Resources {
 	repeated GenericResource generic = 3;
 }
 
-message ResourceRequirements {
-	Resources limits = 1;
-	Resources reservations = 2;
+message Limits {
+	Resources resources = 1;
 
 	// Amount of swap in bytes - can only be used together with a memory limit
 	// -1 means unlimited
 	// a null pointer indicates that the default behaviour of granting twice
 	// the memory is maintained
-	google.protobuf.Int64Value swap_bytes = 3;
+	google.protobuf.Int64Value swap_bytes = 4;
+}
+
+message ResourceRequirements {
+	Limits limits = 1;
+	Resources reservations = 2;
 
 	// Tune container memory swappiness (0 to 100) - if not specified, defaults
 	// to the container OS's default - generally 60, or the value predefined in
