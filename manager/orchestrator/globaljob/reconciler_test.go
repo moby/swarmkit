@@ -11,9 +11,9 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 )
 
-var _ = Describe("Global Job Orchestrator", func() {
+var _ = Describe("Global Job Reconciler", func() {
 	var (
-		o *Orchestrator
+		r *reconcilerObj
 		s *store.MemoryStore
 	)
 
@@ -21,7 +21,9 @@ var _ = Describe("Global Job Orchestrator", func() {
 		s = store.NewMemoryStore(nil)
 		Expect(s).ToNot(BeNil())
 
-		o = NewOrchestrator(s)
+		r = &reconcilerObj{
+			store: s,
+		}
 	})
 
 	AfterEach(func() {
@@ -32,6 +34,7 @@ var _ = Describe("Global Job Orchestrator", func() {
 		var (
 			serviceID string
 			service   *api.Service
+			cluster   *api.Cluster
 			nodes     []*api.Node
 			tasks     []*api.Task
 		)
@@ -50,6 +53,20 @@ var _ = Describe("Global Job Orchestrator", func() {
 				},
 				JobStatus: &api.JobStatus{
 					LastExecution: gogotypes.TimestampNow(),
+				},
+			}
+
+			cluster = &api.Cluster{
+				ID: "someCluster",
+				Spec: api.ClusterSpec{
+					Annotations: api.Annotations{
+						Name: "someCluster",
+					},
+					TaskDefaults: api.TaskDefaults{
+						LogDriver: &api.Driver{
+							Name: "someDriver",
+						},
+					},
 				},
 			}
 
@@ -122,6 +139,12 @@ var _ = Describe("Global Job Orchestrator", func() {
 					}
 				}
 
+				if cluster != nil {
+					if err := store.CreateCluster(tx, cluster); err != nil {
+						return err
+					}
+				}
+
 				for _, node := range nodes {
 					if err := store.CreateNode(tx, node); err != nil {
 						return err
@@ -138,7 +161,7 @@ var _ = Describe("Global Job Orchestrator", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 
-			err = o.reconcileService(serviceID)
+			err = r.ReconcileService(serviceID)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -160,6 +183,17 @@ var _ = Describe("Global Job Orchestrator", func() {
 					Expect(err).ToNot(HaveOccurred())
 					for _, task := range tasks {
 						Expect(task.DesiredState).To(Equal(api.TaskStateCompleted))
+					}
+				})
+			})
+
+			It("should pick up and use the cluster object", func() {
+				s.View(func(tx store.ReadTx) {
+					tasks, err := store.FindTasks(tx, store.All)
+					Expect(err).ToNot(HaveOccurred())
+					for _, task := range tasks {
+						Expect(task.LogDriver).ToNot(BeNil())
+						Expect(task.LogDriver.Name).To(Equal("someDriver"))
 					}
 				})
 			})
