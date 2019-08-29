@@ -1,4 +1,4 @@
-package globaljob
+package global
 
 import (
 	"fmt"
@@ -10,21 +10,19 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 )
 
-type reconciler interface {
-	ReconcileService(id string) error
-}
-
-type reconcilerObj struct {
+type Reconciler struct {
 	store *store.MemoryStore
 }
 
-func newReconciler(store *store.MemoryStore) reconciler {
-	return &reconcilerObj{
+// NewReconciler creates a new global job reconciler.
+func NewReconciler(store *store.MemoryStore) *Reconciler {
+	return &Reconciler{
 		store: store,
 	}
 }
 
-func (r *reconcilerObj) ReconcileService(id string) error {
+// ReconcileService reconciles one global job service.
+func (r *Reconciler) ReconcileService(id string) error {
 	var (
 		service *api.Service
 		cluster *api.Cluster

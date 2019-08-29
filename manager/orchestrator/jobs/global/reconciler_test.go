@@ -1,4 +1,4 @@
-package globaljob
+package global
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -13,7 +13,7 @@ import (
 
 var _ = Describe("Global Job Reconciler", func() {
 	var (
-		r *reconcilerObj
+		r *Reconciler
 		s *store.MemoryStore
 	)
 
@@ -21,7 +21,7 @@ var _ = Describe("Global Job Reconciler", func() {
 		s = store.NewMemoryStore(nil)
 		Expect(s).ToNot(BeNil())
 
-		r = &reconcilerObj{
+		r = &Reconciler{
 			store: s,
 		}
 	})
