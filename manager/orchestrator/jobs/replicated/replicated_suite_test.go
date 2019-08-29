@@ -1,4 +1,4 @@
-package globaljob_test
+package replicated
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestGlobaljob(t *testing.T) {
+func TestReplicatedjob(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Globaljob Suite")
+	RunSpecs(t, "Replicatedjob Suite")
 }
