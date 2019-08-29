@@ -1,4 +1,4 @@
-package replicatedjob
+package jobs
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -54,18 +54,23 @@ func (f *fakeReconciler) getServicesReconciled() []string {
 
 var _ = Describe("Replicated job orchestrator", func() {
 	var (
-		o *Orchestrator
-		s *store.MemoryStore
-		f *fakeReconciler
+		o          *Orchestrator
+		s          *store.MemoryStore
+		replicated *fakeReconciler
+		global     *fakeReconciler
 	)
 
 	BeforeEach(func() {
 		s = store.NewMemoryStore(nil)
 		o = NewOrchestrator(s)
-		f = &fakeReconciler{
+		replicated = &fakeReconciler{
 			serviceErrors: map[string]error{},
 		}
-		o.reconciler = f
+		global = &fakeReconciler{
+			serviceErrors: map[string]error{},
+		}
+		o.replicatedReconciler = replicated
+		o.globalReconciler = global
 	})
 
 	Describe("Starting and stopping", func() {
@@ -86,11 +91,11 @@ var _ = Describe("Replicated job orchestrator", func() {
 			// service mode
 			err := s.Update(func(tx store.Tx) error {
 				for i := 0; i < 3; i++ {
-					service := &api.Service{
-						ID: fmt.Sprintf("service%v", i),
+					serviceReplicated := &api.Service{
+						ID: fmt.Sprintf("serviceReplicated%v", i),
 						Spec: api.ServiceSpec{
 							Annotations: api.Annotations{
-								Name: fmt.Sprintf("service%v", i),
+								Name: fmt.Sprintf("serviceReplicated%v", i),
 							},
 							Mode: &api.ServiceSpec_ReplicatedJob{
 								ReplicatedJob: &api.ReplicatedJob{},
@@ -98,23 +103,27 @@ var _ = Describe("Replicated job orchestrator", func() {
 						},
 					}
 
-					if err := store.CreateService(tx, service); err != nil {
+					serviceGlobal := &api.Service{
+						ID: fmt.Sprintf("serviceGlobal%v", i),
+						Spec: api.ServiceSpec{
+							Annotations: api.Annotations{
+								Name: fmt.Sprintf("serviceGlobal%v", i),
+							},
+							Mode: &api.ServiceSpec_GlobalJob{
+								GlobalJob: &api.GlobalJob{},
+							},
+						},
+					}
+
+					if err := store.CreateService(tx, serviceReplicated); err != nil {
+						return err
+					}
+					if err := store.CreateService(tx, serviceGlobal); err != nil {
 						return err
 					}
 				}
 
-				globalJob := &api.Service{
-					ID: "globalJob",
-					Spec: api.ServiceSpec{
-						Annotations: api.Annotations{
-							Name: "globalJob",
-						},
-						Mode: &api.ServiceSpec_GlobalJob{
-							GlobalJob: &api.GlobalJob{},
-						},
-					},
-				}
-				return store.CreateService(tx, globalJob)
+				return nil
 			})
 
 			Expect(err).ToNot(HaveOccurred())
@@ -133,14 +142,20 @@ var _ = Describe("Replicated job orchestrator", func() {
 		})
 
 		It("should reconcile each replicated job service that already exists", func() {
-			Expect(f.servicesReconciled).To(ConsistOf(
-				"service0", "service1", "service2",
+			Expect(replicated.servicesReconciled).To(ConsistOf(
+				"serviceReplicated0", "serviceReplicated1", "serviceReplicated2",
+			))
+		})
+
+		It("should reconcile each global job service that already exists", func() {
+			Expect(global.servicesReconciled).To(ConsistOf(
+				"serviceGlobal0", "serviceGlobal1", "serviceGlobal2",
 			))
 		})
 
 		When("an error is encountered reconciling some service", func() {
 			BeforeEach(func() {
-				f.serviceErrors["errService"] = fmt.Errorf("someError")
+				replicated.serviceErrors["errService"] = fmt.Errorf("someError")
 				err := s.Update(func(tx store.Tx) error {
 					errService := &api.Service{
 						ID: "errService",
@@ -159,8 +174,8 @@ var _ = Describe("Replicated job orchestrator", func() {
 			})
 
 			It("should continue reconciling other services", func() {
-				Expect(f.servicesReconciled).To(ConsistOf(
-					"service0", "service1", "service2", "errService",
+				Expect(replicated.servicesReconciled).To(ConsistOf(
+					"serviceReplicated0", "serviceReplicated1", "serviceReplicated2", "errService",
 				))
 			})
 		})
@@ -204,7 +219,35 @@ var _ = Describe("Replicated job orchestrator", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			Eventually(f.getServicesReconciled).Should(ConsistOf(
+			Eventually(replicated.getServicesReconciled).Should(ConsistOf(
+				"service0", "service1", "service2",
+			))
+		})
+
+		It("should reconcile each global job service received", func() {
+			err := s.Update(func(tx store.Tx) error {
+				for i := 0; i < 3; i++ {
+					service := &api.Service{
+						ID: fmt.Sprintf("service%v", i),
+						Spec: api.ServiceSpec{
+							Annotations: api.Annotations{
+								Name: fmt.Sprintf("service%v", i),
+							},
+							Mode: &api.ServiceSpec_GlobalJob{
+								GlobalJob: &api.GlobalJob{},
+							},
+						},
+					}
+
+					if err := store.CreateService(tx, service); err != nil {
+						return err
+					}
+				}
+				return nil
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(global.getServicesReconciled).Should(ConsistOf(
 				"service0", "service1", "service2",
 			))
 		})
@@ -228,7 +271,7 @@ var _ = Describe("Replicated job orchestrator", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 
-			Eventually(f.getServicesReconciled).Should(ConsistOf("service0"))
+			Eventually(replicated.getServicesReconciled).Should(ConsistOf("service0"))
 
 			o.Stop()
 
@@ -249,7 +292,7 @@ var _ = Describe("Replicated job orchestrator", func() {
 			})
 
 			// service1 should never be reconciled.
-			Consistently(f.getServicesReconciled).Should(ConsistOf("service0"))
+			Consistently(replicated.getServicesReconciled).Should(ConsistOf("service0"))
 		})
 	})
 })

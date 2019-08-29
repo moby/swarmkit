@@ -1,4 +1,4 @@
-package replicatedjob
+package replicated
 
 import (
 	"fmt"
@@ -8,22 +8,14 @@ import (
 	"github.com/docker/swarmkit/manager/state/store"
 )
 
-// reconciler is the type that holds the reconciliation logic for the
-// orchestrator. It exists so that the logic of actually reconciling and
-// writing to the store is separated from the orchestrator, to make the event
-// handling logic in the orchestrator easier to test.
-type reconciler interface {
-	ReconcileService(id string) error
-}
-
-type reconcilerObj struct {
+type Reconciler struct {
 	// we need the store, of course, to do updates
 	store *store.MemoryStore
 }
 
 // newReconciler creates a new reconciler object
-func newReconciler(store *store.MemoryStore) reconciler {
-	return &reconcilerObj{
+func NewReconciler(store *store.MemoryStore) *Reconciler {
+	return &Reconciler{
 		store: store,
 	}
 }
@@ -32,7 +24,7 @@ func newReconciler(store *store.MemoryStore) reconciler {
 // checking to see if new replicas should be created. reconcileService returns
 // an error if there is some case prevent it from correctly reconciling the
 // service.
-func (r *reconcilerObj) ReconcileService(id string) error {
+func (r *Reconciler) ReconcileService(id string) error {
 	var (
 		service *api.Service
 		tasks   []*api.Task

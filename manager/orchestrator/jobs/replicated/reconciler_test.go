@@ -1,4 +1,4 @@
-package replicatedjob
+package replicated
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -56,7 +56,7 @@ func AllTasks(s *store.MemoryStore) []*api.Task {
 
 var _ = Describe("Replicated Job reconciler", func() {
 	var (
-		r       *reconcilerObj
+		r       *Reconciler
 		s       *store.MemoryStore
 		cluster *api.Cluster
 	)
@@ -66,7 +66,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 			s = store.NewMemoryStore(nil)
 			Expect(s).ToNot(BeNil())
 
-			r = &reconcilerObj{
+			r = &Reconciler{
 				store: s,
 			}
 		})
