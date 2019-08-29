@@ -1696,6 +1696,30 @@ file {
     json_name: "goprotoRegistration"
   }
   extension {
+    name: "messagename_all"
+    extendee: ".google.protobuf.FileOptions"
+    number: 63033
+    label: LABEL_OPTIONAL
+    type: TYPE_BOOL
+    json_name: "messagenameAll"
+  }
+  extension {
+    name: "goproto_sizecache_all"
+    extendee: ".google.protobuf.FileOptions"
+    number: 63034
+    label: LABEL_OPTIONAL
+    type: TYPE_BOOL
+    json_name: "goprotoSizecacheAll"
+  }
+  extension {
+    name: "goproto_unkeyed_all"
+    extendee: ".google.protobuf.FileOptions"
+    number: 63035
+    label: LABEL_OPTIONAL
+    type: TYPE_BOOL
+    json_name: "goprotoUnkeyedAll"
+  }
+  extension {
     name: "goproto_getters"
     extendee: ".google.protobuf.MessageOptions"
     number: 64001
@@ -1880,6 +1904,30 @@ file {
     json_name: "typedecl"
   }
   extension {
+    name: "messagename"
+    extendee: ".google.protobuf.MessageOptions"
+    number: 64033
+    label: LABEL_OPTIONAL
+    type: TYPE_BOOL
+    json_name: "messagename"
+  }
+  extension {
+    name: "goproto_sizecache"
+    extendee: ".google.protobuf.MessageOptions"
+    number: 64034
+    label: LABEL_OPTIONAL
+    type: TYPE_BOOL
+    json_name: "goprotoSizecache"
+  }
+  extension {
+    name: "goproto_unkeyed"
+    extendee: ".google.protobuf.MessageOptions"
+    number: 64035
+    label: LABEL_OPTIONAL
+    type: TYPE_BOOL
+    json_name: "goprotoUnkeyed"
+  }
+  extension {
     name: "nullable"
     extendee: ".google.protobuf.FieldOptions"
     number: 65001
@@ -1966,6 +2014,14 @@ file {
     label: LABEL_OPTIONAL
     type: TYPE_BOOL
     json_name: "stdduration"
+  }
+  extension {
+    name: "wktpointer"
+    extendee: ".google.protobuf.FieldOptions"
+    number: 65012
+    label: LABEL_OPTIONAL
+    type: TYPE_BOOL
+    json_name: "wktpointer"
   }
   options {
     java_package: "com.google.protobuf"

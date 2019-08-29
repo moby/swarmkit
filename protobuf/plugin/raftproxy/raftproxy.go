@@ -357,6 +357,9 @@ func (g *raftProxyGen) genPollNewLeaderConn(s *descriptor.ServiceDescriptorProto
 }
 
 func (g *raftProxyGen) Generate(file *generator.FileDescriptor) {
+	if len(file.FileDescriptorProto.Service) == 0 {
+		return
+	}
 	g.gen.P()
 	for _, s := range file.Service {
 		g.genProxyStruct(s)
@@ -374,11 +377,11 @@ func (g *raftProxyGen) GenerateImports(file *generator.FileDescriptor) {
 	if len(file.Service) == 0 {
 		return
 	}
-	g.gen.P("import raftselector \"github.com/docker/swarmkit/manager/raftselector\"")
-	g.gen.P("import codes \"google.golang.org/grpc/codes\"")
-	g.gen.P("import status \"google.golang.org/grpc/status\"")
-	g.gen.P("import metadata \"google.golang.org/grpc/metadata\"")
-	g.gen.P("import peer \"google.golang.org/grpc/peer\"")
+	g.gen.PrintImport("raftselector", "github.com/docker/swarmkit/manager/raftselector")
+	g.gen.PrintImport("codes", "google.golang.org/grpc/codes")
+	g.gen.PrintImport("status", "google.golang.org/grpc/status")
+	g.gen.PrintImport("metadata", "google.golang.org/grpc/metadata")
+	g.gen.PrintImport("peer", "google.golang.org/grpc/peer")
 	// don't conflict with import added by ptypes
-	g.gen.P("import rafttime \"time\"")
+	g.gen.PrintImport("rafttime", "time")
 }
