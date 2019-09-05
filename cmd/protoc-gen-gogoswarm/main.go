@@ -22,6 +22,10 @@ func main() {
 		vanity.TurnOnStringerAll,
 		vanity.TurnOnUnmarshalerAll,
 		vanity.TurnOnSizerAll,
+		vanity.TurnOffGoUnrecognizedAll,
+		vanity.TurnOffGoUnkeyedAll,
+		vanity.TurnOffGoUnrecognizedAll,
+		vanity.TurnOffGoSizecacheAll,
 		CustomNameID,
 	} {
 		vanity.ForEachFile(files, opt)
