@@ -474,16 +474,43 @@ func (s *Server) validateNetworks(networks []*api.NetworkAttachmentConfig) error
 
 func validateMode(s *api.ServiceSpec) error {
 	m := s.GetMode()
-	switch m.(type) {
+	switch mode := m.(type) {
 	case *api.ServiceSpec_Replicated:
-		if int64(m.(*api.ServiceSpec_Replicated).Replicated.Replicas) < 0 {
+		if int64(mode.Replicated.Replicas) < 0 {
 			return status.Errorf(codes.InvalidArgument, "Number of replicas must be non-negative")
 		}
 	case *api.ServiceSpec_Global:
+	case *api.ServiceSpec_ReplicatedJob:
+		// this check shouldn't be required as the point of uint64 is to
+		// constrain the possible values to positive numbers, but it almost
+		// certainly is required because there are almost certainly blind casts
+		// from int64 to uint64, and uint64(-1) is almost certain to crash the
+		// cluster because of how large it is.
+		if int64(mode.ReplicatedJob.MaxConcurrent) < 0 {
+			return status.Errorf(
+				codes.InvalidArgument,
+				"Maximum concurrent jobs must not be negative",
+			)
+		}
+
+		if int64(mode.ReplicatedJob.TotalCompletions) < 0 {
+			return status.Errorf(
+				codes.InvalidArgument,
+				"Total completed jobs must not be negative",
+			)
+		}
+	case *api.ServiceSpec_GlobalJob:
 	default:
 		return status.Errorf(codes.InvalidArgument, "Unrecognized service mode")
 	}
 
+	return nil
+}
+
+func validateJob(spec *api.ServiceSpec) error {
+	if spec.Update != nil {
+		return status.Errorf(codes.InvalidArgument, "Jobs may not have an update config")
+	}
 	return nil
 }
 
@@ -497,13 +524,32 @@ func validateServiceSpec(spec *api.ServiceSpec) error {
 	if err := validateTaskSpec(spec.Task); err != nil {
 		return err
 	}
-	if err := validateUpdate(spec.Update); err != nil {
+	err := validateMode(spec)
+	if err != nil {
 		return err
 	}
-	if err := validateEndpointSpec(spec.Endpoint); err != nil {
-		return err
+
+	// job-mode services are validated differently. most notably, they do not
+	// have UpdateConfigs, which is why this case statement skips update
+	// validation.
+	if isJobSpec(spec) {
+		if err := validateJob(spec); err != nil {
+			return err
+		}
+	} else {
+		if err := validateUpdate(spec.Update); err != nil {
+			return err
+		}
 	}
-	return validateMode(spec)
+
+	return validateEndpointSpec(spec.Endpoint)
+}
+
+func isJobSpec(spec *api.ServiceSpec) bool {
+	mode := spec.GetMode()
+	_, isGlobalJob := mode.(*api.ServiceSpec_GlobalJob)
+	_, isReplicatedJob := mode.(*api.ServiceSpec_ReplicatedJob)
+	return isGlobalJob || isReplicatedJob
 }
 
 // checkPortConflicts does a best effort to find if the passed in spec has port
@@ -689,6 +735,12 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 		SpecVersion: &api.Version{},
 	}
 
+	if isJobSpec(request.Spec) {
+		service.JobStatus = &api.JobStatus{
+			LastExecution: gogotypes.TimestampNow(),
+		}
+	}
+
 	if allocator.IsIngressNetworkNeeded(service) {
 		if _, err := allocator.GetIngressNetwork(s.store); err == allocator.ErrNoIngress {
 			return nil, status.Errorf(codes.FailedPrecondition, "service needs ingress network, but no ingress network is present")
@@ -818,6 +870,13 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 		}
 
 		service.Meta.Version = *request.ServiceVersion
+
+		// if the service has a JobStatus, that means it must be a Job, and we
+		// should increment the JobIteration
+		if service.JobStatus != nil {
+			service.JobStatus.JobIteration.Index = service.JobStatus.JobIteration.Index + 1
+			service.JobStatus.LastExecution = gogotypes.TimestampNow()
+		}
 
 		if request.Rollback == api.UpdateServiceRequest_PREVIOUS {
 			if service.PreviousSpec == nil {
