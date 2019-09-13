@@ -14,6 +14,7 @@ import (
 	"github.com/docker/swarmkit/testutils"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 )
 
@@ -216,12 +217,22 @@ func TestValidateMode(t *testing.T) {
 	bad := []*api.ServiceSpec{
 		// -4 jammed into the replicas field, underflowing the uint64
 		{Mode: &api.ServiceSpec_Replicated{Replicated: &api.ReplicatedService{Replicas: uint64(negative)}}},
+		{Mode: &api.ServiceSpec_ReplicatedJob{ReplicatedJob: &api.ReplicatedJob{MaxConcurrent: uint64(negative)}}},
+		{Mode: &api.ServiceSpec_ReplicatedJob{ReplicatedJob: &api.ReplicatedJob{TotalCompletions: uint64(negative)}}},
 		{},
 	}
 
 	good := []*api.ServiceSpec{
 		{Mode: &api.ServiceSpec_Replicated{Replicated: &api.ReplicatedService{Replicas: 2}}},
 		{Mode: &api.ServiceSpec_Global{}},
+		{
+			Mode: &api.ServiceSpec_ReplicatedJob{
+				ReplicatedJob: &api.ReplicatedJob{
+					MaxConcurrent: 3, TotalCompletions: 9,
+				},
+			},
+		},
+		{Mode: &api.ServiceSpec_GlobalJob{}},
 	}
 
 	for _, b := range bad {
@@ -231,7 +242,8 @@ func TestValidateMode(t *testing.T) {
 	}
 
 	for _, g := range good {
-		assert.NoError(t, validateMode(g))
+		err := validateMode(g)
+		assert.NoError(t, err)
 	}
 }
 
@@ -442,6 +454,71 @@ func TestValidateServiceSpec(t *testing.T) {
 		err := validateServiceSpec(good)
 		assert.NoError(t, err)
 	}
+}
+
+// TestValidateServiceSpecJobsDifference is different from
+// TestValidateServiceSpec in that it checks that job-mode services are
+// validated differently from regular services.
+func TestValidateServiceSpecJobsDifference(t *testing.T) {
+	// correctly formed spec should be valid
+	cannedSpec := createSpec("name", "image", 1)
+	err := validateServiceSpec(cannedSpec)
+	assert.NoError(t, err)
+
+	// Replicated job should not be allowed to have update config
+	specReplicatedJobUpdate := cannedSpec.Copy()
+	specReplicatedJobUpdate.Mode = &api.ServiceSpec_ReplicatedJob{
+		ReplicatedJob: &api.ReplicatedJob{},
+	}
+	specReplicatedJobUpdate.Update = &api.UpdateConfig{}
+	err = validateServiceSpec(specReplicatedJobUpdate)
+	assert.Error(t, err)
+
+	specReplicatedJobNoUpdate := specReplicatedJobUpdate.Copy()
+	specReplicatedJobNoUpdate.Update = nil
+	err = validateServiceSpec(specReplicatedJobNoUpdate)
+	assert.NoError(t, err)
+
+	// Global job should not be allowed to have update config
+	specGlobalJobUpdate := cannedSpec.Copy()
+	specGlobalJobUpdate.Mode = &api.ServiceSpec_GlobalJob{
+		GlobalJob: &api.GlobalJob{},
+	}
+	specGlobalJobUpdate.Update = &api.UpdateConfig{}
+	err = validateServiceSpec(specGlobalJobUpdate)
+	assert.Error(t, err)
+
+	specGlobalJobNoUpdate := specGlobalJobUpdate.Copy()
+	specGlobalJobNoUpdate.Update = nil
+	err = validateServiceSpec(specReplicatedJobNoUpdate)
+	assert.NoError(t, err)
+
+	// Replicated service should be allowed to have update config, which should
+	// be verified for correctness
+	replicatedServiceBrokenUpdate := cannedSpec.Copy()
+	replicatedServiceBrokenUpdate.Update = &api.UpdateConfig{
+		Delay: -1 * time.Second,
+	}
+	err = validateServiceSpec(replicatedServiceBrokenUpdate)
+	assert.Error(t, err)
+
+	replicatedServiceCorrectUpdate := replicatedServiceBrokenUpdate.Copy()
+	replicatedServiceCorrectUpdate.Update.Delay = time.Second
+	err = validateServiceSpec(replicatedServiceCorrectUpdate)
+	assert.NoError(t, err)
+
+	// Global service should be allowed to have update config, which should be
+	// verified for correctness
+	globalServiceBrokenUpdate := replicatedServiceBrokenUpdate.Copy()
+	globalServiceBrokenUpdate.Mode = &api.ServiceSpec_Global{
+		Global: &api.GlobalService{},
+	}
+	err = validateServiceSpec(globalServiceBrokenUpdate)
+	assert.Error(t, err)
+
+	globalServiceCorrectUpdate := globalServiceBrokenUpdate.Copy()
+	globalServiceCorrectUpdate.Update.Delay = time.Second
+	err = validateServiceSpec(globalServiceCorrectUpdate)
 }
 
 func TestValidateRestartPolicy(t *testing.T) {
@@ -1596,5 +1673,179 @@ func TestListServiceStatuses(t *testing.T) {
 		if !found {
 			t.Errorf("did not find status for %v in response", name)
 		}
+	}
+}
+
+// TestJobService tests that if a job-mode service is created, the necessary
+// fields are all initialized to the correct values. Then, it tests that if a
+// job-mode service is updated, the fields are updated to correct values.
+func TestJobService(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+
+	// first, create a replicated job mode service spec
+	spec := &api.ServiceSpec{
+		Annotations: api.Annotations{
+			Name: "replicatedjob",
+		},
+		Task: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Image: "image",
+				},
+			},
+		},
+		Mode: &api.ServiceSpec_ReplicatedJob{
+			ReplicatedJob: &api.ReplicatedJob{
+				MaxConcurrent:    3,
+				TotalCompletions: 9,
+			},
+		},
+	}
+
+	before := gogotypes.TimestampNow()
+	// now, create the service
+	resp, err := ts.Client.CreateService(
+		context.Background(), &api.CreateServiceRequest{
+			Spec: spec,
+		},
+	)
+	after := gogotypes.TimestampNow()
+
+	// ensure there are no errors
+	require.NoError(t, err)
+	// and assert that the response is valid
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Service)
+	// ensure that the service has a JobStatus set
+	require.NotNil(t, resp.Service.JobStatus, "expected JobStatus to not be nil")
+	// and ensure that JobStatus.JobIteration is set to 0, which is the default
+	require.Equal(
+		t, resp.Service.JobStatus.JobIteration.Index, uint64(0),
+		"expected JobIteration for new replicated job to be 0",
+	)
+	require.NotNil(t, resp.Service.JobStatus.LastExecution)
+	assert.True(t, resp.Service.JobStatus.LastExecution.Compare(before) >= 0,
+		"expected %v to be after %v", resp.Service.JobStatus.LastExecution, before,
+	)
+	assert.True(t, resp.Service.JobStatus.LastExecution.Compare(after) <= 0,
+		"expected %v to be before %v", resp.Service.JobStatus.LastExecution, after,
+	)
+
+	// now, repeat all of the above, but with a global job
+	gspec := spec.Copy()
+	gspec.Annotations.Name = "globaljob"
+	gspec.Mode = &api.ServiceSpec_GlobalJob{
+		GlobalJob: &api.GlobalJob{},
+	}
+	before = gogotypes.TimestampNow()
+	gresp, gerr := ts.Client.CreateService(
+		context.Background(), &api.CreateServiceRequest{
+			Spec: gspec,
+		},
+	)
+	after = gogotypes.TimestampNow()
+
+	require.NoError(t, gerr)
+	require.NotNil(t, gresp)
+	require.NotNil(t, gresp.Service)
+	require.NotNil(t, gresp.Service.JobStatus)
+	require.Equal(
+		t, gresp.Service.JobStatus.JobIteration.Index, uint64(0),
+		"expected JobIteration for new global job to be 0",
+	)
+	require.NotNil(t, gresp.Service.JobStatus.LastExecution)
+	assert.True(t, gresp.Service.JobStatus.LastExecution.Compare(before) >= 0,
+		"expected %v to be after %v", gresp.Service.JobStatus.LastExecution, before,
+	)
+	assert.True(t, gresp.Service.JobStatus.LastExecution.Compare(after) <= 0,
+		"expected %v to be before %v", gresp.Service.JobStatus.LastExecution, after,
+	)
+
+	// now test that updating the service increments the JobIteration
+	spec.Task.ForceUpdate = spec.Task.ForceUpdate + 1
+	before = gogotypes.TimestampNow()
+	uresp, uerr := ts.Client.UpdateService(
+		context.Background(), &api.UpdateServiceRequest{
+			ServiceID:      resp.Service.ID,
+			ServiceVersion: &(resp.Service.Meta.Version),
+			Spec:           spec,
+		},
+	)
+	after = gogotypes.TimestampNow()
+
+	require.NoError(t, uerr)
+	require.NotNil(t, uresp)
+	require.NotNil(t, uresp.Service)
+	require.NotNil(t, uresp.Service.JobStatus)
+	// updating the service should bump the JobStatus.JobIteration.Index by 1
+	require.Equal(
+		t, uresp.Service.JobStatus.JobIteration.Index, uint64(1),
+		"expected JobIteration for updated replicated job to be 1",
+	)
+	require.NotNil(t, uresp.Service.JobStatus.LastExecution)
+	assert.True(t, uresp.Service.JobStatus.LastExecution.Compare(before) >= 0,
+		"expected %v to be after %v", uresp.Service.JobStatus.LastExecution, before,
+	)
+	assert.True(t, uresp.Service.JobStatus.LastExecution.Compare(after) <= 0,
+		"expected %v to be before %v", uresp.Service.JobStatus.LastExecution, after,
+	)
+
+	// rinse and repeat
+	gspec.Task.ForceUpdate = spec.Task.ForceUpdate + 1
+	before = gogotypes.TimestampNow()
+	guresp, guerr := ts.Client.UpdateService(
+		context.Background(), &api.UpdateServiceRequest{
+			ServiceID:      gresp.Service.ID,
+			ServiceVersion: &(gresp.Service.Meta.Version),
+			Spec:           gspec,
+		},
+	)
+	after = gogotypes.TimestampNow()
+
+	require.NoError(t, guerr)
+	require.NotNil(t, guresp)
+	require.NotNil(t, guresp.Service)
+	require.NotNil(t, guresp.Service.JobStatus)
+	require.Equal(
+		t, guresp.Service.JobStatus.JobIteration.Index, uint64(1),
+		"expected JobIteration for updated replicated job to be 1",
+	)
+	require.NotNil(t, guresp.Service.JobStatus.LastExecution)
+	assert.True(t, guresp.Service.JobStatus.LastExecution.Compare(before) >= 0,
+		"expected %v to be after %v", guresp.Service.JobStatus.LastExecution, before,
+	)
+	assert.True(t, guresp.Service.JobStatus.LastExecution.Compare(after) <= 0,
+		"expected %v to be before %v", guresp.Service.JobStatus.LastExecution, after,
+	)
+}
+
+// TestServiceValidateJob tests that calling the service API correctly
+// validates a job-mode service. Some fields, like UpdateConfig, are not valid
+// for job-mode services, and should return an error if they're set
+func TestServiceValidateJob(t *testing.T) {
+	bad := &api.ServiceSpec{
+		Mode:   &api.ServiceSpec_ReplicatedJob{ReplicatedJob: &api.ReplicatedJob{}},
+		Update: &api.UpdateConfig{},
+	}
+
+	err := validateJob(bad)
+	assert.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
+
+	good := []*api.ServiceSpec{
+		{
+			Mode: &api.ServiceSpec_ReplicatedJob{
+				ReplicatedJob: &api.ReplicatedJob{
+					MaxConcurrent: 3, TotalCompletions: 9,
+				},
+			},
+		},
+		{Mode: &api.ServiceSpec_GlobalJob{}},
+	}
+
+	for _, g := range good {
+		err := validateJob(g)
+		assert.NoError(t, err)
 	}
 }
