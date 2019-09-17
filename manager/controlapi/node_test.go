@@ -732,10 +732,8 @@ func TestUpdateNodeDemote(t *testing.T) {
 	testUpdateNodeDemote(t)
 }
 
-// TestRemoveNodeAttachments tests the unexported removeNodeAttachments
-// function. This avoids us having to update the TestRemoveNodes function to
-// test all of this logic
-func TestRemoveNodeAttachments(t *testing.T) {
+// TestRemoveNodeAttachments tests the unexported orphanNodeTasks
+func TestOrphanNodeTasks(t *testing.T) {
 	// first, set up a store and all that
 	ts := newTestServer(t)
 	defer ts.Stop()
@@ -873,28 +871,50 @@ func TestRemoveNodeAttachments(t *testing.T) {
 				},
 			},
 		}
-		return store.CreateTask(tx, task4)
+		if err := store.CreateTask(tx, task4); err != nil {
+			return err
+		}
+
+		// 5.) A regular task that's already in a terminal state on the node,
+		//	   which does not need to be updated.
+		task5 := &api.Task{
+			ID:           "task5",
+			NodeID:       "id2",
+			DesiredState: api.TaskStateRunning,
+			Status: api.TaskStatus{
+				// use TaskStateCompleted, as this is the earliest terminal
+				// state (this ensures we don't actually use <= instead of <)
+				State: api.TaskStateCompleted,
+			},
+			Spec: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{},
+				},
+			},
+		}
+		return store.CreateTask(tx, task5)
 	})
 	require.NoError(t, err)
 
 	// Now, call the function with our nodeID. make sure it returns no error
 	err = ts.Store.Update(func(tx store.Tx) error {
-		return removeNodeAttachments(tx, "id2")
+		return orphanNodeTasks(tx, "id2")
 	})
 	require.NoError(t, err)
 
-	// Now, make sure only task1, the network-attacahed task on id2, was
-	// removed
+	// Now, make sure only tasks 1 and 3, the tasks on the node we're deleting
+	// removed, are removed
 	ts.Store.View(func(tx store.ReadTx) {
 		tasks, err := store.FindTasks(tx, store.All)
 		require.NoError(t, err)
-		// should only be 3 tasks left
-		require.Len(t, tasks, 4)
-		// and the list should not contain task1
+		require.Len(t, tasks, 5)
+		// and the list should not contain task1 or task2
 		for _, task := range tasks {
 			require.NotNil(t, task)
-			if task.ID == "task1" {
+			if task.ID == "task1" || task.ID == "task3" {
 				require.Equal(t, task.Status.State, api.TaskStateOrphaned)
+			} else {
+				require.NotEqual(t, task.Status.State, api.TaskStateOrphaned)
 			}
 		}
 	})
