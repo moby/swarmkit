@@ -1,6 +1,6 @@
 run:
   tests: false
-linters: 
+linters:
   disable-all: true
   enable:
     - misspell
@@ -11,4 +11,3 @@ linters:
     - deadcode
     - unconvert
     - govet
-      

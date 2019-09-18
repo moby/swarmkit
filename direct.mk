@@ -8,14 +8,12 @@ VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
 RACE := $(shell test $$(go env GOARCH) != "amd64" || (echo "-race"))
 
 # Project packages.
-PACKAGES=$(shell go list ./... | grep -v /vendor/)
-INTEGRATION_PACKAGE=${PROJECT_ROOT}/integration
+PACKAGES!=go list -f '{{.Dir}}' ./...
+INTEGRATION_PACKAGE=./integration
 
 # Project binaries.
 COMMANDS=swarmd swarmctl swarm-bench swarm-rafttool protoc-gen-gogoswarm
 BINARIES=$(addprefix bin/,$(COMMANDS))
-
-VNDR=$(shell which vndr || echo '')
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
@@ -38,11 +36,8 @@ version/version.go:
 .PHONY: setup
 setup: ## install dependencies
 	@echo "🐳 $@"
-	# TODO(stevvooe): Install these from the vendor directory
 	# install golangci-lint version 1.17.1 to ./bin/golangci-lint
 	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.17.1
-	@go get -u github.com/lk4d4/vndr
-	@go get -u github.com/stevvooe/protobuild
 
 .PHONY: generate
 generate: protos
@@ -52,7 +47,7 @@ generate: protos
 .PHONY: protos
 protos: bin/protoc-gen-gogoswarm ## generate protobuf
 	@echo "🐳 $@"
-	@PATH=${ROOTDIR}/bin:${PATH} protobuild ${PACKAGES}
+	@go run -mod=vendor github.com/stevvooe/protobuild ${PACKAGES}
 
 .PHONY: checkprotos
 checkprotos: generate ## check if protobufs needs to be generated again
@@ -77,24 +72,24 @@ fmt-proto:
 .PHONY: build
 build: ## build the go packages
 	@echo "🐳 $@"
-	@go build -tags "${DOCKER_BUILDTAGS}" -v ${GO_LDFLAGS} ${GO_GCFLAGS} ${PACKAGES}
+	@go build -mod=vendor -tags "${DOCKER_BUILDTAGS}" -v ${GO_LDFLAGS} ${GO_GCFLAGS} ${PACKAGES}
 
 .PHONY: test
 test: ## run tests, except integration tests
 	@echo "🐳 $@"
-	@go test -parallel 8 ${RACE} -tags "${DOCKER_BUILDTAGS}" $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES})
+	@go test -mod=vendor -parallel 8 ${RACE} -tags "${DOCKER_BUILDTAGS}" $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES})
 
 .PHONY: integration-tests
 integration-tests: ## run integration tests
 	@echo "🐳 $@"
-	@go test -parallel 8 ${RACE} -tags "${DOCKER_BUILDTAGS}" ${INTEGRATION_PACKAGE}
+	@go test -mod=vendor -parallel 8 ${RACE} -tags "${DOCKER_BUILDTAGS}" ${INTEGRATION_PACKAGE}
 
 # Build a binary from a cmd.
 bin/%: cmd/% .FORCE
 	@test $$(go list) = "${PROJECT_ROOT}" || \
 		(echo "👹 Please correctly set up your Go build environment. This project must be located at <GOPATH>/src/${PROJECT_ROOT}" && false)
 	@echo "🐳 $@"
-	@go build -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./$<
+	@go build -mod=vendor -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./$<
 
 .PHONY: .FORCE
 .FORCE:
@@ -123,14 +118,14 @@ uninstall:
 coverage: ## generate coverprofiles from the unit tests
 	@echo "🐳 $@"
 	@( for pkg in $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES}); do \
-		go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
-		go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
+		go test -mod=vendor ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
+		go test -mod=vendor ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
 	done )
 
 .PHONY: coverage-integration
 coverage-integration: ## generate coverprofiles from the integration tests
 	@echo "🐳 $@"
-	go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../${INTEGRATION_PACKAGE}/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
+	go test -mod=vendor ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="${INTEGRATION_PACKAGE}/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
 
 .PHONY: help
 help: ## this help
@@ -139,12 +134,10 @@ help: ## this help
 .PHONY: dep-validate
 dep-validate:
 	@echo "+ $@"
-	$(if $(VNDR), , \
-		$(error Please install vndr: go get github.com/lk4d4/vndr))
 	@rm -Rf .vendor.bak
 	@mv vendor .vendor.bak
-	@$(VNDR)
+	@go mod vendor
 	@test -z "$$(diff -r vendor .vendor.bak 2>&1 | tee /dev/stderr)" || \
-		(echo >&2 "+ inconsistent dependencies! what you have in vendor.conf does not match with what you have in vendor" && false)
+		(echo >&2 "+ inconsistent dependencies! what you have in go.sum does not match with what you have in vendor" && false)
 	@rm -Rf vendor
 	@mv .vendor.bak vendor

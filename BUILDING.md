@@ -80,22 +80,23 @@ for details.
 
 ### Update vendored dependencies
 
-To update dependency you need just change `vendor.conf` file and run `vndr` tool:
+To update a dependency you need to change the `go.mod` file and run:
+
 ```
-go get github.com/LK4D4/vndr
-vndr
+go mod tidy
+go mod vendor
 ```
 
 It's possible to update only one dependency:
-```
-vndr github.com/coreos/etcd v3.0.9
-```
 
-but it should be in sync with `vendor.conf`.
+```
+go get -u github.com/coreos/etcd/v3@v3.0.9
+```
 
 Also, you can update dependency from fork for testing:
+
 ```
-vndr github.com/coreos/etcd <revision> https://github.com/LK4D4/etcd.git
+go mod edit -replace=github.com/coreos/etcd/v3=github.com/LK4D4/etcd/v3@v3.0.9
 ```
 
 ### Regenerating protobuf bindings

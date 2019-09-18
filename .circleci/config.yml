@@ -1,14 +1,9 @@
 version: 2
 jobs:
   build:
-    # CircleCI by default sets the gopath to be ~/.go_workspace and /usr/local/go_workspace
-    # apparently.  We cannot set the working directory or environment variables by using
-    # other environment variables (although the working directory can use the `~` character,
-    # but environment variables cannot), so to avoid having to override the GOPATH for every
-    # run command, just hard code in the directory to be CircleCI expects it to be.
-    working_directory: /home/circleci/.go_workspace/src/github.com/docker/swarmkit
     environment:
       # Needed to install go
+      GO111MODULE: "on"
       OS: linux
       ARCH: amd64
       GOVERSION: 1.12
@@ -79,7 +74,6 @@ jobs:
                 make dep-validate;
             fi
 
-    # The GOPATH setting would not be needed if we used the golang docker image
     - run:
         name: Compile/lint/vet/protobuf validation
         command: make check binaries checkprotos
