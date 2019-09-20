@@ -200,7 +200,9 @@ func dumpSnapshot(swarmdir, unlockKey string, redact bool) error {
 			if task != nil {
 				if container := task.Spec.GetContainer(); container != nil {
 					container.Env = []string{"ENVVARS REDACTED"}
-					container.PullOptions.RegistryAuth = "REDACTED"
+					if container.PullOptions != nil {
+						container.PullOptions.RegistryAuth = "REDACTED"
+					}
 				}
 			}
 		}
@@ -208,7 +210,9 @@ func dumpSnapshot(swarmdir, unlockKey string, redact bool) error {
 			if service != nil {
 				if container := service.Spec.Task.GetContainer(); container != nil {
 					container.Env = []string{"ENVVARS REDACTED"}
-					container.PullOptions.RegistryAuth = "REDACTED"
+					if container.PullOptions != nil {
+						container.PullOptions.RegistryAuth = "REDACTED"
+					}
 				}
 			}
 		}
