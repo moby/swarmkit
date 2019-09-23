@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -84,17 +85,38 @@ func dumpWAL(swarmdir, unlockKey string, start, end uint64, redact bool) error {
 
 	for _, ent := range walData.Entries {
 		if (start == 0 || ent.Index >= start) && (end == 0 || ent.Index <= end) {
-			fmt.Printf("Entry Index=%d, Term=%d, Type=%s:\n", ent.Index, ent.Term, ent.Type.String())
+			if format == "text" {
+				fmt.Printf("Entry Index=%d, Term=%d, Type=%s:\n", ent.Index, ent.Term, ent.Type.String())
+			}
 			switch ent.Type {
 			case raftpb.EntryConfChange:
+
 				cc := &raftpb.ConfChange{}
 				err := proto.Unmarshal(ent.Data, cc)
 				if err != nil {
 					return err
 				}
-
-				fmt.Println("Conf change type:", cc.Type.String())
-				fmt.Printf("Node ID: %x\n\n", cc.NodeID)
+				switch format {
+				case "text":
+					fmt.Println("Conf change type:", cc.Type.String())
+					fmt.Printf("Node ID: %x\n\n", cc.NodeID)
+					fmt.Println()
+				case "json":
+					err := json.NewEncoder(os.Stdout).Encode(struct {
+						Term  uint64
+						Index uint64
+						Type  raftpb.EntryType
+						Data  *raftpb.ConfChange
+					}{
+						ent.Term,
+						ent.Index,
+						ent.Type,
+						cc,
+					})
+					if err != nil {
+						return err
+					}
+				}
 
 			case raftpb.EntryNormal:
 				r := &api.InternalRaftRequest{}
@@ -135,10 +157,28 @@ func dumpWAL(swarmdir, unlockKey string, start, end uint64, redact bool) error {
 					}
 				}
 
-				if err := proto.MarshalText(os.Stdout, r); err != nil {
-					return err
+				switch format {
+				case "text":
+					if err := proto.MarshalText(os.Stdout, r); err != nil {
+						return err
+					}
+					fmt.Println()
+				case "json":
+					err := json.NewEncoder(os.Stdout).Encode(struct {
+						Term  uint64
+						Index uint64
+						Type  raftpb.EntryType
+						Data  *api.InternalRaftRequest
+					}{
+						Term:  ent.Term,
+						Index: ent.Index,
+						Type:  ent.Type,
+						Data:  r,
+					})
+					if err != nil {
+						return err
+					}
 				}
-				fmt.Println()
 			}
 		}
 	}
@@ -163,18 +203,6 @@ func dumpSnapshot(swarmdir, unlockKey string, redact bool) error {
 	if s.Version != api.Snapshot_V0 {
 		return fmt.Errorf("unrecognized snapshot version %d", s.Version)
 	}
-
-	fmt.Println("Active members:")
-	for _, member := range s.Membership.Members {
-		fmt.Printf(" NodeID=%s, RaftID=%x, Addr=%s\n", member.NodeID, member.RaftID, member.Addr)
-	}
-	fmt.Println()
-
-	fmt.Println("Removed members:")
-	for _, member := range s.Membership.Removed {
-		fmt.Printf(" RaftID=%x\n", member)
-	}
-	fmt.Println()
 
 	if redact {
 		for _, cluster := range s.Store.Clusters {
@@ -218,11 +246,30 @@ func dumpSnapshot(swarmdir, unlockKey string, redact bool) error {
 		}
 	}
 
-	fmt.Println("Objects:")
-	if err := proto.MarshalText(os.Stdout, &s.Store); err != nil {
-		return err
+	switch format {
+	case "text":
+		fmt.Println("Active members:")
+		for _, member := range s.Membership.Members {
+			fmt.Printf(" NodeID=%s, RaftID=%x, Addr=%s\n", member.NodeID, member.RaftID, member.Addr)
+		}
+		fmt.Println()
+
+		fmt.Println("Removed members:")
+		for _, member := range s.Membership.Removed {
+			fmt.Printf(" RaftID=%x\n", member)
+		}
+		fmt.Println()
+
+		fmt.Println("Objects:")
+		if err := proto.MarshalText(os.Stdout, &s.Store); err != nil {
+			return err
+		}
+		fmt.Println()
+	case "json":
+		if err := json.NewEncoder(os.Stdout).Encode(&s); err != nil {
+			return err
+		}
 	}
-	fmt.Println()
 
 	return nil
 }
@@ -452,10 +499,18 @@ func dumpObject(swarmdir, unlockKey, objType string, selector objSelector) error
 	}
 
 	for _, object := range objects {
-		if err := proto.MarshalText(os.Stdout, object); err != nil {
-			return err
+		switch format {
+		case "text":
+			if err := proto.MarshalText(os.Stdout, object); err != nil {
+				return err
+			}
+			fmt.Println()
+		case "json":
+			if err := json.NewEncoder(os.Stdout).Encode(object); err != nil {
+				return err
+			}
+
 		}
-		fmt.Println()
 	}
 
 	return nil
