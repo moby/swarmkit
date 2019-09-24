@@ -113,7 +113,8 @@ var _ = Describe("Integration between the controlapi and jobs orchestrator", fun
 		<-orchestratorDone
 	})
 
-	It("should create the requisite tasks for a new replicated job", func() {
+	It("should handle replicated job creation and update", func() {
+		By("creating tasks for a new replicated job")
 		spec := &api.ServiceSpec{
 			Annotations: api.Annotations{
 				Name: "testService",
@@ -157,7 +158,72 @@ var _ = Describe("Integration between the controlapi and jobs orchestrator", fun
 					},
 				},
 			)
-			return taskListResp.Tasks, err
+			if err != nil {
+				return nil, err
+			}
+			return taskListResp.Tasks, nil
+		}).Should(HaveLen(3))
+
+		By("creating a new set of tasks for an updated replicated job")
+		resp.Service.Spec.Task.ForceUpdate++
+		updateResp, uerr := client.UpdateService(
+			context.Background(),
+			&api.UpdateServiceRequest{
+				ServiceID:      resp.Service.ID,
+				ServiceVersion: &resp.Service.Meta.Version,
+				Spec:           &resp.Service.Spec,
+			},
+		)
+		Expect(uerr).ToNot(HaveOccurred())
+		Expect(updateResp).ToNot(BeNil())
+
+		Eventually(func() ([]*api.Task, error) {
+			taskListResp, err := client.ListTasks(
+				context.Background(),
+				&api.ListTasksRequest{
+					Filters: &api.ListTasksRequest_Filters{
+						ServiceIDs: []string{resp.Service.ID},
+						DesiredStates: []api.TaskState{
+							api.TaskStateShutdown,
+						},
+					},
+				},
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			tasks := []*api.Task{}
+			for _, task := range taskListResp.Tasks {
+				if task.JobIteration.Index != updateResp.Service.JobStatus.JobIteration.Index {
+					tasks = append(tasks, task)
+				}
+			}
+			return tasks, nil
+		}).Should(HaveLen(3))
+
+		Eventually(func() ([]*api.Task, error) {
+			taskListResp, err := client.ListTasks(
+				context.Background(),
+				&api.ListTasksRequest{
+					Filters: &api.ListTasksRequest_Filters{
+						ServiceIDs: []string{resp.Service.ID},
+						DesiredStates: []api.TaskState{
+							api.TaskStateCompleted,
+						},
+					},
+				},
+			)
+			if err != nil {
+				return nil, err
+			}
+			tasks := []*api.Task{}
+			for _, task := range taskListResp.Tasks {
+				if task.JobIteration.Index == updateResp.Service.JobStatus.JobIteration.Index {
+					tasks = append(tasks, task)
+				}
+			}
+			return tasks, nil
 		}).Should(HaveLen(3))
 	})
 })
