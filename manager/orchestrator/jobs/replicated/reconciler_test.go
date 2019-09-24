@@ -93,6 +93,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 			var (
 				serviceID        string
 				service          *api.Service
+				tasks            []*api.Task
 				maxConcurrent    uint64
 				totalCompletions uint64
 
@@ -113,6 +114,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 							},
 						},
 					},
+					JobStatus: &api.JobStatus{},
 				}
 
 				cluster = &api.Cluster{
@@ -129,6 +131,9 @@ var _ = Describe("Replicated Job reconciler", func() {
 					},
 				}
 
+				// nil out tasks, so erase the previous test iterations
+				tasks = nil
+
 			})
 
 			JustBeforeEach(func() {
@@ -138,9 +143,15 @@ var _ = Describe("Replicated Job reconciler", func() {
 							return err
 						}
 					}
+					for _, task := range tasks {
+						if err := store.CreateTask(tx, task); err != nil {
+							return err
+						}
+					}
 					if cluster != nil {
 						return store.CreateCluster(tx, cluster)
 					}
+					// there may or may not be tasks to create.
 					return nil
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -373,6 +384,57 @@ var _ = Describe("Replicated Job reconciler", func() {
 					tasks := AllTasks(s)
 
 					Expect(tasks).To(HaveUniqueSlots())
+				})
+			})
+
+			When("A job is updated", func() {
+				BeforeEach(func() {
+					for i := uint64(0); i < maxConcurrent; i++ {
+						tasks = append(tasks, &api.Task{
+							ID:           fmt.Sprintf("oldTask%v", i),
+							Spec:         service.Spec.Task,
+							DesiredState: api.TaskStateCompleted,
+							Status: api.TaskStatus{
+								State: api.TaskStateRunning,
+							},
+							JobIteration: &api.Version{
+								Index: service.JobStatus.JobIteration.Index,
+							},
+							ServiceID: service.ID,
+						})
+					}
+
+					// update the service object, so that the task reflects an
+					// older version
+					service.Spec.Task.ForceUpdate++
+					service.JobStatus.JobIteration.Index++
+				})
+
+				It("should shut down tasks belonging to the old job iteration", func() {
+					s.View(func(tx store.ReadTx) {
+						allTasks, err := store.FindTasks(tx, store.ByDesiredState(api.TaskStateShutdown))
+						Expect(err).ToNot(HaveOccurred())
+						Expect(allTasks).To(HaveLen(int(maxConcurrent)))
+						for _, task := range allTasks {
+							Expect(
+								task.JobIteration.Index,
+							).ToNot(
+								Equal(service.JobStatus.JobIteration.Index),
+							)
+						}
+					})
+				})
+
+				It("should create tasks belonging to the new job iteration", func() {
+					s.View(func(tx store.ReadTx) {
+						tasks, err := store.FindTasks(tx, store.ByDesiredState(api.TaskStateCompleted))
+						Expect(err).ToNot(HaveOccurred())
+						Expect(tasks).To(HaveLen(int(maxConcurrent)))
+						for _, task := range tasks {
+							Expect(task.Status.State).To(Equal(api.TaskStateNew))
+							Expect(task.JobIteration.Index).To(Equal(service.JobStatus.JobIteration.Index))
+						}
+					})
 				})
 			})
 
