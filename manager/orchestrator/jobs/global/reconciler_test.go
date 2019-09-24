@@ -61,6 +61,9 @@ var _ = Describe("Global Job Reconciler", func() {
 			service = &api.Service{
 				ID: serviceID,
 				Spec: api.ServiceSpec{
+					Annotations: api.Annotations{
+						Name: "someService",
+					},
 					Mode: &api.ServiceSpec_GlobalJob{
 						// GlobalJob has no parameters
 						GlobalJob: &api.GlobalJob{},
@@ -425,7 +428,6 @@ var _ = Describe("Global Job Reconciler", func() {
 				})
 			})
 		})
-
 	})
 
 	Describe("FixTask", func() {
