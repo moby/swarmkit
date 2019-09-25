@@ -5,11 +5,22 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/types"
 
+	"context"
 	"fmt"
+
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/state/store"
 )
+
+type fakeRestartSupervisor struct {
+	tasks []string
+}
+
+func (f *fakeRestartSupervisor) Restart(_ context.Context, _ store.Tx, _ *api.Cluster, _ *api.Service, task api.Task) error {
+	f.tasks = append(f.tasks, task.ID)
+	return nil
+}
 
 // uniqueSlotsMatcher is used to verify that a set of tasks all have unique,
 // non-overlapping slot numbers
@@ -59,18 +70,25 @@ var _ = Describe("Replicated Job reconciler", func() {
 		r       *Reconciler
 		s       *store.MemoryStore
 		cluster *api.Cluster
+		f       *fakeRestartSupervisor
 	)
 
+	BeforeEach(func() {
+		s = store.NewMemoryStore(nil)
+		Expect(s).ToNot(BeNil())
+		f = &fakeRestartSupervisor{}
+
+		r = &Reconciler{
+			store:   s,
+			restart: f,
+		}
+	})
+
+	AfterEach(func() {
+		s.Close()
+	})
+
 	Describe("ReconcileService", func() {
-		BeforeEach(func() {
-			s = store.NewMemoryStore(nil)
-			Expect(s).ToNot(BeNil())
-
-			r = &Reconciler{
-				store: s,
-			}
-		})
-
 		When("reconciling a service", func() {
 			var (
 				serviceID        string
@@ -230,19 +248,104 @@ var _ = Describe("Replicated Job reconciler", func() {
 				})
 			})
 
-			When("A job is almost complete, and doesn't need MaxConcurrent tasks running", func() {
+			When("a job has some failing and some completed tasks", func() {
+				var (
+					desiredNewTasks uint64
+					failingTasks    []string
+				)
+
+				BeforeEach(func() {
+					failingTasks = []string{}
+					err := s.Update(func(tx store.Tx) error {
+						// first, create a set of tasks with slots
+						// [0, maxConcurrent-1] that have all succeeded
+						for i := uint64(0); i < maxConcurrent; i++ {
+							task := orchestrator.NewTask(cluster, service, i, "")
+							task.JobIteration = &api.Version{}
+							task.DesiredState = api.TaskStateCompleted
+							task.Status.State = api.TaskStateCompleted
+							if err := store.CreateTask(tx, task); err != nil {
+								return err
+							}
+						}
+
+						// next, create half of maxConcurrent tasks, all
+						// failing.
+						startSlot := maxConcurrent
+						endSlot := startSlot + (maxConcurrent / 2)
+						for i := startSlot; i < endSlot; i++ {
+							task := orchestrator.NewTask(cluster, service, i, "")
+							task.JobIteration = &api.Version{}
+							task.DesiredState = api.TaskStateCompleted
+							task.Status.State = api.TaskStateFailed
+							failingTasks = append(failingTasks, task.ID)
+							if err := store.CreateTask(tx, task); err != nil {
+								return err
+							}
+						}
+
+						// it might seem dumb to do this instead of just using
+						// maxConcurrent / 2, but this avoids any issues with
+						// the parity of maxConcurrent that might otherwise
+						// arise from integer division. we want enough tasks to
+						// get us up to maxConcurrent, including the ones
+						// already extant and failing.
+						desiredNewTasks = maxConcurrent - (maxConcurrent / 2)
+						return nil
+					})
+					Expect(err).ToNot(HaveOccurred())
+				})
+
+				It("should not reuse slot numbers", func() {
+					tasks := AllTasks(s)
+					Expect(tasks).To(HaveUniqueSlots())
+				})
+
+				It("should not replace the failing tasks", func() {
+					s.View(func(tx store.ReadTx) {
+						// Get all tasks that are in desired state Completed
+						tasks, err := store.FindTasks(tx, store.ByDesiredState(api.TaskStateCompleted))
+						Expect(err).ToNot(HaveOccurred())
+
+						// count the tasks that are currently active. use type
+						// uint64 to make comparison with maxConcurrent easier.
+						activeTasks := uint64(0)
+						for _, task := range tasks {
+							if task.Status.State != api.TaskStateCompleted {
+								activeTasks++
+							}
+						}
+
+						// Assert that there are maxConcurrent of these tasks
+						Expect(activeTasks).To(Equal(maxConcurrent))
+
+						// Now, assert that there are 1/2 maxConcurrent New
+						// tasks. This shouldn't be a problem, but while we're
+						// here we might as well do this sanity check
+						var newTasks uint64
+						for _, task := range tasks {
+							if task.Status.State == api.TaskStateNew {
+								newTasks++
+							}
+						}
+						Expect(newTasks).To(Equal(desiredNewTasks))
+					})
+				})
+
+				It("should call Restart for each failing task", func() {
+					Expect(f.tasks).To(ConsistOf(failingTasks))
+				})
+			})
+
+			When("a job is almost complete, and doesn't need MaxConcurrent tasks running", func() {
 				BeforeEach(func() {
 					// we need to create a rather large number of tasks, all in
 					// COMPLETE state.
 					err := s.Update(func(tx store.Tx) error {
 						for i := uint64(0); i < totalCompletions-10; i++ {
-							// in a real system, if these tasks were all
-							// actually progressing, there would be no more
-							// than 30 tasks at any given time, which means no
-							// more than 30 slots.
-							slot := i % 30
+							// each task will get a unique slot
 
-							task := orchestrator.NewTask(nil, service, slot, "")
+							task := orchestrator.NewTask(nil, service, i, "")
 							task.JobIteration = &api.Version{}
 							task.Status.State = api.TaskStateCompleted
 							task.DesiredState = api.TaskStateCompleted
@@ -267,12 +370,9 @@ var _ = Describe("Replicated Job reconciler", func() {
 				})
 
 				It("should give each new task a unique slot", func() {
-					var newTasks []*api.Task
-					s.View(func(tx store.ReadTx) {
-						newTasks, _ = store.FindTasks(tx, store.ByTaskState(api.TaskStateNew))
-					})
+					tasks := AllTasks(s)
 
-					Expect(newTasks).To(HaveUniqueSlots())
+					Expect(tasks).To(HaveUniqueSlots())
 				})
 			})
 
@@ -333,10 +433,6 @@ var _ = Describe("Replicated Job reconciler", func() {
 			reconcileErr := r.ReconcileService("someService")
 			Expect(reconcileErr).To(HaveOccurred())
 			Expect(reconcileErr.Error()).To(ContainSubstring("underflow"))
-		})
-
-		AfterEach(func() {
-			s.Close()
 		})
 	})
 })

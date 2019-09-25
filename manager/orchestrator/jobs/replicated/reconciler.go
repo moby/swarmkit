@@ -1,6 +1,7 @@
 package replicated
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/docker/swarmkit/api"
@@ -8,15 +9,29 @@ import (
 	"github.com/docker/swarmkit/manager/state/store"
 )
 
+// restartSupervisor is an interface representing the methods from the
+// restart.SupervisorInterface that are actually needed by the reconciler. This
+// more limited interface allows us to write a less ugly fake for unit testing.
+type restartSupervisor interface {
+	Restart(context.Context, store.Tx, *api.Cluster, *api.Service, api.Task) error
+}
+
+// Reconciler is an object that manages reconciliation of replicated jobs. It
+// is blocking and non-asynchronous, for ease of testing. It implements two
+// interfaces. The first is the Reconciler interface of the Orchestrator
+// package above this one. The second is the taskinit.InitHandler interface.
 type Reconciler struct {
 	// we need the store, of course, to do updates
 	store *store.MemoryStore
+
+	restart restartSupervisor
 }
 
 // newReconciler creates a new reconciler object
-func NewReconciler(store *store.MemoryStore) *Reconciler {
+func NewReconciler(store *store.MemoryStore, restart restartSupervisor) *Reconciler {
 	return &Reconciler{
-		store: store,
+		store:   store,
+		restart: restart,
 	}
 }
 
@@ -82,20 +97,21 @@ func (r *Reconciler) ReconcileService(id string) error {
 	// particular moment in time, and it won't result in us going OVER the
 	// needed task count
 	//
-	// also, we don't care if tasks are failed here; that is, we make no
-	// distinction between tasks that have Failed and tasks in any other
-	// terminal non-Completed state.
+	// importantly, we are computing only how many _new_ tasks are needed. Some
+	// tasks may need to be restarted as well, but we don't do this directly;
+	// restarting tasks is under the purview of the restartSupervisor.
 	//
 	// also also, for the math later, we need these values to be of type uint64.
 	runningTasks := uint64(0)
 	completeTasks := uint64(0)
+	restartTasks := []string{}
 
-	// slots keeps track of the slot numbers available for tasks. as long as
-	// the orchestrator isn't broken, then this map will consist of the set of
-	// all integers from 0 to (MaxConcurrent - 1), with a boolean indicating if
-	// that slot is occupied. This slot handling code is much simpler than the
-	// code for replicated services, because we don't need to worry about
-	// restarts.
+	// for replicated jobs, each task will get a different slot number, so that
+	// when the job has completed, there will be one Completed task in every
+	// slot number [0, TotalCompletions-1].
+	//
+	// By assigning each task to a unique slot, we simply handling of
+	// restarting failed tasks through the restart manager.
 	slots := map[uint64]bool{}
 	for _, task := range tasks {
 		// we only care about tasks from this job iteration. tasks from the
@@ -105,14 +121,23 @@ func (r *Reconciler) ReconcileService(id string) error {
 		if task.JobIteration != nil && task.JobIteration.Index == jobVersion {
 			if task.Status.State == api.TaskStateCompleted {
 				completeTasks++
+				slots[task.Slot] = true
 			}
 
-			// any tasks that are created and running but not yet terminal are
-			// considered "running tasks" for our purpose, because they don't
-			// need to be created.
-			if task.Status.State <= api.TaskStateRunning && task.DesiredState == api.TaskStateCompleted {
+			// the Restart Manager may put a task in the desired state Ready,
+			// so we should match not only tasks in desired state Completed,
+			// but also those in any valid running state.
+			if task.Status.State != api.TaskStateCompleted && task.DesiredState <= api.TaskStateCompleted {
 				runningTasks++
 				slots[task.Slot] = true
+
+				// if the task is in a terminal state, we might need to restart
+				// it. throw it on the pile if so. this is still counted as a
+				// running task for the purpose of determining how many new
+				// tasks to create.
+				if task.Status.State > api.TaskStateCompleted {
+					restartTasks = append(restartTasks, task.ID)
+				}
 			}
 		}
 	}
@@ -160,14 +185,14 @@ func (r *Reconciler) ReconcileService(id string) error {
 	err := r.store.Batch(func(batch *store.Batch) error {
 		for i := uint64(0); i < actualNewTasks; i++ {
 			if err := batch.Update(func(tx store.Tx) error {
-				// find an unoccupied slot number that we can use, same as with
-				// replicated services.
 				var slot uint64
-				// the total number of slots we can have for a job is equal to
-				// the value of MaxConcurrent for the job iteration. This means
-				// if we iterate over values from 0 to MaxConcurrent, we'll
-				// find an available slot.
-				for s := uint64(0); s < rj.MaxConcurrent; s++ {
+				// each task will go into a unique slot, and at the end, there
+				// should be the same number of slots as there are desired
+				// total completions. We could simplify this logic by simply
+				// assuming that slots are filled in order, but it's a more
+				// robust solution to not assume that, and instead assure that
+				// the slot is unoccupied.
+				for s := uint64(0); s < rj.TotalCompletions; s++ {
 					// when we're iterating through, if the service has slots
 					// that haven't been used yet (for example, if this is the
 					// first time we're running this iteration), then doing
@@ -194,8 +219,52 @@ func (r *Reconciler) ReconcileService(id string) error {
 				return err
 			}
 		}
+
+		for _, taskID := range restartTasks {
+			if err := batch.Update(func(tx store.Tx) error {
+				t := store.GetTask(tx, taskID)
+				if t == nil {
+					return nil
+				}
+
+				if t.DesiredState > api.TaskStateCompleted {
+					return nil
+				}
+
+				// TODO(dperny): pass in context from above
+				return r.restart.Restart(context.Background(), tx, cluster, service, *t)
+			}); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 
 	return err
+}
+
+// IsRelatedService returns true if the task is a replicated job. This method
+// fulfills the taskinit.InitHandler interface. Because it is just a wrapper
+// around a well-tested function call, it has no tests of its own.
+func (r *Reconciler) IsRelatedService(service *api.Service) bool {
+	return orchestrator.IsReplicatedJob(service)
+}
+
+// FixTask ostensibly validates that a task is compliant with the rest of the
+// cluster state. However, in the replicated jobs case, the only action we
+// can take with a noncompliant task is to restart it. Because the replicated
+// jobs orchestrator reconciles the whole service at once, any tasks that
+// need to be restarted will be done when we make the reconiliation pass over
+// all services. Therefore, in this instance, FixTask does nothing except
+// implement the FixTask method of the taskinit.InitHandler interface.
+func (r *Reconciler) FixTask(_ context.Context, _ *store.Batch, _ *api.Task) {}
+
+// SlotTuple returns an orchestrator.SlotTuple object for this task. It
+// implements the taskinit.InitHandler interface
+func (r *Reconciler) SlotTuple(t *api.Task) orchestrator.SlotTuple {
+	return orchestrator.SlotTuple{
+		ServiceID: t.ServiceID,
+		Slot:      t.Slot,
+	}
 }

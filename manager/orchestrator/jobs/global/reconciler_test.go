@@ -4,25 +4,40 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"context"
 	"time"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/state/store"
 	gogotypes "github.com/gogo/protobuf/types"
 )
+
+type fakeRestartSupervisor struct {
+	tasks []string
+}
+
+func (f *fakeRestartSupervisor) Restart(_ context.Context, _ store.Tx, _ *api.Cluster, _ *api.Service, task api.Task) error {
+	f.tasks = append(f.tasks, task.ID)
+	return nil
+}
 
 var _ = Describe("Global Job Reconciler", func() {
 	var (
 		r *Reconciler
 		s *store.MemoryStore
+		f *fakeRestartSupervisor
 	)
 
 	BeforeEach(func() {
 		s = store.NewMemoryStore(nil)
 		Expect(s).ToNot(BeNil())
 
+		f = &fakeRestartSupervisor{}
+
 		r = &Reconciler{
-			store: s,
+			store:   s,
+			restart: f,
 		}
 	})
 
@@ -30,7 +45,7 @@ var _ = Describe("Global Job Reconciler", func() {
 		s.Close()
 	})
 
-	Describe("reconcileService", func() {
+	Describe("ReconcileService", func() {
 		var (
 			serviceID string
 			service   *api.Service
@@ -163,6 +178,51 @@ var _ = Describe("Global Job Reconciler", func() {
 
 			err = r.ReconcileService(serviceID)
 			Expect(err).ToNot(HaveOccurred())
+		})
+
+		When("there are failed tasks", func() {
+			BeforeEach(func() {
+				// all but the last node should be filled.
+				for _, node := range nodes[:len(nodes)-1] {
+					task := orchestrator.NewTask(cluster, service, 0, node.ID)
+					task.JobIteration = &api.Version{}
+					task.DesiredState = api.TaskStateCompleted
+					task.Status.State = api.TaskStateFailed
+					tasks = append(tasks, task)
+				}
+			})
+
+			It("should not replace the failing tasks", func() {
+				s.View(func(tx store.ReadTx) {
+					tasks, err := store.FindTasks(tx, store.All)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(tasks).To(HaveLen(len(nodes)))
+
+					// this is a sanity check
+					numFailedTasks := 0
+					numNewTasks := 0
+					for _, task := range tasks {
+						if task.Status.State == api.TaskStateNew {
+							numNewTasks++
+						}
+						if task.Status.State == api.TaskStateFailed {
+							numFailedTasks++
+						}
+					}
+
+					Expect(numNewTasks).To(Equal(1))
+					Expect(numFailedTasks).To(Equal(len(nodes) - 1))
+				})
+			})
+
+			It("should call the restartSupervisor with the failed task", func() {
+				taskIDs := []string{}
+				// all of the tasks in the list should be the failed tasks.
+				for _, task := range tasks {
+					taskIDs = append(taskIDs, task.ID)
+				}
+				Expect(f.tasks).To(ConsistOf(taskIDs))
+			})
 		})
 
 		When("creating new tasks", func() {
@@ -310,14 +370,38 @@ var _ = Describe("Global Job Reconciler", func() {
 					// set node1 to drain, set node2 to pause
 					nodes[0].Spec.Availability = api.NodeAvailabilityDrain
 					nodes[1].Spec.Availability = api.NodeAvailabilityPause
+					tasks = append(tasks, &api.Task{
+						ID:           "someID",
+						ServiceID:    service.ID,
+						NodeID:       nodes[0].ID,
+						DesiredState: api.TaskStateCompleted,
+						Status: api.TaskStatus{
+							State: api.TaskStateRunning,
+						},
+						JobIteration: &api.Version{
+							Index: service.JobStatus.JobIteration.Index,
+						},
+					})
 				})
 
 				It("should not create tasks for those nodes", func() {
 					s.View(func(tx store.ReadTx) {
 						tasks, err := store.FindTasks(tx, store.All)
 						Expect(err).ToNot(HaveOccurred())
-						Expect(tasks).To(HaveLen(1))
-						Expect(tasks[0].NodeID).To(Equal("node3"))
+						Expect(tasks).To(HaveLen(2))
+
+						node2Tasks, err := store.FindTasks(tx, store.ByNodeID(nodes[2].ID))
+						Expect(err).ToNot(HaveOccurred())
+						Expect(node2Tasks).To(HaveLen(1))
+						Expect(node2Tasks[0].DesiredState).To(Equal(api.TaskStateCompleted))
+					})
+				})
+
+				It("should shut down tasks on drained nodes", func() {
+					s.View(func(tx store.ReadTx) {
+						node0Tasks, err := store.FindTasks(tx, store.ByNodeID(nodes[0].ID))
+						Expect(err).ToNot(HaveOccurred())
+						Expect(node0Tasks[0].DesiredState).To(Equal(api.TaskStateShutdown))
 					})
 				})
 			})
@@ -339,6 +423,57 @@ var _ = Describe("Global Job Reconciler", func() {
 						}
 					})
 				})
+			})
+		})
+
+	})
+
+	Describe("FixTask", func() {
+		It("should take no action if the task is already desired to be shutdown", func() {
+			task := &api.Task{
+				ID:           "someTask",
+				NodeID:       "someNode",
+				DesiredState: api.TaskStateShutdown,
+				Status: api.TaskStatus{
+					State: api.TaskStateShutdown,
+				},
+			}
+			err := s.Update(func(tx store.Tx) error {
+				return store.CreateTask(tx, task)
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			err = s.Batch(func(batch *store.Batch) error {
+				r.FixTask(context.Background(), batch, task)
+				return nil
+			})
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should shut down the task if its node is no longer valid", func() {
+			// we can cover this case by just not creating the node, as a nil
+			// node is invalid and this isn't a test of InvalidNode
+			task := &api.Task{
+				ID:           "someTask",
+				NodeID:       "someNode",
+				DesiredState: api.TaskStateCompleted,
+				Status: api.TaskStatus{
+					State: api.TaskStateFailed,
+				},
+			}
+			err := s.Update(func(tx store.Tx) error {
+				return store.CreateTask(tx, task)
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			err = s.Batch(func(batch *store.Batch) error {
+				r.FixTask(context.Background(), batch, task)
+				return nil
+			})
+			Expect(err).ToNot(HaveOccurred())
+			s.View(func(tx store.ReadTx) {
+				t := store.GetTask(tx, task.ID)
+				Expect(t.DesiredState).To(Equal(api.TaskStateShutdown))
 			})
 		})
 	})

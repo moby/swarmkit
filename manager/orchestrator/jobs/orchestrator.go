@@ -8,6 +8,8 @@ import (
 	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/orchestrator/jobs/global"
 	"github.com/docker/swarmkit/manager/orchestrator/jobs/replicated"
+	"github.com/docker/swarmkit/manager/orchestrator/restart"
+	"github.com/docker/swarmkit/manager/orchestrator/taskinit"
 	"github.com/docker/swarmkit/manager/state/store"
 )
 
@@ -16,10 +18,10 @@ import (
 // writing to the store is separated from the orchestrator, to make the event
 // handling logic in the orchestrator easier to test.
 type Reconciler interface {
+	taskinit.InitHandler
+
 	ReconcileService(id string) error
 }
-
-// Orchestrator run a reconciliation loop to create and destroy tasks necessary
 
 // Orchestrator is the combined orchestrator controlling both Global and
 // Replicated Jobs. Initially, these job types were two separate orchestrators,
@@ -38,6 +40,9 @@ type Orchestrator struct {
 	// multiple times.
 	startOnce sync.Once
 
+	// restartSupervisor is the component that handles restarting tasks
+	restartSupervisor restart.SupervisorInterface
+
 	// stopChan is a channel that is closed to signal the orchestrator to stop
 	// running
 	stopChan chan struct{}
@@ -46,6 +51,10 @@ type Orchestrator struct {
 	stopOnce sync.Once
 	// doneChan is closed when the orchestrator actually stops running
 	doneChan chan struct{}
+
+	// checkTasksFunc is a variable that hold taskinit.CheckTasks, but allows
+	// swapping it out in testing.
+	checkTasksFunc func(context.Context, *store.MemoryStore, store.ReadTx, taskinit.InitHandler, restart.SupervisorInterface) error
 }
 
 func NewOrchestrator(store *store.MemoryStore) *Orchestrator {
@@ -76,26 +85,50 @@ func (o *Orchestrator) run(ctx context.Context) {
 		services []*api.Service
 	)
 
+	// there are several components to the Orchestrator that are interfaces
+	// designed to be swapped out in testing. in production, these fields will
+	// all be unset, and be initialized here. in testing, we will set fakes,
+	// and this initialization will be skipped.
+
+	if o.restartSupervisor == nil {
+		o.restartSupervisor = restart.NewSupervisor(o.store)
+	}
+
+	if o.replicatedReconciler == nil {
+		// the cluster might be nil, but that doesn't matter.
+		o.replicatedReconciler = replicated.NewReconciler(o.store, o.restartSupervisor)
+	}
+
+	if o.globalReconciler == nil {
+		o.globalReconciler = global.NewReconciler(o.store, o.restartSupervisor)
+	}
+
+	if o.checkTasksFunc == nil {
+		o.checkTasksFunc = taskinit.CheckTasks
+	}
+
 	watchChan, cancel, _ := store.ViewAndWatch(o.store, func(tx store.ReadTx) error {
-		// TODO(dperny): figure out what to do about the error return value
-		// from FindServices
 		services, _ = store.FindServices(tx, store.All)
 		return nil
 	})
 
+	// checkTasksFunc is used to resume any in-progress restarts that were
+	// interrupted by a leadership change. In other orchestrators, this
+	// additionally queues up some tasks to be restarted. However, the jobs
+	// orchestrator will make a reconciliation pass across all services
+	// immediately after this, and so does not need to restart any tasks; they
+	// will be restarted during this pass.
+	//
+	// we cannot call o.checkTasksFunc inside of store.ViewAndWatch above.
+	// despite taking a callback with a ReadTx, it actually performs an Update,
+	// which acquires a lock and will result in a deadlock. instead, do
+	// o.checkTasksFunc here.
+	o.store.View(func(tx store.ReadTx) {
+		o.checkTasksFunc(ctx, o.store, tx, o.replicatedReconciler, o.restartSupervisor)
+		o.checkTasksFunc(ctx, o.store, tx, o.globalReconciler, o.restartSupervisor)
+	})
+
 	defer cancel()
-
-	// for testing purposes, if a reconciler already exists on the
-	// orchestrator, we will not set it up. this allows injecting a fake
-	// reconciler.
-	if o.replicatedReconciler == nil {
-		// the cluster might be nil, but that doesn't matter.
-		o.replicatedReconciler = replicated.NewReconciler(o.store)
-	}
-
-	if o.globalReconciler == nil {
-		o.globalReconciler = global.NewReconciler(o.store)
-	}
 
 	for _, service := range services {
 		if orchestrator.IsReplicatedJob(service) {
@@ -122,13 +155,33 @@ func (o *Orchestrator) run(ctx context.Context) {
 
 		select {
 		case event := <-watchChan:
-			var service *api.Service
+			var (
+				service *api.Service
+				task    *api.Task
+			)
 
 			switch ev := event.(type) {
 			case api.EventCreateService:
 				service = ev.Service
 			case api.EventUpdateService:
 				service = ev.Service
+			case api.EventUpdateTask:
+				task = ev.Task
+			}
+
+			// if this is a task event, we should check if it means the service
+			// should be reconciled.
+			if task != nil {
+				// only bother with all this if the task has entered a terminal
+				// state and we don't want that to have happened.
+				if task.Status.State > api.TaskStateRunning && task.DesiredState <= api.TaskStateCompleted {
+					o.store.View(func(tx store.ReadTx) {
+						// if for any reason the service ID is invalid, then
+						// service will just be nil and nothing needs to be
+						// done
+						service = store.GetService(tx, task.ServiceID)
+					})
+				}
 			}
 
 			if orchestrator.IsReplicatedJob(service) {

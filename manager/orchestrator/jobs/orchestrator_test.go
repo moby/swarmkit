@@ -6,51 +6,11 @@ import (
 
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/orchestrator/testutils"
 	"github.com/docker/swarmkit/manager/state/store"
 )
-
-// fakeReconciler implements the reconciler interface for testing the
-// orchestrator.
-type fakeReconciler struct {
-	sync.Mutex
-
-	// serviceErrors contains a mapping of ids to errors that should be
-	// returned if that ID is passed to reconcileService
-	serviceErrors map[string]error
-
-	// servicesReconciled is a list, in order, of all values this function has
-	// been called with, including those that would return errors.
-	servicesReconciled []string
-}
-
-// ReconcileService implements the reconciler's ReconcileService method, but
-// just records what arguments it has been passed, and maybe also returns an
-// error if desired.
-func (f *fakeReconciler) ReconcileService(id string) error {
-	f.Lock()
-	defer f.Unlock()
-	f.servicesReconciled = append(f.servicesReconciled, id)
-	if err, ok := f.serviceErrors[id]; ok {
-		return err
-	}
-	return nil
-}
-
-func (f *fakeReconciler) getServicesReconciled() []string {
-	f.Lock()
-	defer f.Unlock()
-	// we can't just return the slice, because then we'd be accessing it
-	// outside of the protection of the mutex anyway. instead, we'll copy its
-	// contents. this is fine because this is only the tests, and the slice is
-	// almost certainly rather short.
-	returnSet := make([]string, len(f.servicesReconciled))
-	copy(returnSet, f.servicesReconciled)
-	return returnSet
-}
 
 var _ = Describe("Replicated job orchestrator", func() {
 	var (
@@ -71,6 +31,8 @@ var _ = Describe("Replicated job orchestrator", func() {
 		}
 		o.replicatedReconciler = replicated
 		o.globalReconciler = global
+		o.restartSupervisor = &fakeRestartSupervisor{}
+		o.checkTasksFunc = fakeCheckTasksFunc
 	})
 
 	Describe("Starting and stopping", func() {
@@ -151,6 +113,11 @@ var _ = Describe("Replicated job orchestrator", func() {
 			Expect(global.servicesReconciled).To(ConsistOf(
 				"serviceGlobal0", "serviceGlobal1", "serviceGlobal2",
 			))
+		})
+
+		It("should call checkTasksFunc for both reconcilers", func() {
+			Expect(global.servicesRelated).To(ConsistOf("fakeCheckTasksFuncCalled"))
+			Expect(replicated.servicesRelated).To(ConsistOf("fakeCheckTasksFuncCalled"))
 		})
 
 		When("an error is encountered reconciling some service", func() {
@@ -250,6 +217,67 @@ var _ = Describe("Replicated job orchestrator", func() {
 			Eventually(global.getServicesReconciled).Should(ConsistOf(
 				"service0", "service1", "service2",
 			))
+		})
+
+		When("receiving task events", func() {
+			BeforeEach(func() {
+				service := &api.Service{
+					ID: "service0",
+					Spec: api.ServiceSpec{
+						Mode: &api.ServiceSpec_ReplicatedJob{
+							ReplicatedJob: &api.ReplicatedJob{},
+						},
+					},
+				}
+
+				err := s.Update(func(tx store.Tx) error {
+					if err := store.CreateService(tx, service); err != nil {
+						return err
+					}
+
+					task := &api.Task{
+						ID:           "someTask",
+						ServiceID:    "service0",
+						DesiredState: api.TaskStateCompleted,
+						Status: api.TaskStatus{
+							State: api.TaskStatePreparing,
+						},
+					}
+					return store.CreateTask(tx, task)
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Eventually(replicated.getServicesReconciled).Should(ConsistOf(
+					"service0",
+				))
+			})
+
+			It("should reconcile the service of a task that has entered a terminal state", func() {
+				err := s.Update(func(tx store.Tx) error {
+					task := store.GetTask(tx, "someTask")
+					task.Status.State = api.TaskStateFailed
+					return store.UpdateTask(tx, task)
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				// we will have service0 twice -- once from the setup, and
+				// once from the reconciliation pass in the test.
+				Eventually(replicated.getServicesReconciled).Should(ConsistOf(
+					"service0", "service0",
+				))
+			})
+
+			It("should ignore tasks that are not in a terminal state", func() {
+				err := s.Update(func(tx store.Tx) error {
+					task := store.GetTask(tx, "someTask")
+					task.Status.State = api.TaskStateRunning
+					return store.UpdateTask(tx, task)
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				Consistently(replicated.getServicesReconciled).Should(ConsistOf(
+					"service0",
+				))
+			})
 		})
 
 		It("should not reconcile anything after calling Stop", func() {
