@@ -1,6 +1,7 @@
 package global
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/docker/swarmkit/api"
@@ -10,14 +11,28 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 )
 
+// restartSupervisor is an interface representing the methods from the
+// restart.SupervisorInterface that are actually needed by the reconciler. This
+// more limited interface allows us to write a less ugly fake for unit testing.
+type restartSupervisor interface {
+	Restart(context.Context, store.Tx, *api.Cluster, *api.Service, api.Task) error
+}
+
+// Reconciler is an object that manages reconciliation of global jobs. It is
+// blocking and non-asynchronous, for ease of testing. It implements the
+// Reconciler interface from the orchestrator package above it, and the
+// taskinit.InitHandler interface.
 type Reconciler struct {
 	store *store.MemoryStore
+
+	restart restartSupervisor
 }
 
 // NewReconciler creates a new global job reconciler.
-func NewReconciler(store *store.MemoryStore) *Reconciler {
+func NewReconciler(store *store.MemoryStore, restart restartSupervisor) *Reconciler {
 	return &Reconciler{
-		store: store,
+		store:   store,
+		restart: restart,
 	}
 }
 
@@ -112,6 +127,7 @@ func (r *Reconciler) ReconcileService(id string) error {
 	}
 
 	var candidateNodes []string
+	var invalidNodes []string
 	for _, node := range nodes {
 		// instead of having a big ugly multi-line boolean expression in the
 		// if-statement, we'll have several if-statements, and bail out of
@@ -119,6 +135,14 @@ func (r *Reconciler) ReconcileService(id string) error {
 		if !constraint.NodeMatches(constraints, node) {
 			continue
 		}
+
+		// if a node is invalid, we should remove any tasks that might be on it
+		if orchestrator.InvalidNode(node) {
+			fmt.Printf("node %v is invalid (availability: %v)\n", node.ID, node.Spec.Availability)
+			invalidNodes = append(invalidNodes, node.ID)
+			continue
+		}
+
 		if node.Spec.Availability != api.NodeAvailabilityActive {
 			continue
 		}
@@ -141,18 +165,28 @@ func (r *Reconciler) ReconcileService(id string) error {
 	// ID mapping, so that we're just doing 2x linear operation, instead of a
 	// quadratic operation.
 	nodeToTask := map[string]string{}
+	// additionally, while we're iterating through tasks, if any of those tasks
+	// are failed, we'll hand them to the restart supervisor to handle
+	restartTasks := []string{}
 	for _, task := range tasks {
-		// only match tasks belonging to this job iteration, and running or
-		// completed, which are not desired to be shut down
+		// match all tasks belonging to this job iteration which are in desired
+		// state completed, including failed tasks. We only want to create
+		// tasks for nodes on which there are no existing tasks.
 		if task.JobIteration != nil &&
 			task.JobIteration.Index == service.JobStatus.JobIteration.Index &&
-			task.Status.State <= api.TaskStateCompleted &&
 			task.DesiredState <= api.TaskStateCompleted {
+			// we already know the task is desired to be executing (because its
+			// desired state is Completed). Check here to see if it's already
+			// failed, so we can restart it
+			if task.Status.State > api.TaskStateCompleted {
+				restartTasks = append(restartTasks, task.ID)
+			}
 			nodeToTask[task.NodeID] = task.ID
 		}
 	}
 
 	return r.store.Batch(func(batch *store.Batch) error {
+		// first, create any new tasks required.
 		for _, node := range candidateNodes {
 			// check if there is a task for this node ID. If not, then we need
 			// to create one.
@@ -169,6 +203,104 @@ func (r *Reconciler) ReconcileService(id string) error {
 				}
 			}
 		}
+
+		// then, restart any tasks that are failed
+		for _, taskID := range restartTasks {
+			if err := batch.Update(func(tx store.Tx) error {
+				// get the latest version of the task for the restart
+				t := store.GetTask(tx, taskID)
+				// if it's deleted, nothing to do
+				if t == nil {
+					return nil
+				}
+
+				// if it's not still desired to be running, then don't restart
+				// it.
+				if t.DesiredState > api.TaskStateCompleted {
+					return nil
+				}
+
+				// Finally, restart it
+				// TODO(dperny): pass in context to ReconcileService, so we can
+				// pass it in here.
+				return r.restart.Restart(context.Background(), tx, cluster, service, *t)
+			}); err != nil {
+				// TODO(dperny): probably should log like in the other
+				// orchestrators instead of returning here.
+				return err
+			}
+		}
+
+		// finally, shut down any tasks on invalid nodes
+		for _, nodeID := range invalidNodes {
+			fmt.Printf("checking node %v for tasks", nodeID)
+			if taskID, ok := nodeToTask[nodeID]; ok {
+				fmt.Printf("node %v has task %v", nodeID, taskID)
+				if err := batch.Update(func(tx store.Tx) error {
+					t := store.GetTask(tx, taskID)
+					if t == nil {
+						return nil
+					}
+					// if the task is still desired to be running, and is still
+					// actually, running, then it still needs to be shut down.
+					if t.DesiredState > api.TaskStateCompleted || t.Status.State <= api.TaskStateRunning {
+						t.DesiredState = api.TaskStateShutdown
+						return store.UpdateTask(tx, t)
+					}
+					return nil
+				}); err != nil {
+					return err
+				}
+			}
+		}
 		return nil
 	})
+}
+
+// IsRelatedService returns true if the task is a global job. This method
+// fulfills the taskinit.InitHandler interface. Because it is just a wrapper
+// around a well-tested function call, it has no tests of its own.
+func (r *Reconciler) IsRelatedService(service *api.Service) bool {
+	return orchestrator.IsGlobalJob(service)
+}
+
+// FixTask validates that a task is compliant with the rest of the cluster
+// state, and fixes it if it's not. This covers some main scenarios:
+//
+// * The node that the task is running on is now paused or drained. we do not
+//   need to check if the node still meets constraints -- that is the purview
+//   of the constraint enforcer.
+// * The task has failed and needs to be restarted.
+//
+// This implements the FixTask method of the taskinit.InitHandler interface.
+func (r *Reconciler) FixTask(ctx context.Context, batch *store.Batch, t *api.Task) {
+	// tasks already desired to be shut down need no action.
+	if t.DesiredState > api.TaskStateCompleted {
+		return
+	}
+
+	batch.Update(func(tx store.Tx) error {
+		node := store.GetNode(tx, t.NodeID)
+		// if the node is no longer a valid node for this task, we need to shut
+		// it down
+		if orchestrator.InvalidNode(node) {
+			task := store.GetTask(tx, t.ID)
+			if task != nil && task.DesiredState < api.TaskStateShutdown {
+				task.DesiredState = api.TaskStateShutdown
+				return store.UpdateTask(tx, task)
+			}
+		}
+		// we will reconcile all services after fixing the tasks, so we don't
+		// need to restart tasks right now; we'll do so after this.
+		return nil
+	})
+}
+
+// SlotTuple returns a slot tuple representing this task. It implements the
+// taskinit.InitHandler interface.
+func (r *Reconciler) SlotTuple(t *api.Task) orchestrator.SlotTuple {
+	return orchestrator.SlotTuple{
+		ServiceID: t.ServiceID,
+		NodeID:    t.NodeID,
+	}
 }
