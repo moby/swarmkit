@@ -1,9 +1,9 @@
-# go-memdb
+# go-memdb [![CircleCI](https://circleci.com/gh/hashicorp/go-memdb/tree/master.svg?style=svg)](https://circleci.com/gh/hashicorp/go-memdb/tree/master)
 
 Provides the `memdb` package that implements a simple in-memory database
 built on immutable radix trees. The database provides Atomicity, Consistency
 and Isolation from ACID. Being that it is in-memory, it does not provide durability.
-The database is instantiated with a schema that specifies the tables and indicies
+The database is instantiated with a schema that specifies the tables and indices
 that exist and allows transactions to be executed.
 
 The database provides the following:
@@ -19,8 +19,13 @@ The database provides the following:
 
 * Rich Indexing - Tables can support any number of indexes, which can be simple like
   a single field index, or more advanced compound field indexes. Certain types like
-  UUID can be efficiently compressed from strings into byte indexes for reduces
+  UUID can be efficiently compressed from strings into byte indexes for reduced
   storage requirements.
+
+* Watches - Callers can populate a watch set as part of a query, which can be used to
+  detect when a modification has been made to the database which affects the query
+  results. This lets callers easily watch for changes in the database in a very general
+  way.
 
 For the underlying immutable radix trees, see [go-immutable-radix](https://github.com/hashicorp/go-immutable-radix).
 

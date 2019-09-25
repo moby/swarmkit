@@ -1,3 +1,5 @@
+// Package memdb provides an in-memory database that supports transactions
+// and MVCC.
 package memdb
 
 import (
@@ -8,15 +10,17 @@ import (
 	"github.com/hashicorp/go-immutable-radix"
 )
 
-// MemDB is an in-memory database. It provides a table abstraction,
-// which is used to store objects (rows) with multiple indexes based
-// on values. The database makes use of immutable radix trees to provide
-// transactions and MVCC.
+// MemDB is an in-memory database.
+//
+// MemDB provides a table abstraction to store objects (rows) with multiple
+// indexes based on inserted values. The database makes use of immutable radix
+// trees to provide transactions and MVCC.
 type MemDB struct {
-	schema *DBSchema
-	root   unsafe.Pointer // *iradix.Tree underneath
+	schema  *DBSchema
+	root    unsafe.Pointer // *iradix.Tree underneath
+	primary bool
 
-	// There can only be a single writter at once
+	// There can only be a single writer at once
 	writer sync.Mutex
 }
 
@@ -29,12 +33,14 @@ func NewMemDB(schema *DBSchema) (*MemDB, error) {
 
 	// Create the MemDB
 	db := &MemDB{
-		schema: schema,
-		root:   unsafe.Pointer(iradix.New()),
+		schema:  schema,
+		root:    unsafe.Pointer(iradix.New()),
+		primary: true,
 	}
 	if err := db.initialize(); err != nil {
 		return nil, err
 	}
+
 	return db, nil
 }
 
@@ -63,17 +69,19 @@ func (db *MemDB) Txn(write bool) *Txn {
 // operations to the existing DB.
 func (db *MemDB) Snapshot() *MemDB {
 	clone := &MemDB{
-		schema: db.schema,
-		root:   unsafe.Pointer(db.getRoot()),
+		schema:  db.schema,
+		root:    unsafe.Pointer(db.getRoot()),
+		primary: false,
 	}
 	return clone
 }
 
-// initialize is used to setup the DB for use after creation
+// initialize is used to setup the DB for use after creation. This should
+// be called only once after allocating a MemDB.
 func (db *MemDB) initialize() error {
 	root := db.getRoot()
 	for tName, tableSchema := range db.schema.Tables {
-		for iName, _ := range tableSchema.Indexes {
+		for iName := range tableSchema.Indexes {
 			index := iradix.New()
 			path := indexPath(tName, iName)
 			root, _, _ = root.Insert(path, index)
