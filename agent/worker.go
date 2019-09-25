@@ -256,8 +256,12 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 		assigned[task.ID] = struct{}{}
 	}
 
+	wg := sync.WaitGroup{}
 	closeManager := func(tm *taskManager) {
-		defer w.closers.Done()
+		defer func() {
+			w.closers.Done()
+			wg.Done()
+		}()
 		// when a task is no longer assigned, we shutdown the task manager
 		if err := tm.Close(); err != nil {
 			log.G(ctx).WithError(err).Error("error closing task manager")
@@ -293,6 +297,7 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 			err := removeTaskAssignment(id)
 			if err == nil {
 				delete(w.taskManagers, id)
+				wg.Add(1)
 				go closeManager(tm)
 			}
 		}
@@ -308,10 +313,13 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 			tm, ok := w.taskManagers[task.ID]
 			if ok {
 				delete(w.taskManagers, task.ID)
+				wg.Add(1)
 				go closeManager(tm)
 			}
 		}
 	}
+
+	wg.Wait()
 
 	return tx.Commit()
 }
