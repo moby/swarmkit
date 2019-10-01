@@ -54,7 +54,7 @@ func setupEnv() {
 				Addr:  "186.17.9.41",
 			},
 		},
-		Tasks: make(map[string]*api.Task),
+		Tasks:                     make(map[string]*api.Task),
 		ActiveTasksCountByService: make(map[string]int),
 	}
 }
