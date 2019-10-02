@@ -11,6 +11,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// EnsureRuns takes a closure and runs it in a goroutine, blocking until the
+// goroutine has had an opportunity to run. It returns a channel which will be
+// closed when the provided closure exits.
+func EnsureRuns(closure func()) <-chan struct{} {
+	started := make(chan struct{})
+	stopped := make(chan struct{})
+	go func() {
+		close(started)
+		closure()
+		close(stopped)
+	}()
+
+	<-started
+	return stopped
+}
+
 // WatchTaskCreate waits for a task to be created.
 func WatchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {
 	for {
@@ -22,7 +38,7 @@ func WatchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {
 			if _, ok := event.(api.EventUpdateTask); ok {
 				assert.FailNow(t, "got EventUpdateTask when expecting EventCreateTask", fmt.Sprint(event))
 			}
-		case <-time.After(time.Second):
+		case <-time.After(3 * time.Second):
 			assert.FailNow(t, "no task creation")
 		}
 	}
@@ -39,7 +55,7 @@ func WatchTaskUpdate(t *testing.T, watch chan events.Event) *api.Task {
 			if _, ok := event.(api.EventCreateTask); ok {
 				assert.FailNow(t, "got EventCreateTask when expecting EventUpdateTask", fmt.Sprint(event))
 			}
-		case <-time.After(time.Second):
+		case <-time.After(2 * time.Second):
 			assert.FailNow(t, "no task update")
 		}
 	}

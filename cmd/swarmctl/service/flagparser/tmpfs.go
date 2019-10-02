@@ -64,7 +64,7 @@ func parseTmpfs(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 							// remove suffix and try again
 							suffix := meat[len(meat)-1]
 							meat = meat[:len(meat)-1]
-							var multiplier int64 = 1
+							var multiplier int64
 							switch suffix {
 							case 'g':
 								multiplier = 1 << 30
