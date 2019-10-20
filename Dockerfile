@@ -1,5 +1,7 @@
+ARG GO_VERSION=1.12.12
+
 # NOTE(dperny): for some reason, alpine was giving me trouble
-FROM golang:1.12.9-stretch
+FROM golang:${GO_VERSION}-stretch
 
 RUN apt-get update && apt-get install -y make git unzip
 
