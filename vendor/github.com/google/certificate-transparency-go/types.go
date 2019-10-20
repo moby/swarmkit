@@ -199,6 +199,25 @@ func (d *DigitallySigned) UnmarshalJSON(b []byte) error {
 	return d.FromBase64String(content)
 }
 
+// RawLogEntry represents the (TLS-parsed) contents of an entry in a CT log.
+type RawLogEntry struct {
+	// Index is a position of the entry in the log.
+	Index int64
+	// Leaf is a parsed Merkle leaf hash input.
+	Leaf MerkleTreeLeaf
+	// Cert is:
+	// - A certificate if Leaf.TimestampedEntry.EntryType is X509LogEntryType.
+	// - A precertificate if Leaf.TimestampedEntry.EntryType is
+	//   PrecertLogEntryType, in the form of a DER-encoded Certificate as
+	//   originally added (which includes the poison extension and a signature
+	//   generated over the pre-cert by the pre-cert issuer).
+	// - Empty otherwise.
+	Cert ASN1Cert
+	// Chain is the issuing certificate chain starting with the issuer of Cert,
+	// or an empty slice if Cert is empty.
+	Chain []ASN1Cert
+}
+
 // LogEntry represents the (parsed) contents of an entry in a CT log.  This is described
 // in section 3.1, but note that this structure does *not* match the TLS structure
 // defined there (the TLS structure is never used directly in RFC6962).
