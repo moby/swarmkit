@@ -292,8 +292,10 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 	// should only return the first 2 nodes
 	assert.NoError(t, err)
 	assert.Len(t, r.Nodes, 2)
-	assert.Contains(t, r.Nodes, nodes[0])
-	assert.Contains(t, r.Nodes, nodes[1])
+
+	// r.Nodes contains NetworkAttachment, so only compare ID here
+	assert.Contains(t, []string{r.Nodes[0].ID, r.Nodes[1].ID}, nodes[0].ID)
+	assert.Contains(t, []string{r.Nodes[0].ID, r.Nodes[1].ID}, nodes[1].ID)
 
 	t.Log("list nodes with enginelabel1=shouldmatch engine filter")
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
@@ -304,8 +306,8 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 	// should only return the first 2 nodes
 	assert.NoError(t, err)
 	assert.Len(t, r.Nodes, 2)
-	assert.Contains(t, r.Nodes, nodes[0])
-	assert.Contains(t, r.Nodes, nodes[1])
+	assert.Contains(t, []string{r.Nodes[0].ID, r.Nodes[1].ID}, nodes[0].ID)
+	assert.Contains(t, []string{r.Nodes[0].ID, r.Nodes[1].ID}, nodes[1].ID)
 
 	t.Log("list nodes with node two engine filters")
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
@@ -319,7 +321,7 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 	// should only return the first node
 	assert.NoError(t, err)
 	assert.Len(t, r.Nodes, 1)
-	assert.Contains(t, r.Nodes, nodes[0])
+	assert.Equal(t, r.Nodes[0].ID, nodes[0].ID)
 
 	t.Log("list nodes with node two node filters")
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
@@ -333,7 +335,7 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 	// should only return the first node
 	assert.NoError(t, err)
 	assert.Len(t, r.Nodes, 1)
-	assert.Contains(t, r.Nodes, nodes[0])
+	assert.Equal(t, r.Nodes[0].ID, nodes[0].ID)
 
 	t.Log("list nodes with both engine and node filters")
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
@@ -350,8 +352,8 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Len(t, r.Nodes, 2)
-	assert.Contains(t, r.Nodes, nodes[0])
-	assert.Contains(t, r.Nodes, nodes[2])
+	assert.Contains(t, []string{r.Nodes[0].ID, r.Nodes[1].ID}, nodes[0].ID)
+	assert.Contains(t, []string{r.Nodes[0].ID, r.Nodes[1].ID}, nodes[2].ID)
 }
 
 func TestRemoveNodes(t *testing.T) {

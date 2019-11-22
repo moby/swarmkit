@@ -3,6 +3,7 @@ package allocator
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/docker/go-events"
@@ -28,6 +29,9 @@ var (
 	errNoChanges = errors.New("task unchanged")
 
 	retryInterval = 5 * time.Minute
+
+	networkAllocationErrMap = make(map[string]chan error)
+	mu                      sync.Mutex
 )
 
 // Network context information which is used throughout the network allocation code.
@@ -65,6 +69,27 @@ type networkContext struct {
 	// allocations (in we are experiencing IP exhaustion and an IP was
 	// released).
 	somethingWasDeallocated bool
+}
+
+// GetNetworkAllocationErrChan retrieves correspondent chan error given a network ID
+func GetNetworkAllocationErrChan(id string) chan error {
+	mu.Lock()
+	defer mu.Unlock()
+	v, ok := networkAllocationErrMap[id]
+	if !ok {
+		v = make(chan error, 1) // don't want to block the sender
+		networkAllocationErrMap[id] = v
+	}
+	return v
+}
+
+// RemoveNetworkAllocationErrChan removes correspondent chan error given a network ID
+func RemoveNetworkAllocationErrChan(id string) {
+	mu.Lock()
+	defer mu.Unlock()
+	if _, ok := networkAllocationErrMap[id]; ok {
+		delete(networkAllocationErrMap, id)
+	}
 }
 
 func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
@@ -179,17 +204,21 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 	switch v := ev.(type) {
 	case api.EventCreateNetwork:
 		n := v.Network.Copy()
+		errCh := GetNetworkAllocationErrChan(n.ID)
 		if nc.nwkAllocator.IsAllocated(n) {
+			errCh <- nil
 			break
 		}
 		if IsIngressNetwork(n) && nc.ingressNetwork != nil {
 			log.G(ctx).Errorf("Cannot allocate ingress network %s (%s) because another ingress network is already present: %s (%s)",
 				n.ID, n.Spec.Annotations.Name, nc.ingressNetwork.ID, nc.ingressNetwork.Spec.Annotations.Name)
+			errCh <- errors.Errorf("another ingress network is already present: %s", nc.ingressNetwork.Spec.Annotations.Name)
 			break
 		}
 
 		if err := a.allocateNetwork(ctx, n); err != nil {
 			log.G(ctx).WithError(err).Errorf("Failed allocation for network %s", n.ID)
+			errCh <- err
 			break
 		}
 
@@ -197,10 +226,13 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			return a.commitAllocatedNetwork(ctx, batch, n)
 		}); err != nil {
 			log.G(ctx).WithError(err).Errorf("Failed to commit allocation for network %s", n.ID)
+			errCh <- err
+			break
 		}
 		if IsIngressNetwork(n) {
 			nc.ingressNetwork = n
 		}
+		errCh <- nil
 	case api.EventDeleteNetwork:
 		n := v.Network.Copy()
 

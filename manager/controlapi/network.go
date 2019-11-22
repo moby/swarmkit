@@ -9,6 +9,7 @@ import (
 	"github.com/docker/libnetwork/ipamapi"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
+	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/allocator"
 	"github.com/docker/swarmkit/manager/allocator/networkallocator"
 	"github.com/docker/swarmkit/manager/state/store"
@@ -125,6 +126,17 @@ func (s *Server) CreateNetwork(ctx context.Context, request *api.CreateNetworkRe
 		return store.CreateNetwork(tx, n)
 	})
 	if err != nil {
+		return nil, err
+	}
+
+	// Waiting for network allocation result, remove the network in store if failure
+	errCh := allocator.GetNetworkAllocationErrChan(n.ID)
+	err = <-errCh
+	allocator.RemoveNetworkAllocationErrChan(n.ID)
+	if err != nil {
+		if err1 := s.removeNetwork(n.ID); err1 != nil {
+			log.G(ctx).Error(err1)
+		}
 		return nil, err
 	}
 
