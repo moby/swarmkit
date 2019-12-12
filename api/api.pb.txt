@@ -7318,6 +7318,13 @@ file {
         type: TYPE_UINT64
         json_name: "runningTasks"
       }
+      field {
+        name: "completed_tasks"
+        number: 4
+        label: LABEL_OPTIONAL
+        type: TYPE_UINT64
+        json_name: "completedTasks"
+      }
     }
   }
   message_type {
