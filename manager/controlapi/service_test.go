@@ -1523,8 +1523,47 @@ func TestListServiceStatuses(t *testing.T) {
 	// over will have too many tasks running (as would be seen in a scale-down
 	over := createService(t, ts, "over", "image", 2)
 
+	// replicatedJob1 will be partly completed
+	replicatedJob1Spec := createSpec("replicatedJob1", "image", 0)
+	replicatedJob1Spec.Mode = &api.ServiceSpec_ReplicatedJob{
+		ReplicatedJob: &api.ReplicatedJob{
+			MaxConcurrent:    2,
+			TotalCompletions: 10,
+		},
+	}
+
+	svcResp, svcErr = ts.Client.CreateService(
+		context.Background(), &api.CreateServiceRequest{Spec: replicatedJob1Spec},
+	)
+	assert.NoError(t, svcErr)
+	assert.NotNil(t, svcResp)
+	replicatedJob1 := svcResp.Service
+
+	// replicatedJob2 has been executed before, and will have tasks from a
+	// previous JobIteration
+	replicatedJob2Spec := replicatedJob1Spec.Copy()
+	replicatedJob2Spec.Annotations.Name = "replicatedJob2"
+	svcResp, svcErr = ts.Client.CreateService(
+		context.Background(), &api.CreateServiceRequest{Spec: replicatedJob2Spec},
+	)
+	assert.NoError(t, svcErr)
+	assert.NotNil(t, svcResp)
+	replicatedJob2 := svcResp.Service
+
+	// globalJob is a partly complete global job
+	globalJobSpec := createSpec("globalJob", "image", 0)
+	globalJobSpec.Mode = &api.ServiceSpec_GlobalJob{
+		GlobalJob: &api.GlobalJob{},
+	}
+	svcResp, svcErr = ts.Client.CreateService(
+		context.Background(), &api.CreateServiceRequest{Spec: globalJobSpec},
+	)
+	assert.NoError(t, svcErr)
+	assert.NotNil(t, svcResp)
+	globalJob := svcResp.Service
+
 	// now create some tasks. use a quick helper function for this
-	createTask := func(s *api.Service, actual api.TaskState, desired api.TaskState) *api.Task {
+	createTask := func(s *api.Service, actual api.TaskState, desired api.TaskState, opts ...func(*api.Service, *api.Task)) *api.Task {
 		task := &api.Task{
 			ID:           identity.NewID(),
 			DesiredState: desired,
@@ -1535,6 +1574,10 @@ func TestListServiceStatuses(t *testing.T) {
 			ServiceID: s.ID,
 		}
 
+		for _, opt := range opts {
+			opt(s, task)
+		}
+
 		err := ts.Store.Update(func(tx store.Tx) error {
 			return store.CreateTask(tx, task)
 		})
@@ -1542,9 +1585,15 @@ func TestListServiceStatuses(t *testing.T) {
 		return task
 	}
 
+	withJobIteration := func(s *api.Service, task *api.Task) {
+		assert.NotNil(t, s.JobStatus)
+		task.JobIteration = &(s.JobStatus.JobIteration)
+	}
+
 	// alias task states for brevity
 	running := api.TaskStateRunning
 	shutdown := api.TaskStateShutdown
+	completed := api.TaskStateCompleted
 	newt := api.TaskStateNew
 	failed := api.TaskStateFailed
 
@@ -1597,6 +1646,52 @@ func TestListServiceStatuses(t *testing.T) {
 		createTask(over, running, running)
 	}
 
+	// create 2 running tasks for replicatedJob1
+	for i := 0; i < 2; i++ {
+		createTask(replicatedJob1, running, completed, withJobIteration)
+	}
+
+	// create 4 completed tasks for replicatedJob1
+	for i := 0; i < 4; i++ {
+		createTask(replicatedJob1, completed, completed, withJobIteration)
+	}
+
+	// create 10 completed tasks for replicatedJob2
+	for i := 0; i < 10; i++ {
+		createTask(replicatedJob2, completed, completed, withJobIteration)
+	}
+
+	replicatedJob2Spec.Task.ForceUpdate++
+
+	// now update replicatedJob2, so JobIteration gets incremented
+	updateResp, updateErr := ts.Client.UpdateService(
+		context.Background(),
+		&api.UpdateServiceRequest{
+			ServiceID:      replicatedJob2.ID,
+			ServiceVersion: &replicatedJob2.Meta.Version,
+			Spec:           replicatedJob2Spec,
+		},
+	)
+	assert.NoError(t, updateErr)
+	assert.NotNil(t, updateResp)
+	replicatedJob2 = updateResp.Service
+
+	// and create 1 tasks out of 2
+	createTask(replicatedJob2, running, completed, withJobIteration)
+	// and 3 completed already
+	for i := 0; i < 3; i++ {
+		createTask(replicatedJob2, completed, completed, withJobIteration)
+	}
+
+	// create 5 running tasks for globalJob
+	for i := 0; i < 5; i++ {
+		createTask(globalJob, running, completed, withJobIteration)
+	}
+	// create 3 completed tasks
+	for i := 0; i < 3; i++ {
+		createTask(globalJob, completed, completed, withJobIteration)
+	}
+
 	// now, create a service that has already been deleted, but has dangling
 	// tasks
 	goneSpec := createSpec("gone", "image", 3)
@@ -1614,12 +1709,13 @@ func TestListServiceStatuses(t *testing.T) {
 	r, err = ts.Client.ListServiceStatuses(
 		context.Background(),
 		&api.ListServiceStatusesRequest{Services: []string{
-			justRight.ID, notEnough.ID, global.ID, global2.ID, over.ID, gone.ID,
+			justRight.ID, notEnough.ID, global.ID, global2.ID,
+			replicatedJob1.ID, replicatedJob2.ID, globalJob.ID, over.ID, gone.ID,
 		}},
 	)
 	assert.NoError(t, err, "error getting service statuses")
 	assert.NotNil(t, r, "service status response is nil")
-	assert.Len(t, r.Statuses, 6)
+	assert.Len(t, r.Statuses, 9)
 
 	expected := map[string]*api.ListServiceStatusesResponse_ServiceStatus{
 		"justRight": {
@@ -1646,6 +1742,24 @@ func TestListServiceStatuses(t *testing.T) {
 			ServiceID:    over.ID,
 			DesiredTasks: 2,
 			RunningTasks: 4,
+		},
+		"replicatedJob1": {
+			ServiceID:      replicatedJob1.ID,
+			DesiredTasks:   2,
+			RunningTasks:   2,
+			CompletedTasks: 4,
+		},
+		"replicatedJob2": {
+			ServiceID:      replicatedJob2.ID,
+			DesiredTasks:   2,
+			RunningTasks:   1,
+			CompletedTasks: 3,
+		},
+		"globalJob": {
+			ServiceID:      globalJob.ID,
+			DesiredTasks:   5,
+			RunningTasks:   5,
+			CompletedTasks: 3,
 		},
 		"gone": {
 			ServiceID:    gone.ID,
