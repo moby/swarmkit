@@ -3,11 +3,13 @@ package agent
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/watch"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/sirupsen/logrus"
 	bolt "go.etcd.io/bbolt"
 )
@@ -87,7 +89,8 @@ func (w *worker) Init(ctx context.Context) error {
 
 	ctx = log.WithModule(ctx, "worker")
 
-	// TODO(stevvooe): Start task cleanup process.
+	// Start go routine for cleanup process.
+	go w.cleanup(ctx)
 
 	// read the tasks from the database and start any task managers that may be needed.
 	return w.db.Update(func(tx *bolt.Tx) error {
@@ -112,6 +115,42 @@ func (w *worker) Init(ctx context.Context) error {
 			return w.startTask(ctx, tx, task)
 		})
 	})
+}
+
+// Cleanup routine removes old tasks from tasks.db to avoid it growing on environments
+// where daemon is restarted rarely.
+func (w *worker) cleanup(ctx context.Context) {
+	runEvery := 5 * time.Minute
+	removeOlderThan := time.Now().Local().Add(-5 * time.Minute)
+
+	for {
+		time.Sleep(runEvery)
+		ctx = log.WithModule(ctx, "worker")
+
+		w.db.Update(func(tx *bolt.Tx) error {
+			return WalkTasks(tx, func(task *api.Task) error {
+
+				if status, err := GetTaskStatus(tx, task.ID); err == nil {
+					statusTime, err := time.Parse(time.RFC3339, gogotypes.TimestampString(status.Timestamp))
+
+					if err == nil && statusTime.Before(removeOlderThan) {
+						if status.State == api.TaskStateCompleted ||
+							status.State == api.TaskStateFailed ||
+							status.State == api.TaskStateShutdown {
+
+							log.G(ctx).Debugf("Removing task ID: %s State: %s LastUpdate: %s", task.ID,
+								status.State, gogotypes.TimestampString(status.Timestamp))
+
+							if err := DeleteTask(tx, task.ID); err != nil {
+								log.G(ctx).WithError(err).Errorf("error removing task %v from tasks.db", task.ID)
+							}
+						}
+					}
+				}
+				return nil
+			})
+		})
+	}
 }
 
 // Close performs worker cleanup when no longer needed.
