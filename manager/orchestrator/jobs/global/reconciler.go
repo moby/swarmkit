@@ -108,21 +108,20 @@ func (r *Reconciler) ReconcileService(id string) error {
 	// earth-shattering, and the clock skew can't be _that_ bad because the PKI
 	// wouldn't work if it was. so this is just a best effort endeavor. we'll
 	// schedule to any node that says its creation time is before the
-	// LastExecution time.
-	//
-	// TODO(dperny): this only covers the case of nodes that were added after a
-	// global job is created. if nodes are paused or drained when a global job
-	// is started, then when they become un-paused or un-drained, the job will
-	// execute on them. i'm unsure if at this point it's better to accept and
-	// document this behavior, or spend rather a lot of time and energy coming
-	// up with a fix.
+	// LastExecution time. This prevents odd behavior like long-forgotten
+	// global jobs executing on newly added nodes. However, this does not
+	// prevent cases where older nodes were unavailable at job execution time
+	// and subsequently become available.
 	lastExecution, err := gogotypes.TimestampFromProto(service.JobStatus.LastExecution)
 	if err != nil {
-		// TODO(dperny): validate that lastExecution is set on service creation
-		// or update.
+		// LastExecution is always updated on service create or update.
+		// However, to guard against the worst case scenario, we can fall back
+		// onto the service meta CreatedAt value.
 		lastExecution, err = gogotypes.TimestampFromProto(service.Meta.CreatedAt)
 		if err != nil {
-			panic(fmt.Sprintf("service CreateAt time could not be parsed: %v", err))
+			// if we can't get this, however, then we might as well die,
+			// because it's a Very Big error.
+			panic(fmt.Sprintf("service CreatedAt time could not be parsed: %v", err))
 		}
 	}
 
@@ -138,7 +137,6 @@ func (r *Reconciler) ReconcileService(id string) error {
 
 		// if a node is invalid, we should remove any tasks that might be on it
 		if orchestrator.InvalidNode(node) {
-			fmt.Printf("node %v is invalid (availability: %v)\n", node.ID, node.Spec.Availability)
 			invalidNodes = append(invalidNodes, node.ID)
 			continue
 		}
@@ -168,20 +166,30 @@ func (r *Reconciler) ReconcileService(id string) error {
 	// additionally, while we're iterating through tasks, if any of those tasks
 	// are failed, we'll hand them to the restart supervisor to handle
 	restartTasks := []string{}
+	// and if there are any tasks belonging to old job iterations, set them to
+	// be removed
+	removeTasks := []string{}
 	for _, task := range tasks {
 		// match all tasks belonging to this job iteration which are in desired
 		// state completed, including failed tasks. We only want to create
 		// tasks for nodes on which there are no existing tasks.
-		if task.JobIteration != nil &&
-			task.JobIteration.Index == service.JobStatus.JobIteration.Index &&
-			task.DesiredState <= api.TaskStateCompleted {
-			// we already know the task is desired to be executing (because its
-			// desired state is Completed). Check here to see if it's already
-			// failed, so we can restart it
-			if task.Status.State > api.TaskStateCompleted {
-				restartTasks = append(restartTasks, task.ID)
+		if task.JobIteration != nil {
+			if task.JobIteration.Index == service.JobStatus.JobIteration.Index &&
+				task.DesiredState <= api.TaskStateCompleted {
+				// we already know the task is desired to be executing (because its
+				// desired state is Completed). Check here to see if it's already
+				// failed, so we can restart it
+				if task.Status.State > api.TaskStateCompleted {
+					restartTasks = append(restartTasks, task.ID)
+				}
+				nodeToTask[task.NodeID] = task.ID
 			}
-			nodeToTask[task.NodeID] = task.ID
+
+			if task.JobIteration.Index != service.JobStatus.JobIteration.Index {
+				if task.DesiredState != api.TaskStateRemove {
+					removeTasks = append(removeTasks, task.ID)
+				}
+			}
 		}
 	}
 
@@ -231,11 +239,28 @@ func (r *Reconciler) ReconcileService(id string) error {
 			}
 		}
 
+		// remove tasks that need to be removed
+		for _, taskID := range removeTasks {
+			if err := batch.Update(func(tx store.Tx) error {
+				t := store.GetTask(tx, taskID)
+				if t == nil {
+					return nil
+				}
+
+				if t.DesiredState == api.TaskStateRemove {
+					return nil
+				}
+
+				t.DesiredState = api.TaskStateRemove
+				return store.UpdateTask(tx, t)
+			}); err != nil {
+				return err
+			}
+		}
+
 		// finally, shut down any tasks on invalid nodes
 		for _, nodeID := range invalidNodes {
-			fmt.Printf("checking node %v for tasks", nodeID)
 			if taskID, ok := nodeToTask[nodeID]; ok {
-				fmt.Printf("node %v has task %v", nodeID, taskID)
 				if err := batch.Update(func(tx store.Tx) error {
 					t := store.GetTask(tx, taskID)
 					if t == nil {

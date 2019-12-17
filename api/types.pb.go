@@ -4022,9 +4022,10 @@ type JobStatus struct {
 	// disambiguate which Tasks belong to which iteration of a Job.
 	JobIteration Version `protobuf:"bytes,1,opt,name=job_iteration,json=jobIteration,proto3" json:"job_iteration"`
 	// LastExecution is the time that the job was last executed. This is set by
-	// the orchestrator in the same transaction that JobIteration is incremented,
-	// so that we can affirmatively determine which tasks were created as part of
-	// the last execution.
+	// the orchestrator in the same transaction that JobIteration is incremented.
+	// While time is a fungible concept in distributed systems like Swarmkit,
+	// this value gives us a best-effort attempt to prevent weird behavior like
+	// newly added nodes executing long-forgotten jobs.
 	LastExecution *types.Timestamp `protobuf:"bytes,2,opt,name=last_execution,json=lastExecution,proto3" json:"last_execution,omitempty"`
 }
 

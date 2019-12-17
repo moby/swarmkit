@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/orchestrator/jobs/global"
 	"github.com/docker/swarmkit/manager/orchestrator/jobs/replicated"
@@ -77,6 +78,8 @@ func (o *Orchestrator) Run(ctx context.Context) {
 // made inside of Run, and is enclosed in a sync.Once to stop this from being
 // called multiple times
 func (o *Orchestrator) run(ctx context.Context) {
+	ctx = log.WithModule(ctx, "orchestrator/jobs")
+
 	// closing doneChan should be the absolute last thing that happens in this
 	// method, and so should be the absolute first thing we defer.
 	defer close(o.doneChan)
@@ -132,13 +135,19 @@ func (o *Orchestrator) run(ctx context.Context) {
 
 	for _, service := range services {
 		if orchestrator.IsReplicatedJob(service) {
-			// TODO(dperny): do something with the error result of
-			// ReconcileService
-			o.replicatedReconciler.ReconcileService(service.ID)
+			if err := o.replicatedReconciler.ReconcileService(service.ID); err != nil {
+				log.G(ctx).WithField(
+					"service.id", service.ID,
+				).WithError(err).Error("error reconciling replicated job")
+			}
 		}
 
 		if orchestrator.IsGlobalJob(service) {
-			o.globalReconciler.ReconcileService(service.ID)
+			if err := o.globalReconciler.ReconcileService(service.ID); err != nil {
+				log.G(ctx).WithField(
+					"service.id", service.ID,
+				).WithError(err).Error("error reconciling global job")
+			}
 		}
 	}
 
