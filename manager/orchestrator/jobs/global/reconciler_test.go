@@ -180,6 +180,54 @@ var _ = Describe("Global Job Reconciler", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
+		When("the service is updated", func() {
+			var allTasks []*api.Task
+
+			JustBeforeEach(func() {
+				// this JustBeforeEach will run after the one where the service
+				// etc is created and reconciled.
+				err := s.Update(func(tx store.Tx) error {
+					service := store.GetService(tx, serviceID)
+					service.JobStatus.JobIteration.Index++
+					service.Spec.Task.ForceUpdate++
+					return store.UpdateService(tx, service)
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				err = r.ReconcileService(serviceID)
+				Expect(err).ToNot(HaveOccurred())
+
+				s.View(func(tx store.ReadTx) {
+					allTasks, err = store.FindTasks(tx, store.ByServiceID(serviceID))
+				})
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("should remove tasks belonging to old iterations", func() {
+				count := 0
+				for _, task := range allTasks {
+					Expect(task.JobIteration).ToNot(BeNil())
+					if task.JobIteration.Index == 0 {
+						Expect(task.DesiredState).To(Equal(api.TaskStateRemove))
+						count++
+					}
+				}
+				Expect(count).To(Equal(len(nodes)))
+			})
+
+			It("should create new tasks with the new iteration", func() {
+				count := 0
+				for _, task := range allTasks {
+					Expect(task.JobIteration).ToNot(BeNil())
+					if task.JobIteration.Index == 1 {
+						Expect(task.DesiredState).To(Equal(api.TaskStateCompleted))
+						count++
+					}
+				}
+				Expect(count).To(Equal(len(nodes)))
+			})
+		})
+
 		When("there are failed tasks", func() {
 			BeforeEach(func() {
 				// all but the last node should be filled.

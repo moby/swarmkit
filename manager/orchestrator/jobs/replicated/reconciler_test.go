@@ -89,48 +89,134 @@ var _ = Describe("Replicated Job reconciler", func() {
 	})
 
 	Describe("ReconcileService", func() {
-		When("reconciling a service", func() {
+		var (
+			serviceID        string
+			service          *api.Service
+			maxConcurrent    uint64
+			totalCompletions uint64
+
+			reconcileErr error
+		)
+
+		BeforeEach(func() {
+			serviceID = "someService"
+			maxConcurrent = 10
+			totalCompletions = 30
+			service = &api.Service{
+				ID: serviceID,
+				Spec: api.ServiceSpec{
+					Mode: &api.ServiceSpec_ReplicatedJob{
+						ReplicatedJob: &api.ReplicatedJob{
+							MaxConcurrent:    maxConcurrent,
+							TotalCompletions: totalCompletions,
+						},
+					},
+				},
+				JobStatus: &api.JobStatus{
+					JobIteration: api.Version{Index: 0},
+				},
+			}
+
+			cluster = &api.Cluster{
+				ID: "someCluster",
+				Spec: api.ClusterSpec{
+					Annotations: api.Annotations{
+						Name: "someCluster",
+					},
+					TaskDefaults: api.TaskDefaults{
+						LogDriver: &api.Driver{
+							Name: "someDriver",
+						},
+					},
+				},
+			}
+		})
+
+		When("a job has been updated", func() {
 			var (
-				serviceID        string
-				service          *api.Service
-				maxConcurrent    uint64
-				totalCompletions uint64
-
-				reconcileErr error
+				tasks []*api.Task
 			)
-
+			// Before anything, create the job, reconcile the job, and let
+			// tasks be created
 			BeforeEach(func() {
-				serviceID = "someService"
-				maxConcurrent = 10
-				totalCompletions = 30
-				service = &api.Service{
-					ID: serviceID,
-					Spec: api.ServiceSpec{
-						Mode: &api.ServiceSpec_ReplicatedJob{
-							ReplicatedJob: &api.ReplicatedJob{
-								MaxConcurrent:    maxConcurrent,
-								TotalCompletions: totalCompletions,
-							},
-						},
-					},
-				}
+				err := s.Update(func(tx store.Tx) error {
+					if service != nil {
+						if err := store.CreateService(tx, service); err != nil {
+							return err
+						}
+					}
 
-				cluster = &api.Cluster{
-					ID: "someCluster",
-					Spec: api.ClusterSpec{
-						Annotations: api.Annotations{
-							Name: "someCluster",
-						},
-						TaskDefaults: api.TaskDefaults{
-							LogDriver: &api.Driver{
-								Name: "someDriver",
-							},
-						},
-					},
-				}
+					if cluster != nil {
+						return store.CreateCluster(tx, cluster)
+					}
+					return nil
+				})
+				Expect(err).ToNot(HaveOccurred())
 
+				err = r.ReconcileService(serviceID)
+				Expect(err).ToNot(HaveOccurred())
+
+				// verify there are maxConcurrent tasks
+				var tasks []*api.Task
+				s.View(func(tx store.ReadTx) {
+					tasks, err = store.FindTasks(tx, store.ByServiceID(serviceID))
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(tasks).To(HaveLen(int(maxConcurrent)))
 			})
 
+			JustBeforeEach(func() {
+				err := s.Update(func(tx store.Tx) error {
+					// get the service, and bump ForceUpdate and the job
+					// iteration
+					service := store.GetService(tx, serviceID)
+					service.Spec.Task.ForceUpdate++
+					service.JobStatus.JobIteration.Index++
+					// we don't actually look at LastExecution in the
+					// replicated reconciler so we don't bother to set it here.
+					return store.UpdateService(tx, service)
+				})
+				Expect(err).ToNot(HaveOccurred())
+				err = r.ReconcileService(serviceID)
+				Expect(err).ToNot(HaveOccurred())
+
+				// fetch the tasks before we get to the test case itself,
+				// because we do this in all cases.
+				s.View(func(tx store.ReadTx) {
+					tasks, err = store.FindTasks(tx, store.ByServiceID(serviceID))
+				})
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("should remove all tasks belonging to the previous service iteration", func() {
+				count := 0
+				for _, task := range tasks {
+					Expect(task.JobIteration).ToNot(BeNil())
+					// first iteration of the job should have index 0
+					if task.JobIteration.Index == 0 {
+						Expect(task.DesiredState).To(Equal(api.TaskStateRemove))
+						count++
+					}
+				}
+
+				Expect(count).To(Equal(int(maxConcurrent)))
+			})
+
+			It("should create new tasks with the new JobIteration", func() {
+				count := 0
+				for _, task := range tasks {
+					Expect(task.JobIteration).ToNot(BeNil())
+					if task.JobIteration.Index == 1 {
+						Expect(task.DesiredState).To(Equal(api.TaskStateCompleted))
+						count++
+					}
+				}
+
+				Expect(count).To(Equal(int(maxConcurrent)))
+			})
+		})
+
+		When("reconciling a service", func() {
 			JustBeforeEach(func() {
 				err := s.Update(func(tx store.Tx) error {
 					if service != nil {

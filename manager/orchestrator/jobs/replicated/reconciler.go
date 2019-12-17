@@ -105,6 +105,7 @@ func (r *Reconciler) ReconcileService(id string) error {
 	runningTasks := uint64(0)
 	completeTasks := uint64(0)
 	restartTasks := []string{}
+	removeTasks := []string{}
 
 	// for replicated jobs, each task will get a different slot number, so that
 	// when the job has completed, there will be one Completed task in every
@@ -116,27 +117,34 @@ func (r *Reconciler) ReconcileService(id string) error {
 	for _, task := range tasks {
 		// we only care about tasks from this job iteration. tasks from the
 		// previous job iteration are not important
-		// TODO(dperny): we need to stop any running tasks from older job
-		// iterations.
-		if task.JobIteration != nil && task.JobIteration.Index == jobVersion {
-			if task.Status.State == api.TaskStateCompleted {
-				completeTasks++
-				slots[task.Slot] = true
-			}
+		if task.JobIteration != nil {
+			if task.JobIteration.Index == jobVersion {
+				if task.Status.State == api.TaskStateCompleted {
+					completeTasks++
+					slots[task.Slot] = true
+				}
 
-			// the Restart Manager may put a task in the desired state Ready,
-			// so we should match not only tasks in desired state Completed,
-			// but also those in any valid running state.
-			if task.Status.State != api.TaskStateCompleted && task.DesiredState <= api.TaskStateCompleted {
-				runningTasks++
-				slots[task.Slot] = true
+				// the Restart Manager may put a task in the desired state Ready,
+				// so we should match not only tasks in desired state Completed,
+				// but also those in any valid running state.
+				if task.Status.State != api.TaskStateCompleted && task.DesiredState <= api.TaskStateCompleted {
+					runningTasks++
+					slots[task.Slot] = true
 
-				// if the task is in a terminal state, we might need to restart
-				// it. throw it on the pile if so. this is still counted as a
-				// running task for the purpose of determining how many new
-				// tasks to create.
-				if task.Status.State > api.TaskStateCompleted {
-					restartTasks = append(restartTasks, task.ID)
+					// if the task is in a terminal state, we might need to restart
+					// it. throw it on the pile if so. this is still counted as a
+					// running task for the purpose of determining how many new
+					// tasks to create.
+					if task.Status.State > api.TaskStateCompleted {
+						restartTasks = append(restartTasks, task.ID)
+					}
+				}
+			} else {
+				// tasks belonging to a previous iteration of the job may
+				// exist. if any such tasks exist, they should have their task
+				// state set to Remove
+				if task.Status.State <= api.TaskStateRunning && task.DesiredState != api.TaskStateRemove {
+					removeTasks = append(removeTasks, task.ID)
 				}
 			}
 		}
@@ -233,6 +241,24 @@ func (r *Reconciler) ReconcileService(id string) error {
 
 				// TODO(dperny): pass in context from above
 				return r.restart.Restart(context.Background(), tx, cluster, service, *t)
+			}); err != nil {
+				return err
+			}
+		}
+
+		for _, taskID := range removeTasks {
+			if err := batch.Update(func(tx store.Tx) error {
+				t := store.GetTask(tx, taskID)
+				if t == nil {
+					return nil
+				}
+
+				// don't do unnecessary updates
+				if t.DesiredState == api.TaskStateRemove {
+					return nil
+				}
+				t.DesiredState = api.TaskStateRemove
+				return store.UpdateTask(tx, t)
 			}); err != nil {
 				return err
 			}
