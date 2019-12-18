@@ -33,7 +33,7 @@ func TestWorkerAssign(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	executor := &mockExecutor{t: t, dependencies: NewDependencyManager()}
+	executor := &mockExecutor{dependencies: NewDependencyManager()}
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
@@ -203,7 +203,7 @@ func TestWorkerWait(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	executor := &mockExecutor{t: t, dependencies: NewDependencyManager()}
+	executor := &mockExecutor{dependencies: NewDependencyManager()}
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
@@ -318,7 +318,7 @@ func TestWorkerUpdate(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	executor := &mockExecutor{t: t, dependencies: NewDependencyManager()}
+	executor := &mockExecutor{dependencies: NewDependencyManager()}
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
@@ -594,30 +594,26 @@ func TestWorkerUpdate(t *testing.T) {
 }
 
 type mockTaskController struct {
-	t *testing.T
 	exec.Controller
 	task         *api.Task
 	dependencies exec.DependencyGetter
 }
 
 func (mtc *mockTaskController) Remove(ctx context.Context) error {
-	mtc.t.Log("(*mockTestController).Remove")
 	return nil
 }
 
 func (mtc *mockTaskController) Close() error {
-	mtc.t.Log("(*mockTestController).Close")
 	return nil
 }
 
 type mockExecutor struct {
-	t *testing.T
 	exec.Executor
 	dependencies exec.DependencyManager
 }
 
 func (m *mockExecutor) Controller(task *api.Task) (exec.Controller, error) {
-	return &mockTaskController{t: m.t, task: task, dependencies: Restrict(m.dependencies, task)}, nil
+	return &mockTaskController{task: task, dependencies: Restrict(m.dependencies, task)}, nil
 }
 
 func (m *mockExecutor) Secrets() exec.SecretsManager {
