@@ -1058,6 +1058,10 @@ func (s *Server) ListServiceStatuses(ctx context.Context, req *api.ListServiceSt
 			// use a boolean to see global vs replicated. this avoids us having to
 			// iterate the task list twice.
 			global := false
+			// jobIteration is the iteration that the Job is currently
+			// operating on, to distinguish Tasks in old executions from tasks
+			// in the current one. if nil, service is not a Job
+			var jobIteration *api.Version
 			service := store.GetService(tx, id)
 			// a service might be deleted, but it may still have tasks. in that
 			// case, we will be using 0 as the desired task count.
@@ -1068,21 +1072,50 @@ func (s *Server) ListServiceStatuses(ctx context.Context, req *api.ListServiceSt
 				// numbercrunchin
 				if replicated := service.Spec.GetReplicated(); replicated != nil {
 					status.DesiredTasks = replicated.Replicas
+				} else if replicatedJob := service.Spec.GetReplicatedJob(); replicatedJob != nil {
+					status.DesiredTasks = replicatedJob.MaxConcurrent
 				} else {
+					// global applies to both GlobalJob and regular Global
 					global = true
+				}
+
+				if service.JobStatus != nil {
+					jobIteration = &service.JobStatus.JobIteration
 				}
 			}
 
 			// now, figure out how many tasks are running. Pretty easy, and
 			// universal across both global and replicated services
 			for _, task := range tasks {
+				// if the service is a Job, jobIteration will be non-nil. This
+				// means we should check if the task belongs to the current job
+				// iteration. If not, skip accounting the task.
+				if jobIteration != nil {
+					if task.JobIteration == nil || task.JobIteration.Index != jobIteration.Index {
+						continue
+					}
+
+					// additionally, since we've verified that the service is a
+					// job and the task belongs to this iteration, we should
+					// increment CompletedTasks
+					if task.Status.State == api.TaskStateCompleted {
+						status.CompletedTasks++
+					}
+				}
 				if task.Status.State == api.TaskStateRunning {
 					status.RunningTasks++
 				}
-				// if the service is global,  a shortcut for figuring out the
+
+				// if the service is global, a shortcut for figuring out the
 				// number of tasks desired is to look at all tasks, and take a
 				// count of the ones whose desired state is not Shutdown.
 				if global && task.DesiredState == api.TaskStateRunning {
+					status.DesiredTasks++
+				}
+
+				// for jobs, this is any task with desired state Completed
+				// which is not actually in that state.
+				if global && task.Status.State != api.TaskStateCompleted && task.DesiredState == api.TaskStateCompleted {
 					status.DesiredTasks++
 				}
 			}
