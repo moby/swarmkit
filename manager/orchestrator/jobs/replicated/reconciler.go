@@ -183,17 +183,6 @@ func (r *Reconciler) ReconcileService(id string) error {
 	// finally, we can create these tasks. do this in a batch operation, to
 	// avoid exceeding transaction size limits
 	err := r.store.Batch(func(batch *store.Batch) error {
-		// first, shut down old tasks
-		for _, task := range tasks {
-			if task.JobIteration.Index != service.JobStatus.JobIteration.Index &&
-				task.DesiredState != api.TaskStateShutdown {
-				batch.Update(func(tx store.Tx) error {
-					t := store.GetTask(tx, task.ID)
-					t.DesiredState = api.TaskStateShutdown
-					return store.UpdateTask(tx, t)
-				})
-			}
-		}
 		for i := uint64(0); i < actualNewTasks; i++ {
 			if err := batch.Update(func(tx store.Tx) error {
 				var slot uint64
