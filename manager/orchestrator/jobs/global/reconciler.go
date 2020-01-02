@@ -138,6 +138,7 @@ func (r *Reconciler) ReconcileService(id string) error {
 
 		// if a node is invalid, we should remove any tasks that might be on it
 		if orchestrator.InvalidNode(node) {
+			fmt.Printf("node %v is invalid (availability: %v)\n", node.ID, node.Spec.Availability)
 			invalidNodes = append(invalidNodes, node.ID)
 			continue
 		}
@@ -181,21 +182,6 @@ func (r *Reconciler) ReconcileService(id string) error {
 				restartTasks = append(restartTasks, task.ID)
 			}
 			nodeToTask[task.NodeID] = task.ID
-		}
-	}
-
-	// finally, we should identify any tasks belonging to the old iteration of
-	// the service and move those to desired state "shutdown"
-	shutdownTasks := []*api.Task{}
-	for _, task := range tasks {
-		// this is any task not belonging to this iteration and not already
-		// desired to shutdown. this also includes any successfully completed
-		// tasks, but to ensure maximum compatibility with the other
-		// orchestration components, we will still set the desired state of
-		// those to Shutdown.
-		if task.JobIteration.Index < service.JobStatus.JobIteration.Index &&
-			task.DesiredState != api.TaskStateShutdown {
-			shutdownTasks = append(shutdownTasks, task)
 		}
 	}
 
@@ -247,7 +233,9 @@ func (r *Reconciler) ReconcileService(id string) error {
 
 		// finally, shut down any tasks on invalid nodes
 		for _, nodeID := range invalidNodes {
+			fmt.Printf("checking node %v for tasks", nodeID)
 			if taskID, ok := nodeToTask[nodeID]; ok {
+				fmt.Printf("node %v has task %v", nodeID, taskID)
 				if err := batch.Update(func(tx store.Tx) error {
 					t := store.GetTask(tx, taskID)
 					if t == nil {
@@ -265,7 +253,6 @@ func (r *Reconciler) ReconcileService(id string) error {
 				}
 			}
 		}
-
 		return nil
 	})
 }
