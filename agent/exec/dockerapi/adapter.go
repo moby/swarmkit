@@ -55,10 +55,11 @@ func (c *containerConfig) imagePullOptions() types.ImagePullOptions {
 		// if the image needs to be pulled, the auth config will be retrieved and updated
 		RegistryAuth:  registryAuth,
 		PrivilegeFunc: noopPrivilegeFn,
-	}
+	
 }
 
 func (c *containerAdapter) pullImage(ctx context.Context) error {
+	fmt.Println("Going to manage the deployment")
 	rc, err := c.client.ImagePull(ctx, c.container.image(), c.container.imagePullOptions())
 	if err != nil {
 		return err
