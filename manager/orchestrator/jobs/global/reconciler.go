@@ -2,13 +2,11 @@ package global
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/constraint"
 	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/state/store"
-	gogotypes "github.com/gogo/protobuf/types"
 )
 
 // restartSupervisor is an interface representing the methods from the
@@ -101,30 +99,6 @@ func (r *Reconciler) ReconcileService(id string) error {
 		constraints, _ = constraint.Parse(service.Spec.Task.Placement.Constraints)
 	}
 
-	// here's the tricky part: we only need to schedule the global job on nodes
-	// that existed when the job was created. of course, because this is a
-	// distributed system, time is meaningless and clock skew is a given;
-	// however, the consequences for getting this _wrong_ aren't
-	// earth-shattering, and the clock skew can't be _that_ bad because the PKI
-	// wouldn't work if it was. so this is just a best effort endeavor. we'll
-	// schedule to any node that says its creation time is before the
-	// LastExecution time. This prevents odd behavior like long-forgotten
-	// global jobs executing on newly added nodes. However, this does not
-	// prevent cases where older nodes were unavailable at job execution time
-	// and subsequently become available.
-	lastExecution, err := gogotypes.TimestampFromProto(service.JobStatus.LastExecution)
-	if err != nil {
-		// LastExecution is always updated on service create or update.
-		// However, to guard against the worst case scenario, we can fall back
-		// onto the service meta CreatedAt value.
-		lastExecution, err = gogotypes.TimestampFromProto(service.Meta.CreatedAt)
-		if err != nil {
-			// if we can't get this, however, then we might as well die,
-			// because it's a Very Big error.
-			panic(fmt.Sprintf("service CreatedAt time could not be parsed: %v", err))
-		}
-	}
-
 	var candidateNodes []string
 	var invalidNodes []string
 	for _, node := range nodes {
@@ -145,10 +119,6 @@ func (r *Reconciler) ReconcileService(id string) error {
 			continue
 		}
 		if node.Status.State != api.NodeStatus_READY {
-			continue
-		}
-		nodeCreationTime, err := gogotypes.TimestampFromProto(node.Meta.CreatedAt)
-		if err != nil || !nodeCreationTime.Before(lastExecution) {
 			continue
 		}
 		// you can append to a nil slice and get a non-nil slice, which is

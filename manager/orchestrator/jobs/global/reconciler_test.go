@@ -5,12 +5,10 @@ import (
 	. "github.com/onsi/gomega"
 
 	"context"
-	"time"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/orchestrator"
 	"github.com/docker/swarmkit/manager/state/store"
-	gogotypes "github.com/gogo/protobuf/types"
 )
 
 type fakeRestartSupervisor struct {
@@ -66,9 +64,7 @@ var _ = Describe("Global Job Reconciler", func() {
 						GlobalJob: &api.GlobalJob{},
 					},
 				},
-				JobStatus: &api.JobStatus{
-					LastExecution: gogotypes.TimestampNow(),
-				},
+				JobStatus: &api.JobStatus{},
 			}
 
 			cluster = &api.Cluster{
@@ -88,18 +84,9 @@ var _ = Describe("Global Job Reconciler", func() {
 			// at the beginning of each test, initialize tasks to be empty
 			tasks = nil
 
-			// the Meta on nodes is not set automatically in tests, as setting
-			// the meta requires passing a Proposer to the memory store, which
-			// we do not do. in order to make these tests succeed, we will set
-			// the node creation time to be 10 seconds ago
-			tenSecondsAgoProto, err := gogotypes.TimestampProto(time.Now().Add(-10 * time.Second))
-			Expect(err).ToNot(HaveOccurred())
 			nodes = []*api.Node{
 				{
 					ID: "node1",
-					Meta: api.Meta{
-						CreatedAt: tenSecondsAgoProto,
-					},
 					Spec: api.NodeSpec{
 						Annotations: api.Annotations{
 							Name: "name1",
@@ -112,9 +99,6 @@ var _ = Describe("Global Job Reconciler", func() {
 				},
 				{
 					ID: "node2",
-					Meta: api.Meta{
-						CreatedAt: tenSecondsAgoProto,
-					},
 					Spec: api.NodeSpec{
 						Annotations: api.Annotations{
 							Name: "name2",
@@ -127,9 +111,6 @@ var _ = Describe("Global Job Reconciler", func() {
 				},
 				{
 					ID: "node3",
-					Meta: api.Meta{
-						CreatedAt: tenSecondsAgoProto,
-					},
 					Spec: api.NodeSpec{
 						Annotations: api.Annotations{
 							Name: "name3",
@@ -345,32 +326,6 @@ var _ = Describe("Global Job Reconciler", func() {
 								}, Equal("existingTask1")),
 							),
 						)
-					})
-				})
-			})
-
-			When("nodes have been added since the job was started", func() {
-				BeforeEach(func() {
-					// Before this test, change the creation time of "node0" to
-					// be 10 seconds from now. This should result in no task
-					// being created for this node
-					tenSecondsFromNowProto, err := gogotypes.TimestampProto(
-						time.Now().Add(10 * time.Second),
-					)
-					Expect(err).ToNot(HaveOccurred())
-					nodes[0].Meta.CreatedAt = tenSecondsFromNowProto
-				})
-				It("should not create tasks for those new nodes", func() {
-					s.View(func(tx store.ReadTx) {
-						node0Tasks, err := store.FindTasks(tx, store.ByNodeID(nodes[0].ID))
-						Expect(err).ToNot(HaveOccurred())
-						Expect(node0Tasks).To(BeEmpty())
-
-						for _, node := range nodes[1:] {
-							tasks, err := store.FindTasks(tx, store.ByNodeID(node.ID))
-							Expect(err).ToNot(HaveOccurred())
-							Expect(tasks).To(HaveLen(1))
-						}
 					})
 				})
 			})
