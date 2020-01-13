@@ -13,6 +13,7 @@ import (
 
 func TestConstraintEnforcer(t *testing.T) {
 	nodes := []*api.Node{
+		// this node starts as a worker, but then is changed to a manager.
 		{
 			ID: "id1",
 			Spec: api.NodeSpec{
@@ -47,6 +48,7 @@ func TestConstraintEnforcer(t *testing.T) {
 	}
 
 	tasks := []*api.Task{
+		// This task should not run, because id1 is a worker
 		{
 			ID:           "id0",
 			DesiredState: api.TaskStateRunning,
@@ -60,6 +62,7 @@ func TestConstraintEnforcer(t *testing.T) {
 			},
 			NodeID: "id1",
 		},
+		// this task should run without question
 		{
 			ID:           "id1",
 			DesiredState: api.TaskStateRunning,
@@ -68,6 +71,18 @@ func TestConstraintEnforcer(t *testing.T) {
 			},
 			NodeID: "id1",
 		},
+		// this task, which might belong to a job, should run.
+		{
+			ID:           "id5",
+			DesiredState: api.TaskStateCompleted,
+			Status: api.TaskStatus{
+				State: api.TaskStateNew,
+			},
+			NodeID: "id1",
+		},
+		// this task should run fine and not shut down at first, because node
+		// id1 is correctly a worker. but when the node is updated to be a
+		// manager, it should be rejected
 		{
 			ID:           "id2",
 			DesiredState: api.TaskStateRunning,
@@ -149,6 +164,8 @@ func TestConstraintEnforcer(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
+	// since we've changed the node from a worker to a manager, this task
+	// should now shut down
 	shutdown2 := testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, "id2", shutdown2.ID)
 	assert.Equal(t, api.TaskStateRejected, shutdown2.Status.State)
