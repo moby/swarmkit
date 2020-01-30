@@ -344,7 +344,7 @@ func createNode(s *store.MemoryStore, nodeID, role string, csr, cert []byte) err
 
 func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWriter, role, org, tmpDir string, nonSigningRoot bool) (*ca.SecurityConfig, func() error, error) {
 	req := &cfcsr.CertificateRequest{
-		KeyRequest: cfcsr.NewBasicKeyRequest(),
+		KeyRequest: cfcsr.NewKeyRequest(),
 	}
 
 	csr, key, err := cfcsr.ParseRequest(req)
@@ -447,7 +447,7 @@ func CreateRootCertAndKey(rootCN string) ([]byte, []byte, error) {
 	// Create a simple CSR for the CA using the default CA validator and policy
 	req := cfcsr.CertificateRequest{
 		CN:         rootCN,
-		KeyRequest: cfcsr.NewBasicKeyRequest(),
+		KeyRequest: cfcsr.NewKeyRequest(),
 		CA:         &cfcsr.CAConfig{Expiry: ca.RootCAExpiration},
 	}
 
@@ -489,7 +489,7 @@ func ReDateCert(t *testing.T, cert, signerCert, signerKey []byte, notBefore, not
 func CreateCertFromSigner(rootCN string, priv crypto.Signer) ([]byte, error) {
 	req := cfcsr.CertificateRequest{
 		CN:         rootCN,
-		KeyRequest: &cfcsr.BasicKeyRequest{A: ca.RootKeyAlgo, S: ca.RootKeySize},
+		KeyRequest: &cfcsr.KeyRequest{A: ca.RootKeyAlgo, S: ca.RootKeySize},
 		CA:         &cfcsr.CAConfig{Expiry: ca.RootCAExpiration},
 	}
 	cert, _, err := initca.NewFromSigner(&req, priv)
