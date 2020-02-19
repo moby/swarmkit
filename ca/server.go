@@ -321,6 +321,9 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 					DesiredRole:  role,
 					Membership:   api.NodeMembershipAccepted,
 					Availability: request.Availability,
+					Annotations: api.Annotations{
+						Labels: request.Labels,
+					},
 				},
 			}
 			node.VXLANUDPPort = clusters[0].VXLANUDPPort
