@@ -133,6 +133,9 @@ type Config struct {
 	// Availability allows a user to control the current scheduling status of a node
 	Availability api.NodeSpec_Availability
 
+	// Labels allows a user to define labels for the joining node
+	Labels map[string]string
+
 	// PluginGetter provides access to docker's plugin inventory.
 	PluginGetter plugingetter.PluginGetter
 
@@ -881,6 +884,7 @@ func (n *Node) loadSecurityConfig(ctx context.Context, paths *ca.SecurityConfigP
 			requestConfig := ca.CertificateRequestConfig{
 				Token:        n.config.JoinToken,
 				Availability: n.config.Availability,
+				Labels:       n.config.Labels,
 				ConnBroker:   n.connBroker,
 			}
 			// If this is a new cluster, we want to name the cluster ID "FIPS-something"

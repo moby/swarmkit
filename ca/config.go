@@ -478,6 +478,8 @@ type CertificateRequestConfig struct {
 	Token string
 	// Availability allows a user to control the current scheduling status of a node
 	Availability api.NodeSpec_Availability
+	// Labels allows a user to define labels for the joining node
+	Labels map[string]string
 	// ConnBroker provides connections to CAs.
 	ConnBroker *connectionbroker.Broker
 	// Credentials provides transport credentials for communicating with the

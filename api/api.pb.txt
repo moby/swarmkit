@@ -932,10 +932,6 @@ file {
       start: 1000
       end: 536870912
     }
-    reserved_range {
-      start: 38
-      end: 39
-    }
   }
   message_type {
     name: "MessageOptions"
@@ -981,14 +977,6 @@ file {
     extension_range {
       start: 1000
       end: 536870912
-    }
-    reserved_range {
-      start: 8
-      end: 9
-    }
-    reserved_range {
-      start: 9
-      end: 10
     }
   }
   message_type {
@@ -1084,10 +1072,6 @@ file {
       start: 1000
       end: 536870912
     }
-    reserved_range {
-      start: 4
-      end: 5
-    }
   }
   message_type {
     name: "OneofOptions"
@@ -1132,10 +1116,6 @@ file {
     extension_range {
       start: 1000
       end: 536870912
-    }
-    reserved_range {
-      start: 5
-      end: 6
     }
   }
   message_type {
@@ -1405,7 +1385,7 @@ file {
     java_package: "com.google.protobuf"
     java_outer_classname: "DescriptorProtos"
     optimize_for: SPEED
-    go_package: "github.com/golang/protobuf/protoc-gen-go/descriptor;descriptor"
+    go_package: "descriptor"
     cc_enable_arenas: true
     objc_class_prefix: "GPB"
     csharp_namespace: "Google.Protobuf.Reflection"
@@ -5675,6 +5655,34 @@ file {
       type: TYPE_ENUM
       type_name: ".docker.swarmkit.v1.NodeSpec.Availability"
       json_name: "availability"
+    }
+    field {
+      name: "labels"
+      number: 5
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.IssueNodeCertificateRequest.LabelsEntry"
+      json_name: "labels"
+    }
+    nested_type {
+      name: "LabelsEntry"
+      field {
+        name: "key"
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "key"
+      }
+      field {
+        name: "value"
+        number: 2
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "value"
+      }
+      options {
+        map_entry: true
+      }
     }
   }
   message_type {

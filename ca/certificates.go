@@ -816,7 +816,12 @@ func GetRemoteSignedCertificate(ctx context.Context, csr []byte, rootCAPool *x50
 	defer issueCancel()
 
 	// Send the Request and retrieve the request token
-	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Token: config.Token, Availability: config.Availability}
+	issueRequest := &api.IssueNodeCertificateRequest{
+		CSR:          csr,
+		Token:        config.Token,
+		Availability: config.Availability,
+		Labels:       config.Labels,
+	}
 	issueResponse, err := caClient.IssueNodeCertificate(issueCtx, issueRequest)
 	if err != nil {
 		conn.Close(false)
