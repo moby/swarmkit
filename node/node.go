@@ -1017,6 +1017,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 		AutoLockManagers: n.config.AutoLockManagers,
 		UnlockKey:        n.unlockKey,
 		Availability:     n.config.Availability,
+		Labels:           n.config.Labels,
 		PluginGetter:     n.config.PluginGetter,
 		RootCAPaths:      rootPaths,
 		FIPS:             n.config.FIPS,

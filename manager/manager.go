@@ -122,6 +122,9 @@ type Config struct {
 	// Availability allows a user to control the current scheduling status of a node
 	Availability api.NodeSpec_Availability
 
+	// Labels allows a user to define labels for the joining node
+	Labels map[string]string
+
 	// PluginGetter provides access to docker's plugin inventory.
 	PluginGetter plugingetter.PluginGetter
 
@@ -972,7 +975,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 
 		// Add Node entry for ourself, if one
 		// doesn't exist already.
-		freshCluster := nil == store.CreateNode(tx, managerNode(nodeID, m.config.Availability, clusterObj.VXLANUDPPort))
+		freshCluster := nil == store.CreateNode(tx, managerNode(nodeID, m.config.Availability, m.config.Labels, clusterObj.VXLANUDPPort))
 
 		if freshCluster {
 			// This is a fresh swarm cluster. Add to store now any initial
@@ -1202,7 +1205,7 @@ func defaultClusterObject(
 }
 
 // managerNode creates a new node with NodeRoleManager role.
-func managerNode(nodeID string, availability api.NodeSpec_Availability, vxlanPort uint32) *api.Node {
+func managerNode(nodeID string, availability api.NodeSpec_Availability, labels map[string]string, vxlanPort uint32) *api.Node {
 	return &api.Node{
 		ID: nodeID,
 		Certificate: api.Certificate{
@@ -1213,8 +1216,11 @@ func managerNode(nodeID string, availability api.NodeSpec_Availability, vxlanPor
 			},
 		},
 		Spec: api.NodeSpec{
-			DesiredRole:  api.NodeRoleManager,
-			Membership:   api.NodeMembershipAccepted,
+			DesiredRole: api.NodeRoleManager,
+			Membership:  api.NodeMembershipAccepted,
+			Annotations: api.Annotations{
+				Labels: labels,
+			},
 			Availability: availability,
 		},
 		VXLANUDPPort: vxlanPort,
