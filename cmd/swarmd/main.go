@@ -11,6 +11,7 @@ import (
 	"os/signal"
 
 	engineapi "github.com/docker/docker/client"
+	"github.com/docker/docker/runconfig/opts"
 	"github.com/docker/swarmkit/agent/exec/dockerapi"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/genericresource"
@@ -163,6 +164,16 @@ var (
 				}
 			}
 
+			var labels map[string]string
+			if cmd.Flags().Changed("labels") {
+				rawLabels, err := cmd.Flags().GetStringSlice("labels")
+				if err != nil {
+					return err
+				}
+
+				labels = opts.ConvertKVStringsToMap(rawLabels)
+			}
+
 			// Create a cancellable context for our GRPC call
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
@@ -220,6 +231,7 @@ var (
 				ElectionTick:       election,
 				AutoLockManagers:   autolockManagers,
 				UnlockKey:          unlockKey,
+				Labels:             labels,
 			})
 			if err != nil {
 				return err
@@ -271,4 +283,5 @@ func init() {
 	mainCmd.Flags().Var(&externalCAOpt, "external-ca", "Specifications of one or more certificate signing endpoints")
 	mainCmd.Flags().Bool("autolock", false, "Require an unlock key in order to start a manager once it's been stopped")
 	mainCmd.Flags().String("unlock-key", "", "Unlock this manager using this key")
+	mainCmd.Flags().StringSlice("labels", nil, "Labels to apply to the new node")
 }
