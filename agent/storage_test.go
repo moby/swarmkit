@@ -66,8 +66,8 @@ func TestStoragePutGetStatusAssigned(t *testing.T) {
 	// set task, status and assignment for all tasks.
 	assert.NoError(t, db.Update(func(tx *bolt.Tx) error {
 		for _, task := range tasks {
-			assert.NoError(t, PutTaskStatus(tx, task.ID, &task.Status))
 			assert.NoError(t, PutTask(tx, task))
+			assert.NoError(t, PutTaskStatus(tx, task.ID, &task.Status))
 			assert.NoError(t, SetTaskAssignment(tx, task.ID, true))
 		}
 
