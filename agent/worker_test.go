@@ -143,7 +143,6 @@ func TestWorkerAssign(t *testing.T) {
 				},
 			},
 			expectedTasks: []*api.Task{
-				{ID: "task-1"},
 				{ID: "task-2"},
 			},
 			expectedSecrets: []*api.Secret{
@@ -153,15 +152,14 @@ func TestWorkerAssign(t *testing.T) {
 				{ID: "config-2"},
 			},
 			expectedAssigned: []*api.Task{
+				// task-1 should be cleaned up and deleted.
 				{ID: "task-2"},
 			},
 		},
 		{
 			// remove assigned tasks, secret and config no longer present
-			expectedTasks: []*api.Task{
-				{ID: "task-1"},
-				{ID: "task-2"},
-			},
+			// there should be no tasks in the tasks db after this.
+			expectedTasks: nil,
 		},
 
 		// TODO(stevvooe): There are a few more states here we need to get
@@ -173,6 +171,7 @@ func TestWorkerAssign(t *testing.T) {
 			tasks    []*api.Task
 			assigned []*api.Task
 		)
+
 		assert.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
 			return WalkTasks(tx, func(task *api.Task) error {
 				tasks = append(tasks, task)
@@ -491,7 +490,6 @@ func TestWorkerUpdate(t *testing.T) {
 				},
 			},
 			expectedTasks: []*api.Task{
-				{ID: "task-1"},
 				{ID: "task-2"},
 			},
 			expectedSecrets: []*api.Secret{
@@ -555,10 +553,6 @@ func TestWorkerUpdate(t *testing.T) {
 					},
 					Action: api.AssignmentChange_AssignmentActionRemove,
 				},
-			},
-			expectedTasks: []*api.Task{
-				{ID: "task-1"},
-				{ID: "task-2"},
 			},
 		},
 	} {
