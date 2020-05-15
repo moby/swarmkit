@@ -212,3 +212,25 @@ func ByCustomPrefix(objType, index, value string) By {
 		value:   value,
 	}
 }
+
+// ByVolumeGroup creates an object to pass to Find to search for volumes
+// belonging to a particular group.
+func ByVolumeGroup(group string) By {
+	return byVolumeGroup(group)
+}
+
+type byVolumeGroup string
+
+func (b byVolumeGroup) isBy() {
+}
+
+// ByDriver creates an object to pass to Find to search for objects using a
+// specific driver.
+func ByDriver(driver string) By {
+	return byDriver(driver)
+}
+
+type byDriver string
+
+func (b byDriver) isBy() {
+}

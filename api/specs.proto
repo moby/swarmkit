@@ -458,6 +458,9 @@ message ClusterSpec {
 
 	// EncryptionConfig defines the cluster's encryption settings.
 	EncryptionConfig encryption_config = 8 [(gogoproto.nullable) = false];
+
+	// CSIConfig defines the available CSI plugins and how they can be reached.
+	CSIConfig csi_config = 9 [(gogoproto.nullable) = false, (gogoproto.customname) = "CSIConfig"];
 }
 
 // SecretSpec specifies a user-provided secret.
