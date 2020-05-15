@@ -37,6 +37,8 @@ const (
 	indexConfig       = "config"
 	indexKind         = "kind"
 	indexCustom       = "custom"
+	indexVolumeGroup  = "volumegroup"
+	indexDriver       = "driver"
 
 	prefix = "_prefix"
 
@@ -738,6 +740,18 @@ func (tx readTx) findIterators(table string, by By, checkType func(By) error) ([
 		return []memdb.ResultIterator{it}, nil
 	case byKind:
 		it, err := tx.memDBTx.Get(table, indexKind, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byVolumeGroup:
+		it, err := tx.memDBTx.Get(table, indexVolumeGroup, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byDriver:
+		it, err := tx.memDBTx.Get(table, indexDriver, string(v))
 		if err != nil {
 			return nil, err
 		}

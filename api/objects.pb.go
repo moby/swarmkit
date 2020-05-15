@@ -765,7 +765,9 @@ type Volume struct {
 	Status VolumeStatus `protobuf:"bytes,4,opt,name=status,proto3" json:"status"`
 	// VolumeID is the ID of the volume as reported by the CSI plugin.
 	// Information about the volume is not cached in swarmkit's object store;
-	// instead, it is retrieved on-demand as needed.
+	// instead, it is retrieved on-demand as needed. If the VolumeID field is an
+	// empty string, and the plugin advertises CREATE_DELETE_VOLUME capability,
+	// then Swarmkit has not yet called CreateVolume.
 	VolumeID string `protobuf:"bytes,5,opt,name=volume_id,json=volumeId,proto3" json:"volume_id,omitempty"`
 }
 
