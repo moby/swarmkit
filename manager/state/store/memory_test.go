@@ -360,17 +360,67 @@ var (
 			Kind: "alt-name1", // corresponds to extension alt-id1
 		},
 	}
+	volumeSet = []*api.Volume{
+		{
+			ID: "id1",
+			Spec: api.VolumeSpec{
+				Annotations: api.Annotations{
+					Name: "name1",
+				},
+				Driver: &api.Driver{
+					Name: "test",
+				},
+			},
+		},
+		{
+			ID: "id2",
+			Spec: api.VolumeSpec{
+				Annotations: api.Annotations{
+					Name: "name2",
+				},
+				Driver: &api.Driver{
+					Name: "test",
+				},
+			},
+		},
+		{
+			ID: "id3",
+			Spec: api.VolumeSpec{
+				Annotations: api.Annotations{
+					Name: "name3",
+				},
+				Driver: &api.Driver{
+					Name: "test",
+				},
+			},
+		},
+	}
+	altVolumeSet = []*api.Volume{
+		{
+			ID: "alt-id1",
+			Spec: api.VolumeSpec{
+				Annotations: api.Annotations{
+					Name: "alt-name1",
+				},
+				Driver: &api.Driver{
+					Name: "test",
+				},
+			},
+		},
+	}
 )
 
 func setupTestStore(t *testing.T, s *MemoryStore) {
 	populateTestStore(t, s,
 		clusterSet, nodeSet, serviceSet, taskSet, networkSet, configSet, secretSet,
-		extensionSet, resourceSet)
+		extensionSet, resourceSet, volumeSet)
 }
 
 func populateTestStore(t *testing.T, s *MemoryStore,
-	clusters []*api.Cluster, nodes []*api.Node, services []*api.Service, tasks []*api.Task, networks []*api.Network,
-	configs []*api.Config, secrets []*api.Secret, extensions []*api.Extension, resources []*api.Resource) {
+	clusters []*api.Cluster, nodes []*api.Node, services []*api.Service,
+	tasks []*api.Task, networks []*api.Network, configs []*api.Config,
+	secrets []*api.Secret, extensions []*api.Extension,
+	resources []*api.Resource, volumes []*api.Volume) {
 	err := s.Update(func(tx Tx) error {
 		// Prepoulate clusters
 		for _, c := range clusters {
@@ -409,6 +459,10 @@ func populateTestStore(t *testing.T, s *MemoryStore,
 		// Prepopulate resources
 		for _, s := range resources {
 			assert.NoError(t, CreateResource(tx, s))
+		}
+		// Prepopulate volumes
+		for _, v := range volumes {
+			assert.NoError(t, CreateVolume(tx, v))
 		}
 		return nil
 	})
@@ -1415,6 +1469,8 @@ func TestStoreSaveRestore(t *testing.T) {
 	ext.Meta.Version = version
 	r := resourceSet[0].Copy()
 	r.Meta.Version = version
+	v := volumeSet[0].Copy()
+	v.Meta.Version = version
 	populateTestStore(t, s2,
 		append(altClusterSet, c),
 		append(altNodeSet, n),
@@ -1425,6 +1481,7 @@ func TestStoreSaveRestore(t *testing.T) {
 		append(altSecretSet, sk),
 		append(altExtensionSet, ext),
 		append(altResourceSet, r),
+		append(altVolumeSet, v),
 	)
 
 	watcher, cancel, err := ViewAndWatch(s2, func(ReadTx) error {
@@ -1500,6 +1557,12 @@ func TestStoreSaveRestore(t *testing.T) {
 		for i := range allResources {
 			assert.Equal(t, allResources[i], resourceSet[i])
 		}
+		allVolumes, err := FindVolumes(tx, All)
+		assert.NoError(t, err)
+		assert.Len(t, allVolumes, len(volumeSet))
+		for i := range allVolumes {
+			assert.Equal(t, allVolumes[i], volumeSet[i])
+		}
 	})
 
 	timeout := time.After(time.Second)
@@ -1515,7 +1578,8 @@ func TestStoreSaveRestore(t *testing.T) {
 		configUpdates, configCreates, configDeletes,
 		secretUpdates, secretCreates, secretDeletes,
 		extensionUpdates, extensionCreates, extensionDeletes,
-		resourceUpdates, resourceCreates, resourceDeletes []api.StoreObject
+		resourceUpdates, resourceCreates, resourceDeletes,
+		volumeUpdates, volumeCreates, volumeDeletes []api.StoreObject
 	)
 
 waitForAllEvents:
@@ -1591,6 +1655,13 @@ waitForAllEvents:
 			resourceCreates = append(resourceCreates, e.Resource)
 		case api.EventDeleteResource:
 			resourceDeletes = append(resourceDeletes, e.Resource)
+
+		case api.EventUpdateVolume:
+			volumeUpdates = append(volumeUpdates, e.Volume)
+		case api.EventCreateVolume:
+			volumeCreates = append(volumeCreates, e.Volume)
+		case api.EventDeleteVolume:
+			volumeDeletes = append(volumeDeletes, e.Volume)
 		}
 
 		// wait until we have all the events we want
@@ -1604,6 +1675,7 @@ waitForAllEvents:
 			secretUpdates, secretDeletes,
 			extensionUpdates, extensionDeletes,
 			resourceUpdates, resourceDeletes,
+			volumeUpdates, volumeDeletes,
 		} {
 			if len(x) < 1 {
 				continue waitForAllEvents
@@ -1620,6 +1692,7 @@ waitForAllEvents:
 			secretCreates,
 			extensionCreates,
 			resourceCreates,
+			volumeCreates,
 		} {
 			if len(x) < 2 {
 				continue waitForAllEvents
@@ -1711,6 +1784,14 @@ waitForAllEvents:
 		cantCastArrays[i] = x
 	}
 	assertHasSameIDs(resourceCreates, cantCastArrays...)
+
+	assertHasSameIDs(volumeUpdates, volumeSet[0])
+	assertHasSameIDs(volumeDeletes, altVolumeSet[0])
+	cantCastArrays = make([]api.StoreObject, len(volumeSet[1:]))
+	for i, x := range volumeSet[1:] {
+		cantCastArrays[i] = x
+	}
+	assertHasSameIDs(volumeCreates, cantCastArrays...)
 }
 
 func TestWatchFrom(t *testing.T) {

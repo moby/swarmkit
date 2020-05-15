@@ -510,3 +510,37 @@ message Extension {
 	// // Indices, with values expressed as Go templates.
 	//repeated IndexEntry index_templates = 6;
 }
+
+// Volume is the top-level object describing a volume usable by Swarmkit. The
+// Volume contains the user's VolumeSpec, the Volume's status, and the Volume
+// object that was returned by the CSI Plugin when the volume was created.
+message Volume {
+	option (docker.protobuf.plugin.store_object) = {
+		watch_selectors: {
+			id: true
+			id_prefix: true
+			name: true
+			name_prefix: true
+			custom: true
+			custom_prefix: true
+		}
+	};
+
+	// ID is the swarmkit-internal ID for this volume object. This has no
+	// relation to the CSI volume identifier provided by the CSI Plugin.
+	string id = 1;
+	Meta meta = 2 [(gogoproto.nullable) = false];
+
+	// Spec is the desired state of the Volume, as provided by the user.
+	VolumeSpec spec = 3 [(gogoproto.nullable) = false];
+
+	// Status contains information about how the volume is currently being used.
+	VolumeStatus status = 4 [(gogoproto.nullable) = false];
+
+	// VolumeID is the ID of the volume as reported by the CSI plugin.
+	// Information about the volume is not cached in swarmkit's object store;
+	// instead, it is retrieved on-demand as needed. If the VolumeID field is an
+	// empty string, and the plugin advertises CREATE_DELETE_VOLUME capability,
+	// then Swarmkit has not yet called CreateVolume.
+	string volume_id = 5;
+}
