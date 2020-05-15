@@ -62,6 +62,7 @@ enum ResourceType {
 	TASK = 0;
 	SECRET = 1;
 	CONFIG = 2;
+	VOLUME = 3;
 }
 
 message Resources {
@@ -878,6 +879,21 @@ message EncryptionConfig {
 	bool auto_lock_managers = 1;
 }
 
+// CSIConfig defines available CSI plugins and where they can be reached
+message CSIConfig {
+	// Plugin defines the details of an individual CSI plugin
+	message Plugin {
+		// Name defines the name of the CSI plugin. This corresponds to the
+		// Driver.Name field used when creating a CSI volume.
+		string name = 1;
+
+		// Socket defines the unix socket at which the CSI plugin can be reached.
+		string socket = 2;
+	}
+
+	repeated Plugin plugins = 1;
+}
+
 message SpreadOver {
 	string spread_descriptor = 1; // label descriptor, such as engine.labels.az
 	// TODO: support node information beyond engine and node labels
@@ -1174,6 +1190,7 @@ message JobStatus {
 message VolumeAccessMode {
 	// Scope enumerates the possible volume access scopes.
 	enum Scope {
+		option (gogoproto.goproto_enum_prefix) = false;
 		// VolumeScopeSingleNode indicates that only one node at a time may have
 		// access to the volume.
 		SINGLE_NODE = 0 [(gogoproto.enumvalue_customname) = "VolumeScopeSingleNode"];
@@ -1184,6 +1201,7 @@ message VolumeAccessMode {
 
 	// Sharing enumerates the possible volume sharing modes.
 	enum Sharing {
+		option (gogoproto.goproto_enum_prefix) = false;
 		// VolumeSharingNone indicates that the volume may only be used by a single
 		// Task at any given time.
 		NONE = 0 [(gogoproto.enumvalue_customname) = "VolumeSharingNone"];
