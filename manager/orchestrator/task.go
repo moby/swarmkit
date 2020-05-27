@@ -119,6 +119,10 @@ func nodeMatches(s *api.Service, n *api.Node) bool {
 		return false
 	}
 
+	if s.Spec.Task.Placement == nil {
+		return false
+	}
+
 	constraints, _ := constraint.Parse(s.Spec.Task.Placement.Constraints)
 	return constraint.NodeMatches(constraints, n)
 }
