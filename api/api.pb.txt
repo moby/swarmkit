@@ -484,6 +484,13 @@ file {
       type_name: ".google.protobuf.FieldOptions"
       json_name: "options"
     }
+    field {
+      name: "proto3_optional"
+      number: 17
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      json_name: "proto3Optional"
+    }
     enum_type {
       name: "Type"
       value {
@@ -853,7 +860,7 @@ file {
       number: 31
       label: LABEL_OPTIONAL
       type: TYPE_BOOL
-      default_value: "false"
+      default_value: "true"
       json_name: "ccEnableArenas"
     }
     field {
