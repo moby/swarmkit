@@ -59,30 +59,35 @@ jobs:
             env
 
     - run:
-        name: Install protoc
+        name: Build swarmkit CI image
         command: |
-            curl --silent --show-error --location --output protoc.zip \
-            https://github.com/google/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip \
-            && sudo unzip -d /usr/local protoc.zip include/\* bin\/* \
-            && sudo chmod -R a+r /usr/local/include/google/protobuf/
-            rm -f protoc.zip
+          make DOCKER_SWARMKIT_USE_CONTAINER=1 image
+
+#   - run:
+#       name: Install protoc
+#       command: |
+#           curl --silent --show-error --location --output protoc.zip \
+#           https://github.com/google/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip \
+#           && sudo unzip -d /usr/local protoc.zip include/\* bin\/* \
+#           && sudo chmod -R a+r /usr/local/include/google/protobuf/
+#           rm -f protoc.zip
 
     - run:
         name: Install test/lint dependencies
         command: make setup
 
-    - run:
-        name: Validate dependency vendoring
-        command: |
-            git fetch origin
-            if test -n "`git diff --stat=1000 origin/master | grep -E \"^[[:space:]]*vendor\"`"; then
-                make dep-validate;
-            fi
+#   - run:
+#       name: Validate dependency vendoring
+#       command: |
+#           git fetch origin
+#           if test -n "`git diff --stat=1000 origin/master | grep -E \"^[[:space:]]*vendor\"`"; then
+#               make dep-validate;
+#           fi
 
     # The GOPATH setting would not be needed if we used the golang docker image
     - run:
         name: Compile/lint/vet/protobuf validation
-        command: make check binaries checkprotos
+        command: make DOCKER_SWARMKIT_USE_CONTAINER=1 check binaries checkprotos
 
     - run:
         name: Run unit tests

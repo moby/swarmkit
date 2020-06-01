@@ -40,7 +40,7 @@ ensure_sync_started:
 .PHONY: run
 run: ensure_image_exists
 	@ [ "$$DOCKER_SWARMKIT_DOCKER_RUN_CMD" ] || exit 1
-	@ DOCKER_RUN_COMMAND="docker run -t -v swarmkit-cache:${GOPATH}" \
+	@ DOCKER_RUN_COMMAND="docker run -t" \
 		&& if [ "$$DOCKER_SWARMKIT_USE_DOCKER_SYNC" ]; then \
 			$(MAKE) ensure_sync_started && DOCKER_RUN_COMMAND+=" -v swarmkit-sync:${DOCKER_IMAGE_DIR}"; \
 		else \
