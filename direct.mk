@@ -42,7 +42,6 @@ setup: ## install dependencies
 	# install golangci-lint version 1.17.1 to ./bin/golangci-lint
 	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.17.1
 	@go get -u github.com/lk4d4/vndr
-	@go get -u github.com/stevvooe/protobuild
 
 .PHONY: generate
 generate: protos
@@ -52,7 +51,7 @@ generate: protos
 .PHONY: protos
 protos: bin/protoc-gen-gogoswarm ## generate protobuf
 	@echo "🐳 $@"
-	@PATH=${ROOTDIR}/bin:${PATH} protobuild ${PACKAGES}
+	@PATH=${ROOTDIR}/bin:${PATH} ./vendor-bin/protobuild ${PACKAGES}
 
 .PHONY: checkprotos
 checkprotos: generate ## check if protobufs needs to be generated again
