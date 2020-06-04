@@ -79,6 +79,18 @@ func (n *Node) getEdge(label byte) (int, *Node) {
 	return -1, nil
 }
 
+func (n *Node) getLowerBoundEdge(label byte) (int, *Node) {
+	num := len(n.edges)
+	idx := sort.Search(num, func(i int) bool {
+		return n.edges[i].label >= label
+	})
+	// we want lower bound behavior so return even if it's not an exact match
+	if idx < num {
+		return idx, n.edges[idx].node
+	}
+	return -1, nil
+}
+
 func (n *Node) delEdge(label byte) {
 	num := len(n.edges)
 	idx := sort.Search(num, func(i int) bool {
@@ -272,66 +284,6 @@ func (n *Node) WalkPath(path []byte, fn WalkFn) {
 			break
 		}
 	}
-}
-
-func (n *Node) Seek(prefix []byte) *Seeker {
-	search := prefix
-	p := &pos{n: n}
-	for {
-		// Check for key exhaution
-		if len(search) == 0 {
-			return &Seeker{p}
-		}
-
-		num := len(n.edges)
-		idx := sort.Search(num, func(i int) bool {
-			return n.edges[i].label >= search[0]
-		})
-		p.current = idx
-		if idx < len(n.edges) {
-			n = n.edges[idx].node
-			if bytes.HasPrefix(search, n.prefix) && len(n.edges) > 0 {
-				search = search[len(n.prefix):]
-				p.current++
-				p = &pos{n: n, prev: p}
-				continue
-			}
-		}
-		p.current++
-		return &Seeker{p}
-	}
-}
-
-type Seeker struct {
-	*pos
-}
-
-type pos struct {
-	n       *Node
-	current int
-	prev    *pos
-	isLeaf  bool
-}
-
-func (s *Seeker) Next() (k []byte, v interface{}, ok bool) {
-	if s.current >= len(s.n.edges) {
-		if s.prev == nil {
-			return nil, nil, false
-		}
-		s.pos = s.prev
-		return s.Next()
-	}
-
-	edge := s.n.edges[s.current]
-	s.current++
-	if edge.node.leaf != nil && !s.isLeaf {
-		s.isLeaf = true
-		s.current--
-		return edge.node.leaf.key, edge.node.leaf.val, true
-	}
-	s.isLeaf = false
-	s.pos = &pos{n: edge.node, prev: s.pos}
-	return s.Next()
 }
 
 // recursiveWalk is used to do a pre-order walk of a node
