@@ -4,6 +4,8 @@ code.cloudfoundry.org/clock
 code.cloudfoundry.org/clock/fakeclock
 # github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78
 ## explicit
+# github.com/BurntSushi/toml v0.3.1
+github.com/BurntSushi/toml
 # github.com/Microsoft/go-winio v0.4.14
 ## explicit
 github.com/Microsoft/go-winio
@@ -162,6 +164,7 @@ github.com/gogo/protobuf/vanity
 github.com/gogo/protobuf/vanity/command
 # github.com/golang/protobuf v1.3.3
 github.com/golang/protobuf/proto
+github.com/golang/protobuf/protoc-gen-go/descriptor
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
@@ -288,6 +291,9 @@ github.com/spf13/cobra
 # github.com/spf13/pflag v0.0.0-20151218134703-7f60f83a2c81
 ## explicit
 github.com/spf13/pflag
+# github.com/stevvooe/protobuild v0.0.0-20200414175018-324b1750ca06
+## explicit
+github.com/stevvooe/protobuild
 # github.com/stretchr/testify v1.3.0
 ## explicit
 github.com/stretchr/testify/assert

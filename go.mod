@@ -46,6 +46,7 @@ require (
 	github.com/sirupsen/logrus v1.4.1
 	github.com/spf13/cobra v0.0.0-20160117030938-8e91712f174c
 	github.com/spf13/pflag v0.0.0-20151218134703-7f60f83a2c81
+	github.com/stevvooe/protobuild v0.0.0-20200414175018-324b1750ca06
 	github.com/stretchr/testify v1.3.0
 	github.com/tedsuo/ifrit v0.0.0-20191009134036-9a97d0632f00 // indirect
 	github.com/vishvananda/netlink v1.1.0 // indirect
