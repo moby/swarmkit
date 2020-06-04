@@ -1,6 +1,6 @@
 module github.com/docker/swarmkit
 
-go 1.13
+go 1.14
 
 require (
 	code.cloudfoundry.org/clock v1.0.0
