@@ -7,6 +7,7 @@ import (
 
 	enginecontainer "github.com/docker/docker/api/types/container"
 	enginemount "github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/swarmkit/api"
 	gogotypes "github.com/gogo/protobuf/types"
 )
@@ -253,6 +254,46 @@ func TestIsolation(t *testing.T) {
 	expected := "hyperv"
 	actual := string(c.hostConfig().Isolation)
 	if actual != expected {
+		t.Fatalf("expected %s, got %s", expected, actual)
+	}
+}
+
+func TestCapabilityAdd(t *testing.T) {
+	c := containerConfig{
+		task: &api.Task{
+			Spec: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{
+						CapabilityAdd: []string{"CAP_NET_RAW", "CAP_SYS_CHROOT"},
+					},
+				},
+			},
+		},
+	}
+
+	expected := strslice.StrSlice{"CAP_NET_RAW", "CAP_SYS_CHROOT"}
+	actual := c.hostConfig().CapAdd
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("expected %s, got %s", expected, actual)
+	}
+}
+
+func TestCapabilityDrop(t *testing.T) {
+	c := containerConfig{
+		task: &api.Task{
+			Spec: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{
+						CapabilityDrop: []string{"CAP_KILL"},
+					},
+				},
+			},
+		},
+	}
+
+	expected := strslice.StrSlice{"CAP_KILL"}
+	actual := c.hostConfig().CapDrop
+	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("expected %s, got %s", expected, actual)
 	}
 }

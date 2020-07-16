@@ -355,6 +355,11 @@ message ContainerSpec {
 	//
 	// https://docs.docker.com/engine/reference/commandline/run/#configure-namespaced-kernel-parameters-sysctls-at-runtime
 	map<string, string> sysctls = 26;
+
+	// CapabilityAdd sets the list of capabilities to add to the default capability list
+	repeated string capability_add = 27;
+	// CapabilityAdd sets the list of capabilities to drop from the default capability list
+	repeated string capability_drop = 28;
 }
 
 // EndpointSpec defines the properties that can be configured to
