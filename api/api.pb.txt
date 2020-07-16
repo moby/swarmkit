@@ -5067,13 +5067,6 @@ file {
       type_name: ".docker.swarmkit.v1.ContainerSpec.SysctlsEntry"
       json_name: "sysctls"
     }
-    field {
-      name: "capabilities"
-      number: 27
-      label: LABEL_REPEATED
-      type: TYPE_STRING
-      json_name: "capabilities"
-    }
     nested_type {
       name: "LabelsEntry"
       field {
