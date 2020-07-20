@@ -4506,6 +4506,76 @@ file {
     }
   }
   message_type {
+    name: "VolumeInfo"
+    field {
+      name: "capacity_bytes"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_INT64
+      json_name: "capacityBytes"
+    }
+    field {
+      name: "volume_context"
+      number: 2
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.VolumeInfo.VolumeContextEntry"
+      json_name: "volumeContext"
+    }
+    field {
+      name: "volume_id"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "volumeId"
+    }
+    field {
+      name: "accessible_topology"
+      number: 4
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.Topology"
+      json_name: "accessibleTopology"
+    }
+    nested_type {
+      name: "VolumeContextEntry"
+      field {
+        name: "key"
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "key"
+      }
+      field {
+        name: "value"
+        number: 2
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "value"
+      }
+      options {
+        map_entry: true
+      }
+    }
+  }
+  message_type {
+    name: "CapacityRange"
+    field {
+      name: "required_bytes"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_INT64
+      json_name: "requiredBytes"
+    }
+    field {
+      name: "limit_bytes"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_INT64
+      json_name: "limitBytes"
+    }
+  }
+  message_type {
     name: "VolumeAssignment"
     field {
       name: "id"
@@ -5992,6 +6062,14 @@ file {
       type_name: ".docker.swarmkit.v1.TopologyRequirement"
       json_name: "AccessibilityRequirements"
     }
+    field {
+      name: "capacity_range"
+      number: 7
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.CapacityRange"
+      json_name: "capacityRange"
+    }
   }
   syntax: "proto3"
 }
@@ -7305,11 +7383,12 @@ file {
       json_name: "status"
     }
     field {
-      name: "volume_id"
+      name: "volume_info"
       number: 5
       label: LABEL_OPTIONAL
-      type: TYPE_STRING
-      json_name: "volumeId"
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.VolumeInfo"
+      json_name: "volumeInfo"
     }
     options {
       70001 {
