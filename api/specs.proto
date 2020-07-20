@@ -549,4 +549,8 @@ message VolumeSpec {
 	// VOLUME_ACCESSIBILITY_CONSTRAINTS, then Swarmkit will assume the entire
 	// cluster is a valid target for the volume.
 	TopologyRequirement AccessibilityRequirements = 6;
+
+	// CapacityRange is the capacity this volume should be created with. If nil,
+	// the plugin will decide the capacity.
+	CapacityRange capacity_range = 7;
 }

@@ -537,10 +537,7 @@ message Volume {
 	// Status contains information about how the volume is currently being used.
 	VolumeStatus status = 4 [(gogoproto.nullable) = false];
 
-	// VolumeID is the ID of the volume as reported by the CSI plugin.
-	// Information about the volume is not cached in swarmkit's object store;
-	// instead, it is retrieved on-demand as needed. If the VolumeID field is an
-	// empty string, and the plugin advertises CREATE_DELETE_VOLUME capability,
-	// then Swarmkit has not yet called CreateVolume.
-	string volume_id = 5;
+	// VolumeInfo contains information about the volume originating from the CSI
+	// plugin
+	VolumeInfo volume_info = 5;
 }
