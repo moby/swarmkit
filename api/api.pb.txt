@@ -5068,11 +5068,18 @@ file {
       json_name: "sysctls"
     }
     field {
-      name: "capabilities"
+      name: "capability_add"
       number: 27
       label: LABEL_REPEATED
       type: TYPE_STRING
-      json_name: "capabilities"
+      json_name: "capabilityAdd"
+    }
+    field {
+      name: "capability_drop"
+      number: 28
+      label: LABEL_REPEATED
+      type: TYPE_STRING
+      json_name: "capabilityDrop"
     }
     nested_type {
       name: "LabelsEntry"

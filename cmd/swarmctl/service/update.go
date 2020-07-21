@@ -57,7 +57,7 @@ var (
 			if err := flagparser.ParseAddCapability(cmd, spec, "add-capability"); err != nil {
 				return err
 			}
-			if err := flagparser.ParseRemoveCapability(cmd, spec, "rm-capability"); err != nil {
+			if err := flagparser.ParseDropCapability(cmd, spec, "rm-capability"); err != nil {
 				return err
 			}
 

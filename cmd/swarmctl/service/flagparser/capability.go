@@ -9,63 +9,97 @@ import (
 func ParseAddCapability(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) error {
 	flags := cmd.Flags()
 
-	if flags.Changed(flagName) {
-		capabilities, err := flags.GetStringSlice(flagName)
-		if err != nil {
-			return err
-		}
+	if !flags.Changed(flagName) {
+		return nil
+	}
 
-		container := spec.Task.GetContainer()
-		if container == nil {
-			return nil
-		}
+	add, err := flags.GetStringSlice(flagName)
+	if err != nil {
+		return err
+	}
 
-		oldCapabilities := make(map[string]struct{})
-		for _, capability := range container.Capabilities {
-			oldCapabilities[capability] = struct{}{}
-		}
+	container := spec.Task.GetContainer()
+	if container == nil {
+		return nil
+	}
 
-		var newCapabilities = container.Capabilities
-		for _, capability := range capabilities {
-			if _, ok := oldCapabilities[capability]; ok {
-				continue
-			}
-			newCapabilities = append(newCapabilities, capability)
+	// Index adds so we don't have to double loop
+	addIndex := make(map[string]bool, len(add))
+	for _, v := range add {
+		addIndex[v] = true
+	}
+
+	// Check if any of the adds are in drop so we can remove them from the drop list.
+	var evict []int
+	for i, v := range container.CapabilityDrop {
+		if addIndex[v] {
+			evict = append(evict, i)
 		}
-		container.Capabilities = newCapabilities
+	}
+	for n, i := range evict {
+		container.CapabilityDrop = append(container.CapabilityDrop[:i-n], container.CapabilityDrop[i-n+1:]...)
+	}
+
+	// De-dup the list to be added
+	for _, v := range container.CapabilityAdd {
+		if addIndex[v] {
+			delete(addIndex, v)
+			continue
+		}
+	}
+
+	for cap := range addIndex {
+		container.CapabilityAdd = append(container.CapabilityAdd, cap)
 	}
 
 	return nil
 }
 
-// ParseRemoveCapability removes a set of capabilities from the task spec's capability references
-func ParseRemoveCapability(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) error {
+// ParseDropCapability validates capabilities passed on the command line
+func ParseDropCapability(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) error {
 	flags := cmd.Flags()
 
-	if flags.Changed(flagName) {
-		capabilities, err := flags.GetStringSlice(flagName)
-		if err != nil {
-			return err
-		}
+	if !flags.Changed(flagName) {
+		return nil
+	}
 
-		container := spec.Task.GetContainer()
-		if container == nil {
-			return nil
-		}
+	drop, err := flags.GetStringSlice(flagName)
+	if err != nil {
+		return err
+	}
 
-		wantToDelete := make(map[string]struct{})
-		for _, capability := range capabilities {
-			wantToDelete[capability] = struct{}{}
-		}
+	container := spec.Task.GetContainer()
+	if container == nil {
+		return nil
+	}
 
-		var newCapabilities []string
-		for _, capabilityRef := range container.Capabilities {
-			if _, ok := wantToDelete[capabilityRef]; ok {
-				continue
-			}
-			newCapabilities = append(newCapabilities, capabilityRef)
+	// Index removals so we don't have to double loop
+	dropIndex := make(map[string]bool, len(drop))
+	for _, v := range drop {
+		dropIndex[v] = true
+	}
+
+	// Check if any of the adds are in add so we can remove them from the add list.
+	var evict []int
+	for i, v := range container.CapabilityAdd {
+		if dropIndex[v] {
+			evict = append(evict, i)
 		}
-		container.Capabilities = newCapabilities
+	}
+	for n, i := range evict {
+		container.CapabilityAdd = append(container.CapabilityAdd[:i-n], container.CapabilityAdd[i-n+1:]...)
+	}
+
+	// De-dup the list to be dropped
+	for _, v := range container.CapabilityDrop {
+		if dropIndex[v] {
+			delete(dropIndex, v)
+			continue
+		}
+	}
+
+	for cap := range dropIndex {
+		container.CapabilityDrop = append(container.CapabilityDrop, cap)
 	}
 
 	return nil
