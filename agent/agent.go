@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/docker/swarmkit/agent/csi"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
@@ -29,6 +30,8 @@ type Agent struct {
 	// The latest node object state from manager
 	// for this node known to the agent.
 	node *api.Node
+
+	CSIPlugins []*csi.NodePlugin
 
 	keys []*api.EncryptionKey
 
@@ -597,8 +600,18 @@ func (a *Agent) Publisher(ctx context.Context, subscriptionID string) (exec.LogP
 func (a *Agent) nodeDescriptionWithHostname(ctx context.Context, tlsInfo *api.NodeTLSInfo) (*api.NodeDescription, error) {
 	desc, err := a.config.Executor.Describe(ctx)
 
-	// Override hostname and TLS info
 	if desc != nil {
+
+		// Override CSI node plugin info
+		for _, plugin := range a.CSIPlugins {
+			nodeCSIInfo, err := plugin.NodeGetInfo(ctx)
+			if err != nil {
+				return nil, err
+			}
+			desc.CSIInfo = append(desc.CSIInfo, nodeCSIInfo)
+		}
+
+		// Override hostname and TLS info
 		if a.config.Hostname != "" {
 			desc.Hostname = a.config.Hostname
 		}
