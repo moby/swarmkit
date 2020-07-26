@@ -16,6 +16,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/go-connections/nat"
+	"github.com/docker/go-units"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/api/genericresource"
@@ -445,6 +446,15 @@ func (c *containerConfig) resources() enginecontainer.Resources {
 	pidsLimit := c.spec().PidsLimit
 	if pidsLimit > 0 {
 		resources.PidsLimit = &pidsLimit
+	}
+
+	resources.Ulimits = make([]*units.Ulimit, len(c.spec().Ulimits))
+	for i, ulimit := range c.spec().Ulimits {
+		resources.Ulimits[i] = &units.Ulimit{
+			Name: ulimit.Name,
+			Soft: ulimit.Soft,
+			Hard: ulimit.Hard,
+		}
 	}
 
 	// If no limits are specified let the engine use its defaults.
