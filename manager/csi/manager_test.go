@@ -1,4 +1,4 @@
-package volumes
+package csi
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -10,12 +10,12 @@ import (
 	"github.com/docker/swarmkit/manager/state/store"
 )
 
-var _ = Describe("VolumeManager", func() {
-	// The VolumeManager unit tests are intended to mainly avoid using a
-	// goroutine with the VolumeManager by calling init and handleEvent
+var _ = Describe("Manager", func() {
+	// The Manager unit tests are intended to mainly avoid using a
+	// goroutine with the Manager by calling init and handleEvent
 	// directly, instead of executing the run loop.
 	var (
-		vm *VolumeManager
+		vm *Manager
 		s  *store.MemoryStore
 
 		cluster *api.Cluster
@@ -45,7 +45,7 @@ var _ = Describe("VolumeManager", func() {
 		plugins = []*api.CSIConfig_Plugin{}
 		nodes = []*api.Node{}
 
-		vm = NewVolumeManager(s)
+		vm = NewManager(s)
 		vm.newPlugin = pluginMaker.newFakePlugin
 	})
 
