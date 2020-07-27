@@ -1,6 +1,6 @@
-package volumes
+package csi
 
-// The `volumes` package contains code for managing Swarmkit Cluster Volumes,
+// The `csi` package contains code for managing Swarmkit Cluster Volumes,
 // which are powered by CSI drivers.
 //
 // This package stands separately from other manager components because of the

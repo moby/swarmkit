@@ -1,4 +1,4 @@
-package volumes
+package csi
 
 import (
 	. "github.com/onsi/ginkgo"
