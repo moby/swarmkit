@@ -1,4 +1,4 @@
-package volumes
+package csi
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ import (
 
 func TestVolumes(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Volumes Suite")
+	RunSpecs(t, "CSI Volumes Suite")
 }
 
 var _ = BeforeSuite(func() {
