@@ -1,4 +1,4 @@
-package volumes
+package csi
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	// "github.com/container-storage-interface/spec/lib/go/csi"
 )
 
-type VolumeManager struct {
+type Manager struct {
 	store *store.MemoryStore
 	// provider is the SecretProvider which allows retrieving secrets. Used
 	// when creating new Plugin objects.
@@ -19,10 +19,10 @@ type VolumeManager struct {
 
 	// newPlugin is a function which returns an object implementing the Plugin
 	// interface. It allows us to swap out the implementation of plugins while
-	// unit-testing the VolumeManager
+	// unit-testing the Manager
 	newPlugin func(config *api.CSIConfig_Plugin, provider SecretProvider) Plugin
 
-	// synchronization for starting and stopping the VolumeManager
+	// synchronization for starting and stopping the Manager
 	startOnce sync.Once
 
 	stopChan chan struct{}
@@ -33,8 +33,8 @@ type VolumeManager struct {
 	plugins map[string]Plugin
 }
 
-func NewVolumeManager(s *store.MemoryStore) *VolumeManager {
-	return &VolumeManager{
+func NewManager(s *store.MemoryStore) *Manager {
+	return &Manager{
 		store:     s,
 		stopChan:  make(chan struct{}),
 		doneChan:  make(chan struct{}),
@@ -44,13 +44,13 @@ func NewVolumeManager(s *store.MemoryStore) *VolumeManager {
 	}
 }
 
-func (vm *VolumeManager) Run() {
+func (vm *Manager) Run() {
 	vm.startOnce.Do(func() {
 		vm.run()
 	})
 }
 
-func (vm *VolumeManager) run() {
+func (vm *Manager) run() {
 	defer close(vm.doneChan)
 
 	watch, cancel, err := store.ViewAndWatch(vm.store, func(tx store.ReadTx) error {
@@ -79,13 +79,13 @@ func (vm *VolumeManager) run() {
 	}
 }
 
-// init does one-time setup work for the VolumeManager, like creating all of
+// init does one-time setup work for the Manager, like creating all of
 // the Plugins and initializing the local state of the component.
-func (vm *VolumeManager) init() {
+func (vm *Manager) init() {
 	vm.updatePlugins()
 }
 
-func (vm *VolumeManager) updatePlugins() {
+func (vm *Manager) updatePlugins() {
 	// activePlugins is a set of plugin names that are currently in the cluster
 	// spec. this lets remove from the vm.plugins map any plugins that are
 	// no longer in use.
@@ -112,7 +112,7 @@ func (vm *VolumeManager) updatePlugins() {
 	}
 }
 
-func (vm *VolumeManager) Stop() {
+func (vm *Manager) Stop() {
 	vm.stopOnce.Do(func() {
 		close(vm.stopChan)
 	})
@@ -120,7 +120,7 @@ func (vm *VolumeManager) Stop() {
 	<-vm.doneChan
 }
 
-func (vm *VolumeManager) handleEvent(ev events.Event) {
+func (vm *Manager) handleEvent(ev events.Event) {
 	switch e := ev.(type) {
 	case api.EventUpdateCluster:
 		// TODO(dperny): verify that the Cluster in this event can never be nil
@@ -131,7 +131,7 @@ func (vm *VolumeManager) handleEvent(ev events.Event) {
 	}
 }
 
-func (vm *VolumeManager) createVolume(v *api.Volume) {
+func (vm *Manager) createVolume(v *api.Volume) {
 	p, ok := vm.plugins[v.Spec.Driver.Name]
 	if !ok {
 		// TODO(dperny): log something
