@@ -62,6 +62,7 @@ enum ResourceType {
 	TASK = 0;
 	SECRET = 1;
 	CONFIG = 2;
+	VOLUME = 3;
 }
 
 message Resources {
@@ -878,6 +879,21 @@ message EncryptionConfig {
 	bool auto_lock_managers = 1;
 }
 
+// CSIConfig defines available CSI plugins and where they can be reached
+message CSIConfig {
+	// Plugin defines the details of an individual CSI plugin
+	message Plugin {
+		// Name defines the name of the CSI plugin. This corresponds to the
+		// Driver.Name field used when creating a CSI volume.
+		string name = 1;
+
+		// Socket defines the unix socket at which the CSI plugin can be reached.
+		string socket = 2;
+	}
+
+	repeated Plugin plugins = 1;
+}
+
 message SpreadOver {
 	string spread_descriptor = 1; // label descriptor, such as engine.labels.az
 	// TODO: support node information beyond engine and node labels
@@ -1174,6 +1190,7 @@ message JobStatus {
 message VolumeAccessMode {
 	// Scope enumerates the possible volume access scopes.
 	enum Scope {
+		option (gogoproto.goproto_enum_prefix) = false;
 		// VolumeScopeSingleNode indicates that only one node at a time may have
 		// access to the volume.
 		SINGLE_NODE = 0 [(gogoproto.enumvalue_customname) = "VolumeScopeSingleNode"];
@@ -1184,6 +1201,7 @@ message VolumeAccessMode {
 
 	// Sharing enumerates the possible volume sharing modes.
 	enum Sharing {
+		option (gogoproto.goproto_enum_prefix) = false;
 		// VolumeSharingNone indicates that the volume may only be used by a single
 		// Task at any given time.
 		NONE = 0 [(gogoproto.enumvalue_customname) = "VolumeSharingNone"];
@@ -1230,6 +1248,40 @@ message VolumeStatus {
 	// Node will not be added to the list of nodes until the call to
 	// ControllerPublish has succeeded.
 	repeated string published_nodes = 1;
+}
+
+// VolumeInfo contains information about the volume originating from the CSI
+// plugin.
+message VolumeInfo {
+	// CapacityBytes is the capacity of this volume in bytes. A value of 0
+	// indicates that the capcity is unknown.
+	int64 capacity_bytes = 1;
+
+	// VolumeContext includes fields that are opaque to Swarmkit.
+	map<string, string> volume_context = 2;
+
+	// VolumeID is the ID of the volume as reported by the CSI plugin.
+	// Information about the volume is not cached in swarmkit's object store;
+	// instead, it is retrieved on-demand as needed. If the VolumeID field is an
+	// empty string, and the plugin advertises CREATE_DELETE_VOLUME capability,
+	// then Swarmkit has not yet called CreateVolume.
+	string volume_id = 3;
+
+	// AccessibleTopology is the topology this volume is actually accessible
+	// from.
+	repeated Topology accessible_topology = 4;
+}
+
+// CapacityRange describes the minimum and maximum capacity a volume should be
+// created with.
+message CapacityRange {
+	// RequiredBytes specifies that a volume must be at least this big. The value
+	// of 0 indicates an unspecified minimum. Must not be negative.
+	int64 required_bytes = 1;
+
+	// LimitBytes specifies that a volume must not be bigger than this. The value
+	// of 0 indicates an unspecified maximum. Must not be negative.
+	int64 limit_bytes = 2;
 }
 
 // VolumeAssignment contains the information needed by a Node to use a CSI

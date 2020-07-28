@@ -178,6 +178,7 @@ message Assignment {
 		Task task = 1;
 		Secret secret = 2;
 		Config config = 3;
+		VolumeAssignment volume = 4;
 	}
 }
 
