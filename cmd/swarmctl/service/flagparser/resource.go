@@ -114,5 +114,32 @@ func parseResource(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		}
 	}
 
+	if flags.Changed("ulimit") {
+		container := spec.Task.GetContainer()
+		if container == nil {
+			return nil
+		}
+
+		ulimits, err := flags.GetStringSlice("ulimit")
+		if err != nil {
+			return err
+		}
+
+		container.Ulimits = make([]*api.ContainerSpec_Ulimit, len(ulimits))
+
+		for i, ulimit := range ulimits {
+			parsed, err := units.ParseUlimit(ulimit)
+			if err != nil {
+				return err
+			}
+
+			container.Ulimits[i] = &api.ContainerSpec_Ulimit{
+				Name: parsed.Name,
+				Soft: parsed.Soft,
+				Hard: parsed.Hard,
+			}
+		}
+	}
+
 	return nil
 }

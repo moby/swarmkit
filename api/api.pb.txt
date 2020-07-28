@@ -5081,6 +5081,14 @@ file {
       type: TYPE_STRING
       json_name: "capabilityDrop"
     }
+    field {
+      name: "ulimits"
+      number: 29
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.ContainerSpec.Ulimit"
+      json_name: "ulimits"
+    }
     nested_type {
       name: "LabelsEntry"
       field {
@@ -5153,6 +5161,30 @@ file {
       }
       options {
         map_entry: true
+      }
+    }
+    nested_type {
+      name: "Ulimit"
+      field {
+        name: "name"
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "name"
+      }
+      field {
+        name: "soft"
+        number: 2
+        label: LABEL_OPTIONAL
+        type: TYPE_INT64
+        json_name: "soft"
+      }
+      field {
+        name: "hard"
+        number: 3
+        label: LABEL_OPTIONAL
+        type: TYPE_INT64
+        json_name: "hard"
       }
     }
     enum_type {
