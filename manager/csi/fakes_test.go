@@ -176,6 +176,7 @@ func (fpm *fakePluginMaker) newFakePlugin(config *api.CSIConfig_Plugin, provider
 		socket:         config.Socket,
 		swarmToCSI:     map[string]string{},
 		volumesCreated: map[string]*api.Volume{},
+		removedIDs:     map[string]struct{}{},
 	}
 	fpm.plugins[config.Name] = p
 	return p
@@ -185,6 +186,8 @@ type fakePlugin struct {
 	name       string
 	socket     string
 	swarmToCSI map[string]string
+	// removedIDs is a set of node IDs for which RemoveNode has been called.
+	removedIDs map[string]struct{}
 
 	volumesCreated map[string]*api.Volume
 }
@@ -197,4 +200,12 @@ func (f *fakePlugin) CreateVolume(ctx context.Context, v *api.Volume) (*api.Volu
 			"exists": "yes",
 		},
 	}, nil
+}
+
+func (f *fakePlugin) AddNode(swarmID, csiID string) {
+	f.swarmToCSI[swarmID] = csiID
+}
+
+func (f *fakePlugin) RemoveNode(swarmID string) {
+	f.removedIDs[swarmID] = struct{}{}
 }

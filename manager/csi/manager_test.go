@@ -103,6 +103,47 @@ var _ = Describe("Manager", func() {
 					Socket: "unix:///somethingElse.sock",
 				},
 			)
+
+			nodes = append(nodes,
+				&api.Node{
+					ID: "nodeID1",
+					Spec: api.NodeSpec{
+						Annotations: api.Annotations{
+							Name: "node1",
+						},
+					},
+					Description: &api.NodeDescription{
+						CSIInfo: []*api.NodeCSIInfo{
+							{
+								PluginName: "newPlugin",
+								NodeID:     "newPluginNode1",
+							}, {
+								PluginName: "differentPlugin",
+								NodeID:     "differentPluginNode1",
+							},
+						},
+					},
+				},
+				&api.Node{
+					ID: "nodeID2",
+					Spec: api.NodeSpec{
+						Annotations: api.Annotations{
+							Name: "node2",
+						},
+					},
+					Description: &api.NodeDescription{
+						CSIInfo: []*api.NodeCSIInfo{
+							{
+								PluginName: "newPlugin",
+								NodeID:     "newPluginNode2",
+							}, {
+								PluginName: "differentPlugin",
+								NodeID:     "differentPluginNode2",
+							},
+						},
+					},
+				},
+			)
 		})
 
 		JustBeforeEach(func() {
@@ -113,6 +154,22 @@ var _ = Describe("Manager", func() {
 			Expect(vm.plugins).To(HaveLen(2))
 			Expect(pluginMaker.plugins).To(SatisfyAll(
 				HaveLen(2), HaveKey("newPlugin"), HaveKey("differentPlugin"),
+			))
+		})
+
+		It("should add all nodes to the appropriate plugins", func() {
+			newPlugin := pluginMaker.plugins["newPlugin"]
+			Expect(newPlugin.swarmToCSI).To(SatisfyAll(
+				HaveLen(2),
+				HaveKeyWithValue("nodeID1", "newPluginNode1"),
+				HaveKeyWithValue("nodeID2", "newPluginNode2"),
+			))
+
+			differentPlugin := pluginMaker.plugins["differentPlugin"]
+			Expect(differentPlugin.swarmToCSI).To(SatisfyAll(
+				HaveLen(2),
+				HaveKeyWithValue("nodeID1", "differentPluginNode1"),
+				HaveKeyWithValue("nodeID2", "differentPluginNode2"),
 			))
 		})
 	})
@@ -234,6 +291,10 @@ var _ = Describe("Manager", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			volumeCreated := false
+			// this loop allows us to ensure that the volume create event is
+			// processed by the volume manager, without relying on goroutines
+			// and synchronization, and avoid the painful race conditions that
+			// come with that in testing.
 		eventLoop:
 			for {
 				select {
@@ -270,4 +331,206 @@ var _ = Describe("Manager", func() {
 		})
 	})
 
+	Describe("managing node inventory", func() {
+		BeforeEach(func() {
+			plugins = append(plugins,
+				&api.CSIConfig_Plugin{
+					Name:   "newPlugin",
+					Socket: "unix:///whatever.sock",
+				},
+				&api.CSIConfig_Plugin{
+					Name:   "differentPlugin",
+					Socket: "unix:///somethingElse.sock",
+				},
+			)
+
+			nodes = append(nodes,
+				&api.Node{
+					ID: "nodeID1",
+					Spec: api.NodeSpec{
+						Annotations: api.Annotations{
+							Name: "node1",
+						},
+					},
+					Description: &api.NodeDescription{
+						CSIInfo: []*api.NodeCSIInfo{
+							{
+								PluginName: "newPlugin",
+								NodeID:     "newPluginNode1",
+							}, {
+								PluginName: "differentPlugin",
+								NodeID:     "differentPluginNode1",
+							},
+						},
+					},
+				},
+				&api.Node{
+					ID: "nodeID2",
+					Spec: api.NodeSpec{
+						Annotations: api.Annotations{
+							Name: "node2",
+						},
+					},
+					Description: &api.NodeDescription{
+						CSIInfo: []*api.NodeCSIInfo{
+							{
+								PluginName: "newPlugin",
+								NodeID:     "newPluginNode2",
+							}, {
+								PluginName: "differentPlugin",
+								NodeID:     "differentPluginNode2",
+							},
+						},
+					},
+				},
+				&api.Node{
+					ID: "nodeIDextra",
+					Spec: api.NodeSpec{
+						Annotations: api.Annotations{
+							Name: "nodeExtra",
+						},
+					},
+				},
+			)
+		})
+
+		JustBeforeEach(func() {
+			vm.init()
+		})
+
+		It("should add new nodes to the plugins", func() {
+			err := s.Update(func(tx store.Tx) error {
+				return store.CreateNode(tx, &api.Node{
+					ID: "nodeID3",
+					Spec: api.NodeSpec{
+						Annotations: api.Annotations{
+							Name: "node3",
+						},
+					},
+					Description: &api.NodeDescription{
+						CSIInfo: []*api.NodeCSIInfo{
+							{
+								PluginName: "newPlugin",
+								NodeID:     "newPluginNode3",
+							}, {
+								PluginName: "differentPlugin",
+								NodeID:     "differentPluginNode3",
+							},
+						},
+					},
+				})
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			nodeCreated := false
+		eventLoop:
+			for {
+				select {
+				case ev := <-watch:
+					if e, ok := ev.(api.EventCreateNode); ok {
+						if e.Node.ID == "nodeID3" {
+							nodeCreated = true
+						}
+					}
+					vm.handleEvent(ev)
+				default:
+					if nodeCreated {
+						break eventLoop
+					}
+				}
+			}
+
+			Expect(pluginMaker.plugins["newPlugin"].swarmToCSI).To(SatisfyAll(
+				HaveLen(3),
+				HaveKeyWithValue("nodeID1", "newPluginNode1"),
+				HaveKeyWithValue("nodeID2", "newPluginNode2"),
+				HaveKeyWithValue("nodeID3", "newPluginNode3"),
+			))
+
+			Expect(pluginMaker.plugins["differentPlugin"].swarmToCSI).To(SatisfyAll(
+				HaveLen(3),
+				HaveKeyWithValue("nodeID1", "differentPluginNode1"),
+				HaveKeyWithValue("nodeID2", "differentPluginNode2"),
+				HaveKeyWithValue("nodeID3", "differentPluginNode3"),
+			))
+		})
+
+		It("should handle node updates", func() {
+			err := s.Update(func(tx store.Tx) error {
+				node := store.GetNode(tx, "nodeIDextra")
+				node.Description = &api.NodeDescription{
+					CSIInfo: []*api.NodeCSIInfo{
+						{
+							PluginName: "differentPlugin",
+							NodeID:     "differentPluginNodeExtra",
+						},
+					},
+				}
+				return store.UpdateNode(tx, node)
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			nodeUpdated := false
+		eventLoop:
+			for {
+				select {
+				case ev := <-watch:
+					if e, ok := ev.(api.EventUpdateNode); ok {
+						if e.Node.ID == "nodeIDextra" {
+							nodeUpdated = true
+						}
+					}
+					vm.handleEvent(ev)
+				default:
+					if nodeUpdated {
+						break eventLoop
+					}
+				}
+			}
+
+			Expect(pluginMaker.plugins["newPlugin"].swarmToCSI).To(SatisfyAll(
+				HaveLen(2),
+				HaveKeyWithValue("nodeID1", "newPluginNode1"),
+				HaveKeyWithValue("nodeID2", "newPluginNode2"),
+			))
+
+			Expect(pluginMaker.plugins["differentPlugin"].swarmToCSI).To(SatisfyAll(
+				HaveLen(3),
+				HaveKeyWithValue("nodeID1", "differentPluginNode1"),
+				HaveKeyWithValue("nodeID2", "differentPluginNode2"),
+				HaveKeyWithValue("nodeIDextra", "differentPluginNodeExtra"),
+			))
+		})
+
+		It("should remove nodes from the plugins", func() {
+			err := s.Update(func(tx store.Tx) error {
+				return store.DeleteNode(tx, "nodeID1")
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			nodeDeleted := false
+			// see explanation for this loop in the volume create test
+		eventLoop:
+			for {
+				select {
+				case ev := <-watch:
+					if _, ok := ev.(api.EventDeleteNode); ok {
+						nodeDeleted = true
+					}
+					vm.handleEvent(ev)
+				default:
+					if nodeDeleted {
+						break eventLoop
+					}
+				}
+			}
+
+			Expect(pluginMaker.plugins["newPlugin"].removedIDs).To(SatisfyAll(
+				HaveLen(1), HaveKey("nodeID1"),
+			))
+			Expect(pluginMaker.plugins["differentPlugin"].removedIDs).To(SatisfyAll(
+				HaveLen(1), HaveKey("nodeID1"),
+			))
+		})
+	})
 })
