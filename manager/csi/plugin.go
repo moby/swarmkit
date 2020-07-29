@@ -12,6 +12,8 @@ import (
 // Plugin is the interface for a CSI controller plugin
 type Plugin interface {
 	CreateVolume(context.Context, *api.Volume) (*api.VolumeInfo, error)
+	AddNode(swarmID, csiID string)
+	RemoveNode(swarmID string)
 }
 
 // plugin represents an individual CSI controller plugin
@@ -36,14 +38,22 @@ type plugin struct {
 
 	// controller indicates that the plugin has controller capabilities.
 	controller bool
+
+	// swarmToCSI maps a swarm node ID to the corresponding CSI node ID
+	swarmToCSI map[string]string
+
+	// csiToSwarm maps a CSI node ID back to the swarm node ID.
+	csiToSwarm map[string]string
 }
 
 // NewPlugin creates a new Plugin object.
 func NewPlugin(config *api.CSIConfig_Plugin, provider SecretProvider) Plugin {
 	return &plugin{
-		name:     config.Name,
-		socket:   config.Socket,
-		provider: provider,
+		name:       config.Name,
+		socket:     config.Socket,
+		provider:   provider,
+		swarmToCSI: map[string]string{},
+		csiToSwarm: map[string]string{},
 	}
 }
 
@@ -111,6 +121,23 @@ func (p *plugin) CreateVolume(ctx context.Context, v *api.Volume) (*api.VolumeIn
 	}
 
 	return makeVolumeInfo(resp.Volume), nil
+}
+
+// AddNode adds a mapping for a node's swarm ID to the ID provided by this CSI
+// plugin. This allows future calls to the plugin to be done entirely in terms
+// of the swarm node ID.
+//
+// The CSI node ID is provided by the node as part of the NodeDescription.
+func (p *plugin) AddNode(swarmID, csiID string) {
+	p.swarmToCSI[swarmID] = csiID
+	p.csiToSwarm[csiID] = swarmID
+}
+
+// RemoveNode removes a node from this plugin's node mappings.
+func (p *plugin) RemoveNode(swarmID string) {
+	csiID := p.swarmToCSI[swarmID]
+	delete(p.swarmToCSI, swarmID)
+	delete(p.csiToSwarm, csiID)
 }
 
 func (p *plugin) Client() csi.ControllerClient {
