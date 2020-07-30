@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	events "github.com/docker/go-events"
+	"github.com/docker/swarmkit/agent/csi"
 	agentutils "github.com/docker/swarmkit/agent/testutils"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
@@ -435,6 +436,27 @@ func TestAgentExitsBasedOnSessionTracker(t *testing.T) {
 	currSession, closedSessions := tester.dispatcher.GetSessions()
 	require.Nil(t, currSession)
 	require.Len(t, closedSessions, 3)
+}
+
+func TestAgentCSIInfo(t *testing.T) {
+	tlsCh := make(chan events.Event, 1)
+	defer close(tlsCh)
+	tester := agentTestEnv(t, nil, tlsCh)
+
+	fakeNodePlugin := &csi.NodePlugin{
+		Name:   "testDriver",
+		NodeID: "node1",
+	}
+	tester.agent.CSIPlugins = append(tester.agent.CSIPlugins, fakeNodePlugin)
+	defer tester.cleanup()
+	defer tester.StartAgent(t)()
+
+	currSession, closedSessions := tester.dispatcher.GetSessions()
+	require.NotNil(t, currSession)
+	require.NotNil(t, currSession.Description)
+	require.NotNil(t, currSession.Description.CSIInfo)
+	require.Equal(t, currSession.Description.CSIInfo[0].NodeID, fakeNodePlugin.NodeID)
+	require.Len(t, closedSessions, 0)
 }
 
 // If we pass a session tracker, established sessions get tracked.
