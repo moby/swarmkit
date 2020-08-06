@@ -442,11 +442,8 @@ func TestAgentCSIInfo(t *testing.T) {
 	tlsCh := make(chan events.Event, 1)
 	defer close(tlsCh)
 	tester := agentTestEnv(t, nil, tlsCh)
-
-	fakeNodePlugin := &csi.NodePlugin{
-		Name:   "testDriver",
-		NodeID: "node1",
-	}
+	nodeID := "node1"
+	fakeNodePlugin := csi.NewNodePlugin("testDriver", nodeID)
 	tester.agent.CSIPlugins = append(tester.agent.CSIPlugins, fakeNodePlugin)
 	defer tester.cleanup()
 	defer tester.StartAgent(t)()
@@ -455,7 +452,7 @@ func TestAgentCSIInfo(t *testing.T) {
 	require.NotNil(t, currSession)
 	require.NotNil(t, currSession.Description)
 	require.NotNil(t, currSession.Description.CSIInfo)
-	require.Equal(t, currSession.Description.CSIInfo[0].NodeID, fakeNodePlugin.NodeID)
+	require.Equal(t, currSession.Description.CSIInfo[0].NodeID, nodeID)
 	require.Len(t, closedSessions, 0)
 }
 
