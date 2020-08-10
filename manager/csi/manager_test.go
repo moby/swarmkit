@@ -2,6 +2,7 @@ package csi
 
 import (
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
 	"github.com/docker/go-events"
@@ -532,5 +533,354 @@ var _ = Describe("Manager", func() {
 				HaveLen(1), HaveKey("nodeID1"),
 			))
 		})
+	})
+
+	Describe("volume or group availability on a node", func() {
+		var (
+			node    *api.Node
+			volumes []*api.Volume
+		)
+
+		BeforeEach(func() {
+			node = &api.Node{
+				ID: "someNode",
+				Description: &api.NodeDescription{
+					CSIInfo: []*api.NodeCSIInfo{
+						{
+							PluginName: "newPlugin",
+							NodeID:     "newPluginSomeNode",
+							// don't bother with topology for these tests.
+						},
+					},
+				},
+			}
+			nodes = append(nodes, node)
+
+			plugins = append(plugins, &api.CSIConfig_Plugin{
+				Name:   "newPlugin",
+				Socket: "unix:///newplugin.sock",
+			})
+
+			volumes = []*api.Volume{
+				{
+					ID: "volume1",
+					Spec: api.VolumeSpec{
+						Annotations: api.Annotations{
+							Name: "volumeName1",
+						},
+						Driver: &api.Driver{
+							Name: "newPlugin",
+						},
+						AccessMode: &api.VolumeAccessMode{
+							Scope:   api.VolumeScopeSingleNode,
+							Sharing: api.VolumeSharingAll,
+						},
+					},
+					VolumeInfo: &api.VolumeInfo{
+						VolumeID: "newPluginVolume1",
+					},
+				},
+				{
+					ID: "volume2",
+					Spec: api.VolumeSpec{
+						Annotations: api.Annotations{
+							Name: "volumeName2",
+						},
+						Driver: &api.Driver{
+							Name: "newPlugin",
+						},
+						AccessMode: &api.VolumeAccessMode{
+							Scope:   api.VolumeScopeSingleNode,
+							Sharing: api.VolumeSharingAll,
+						},
+					},
+				},
+				{
+					ID: "volume3",
+					Spec: api.VolumeSpec{
+						Annotations: api.Annotations{
+							Name: "volumeName3",
+						},
+						Driver: &api.Driver{
+							Name: "newPlugin",
+						},
+						AccessMode: &api.VolumeAccessMode{
+							Scope:   api.VolumeScopeSingleNode,
+							Sharing: api.VolumeSharingAll,
+						},
+						Group: "someVolumeGroup",
+					},
+					VolumeInfo: &api.VolumeInfo{
+						VolumeID: "newPluginVolume3",
+					},
+				},
+				{
+					ID: "volume4",
+					Spec: api.VolumeSpec{
+						Annotations: api.Annotations{
+							Name: "volumeName4",
+						},
+						Driver: &api.Driver{
+							Name: "newPlugin",
+						},
+						AccessMode: &api.VolumeAccessMode{
+							Scope:   api.VolumeScopeSingleNode,
+							Sharing: api.VolumeSharingAll,
+						},
+						Group: "someVolumeGroup",
+					},
+					VolumeInfo: &api.VolumeInfo{
+						VolumeID: "newPluginVolume4",
+					},
+				},
+			}
+
+			err := s.Update(func(tx store.Tx) error {
+				for _, v := range volumes {
+					if err := store.CreateVolume(tx, v); err != nil {
+						return err
+					}
+				}
+				return nil
+			})
+
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should choose and return an available volume", func() {
+			mount := &api.Mount{
+				Type:   api.MountTypeCSI,
+				Source: "volumeName1",
+			}
+			volumeID := vm.IsVolumeAvailableOnNode(mount, node)
+			Expect(volumeID).To(Equal("volume1"))
+		})
+
+		It("should return an empty string if there are no available volumes", func() {
+			mount := &api.Mount{
+				Type:   api.MountTypeCSI,
+				Source: "volumeNameNotReal",
+			}
+			volumeID := vm.IsVolumeAvailableOnNode(mount, node)
+			Expect(volumeID).To(BeEmpty())
+		})
+
+		It("should specify one volume from a group, if the source is a group", func() {
+			mount := &api.Mount{
+				Type:   api.MountTypeCSI,
+				Source: "group:someVolumeGroup",
+			}
+			volumeID := vm.IsVolumeAvailableOnNode(mount, node)
+			Expect(volumeID).To(Or(Equal("volume3"), Equal("volume4")))
+		})
+
+		It("should not return any volume that does not yet have a VolumeID", func() {
+			// a volume is given a VolumeInfo and VolumeID when it is created.
+			// even if a volume otherwise would meet requirements, we should
+			// not use it unless it has been created in the CSI plugin.
+			mount := &api.Mount{
+				Type:   api.MountTypeCSI,
+				Source: "volumeName2",
+			}
+			volumeID := vm.IsVolumeAvailableOnNode(mount, node)
+			Expect(volumeID).To(BeEmpty())
+		})
+	})
+
+	Describe("volume availability on a node", func() {
+		// this test case uses a table to efficiently cover all of the cases.
+		// it starts by defining some helper types, and then uses
+		// "DescribeTable", which is a ginkgo extension for writing
+		// table-driven tests quickly.
+
+		// UsedBy is an enum that allows the test case to specify whether the
+		// volume is in use and how
+		type UsedBy int
+		const (
+			// Unused is default, and indicatest that the volume is not
+			// presently in use.
+			Unused UsedBy = iota
+			// WrongNode indicates that the volume should be marked in use by
+			// a node other than the one being checked
+			WrongNode
+			// OnlyReaders indicates that the volume is in use, but all other
+			// users are read-only.
+			OnlyReaders
+			// Writer indicates that the volume is in use by another writer.
+			Writer
+		)
+
+		// AvailabilityCase encapsulates the table parameters for the test
+		type AvailabilityCase struct {
+			// AccessMode is the access mode the volume should have
+			AccessMode *api.VolumeAccessMode
+			// InUse is the existing use state of the volume.
+			InUse UsedBy
+			// InTopology indicates whether the volume should lie within the
+			// node's topology
+			InTopology bool
+			// ReadOnly indicates whether the requested use of the volume is
+			// read-only
+			ReadOnly bool
+			// Expected is the expected result.
+			Expected bool
+		}
+
+		// this table test uses the most basic set of parameters to cover all
+		// of the functionality of isVolumeAvailable. It sets up a default
+		// node and volume, filled in with default fields. Those fields are
+		// modified based on the parameters of the availability case.
+		DescribeTable("isVolumeAvailable",
+			func(c AvailabilityCase) {
+				// if there is no access mode specified, set a default
+				if c.AccessMode == nil {
+					c.AccessMode = &api.VolumeAccessMode{
+						Scope:   api.VolumeScopeSingleNode,
+						Sharing: api.VolumeSharingAll,
+					}
+				}
+
+				v := &api.Volume{
+					ID: "someVolume",
+					Spec: api.VolumeSpec{
+						AccessMode: c.AccessMode,
+						Driver: &api.Driver{
+							Name: "somePlugin",
+						},
+					},
+					VolumeInfo: &api.VolumeInfo{
+						VolumeID: "somePluginVolumeID",
+						AccessibleTopology: []*api.Topology{
+							{Segments: map[string]string{"zone": "z1"}},
+						},
+					},
+				}
+
+				var top *api.Topology
+				if c.InTopology {
+					top = &api.Topology{
+						Segments: map[string]string{"zone": "z1"},
+					}
+				} else {
+					top = &api.Topology{
+						Segments: map[string]string{"zone": "z2"},
+					}
+				}
+
+				n := &api.Node{
+					ID: "someNode",
+					Description: &api.NodeDescription{
+						CSIInfo: []*api.NodeCSIInfo{
+							{
+								PluginName:         "somePlugin",
+								AccessibleTopology: top,
+							},
+						},
+					},
+				}
+				vm.volumes = map[string]*volumeStatus{}
+
+				// if the volume is unused, do nothing.
+				switch c.InUse {
+				case WrongNode:
+					vm.volumes["someVolume"] = &volumeStatus{
+						tasks: map[string]volumeUsage{
+							"someTask": {nodeID: "someOtherNode"},
+						},
+					}
+				case OnlyReaders:
+					vm.volumes["someVolume"] = &volumeStatus{
+						tasks: map[string]volumeUsage{
+							"someTask": {
+								nodeID: "someNode", readOnly: true,
+							},
+						},
+					}
+				case Writer:
+					vm.volumes["someVolume"] = &volumeStatus{
+						tasks: map[string]volumeUsage{
+							"someTask": {
+								nodeID: "someNode", readOnly: true,
+							},
+							"someWriter": {
+								nodeID: "someNode", readOnly: false,
+							},
+						},
+					}
+				}
+
+				available := vm.isVolumeAvailable(v, n, c.ReadOnly)
+				Expect(available).To(Equal(c.Expected))
+			},
+			Entry("volume outside of node topology", AvailabilityCase{
+				// we don't need to explicitly set this, but it makes the
+				// test case more clear
+				InTopology: false,
+			}),
+			Entry("volume in use on a different node", AvailabilityCase{
+				InTopology: true,
+				InUse:      WrongNode,
+			}),
+			Entry("volume is read only, mount is not", AvailabilityCase{
+				AccessMode: &api.VolumeAccessMode{
+					Scope:   api.VolumeScopeMultiNode,
+					Sharing: api.VolumeSharingReadOnly,
+				},
+				InTopology: true,
+				ReadOnly:   false,
+			}),
+			Entry("volume is OneWriter, but already has a writer", AvailabilityCase{
+				AccessMode: &api.VolumeAccessMode{
+					Scope:   api.VolumeScopeMultiNode,
+					Sharing: api.VolumeSharingOneWriter,
+				},
+				InTopology: true,
+				ReadOnly:   false,
+				InUse:      Writer,
+			}),
+			Entry("volume is OneWriter, and has no writer", AvailabilityCase{
+				AccessMode: &api.VolumeAccessMode{
+					Scope:   api.VolumeScopeMultiNode,
+					Sharing: api.VolumeSharingOneWriter,
+				},
+				InTopology: true,
+				InUse:      OnlyReaders,
+				ReadOnly:   false,
+				Expected:   true,
+			}),
+			Entry("volume not in use and is in topology", AvailabilityCase{
+				InTopology: true,
+				Expected:   true,
+			}),
+			Entry("the volume is in use on a different node, but the scope is multinode", AvailabilityCase{
+				AccessMode: &api.VolumeAccessMode{
+					Scope:   api.VolumeScopeMultiNode,
+					Sharing: api.VolumeSharingAll,
+				},
+				InTopology: true,
+				InUse:      WrongNode,
+				Expected:   true,
+			}),
+			Entry("the volume is in use and cannot be shared", AvailabilityCase{
+				AccessMode: &api.VolumeAccessMode{
+					Scope:   api.VolumeScopeSingleNode,
+					Sharing: api.VolumeSharingNone,
+				},
+				InTopology: true,
+				InUse:      OnlyReaders,
+				ReadOnly:   true,
+				Expected:   false,
+			}),
+			Entry("the volume is not in use and cannot be shared", AvailabilityCase{
+				AccessMode: &api.VolumeAccessMode{
+					Scope:   api.VolumeScopeSingleNode,
+					Sharing: api.VolumeSharingNone,
+				},
+				InTopology: true,
+				InUse:      Unused,
+				ReadOnly:   true,
+				Expected:   true,
+			}),
+		)
 	})
 })
