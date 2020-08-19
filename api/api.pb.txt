@@ -6849,6 +6849,14 @@ file {
       type_name: ".docker.swarmkit.v1.Version"
       json_name: "jobIteration"
     }
+    field {
+      name: "volumes"
+      number: 17
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.VolumeAttachment"
+      json_name: "volumes"
+    }
     options {
       70001 {
         1 {
