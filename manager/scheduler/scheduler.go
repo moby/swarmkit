@@ -39,6 +39,7 @@ type Scheduler struct {
 	nodeSet          nodeSet
 	allTasks         map[string]*api.Task
 	pipeline         *Pipeline
+	volumes          *volumeSet
 
 	// stopChan signals to the state machine to stop running
 	stopChan chan struct{}
@@ -57,6 +58,7 @@ func New(store *store.MemoryStore) *Scheduler {
 		stopChan:                make(chan struct{}),
 		doneChan:                make(chan struct{}),
 		pipeline:                NewPipeline(),
+		volumes:                 newVolumeSet(),
 	}
 }
 
@@ -93,6 +95,9 @@ func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
 			continue
 		}
 
+		// track the volumes in use by the task
+		s.volumes.reserveTaskVolumes(t)
+
 		if tasksByNode[t.NodeID] == nil {
 			tasksByNode[t.NodeID] = make(map[string]*api.Task)
 		}
@@ -105,6 +110,8 @@ func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
 // Run is the scheduler event loop.
 func (s *Scheduler) Run(ctx context.Context) error {
 	defer close(s.doneChan)
+
+	s.pipeline.AddFilter(&VolumesFilter{vs: s.volumes})
 
 	updates, cancel, err := store.ViewAndWatch(s.store, s.setupTasksList)
 	if err != nil {
@@ -172,6 +179,19 @@ func (s *Scheduler) Run(ctx context.Context) error {
 				tickRequired = true
 			case api.EventDeleteNode:
 				s.nodeSet.remove(v.Node.ID)
+			case api.EventUpdateVolume:
+				// there is no need for a EventCreateVolume case, because
+				// volumes are not ready to use until they've passed through
+				// the volume manager and been created with the plugin
+				//
+				// as such, only addOrUpdateVolume if the VolumeInfo exists and
+				// has a nonempty VolumeID
+				if v.Volume.VolumeInfo != nil && v.Volume.VolumeInfo.VolumeID != "" {
+					// TODO(dperny): verify that updating volumes doesn't break
+					// scheduling
+					s.volumes.addOrUpdateVolume(v.Volume)
+					tickRequired = true
+				}
 			case state.EventCommit:
 				if commitDebounceTimer != nil {
 					if time.Since(debouncingStarted) > maxLatency {
@@ -309,6 +329,12 @@ func (s *Scheduler) deleteTask(t *api.Task) bool {
 	delete(s.allTasks, t.ID)
 	delete(s.preassignedTasks, t.ID)
 	delete(s.pendingPreassignedTasks, t.ID)
+
+	// remove the task volume reservations as well, if any
+	for _, attachment := range t.Volumes {
+		s.volumes.releaseVolume(attachment.ID, t.ID)
+	}
+
 	nodeInfo, err := s.nodeSet.nodeInfo(t.NodeID)
 	if err == nil && nodeInfo.removeTask(t) {
 		s.nodeSet.updateNode(nodeInfo)
@@ -587,6 +613,28 @@ func (s *Scheduler) scheduleTaskGroup(ctx context.Context, taskGroup map[string]
 	}
 }
 
+// scheduleNTasksOnSubtree schedules a set of tasks with identical constraints
+// onto a set of nodes, taking into account placement preferences.
+//
+// placement preferences are used to create a tree such that every branch
+// represents one subset of nodes across which tasks should be spread.
+//
+// because of this tree structure, scheduleNTasksOnSubtree is a recursive
+// function. If there are subtrees of the current tree, then we recurse. if we
+// are at a leaf node, past which there are no subtrees, then we try to
+// schedule a proportional number of tasks to the nodes of that branch.
+//
+// - n is the number of tasks being scheduled on this subtree
+// - taskGroup is a set of tasks to schedule, taking the form of a map from the
+//   task ID to the task object.
+// - tree is the decision tree we're scheduling on. this is, effectively, the
+//   set of nodes that meet scheduling constraints. these nodes are arranged
+//   into a tree so that placement preferences can be taken into account when
+//   spreading tasks across nodes.
+// - schedulingDecisions is a set of the scheduling decisions already made for
+//   this tree
+// - nodeLess is a comparator that chooses which of the two nodes is preferable
+//   to schedule on.
 func (s *Scheduler) scheduleNTasksOnSubtree(ctx context.Context, n int, taskGroup map[string]*api.Task, tree *decisionTree, schedulingDecisions map[string]schedulingDecision, nodeLess func(a *NodeInfo, b *NodeInfo) bool) int {
 	if tree.next == nil {
 		nodes := tree.orderedNodes(s.pipeline.Process, nodeLess)
@@ -639,6 +687,23 @@ func (s *Scheduler) scheduleNTasksOnSubtree(ctx context.Context, n int, taskGrou
 	return tasksScheduled
 }
 
+// scheduleNTasksOnNodes schedules some number of tasks on the set of provided
+// nodes. The number of tasks being scheduled may be less than the total number
+// of tasks, as the Nodes may be one branch of a tree used to spread tasks.
+//
+// returns the number of tasks actually scheduled to these nodes. this may be
+// fewer than the number of tasks desired to be scheduled, if there are
+// insufficient nodes to meet resource constraints.
+//
+// - n is the number of tasks desired to be scheduled to this set of nodes
+// - taskGroup is the tasks desired to be scheduled, in the form of a map from
+//   task ID to task object. this argument is mutated; tasks which have been
+//   scheduled are removed from the map.
+// - nodes is the set of nodes to schedule to
+// - schedulingDecisions is the set of scheduling decisions that have been made
+//   thus far, in the form of a map from task ID to the decision made.
+// - nodeLess is a simple comparator that chooses which of two nodes would be
+//   preferable to schedule on.
 func (s *Scheduler) scheduleNTasksOnNodes(ctx context.Context, n int, taskGroup map[string]*api.Task, nodes []NodeInfo, schedulingDecisions map[string]schedulingDecision, nodeLess func(a *NodeInfo, b *NodeInfo) bool) int {
 	tasksScheduled := 0
 	failedConstraints := make(map[int]bool) // key is index in nodes slice
@@ -652,9 +717,23 @@ func (s *Scheduler) scheduleNTasksOnNodes(ctx context.Context, n int, taskGroup 
 		}
 
 		node := &nodes[nodeIter%nodeCount]
+		// before doing all of the updating logic, get the volume attachments
+		// for the task on this node. this should always succeed, because we
+		// should already have filtered nodes based on volume availability, but
+		// just in case we missed something and it doesn't, we have an error
+		// case.
+		attachments, err := s.volumes.chooseTaskVolumes(t, node)
+		if err != nil {
+			// TODO(dperny) if there's an error, then what? i'm frankly not
+			// sure.
+			log.G(ctx).WithField("task.id", t.ID).WithError(err).Error("could not find task volumes")
+		}
 
 		log.G(ctx).WithField("task.id", t.ID).Debugf("assigning to node %s", node.ID)
+		// she turned me into a newT!
 		newT := *t
+		newT.Volumes = attachments
+		s.volumes.reserveTaskVolumes(&newT)
 		newT.NodeID = node.ID
 		newT.Status = api.TaskStatus{
 			State:     api.TaskStateAssigned,
@@ -663,6 +742,10 @@ func (s *Scheduler) scheduleNTasksOnNodes(ctx context.Context, n int, taskGroup 
 		}
 		s.allTasks[t.ID] = &newT
 
+		// in each iteration of this loop, the node we choose will always be
+		// one which meets constraints. at the end of each iteration, we
+		// re-process nodes, allowing us to remove nodes which no longer meet
+		// resource constraints.
 		nodeInfo, err := s.nodeSet.nodeInfo(node.ID)
 		if err == nil && nodeInfo.addTask(&newT) {
 			s.nodeSet.updateNode(nodeInfo)

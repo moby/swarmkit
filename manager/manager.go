@@ -25,6 +25,7 @@ import (
 	"github.com/docker/swarmkit/manager/allocator/cnmallocator"
 	"github.com/docker/swarmkit/manager/allocator/networkallocator"
 	"github.com/docker/swarmkit/manager/controlapi"
+	"github.com/docker/swarmkit/manager/csi"
 	"github.com/docker/swarmkit/manager/dispatcher"
 	"github.com/docker/swarmkit/manager/drivers"
 	"github.com/docker/swarmkit/manager/health"
@@ -152,6 +153,7 @@ type Manager struct {
 	constraintEnforcer     *constraintenforcer.ConstraintEnforcer
 	scheduler              *scheduler.Scheduler
 	allocator              *allocator.Allocator
+	volumeManager          *csi.Manager
 	keyManager             *keymanager.KeyManager
 	server                 *grpc.Server
 	localserver            *grpc.Server

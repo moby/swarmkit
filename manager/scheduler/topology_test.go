@@ -1,9 +1,4 @@
-package csi
-
-// topology_test.go contains tests for topology membership helper functions in
-// the github.com/docker/swarmkit/manager/csi package. This set of tests,
-// unlike the rest in the package, just uses basic assertions, because the
-// functions under test are all pure, stateless functions.
+package scheduler
 
 import (
 	"github.com/docker/swarmkit/api"
