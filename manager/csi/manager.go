@@ -2,7 +2,6 @@ package csi
 
 import (
 	"context"
-	"strings"
 	"sync"
 
 	"github.com/docker/go-events"
@@ -11,6 +10,15 @@ import (
 	"github.com/docker/swarmkit/manager/state/store"
 	// "github.com/container-storage-interface/spec/lib/go/csi"
 )
+
+// Scheduler is an interface covering the methods on the volume manager used by
+// the swarmkit scheduler
+type Scheduler interface {
+	// ReserveVolume marks a volume as in use.
+	ReserveVolume(volumeID, taskID, nodeID string, readOnly bool)
+	// UnreserveVolume removes a reservation.
+	UnreserveVolume(volumeID, taskID string)
+}
 
 // volumeStatus wraps the ephemeral status of a volume
 //
@@ -49,8 +57,11 @@ type Manager struct {
 
 	// volumes contains information about how volumes are currently being used
 	// by the system. This includes which tasks a volume is in use by, and how
-	// it is being used.
+	// it is being used. if a volume is not yet being used, it may not be
+	// present in this map.
 	volumes map[string]*volumeStatus
+	// volumesMu guards access to the volumes map
+	volumesMu sync.Mutex
 }
 
 func NewManager(s *store.MemoryStore) *Manager {
@@ -61,6 +72,7 @@ func NewManager(s *store.MemoryStore) *Manager {
 		newPlugin: NewPlugin,
 		plugins:   map[string]Plugin{},
 		provider:  NewSecretProvider(s),
+		volumes:   map[string]*volumeStatus{},
 	}
 }
 
@@ -227,140 +239,4 @@ func (vm *Manager) handleNodeRemove(nodeID string) {
 	for _, plugin := range vm.plugins {
 		plugin.RemoveNode(nodeID)
 	}
-}
-
-// GetVolumes takes either a volume Name, or a volume Group (prefixed by
-// "group:") and returns a slice of volumes matching that name or group.
-func (vm *Manager) GetVolumes(source string) []*api.Volume {
-	// whether we have one volume specified by name, or many volumes specified
-	// by group, we'll use a slice of volume objects to simplify the code path.
-	volumes := []*api.Volume{}
-
-	vm.store.View(func(tx store.ReadTx) {
-		// try trimming off the "group:" prefix. if the resulting string is
-		// different from the input string (meaning something has been trimmed),
-		// then this volume is actually a volume group.
-		if group := strings.TrimPrefix(source, "group:"); group != source {
-			// get all of the volumes in a group
-
-			// then, check if any volume in that group can work on this node, with
-			// the specific requirements of the task.
-
-			// if so, mark off this volume, so we don't reuse it to satisfy another
-			// mount requirement
-			// we should never get an error. errors should only happen in Find if
-			// the By is invalid, which shouldn't happen because it is statically
-			// chosen.
-			volumes, _ = store.FindVolumes(tx, store.ByVolumeGroup(group))
-		} else {
-			volumes, _ = store.FindVolumes(tx, store.ByName(source))
-		}
-	})
-	return volumes
-}
-
-// IsVolumeAvailableOnNode checks if a mount can be satisfied by a volume on
-// the given node.
-//
-// Returns the ID of the volume that satisfies this mount, or an empty string
-// if no volume does
-func (vm *Manager) IsVolumeAvailableOnNode(mount *api.Mount, node *api.Node) string {
-	volumes := vm.GetVolumes(mount.Source)
-
-	// if at any point, we find a volume in the group that meets the
-	// requirements, we will return the ID of the volume  straight out of the
-	// loop.  otherwise, if we run through the whole loop, then no volume works
-	// on this node.
-	for _, volume := range volumes {
-		if vm.isVolumeAvailable(volume, node, mount.ReadOnly) {
-			return volume.ID
-		}
-	}
-
-	return ""
-}
-
-// isVolumeAvailable is a helper method that checks if the single given
-// volume is usable as specified in the mount on the given node. This helper
-// works on a single volume, where IsVolumeAvailableOnNode can also work on a
-// group
-func (vm *Manager) isVolumeAvailable(volume *api.Volume, node *api.Node, readOnly bool) bool {
-	// a volume is not available if it has not yet passed through the creation
-	// step.
-	if volume.VolumeInfo == nil || volume.VolumeInfo.VolumeID == "" {
-		return false
-	}
-	// get the node topology for this volume
-	var top *api.Topology
-	// get the topology for this volume's driver on this node
-	for _, info := range node.Description.CSIInfo {
-		if info.PluginName == volume.Spec.Driver.Name {
-			top = info.AccessibleTopology
-		}
-	}
-
-	// check if the volume is available on this node. a volume's
-	// availability on a node depends on its accessible topology, how it's
-	// already being used, and how this task intends to use it.
-
-	// check if the volume is already in use.
-	status, ok := vm.volumes[volume.ID]
-
-	// if the volume is in use, and its scope is single-node, we can only
-	// schedule to this node.
-	if ok && volume.Spec.AccessMode.Scope == api.VolumeScopeSingleNode {
-		// if the volume is not in use on this node already, then it can't
-		// be used here.
-		for _, task := range status.tasks {
-			if task.nodeID != node.ID {
-				return false
-			}
-		}
-	}
-
-	// even if the volume is currently on this node, or it has multi-node
-	// access, the volume sharing needs to be compatible.
-	switch volume.Spec.AccessMode.Sharing {
-	case api.VolumeSharingNone:
-		// if the volume sharing is none, then the volume cannot be
-		// used by another task
-		if ok && len(status.tasks) > 0 {
-			return false
-		}
-	case api.VolumeSharingOneWriter:
-		// if the mount is not ReadOnly, and the volume has a writer, then
-		// we this volume does not work.
-		if !readOnly && hasWriter(status) {
-			return false
-		}
-	case api.VolumeSharingReadOnly:
-		// if the volume sharing is read-only, then the Mount must also
-		// be read-only
-		if !readOnly {
-			return false
-		}
-	}
-
-	// then, do the quick check of whether this volume is in the topology.  if
-	// the volume has an AccessibleTopology, and it does not lie within the
-	// node's topology, then this volume won't fit.
-	if !IsInTopology(top, volume.VolumeInfo.AccessibleTopology) {
-		return false
-	}
-
-	return true
-}
-
-// hasWriter is a helper function that returns true if at least one task is
-// using this volume not in read-only mode.
-func hasWriter(status *volumeStatus) bool {
-	if status == nil {
-		return false
-	}
-	for _, task := range status.tasks {
-		if !task.readOnly {
-			return true
-		}
-	}
-	return false
 }
