@@ -1,4 +1,4 @@
-package csi
+package scheduler
 
 import (
 	"github.com/docker/swarmkit/api"
