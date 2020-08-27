@@ -1035,9 +1035,11 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 						}
 					})
 				case api.EventDeleteTask:
-					if assignments.removeTask(v.Task) {
-						oneModification()
-					}
+					d.store.View(func(readTx store.ReadTx) {
+						if assignments.removeTask(readTx, v.Task) {
+							oneModification()
+						}
+					})
 					// TODO(aaronl): For node secrets, we'll need to handle
 					// EventCreateSecret.
 				}

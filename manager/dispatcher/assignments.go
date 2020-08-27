@@ -91,9 +91,70 @@ func assignConfig(a *assignmentSet, readTx store.ReadTx, mapKey typeAndID) {
 	}
 }
 
+func assignVolume(a *assignmentSet, readTx store.ReadTx, mapKey typeAndID, t *api.Task) {
+	a.tasksUsingDependency[mapKey] = make(map[string]struct{})
+	volume := store.GetVolume(readTx, mapKey.id)
+	if volume == nil {
+		a.log.WithFields(logrus.Fields{
+			"resource.type": "volume",
+			"volume.id":     mapKey.id,
+		}).Debug("volume not found")
+		return
+	}
+
+	// the VolumeInfo is added when swarm calls CreateVolume on the plugin. It
+	// should never be missing at this point, because we have to have
+	// VolumeInfo before we can call schedule a volume.
+	if volume.VolumeInfo == nil {
+		a.log.WithFields(logrus.Fields{
+			"resource.type": "volume",
+			"volume.id":     mapKey.id,
+		}).Debug("volume not ready (missing VolumeInfo)")
+		return
+	}
+
+	// volumes are sent to nodes as VolumeAssignments. This is because a node
+	// needs node-specific information (the PublishContext from
+	// ControllerPublishVolume).
+	assignment := &api.VolumeAssignment{
+		ID:            volume.ID,
+		VolumeID:      volume.VolumeInfo.VolumeID,
+		Driver:        volume.Spec.Driver,
+		VolumeContext: volume.VolumeInfo.VolumeContext,
+		// TODO(dperny): PublishContext needs to be stored and retrieved. for
+		// now we'll just skip it.
+		PublishContext: map[string]string{},
+		// TODO(dperny): sort out AccessMode.
+		Secrets: volume.Spec.Secrets,
+	}
+
+	// Volumes may need Secrets of their own to work properly. ensure that all
+	// of the necessary Secrets are assigned to the node.
+	for _, secret := range assignment.Secrets {
+		mapKey := typeAndID{objType: api.ResourceType_SECRET, id: secret.Secret}
+		if len(a.tasksUsingDependency[mapKey]) == 0 {
+			assignSecret(a, readTx, mapKey, t)
+		}
+		a.tasksUsingDependency[mapKey][t.ID] = struct{}{}
+	}
+
+	a.changes[mapKey] = &api.AssignmentChange{
+		Assignment: &api.Assignment{
+			Item: &api.Assignment_Volume{
+				Volume: assignment,
+			},
+		},
+		Action: api.AssignmentChange_AssignmentActionUpdate,
+	}
+}
+
 func (a *assignmentSet) addTaskDependencies(readTx store.ReadTx, t *api.Task) {
+	// first, we go through all ResourceReferences, which give us the necessary
+	// information about which secrets and configs are in use.
 	for _, resourceRef := range t.Spec.ResourceReferences {
 		mapKey := typeAndID{objType: resourceRef.ResourceType, id: resourceRef.ResourceID}
+		// if there are no tasks using this dependency yet, then we can assign
+		// it.
 		if len(a.tasksUsingDependency[mapKey]) == 0 {
 			switch resourceRef.ResourceType {
 			case api.ResourceType_SECRET:
@@ -107,7 +168,19 @@ func (a *assignmentSet) addTaskDependencies(readTx store.ReadTx, t *api.Task) {
 				continue
 			}
 		}
+		// otherwise, we don't need to add a new assignment. we just need to
+		// track the fact that another task is now using this dependency.
 		a.tasksUsingDependency[mapKey][t.ID] = struct{}{}
+	}
+
+	// then, we check volumes. volumes are different because they're not
+	// contained in the ResourceReferences, they're instead contained in the
+	// the VolumeAttachments.
+	for _, volume := range t.Volumes {
+		mapKey := typeAndID{objType: api.ResourceType_VOLUME, id: volume.ID}
+		if len(a.tasksUsingDependency[mapKey]) == 0 {
+			assignVolume(a, readTx, mapKey, t)
+		}
 	}
 
 	var secrets []*api.SecretReference
@@ -160,7 +233,9 @@ func (a *assignmentSet) releaseDependency(mapKey typeAndID, assignment *api.Assi
 	return true
 }
 
-func (a *assignmentSet) releaseTaskDependencies(t *api.Task) bool {
+// releaseTaskDependencies needs a store transaction because volumes have
+// associated Secrets which need to be released.
+func (a *assignmentSet) releaseTaskDependencies(readTx store.ReadTx, t *api.Task) bool {
 	var modified bool
 
 	for _, resourceRef := range t.Spec.ResourceReferences {
@@ -188,6 +263,41 @@ func (a *assignmentSet) releaseTaskDependencies(t *api.Task) bool {
 		mapKey := typeAndID{objType: resourceRef.ResourceType, id: resourceRef.ResourceID}
 		if a.releaseDependency(mapKey, assignment, t.ID) {
 			modified = true
+		}
+	}
+
+	// TODO(dperny): we need to ensure, affirmatively, that the volume has been
+	// correctly wound down (by calling Unpublish and Unstage rpcs) before
+	// fully releasing the assignment.
+	for _, v := range t.Volumes {
+		mapKey := typeAndID{objType: api.ResourceType_VOLUME, id: v.ID}
+		assignment := &api.Assignment{
+			Item: &api.Assignment_Volume{
+				Volume: &api.VolumeAssignment{
+					ID: v.ID,
+				},
+			},
+		}
+		if a.releaseDependency(mapKey, assignment, t.ID) {
+			modified = true
+		}
+		v := store.GetVolume(readTx, v.ID)
+		if v != nil {
+			for _, secret := range v.Spec.Secrets {
+				secretMapKey := typeAndID{objType: api.ResourceType_SECRET, id: secret.Secret}
+				sa := &api.Assignment{
+					Item: &api.Assignment_Secret{
+						Secret: &api.Secret{ID: secret.Secret},
+					},
+				}
+				// NOTE(dperny): it SHOULD be impossible for a modification to
+				// occur due to releasing a secret when one hasn't already
+				// occurred due to releasing the volume, but we'll play it
+				// safe.
+				if a.releaseDependency(secretMapKey, sa, t.ID) {
+					modified = true
+				}
+			}
 		}
 	}
 
@@ -251,7 +361,7 @@ func (a *assignmentSet) addOrUpdateTask(readTx store.ReadTx, t *api.Task) bool {
 				// If releasing the dependencies caused us to
 				// remove something from the assignment set,
 				// mark one modification.
-				return a.releaseTaskDependencies(t)
+				return a.releaseTaskDependencies(readTx, t)
 			}
 			return false
 		}
@@ -274,7 +384,7 @@ func (a *assignmentSet) addOrUpdateTask(readTx store.ReadTx, t *api.Task) bool {
 	return true
 }
 
-func (a *assignmentSet) removeTask(t *api.Task) bool {
+func (a *assignmentSet) removeTask(readTx store.ReadTx, t *api.Task) bool {
 	if _, exists := a.tasksMap[t.ID]; !exists {
 		return false
 	}
@@ -293,7 +403,7 @@ func (a *assignmentSet) removeTask(t *api.Task) bool {
 	// Release the dependencies being used by this task.
 	// Ignoring the return here. We will always mark this as a
 	// modification, since a task is being removed.
-	a.releaseTaskDependencies(t)
+	a.releaseTaskDependencies(readTx, t)
 	return true
 }
 
