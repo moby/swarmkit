@@ -405,7 +405,7 @@ func (f *VolumesFilter) SetTask(t *api.Task) bool {
 	// accidentally append to the last task's set of requested volumes.
 	f.requestedVolumes = []*api.Mount{}
 
-	// t should never ben nil, but we should ensure that it is not just in case
+	// t should never be nil, but we should ensure that it is not just in case
 	// we make mistakes in the future.
 	if t == nil {
 		return false
@@ -420,21 +420,21 @@ func (f *VolumesFilter) SetTask(t *api.Task) bool {
 	hasCSI := false
 	for _, mount := range c.Mounts {
 		if mount.Type == api.MountTypeCSI {
+			hasCSI = true
 			f.requestedVolumes = append(f.requestedVolumes, &mount)
 		}
 	}
-
 	return hasCSI
 }
 
 func (f *VolumesFilter) Check(nodeInfo *NodeInfo) bool {
 	for _, mount := range f.requestedVolumes {
 		if f.vs.isVolumeAvailableOnNode(mount, nodeInfo) != "" {
-			return false
+			return true
 		}
 	}
 
-	return true
+	return false
 }
 
 func (f *VolumesFilter) Explain(nodes int) string {
