@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/docker/swarmkit/api"
@@ -41,6 +42,8 @@ type Scheduler struct {
 	pipeline         *Pipeline
 	volumes          *volumeSet
 
+	// stopOnce is a sync.Once used to ensure that Stop is idempotent
+	stopOnce sync.Once
 	// stopChan signals to the state machine to stop running
 	stopChan chan struct{}
 	// doneChan is closed when the state machine terminates
@@ -63,6 +66,20 @@ func New(store *store.MemoryStore) *Scheduler {
 }
 
 func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
+	// add all volumes that are ready to the volumeSet
+	volumes, err := store.FindVolumes(tx, store.All)
+	if err != nil {
+		return err
+	}
+
+	for _, volume := range volumes {
+		// only add volumes that have been created, meaning they have a
+		// VolumeID.
+		if volume.VolumeInfo != nil && volume.VolumeInfo.VolumeID != "" {
+			s.volumes.addOrUpdateVolume(volume)
+		}
+	}
+
 	tasks, err := store.FindTasks(tx, store.All)
 	if err != nil {
 		return err
@@ -220,7 +237,10 @@ func (s *Scheduler) Run(ctx context.Context) error {
 
 // Stop causes the scheduler event loop to stop running.
 func (s *Scheduler) Stop() {
-	close(s.stopChan)
+	// ensure stop is called only once. this helps in some test cases.
+	s.stopOnce.Do(func() {
+		close(s.stopChan)
+	})
 	<-s.doneChan
 }
 
@@ -542,6 +562,23 @@ func (s *Scheduler) taskFitNode(ctx context.Context, t *api.Task, nodeID string)
 
 		return &newT
 	}
+
+	// before doing all of the updating logic, get the volume attachments
+	// for the task on this node. this should always succeed, because we
+	// should already have filtered nodes based on volume availability, but
+	// just in case we missed something and it doesn't, we have an error
+	// case.
+	attachments, err := s.volumes.chooseTaskVolumes(t, &nodeInfo)
+	if err != nil {
+		newT.Status.Timestamp = ptypes.MustTimestampProto(time.Now())
+		newT.Status.Err = err.Error()
+		s.allTasks[t.ID] = &newT
+
+		return &newT
+	}
+
+	newT.Volumes = attachments
+
 	newT.Status = api.TaskStatus{
 		State:     api.TaskStateAssigned,
 		Timestamp: ptypes.MustTimestampProto(time.Now()),
