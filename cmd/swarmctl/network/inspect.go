@@ -60,6 +60,7 @@ func printNetworkSummary(network *api.Network) {
 	}
 	fmt.Fprintf(w, "  IPv6Enabled\t: %t\n", spec.Ipv6Enabled)
 	fmt.Fprintf(w, "  Internal\t: %t\n", spec.Internal)
+	fmt.Fprintf(w, "  Is Ingress?\t: %t\n", spec.Ingress)
 
 	driver := network.DriverState
 	if driver != nil {
