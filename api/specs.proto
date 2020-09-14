@@ -553,4 +553,25 @@ message VolumeSpec {
 	// CapacityRange is the capacity this volume should be created with. If nil,
 	// the plugin will decide the capacity.
 	CapacityRange capacity_range = 7;
+
+	enum VolumeAvailability {
+		option (gogoproto.goproto_enum_prefix) = false;
+
+		// Active allows a volume to be used and scheduled to. This is the
+		// default state.
+		ACTIVE = 0 [(gogoproto.enumvalue_customname) = "VolumeAvailabilityActive"];
+
+		// Pause prevents volumes from having new workloads scheduled to use
+		// them, even if they're already published on a Node.
+		PAUSE = 1 [(gogoproto.enumvalue_customname) = "VolumeAvailabilityPause"];
+
+		// Drain causes existing workloads using this volume to be rescheduled,
+		// causing the volume to be unpublished and removed.
+		DRAIN = 2 [(gogoproto.enumvalue_customname) = "VolumeAvailabilityDrain"];
+	}
+
+	// Availability is the Volume's desired availability. Analogous to Node
+	// Availability, this allows the user to take volumes offline in order to
+	// update or delete them.
+	VolumeAvailability availability = 8;
 }
