@@ -166,6 +166,9 @@ func (vm *Manager) Stop() {
 }
 
 func (vm *Manager) handleEvent(ev events.Event) {
+	// TODO(dperny): instead of executing directly off of the event stream, add
+	// objects received to some kind of intermediate structure, so we can
+	// easily retry.
 	switch e := ev.(type) {
 	case api.EventUpdateCluster:
 		// TODO(dperny): verify that the Cluster in this event can never be nil
@@ -173,6 +176,8 @@ func (vm *Manager) handleEvent(ev events.Event) {
 		vm.updatePlugins()
 	case api.EventCreateVolume:
 		vm.createVolume(e.Volume)
+	case api.EventUpdateVolume:
+		vm.handleVolume(e.Volume.ID)
 	case api.EventCreateNode:
 		vm.handleNode(e.Node)
 	case api.EventUpdateNode:
@@ -213,6 +218,49 @@ func (vm *Manager) createVolume(v *api.Volume) {
 
 		return store.UpdateVolume(tx, v2)
 	})
+}
+
+// TODO(dperny): add volumes updated to a map and process in batches
+func (vm *Manager) handleVolume(id string) {
+	var volume *api.Volume
+	vm.store.View(func(tx store.ReadTx) {
+		volume = store.GetVolume(tx, id)
+	})
+	if volume == nil {
+		return
+	}
+
+	updated := false
+	for _, status := range volume.PublishStatus {
+		if status.State == api.VolumePublishStatus_PENDING_PUBLISH {
+			plug := vm.plugins[volume.Spec.Driver.Name]
+			publishContext, err := plug.PublishVolume(context.TODO(), volume, status.NodeID)
+			if err == nil {
+				// TODO(dperny): handle error
+				status.State = api.VolumePublishStatus_PUBLISHED
+				status.PublishContext = publishContext
+				updated = true
+			}
+		}
+	}
+
+	if updated {
+		if err := vm.store.Update(func(tx store.Tx) error {
+			// the publish status is now authoritative. read-update-write the
+			// volume object.
+			v := store.GetVolume(tx, volume.ID)
+			if v == nil {
+				// volume should never be deleted with pending publishes.
+				// either handle this error otherwise document why we don't.
+				return nil
+			}
+
+			v.PublishStatus = volume.PublishStatus
+			return store.UpdateVolume(tx, v)
+		}); err != nil {
+			// TODO(dperny): handle error
+		}
+	}
 }
 
 // handleNode handles one node event
