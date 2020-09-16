@@ -12,6 +12,7 @@ import (
 // Plugin is the interface for a CSI controller plugin
 type Plugin interface {
 	CreateVolume(context.Context, *api.Volume) (*api.VolumeInfo, error)
+	PublishVolume(context.Context, *api.Volume, string) (map[string]string, error)
 	AddNode(swarmID, csiID string)
 	RemoveNode(swarmID string)
 }
@@ -121,6 +122,14 @@ func (p *plugin) CreateVolume(ctx context.Context, v *api.Volume) (*api.VolumeIn
 	}
 
 	return makeVolumeInfo(resp.Volume), nil
+}
+
+// PublishVolume calls ControllerPublishVolume to publish the given Volume to
+// the Node with the given swarmkit ID. It returns a map, which is the
+// PublishContext for this Volume on this Node.
+func (p *plugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string) (map[string]string, error) {
+	// TODO(dperny): implement
+	return nil, nil
 }
 
 // AddNode adds a mapping for a node's swarm ID to the ID provided by this CSI

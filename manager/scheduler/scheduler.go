@@ -489,6 +489,7 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 			err := batch.Update(func(tx store.Tx) error {
 				// Update exactly one task inside this Update
 				// callback.
+			taskLoop:
 				for taskID, decision := range schedulingDecisions {
 					delete(schedulingDecisions, taskID)
 
@@ -520,10 +521,49 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 						}
 					}
 
+					volumes := []*api.Volume{}
+					for _, va := range decision.new.Volumes {
+						v := store.GetVolume(tx, va.ID)
+						if v == nil {
+							log.G(ctx).Debugf(
+								"scheduler failed to update task %s because volume %s could not be found",
+								taskID,
+								va.ID,
+							)
+						}
+						alreadyPublished := false
+						for _, ps := range v.PublishStatus {
+							if ps.NodeID == decision.new.NodeID {
+								alreadyPublished = true
+								break
+							}
+						}
+						if !alreadyPublished {
+							v.PublishStatus = append(
+								v.PublishStatus,
+								&api.VolumePublishStatus{
+									NodeID: decision.new.NodeID,
+									State:  api.VolumePublishStatus_PENDING_PUBLISH,
+								},
+							)
+							volumes = append(volumes, v)
+						}
+					}
+
 					if err := store.UpdateTask(tx, decision.new); err != nil {
 						log.G(ctx).Debugf("scheduler failed to update task %s; will retry", taskID)
 						failed = append(failed, decision)
 						continue
+					}
+					for _, v := range volumes {
+						if err := store.UpdateVolume(tx, v); err != nil {
+							log.G(ctx).WithError(err).Debugf(
+								"scheduler failed to update task %v; volume %v could not be updated",
+								taskID, v.ID,
+							)
+							failed = append(failed, decision)
+							continue taskLoop
+						}
 					}
 					successful = append(successful, decision)
 					return nil

@@ -172,11 +172,12 @@ func (fpm *fakePluginMaker) newFakePlugin(config *api.CSIConfig_Plugin, provider
 	fpm.Lock()
 	defer fpm.Unlock()
 	p := &fakePlugin{
-		name:           config.Name,
-		socket:         config.Socket,
-		swarmToCSI:     map[string]string{},
-		volumesCreated: map[string]*api.Volume{},
-		removedIDs:     map[string]struct{}{},
+		name:             config.Name,
+		socket:           config.Socket,
+		swarmToCSI:       map[string]string{},
+		volumesCreated:   map[string]*api.Volume{},
+		volumesPublished: map[string][]string{},
+		removedIDs:       map[string]struct{}{},
 	}
 	fpm.plugins[config.Name] = p
 	return p
@@ -190,6 +191,9 @@ type fakePlugin struct {
 	removedIDs map[string]struct{}
 
 	volumesCreated map[string]*api.Volume
+	// volumesPublished maps the ID of a Volume to the Nodes it was published
+	// to
+	volumesPublished map[string][]string
 }
 
 func (f *fakePlugin) CreateVolume(ctx context.Context, v *api.Volume) (*api.VolumeInfo, error) {
@@ -199,6 +203,14 @@ func (f *fakePlugin) CreateVolume(ctx context.Context, v *api.Volume) (*api.Volu
 		VolumeContext: map[string]string{
 			"exists": "yes",
 		},
+	}, nil
+}
+
+func (f *fakePlugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string) (map[string]string, error) {
+	f.volumesPublished[v.ID] = append(f.volumesPublished[v.ID], nodeID)
+	// TODO(dperny): return somethign here
+	return map[string]string{
+		"faked": "yeah",
 	}, nil
 }
 
