@@ -4496,13 +4496,71 @@ file {
     }
   }
   message_type {
-    name: "VolumeStatus"
+    name: "VolumePublishStatus"
     field {
-      name: "published_nodes"
+      name: "node_id"
       number: 1
-      label: LABEL_REPEATED
+      label: LABEL_OPTIONAL
       type: TYPE_STRING
-      json_name: "publishedNodes"
+      json_name: "nodeId"
+    }
+    field {
+      name: "state"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_ENUM
+      type_name: ".docker.swarmkit.v1.VolumePublishStatus.State"
+      json_name: "state"
+    }
+    field {
+      name: "publish_context"
+      number: 3
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.VolumePublishStatus.PublishContextEntry"
+      json_name: "publishContext"
+    }
+    field {
+      name: "message"
+      number: 4
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "message"
+    }
+    nested_type {
+      name: "PublishContextEntry"
+      field {
+        name: "key"
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "key"
+      }
+      field {
+        name: "value"
+        number: 2
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "value"
+      }
+      options {
+        map_entry: true
+      }
+    }
+    enum_type {
+      name: "State"
+      value {
+        name: "PENDING_PUBLISH"
+        number: 0
+      }
+      value {
+        name: "PUBLISHED"
+        number: 1
+      }
+      value {
+        name: "PENDING_UNPUBLISH"
+        number: 2
+      }
     }
   }
   message_type {
@@ -7341,15 +7399,12 @@ file {
       json_name: "spec"
     }
     field {
-      name: "status"
+      name: "publish_status"
       number: 4
-      label: LABEL_OPTIONAL
+      label: LABEL_REPEATED
       type: TYPE_MESSAGE
-      type_name: ".docker.swarmkit.v1.VolumeStatus"
-      options {
-        65001: 0
-      }
-      json_name: "status"
+      type_name: ".docker.swarmkit.v1.VolumePublishStatus"
+      json_name: "publishStatus"
     }
     field {
       name: "volume_info"
