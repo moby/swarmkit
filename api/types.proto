@@ -1241,13 +1241,74 @@ message VolumeSecret {
 	string secret = 2;
 }
 
-// VolumeStatus indicates the status of a swarmkit Volume object.
-message VolumeStatus {
-	// PublishedNodes is a list of all node IDs to which this volume is known to
-	// be published. If the CSI Plugin supports CONTROLLER_PUBLISH_UNPUBLISH, the
-	// Node will not be added to the list of nodes until the call to
-	// ControllerPublish has succeeded.
-	repeated string published_nodes = 1;
+// VolumePublishStatus contains information about the volume's publishing to a
+// specific node, from the Controller's perspective.
+//
+// Publishing or unpublishing a volume to a node is a two-step process.
+//
+// When a Volume is needed on a Node, a VolumePublishStatus with state
+// PendingPublish is added. This indicates that the volume should be published,
+// but the RPCs have not been executed.
+//
+// Then, afterward, ControllerPublishVolume is called for the Volume, and the
+// State is changed to Published, indicating that the call was a success.
+//
+// When a Volume is no longer needed, the process is similar, with the State
+// being changed to PendingUnpublish. When ControllerUnpublishVolume succeeds,
+// the PublishStatus for that Node is simply removed.
+//
+// Without this two-step process, the following could happen:
+//
+//   1. ControllerPublishVolume is called and the Volume is successfully
+//      published.
+//   2. A crash or leadership change disrupts the cluster before
+//      the Volume with the updated VolumePublishStatus can be added to the
+//      store.
+//   3. The Task that required the Volume to be published is deleted.
+//
+// In this case, the Volume would be published to the Node, but Swarm would be
+// unaware of this, and would additionally be unaware that the Volume _should_
+// be published to the Node.
+//
+// By first committing our intention to publish a Volume, we guarantee that the
+// Volume itself is sufficient to know which Nodes it may have been published
+// to.
+message VolumePublishStatus {
+	// State is the state of the volume in the publish/unpublish
+	// lifecycle, on a particular node.
+	enum State {
+		// PendingPublish indicates that the volume should be published on this
+		// node, but the call to ControllerPublishVolume has not been
+		// successfully completed yet and the result recorded by swarmkit.
+		PENDING_PUBLISH = 0;
+
+		// Published means the volume is published successfully to the node.
+		PUBLISHED = 1;
+
+		// PendingUnpublish means the volume is published to the node, and
+		// needs to not be, but the call to ControllerUnpublishVolume has not
+		// verifiably succeeded yet. There is no Unpublished state, because
+		// after the volume has been verifiably unpublished, the
+		// VolumePublishStatus for the node is removed.
+		PENDING_UNPUBLISH = 2;
+	}
+
+	// NodeID is the swarm (not CSI plugin) node ID that this volume is
+	// published to.
+	string node_id = 1;
+
+	// State is the publish state of the volume.
+	State state = 2;
+
+	// PublishContext is the same PublishContext returned by a call to
+	// ControllerPublishVolume.
+	map<string, string> publish_context = 3;
+
+	// Message is a human-readable message explaining the state of the volume.
+	// It exists to convey the current situation with the volume to the user,
+	// allowing, for example, the user to see error messages why a volume might
+	// not be published yet.
+	string message = 4;
 }
 
 // VolumeInfo contains information about the volume originating from the CSI

@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/types"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/orchestrator/testutils"
@@ -42,6 +43,38 @@ var _ = Describe("Scheduler", func() {
 		s = store.NewMemoryStore(nil)
 		Expect(s).ToNot(BeNil())
 		sched = New(s)
+	})
+
+	JustBeforeEach(func() {
+		// add the nodes and tasks to the store
+		err := s.Update(func(tx store.Tx) error {
+			for _, node := range nodes {
+				if err := store.CreateNode(tx, node); err != nil {
+					return err
+				}
+			}
+
+			for _, task := range tasks {
+				if err := store.CreateTask(tx, task); err != nil {
+					return err
+				}
+			}
+
+			for _, service := range services {
+				if err := store.CreateService(tx, service); err != nil {
+					return err
+				}
+			}
+
+			for _, volume := range volumes {
+				if err := store.CreateVolume(tx, volume); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("running", func() {
@@ -121,6 +154,41 @@ var _ = Describe("Scheduler", func() {
 			tasks = append(tasks, task)
 		})
 
+		AfterEach(func() {
+			sched.Stop()
+			Eventually(schedStopped).Should(BeClosed())
+			Expect(schedErr).ToNot(HaveOccurred())
+			s.Close()
+		})
+
+		// haveProgressedWithVolume is a composed matcher that verifies that
+		// the task has progressed to the Assigned state, been assigned to the
+		// specified node ID, and has the requested volume attached.
+		haveProgressedWithVolume := func(nodeID string, attachment *api.VolumeAttachment) GomegaMatcher {
+			return SatisfyAll(
+				// Ensure that the task state has advanced to assigned
+				WithTransform(
+					func(t *api.Task) api.TaskState {
+						return t.Status.State
+					},
+					Equal(api.TaskStateAssigned),
+				),
+				// Ensure that the task has the assigned volumes
+				WithTransform(
+					func(t *api.Task) []*api.VolumeAttachment {
+						return t.Volumes
+					},
+					ConsistOf(attachment),
+				),
+				WithTransform(
+					func(t *api.Task) string {
+						return t.NodeID
+					},
+					Equal(nodeID),
+				),
+			)
+		}
+
 		Context("Global mode tasks", func() {
 			BeforeEach(func() {
 				service.Spec.Mode = &api.ServiceSpec_Global{
@@ -171,28 +239,13 @@ var _ = Describe("Scheduler", func() {
 				}
 
 				Eventually(pollStore, 10*time.Second).Should(
-					SatisfyAll(
-						WithTransform(
-							func(t *api.Task) api.TaskState {
-								return t.Status.State
-							},
-							Equal(api.TaskStateAssigned),
-						),
-						WithTransform(
-							func(t *api.Task) []*api.VolumeAttachment {
-								return t.Volumes
-							},
-							SatisfyAll(
-								Not(BeNil()),
-								ConsistOf(
-									&api.VolumeAttachment{
-										ID:     "volumeID1",
-										Source: "volume1",
-										Target: "/var/",
-									},
-								),
-							),
-						),
+					haveProgressedWithVolume(
+						node.ID,
+						&api.VolumeAttachment{
+							ID:     "volumeID1",
+							Source: "volume1",
+							Target: "/var/",
+						},
 					),
 				)
 			})
@@ -260,36 +313,43 @@ var _ = Describe("Scheduler", func() {
 			}
 
 			Eventually(pollStore, 10*time.Second).Should(
-				SatisfyAll(
-					WithTransform(
-						func(t *api.Task) string {
-							return t.NodeID
-						},
-						Equal(node.ID),
-					),
-					WithTransform(
-						func(t *api.Task) []*api.VolumeAttachment {
-							return t.Volumes
-						},
-						SatisfyAll(
-							Not(BeNil()),
-							ConsistOf(
-								&api.VolumeAttachment{
-									ID:     "volumeID1",
-									Source: "volume1",
-									Target: "/var/",
-								},
-							),
-						),
-					),
-					WithTransform(
-						func(t *api.Task) api.TaskState {
-							return t.Status.State
-						},
-						Equal(api.TaskStateAssigned),
-					),
+				haveProgressedWithVolume(
+					node.ID,
+					&api.VolumeAttachment{
+						ID:     "volumeID1",
+						Source: "volume1",
+						Target: "/var/",
+					},
 				),
 			)
+
+			pollVolume := func() *api.Volume {
+				var v *api.Volume
+				s.View(func(tx store.ReadTx) {
+					v = store.GetVolume(tx, volume.ID)
+				})
+				return v
+			}
+
+			// havePendingPublish is just a quick composed matcher to make the
+			// test case more readable.
+			havePendingPublish := func() GomegaMatcher {
+				return WithTransform(
+					func(v *api.Volume) []*api.VolumePublishStatus {
+						if v == nil {
+							return nil
+						}
+						return v.PublishStatus
+					},
+					ConsistOf(
+						&api.VolumePublishStatus{
+							NodeID: node.ID,
+							State:  api.VolumePublishStatus_PENDING_PUBLISH,
+						},
+					),
+				)
+			}
+			Eventually(pollVolume).Should(havePendingPublish())
 		})
 
 		It("should not commit a task if it does not have a volume", func() {
@@ -310,45 +370,6 @@ var _ = Describe("Scheduler", func() {
 				),
 			)
 		})
-
-		AfterEach(func() {
-			sched.Stop()
-			Eventually(schedStopped).Should(BeClosed())
-			Expect(schedErr).ToNot(HaveOccurred())
-			s.Close()
-		})
-	})
-
-	JustBeforeEach(func() {
-		// add the nodes and tasks to the store
-		err := s.Update(func(tx store.Tx) error {
-			for _, node := range nodes {
-				if err := store.CreateNode(tx, node); err != nil {
-					return err
-				}
-			}
-
-			for _, task := range tasks {
-				if err := store.CreateTask(tx, task); err != nil {
-					return err
-				}
-			}
-
-			for _, service := range services {
-				if err := store.CreateService(tx, service); err != nil {
-					return err
-				}
-			}
-
-			for _, volume := range volumes {
-				if err := store.CreateVolume(tx, volume); err != nil {
-					return err
-				}
-			}
-
-			return nil
-		})
-		Expect(err).ToNot(HaveOccurred())
 	})
 
 	Describe("initialization", func() {

@@ -3,12 +3,25 @@ package csi
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/types"
 
 	"github.com/docker/go-events"
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state/store"
 )
+
+// passEvents calls handle and then match with each event from the evs channel
+// until match returns true. this allows passing events until a specific
+// desired event has been passed.
+func passEvents(evs <-chan events.Event, match func(events.Event) bool, handle func(events.Event)) {
+	for ev := range evs {
+		handle(ev)
+		if match(ev) {
+			return
+		}
+	}
+}
 
 var _ = Describe("Manager", func() {
 	// The Manager unit tests are intended to mainly avoid using a
@@ -192,26 +205,10 @@ var _ = Describe("Manager", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 
-		// read out all events from the watch channel. in order to ensure that
-		// we don't exit before an event is even queued up, wait until we
-		// actually see that event
-		var updateHappened bool
-	eventsLoop:
-		for {
-			select {
-			case ev := <-watch:
-				// wait for the cluster update event
-				if _, ok := ev.(api.EventUpdateCluster); ok {
-					updateHappened = true
-				}
-				vm.handleEvent(ev)
-			default:
-				// when no events remain, break out of the loop
-				if updateHappened {
-					break eventsLoop
-				}
-			}
-		}
+		passEvents(watch, func(ev events.Event) bool {
+			_, ok := ev.(api.EventUpdateCluster)
+			return ok
+		}, vm.handleEvent)
 
 		Expect(pluginMaker.plugins).To(SatisfyAll(
 			HaveLen(2), HaveKey("newPlugin"), HaveKey("newPlugin2"),
@@ -231,23 +228,10 @@ var _ = Describe("Manager", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 
-		updateHappened = false
-	eventsLoop2:
-		for {
-			select {
-			case ev := <-watch:
-				// wait for the cluster update event
-				if _, ok := ev.(api.EventUpdateCluster); ok {
-					updateHappened = true
-				}
-				vm.handleEvent(ev)
-			default:
-				// when no events remain, break out of the loop
-				if updateHappened {
-					break eventsLoop2
-				}
-			}
-		}
+		passEvents(watch, func(ev events.Event) bool {
+			_, ok := ev.(api.EventUpdateCluster)
+			return ok
+		}, vm.handleEvent)
 
 		Expect(vm.plugins).To(SatisfyAll(
 			HaveLen(2),
@@ -290,25 +274,10 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			volumeCreated := false
-			// this loop allows us to ensure that the volume create event is
-			// processed by the volume manager, without relying on goroutines
-			// and synchronization, and avoid the painful race conditions that
-			// come with that in testing.
-		eventLoop:
-			for {
-				select {
-				case ev := <-watch:
-					if _, ok := ev.(api.EventCreateVolume); ok {
-						volumeCreated = true
-					}
-					vm.handleEvent(ev)
-				default:
-					if volumeCreated {
-						break eventLoop
-					}
-				}
-			}
+			passEvents(watch, func(ev events.Event) bool {
+				_, ok := ev.(api.EventCreateVolume)
+				return ok
+			}, vm.handleEvent)
 		})
 
 		It("should call the correct plugin to create volumes", func() {
@@ -422,23 +391,10 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			nodeCreated := false
-		eventLoop:
-			for {
-				select {
-				case ev := <-watch:
-					if e, ok := ev.(api.EventCreateNode); ok {
-						if e.Node.ID == "nodeID3" {
-							nodeCreated = true
-						}
-					}
-					vm.handleEvent(ev)
-				default:
-					if nodeCreated {
-						break eventLoop
-					}
-				}
-			}
+			passEvents(watch, func(ev events.Event) bool {
+				e, ok := ev.(api.EventCreateNode)
+				return ok && e.Node.ID == "nodeID3"
+			}, vm.handleEvent)
 
 			Expect(pluginMaker.plugins["newPlugin"].swarmToCSI).To(SatisfyAll(
 				HaveLen(3),
@@ -470,23 +426,10 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			nodeUpdated := false
-		eventLoop:
-			for {
-				select {
-				case ev := <-watch:
-					if e, ok := ev.(api.EventUpdateNode); ok {
-						if e.Node.ID == "nodeIDextra" {
-							nodeUpdated = true
-						}
-					}
-					vm.handleEvent(ev)
-				default:
-					if nodeUpdated {
-						break eventLoop
-					}
-				}
-			}
+			passEvents(watch, func(ev events.Event) bool {
+				e, ok := ev.(api.EventUpdateNode)
+				return ok && e.Node.ID == "nodeIDextra"
+			}, vm.handleEvent)
 
 			Expect(pluginMaker.plugins["newPlugin"].swarmToCSI).To(SatisfyAll(
 				HaveLen(2),
@@ -508,22 +451,10 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			nodeDeleted := false
-			// see explanation for this loop in the volume create test
-		eventLoop:
-			for {
-				select {
-				case ev := <-watch:
-					if _, ok := ev.(api.EventDeleteNode); ok {
-						nodeDeleted = true
-					}
-					vm.handleEvent(ev)
-				default:
-					if nodeDeleted {
-						break eventLoop
-					}
-				}
-			}
+			passEvents(watch, func(ev events.Event) bool {
+				_, ok := ev.(api.EventDeleteNode)
+				return ok
+			}, vm.handleEvent)
 
 			Expect(pluginMaker.plugins["newPlugin"].removedIDs).To(SatisfyAll(
 				HaveLen(1), HaveKey("nodeID1"),
@@ -531,6 +462,178 @@ var _ = Describe("Manager", func() {
 			Expect(pluginMaker.plugins["differentPlugin"].removedIDs).To(SatisfyAll(
 				HaveLen(1), HaveKey("nodeID1"),
 			))
+		})
+	})
+
+	Describe("publishing volumes", func() {
+		var (
+			task   *api.Task
+			v1, v2 *api.Volume
+		)
+		BeforeEach(func() {
+			plugins = append(plugins,
+				&api.CSIConfig_Plugin{
+					Name: "plug1",
+				},
+				&api.CSIConfig_Plugin{
+					Name: "plug2",
+				},
+			)
+
+			nodes = append(nodes, &api.Node{
+				ID: "node1",
+				Description: &api.NodeDescription{
+					CSIInfo: []*api.NodeCSIInfo{
+						{
+							PluginName: "plug1",
+							NodeID:     "plug1Node1",
+						},
+						{
+							PluginName: "plug2",
+							NodeID:     "plug2Node1",
+						},
+					},
+				},
+			})
+
+			v1 = &api.Volume{
+				ID: "volumeID1",
+				Spec: api.VolumeSpec{
+					Annotations: api.Annotations{
+						Name: "volume1",
+					},
+					Driver: &api.Driver{
+						Name: "plug1",
+					},
+				},
+				VolumeInfo: &api.VolumeInfo{
+					VolumeContext: map[string]string{"foo": "bar"},
+					VolumeID:      "plug1VolID1",
+				},
+			}
+			v2 = &api.Volume{
+				ID: "volumeID2",
+				Spec: api.VolumeSpec{
+					Annotations: api.Annotations{
+						Name: "volume2",
+					},
+					Driver: &api.Driver{
+						Name: "plug2",
+					},
+				},
+				VolumeInfo: &api.VolumeInfo{
+					VolumeContext: map[string]string{"bas": "bat"},
+					VolumeID:      "plug2VolID1",
+				},
+			}
+
+			task = &api.Task{
+				ID:     "task1",
+				NodeID: "",
+				Spec: api.TaskSpec{
+					Runtime: &api.TaskSpec_Container{
+						Container: &api.ContainerSpec{
+							Mounts: []api.Mount{
+								{
+									Type:   api.MountTypeCSI,
+									Source: "volume1",
+									Target: "/home",
+								}, {
+									Type:   api.MountTypeCSI,
+									Source: "volume2",
+									Target: "/var",
+								},
+							},
+						},
+					},
+				},
+				Status: api.TaskStatus{
+					State: api.TaskStatePending,
+				},
+			}
+
+			err := s.Update(func(tx store.Tx) error {
+				if err := store.CreateTask(tx, task); err != nil {
+					return err
+				}
+				if err := store.CreateVolume(tx, v1); err != nil {
+					return err
+				}
+				return store.CreateVolume(tx, v2)
+			})
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		JustBeforeEach(func() {
+			vm.init()
+		})
+
+		It("should call ControllerPublishVolume for each pending PublishStatus", func() {
+			v1.PublishStatus = append(v1.PublishStatus, &api.VolumePublishStatus{
+				NodeID: "node1",
+				State:  api.VolumePublishStatus_PENDING_PUBLISH,
+			})
+			v2.PublishStatus = append(v2.PublishStatus, &api.VolumePublishStatus{
+				NodeID: "node1",
+				State:  api.VolumePublishStatus_PENDING_PUBLISH,
+			})
+
+			err := s.Update(func(tx store.Tx) error {
+				if err := store.UpdateVolume(tx, v1); err != nil {
+					return err
+				}
+				return store.UpdateVolume(tx, v2)
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			// Now, we pass those updates and we expect that soon afterward,
+			// both Volumes should no longer be pending, and should have an
+			// appropriate PublishContext
+			for i := 0; i < 2; i++ {
+				passEvents(watch, func(ev events.Event) bool {
+					_, ok := ev.(api.EventUpdateVolume)
+					return ok
+				}, vm.handleEvent)
+			}
+
+			// couple of quick helpers to make subsequent matchers more readable
+			pollStore := func(id string) *api.Volume {
+				var v *api.Volume
+				s.View(func(tx store.ReadTx) {
+					v = store.GetVolume(tx, id)
+				})
+				return v
+			}
+
+			// quick one-off matcher composed from WithTransform
+			haveBeenPublished := func() GomegaMatcher {
+				return WithTransform(
+					func(v *api.Volume) []*api.VolumePublishStatus {
+						if v == nil {
+							return nil
+						}
+						return v.PublishStatus
+					},
+					ConsistOf(&api.VolumePublishStatus{
+						NodeID:         "node1",
+						State:          api.VolumePublishStatus_PUBLISHED,
+						PublishContext: map[string]string{"faked": "yeah"},
+					}),
+				)
+			}
+
+			Eventually(pollStore(v1.ID)).Should(haveBeenPublished())
+			Eventually(pollStore(v2.ID)).Should(haveBeenPublished())
+
+			// verify, additionally, that ControllerPublishVolume has actually
+			// been called
+			Expect(pluginMaker.plugins["plug1"].volumesPublished[v1.ID]).To(
+				ConsistOf("node1"),
+			)
+
+			Expect(pluginMaker.plugins["plug2"].volumesPublished[v2.ID]).To(
+				ConsistOf("node1"),
+			)
 		})
 	})
 })
