@@ -9,6 +9,7 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/cmd/swarmctl/common"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -31,12 +32,14 @@ var (
 			if err != nil {
 				return err
 			}
-			r, err := c.ListServices(common.Context(cmd), &api.ListServicesRequest{})
+			r, err := c.ListServices(common.Context(cmd), &api.ListServicesRequest{},
+				grpc.MaxCallRecvMsgSize(common.DefaultRecvSizeForListResponse))
 			if err != nil {
 				return err
 			}
 
-			nr, err := c.ListNodes(common.Context(cmd), &api.ListNodesRequest{})
+			nr, err := c.ListNodes(common.Context(cmd), &api.ListNodesRequest{},
+				grpc.MaxCallRecvMsgSize(common.DefaultRecvSizeForListResponse))
 			if err != nil {
 				return err
 			}
@@ -50,7 +53,8 @@ var (
 			var output func(j *api.Service)
 
 			if !quiet {
-				tr, err := c.ListTasks(common.Context(cmd), &api.ListTasksRequest{})
+				tr, err := c.ListTasks(common.Context(cmd), &api.ListTasksRequest{},
+					grpc.MaxCallRecvMsgSize(common.DefaultRecvSizeForListResponse))
 				if err != nil {
 					return err
 				}
