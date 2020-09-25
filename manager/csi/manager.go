@@ -11,6 +11,29 @@ import (
 	// "github.com/container-storage-interface/spec/lib/go/csi"
 )
 
+// Scheduler is an interface covering the methods on the volume manager used by
+// the swarmkit scheduler
+type Scheduler interface {
+	// ReserveVolume marks a volume as in use.
+	ReserveVolume(volumeID, taskID, nodeID string, readOnly bool)
+	// UnreserveVolume removes a reservation.
+	UnreserveVolume(volumeID, taskID string)
+}
+
+// volumeStatus wraps the ephemeral status of a volume
+//
+// TODO(dperny): keeping the whole task object here may be... not ideal.
+type volumeStatus struct {
+	// tasks is a mapping of task IDs using this volume to how this volume is
+	// being used by that task.
+	tasks map[string]volumeUsage
+}
+
+type volumeUsage struct {
+	nodeID   string
+	readOnly bool
+}
+
 type Manager struct {
 	store *store.MemoryStore
 	// provider is the SecretProvider which allows retrieving secrets. Used
@@ -31,6 +54,14 @@ type Manager struct {
 
 	cluster *api.Cluster
 	plugins map[string]Plugin
+
+	// volumes contains information about how volumes are currently being used
+	// by the system. This includes which tasks a volume is in use by, and how
+	// it is being used. if a volume is not yet being used, it may not be
+	// present in this map.
+	volumes map[string]*volumeStatus
+	// volumesMu guards access to the volumes map
+	volumesMu sync.Mutex
 }
 
 func NewManager(s *store.MemoryStore) *Manager {
@@ -41,6 +72,7 @@ func NewManager(s *store.MemoryStore) *Manager {
 		newPlugin: NewPlugin,
 		plugins:   map[string]Plugin{},
 		provider:  NewSecretProvider(s),
+		volumes:   map[string]*volumeStatus{},
 	}
 }
 
@@ -83,6 +115,19 @@ func (vm *Manager) run() {
 // the Plugins and initializing the local state of the component.
 func (vm *Manager) init() {
 	vm.updatePlugins()
+
+	var nodes []*api.Node
+	vm.store.View(func(tx store.ReadTx) {
+		var err error
+		nodes, err = store.FindNodes(tx, store.All)
+		if err != nil {
+			// TODO(dperny): log something
+		}
+	})
+
+	for _, node := range nodes {
+		vm.handleNode(node)
+	}
 }
 
 func (vm *Manager) updatePlugins() {
@@ -128,6 +173,18 @@ func (vm *Manager) handleEvent(ev events.Event) {
 		vm.updatePlugins()
 	case api.EventCreateVolume:
 		vm.createVolume(e.Volume)
+	case api.EventCreateNode:
+		vm.handleNode(e.Node)
+	case api.EventUpdateNode:
+		// for updates, we're only adding the node to every plugin. if the node
+		// no longer reports CSIInfo for a specific plugin, we will just leave
+		// the stale data in the plugin. this should not have any adverse
+		// effect, because the memory impact is small, and this operation
+		// should not be frequent. this may change as the code for volumes
+		// becomes more polished.
+		vm.handleNode(e.Node)
+	case api.EventDeleteNode:
+		vm.handleNodeRemove(e.Node.ID)
 	}
 }
 
@@ -156,4 +213,30 @@ func (vm *Manager) createVolume(v *api.Volume) {
 
 		return store.UpdateVolume(tx, v2)
 	})
+}
+
+// handleNode handles one node event
+func (vm *Manager) handleNode(n *api.Node) {
+	if n.Description == nil {
+		return
+	}
+	// we just call AddNode on every update. Because it's just a map
+	// assignment, this is probably faster than checking if something changed.
+	for _, info := range n.Description.CSIInfo {
+		p, ok := vm.plugins[info.PluginName]
+		if !ok {
+			// TODO(dperny): log something
+			continue
+		}
+		p.AddNode(n.ID, info.NodeID)
+	}
+}
+
+// handleNodeRemove handles a node delete event
+func (vm *Manager) handleNodeRemove(nodeID string) {
+	// we just call RemoveNode on every plugin, because it's probably quicker
+	// than checking if the node was using that plugin.
+	for _, plugin := range vm.plugins {
+		plugin.RemoveNode(nodeID)
+	}
 }
