@@ -21,8 +21,11 @@ type assignmentSet struct {
 	dp                   *drivers.DriverProvider
 	tasksMap             map[string]*api.Task
 	tasksUsingDependency map[typeAndID]map[string]struct{}
-	changes              map[typeAndID]*api.AssignmentChange
-	log                  *logrus.Entry
+	// pendingVolumes is a set of Volume IDs that should be assigned as part of
+	// this set, but are waiting on the Published state.
+	pendingVolumes map[string]*api.Volume
+	changes        map[typeAndID]*api.AssignmentChange
+	log            *logrus.Entry
 }
 
 func newAssignmentSet(log *logrus.Entry, dp *drivers.DriverProvider) *assignmentSet {
@@ -31,6 +34,7 @@ func newAssignmentSet(log *logrus.Entry, dp *drivers.DriverProvider) *assignment
 		changes:              make(map[typeAndID]*api.AssignmentChange),
 		tasksMap:             make(map[string]*api.Task),
 		tasksUsingDependency: make(map[typeAndID]map[string]struct{}),
+		pendingVolumes:       make(map[string]*api.Volume),
 		log:                  log,
 	}
 }
@@ -91,6 +95,10 @@ func assignConfig(a *assignmentSet, readTx store.ReadTx, mapKey typeAndID) {
 	}
 }
 
+// assignVolume handles logic for assigning a given volume. It creates a
+// VolumeAssignment if the Volume is already published and ready to go. If the
+// Volume is not yet published, then it sets up the tasksUsingDependency map,
+// but does not yet create the VolumeAssignment.
 func assignVolume(a *assignmentSet, readTx store.ReadTx, mapKey typeAndID, t *api.Task) {
 	a.tasksUsingDependency[mapKey] = make(map[string]struct{})
 	volume := store.GetVolume(readTx, mapKey.id)
@@ -113,6 +121,31 @@ func assignVolume(a *assignmentSet, readTx store.ReadTx, mapKey typeAndID, t *ap
 		return
 	}
 
+	// Volumes may need Secrets of their own to work properly. ensure that all
+	// of the necessary Secrets are assigned to the node.
+	for _, secret := range volume.Spec.Secrets {
+		mapKey := typeAndID{objType: api.ResourceType_SECRET, id: secret.Secret}
+		if len(a.tasksUsingDependency[mapKey]) == 0 {
+			assignSecret(a, readTx, mapKey, t)
+		}
+		a.tasksUsingDependency[mapKey][t.ID] = struct{}{}
+	}
+
+	// we can infer the NodeID by just looking at the NodeID for the task
+	nodeID := t.NodeID
+	published := false
+	for _, status := range volume.PublishStatus {
+		if status.NodeID == nodeID && status.State == api.VolumePublishStatus_PUBLISHED {
+			published = true
+			break
+		}
+	}
+
+	if !published {
+		a.pendingVolumes[volume.ID] = volume
+		return
+	}
+
 	// volumes are sent to nodes as VolumeAssignments. This is because a node
 	// needs node-specific information (the PublishContext from
 	// ControllerPublishVolume).
@@ -128,16 +161,6 @@ func assignVolume(a *assignmentSet, readTx store.ReadTx, mapKey typeAndID, t *ap
 		Secrets: volume.Spec.Secrets,
 	}
 
-	// Volumes may need Secrets of their own to work properly. ensure that all
-	// of the necessary Secrets are assigned to the node.
-	for _, secret := range assignment.Secrets {
-		mapKey := typeAndID{objType: api.ResourceType_SECRET, id: secret.Secret}
-		if len(a.tasksUsingDependency[mapKey]) == 0 {
-			assignSecret(a, readTx, mapKey, t)
-		}
-		a.tasksUsingDependency[mapKey][t.ID] = struct{}{}
-	}
-
 	a.changes[mapKey] = &api.AssignmentChange{
 		Assignment: &api.Assignment{
 			Item: &api.Assignment_Volume{
@@ -146,6 +169,8 @@ func assignVolume(a *assignmentSet, readTx store.ReadTx, mapKey typeAndID, t *ap
 		},
 		Action: api.AssignmentChange_AssignmentActionUpdate,
 	}
+
+	return
 }
 
 func (a *assignmentSet) addTaskDependencies(readTx store.ReadTx, t *api.Task) {
@@ -381,6 +406,45 @@ func (a *assignmentSet) addOrUpdateTask(readTx store.ReadTx, t *api.Task) bool {
 		},
 		Action: api.AssignmentChange_AssignmentActionUpdate,
 	}
+	return true
+}
+
+// sendVolume creates a VolumeAssignment for the Volume with the given id,
+// using the provided Status.
+//
+// returns true if a new assignment was created.
+func (a *assignmentSet) sendVolume(id string, status *api.VolumePublishStatus) bool {
+	// if the volume isn't pending, we have no need to worry about it.
+	v, ok := a.pendingVolumes[id]
+	if !ok {
+		return false
+	}
+
+	// the volume is no longer pending.
+	delete(a.pendingVolumes, id)
+
+	assignment := &api.VolumeAssignment{
+		ID:            v.ID,
+		VolumeID:      v.VolumeInfo.VolumeID,
+		Driver:        v.Spec.Driver,
+		VolumeContext: v.VolumeInfo.VolumeContext,
+		// TODO(dperny): PublishContext needs to be stored and retrieved. for
+		// now we'll just skip it.
+		PublishContext: status.PublishContext,
+		// TODO(dperny): sort out AccessMode.
+		Secrets: v.Spec.Secrets,
+	}
+
+	// if we're pending this volume, then create the VolumeAssignment,
+	a.changes[typeAndID{objType: api.ResourceType_VOLUME, id: v.ID}] = &api.AssignmentChange{
+		Assignment: &api.Assignment{
+			Item: &api.Assignment_Volume{
+				Volume: assignment,
+			},
+		},
+		Action: api.AssignmentChange_AssignmentActionUpdate,
+	}
+
 	return true
 }
 
