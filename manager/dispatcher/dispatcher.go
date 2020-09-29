@@ -980,6 +980,23 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 			Checks: []api.TaskCheckFunc{api.TaskCheckNodeID}},
 		api.EventDeleteTask{Task: &api.Task{NodeID: nodeID},
 			Checks: []api.TaskCheckFunc{api.TaskCheckNodeID}},
+		api.EventUpdateVolume{
+			// typically, a check function takes an object from this
+			// prototypical event and compares it to the object from the
+			// incoming event. However, because this is a bespoke, in-line
+			// matcher, we can discard the first argument (the prototype) and
+			// instead pass the desired node ID in as part of a closure.
+			Checks: []api.VolumeCheckFunc{
+				func(v1, v2 *api.Volume) bool {
+					for _, status := range v2.PublishStatus {
+						if status.NodeID == nodeID {
+							return true
+						}
+					}
+					return false
+				},
+			},
+		},
 	)
 	if err != nil {
 		return err
@@ -1042,6 +1059,24 @@ func (d *Dispatcher) Assignments(r *api.AssignmentsRequest, stream api.Dispatche
 					})
 					// TODO(aaronl): For node secrets, we'll need to handle
 					// EventCreateSecret.
+				case api.EventUpdateVolume:
+					d.store.View(func(readTx store.ReadTx) {
+						v := store.GetVolume(readTx, v.Volume.ID)
+						// check through the PublishStatus to see if there is
+						// one for this node.
+						for _, status := range v.PublishStatus {
+							// don't bother with calling sendVolume unless the
+							// volume is now ready on this node, with state
+							// VolumePublishStatus_PUBLISHED.
+							if status.NodeID == nodeID && status.State == api.VolumePublishStatus_PUBLISHED {
+								// then, don't bother with a modification
+								// unless sendVolume says we actually need one.
+								if assignments.sendVolume(v.ID, status) {
+									oneModification()
+								}
+							}
+						}
+					})
 				}
 			case <-batchingTimeout:
 				break batchingLoop
