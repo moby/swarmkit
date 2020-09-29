@@ -63,6 +63,17 @@ func TestAssignVolume(t *testing.T) {
 				VolumeContext: map[string]string{"foo": "bar"},
 				VolumeID:      "volumeID1",
 			},
+			PublishStatus: []*api.VolumePublishStatus{
+				{
+					NodeID: "node1",
+					State:  api.VolumePublishStatus_PENDING_PUBLISH,
+				},
+				{
+					NodeID:         "nodeNotThisOne",
+					State:          api.VolumePublishStatus_PUBLISHED,
+					PublishContext: map[string]string{"shouldnot": "bethisone"},
+				},
+			},
 		}
 
 		return store.CreateVolume(tx, v)
@@ -82,7 +93,8 @@ func TestAssignVolume(t *testing.T) {
 	// we need a task here, because in assignVolume we call assignSecret, which
 	// needs a task object. fortunately, it can be pretty bare.
 	task := &api.Task{
-		ID: "task1",
+		ID:     "task1",
+		NodeID: "node1",
 	}
 
 	// finally, we can do our assignVolume call
@@ -90,45 +102,80 @@ func TestAssignVolume(t *testing.T) {
 		assignVolume(as, tx, mapKey, task)
 	})
 
-	// ensure that the assignments match what we expect
-	assert.Len(t, as.changes, 3)
+	// calling as.message gets the changes until now and also reset the changes
+	// tracked internally.
+	m := as.message()
+
+	// the assignVolume call won't actually assign the volume, because it is not
+	// ready. instead, we expect it to be put in pendingVolumes. therefore,
+	// there should be 2 changes, both volume secrets.
+	assert.Len(t, m.Changes, 2)
 
 	var foundSecret1, foundSecret2 bool
-	for _, change := range as.changes {
+	for _, change := range m.Changes {
 		// every one of these should be an Update change
 		assert.Equal(t, change.Action, api.AssignmentChange_AssignmentActionUpdate)
-		switch c := change.Assignment.Item.(type) {
-		case *api.Assignment_Volume:
-			assert.Equal(t, c.Volume, &api.VolumeAssignment{
-				ID:       "volume1",
-				VolumeID: "volumeID1",
-				Driver: &api.Driver{
-					Name: "driver",
-				},
-				VolumeContext:  map[string]string{"foo": "bar"},
-				PublishContext: map[string]string{},
-				Secrets: []*api.VolumeSecret{
-					{Key: "secretKey1", Secret: "secret1"},
-					{Key: "secretKey2", Secret: "secret2"},
-				},
-			})
-		case *api.Assignment_Secret:
-			// we don't need to test correctness of the assignment content,
-			// just that it's present
-			switch c.Secret.ID {
-			case "secret1":
-				foundSecret1 = true
-			case "secret2":
-				foundSecret2 = true
-			default:
-				t.Fatalf("found unexpected secret assignment %s", c.Secret.ID)
-			}
-
+		secretAssignment := change.Assignment.Item.(*api.Assignment_Secret)
+		// we don't need to test correctness of the assignment content,
+		// just that it's present
+		switch secretAssignment.Secret.ID {
+		case "secret1":
+			foundSecret1 = true
+		case "secret2":
+			foundSecret2 = true
 		default:
-			t.Fatalf("found an unexpected assignment, type %T", c)
+			t.Fatalf("found unexpected secret assignment %s", secretAssignment.Secret.ID)
 		}
 	}
+	/*
+		case *api.Assignment_Volume:
+			assert.Equal(t, c.Volume, &api.VolumeAssignment{
+			})
+	*/
 
 	assert.True(t, foundSecret1, "expected to find secret1 assignment")
 	assert.True(t, foundSecret2, "expected to find secret2 assignment")
+
+	var (
+		nv              *api.Volume
+		thisNodePublish *api.VolumePublishStatus
+	)
+
+	// now update the volume to state PUBLISHED
+	require.NoError(t, s.Update(func(tx store.Tx) error {
+		nv = store.GetVolume(tx, "volume1")
+		for _, s := range nv.PublishStatus {
+			if s.NodeID == "node1" {
+				thisNodePublish = s
+				s.State = api.VolumePublishStatus_PUBLISHED
+				s.PublishContext = map[string]string{
+					"shouldbe": "thisone",
+				}
+				break
+			}
+		}
+		return store.UpdateVolume(tx, nv)
+	}))
+
+	// now we should call sendVolume
+	as.sendVolume("volume1", thisNodePublish)
+
+	m2 := as.message()
+	require.Len(t, m2.Changes, 1)
+	av, ok := m2.Changes[0].Assignment.Item.(*api.Assignment_Volume)
+	require.True(t, ok, "expected assignment to be of type Assignment_Volume")
+
+	assert.Equal(t, av.Volume, &api.VolumeAssignment{
+		ID:       "volume1",
+		VolumeID: "volumeID1",
+		Driver: &api.Driver{
+			Name: "driver",
+		},
+		VolumeContext:  map[string]string{"foo": "bar"},
+		PublishContext: map[string]string{"shouldbe": "thisone"},
+		Secrets: []*api.VolumeSecret{
+			{Key: "secretKey1", Secret: "secret1"},
+			{Key: "secretKey2", Secret: "secret2"},
+		},
+	})
 }
