@@ -18,9 +18,12 @@ const iterations = 25
 const interval = 100 * time.Millisecond
 
 func NewFakeManager() *volumes {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &volumes{
-		m:         make(map[string]*api.VolumeAssignment),
-		pluginMap: make(map[string]*NodePlugin),
+		m:                make(map[string]*api.VolumeAssignment),
+		pluginMap:        make(map[string]*NodePlugin),
+		tryVolumesCtx:    ctx,
+		tryVolumesCancel: cancel,
 	}
 }
 
