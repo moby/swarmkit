@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/docker/swarmkit/agent/exec"
@@ -34,6 +35,11 @@ func TestWorkerAssign(t *testing.T) {
 
 	ctx := context.Background()
 	executor := &mockExecutor{dependencies: NewDependencyManager()}
+
+	// the VolumeManager has some async components, which are canceled when
+	// Reset is called
+	defer executor.Volumes().Reset()
+
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
@@ -80,7 +86,7 @@ func TestWorkerAssign(t *testing.T) {
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+							Volume: &api.VolumeAssignment{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 						},
 					},
 					Action: api.AssignmentChange_AssignmentActionUpdate,
@@ -113,7 +119,7 @@ func TestWorkerAssign(t *testing.T) {
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+							Volume: &api.VolumeAssignment{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 						},
 					},
 					Action: api.AssignmentChange_AssignmentActionRemove,
@@ -132,7 +138,7 @@ func TestWorkerAssign(t *testing.T) {
 				{ID: "task-1"},
 			},
 			expectedVolumes: []*api.VolumeAssignment{
-				{VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+				{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 			},
 		},
 		{ // completely replaces the existing tasks and secrets
@@ -164,7 +170,7 @@ func TestWorkerAssign(t *testing.T) {
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+							Volume: &api.VolumeAssignment{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 						},
 					},
 					Action: api.AssignmentChange_AssignmentActionUpdate,
@@ -184,7 +190,7 @@ func TestWorkerAssign(t *testing.T) {
 				{ID: "task-2"},
 			},
 			expectedVolumes: []*api.VolumeAssignment{
-				{VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+				{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 			},
 		},
 		{
@@ -226,9 +232,9 @@ func TestWorkerAssign(t *testing.T) {
 			assert.NotNil(t, config)
 		}
 		for _, volume := range testcase.expectedVolumes {
-			volume, err := executor.Volumes().Get(volume.VolumeID)
-			assert.NoError(t, err)
-			assert.NotNil(t, volume)
+			_, err := executor.Volumes().Get(volume.VolumeID)
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, exec.ErrDependencyNotReady))
 		}
 	}
 }
@@ -283,7 +289,7 @@ func TestWorkerWait(t *testing.T) {
 		{
 			Assignment: &api.Assignment{
 				Item: &api.Assignment_Volume{
-					Volume: &api.VolumeAssignment{VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+					Volume: &api.VolumeAssignment{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 				},
 			},
 			Action: api.AssignmentChange_AssignmentActionUpdate,
@@ -309,7 +315,7 @@ func TestWorkerWait(t *testing.T) {
 	}
 
 	expectedVolumes := []*api.VolumeAssignment{
-		{VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+		{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 	}
 
 	var (
@@ -341,9 +347,9 @@ func TestWorkerWait(t *testing.T) {
 		assert.NotNil(t, config)
 	}
 	for _, volume := range expectedVolumes {
-		volume, err := executor.Volumes().Get(volume.VolumeID)
-		assert.NoError(t, err)
-		assert.NotNil(t, volume)
+		_, err := executor.Volumes().Get(volume.VolumeID)
+		assert.Error(t, err)
+		assert.True(t, errors.Is(err, exec.ErrDependencyNotReady))
 	}
 
 	err := worker.Assign(ctx, nil)
@@ -408,7 +414,7 @@ func TestWorkerUpdate(t *testing.T) {
 		{
 			Assignment: &api.Assignment{
 				Item: &api.Assignment_Volume{
-					Volume: &api.VolumeAssignment{VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+					Volume: &api.VolumeAssignment{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 				},
 			},
 			Action: api.AssignmentChange_AssignmentActionUpdate,
@@ -437,7 +443,7 @@ func TestWorkerUpdate(t *testing.T) {
 				{ID: "task-1"},
 			},
 			expectedVolumes: []*api.VolumeAssignment{
-				{VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+				{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 			},
 		},
 		{
@@ -465,7 +471,7 @@ func TestWorkerUpdate(t *testing.T) {
 				{ID: "task-1"},
 			},
 			expectedVolumes: []*api.VolumeAssignment{
-				{VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+				{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 			},
 		},
 		{
@@ -498,7 +504,7 @@ func TestWorkerUpdate(t *testing.T) {
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+							Volume: &api.VolumeAssignment{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 						},
 					},
 					Action: api.AssignmentChange_AssignmentActionUpdate,
@@ -521,8 +527,8 @@ func TestWorkerUpdate(t *testing.T) {
 				{ID: "task-2"},
 			},
 			expectedVolumes: []*api.VolumeAssignment{
-				{VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
-				{VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+				{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+				{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 			},
 		},
 		{
@@ -571,7 +577,7 @@ func TestWorkerUpdate(t *testing.T) {
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+							Volume: &api.VolumeAssignment{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 						},
 					},
 					Action: api.AssignmentChange_AssignmentActionRemove,
@@ -579,7 +585,7 @@ func TestWorkerUpdate(t *testing.T) {
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+							Volume: &api.VolumeAssignment{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 						},
 					},
 					Action: api.AssignmentChange_AssignmentActionUpdate,
@@ -598,7 +604,7 @@ func TestWorkerUpdate(t *testing.T) {
 				{ID: "task-2"},
 			},
 			expectedVolumes: []*api.VolumeAssignment{
-				{VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+				{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 			},
 		},
 		{
@@ -655,7 +661,7 @@ func TestWorkerUpdate(t *testing.T) {
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+							Volume: &api.VolumeAssignment{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 						},
 					},
 					Action: api.AssignmentChange_AssignmentActionRemove,
@@ -663,7 +669,7 @@ func TestWorkerUpdate(t *testing.T) {
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+							Volume: &api.VolumeAssignment{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 						},
 					},
 					Action: api.AssignmentChange_AssignmentActionRemove,
@@ -700,9 +706,10 @@ func TestWorkerUpdate(t *testing.T) {
 			assert.NotNil(t, config)
 		}
 		for _, volume := range testcase.expectedVolumes {
-			volume, err := executor.Volumes().Get(volume.VolumeID)
-			assert.NoError(t, err)
-			assert.NotNil(t, volume)
+			_, err := executor.Volumes().Get(volume.VolumeID)
+			// volumes should not be ready yet, so we expect an error.
+			assert.Error(t, err)
+			assert.True(t, errors.Is(err, exec.ErrDependencyNotReady))
 		}
 	}
 }
