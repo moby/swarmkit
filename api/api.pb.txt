@@ -4522,7 +4522,7 @@ file {
     }
     field {
       name: "message"
-      number: 4
+      number: 5
       label: LABEL_OPTIONAL
       type: TYPE_STRING
       json_name: "message"
@@ -4558,8 +4558,12 @@ file {
         number: 1
       }
       value {
-        name: "PENDING_UNPUBLISH"
+        name: "PENDING_NODE_UNPUBLISH"
         number: 2
+      }
+      value {
+        name: "PENDING_UNPUBLISH"
+        number: 3
       }
     }
   }
@@ -9692,6 +9696,44 @@ file {
     name: "UpdateTaskStatusResponse"
   }
   message_type {
+    name: "UpdateVolumeStatusRequest"
+    field {
+      name: "session_id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_STRING
+      json_name: "sessionId"
+    }
+    field {
+      name: "updates"
+      number: 2
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.UpdateVolumeStatusRequest.VolumeStatusUpdate"
+      json_name: "updates"
+    }
+    nested_type {
+      name: "VolumeStatusUpdate"
+      field {
+        name: "id"
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "id"
+      }
+      field {
+        name: "unpublished"
+        number: 2
+        label: LABEL_OPTIONAL
+        type: TYPE_BOOL
+        json_name: "unpublished"
+      }
+    }
+  }
+  message_type {
+    name: "UpdateVolumeStatusResponse"
+  }
+  message_type {
     name: "TasksRequest"
     field {
       name: "session_id"
@@ -9873,6 +9915,17 @@ file {
       name: "UpdateTaskStatus"
       input_type: ".docker.swarmkit.v1.UpdateTaskStatusRequest"
       output_type: ".docker.swarmkit.v1.UpdateTaskStatusResponse"
+      options {
+        73626345 {
+          1: "swarm-worker"
+          1: "swarm-manager"
+        }
+      }
+    }
+    method {
+      name: "UpdateVolumeStatus"
+      input_type: ".docker.swarmkit.v1.UpdateVolumeStatusRequest"
+      output_type: ".docker.swarmkit.v1.UpdateVolumeStatusResponse"
       options {
         73626345 {
           1: "swarm-worker"
