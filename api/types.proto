@@ -1242,7 +1242,7 @@ message VolumeSecret {
 }
 
 // VolumePublishStatus contains information about the volume's publishing to a
-// specific node, from the Controller's perspective.
+// specific node.
 //
 // Publishing or unpublishing a volume to a node is a two-step process.
 //
@@ -1285,12 +1285,18 @@ message VolumePublishStatus {
 		// Published means the volume is published successfully to the node.
 		PUBLISHED = 1;
 
+		// PendingNodeUnpublish indicates that the Volume should be unpublished
+		// on the Node, and we're waiting for confirmation that it has done so.
+		// After the Node has confirmed that the Volume has been unpublished,
+		// the state will move to PendingUnpublish.
+		PENDING_NODE_UNPUBLISH = 2;
+
 		// PendingUnpublish means the volume is published to the node, and
 		// needs to not be, but the call to ControllerUnpublishVolume has not
 		// verifiably succeeded yet. There is no Unpublished state, because
 		// after the volume has been verifiably unpublished, the
 		// VolumePublishStatus for the node is removed.
-		PENDING_UNPUBLISH = 2;
+		PENDING_UNPUBLISH = 3;
 	}
 
 	// NodeID is the swarm (not CSI plugin) node ID that this volume is
@@ -1308,7 +1314,7 @@ message VolumePublishStatus {
 	// It exists to convey the current situation with the volume to the user,
 	// allowing, for example, the user to see error messages why a volume might
 	// not be published yet.
-	string message = 4;
+	string message = 5;
 }
 
 // VolumeInfo contains information about the volume originating from the CSI
