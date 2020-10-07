@@ -574,7 +574,11 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 				return err
 			}
 		}
-		return nil
+		// finally, every time we make new scheduling decisions, take the
+		// opportunity to release volumes.
+		return batch.Update(func(tx store.Tx) error {
+			return s.volumes.freeVolumes(tx)
+		})
 	})
 
 	if err != nil {

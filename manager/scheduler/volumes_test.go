@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/state/store"
 )
 
 // cannedVolume is a quick helper method that creates canned volumes, using the
@@ -49,7 +50,6 @@ var _ = Describe("volumeSet", func() {
 		)
 
 		BeforeEach(func() {
-			vs = newVolumeSet()
 			v1 = cannedVolume(1)
 			v2 = cannedVolume(2)
 
@@ -61,11 +61,11 @@ var _ = Describe("volumeSet", func() {
 			Expect(vs.volumes).To(SatisfyAll(
 				HaveKeyWithValue(
 					v1.ID,
-					volumeInfo{volume: v1, tasks: map[string]volumeUsage{}},
+					volumeInfo{volume: v1, tasks: map[string]volumeUsage{}, nodes: map[string]int{}},
 				),
 				HaveKeyWithValue(
 					v2.ID,
-					volumeInfo{volume: v2, tasks: map[string]volumeUsage{}},
+					volumeInfo{volume: v2, tasks: map[string]volumeUsage{}, nodes: map[string]int{}},
 				),
 			))
 
@@ -524,6 +524,165 @@ var _ = Describe("volumeSet", func() {
 				&api.VolumeAttachment{ID: v2.ID, Source: mounts[1].Source, Target: mounts[1].Target},
 				&api.VolumeAttachment{ID: v3.ID, Source: mounts[3].Source, Target: mounts[3].Target},
 			))
+		})
+	})
+
+	Describe("freeVolumes", func() {
+		var (
+			s *store.MemoryStore
+			// allVolume is used by every task on every node.
+			allVolume *api.Volume
+			volumes   []*api.Volume
+			nodes     []*api.Node
+			tasks     []*api.Task
+		)
+
+		BeforeEach(func() {
+			s = store.NewMemoryStore(nil)
+			volumes = nil
+			nodes = nil
+			tasks = nil
+
+			allVolume = cannedVolume(5)
+
+			// add some volumes
+			for i := 0; i < 4; i++ {
+				volumes = append(volumes, cannedVolume(i))
+				vs.addOrUpdateVolume(volumes[i])
+
+				nodes = append(nodes, &api.Node{
+					ID: fmt.Sprintf("node%d", i),
+				})
+
+				volumes[i].PublishStatus = []*api.VolumePublishStatus{
+					{
+						NodeID: nodes[i].ID,
+						State:  api.VolumePublishStatus_PUBLISHED,
+					},
+				}
+
+				tasks = append(tasks, &api.Task{
+					ID:     fmt.Sprintf("task%d", i),
+					NodeID: nodes[i].ID,
+					Spec: api.TaskSpec{
+						Runtime: &api.TaskSpec_Container{
+							Container: &api.ContainerSpec{
+								Mounts: []api.Mount{
+									{
+										Type:   api.MountTypeCSI,
+										Source: volumes[i].Spec.Annotations.Name,
+										Target: "bar",
+									},
+									{
+										Type:   api.MountTypeCSI,
+										Source: allVolume.Spec.Annotations.Name,
+										Target: "baz",
+									},
+								},
+							},
+						},
+					},
+					Volumes: []*api.VolumeAttachment{
+						{
+							Source: volumes[i].Spec.Annotations.Name,
+							Target: "bar",
+							ID:     volumes[i].ID,
+						}, {
+							Source: allVolume.Spec.Annotations.Name,
+							Target: "baz",
+							ID:     allVolume.ID,
+						},
+					},
+				})
+				allVolume.PublishStatus = append(allVolume.PublishStatus, &api.VolumePublishStatus{
+					NodeID: nodes[i].ID,
+					State:  api.VolumePublishStatus_PUBLISHED,
+				})
+			}
+			err := s.Update(func(tx store.Tx) error {
+				for _, v := range volumes {
+					if err := store.CreateVolume(tx, v); err != nil {
+						return err
+					}
+					vs.addOrUpdateVolume(v)
+				}
+
+				if err := store.CreateVolume(tx, allVolume); err != nil {
+					return err
+				}
+				vs.addOrUpdateVolume(allVolume)
+
+				for _, n := range nodes {
+					if err := store.CreateNode(tx, n); err != nil {
+						return err
+					}
+				}
+
+				for _, t := range tasks {
+					if err := store.CreateTask(tx, t); err != nil {
+						return err
+					}
+					vs.reserveTaskVolumes(t)
+				}
+				return nil
+			})
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should have nodes reference counted correctly", func() {
+			for _, v := range volumes {
+				info := vs.volumes[v.ID]
+
+				Expect(info.nodes).To(HaveLen(1))
+				Expect(info.volume.PublishStatus).ToNot(BeNil())
+				nid := info.volume.PublishStatus[0].NodeID
+				Expect(nid).ToNot(BeEmpty())
+				Expect(info.nodes[nid]).To(Equal(1))
+			}
+
+			allInfo := vs.volumes[allVolume.ID]
+			Expect(allInfo.nodes).To(HaveLen(4))
+			Expect(allInfo.volume.PublishStatus).ToNot(BeNil())
+			for _, status := range allInfo.volume.PublishStatus {
+				Expect(allInfo.nodes[status.NodeID]).To(Equal(1))
+			}
+		})
+
+		It("should free volumes that are no longer needed", func() {
+			vs.releaseVolume(volumes[0].ID, tasks[0].ID)
+			vs.releaseVolume(allVolume.ID, tasks[0].ID)
+
+			err := s.Update(func(tx store.Tx) error {
+				return vs.freeVolumes(tx)
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			var freshVolumes []*api.Volume
+			s.View(func(tx store.ReadTx) {
+				freshVolumes, _ = store.FindVolumes(tx, store.All)
+			})
+			Expect(freshVolumes).To(HaveLen(5))
+
+			for _, v := range freshVolumes {
+				switch v.ID {
+				case volumes[0].ID:
+					Expect(v.PublishStatus).To(ConsistOf(&api.VolumePublishStatus{
+						State:  api.VolumePublishStatus_PENDING_NODE_UNPUBLISH,
+						NodeID: nodes[0].ID,
+					}))
+				case allVolume.ID:
+					for _, status := range v.PublishStatus {
+						if status.NodeID == nodes[0].ID {
+							Expect(status.State).To(Equal(api.VolumePublishStatus_PENDING_NODE_UNPUBLISH))
+						} else {
+							Expect(status.State).To(Equal(api.VolumePublishStatus_PUBLISHED))
+						}
+					}
+				default:
+					Expect(v.PublishStatus).To(HaveLen(1))
+					Expect(v.PublishStatus[0].State).To(Equal(api.VolumePublishStatus_PUBLISHED))
+				}
+			}
 		})
 	})
 })
