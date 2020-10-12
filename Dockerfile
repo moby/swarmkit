@@ -1,10 +1,10 @@
 # NOTE(dperny): for some reason, alpine was giving me trouble
-FROM golang:1.12.9-stretch
+FROM golang:1.12.17-buster
 
 RUN apt-get update && apt-get install -y make git unzip
 
 # should stay consistent with the version in .circleci/config.yml
-ARG PROTOC_VERSION=3.6.1
+ARG PROTOC_VERSION=3.12.4
 # download and install protoc binary and .proto files
 RUN curl --silent --show-error --location --output protoc.zip \
   https://github.com/google/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip \
