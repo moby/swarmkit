@@ -6,7 +6,7 @@ FROM golang:${GO_VERSION}-stretch
 RUN apt-get update && apt-get install -y make git unzip
 
 # should stay consistent with the version in .circleci/config.yml
-ARG PROTOC_VERSION=3.6.1
+ARG PROTOC_VERSION=3.9.1
 # download and install protoc binary and .proto files
 RUN curl --silent --show-error --location --output protoc.zip \
   https://github.com/google/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip \

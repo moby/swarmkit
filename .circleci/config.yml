@@ -14,7 +14,7 @@ jobs:
       GOVERSION: 1.13
       GO111MODULE: "off"
       # Needed to install protoc
-      PROTOC_VERSION: 3.6.1
+      PROTOC_VERSION: 3.9.1
 
     # Note(cyli): We create a tmpfs mount to be used for temporary files created by tests
     # to mitigate the excessive I/O latencies that sometimes cause the tests to fail.
