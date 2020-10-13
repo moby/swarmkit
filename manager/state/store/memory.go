@@ -22,23 +22,24 @@ import (
 )
 
 const (
-	indexID           = "id"
-	indexName         = "name"
-	indexRuntime      = "runtime"
-	indexServiceID    = "serviceid"
-	indexNodeID       = "nodeid"
-	indexSlot         = "slot"
-	indexDesiredState = "desiredstate"
-	indexTaskState    = "taskstate"
-	indexRole         = "role"
-	indexMembership   = "membership"
-	indexNetwork      = "network"
-	indexSecret       = "secret"
-	indexConfig       = "config"
-	indexKind         = "kind"
-	indexCustom       = "custom"
-	indexVolumeGroup  = "volumegroup"
-	indexDriver       = "driver"
+	indexID               = "id"
+	indexName             = "name"
+	indexRuntime          = "runtime"
+	indexServiceID        = "serviceid"
+	indexNodeID           = "nodeid"
+	indexSlot             = "slot"
+	indexDesiredState     = "desiredstate"
+	indexTaskState        = "taskstate"
+	indexRole             = "role"
+	indexMembership       = "membership"
+	indexNetwork          = "network"
+	indexSecret           = "secret"
+	indexConfig           = "config"
+	indexVolumeAttachment = "volumeattachment"
+	indexKind             = "kind"
+	indexCustom           = "custom"
+	indexVolumeGroup      = "volumegroup"
+	indexDriver           = "driver"
 
 	prefix = "_prefix"
 
@@ -734,6 +735,12 @@ func (tx readTx) findIterators(table string, by By, checkType func(By) error) ([
 		return []memdb.ResultIterator{it}, nil
 	case byReferencedConfigID:
 		it, err := tx.memDBTx.Get(table, indexConfig, string(v))
+		if err != nil {
+			return nil, err
+		}
+		return []memdb.ResultIterator{it}, nil
+	case byVolumeAttachment:
+		it, err := tx.memDBTx.Get(table, indexVolumeAttachment, string(v))
 		if err != nil {
 			return nil, err
 		}
