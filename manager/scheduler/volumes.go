@@ -238,6 +238,11 @@ func (vs *volumeSet) isVolumeAvailableOnNode(mount *api.Mount, node *NodeInfo) s
 // on the given node.
 func (vs *volumeSet) checkVolume(id string, info *NodeInfo, readOnly bool) bool {
 	vi := vs.volumes[id]
+	// first, check if the volume's availability is even Active. If not. no
+	// reason to bother with anything further.
+	if vi.volume != nil && vi.volume.Spec.Availability != api.VolumeAvailabilityActive {
+		return false
+	}
 
 	// get the node topology for this volume
 	var top *api.Topology
