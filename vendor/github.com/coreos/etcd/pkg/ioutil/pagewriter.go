@@ -95,23 +95,12 @@ func (pw *PageWriter) Write(p []byte) (n int, err error) {
 	return n, werr
 }
 
-// Flush flushes buffered data.
 func (pw *PageWriter) Flush() error {
-	_, err := pw.flush()
-	return err
-}
-
-// FlushN flushes buffered data and returns the number of written bytes.
-func (pw *PageWriter) FlushN() (int, error) {
-	return pw.flush()
-}
-
-func (pw *PageWriter) flush() (int, error) {
 	if pw.bufferedBytes == 0 {
-		return 0, nil
+		return nil
 	}
-	n, err := pw.w.Write(pw.buf[:pw.bufferedBytes])
+	_, err := pw.w.Write(pw.buf[:pw.bufferedBytes])
 	pw.pageOffset = (pw.pageOffset + pw.bufferedBytes) % pw.pageBytes
 	pw.bufferedBytes = 0
-	return n, err
+	return err
 }

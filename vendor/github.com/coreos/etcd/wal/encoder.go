@@ -92,8 +92,7 @@ func (e *encoder) encode(rec *walpb.Record) error {
 	if padBytes != 0 {
 		data = append(data, make([]byte, padBytes)...)
 	}
-	n, err = e.bw.Write(data)
-	walWriteBytes.Add(float64(n))
+	_, err = e.bw.Write(data)
 	return err
 }
 
@@ -109,16 +108,13 @@ func encodeFrameSize(dataBytes int) (lenField uint64, padBytes int) {
 
 func (e *encoder) flush() error {
 	e.mu.Lock()
-	n, err := e.bw.FlushN()
-	e.mu.Unlock()
-	walWriteBytes.Add(float64(n))
-	return err
+	defer e.mu.Unlock()
+	return e.bw.Flush()
 }
 
 func writeUint64(w io.Writer, n uint64, buf []byte) error {
 	// http://golang.org/src/encoding/binary/binary.go
 	binary.LittleEndian.PutUint64(buf, n)
-	nv, err := w.Write(buf)
-	walWriteBytes.Add(float64(nv))
+	_, err := w.Write(buf)
 	return err
 }
