@@ -231,11 +231,27 @@ func (s *Server) GetVolume(ctx context.Context, request *api.GetVolumeRequest) (
 	}, nil
 }
 
+// RemoveVolume marks a Volume for removal. For a Volume to be removed, it must
+// have Availability set to Drain. RemoveVolume does not immediately delete the
+// volume, because some clean-up must occur before it can be removed. However,
+// calling RemoveVolume is an irrevocable action, and once it occurs, the
+// Volume can no longer be used in any way.
 func (s *Server) RemoveVolume(ctx context.Context, request *api.RemoveVolumeRequest) (*api.RemoveVolumeResponse, error) {
-	// TODO(dperny): we need a way to remove a volume. This is tricky, because
-	// we should be able to remove one volume being used by a service without
-	// removing the service using it. Either we need to write a way to exclude
-	// the volume from use until it is released, or we need a way to update a
-	// service to not use one particular volume.
-	return nil, status.Error(codes.Unimplemented, "RemoveVolume not yet implemented")
+	err := s.store.Update(func(tx store.Tx) error {
+		volume := store.GetVolume(tx, request.VolumeID)
+		if volume == nil {
+			return status.Errorf(codes.NotFound, "volume %s not found", request.VolumeID)
+		}
+		if len(volume.PublishStatus) != 0 {
+			return status.Error(codes.FailedPrecondition, "volume is still in use")
+		}
+
+		volume.PendingDelete = true
+		return store.UpdateVolume(tx, volume)
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return &api.RemoveVolumeResponse{}, nil
 }
