@@ -1,6 +1,8 @@
 package csi
 
 import (
+	"context"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/types"
@@ -10,18 +12,6 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state/store"
 )
-
-// passEvents calls handle and then match with each event from the evs channel
-// until match returns true. this allows passing events until a specific
-// desired event has been passed.
-func passEvents(evs <-chan events.Event, match func(events.Event) bool, handle func(events.Event)) {
-	for ev := range evs {
-		handle(ev)
-		if match(ev) {
-			return
-		}
-	}
-}
 
 var _ = Describe("Manager", func() {
 	// The Manager unit tests are intended to mainly avoid using a
@@ -46,9 +36,29 @@ var _ = Describe("Manager", func() {
 		watch chan events.Event
 		// watchCancel cancels the watch operation.
 		watchCancel func()
+
+		ctx context.Context
 	)
 
+	// passEvents passes all events from the watch channel to the handleEvent
+	// method, checking each one against match, until match returns true.
+	// when match is true, processVolumes is called to process all outstanding
+	// volume operations, and then the function returns.
+	//
+	// passEvents allows us to do an end-run around the Run method of the
+	// volume manager, letting us turn a typically asynchronous operation into
+	// a synchronous one for the purpose of testing.
+	passEvents := func(match func(events.Event) bool) {
+		for ev := range watch {
+			vm.handleEvent(ev)
+			if match(ev) {
+				return
+			}
+		}
+	}
+
 	BeforeEach(func() {
+		ctx = context.Background()
 		pluginMaker = &fakePluginMaker{
 			plugins: map[string]*fakePlugin{},
 		}
@@ -205,10 +215,10 @@ var _ = Describe("Manager", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 
-		passEvents(watch, func(ev events.Event) bool {
+		passEvents(func(ev events.Event) bool {
 			_, ok := ev.(api.EventUpdateCluster)
 			return ok
-		}, vm.handleEvent)
+		})
 
 		Expect(pluginMaker.plugins).To(SatisfyAll(
 			HaveLen(2), HaveKey("newPlugin"), HaveKey("newPlugin2"),
@@ -228,10 +238,10 @@ var _ = Describe("Manager", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 
-		passEvents(watch, func(ev events.Event) bool {
+		passEvents(func(ev events.Event) bool {
 			_, ok := ev.(api.EventUpdateCluster)
 			return ok
-		}, vm.handleEvent)
+		})
 
 		Expect(vm.plugins).To(SatisfyAll(
 			HaveLen(2),
@@ -274,10 +284,7 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			passEvents(watch, func(ev events.Event) bool {
-				_, ok := ev.(api.EventCreateVolume)
-				return ok
-			}, vm.handleEvent)
+			vm.processVolume(ctx, volume.ID, 0)
 		})
 
 		It("should call the correct plugin to create volumes", func() {
@@ -297,6 +304,10 @@ var _ = Describe("Manager", func() {
 			Expect(v.VolumeInfo.VolumeContext).To(Equal(
 				map[string]string{"exists": "yes"},
 			))
+		})
+
+		It("should not requeue a successful volume", func() {
+			Expect(vm.pendingVolumes.outstanding).To(HaveLen(0))
 		})
 	})
 
@@ -391,10 +402,10 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			passEvents(watch, func(ev events.Event) bool {
+			passEvents(func(ev events.Event) bool {
 				e, ok := ev.(api.EventCreateNode)
 				return ok && e.Node.ID == "nodeID3"
-			}, vm.handleEvent)
+			})
 
 			Expect(pluginMaker.plugins["newPlugin"].swarmToCSI).To(SatisfyAll(
 				HaveLen(3),
@@ -426,10 +437,10 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			passEvents(watch, func(ev events.Event) bool {
+			passEvents(func(ev events.Event) bool {
 				e, ok := ev.(api.EventUpdateNode)
 				return ok && e.Node.ID == "nodeIDextra"
-			}, vm.handleEvent)
+			})
 
 			Expect(pluginMaker.plugins["newPlugin"].swarmToCSI).To(SatisfyAll(
 				HaveLen(2),
@@ -451,10 +462,10 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			passEvents(watch, func(ev events.Event) bool {
+			passEvents(func(ev events.Event) bool {
 				_, ok := ev.(api.EventDeleteNode)
 				return ok
-			}, vm.handleEvent)
+			})
 
 			Expect(pluginMaker.plugins["newPlugin"].removedIDs).To(SatisfyAll(
 				HaveLen(1), HaveKey("nodeID1"),
@@ -586,24 +597,8 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			// Now, we pass those updates and we expect that soon afterward,
-			// both Volumes should no longer be pending, and should have an
-			// appropriate PublishContext
-			for i := 0; i < 2; i++ {
-				passEvents(watch, func(ev events.Event) bool {
-					_, ok := ev.(api.EventUpdateVolume)
-					return ok
-				}, vm.handleEvent)
-			}
-
-			// couple of quick helpers to make subsequent matchers more readable
-			pollStore := func(id string) *api.Volume {
-				var v *api.Volume
-				s.View(func(tx store.ReadTx) {
-					v = store.GetVolume(tx, id)
-				})
-				return v
-			}
+			vm.processVolume(ctx, v1.ID, 0)
+			vm.processVolume(ctx, v2.ID, 0)
 
 			// quick one-off matcher composed from WithTransform
 			haveBeenPublished := func() GomegaMatcher {
@@ -622,8 +617,12 @@ var _ = Describe("Manager", func() {
 				)
 			}
 
-			Eventually(pollStore(v1.ID)).Should(haveBeenPublished())
-			Eventually(pollStore(v2.ID)).Should(haveBeenPublished())
+			s.View(func(tx store.ReadTx) {
+				v1 = store.GetVolume(tx, v1.ID)
+				v2 = store.GetVolume(tx, v2.ID)
+			})
+			Expect(v1).To(haveBeenPublished())
+			Expect(v2).To(haveBeenPublished())
 
 			// verify, additionally, that ControllerPublishVolume has actually
 			// been called
@@ -634,6 +633,91 @@ var _ = Describe("Manager", func() {
 			Expect(pluginMaker.plugins["plug2"].volumesPublished[v2.ID]).To(
 				ConsistOf("node1"),
 			)
+
+			Expect(vm.pendingVolumes.outstanding).To(HaveLen(0))
+		})
+	})
+
+	Describe("removing a Volume", func() {
+		BeforeEach(func() {
+			plugins = append(plugins, &api.CSIConfig_Plugin{
+				Name: "plug",
+			})
+		})
+
+		JustBeforeEach(func() {
+			volume := &api.Volume{
+				ID: "volumeID",
+				Spec: api.VolumeSpec{
+					Annotations: api.Annotations{
+						Name: "volumeName",
+					},
+					Driver: &api.Driver{
+						Name: "plug",
+					},
+					Availability: api.VolumeAvailabilityDrain,
+				},
+				VolumeInfo: &api.VolumeInfo{
+					VolumeID: "plugID",
+				},
+			}
+
+			err := s.Update(func(tx store.Tx) error {
+				return store.CreateVolume(tx, volume)
+			})
+			Expect(err).ToNot(HaveOccurred())
+			vm.init()
+		})
+
+		It("should delete the Volume", func() {
+			err := s.Update(func(tx store.Tx) error {
+				v := store.GetVolume(tx, "volumeID")
+				v.PendingDelete = true
+				return store.UpdateVolume(tx, v)
+			})
+			Expect(err).ToNot(HaveOccurred())
+			vm.processVolume(ctx, "volumeID", 0)
+
+			By("calling DeleteVolume on the plugin")
+			Expect(pluginMaker.plugins["plug"].volumesDeleted).To(ConsistOf("volumeID"))
+
+			By("removing the Volume from the store")
+			var v *api.Volume
+			s.View(func(tx store.ReadTx) {
+				v = store.GetVolume(tx, "volumeID")
+			})
+			Expect(v).To(BeNil())
+
+			Expect(vm.pendingVolumes.outstanding).To(HaveLen(0))
+		})
+
+		It("should not remove the volume from the store if DeleteVolume fails", func() {
+			err := s.Update(func(tx store.Tx) error {
+				v := store.GetVolume(tx, "volumeID")
+				v.PendingDelete = true
+				v.Spec.Annotations.Labels = map[string]string{
+					failDeleteLabel: "failing delete test",
+				}
+				return store.UpdateVolume(tx, v)
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			vm.processVolume(ctx, "volumeID", 0)
+
+			Expect(pluginMaker.plugins["plug"].volumesDeleted).To(ConsistOf("volumeID"))
+
+			Consistently(func() *api.Volume {
+				var v *api.Volume
+				s.View(func(tx store.ReadTx) {
+					v = store.GetVolume(tx, "volumeID")
+				})
+				return v
+			}).ShouldNot(BeNil())
+
+			// this will create a timer, but because it's only the first retry,
+			// it is a very short timer, and in any case, the entry remains in
+			// outstanding until it is plucked off by a call to wait.
+			Expect(vm.pendingVolumes.outstanding).To(HaveLen(1))
 		})
 	})
 })

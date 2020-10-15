@@ -2,37 +2,16 @@ package csi
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/docker/go-events"
+	"github.com/sirupsen/logrus"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state/store"
-	// "github.com/container-storage-interface/spec/lib/go/csi"
 )
-
-// Scheduler is an interface covering the methods on the volume manager used by
-// the swarmkit scheduler
-type Scheduler interface {
-	// ReserveVolume marks a volume as in use.
-	ReserveVolume(volumeID, taskID, nodeID string, readOnly bool)
-	// UnreserveVolume removes a reservation.
-	UnreserveVolume(volumeID, taskID string)
-}
-
-// volumeStatus wraps the ephemeral status of a volume
-//
-// TODO(dperny): keeping the whole task object here may be... not ideal.
-type volumeStatus struct {
-	// tasks is a mapping of task IDs using this volume to how this volume is
-	// being used by that task.
-	tasks map[string]volumeUsage
-}
-
-type volumeUsage struct {
-	nodeID   string
-	readOnly bool
-}
 
 type Manager struct {
 	store *store.MemoryStore
@@ -55,35 +34,43 @@ type Manager struct {
 	cluster *api.Cluster
 	plugins map[string]Plugin
 
-	// volumes contains information about how volumes are currently being used
-	// by the system. This includes which tasks a volume is in use by, and how
-	// it is being used. if a volume is not yet being used, it may not be
-	// present in this map.
-	volumes map[string]*volumeStatus
-	// volumesMu guards access to the volumes map
-	volumesMu sync.Mutex
+	pendingVolumes *volumeQueue
 }
 
 func NewManager(s *store.MemoryStore) *Manager {
 	return &Manager{
-		store:     s,
-		stopChan:  make(chan struct{}),
-		doneChan:  make(chan struct{}),
-		newPlugin: NewPlugin,
-		plugins:   map[string]Plugin{},
-		provider:  NewSecretProvider(s),
-		volumes:   map[string]*volumeStatus{},
+		store:          s,
+		stopChan:       make(chan struct{}),
+		doneChan:       make(chan struct{}),
+		newPlugin:      NewPlugin,
+		plugins:        map[string]Plugin{},
+		provider:       NewSecretProvider(s),
+		pendingVolumes: newVolumeQueue(),
 	}
 }
 
-func (vm *Manager) Run() {
+// Run runs the manager. The provided context is used as the parent for all RPC
+// calls made to the CSI plugins. Canceling this context will cancel those RPC
+// calls by the nature of contexts, but this is not the preferred way to stop
+// the Manager. Instead, Stop should be called, which cause all RPC calls to be
+// canceled anyway. The context is also used to get the logging context for the
+// Manager.
+func (vm *Manager) Run(ctx context.Context) {
 	vm.startOnce.Do(func() {
-		vm.run()
+		vm.run(ctx)
 	})
 }
 
-func (vm *Manager) run() {
+// run performs the actual meat of the run operation.
+//
+// the argument is called pctx because it's the parent context, from which we
+// immediately resolve a new child context.
+func (vm *Manager) run(pctx context.Context) {
 	defer close(vm.doneChan)
+	ctx, ctxCancel := context.WithCancel(
+		log.WithModule(pctx, "csi/manager"),
+	)
+	defer ctxCancel()
 
 	watch, cancel, err := store.ViewAndWatch(vm.store, func(tx store.ReadTx) error {
 		cluster, err := store.FindClusters(tx, store.ByName(store.DefaultClusterName))
@@ -101,13 +88,64 @@ func (vm *Manager) run() {
 
 	vm.init()
 
+	// run a goroutine which periodically processes incoming volumes. the
+	// handle function will trigger processing every time new events come in
+	// by writing to the channel
+
+	doneProc := make(chan struct{})
+	go func() {
+		for {
+			id, attempt := vm.pendingVolumes.wait()
+			// this case occurs when the stop method has been called on
+			// pendingVolumes. stop is called on pendingVolumes when Stop is
+			// called on the CSI manager.
+			if id == "" && attempt == 0 {
+				break
+			}
+			// TODO(dperny): we can launch some number of workers and process
+			// more than one volume at a time, if desired.
+			vm.processVolume(ctx, id, attempt)
+		}
+
+		// closing doneProc signals that this routine has exited, and allows
+		// the main Run routine to exit.
+		close(doneProc)
+	}()
+
+	// defer read from doneProc. doneProc is closed in the goroutine above,
+	// and this defer will block until then. Because defers are executed as a
+	// stack, this in turn blocks the final defer (closing doneChan) from
+	// running. Ultimately, this prevents Stop from returning until the above
+	// goroutine is closed.
+	defer func() {
+		<-doneProc
+	}()
+
 	for {
 		select {
 		case ev := <-watch:
 			vm.handleEvent(ev)
 		case <-vm.stopChan:
+			vm.pendingVolumes.stop()
 			return
 		}
+	}
+}
+
+// processVolumes encapuslates the logic for processing pending Volumes.
+func (vm *Manager) processVolume(ctx context.Context, id string, attempt uint) {
+	// set up log fields for a derrived context to pass to handleVolume.
+	dctx := log.WithFields(ctx, logrus.Fields{
+		"volume.id": id,
+		"attempt":   attempt,
+	})
+
+	err := vm.handleVolume(dctx, id)
+	// TODO(dperny): differentiate between retryable and non-retryable
+	// errors.
+	if err != nil {
+		log.G(dctx).WithError(err).Info("error handling volume")
+		vm.pendingVolumes.enqueue(id, attempt+1)
 	}
 }
 
@@ -175,9 +213,9 @@ func (vm *Manager) handleEvent(ev events.Event) {
 		vm.cluster = e.Cluster
 		vm.updatePlugins()
 	case api.EventCreateVolume:
-		vm.createVolume(e.Volume)
+		vm.enqueueVolume(e.Volume.ID)
 	case api.EventUpdateVolume:
-		vm.handleVolume(e.Volume.ID)
+		vm.enqueueVolume(e.Volume.ID)
 	case api.EventCreateNode:
 		vm.handleNode(e.Node)
 	case api.EventUpdateNode:
@@ -193,21 +231,24 @@ func (vm *Manager) handleEvent(ev events.Event) {
 	}
 }
 
-func (vm *Manager) createVolume(v *api.Volume) {
+func (vm *Manager) createVolume(ctx context.Context, v *api.Volume) error {
+	l := log.G(ctx).WithField("volume.id", v.ID).WithField("driver", v.Spec.Driver.Name)
+	l.Info("creating volume")
+
 	p, ok := vm.plugins[v.Spec.Driver.Name]
 	if !ok {
-		// TODO(dperny): log something
-		return
+		l.Errorf("volume creation failed: driver %s not found", v.Spec.Driver.Name)
+		return errors.New("TODO")
 	}
 
-	info, err := p.CreateVolume(context.Background(), v)
+	info, err := p.CreateVolume(ctx, v)
 	if err != nil {
-		// TODO(dperny) log or handle errors
-		return
+		l.WithError(err).Error("volume create failed")
+		return err
 	}
 
 	// TODO(dperny): handle error
-	vm.store.Update(func(tx store.Tx) error {
+	err = vm.store.Update(func(tx store.Tx) error {
 		v2 := store.GetVolume(tx, v.ID)
 		// TODO(dperny): handle missing volume
 		if v2 == nil {
@@ -218,23 +259,48 @@ func (vm *Manager) createVolume(v *api.Volume) {
 
 		return store.UpdateVolume(tx, v2)
 	})
+	if err != nil {
+		l.WithError(err).Error("committing created volume to store failed")
+	}
+	return err
 }
 
-// TODO(dperny): add volumes updated to a map and process in batches
-func (vm *Manager) handleVolume(id string) {
+// enqueueVolume enqueues a new volume event, placing the Volume ID into
+// pendingVolumes to be processed. Because enqueueVolume is only called in
+// response to a new Volume update event, not for a retry, the retry number is
+// always reset to 0.
+func (vm *Manager) enqueueVolume(id string) {
+	vm.pendingVolumes.enqueue(id, 0)
+}
+
+// handleVolume processes a Volume. It determines if any relevant update has
+// occurred, and does the required work to handle that update if so.
+//
+// returns an error if handling the volume failed and needs to be retried.
+func (vm *Manager) handleVolume(ctx context.Context, id string) error {
 	var volume *api.Volume
 	vm.store.View(func(tx store.ReadTx) {
 		volume = store.GetVolume(tx, id)
 	})
 	if volume == nil {
-		return
+		// if the volume no longer exists, there is nothing to do, nothing to
+		// retry, and no relevant error.
+		return nil
+	}
+
+	if volume.VolumeInfo == nil {
+		return vm.createVolume(ctx, volume)
+	}
+
+	if volume.PendingDelete {
+		return vm.deleteVolume(ctx, volume)
 	}
 
 	updated := false
 	for _, status := range volume.PublishStatus {
 		if status.State == api.VolumePublishStatus_PENDING_PUBLISH {
 			plug := vm.plugins[volume.Spec.Driver.Name]
-			publishContext, err := plug.PublishVolume(context.TODO(), volume, status.NodeID)
+			publishContext, err := plug.PublishVolume(ctx, volume, status.NodeID)
 			if err == nil {
 				// TODO(dperny): handle error
 				status.State = api.VolumePublishStatus_PUBLISHED
@@ -258,9 +324,10 @@ func (vm *Manager) handleVolume(id string) {
 			v.PublishStatus = volume.PublishStatus
 			return store.UpdateVolume(tx, v)
 		}); err != nil {
-			// TODO(dperny): handle error
+			return err
 		}
 	}
+	return nil
 }
 
 // handleNode handles one node event
@@ -287,4 +354,18 @@ func (vm *Manager) handleNodeRemove(nodeID string) {
 	for _, plugin := range vm.plugins {
 		plugin.RemoveNode(nodeID)
 	}
+}
+
+func (vm *Manager) deleteVolume(ctx context.Context, v *api.Volume) error {
+	// TODO(dperny): handle missing plugin
+	plug := vm.plugins[v.Spec.Driver.Name]
+	err := plug.DeleteVolume(ctx, v)
+	if err != nil {
+		return err
+	}
+
+	// TODO(dperny): handle update error
+	return vm.store.Update(func(tx store.Tx) error {
+		return store.DeleteVolume(tx, v.ID)
+	})
 }

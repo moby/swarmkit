@@ -165,7 +165,7 @@ const (
 	// them, even if they're already published on a Node.
 	VolumeAvailabilityPause VolumeSpec_VolumeAvailability = 1
 	// Drain causes existing workloads using this volume to be rescheduled,
-	// causing the volume to be unpublished and removed.
+	// causing the volume to be unpublished and removed from nodes.
 	VolumeAvailabilityDrain VolumeSpec_VolumeAvailability = 2
 )
 

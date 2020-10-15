@@ -50,6 +50,12 @@ func newVolumeSet() *volumeSet {
 	}
 }
 
+func (vs *volumeSet) getVolume(id string) *api.Volume {
+	// getVolume returns the volume object for the given ID as stored in the
+	// volumeSet, or nil if none exists
+	return vs.volumes[id].volume
+}
+
 func (vs *volumeSet) addOrUpdateVolume(v *api.Volume) {
 	if info, ok := vs.volumes[v.ID]; !ok {
 		vs.volumes[v.ID] = volumeInfo{

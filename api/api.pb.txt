@@ -7492,6 +7492,13 @@ file {
       type_name: ".docker.swarmkit.v1.VolumeInfo"
       json_name: "volumeInfo"
     }
+    field {
+      name: "pending_delete"
+      number: 6
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      json_name: "pendingDelete"
+    }
     options {
       70001 {
         1 {
