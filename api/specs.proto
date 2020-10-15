@@ -566,7 +566,7 @@ message VolumeSpec {
 		PAUSE = 1 [(gogoproto.enumvalue_customname) = "VolumeAvailabilityPause"];
 
 		// Drain causes existing workloads using this volume to be rescheduled,
-		// causing the volume to be unpublished and removed.
+		// causing the volume to be unpublished and removed from nodes.
 		DRAIN = 2 [(gogoproto.enumvalue_customname) = "VolumeAvailabilityDrain"];
 	}
 
