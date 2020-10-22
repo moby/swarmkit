@@ -345,8 +345,8 @@ func (a *assignmentSet) addOrUpdateVolume(readTx store.ReadTx, v *api.Volume) bo
 		Driver:         v.Spec.Driver,
 		VolumeContext:  v.VolumeInfo.VolumeContext,
 		PublishContext: publishStatus.PublishContext,
-		// TODO(dperny): sort out AccessMode.
-		Secrets: v.Spec.Secrets,
+		AccessMode:     v.Spec.AccessMode,
+		Secrets:        v.Spec.Secrets,
 	}
 
 	volumeKey := typeAndID{objType: api.ResourceType_VOLUME, id: v.ID}
