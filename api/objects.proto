@@ -538,10 +538,11 @@ message Volume {
 	// Spec is the desired state of the Volume, as provided by the user.
 	VolumeSpec spec = 3 [(gogoproto.nullable) = false];
 
-	// Status contains information about how the volume is currently being used.
-	VolumeStatus status = 4 [(gogoproto.nullable) = false];
+	// PublishStatus is the status of the volume as it pertains to the various
+	// nodes it is in use on.
+	repeated VolumePublishStatus publish_status = 4;
 
-	// VolumeInfo contains information about the volume originating from the CSI
-	// plugin
+	// VolumeInfo contains information about the volume originating from the
+	// CSI plugin when the volume is created.
 	VolumeInfo volume_info = 5;
 }
