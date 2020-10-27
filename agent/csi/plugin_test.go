@@ -16,9 +16,9 @@ const driverName = "testdriver"
 // clients.
 func newPluginFromClients(name string, nodeClient csi.NodeClient, nodeId string) *NodePlugin {
 	return &NodePlugin{
-		Name:       name,
-		NodeClient: nodeClient,
-		NodeID:     nodeId,
+		name:       name,
+		nodeClient: nodeClient,
+		nodeID:     nodeId,
 	}
 }
 

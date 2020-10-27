@@ -2,6 +2,7 @@ package exec
 
 import (
 	"context"
+	"errors"
 
 	"github.com/docker/swarmkit/api"
 )
@@ -35,11 +36,18 @@ type ConfigsProvider interface {
 	Configs() ConfigsManager
 }
 
+// VolumesProvider is implemented by objects that can store volumes,
+// typically an executor.
+type VolumesProvider interface {
+	Volumes() VolumesManager
+}
+
 // DependencyManager is a meta-object that can keep track of typed objects
 // such as secrets and configs.
 type DependencyManager interface {
 	SecretsProvider
 	ConfigsProvider
+	VolumesProvider
 }
 
 // DependencyGetter is a meta-object that can provide access to typed objects
@@ -80,3 +88,26 @@ type ConfigsManager interface {
 	Remove(configs []string)   // remove the configs by ID
 	Reset()                    // remove all configs
 }
+
+// VolumeGetter contains volume data necessary for the Controller.
+type VolumeGetter interface {
+	// Get returns the the volume with a specific volume ID, if available.
+	// When the volume is not available, the return will be nil.
+	Get(volumeID string) (string, error)
+}
+
+// VolumesManager is the interface for volume storage and updates.
+type VolumesManager interface {
+	VolumeGetter
+
+	Add(VolumeAssignment ...api.VolumeAssignment) // add one or more volumes
+	Remove(volumes []string)                      // remove the volumes by ID
+	Reset()                                       // remove all volumes
+}
+
+var (
+	// ErrDependencyNotReady is returned if a given dependency can be accessed
+	// through the Getter, but is not yet ready to be used. This is most
+	// relevant for Volumes, which must be staged and published on the node.
+	ErrDependencyNotReady error = errors.New("dependency not ready")
+)
