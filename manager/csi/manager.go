@@ -155,10 +155,17 @@ func (vm *Manager) processVolume(ctx context.Context, id string, attempt uint) {
 func (vm *Manager) init() {
 	vm.updatePlugins()
 
-	var nodes []*api.Node
+	var (
+		nodes   []*api.Node
+		volumes []*api.Volume
+	)
 	vm.store.View(func(tx store.ReadTx) {
 		var err error
 		nodes, err = store.FindNodes(tx, store.All)
+		if err != nil {
+			// TODO(dperny): log something
+		}
+		volumes, err = store.FindVolumes(tx, store.All)
 		if err != nil {
 			// TODO(dperny): log something
 		}
@@ -166,6 +173,14 @@ func (vm *Manager) init() {
 
 	for _, node := range nodes {
 		vm.handleNode(node)
+	}
+
+	// on initialization, we enqueue all of the Volumes. The easiest way to
+	// know if a Volume needs some work performed is to just pass it through
+	// the VolumeManager. If it doesn't need any work, then we will quickly
+	// skip by it. Otherwise, the needed work will be performed.
+	for _, volume := range volumes {
+		vm.enqueueVolume(volume.ID)
 	}
 }
 
