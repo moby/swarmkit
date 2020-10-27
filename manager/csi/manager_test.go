@@ -29,6 +29,9 @@ var _ = Describe("Manager", func() {
 		// nodes is a slice of all nodes to create during setup
 		nodes []*api.Node
 
+		// volumes is a slice of all volumes to create during setup
+		volumes []*api.Volume
+
 		pluginMaker *fakePluginMaker
 
 		// watch contains an event channel, which is produced by
@@ -67,6 +70,7 @@ var _ = Describe("Manager", func() {
 
 		plugins = []*api.CSIConfig_Plugin{}
 		nodes = []*api.Node{}
+		volumes = []*api.Volume{}
 
 		vm = NewManager(s)
 		vm.newPlugin = pluginMaker.newFakePlugin
@@ -88,6 +92,11 @@ var _ = Describe("Manager", func() {
 		err := s.Update(func(tx store.Tx) error {
 			for _, node := range nodes {
 				if err := store.CreateNode(tx, node); err != nil {
+					return err
+				}
+			}
+			for _, volume := range volumes {
+				if err := store.CreateVolume(tx, volume); err != nil {
 					return err
 				}
 			}
@@ -167,6 +176,34 @@ var _ = Describe("Manager", func() {
 					},
 				},
 			)
+
+			volumes = append(volumes,
+				&api.Volume{
+					ID: "volumeID1",
+					Spec: api.VolumeSpec{
+						Annotations: api.Annotations{
+							Name: "volume1",
+						},
+						Driver: &api.Driver{
+							Name: "newPlugin",
+						},
+					},
+				},
+				&api.Volume{
+					ID: "volumeID2",
+					Spec: api.VolumeSpec{
+						Annotations: api.Annotations{
+							Name: "volume2",
+						},
+						Driver: &api.Driver{
+							Name: "newPlugin",
+						},
+					},
+					VolumeInfo: &api.VolumeInfo{
+						VolumeID: "volumePluginID",
+					},
+				},
+			)
 		})
 
 		JustBeforeEach(func() {
@@ -194,6 +231,10 @@ var _ = Describe("Manager", func() {
 				HaveKeyWithValue("nodeID1", "differentPluginNode1"),
 				HaveKeyWithValue("nodeID2", "differentPluginNode2"),
 			))
+		})
+
+		It("should enqueue all volumes", func() {
+			Expect(vm.pendingVolumes.Outstanding()).To(Equal(2))
 		})
 	})
 
@@ -548,39 +589,33 @@ var _ = Describe("Manager", func() {
 					VolumeContext: map[string]string{"foo": "bar"},
 					VolumeID:      "plug1VolID1",
 				},
+				PublishStatus: []*api.VolumePublishStatus{
+					{
+						NodeID: "node1",
+						State:  api.VolumePublishStatus_PENDING_PUBLISH,
+					}, {
+						NodeID:         "node3",
+						PublishContext: map[string]string{"unpublish": "thisone"},
+						State:          api.VolumePublishStatus_PENDING_UNPUBLISH,
+					}, {
+						NodeID: "node2",
+						State:  api.VolumePublishStatus_PENDING_PUBLISH,
+					}, {
+						NodeID:         "node4",
+						PublishContext: map[string]string{"unpublish": "thisone"},
+						State:          api.VolumePublishStatus_PENDING_UNPUBLISH,
+					},
+				},
 			}
-
-			err := s.Update(func(tx store.Tx) error {
-				return store.CreateVolume(tx, v1)
-			})
-			Expect(err).ToNot(HaveOccurred())
 		})
 
 		JustBeforeEach(func() {
 			vm.init()
-			v1.PublishStatus = append(v1.PublishStatus,
-				&api.VolumePublishStatus{
-					NodeID: "node1",
-					State:  api.VolumePublishStatus_PENDING_PUBLISH,
-				},
-				&api.VolumePublishStatus{
-					NodeID:         "node3",
-					PublishContext: map[string]string{"unpublish": "thisone"},
-					State:          api.VolumePublishStatus_PENDING_UNPUBLISH,
-				},
-				&api.VolumePublishStatus{
-					NodeID: "node2",
-					State:  api.VolumePublishStatus_PENDING_PUBLISH,
-				},
-				&api.VolumePublishStatus{
-					NodeID:         "node4",
-					PublishContext: map[string]string{"unpublish": "thisone"},
-					State:          api.VolumePublishStatus_PENDING_UNPUBLISH,
-				},
-			)
 
+			// do the creation after the initialization, so that the init does
+			// not enqueue the volumes for processing.
 			err := s.Update(func(tx store.Tx) error {
-				return store.UpdateVolume(tx, v1)
+				return store.CreateVolume(tx, v1)
 			})
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -676,7 +711,7 @@ var _ = Describe("Manager", func() {
 			Expect(nodeStatus4.Message).ToNot(BeEmpty())
 
 			By("enqueuing the volume for a retry")
-			Expect(vm.pendingVolumes.outstanding).To(HaveLen(1))
+			Expect(vm.pendingVolumes.Outstanding()).To(Equal(1))
 		})
 	})
 
@@ -688,6 +723,10 @@ var _ = Describe("Manager", func() {
 		})
 
 		JustBeforeEach(func() {
+			vm.init()
+
+			// do creation after initialization to avoid init enqueuing the
+			// volume
 			volume := &api.Volume{
 				ID: "volumeID",
 				Spec: api.VolumeSpec{
@@ -708,7 +747,6 @@ var _ = Describe("Manager", func() {
 				return store.CreateVolume(tx, volume)
 			})
 			Expect(err).ToNot(HaveOccurred())
-			vm.init()
 		})
 
 		It("should delete the Volume", func() {
@@ -730,6 +768,8 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(v).To(BeNil())
 
+			// check that pendingVolumes is empty, which will not be the case
+			// if the delete operation failed.
 			Expect(vm.pendingVolumes.Outstanding()).To(Equal(0))
 		})
 
