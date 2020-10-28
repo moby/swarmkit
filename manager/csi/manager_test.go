@@ -476,36 +476,63 @@ var _ = Describe("Manager", func() {
 		})
 	})
 
-	Describe("publishing volumes", func() {
+	Describe("publishing and unpublishing volumes", func() {
 		var (
-			task   *api.Task
-			v1, v2 *api.Volume
+			v1 *api.Volume
 		)
 		BeforeEach(func() {
 			plugins = append(plugins,
 				&api.CSIConfig_Plugin{
 					Name: "plug1",
 				},
-				&api.CSIConfig_Plugin{
-					Name: "plug2",
-				},
 			)
 
-			nodes = append(nodes, &api.Node{
-				ID: "node1",
-				Description: &api.NodeDescription{
-					CSIInfo: []*api.NodeCSIInfo{
-						{
-							PluginName: "plug1",
-							NodeID:     "plug1Node1",
-						},
-						{
-							PluginName: "plug2",
-							NodeID:     "plug2Node1",
+			nodes = append(nodes,
+				&api.Node{
+					ID: "node1",
+					Description: &api.NodeDescription{
+						CSIInfo: []*api.NodeCSIInfo{
+							{
+								PluginName: "plug1",
+								NodeID:     "plug1Node1",
+							},
 						},
 					},
 				},
-			})
+				&api.Node{
+					ID: "node2",
+					Description: &api.NodeDescription{
+						CSIInfo: []*api.NodeCSIInfo{
+							{
+								PluginName: "plug1",
+								NodeID:     "plug1Node2",
+							},
+						},
+					},
+				},
+				&api.Node{
+					ID: "node3",
+					Description: &api.NodeDescription{
+						CSIInfo: []*api.NodeCSIInfo{
+							{
+								PluginName: "plug1",
+								NodeID:     "plug1Node3",
+							},
+						},
+					},
+				},
+				&api.Node{
+					ID: "node4",
+					Description: &api.NodeDescription{
+						CSIInfo: []*api.NodeCSIInfo{
+							{
+								PluginName: "plug1",
+								NodeID:     "plug1Node4",
+							},
+						},
+					},
+				},
+			)
 
 			v1 = &api.Volume{
 				ID: "volumeID1",
@@ -522,85 +549,47 @@ var _ = Describe("Manager", func() {
 					VolumeID:      "plug1VolID1",
 				},
 			}
-			v2 = &api.Volume{
-				ID: "volumeID2",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
-						Name: "volume2",
-					},
-					Driver: &api.Driver{
-						Name: "plug2",
-					},
-				},
-				VolumeInfo: &api.VolumeInfo{
-					VolumeContext: map[string]string{"bas": "bat"},
-					VolumeID:      "plug2VolID1",
-				},
-			}
-
-			task = &api.Task{
-				ID:     "task1",
-				NodeID: "",
-				Spec: api.TaskSpec{
-					Runtime: &api.TaskSpec_Container{
-						Container: &api.ContainerSpec{
-							Mounts: []api.Mount{
-								{
-									Type:   api.MountTypeCSI,
-									Source: "volume1",
-									Target: "/home",
-								}, {
-									Type:   api.MountTypeCSI,
-									Source: "volume2",
-									Target: "/var",
-								},
-							},
-						},
-					},
-				},
-				Status: api.TaskStatus{
-					State: api.TaskStatePending,
-				},
-			}
 
 			err := s.Update(func(tx store.Tx) error {
-				if err := store.CreateTask(tx, task); err != nil {
-					return err
-				}
-				if err := store.CreateVolume(tx, v1); err != nil {
-					return err
-				}
-				return store.CreateVolume(tx, v2)
+				return store.CreateVolume(tx, v1)
 			})
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		JustBeforeEach(func() {
 			vm.init()
+			v1.PublishStatus = append(v1.PublishStatus,
+				&api.VolumePublishStatus{
+					NodeID: "node1",
+					State:  api.VolumePublishStatus_PENDING_PUBLISH,
+				},
+				&api.VolumePublishStatus{
+					NodeID:         "node3",
+					PublishContext: map[string]string{"unpublish": "thisone"},
+					State:          api.VolumePublishStatus_PENDING_UNPUBLISH,
+				},
+				&api.VolumePublishStatus{
+					NodeID: "node2",
+					State:  api.VolumePublishStatus_PENDING_PUBLISH,
+				},
+				&api.VolumePublishStatus{
+					NodeID:         "node4",
+					PublishContext: map[string]string{"unpublish": "thisone"},
+					State:          api.VolumePublishStatus_PENDING_UNPUBLISH,
+				},
+			)
+
+			err := s.Update(func(tx store.Tx) error {
+				return store.UpdateVolume(tx, v1)
+			})
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should call ControllerPublishVolume for each pending PublishStatus", func() {
-			v1.PublishStatus = append(v1.PublishStatus, &api.VolumePublishStatus{
-				NodeID: "node1",
-				State:  api.VolumePublishStatus_PENDING_PUBLISH,
-			})
-			v2.PublishStatus = append(v2.PublishStatus, &api.VolumePublishStatus{
-				NodeID: "node1",
-				State:  api.VolumePublishStatus_PENDING_PUBLISH,
-			})
-
-			err := s.Update(func(tx store.Tx) error {
-				if err := store.UpdateVolume(tx, v1); err != nil {
-					return err
-				}
-				return store.UpdateVolume(tx, v2)
-			})
-			Expect(err).ToNot(HaveOccurred())
-
 			vm.processVolume(ctx, v1.ID, 0)
-			vm.processVolume(ctx, v2.ID, 0)
 
-			// quick one-off matcher composed from WithTransform
+			// node1 and node2 should be published, and node3 and node4 should
+			// be deleted
 			haveBeenPublished := func() GomegaMatcher {
 				return WithTransform(
 					func(v *api.Volume) []*api.VolumePublishStatus {
@@ -609,32 +598,85 @@ var _ = Describe("Manager", func() {
 						}
 						return v.PublishStatus
 					},
-					ConsistOf(&api.VolumePublishStatus{
-						NodeID:         "node1",
-						State:          api.VolumePublishStatus_PUBLISHED,
-						PublishContext: map[string]string{"faked": "yeah"},
-					}),
+					ConsistOf(
+						&api.VolumePublishStatus{
+							NodeID:         "node1",
+							State:          api.VolumePublishStatus_PUBLISHED,
+							PublishContext: map[string]string{"faked": "yeah"},
+						},
+						&api.VolumePublishStatus{
+							NodeID:         "node2",
+							State:          api.VolumePublishStatus_PUBLISHED,
+							PublishContext: map[string]string{"faked": "yeah"},
+						},
+					),
 				)
 			}
 
 			s.View(func(tx store.ReadTx) {
 				v1 = store.GetVolume(tx, v1.ID)
-				v2 = store.GetVolume(tx, v2.ID)
 			})
 			Expect(v1).To(haveBeenPublished())
-			Expect(v2).To(haveBeenPublished())
 
 			// verify, additionally, that ControllerPublishVolume has actually
 			// been called
 			Expect(pluginMaker.plugins["plug1"].volumesPublished[v1.ID]).To(
-				ConsistOf("node1"),
+				ConsistOf("node1", "node2"),
 			)
-
-			Expect(pluginMaker.plugins["plug2"].volumesPublished[v2.ID]).To(
-				ConsistOf("node1"),
+			Expect(pluginMaker.plugins["plug1"].volumesUnpublished[v1.ID]).To(
+				ConsistOf("node3", "node4"),
 			)
 
 			Expect(vm.pendingVolumes.outstanding).To(HaveLen(0))
+		})
+
+		It("should fail gracefully and only in part", func() {
+			v1.Spec.Annotations.Labels = map[string]string{
+				failPublishLabel: "node2,node4",
+			}
+			err := s.Update(func(tx store.Tx) error {
+				return store.UpdateVolume(tx, v1)
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			vm.processVolume(ctx, v1.ID, 0)
+
+			By("still updating and committing the volume to the store")
+			var (
+				updatedVolume                         *api.Volume
+				nodeStatus1, nodeStatus2, nodeStatus4 *api.VolumePublishStatus
+			)
+
+			s.View(func(tx store.ReadTx) {
+				updatedVolume = store.GetVolume(tx, v1.ID)
+			})
+			Expect(updatedVolume).ToNot(BeNil())
+			Expect(updatedVolume.PublishStatus).To(HaveLen(3))
+
+			for _, status := range updatedVolume.PublishStatus {
+				switch status.NodeID {
+				case "node1":
+					nodeStatus1 = status
+				case "node2":
+					nodeStatus2 = status
+				case "node4":
+					nodeStatus4 = status
+				}
+			}
+
+			By("updating any PublishStatuses that succeed")
+			Expect(nodeStatus1.State).To(Equal(api.VolumePublishStatus_PUBLISHED))
+			Expect(nodeStatus1.Message).To(BeEmpty())
+
+			By("explaining the cause for the failure in the status message")
+			Expect(nodeStatus2.State).To(Equal(api.VolumePublishStatus_PENDING_PUBLISH))
+			Expect(nodeStatus2.Message).ToNot(BeEmpty())
+
+			Expect(nodeStatus4.State).To(Equal(api.VolumePublishStatus_PENDING_UNPUBLISH))
+			Expect(nodeStatus4.Message).ToNot(BeEmpty())
+
+			By("enqueuing the volume for a retry")
+			Expect(vm.pendingVolumes.outstanding).To(HaveLen(1))
 		})
 	})
 
