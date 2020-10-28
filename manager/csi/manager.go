@@ -3,6 +3,7 @@ package csi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/docker/go-events"
@@ -278,6 +279,8 @@ func (vm *Manager) enqueueVolume(id string) {
 // occurred, and does the required work to handle that update if so.
 //
 // returns an error if handling the volume failed and needs to be retried.
+//
+// even if an error is returned, the store may still be updated.
 func (vm *Manager) handleVolume(ctx context.Context, id string) error {
 	var volume *api.Volume
 	vm.store.View(func(tx store.ReadTx) {
@@ -298,16 +301,58 @@ func (vm *Manager) handleVolume(ctx context.Context, id string) error {
 	}
 
 	updated := false
-	for _, status := range volume.PublishStatus {
-		if status.State == api.VolumePublishStatus_PENDING_PUBLISH {
+	// TODO(dperny): it's just pointers, but copying the entire PublishStatus
+	// on each update might be intensive.
+
+	// we take a copy of the PublishStatus slice, because if we succeed in an
+	// unpublish operation, we will delete that status from PublishStatus.
+	statuses := make([]*api.VolumePublishStatus, len(volume.PublishStatus))
+	copy(statuses, volume.PublishStatus)
+
+	// failedPublishOrUnpublish is a slice of nodes where publish or unpublish
+	// operations failed. Publishing or unpublishing a volume can succeed or
+	// fail in part. If any failures occur, we will add the node ID of the
+	// publish operation that failed to this slice. Then, at the end of this
+	// function, after we update the store, if there are any failed operations,
+	// we will still return an error.
+	failedPublishOrUnpublish := []string{}
+
+	// adjustIndex is the number of entries deleted from volume.PublishStatus.
+	// when we're deleting entries from volume.PublishStatus, the index of the
+	// entry in statuses will no longer match the index of the same entry in
+	// volume.PublishStatus. we subtract adjustIndex from i to get the index
+	// where the entry is found after taking into account the deleted entries.
+	adjustIndex := 0
+
+	for i, status := range statuses {
+		switch status.State {
+		case api.VolumePublishStatus_PENDING_PUBLISH:
 			plug := vm.plugins[volume.Spec.Driver.Name]
 			publishContext, err := plug.PublishVolume(ctx, volume, status.NodeID)
 			if err == nil {
 				// TODO(dperny): handle error
 				status.State = api.VolumePublishStatus_PUBLISHED
 				status.PublishContext = publishContext
-				updated = true
+				status.Message = ""
+			} else {
+				status.Message = fmt.Sprintf("error publishing volume: %v", err)
+				failedPublishOrUnpublish = append(failedPublishOrUnpublish, status.NodeID)
 			}
+			updated = true
+		case api.VolumePublishStatus_PENDING_UNPUBLISH:
+			plug := vm.plugins[volume.Spec.Driver.Name]
+			err := plug.UnpublishVolume(ctx, volume, status.NodeID)
+			if err == nil {
+				// if there is no error with unpublishing, then we delete the
+				// status from the statuses slice.
+				j := i - adjustIndex
+				volume.PublishStatus = append(volume.PublishStatus[:j], volume.PublishStatus[j+1:]...)
+				adjustIndex++
+			} else {
+				status.Message = fmt.Sprintf("error unpublishing volume: %v", err)
+			}
+
+			updated = true
 		}
 	}
 
@@ -317,7 +362,7 @@ func (vm *Manager) handleVolume(ctx context.Context, id string) error {
 			// volume object.
 			v := store.GetVolume(tx, volume.ID)
 			if v == nil {
-				// volume should never be deleted with pending publishes.
+				// TODO(dperny): volume should never be deleted with pending publishes.
 				// either handle this error otherwise document why we don't.
 				return nil
 			}
@@ -327,6 +372,10 @@ func (vm *Manager) handleVolume(ctx context.Context, id string) error {
 		}); err != nil {
 			return err
 		}
+	}
+
+	if len(failedPublishOrUnpublish) > 0 {
+		return fmt.Errorf("error publishing or unpublishing to some nodes: %v", failedPublishOrUnpublish)
 	}
 	return nil
 }

@@ -15,6 +15,7 @@ type Plugin interface {
 	CreateVolume(context.Context, *api.Volume) (*api.VolumeInfo, error)
 	DeleteVolume(context.Context, *api.Volume) error
 	PublishVolume(context.Context, *api.Volume, string) (map[string]string, error)
+	UnpublishVolume(context.Context, *api.Volume, string) error
 	AddNode(swarmID, csiID string)
 	RemoveNode(swarmID string)
 }
@@ -126,16 +127,43 @@ func (p *plugin) CreateVolume(ctx context.Context, v *api.Volume) (*api.VolumeIn
 	return makeVolumeInfo(resp.Volume), nil
 }
 
-func (p *plugin) DeleteVolume(_ context.Context, v *api.Volume) error {
-	return errors.New("not yet implemented")
+func (p *plugin) DeleteVolume(ctx context.Context, v *api.Volume) error {
+	if v.VolumeInfo == nil {
+		return errors.New("VolumeInfo must not be nil")
+	}
+	// we won't use a fancy createDeleteVolumeRequest method because the
+	// request is simple enough to not bother with it
+	secrets := p.makeSecrets(v)
+	req := &csi.DeleteVolumeRequest{
+		VolumeId: v.VolumeInfo.VolumeID,
+		Secrets:  secrets,
+	}
+	// response from RPC intentionally left blank
+	_, err := p.Client().DeleteVolume(ctx, req)
+	return err
 }
 
 // PublishVolume calls ControllerPublishVolume to publish the given Volume to
 // the Node with the given swarmkit ID. It returns a map, which is the
 // PublishContext for this Volume on this Node.
 func (p *plugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string) (map[string]string, error) {
-	// TODO(dperny): implement
-	return nil, nil
+	req := p.makeControllerPublishVolumeRequest(v, nodeID)
+	resp, err := p.Client().ControllerPublishVolume(ctx, req)
+
+	if err != nil {
+		return nil, err
+	}
+	return resp.PublishContext, nil
+}
+
+// UnpublishVolume calls ControllerUnpublishVolume to unpublish the given
+// Volume from the Node with the given swarmkit ID. It returns an error if the
+// unpublish does not succeed
+func (p *plugin) UnpublishVolume(ctx context.Context, v *api.Volume, nodeID string) error {
+	req := p.makeControllerUnpublishVolumeRequest(v, nodeID)
+	// response of the RPC intentionally left blank
+	_, err := p.Client().ControllerUnpublishVolume(ctx, req)
+	return err
 }
 
 // AddNode adds a mapping for a node's swarm ID to the ID provided by this CSI
@@ -191,4 +219,36 @@ func (p *plugin) makeSecrets(v *api.Volume) map[string]string {
 		}
 	}
 	return secrets
+}
+
+func (p *plugin) makeControllerPublishVolumeRequest(v *api.Volume, nodeID string) *csi.ControllerPublishVolumeRequest {
+	if v.VolumeInfo == nil {
+		return nil
+	}
+
+	secrets := p.makeSecrets(v)
+	capability := makeAccessMode(v.Spec.AccessMode)
+	capability.AccessType = &csi.VolumeCapability_Mount{
+		Mount: &csi.VolumeCapability_MountVolume{},
+	}
+	return &csi.ControllerPublishVolumeRequest{
+		VolumeId:         v.VolumeInfo.VolumeID,
+		NodeId:           p.swarmToCSI[nodeID],
+		Secrets:          secrets,
+		VolumeCapability: capability,
+		VolumeContext:    v.VolumeInfo.VolumeContext,
+	}
+}
+
+func (p *plugin) makeControllerUnpublishVolumeRequest(v *api.Volume, nodeID string) *csi.ControllerUnpublishVolumeRequest {
+	if v.VolumeInfo == nil {
+		return nil
+	}
+
+	secrets := p.makeSecrets(v)
+	return &csi.ControllerUnpublishVolumeRequest{
+		VolumeId: v.VolumeInfo.VolumeID,
+		NodeId:   p.swarmToCSI[nodeID],
+		Secrets:  secrets,
+	}
 }
