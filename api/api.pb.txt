@@ -6093,6 +6093,41 @@ file {
       type_name: ".docker.swarmkit.v1.CapacityRange"
       json_name: "capacityRange"
     }
+    field {
+      name: "availability"
+      number: 8
+      label: LABEL_OPTIONAL
+      type: TYPE_ENUM
+      type_name: ".docker.swarmkit.v1.VolumeSpec.VolumeAvailability"
+      json_name: "availability"
+    }
+    enum_type {
+      name: "VolumeAvailability"
+      value {
+        name: "ACTIVE"
+        number: 0
+        options {
+          66001: "VolumeAvailabilityActive"
+        }
+      }
+      value {
+        name: "PAUSE"
+        number: 1
+        options {
+          66001: "VolumeAvailabilityPause"
+        }
+      }
+      value {
+        name: "DRAIN"
+        number: 2
+        options {
+          66001: "VolumeAvailabilityDrain"
+        }
+      }
+      options {
+        62001: 0
+      }
+    }
   }
   syntax: "proto3"
 }
