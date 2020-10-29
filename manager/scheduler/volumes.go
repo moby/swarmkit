@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/manager/state/store"
 )
 
 // the scheduler package does double duty -- in addition to choosing nodes, it
@@ -36,6 +37,9 @@ type volumeUsage struct {
 type volumeInfo struct {
 	volume *api.Volume
 	tasks  map[string]volumeUsage
+	// nodes is a set of nodes a volume is in use on. it maps a node ID to a
+	// reference count for how many tasks are using the volume on that node.
+	nodes map[string]int
 }
 
 func newVolumeSet() *volumeSet {
@@ -50,6 +54,7 @@ func (vs *volumeSet) addOrUpdateVolume(v *api.Volume) {
 	if info, ok := vs.volumes[v.ID]; !ok {
 		vs.volumes[v.ID] = volumeInfo{
 			volume: v,
+			nodes:  map[string]int{},
 			tasks:  map[string]volumeUsage{},
 		}
 	} else {
@@ -141,6 +146,8 @@ func (vs *volumeSet) reserveVolume(volumeID, taskID, nodeID string, readOnly boo
 	}
 
 	info.tasks[taskID] = volumeUsage{nodeID: nodeID, readOnly: readOnly}
+	// increment the reference count for this node.
+	info.nodes[nodeID] = info.nodes[nodeID] + 1
 }
 
 func (vs *volumeSet) releaseVolume(volumeID, taskID string) {
@@ -150,7 +157,44 @@ func (vs *volumeSet) releaseVolume(volumeID, taskID string) {
 		return
 	}
 
-	delete(info.tasks, taskID)
+	// decrement the reference count for this task's node
+	usage, ok := info.tasks[taskID]
+	if ok {
+		// this is probably an unnecessarily high level of caution, but make
+		// sure we don't go below zero on node count.
+		if c := info.nodes[usage.nodeID]; c > 0 {
+			info.nodes[usage.nodeID] = c - 1
+		}
+		delete(info.tasks, taskID)
+	}
+}
+
+// freeVolumes finds volumes that are no longer in use on some nodes, and
+// updates them to be unpublished from those nodes.
+//
+// TODO(dperny): this is messy and has a lot of overhead. it should be reworked
+// to something more streamlined.
+func (vs *volumeSet) freeVolumes(tx store.Tx) error {
+	for volumeID, info := range vs.volumes {
+		v := store.GetVolume(tx, volumeID)
+		if v == nil {
+			continue
+		}
+
+		changed := false
+		for _, status := range v.PublishStatus {
+			if info.nodes[status.NodeID] == 0 && status.State == api.VolumePublishStatus_PUBLISHED {
+				status.State = api.VolumePublishStatus_PENDING_NODE_UNPUBLISH
+				changed = true
+			}
+		}
+		if changed {
+			if err := store.UpdateVolume(tx, v); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // isVolumeAvailableOnNode checks if a volume satisfying the given mount is

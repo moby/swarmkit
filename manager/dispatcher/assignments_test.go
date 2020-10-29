@@ -81,6 +81,7 @@ func TestAssignVolume(t *testing.T) {
 
 	// next, create an assignment set
 	as := newAssignmentSet(
+		"node1",
 		// we'll just use the standard logger here. it's as good as any other.
 		logrus.NewEntry(logrus.StandardLogger()),
 		// we can pass nil for the DriverProvider here, because it only comes
@@ -88,57 +89,25 @@ func TestAssignVolume(t *testing.T) {
 		nil,
 	)
 
-	mapKey := typeAndID{objType: api.ResourceType_VOLUME, id: "volume1"}
-
-	// we need a task here, because in assignVolume we call assignSecret, which
-	// needs a task object. fortunately, it can be pretty bare.
-	task := &api.Task{
-		ID:     "task1",
-		NodeID: "node1",
-	}
+	var modified bool
 
 	// finally, we can do our assignVolume call
 	s.View(func(tx store.ReadTx) {
-		assignVolume(as, tx, mapKey, task)
+		v := store.GetVolume(tx, "volume1")
+		modified = as.addOrUpdateVolume(tx, v)
 	})
+
+	assert.False(t, modified)
 
 	// calling as.message gets the changes until now and also reset the changes
 	// tracked internally.
 	m := as.message()
 
-	// the assignVolume call won't actually assign the volume, because it is not
-	// ready. instead, we expect it to be put in pendingVolumes. therefore,
-	// there should be 2 changes, both volume secrets.
-	assert.Len(t, m.Changes, 2)
-
-	var foundSecret1, foundSecret2 bool
-	for _, change := range m.Changes {
-		// every one of these should be an Update change
-		assert.Equal(t, change.Action, api.AssignmentChange_AssignmentActionUpdate)
-		secretAssignment := change.Assignment.Item.(*api.Assignment_Secret)
-		// we don't need to test correctness of the assignment content,
-		// just that it's present
-		switch secretAssignment.Secret.ID {
-		case "secret1":
-			foundSecret1 = true
-		case "secret2":
-			foundSecret2 = true
-		default:
-			t.Fatalf("found unexpected secret assignment %s", secretAssignment.Secret.ID)
-		}
-	}
-	/*
-		case *api.Assignment_Volume:
-			assert.Equal(t, c.Volume, &api.VolumeAssignment{
-			})
-	*/
-
-	assert.True(t, foundSecret1, "expected to find secret1 assignment")
-	assert.True(t, foundSecret2, "expected to find secret2 assignment")
+	// the Volume will not yet be assigned, because it is not ready.
+	assert.Len(t, m.Changes, 0)
 
 	var (
-		nv              *api.Volume
-		thisNodePublish *api.VolumePublishStatus
+		nv *api.Volume
 	)
 
 	// now update the volume to state PUBLISHED
@@ -146,7 +115,6 @@ func TestAssignVolume(t *testing.T) {
 		nv = store.GetVolume(tx, "volume1")
 		for _, s := range nv.PublishStatus {
 			if s.NodeID == "node1" {
-				thisNodePublish = s
 				s.State = api.VolumePublishStatus_PUBLISHED
 				s.PublishContext = map[string]string{
 					"shouldbe": "thisone",
@@ -157,15 +125,79 @@ func TestAssignVolume(t *testing.T) {
 		return store.UpdateVolume(tx, nv)
 	}))
 
-	// now we should call sendVolume
-	as.sendVolume("volume1", thisNodePublish)
+	s.View(func(tx store.ReadTx) {
+		vol := store.GetVolume(tx, "volume1")
+		modified = as.addOrUpdateVolume(tx, vol)
+	})
 
-	m2 := as.message()
-	require.Len(t, m2.Changes, 1)
-	av, ok := m2.Changes[0].Assignment.Item.(*api.Assignment_Volume)
-	require.True(t, ok, "expected assignment to be of type Assignment_Volume")
+	assert.True(t, modified)
 
-	assert.Equal(t, av.Volume, &api.VolumeAssignment{
+	m = as.message()
+	assert.Len(t, m.Changes, 3)
+
+	var foundSecret1, foundSecret2 bool
+	for _, change := range m.Changes {
+		if vol, ok := change.Assignment.Item.(*api.Assignment_Volume); ok {
+			assert.Equal(t, change.Action, api.AssignmentChange_AssignmentActionUpdate)
+			assert.Equal(t, vol.Volume, &api.VolumeAssignment{
+				ID:       "volume1",
+				VolumeID: "volumeID1",
+				Driver: &api.Driver{
+					Name: "driver",
+				},
+				VolumeContext:  map[string]string{"foo": "bar"},
+				PublishContext: map[string]string{"shouldbe": "thisone"},
+				Secrets: []*api.VolumeSecret{
+					{Key: "secretKey1", Secret: "secret1"},
+					{Key: "secretKey2", Secret: "secret2"},
+				},
+			})
+		} else {
+			secretAssignment := change.Assignment.Item.(*api.Assignment_Secret)
+			// we don't need to test correctness of the assignment content,
+			// just that it's present
+			switch secretAssignment.Secret.ID {
+			case "secret1":
+				foundSecret1 = true
+			case "secret2":
+				foundSecret2 = true
+			default:
+				t.Fatalf("found unexpected secret assignment %s", secretAssignment.Secret.ID)
+			}
+		}
+
+		// every one of these should be an Update change
+		assert.Equal(t, change.Action, api.AssignmentChange_AssignmentActionUpdate)
+	}
+
+	assert.True(t, foundSecret1)
+	assert.True(t, foundSecret2)
+
+	// now update the volume to be pending removal
+	require.NoError(t, s.Update(func(tx store.Tx) error {
+		v := store.GetVolume(tx, "volume1")
+		for _, status := range v.PublishStatus {
+			if status.NodeID == "node1" {
+				status.State = api.VolumePublishStatus_PENDING_NODE_UNPUBLISH
+			}
+		}
+
+		return store.UpdateVolume(tx, v)
+	}))
+
+	s.View(func(tx store.ReadTx) {
+		v := store.GetVolume(tx, "volume1")
+		modified = as.addOrUpdateVolume(tx, v)
+	})
+	assert.True(t, modified)
+
+	m = as.message()
+	assert.Len(t, m.Changes, 1)
+
+	assert.Equal(t, m.Changes[0].Action, api.AssignmentChange_AssignmentActionRemove)
+	v, ok := m.Changes[0].Assignment.Item.(*api.Assignment_Volume)
+	assert.True(t, ok)
+	assert.Equal(t, v.Volume, &api.VolumeAssignment{
 		ID:       "volume1",
 		VolumeID: "volumeID1",
 		Driver: &api.Driver{
@@ -178,4 +210,40 @@ func TestAssignVolume(t *testing.T) {
 			{Key: "secretKey2", Secret: "secret2"},
 		},
 	})
+
+	// now update the volume again, this time, to acknowledge its removal on
+	// the node.
+	require.NoError(t, s.Update(func(tx store.Tx) error {
+		v := store.GetVolume(tx, "volume1")
+		for _, status := range v.PublishStatus {
+			if status.NodeID == "node1" {
+				status.State = api.VolumePublishStatus_PENDING_UNPUBLISH
+			}
+		}
+		return store.UpdateVolume(tx, v)
+	}))
+
+	s.View(func(tx store.ReadTx) {
+		v := store.GetVolume(tx, "volume1")
+		modified = as.addOrUpdateVolume(tx, v)
+	})
+	assert.True(t, modified)
+	m = as.message()
+	assert.Len(t, m.Changes, 2)
+	foundSecret1 = false
+	foundSecret2 = false
+
+	for _, change := range m.Changes {
+		assert.Equal(t, change.Action, api.AssignmentChange_AssignmentActionRemove)
+		s, ok := change.Assignment.Item.(*api.Assignment_Secret)
+		assert.True(t, ok)
+		switch s.Secret.ID {
+		case "secret1":
+			foundSecret1 = true
+		case "secret2":
+			foundSecret2 = true
+		default:
+			t.Fatalf("found unexpected secret assignment %s", s.Secret.ID)
+		}
+	}
 }
