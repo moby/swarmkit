@@ -27,6 +27,16 @@ func NewFakeManager() *volumes {
 	}
 }
 
+func NewFakeNodePlugin(name string, nodeID string, isStaging bool) *NodePlugin {
+	return &NodePlugin{
+		name:       name,
+		staging:    isStaging,
+		nodeID:     nodeID,
+		volumeMap:  make(map[string]*volumePublishStatus),
+		nodeClient: newFakeNodeClient(isStaging, nodeID),
+	}
+}
+
 func TestTaskRestrictedVolumesProvider(t *testing.T) {
 	type testCase struct {
 		desc          string
@@ -81,7 +91,7 @@ func TestTaskRestrictedVolumesProvider(t *testing.T) {
 		}
 		ctx := context.Background()
 		volumesManager.m[originalvolumeID] = v
-		volumesManager.pluginMap[driver] = NewNodePlugin(driver, nodeID)
+		volumesManager.pluginMap[driver] = NewFakeNodePlugin(driver, nodeID, true)
 		volumesManager.tryAddVolume(ctx, v)
 		volumesGetter := Restrict(volumesManager, &api.Task{
 			ID: taskID,
