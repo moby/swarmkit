@@ -53,7 +53,7 @@ type plugin struct {
 func NewPlugin(config *api.CSIConfig_Plugin, provider SecretProvider) Plugin {
 	return &plugin{
 		name:       config.Name,
-		socket:     config.Socket,
+		socket:     config.ControllerSocket,
 		provider:   provider,
 		swarmToCSI: map[string]string{},
 		csiToSwarm: map[string]string{},

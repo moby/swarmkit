@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/docker/swarmkit/agent/csi/plugin"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/identity"
@@ -22,19 +23,9 @@ func NewFakeManager() *volumes {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &volumes{
 		m:                make(map[string]*api.VolumeAssignment),
-		pluginMap:        make(map[string]*NodePlugin),
+		plugins:          plugin.NewPluginManager(),
 		tryVolumesCtx:    ctx,
 		tryVolumesCancel: cancel,
-	}
-}
-
-func NewFakeNodePlugin(name string, nodeID string, isStaging bool) *NodePlugin {
-	return &NodePlugin{
-		name:       name,
-		staging:    isStaging,
-		nodeID:     nodeID,
-		volumeMap:  make(map[string]*volumePublishStatus),
-		nodeClient: newFakeNodeClient(isStaging, nodeID),
 	}
 }
 
@@ -55,7 +46,6 @@ func TestTaskRestrictedVolumesProvider(t *testing.T) {
 	taskID := identity.NewID()
 	fakeVolumeID := fmt.Sprintf("%s.%s", originalvolumeID, taskID)
 	driver := identity.NewID()
-	nodeID := identity.NewID()
 	testCases := []testCase{
 		// The default case when not using a volumes driver or not returning.
 		// Test to check if volume ID is allowed to access
@@ -92,7 +82,7 @@ func TestTaskRestrictedVolumesProvider(t *testing.T) {
 		}
 		ctx := context.Background()
 		volumesManager.m[originalvolumeID] = v
-		volumesManager.pluginMap[driver] = NewFakeNodePlugin(driver, nodeID, true)
+		volumesManager.plugins.Set([]*api.CSINodePlugin{{Name: driver}})
 		volumesManager.tryAddVolume(ctx, v)
 		volumesGetter := Restrict(volumesManager, &api.Task{
 			ID: taskID,
@@ -105,7 +95,7 @@ func TestTaskRestrictedVolumesProvider(t *testing.T) {
 			assert.Equal(t, testCase.expectedErr, err.Error(), testCase.desc)
 		} else {
 			t.Logf("volumeIDs=%v", originalvolumeID)
-			expectedPath := filepath.Join(TargetPublishPath, testCase.expected)
+			expectedPath := filepath.Join(plugin.TargetPublishPath, testCase.expected)
 			t.Logf("expectedPath=%v", expectedPath)
 			assert.NoError(t, err, testCase.desc)
 			require.NotNil(t, volume, testCase.desc)

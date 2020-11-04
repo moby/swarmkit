@@ -136,6 +136,13 @@ message SessionMessage {
 
 	// Which root certificates to trust
 	bytes RootCA = 5;
+
+	// CSINodePlugins represents all known CSI Node Plugins and the unix socket
+	// they can be accessed on. This may include CSI plugins that do not and
+	// will not run on this Node. The Node must check for the existence of the
+	// plugin, and only report in its NodeDescription plugins which it can
+	// successfully reach.
+	repeated CSINodePlugin csi_node_plugins = 6 [(gogoproto.customname) = "CSINodePlugins"];
 }
 
 // HeartbeatRequest provides identifying properties for a single heartbeat.

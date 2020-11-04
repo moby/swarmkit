@@ -1,4 +1,4 @@
-package csi
+package plugin
 
 import (
 	"context"
@@ -13,8 +13,8 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func newVolumeClient(name string, nodeID string, isStaging bool) *NodePlugin {
-	return NewFakeNodePlugin(name, nodeID, isStaging)
+func newVolumeClient(name string, nodeID string) *nodePlugin {
+	return newNodePlugin(name, nodeID)
 }
 
 func TestNodeStageVolume(t *testing.T) {

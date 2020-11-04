@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/docker/swarmkit/agent/csi/plugin"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
@@ -14,9 +15,10 @@ import (
 // volumes is a map that keeps all the currently available volumes to the agent
 // mapped by volume ID.
 type volumes struct {
-	mu        sync.RWMutex                     // To sync map "m" and "pluginMap"
-	m         map[string]*api.VolumeAssignment // Map between VolumeID and VolumeAssignment
-	pluginMap map[string]*NodePlugin           // Map between Driver Name and NodePlugin
+	mu sync.RWMutex                     // To sync map "m" and "pluginMap"
+	m  map[string]*api.VolumeAssignment // Map between VolumeID and VolumeAssignment
+
+	plugins plugin.PluginManager
 
 	// tryVolumesCtx is a context for retrying volume operations.
 	tryVolumesCtx context.Context
@@ -30,10 +32,10 @@ const initialBackoff = 1 * time.Millisecond
 
 // NewManager returns a place to store volumes.
 func NewManager() exec.VolumesManager {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.TODO())
 	return &volumes{
-		m:                make(map[string]*api.VolumeAssignment),
-		pluginMap:        make(map[string]*NodePlugin),
+		m:                map[string]*api.VolumeAssignment{},
+		plugins:          plugin.NewPluginManager(),
 		tryVolumesCtx:    ctx,
 		tryVolumesCancel: cancel,
 	}
@@ -45,7 +47,7 @@ func (r *volumes) Get(volumeID string) (string, error) {
 	defer r.mu.Unlock()
 	ctx := context.Background()
 	if volume, ok := r.m[volumeID]; ok {
-		if plugin, ok := r.pluginMap[volume.Driver.Name]; ok {
+		if plugin, err := r.plugins.Get(volume.Driver.Name); err == nil {
 			path := plugin.GetPublishedPath(volumeID)
 			if path != "" {
 				return path, nil
@@ -92,14 +94,13 @@ func (r *volumes) tryAddVolume(ctx context.Context, assignment *api.VolumeAssign
 	driverName := assignment.Driver.Name
 
 	var (
-		plugin      *NodePlugin
+		plugin      plugin.NodePlugin
 		pluginFound bool
 		err         error
 	)
 
-	r.mu.RLock()
-	plugin, pluginFound = r.pluginMap[driverName]
-	r.mu.RUnlock()
+	plugin, err = r.plugins.Get(driverName)
+	pluginFound = err == nil
 
 	if !pluginFound {
 		err = fmt.Errorf("plugin %s not found", driverName)
@@ -131,9 +132,8 @@ func (r *volumes) tryAddVolume(ctx context.Context, assignment *api.VolumeAssign
 				// if this is the case, then we should check if it's yet
 				// available.
 				if !pluginFound {
-					r.mu.Lock()
-					plugin, pluginFound = r.pluginMap[driverName]
-					r.mu.Unlock()
+					plugin, err = r.plugins.Get(driverName)
+					pluginFound = err == nil
 
 					if !pluginFound {
 						err = fmt.Errorf("plugin %s not found", driverName)
@@ -232,42 +232,12 @@ func (r *volumes) tryRemoveVolume(ctx context.Context, assignment *api.VolumeAss
 // Remove removes one or more volumes by ID from the volumes map. Succeeds
 // whether or not the given IDs are in the map.
 func (r *volumes) Remove(volumes []string) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	var volumeObjects []*api.VolumeAssignment
-	for _, volume := range volumes {
-		v := r.m[volume]
-		log.G(r.tryVolumesCtx).WithField("method", "(*volumes).Remove").Debugf("Remove Volume:%v", volume)
-		if v != nil {
-			volumeObjects = append(volumeObjects, v)
-			name := v.Driver.Name
-			delete(r.pluginMap, name)
-		}
-		delete(r.m, volume)
-	}
+	// noop
 }
 
 // Reset removes all the volumes.
 func (r *volumes) Reset() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	// cancel any outstanding volumes operations
-	r.tryVolumesCancel()
-
-	var volumeObjects []*api.VolumeAssignment
-	for _, v := range r.m {
-		volumeObjects = append(volumeObjects, v)
-	}
-	r.m = make(map[string]*api.VolumeAssignment)
-	r.pluginMap = make(map[string]*NodePlugin)
-	ctx, cancel := context.WithCancel(context.Background())
-
-	r.tryVolumesCtx = ctx
-	r.tryVolumesCancel = cancel
-
-	go r.iterateVolumes(volumeObjects, false)
+	// no-op
 }
 
 func (r *volumes) removeVolumes(volumeObjects []*api.VolumeAssignment) {
@@ -275,6 +245,10 @@ func (r *volumes) removeVolumes(volumeObjects []*api.VolumeAssignment) {
 	for _, v := range volumeObjects {
 		go r.tryRemoveVolume(ctx, v)
 	}
+}
+
+func (r *volumes) Plugins() exec.VolumePluginManager {
+	return r.plugins
 }
 
 // taskRestrictedVolumesProvider restricts the ids to the task.
