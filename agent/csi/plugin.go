@@ -60,6 +60,9 @@ type NodePlugin struct {
 
 	// mu for volumeMap
 	mu sync.RWMutex
+
+	// staging indicates that the plugin has staging capabilities.
+	staging bool
 }
 
 const TargetStagePath string = "/var/lib/docker/stage/%s"
@@ -72,6 +75,53 @@ func NewNodePlugin(name string, nodeID string) *NodePlugin {
 		nodeID:    nodeID,
 		volumeMap: make(map[string]*volumePublishStatus),
 	}
+}
+
+// connect is a private method that sets up the identity client and node
+// client from a grpc client. it exists separately so that testing code can
+// substitute in fake clients without a grpc connection
+func (np *NodePlugin) connect(ctx context.Context, cc *grpc.ClientConn) error {
+	np.cc = cc
+	// first, probe the plugin, to ensure that it exists and is ready to go
+	idc := csi.NewIdentityClient(cc)
+	np.idClient = idc
+
+	np.nodeClient = csi.NewNodeClient(cc)
+
+	return nil
+}
+
+func (np *NodePlugin) Client() csi.NodeClient {
+	return np.nodeClient
+}
+
+func (np *NodePlugin) init(ctx context.Context) error {
+	probe, err := np.idClient.Probe(ctx, &csi.ProbeRequest{})
+	if err != nil {
+		return err
+	}
+	if probe.Ready != nil && !probe.Ready.Value {
+		return status.Error(codes.FailedPrecondition, "Plugin is not Ready")
+	}
+
+	resp, err := np.nodeClient.NodeGetCapabilities(ctx, &csi.NodeGetCapabilitiesRequest{})
+	if err != nil {
+		// TODO(ameyag): handle
+		return err
+	}
+	if resp == nil {
+		return nil
+	}
+	for _, c := range resp.Capabilities {
+		if rpc := c.GetRpc(); rpc != nil {
+			switch rpc.Type {
+			case csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME:
+				np.staging = true
+			}
+		}
+	}
+
+	return nil
 }
 
 // GetPublishedPath returns the path at which the provided volume ID is published.
@@ -98,6 +148,10 @@ func (np *NodePlugin) NodeGetInfo(ctx context.Context) (*api.NodeCSIInfo, error)
 
 func (np *NodePlugin) NodeStageVolume(ctx context.Context, req *api.VolumeAssignment) error {
 
+	if !np.staging {
+		return nil
+	}
+
 	volID := req.VolumeID
 	stagingTarget := fmt.Sprintf(TargetStagePath, volID)
 
@@ -119,6 +173,10 @@ func (np *NodePlugin) NodeStageVolume(ctx context.Context, req *api.VolumeAssign
 }
 
 func (np *NodePlugin) NodeUnstageVolume(ctx context.Context, req *api.VolumeAssignment) error {
+
+	if !np.staging {
+		return nil
+	}
 
 	volID := req.VolumeID
 
@@ -151,9 +209,18 @@ func (np *NodePlugin) NodePublishVolume(ctx context.Context, req *api.VolumeAssi
 
 	np.mu.Lock()
 	defer np.mu.Unlock()
+	publishPath := fmt.Sprintf(TargetPublishPath, volID)
 	if v, ok := np.volumeMap[volID]; ok {
-		v.publishedPath = fmt.Sprintf(TargetPublishPath, volID)
+		v.publishedPath = publishPath
 		v.isPublished = true
+		return nil
+	} else if !np.staging {
+		// If staging is not supported on plugin, we need to add volume to the map.
+		v := &volumePublishStatus{
+			publishedPath: publishPath,
+			isPublished:   true,
+		}
+		np.volumeMap[volID] = v
 		return nil
 	}
 
