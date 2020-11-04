@@ -887,8 +887,18 @@ message CSIConfig {
 		// Driver.Name field used when creating a CSI volume.
 		string name = 1;
 
-		// Socket defines the unix socket at which the CSI plugin can be reached.
-		string socket = 2;
+		// ControllerSocket defines the socket at which Swarm can reach the
+		// Controller plugin. This may be the same as the NodeSocket, or it
+		// may be different, depending on the Plugin architecture. The
+		// ControllerSocket will only ever be called on the current Swarm
+		// leader.
+		string controller_socket = 2;
+
+		// NodeSocket defines the socket at which Swarm can reach the Node
+		// plugin. This may be the same as ControllerPlugin depending on the
+		// Plugin architecture. NodeSocket must be present on every Node that
+		// runs the CSI plugin, and will be propagated to nodes.
+		string node_socket = 3;
 	}
 
 	repeated Plugin plugins = 1;
@@ -1017,6 +1027,16 @@ message ManagerStatus {
 
 	// Reachability specifies whether this node is reachable.
 	RaftMemberStatus.Reachability reachability = 4;
+}
+
+// CSINodePlugin represents the configuration of a single CSI Node Plugin
+message CSINodePlugin {
+	// Name is the name of the plugin, which corresponds to the Driver.Name
+	// field on the Volume.
+	string name = 1;
+
+	// Socket is the unix domain socket that the CSI plugin can be reached on.
+	string socket = 2;
 }
 
 // FileTarget represents a specific target that is backed by a file
