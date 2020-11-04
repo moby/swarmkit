@@ -177,7 +177,7 @@ func (fpm *fakePluginMaker) newFakePlugin(config *api.CSIConfig_Plugin, provider
 	defer fpm.Unlock()
 	p := &fakePlugin{
 		name:             config.Name,
-		socket:           config.Socket,
+		socket:           config.ControllerSocket,
 		swarmToCSI:       map[string]string{},
 		volumesCreated:   map[string]*api.Volume{},
 		volumesDeleted:   []string{},

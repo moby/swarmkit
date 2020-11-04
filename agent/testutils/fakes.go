@@ -46,6 +46,11 @@ func (e *TestExecutor) SetNetworkBootstrapKeys([]*api.EncryptionKey) error {
 	return nil
 }
 
+// SetCSINodePlugins does nothing
+func (e *TestExecutor) SetCSINodePlugins([]*api.CSINodePlugin) error {
+	return nil
+}
+
 // Controller returns TestController.
 func (e *TestExecutor) Controller(t *api.Task) (exec.Controller, error) {
 	return &TestController{

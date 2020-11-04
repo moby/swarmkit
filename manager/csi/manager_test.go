@@ -118,12 +118,12 @@ var _ = Describe("Manager", func() {
 		BeforeEach(func() {
 			plugins = append(plugins,
 				&api.CSIConfig_Plugin{
-					Name:   "newPlugin",
-					Socket: "unix:///whatever.sock",
+					Name:             "newPlugin",
+					ControllerSocket: "unix:///whatever.sock",
 				},
 				&api.CSIConfig_Plugin{
-					Name:   "differentPlugin",
-					Socket: "unix:///somethingElse.sock",
+					Name:             "differentPlugin",
+					ControllerSocket: "unix:///somethingElse.sock",
 				},
 			)
 
@@ -203,12 +203,12 @@ var _ = Describe("Manager", func() {
 			c := clusters[0]
 			c.Spec.CSIConfig.Plugins = append(c.Spec.CSIConfig.Plugins,
 				&api.CSIConfig_Plugin{
-					Name:   "newPlugin",
-					Socket: "whatever",
+					Name:             "newPlugin",
+					ControllerSocket: "whatever",
 				},
 				&api.CSIConfig_Plugin{
-					Name:   "newPlugin2",
-					Socket: "whateverElse",
+					Name:             "newPlugin2",
+					ControllerSocket: "whateverElse",
 				},
 			)
 			return store.UpdateCluster(tx, c)
@@ -232,7 +232,7 @@ var _ = Describe("Manager", func() {
 			c := clusters[0]
 			c.Spec.CSIConfig.Plugins = append(
 				c.Spec.CSIConfig.Plugins[1:],
-				&api.CSIConfig_Plugin{Name: "newPlugin3", Socket: "whateverElseAgain"},
+				&api.CSIConfig_Plugin{Name: "newPlugin3", ControllerSocket: "whateverElseAgain"},
 			)
 			return store.UpdateCluster(tx, c)
 		})
@@ -255,12 +255,12 @@ var _ = Describe("Manager", func() {
 		BeforeEach(func() {
 			plugins = append(plugins,
 				&api.CSIConfig_Plugin{
-					Name:   "somePlugin",
-					Socket: "whatever",
+					Name:             "somePlugin",
+					ControllerSocket: "whatever",
 				},
 				&api.CSIConfig_Plugin{
-					Name:   "someOtherPlugin",
-					Socket: "whateverElse",
+					Name:             "someOtherPlugin",
+					ControllerSocket: "whateverElse",
 				},
 			)
 		})
@@ -315,12 +315,12 @@ var _ = Describe("Manager", func() {
 		BeforeEach(func() {
 			plugins = append(plugins,
 				&api.CSIConfig_Plugin{
-					Name:   "newPlugin",
-					Socket: "unix:///whatever.sock",
+					Name:             "newPlugin",
+					ControllerSocket: "unix:///whatever.sock",
 				},
 				&api.CSIConfig_Plugin{
-					Name:   "differentPlugin",
-					Socket: "unix:///somethingElse.sock",
+					Name:             "differentPlugin",
+					ControllerSocket: "unix:///somethingElse.sock",
 				},
 			)
 
