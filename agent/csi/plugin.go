@@ -80,7 +80,12 @@ func NewNodePlugin(name string, nodeID string) *NodePlugin {
 // connect is a private method that sets up the identity client and node
 // client from a grpc client. it exists separately so that testing code can
 // substitute in fake clients without a grpc connection
-func (np *NodePlugin) connect(ctx context.Context, cc *grpc.ClientConn) error {
+func (np *NodePlugin) connect(ctx context.Context) error {
+	cc, err := grpc.DialContext(ctx, np.socket)
+	if err != nil {
+		return err
+	}
+
 	np.cc = cc
 	// first, probe the plugin, to ensure that it exists and is ready to go
 	idc := csi.NewIdentityClient(cc)
@@ -91,8 +96,13 @@ func (np *NodePlugin) connect(ctx context.Context, cc *grpc.ClientConn) error {
 	return nil
 }
 
-func (np *NodePlugin) Client() csi.NodeClient {
-	return np.nodeClient
+func (np *NodePlugin) Client(ctx context.Context) (csi.NodeClient, error) {
+	if np.nodeClient == nil {
+		if err := np.connect(ctx); err != nil {
+			return nil, err
+		}
+	}
+	return np.nodeClient, nil
 }
 
 func (np *NodePlugin) init(ctx context.Context) error {
@@ -104,7 +114,12 @@ func (np *NodePlugin) init(ctx context.Context) error {
 		return status.Error(codes.FailedPrecondition, "Plugin is not Ready")
 	}
 
-	resp, err := np.nodeClient.NodeGetCapabilities(ctx, &csi.NodeGetCapabilitiesRequest{})
+	c, err := np.Client(ctx)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.NodeGetCapabilities(ctx, &csi.NodeGetCapabilitiesRequest{})
 	if err != nil {
 		// TODO(ameyag): handle
 		return err
@@ -139,8 +154,13 @@ func (np *NodePlugin) GetPublishedPath(volumeID string) string {
 
 func (np *NodePlugin) NodeGetInfo(ctx context.Context) (*api.NodeCSIInfo, error) {
 
-	resp := &csi.NodeGetInfoResponse{
-		NodeId: np.nodeID,
+	c, err := np.Client(ctx)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.NodeGetInfo(ctx, &csi.NodeGetInfoRequest{})
+	if err != nil {
+		return nil, err
 	}
 
 	return makeNodeInfo(resp), nil
@@ -148,6 +168,8 @@ func (np *NodePlugin) NodeGetInfo(ctx context.Context) (*api.NodeCSIInfo, error)
 
 func (np *NodePlugin) NodeStageVolume(ctx context.Context, req *api.VolumeAssignment) error {
 
+	np.mu.Lock()
+	defer np.mu.Unlock()
 	if !np.staging {
 		return nil
 	}
@@ -160,8 +182,19 @@ func (np *NodePlugin) NodeStageVolume(ctx context.Context, req *api.VolumeAssign
 		return status.Error(codes.InvalidArgument, "Volume ID missing in request")
 	}
 
-	np.mu.Lock()
-	defer np.mu.Unlock()
+	c, err := np.Client(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.NodeStageVolume(ctx, &csi.NodeStageVolumeRequest{
+		VolumeId:          volID,
+		StagingTargetPath: stagingTarget,
+	})
+
+	if err != nil {
+		return err
+	}
 
 	v := &volumePublishStatus{
 		stagingPath: stagingTarget,
@@ -174,19 +207,34 @@ func (np *NodePlugin) NodeStageVolume(ctx context.Context, req *api.VolumeAssign
 
 func (np *NodePlugin) NodeUnstageVolume(ctx context.Context, req *api.VolumeAssignment) error {
 
+	np.mu.Lock()
+	defer np.mu.Unlock()
 	if !np.staging {
 		return nil
 	}
 
 	volID := req.VolumeID
+	stagingTarget := fmt.Sprintf(TargetStagePath, volID)
 
 	// Check arguments
 	if len(volID) == 0 {
 		return status.Error(codes.FailedPrecondition, "Volume ID missing in request")
 	}
 
-	np.mu.Lock()
-	defer np.mu.Unlock()
+	c, err := np.Client(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.NodeUnstageVolume(ctx, &csi.NodeUnstageVolumeRequest{
+		VolumeId:          volID,
+		StagingTargetPath: stagingTarget,
+	})
+
+	if err != nil {
+		return err
+	}
+
 	if v, ok := np.volumeMap[volID]; ok {
 		if v.isPublished {
 			return status.Errorf(codes.FailedPrecondition, "VolumeID %s is not unpublished", volID)
@@ -209,7 +257,23 @@ func (np *NodePlugin) NodePublishVolume(ctx context.Context, req *api.VolumeAssi
 
 	np.mu.Lock()
 	defer np.mu.Unlock()
+
 	publishPath := fmt.Sprintf(TargetPublishPath, volID)
+
+	c, err := np.Client(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.NodePublishVolume(ctx, &csi.NodePublishVolumeRequest{
+		VolumeId:   volID,
+		TargetPath: publishPath,
+	})
+
+	if err != nil {
+		return err
+	}
+
 	if v, ok := np.volumeMap[volID]; ok {
 		v.publishedPath = publishPath
 		v.isPublished = true
@@ -238,6 +302,22 @@ func (np *NodePlugin) NodeUnpublishVolume(ctx context.Context, req *api.VolumeAs
 
 	np.mu.Lock()
 	defer np.mu.Unlock()
+	publishPath := fmt.Sprintf(TargetPublishPath, volID)
+
+	c, err := np.Client(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.NodeUnpublishVolume(ctx, &csi.NodeUnpublishVolumeRequest{
+		VolumeId:   volID,
+		TargetPath: publishPath,
+	})
+
+	if err != nil {
+		return err
+	}
+
 	if v, ok := np.volumeMap[volID]; ok {
 		v.publishedPath = ""
 		v.isPublished = false
