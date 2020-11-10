@@ -12,6 +12,10 @@ import (
 	"github.com/docker/swarmkit/api"
 )
 
+// failDeleteLabel is a label set on a Volume to cause DeleteVolume on the fake
+// plugin to fail
+const failDeleteLabel = "fakes_fail_delete"
+
 // volumes_fakes_test.go includes the fakes for unit-testing parts of the
 // volumes code.
 
@@ -176,6 +180,7 @@ func (fpm *fakePluginMaker) newFakePlugin(config *api.CSIConfig_Plugin, provider
 		socket:           config.Socket,
 		swarmToCSI:       map[string]string{},
 		volumesCreated:   map[string]*api.Volume{},
+		volumesDeleted:   []string{},
 		volumesPublished: map[string][]string{},
 		removedIDs:       map[string]struct{}{},
 	}
@@ -191,6 +196,9 @@ type fakePlugin struct {
 	removedIDs map[string]struct{}
 
 	volumesCreated map[string]*api.Volume
+	// volumesDelete is the list of volumes for which DeleteVolume has been
+	// called
+	volumesDeleted []string
 	// volumesPublished maps the ID of a Volume to the Nodes it was published
 	// to
 	volumesPublished map[string][]string
@@ -204,6 +212,15 @@ func (f *fakePlugin) CreateVolume(ctx context.Context, v *api.Volume) (*api.Volu
 			"exists": "yes",
 		},
 	}, nil
+}
+
+func (f *fakePlugin) DeleteVolume(ctx context.Context, v *api.Volume) error {
+	// always append the volume ID, even if we fail, so we know this was called
+	f.volumesDeleted = append(f.volumesDeleted, v.ID)
+	if msg, ok := v.Spec.Annotations.Labels[failDeleteLabel]; ok {
+		return fmt.Errorf("failing delete: %s", msg)
+	}
+	return nil
 }
 
 func (f *fakePlugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string) (map[string]string, error) {

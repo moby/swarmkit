@@ -416,6 +416,10 @@ func (s *Scheduler) processPreassignedTasks(ctx context.Context) {
 		if err == nil && nodeInfo.removeTask(decision.new) {
 			s.nodeSet.updateNode(nodeInfo)
 		}
+
+		for _, va := range decision.new.Volumes {
+			s.volumes.releaseVolume(decision.new.ID, va.ID)
+		}
 	}
 }
 
@@ -469,6 +473,11 @@ func (s *Scheduler) tick(ctx context.Context) {
 		nodeInfo, err := s.nodeSet.nodeInfo(decision.new.NodeID)
 		if err == nil && nodeInfo.removeTask(decision.new) {
 			s.nodeSet.updateNode(nodeInfo)
+		}
+
+		// release the volumes we tried to use
+		for _, va := range decision.new.Volumes {
+			s.volumes.releaseVolume(decision.new.ID, va.ID)
 		}
 
 		// enqueue task for next scheduling attempt
@@ -530,7 +539,35 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 								taskID,
 								va.ID,
 							)
+							failed = append(failed, decision)
 						}
+
+						// it's ok if the copy of the Volume we scheduled off
+						// of is out of date, because the Scheduler is the only
+						// component which add new uses of a particular Volume,
+						// which means that in most cases, no update to the
+						// volume could conflict with the copy the Scheduler
+						// used to make decisions.
+						//
+						// the exception is that the VolumeAvailability could
+						// have been changed. both Pause and Drain
+						// availabilities mean the Volume should not be
+						// scheduled, and so we call off our attempt to commit
+						// this scheduling decision. this is the only field we
+						// must check for conflicts.
+						//
+						// this is, additionally, the reason that a Volume must
+						// be set to Drain before it can be deleted. it stops
+						// us from having to worry about any other field when
+						// attempting to use the Volume.
+						if v.Spec.Availability != api.VolumeAvailabilityActive {
+							log.G(ctx).Debugf(
+								"scheduler failed to update task %s because volume %s has availability %s",
+								taskID, v.ID, v.Spec.Availability.String(),
+							)
+							failed = append(failed, decision)
+						}
+
 						alreadyPublished := false
 						for _, ps := range v.PublishStatus {
 							if ps.NodeID == decision.new.NodeID {
@@ -557,6 +594,8 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 					}
 					for _, v := range volumes {
 						if err := store.UpdateVolume(tx, v); err != nil {
+							// TODO(dperny): handle the case of a partial
+							// update?
 							log.G(ctx).WithError(err).Debugf(
 								"scheduler failed to update task %v; volume %v could not be updated",
 								taskID, v.ID,

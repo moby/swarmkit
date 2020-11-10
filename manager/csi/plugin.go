@@ -2,6 +2,7 @@ package csi
 
 import (
 	"context"
+	"errors"
 
 	"google.golang.org/grpc"
 
@@ -12,6 +13,7 @@ import (
 // Plugin is the interface for a CSI controller plugin
 type Plugin interface {
 	CreateVolume(context.Context, *api.Volume) (*api.VolumeInfo, error)
+	DeleteVolume(context.Context, *api.Volume) error
 	PublishVolume(context.Context, *api.Volume, string) (map[string]string, error)
 	AddNode(swarmID, csiID string)
 	RemoveNode(swarmID string)
@@ -122,6 +124,10 @@ func (p *plugin) CreateVolume(ctx context.Context, v *api.Volume) (*api.VolumeIn
 	}
 
 	return makeVolumeInfo(resp.Volume), nil
+}
+
+func (p *plugin) DeleteVolume(_ context.Context, v *api.Volume) error {
+	return errors.New("not yet implemented")
 }
 
 // PublishVolume calls ControllerPublishVolume to publish the given Volume to

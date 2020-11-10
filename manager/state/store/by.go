@@ -165,6 +165,16 @@ func ByReferencedConfigID(configID string) By {
 	return byReferencedConfigID(configID)
 }
 
+type byVolumeAttachment string
+
+func (b byVolumeAttachment) isBy() {}
+
+// ByVolumeAttachment creates an object to pass to Find to search for a Task
+// that has been assigned the given ID.
+func ByVolumeAttachment(volumeID string) By {
+	return byVolumeAttachment(volumeID)
+}
+
 type byKind string
 
 func (b byKind) isBy() {

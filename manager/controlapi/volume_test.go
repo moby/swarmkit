@@ -647,3 +647,116 @@ func TestListVolumesByGroup(t *testing.T) {
 		})
 	}
 }
+
+// TestRemoveVolume tests that an unused volume can be removed successfully,
+// meaning PendingDelete == true.
+func TestRemoveVolume(t *testing.T) {
+	ts := newVolumeTestServer(t)
+	defer ts.Stop()
+
+	require.NoError(t, ts.Store.Update(func(tx store.Tx) error {
+		return store.CreateVolume(tx, cannedVolume)
+	}))
+
+	resp, err := ts.Client.RemoveVolume(context.Background(), &api.RemoveVolumeRequest{
+		VolumeID: cannedVolume.ID,
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	var v *api.Volume
+	ts.Store.View(func(tx store.ReadTx) {
+		v = store.GetVolume(tx, cannedVolume.ID)
+	})
+
+	require.NotNil(t, v)
+	assert.True(t, v.PendingDelete, "expected PendingDelete to be true")
+}
+
+// TestRemoveVolumeCreatedButNotInUse tests that a Volume which has passed
+// through the creation stage and gotten a VolumeInfo, but is not published,
+// can be successfully removed.
+func TestRemoveVolumeCreatedButNotInUse(t *testing.T) {
+	ts := newVolumeTestServer(t)
+	defer ts.Stop()
+
+	volume := cannedVolume.Copy()
+	volume.VolumeInfo = &api.VolumeInfo{
+		VolumeID: "csiID",
+	}
+
+	require.NoError(t, ts.Store.Update(func(tx store.Tx) error {
+		return store.CreateVolume(tx, volume)
+	}))
+
+	resp, err := ts.Client.RemoveVolume(context.Background(), &api.RemoveVolumeRequest{
+		VolumeID: volume.ID,
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	var v *api.Volume
+	ts.Store.View(func(tx store.ReadTx) {
+		v = store.GetVolume(tx, volume.ID)
+	})
+
+	require.NotNil(t, v)
+	assert.True(t, v.PendingDelete, "expected PendingDelete to be true")
+}
+
+func TestRemoveVolumeInUse(t *testing.T) {
+	ts := newVolumeTestServer(t)
+	defer ts.Stop()
+
+	volume := cannedVolume.Copy()
+	volume.VolumeInfo = &api.VolumeInfo{
+		VolumeID: "csiID",
+	}
+	volume.PublishStatus = []*api.VolumePublishStatus{
+		{
+			NodeID: "someNode",
+			State:  api.VolumePublishStatus_PUBLISHED,
+		},
+	}
+
+	require.NoError(t, ts.Store.Update(func(tx store.Tx) error {
+		return store.CreateVolume(tx, volume)
+	}))
+
+	resp, err := ts.Client.RemoveVolume(context.Background(), &api.RemoveVolumeRequest{
+		VolumeID: volume.ID,
+	})
+
+	assert.Error(t, err)
+	assert.Equal(
+		t, codes.FailedPrecondition, testutils.ErrorCode(err),
+		"expected code FailedPrecondition",
+	)
+	assert.Nil(t, resp)
+
+	var v *api.Volume
+	ts.Store.View(func(tx store.ReadTx) {
+		v = store.GetVolume(tx, volume.ID)
+	})
+
+	require.NotNil(t, v)
+	require.False(t, v.PendingDelete, "expected PendingDelete to be false")
+}
+
+func TestRemoveVolumeNotFound(t *testing.T) {
+	ts := newVolumeTestServer(t)
+	defer ts.Stop()
+
+	resp, err := ts.Client.RemoveVolume(context.Background(), &api.RemoveVolumeRequest{
+		VolumeID: "notReal",
+	})
+
+	assert.Error(t, err)
+	assert.Equal(
+		t, codes.NotFound, testutils.ErrorCode(err),
+		"expected code NotFound",
+	)
+	assert.Nil(t, resp)
+}
