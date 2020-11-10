@@ -34,6 +34,8 @@ type plugin struct {
 	provider SecretProvider
 
 	// cc is the grpc client connection
+	// TODO(dperny): the client is never closed. it may be closed when it goes
+	// out of scope, but this should be verified.
 	cc *grpc.ClientConn
 	// idClient is the identity service client
 	idClient csi.IdentityClient
@@ -61,14 +63,23 @@ func NewPlugin(config *api.CSIConfig_Plugin, provider SecretProvider) Plugin {
 	}
 }
 
-// connect is a private method that sets up the identity client and controller
-// client from a grpc client. it exists separately so that testing code can
-// substitute in fake clients without a grpc connection
-func (p *plugin) connect(ctx context.Context, cc *grpc.ClientConn) error {
+// connect is a private method that initializes a gRPC ClientConn and creates
+// the IdentityClient and ControllerClient.
+func (p *plugin) connect(ctx context.Context) error {
+	cc, err := grpc.DialContext(ctx, p.socket)
+	if err != nil {
+		return err
+	}
+
 	p.cc = cc
+
 	// first, probe the plugin, to ensure that it exists and is ready to go
 	idc := csi.NewIdentityClient(cc)
 	p.idClient = idc
+
+	if err := p.init(ctx); err != nil {
+		return err
+	}
 
 	// controllerClient may not do anything if the plugin does not support
 	// the controller service, but it should not be an error to create it now
@@ -78,25 +89,27 @@ func (p *plugin) connect(ctx context.Context, cc *grpc.ClientConn) error {
 	return nil
 }
 
-// TODO(dperny): return error
+// init checks uses the identity service to check the properties of the plugin,
+// most importantly, its capabilities.
 func (p *plugin) init(ctx context.Context) error {
 	probe, err := p.idClient.Probe(ctx, &csi.ProbeRequest{})
 	if err != nil {
 		return err
 	}
+
 	if probe.Ready != nil && !probe.Ready.Value {
-		// TODO(dperny): retry?
-		return nil
+		return errors.New("plugin not ready")
 	}
 
 	resp, err := p.idClient.GetPluginCapabilities(ctx, &csi.GetPluginCapabilitiesRequest{})
 	if err != nil {
-		// TODO(dperny): handle
 		return err
 	}
+
 	if resp == nil {
 		return nil
 	}
+
 	for _, c := range resp.Capabilities {
 		if sc := c.GetService(); sc != nil {
 			switch sc.Type {
@@ -112,6 +125,11 @@ func (p *plugin) init(ctx context.Context) error {
 // CreateVolume wraps and abstracts the CSI CreateVolume logic and returns
 // the volume info, or an error.
 func (p *plugin) CreateVolume(ctx context.Context, v *api.Volume) (*api.VolumeInfo, error) {
+	c, err := p.Client(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if !p.controller {
 		// TODO(dperny): come up with a scheme to handle headless plugins
 		// TODO(dperny): handle plugins without create volume capabilities
@@ -119,7 +137,7 @@ func (p *plugin) CreateVolume(ctx context.Context, v *api.Volume) (*api.VolumeIn
 	}
 
 	createVolumeRequest := p.makeCreateVolume(v)
-	resp, err := p.Client().CreateVolume(ctx, createVolumeRequest)
+	resp, err := c.CreateVolume(ctx, createVolumeRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -138,8 +156,12 @@ func (p *plugin) DeleteVolume(ctx context.Context, v *api.Volume) error {
 		VolumeId: v.VolumeInfo.VolumeID,
 		Secrets:  secrets,
 	}
+	c, err := p.Client(ctx)
+	if err != nil {
+		return err
+	}
 	// response from RPC intentionally left blank
-	_, err := p.Client().DeleteVolume(ctx, req)
+	_, err = c.DeleteVolume(ctx, req)
 	return err
 }
 
@@ -148,7 +170,11 @@ func (p *plugin) DeleteVolume(ctx context.Context, v *api.Volume) error {
 // PublishContext for this Volume on this Node.
 func (p *plugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string) (map[string]string, error) {
 	req := p.makeControllerPublishVolumeRequest(v, nodeID)
-	resp, err := p.Client().ControllerPublishVolume(ctx, req)
+	c, err := p.Client(ctx)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.ControllerPublishVolume(ctx, req)
 
 	if err != nil {
 		return nil, err
@@ -161,8 +187,13 @@ func (p *plugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string
 // unpublish does not succeed
 func (p *plugin) UnpublishVolume(ctx context.Context, v *api.Volume, nodeID string) error {
 	req := p.makeControllerUnpublishVolumeRequest(v, nodeID)
+	c, err := p.Client(ctx)
+	if err != nil {
+		return err
+	}
+
 	// response of the RPC intentionally left blank
-	_, err := p.Client().ControllerUnpublishVolume(ctx, req)
+	_, err = c.ControllerUnpublishVolume(ctx, req)
 	return err
 }
 
@@ -183,8 +214,18 @@ func (p *plugin) RemoveNode(swarmID string) {
 	delete(p.csiToSwarm, csiID)
 }
 
-func (p *plugin) Client() csi.ControllerClient {
-	return p.controllerClient
+// Client retrieves a csi.ControllerClient for this plugin
+//
+// If this is the first time client has been called and no client yet exists,
+// it will initialize the gRPC connection to the remote plugin and create a new
+// ControllerClient.
+func (p *plugin) Client(ctx context.Context) (csi.ControllerClient, error) {
+	if p.controllerClient == nil {
+		if err := p.connect(ctx); err != nil {
+			return nil, err
+		}
+	}
+	return p.controllerClient, nil
 }
 
 // makeCreateVolume makes a csi.CreateVolumeRequest from the volume object and
