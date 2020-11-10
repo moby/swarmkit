@@ -314,7 +314,6 @@ var _ = Describe("Plugin manager", func() {
 
 		JustBeforeEach(func() {
 			publishContext, publishError = plugin.PublishVolume(context.Background(), v, "node1")
-			fmt.Printf("publishContext: %v\n", publishContext)
 		})
 
 		It("should call the ControllerPublishVolume RPC", func() {
