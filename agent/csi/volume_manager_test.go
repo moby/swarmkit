@@ -3,6 +3,7 @@ package csi
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -104,7 +105,7 @@ func TestTaskRestrictedVolumesProvider(t *testing.T) {
 			assert.Equal(t, testCase.expectedErr, err.Error(), testCase.desc)
 		} else {
 			t.Logf("volumeIDs=%v", originalvolumeID)
-			expectedPath := fmt.Sprintf(TargetPublishPath, testCase.expected)
+			expectedPath := filepath.Join(TargetPublishPath, testCase.expected)
 			t.Logf("expectedPath=%v", expectedPath)
 			assert.NoError(t, err, testCase.desc)
 			require.NotNil(t, volume, testCase.desc)

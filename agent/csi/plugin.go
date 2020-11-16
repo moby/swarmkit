@@ -2,7 +2,7 @@ package csi
 
 import (
 	"context"
-	"fmt"
+	"path/filepath"
 	"sync"
 
 	"google.golang.org/grpc"
@@ -65,9 +65,9 @@ type NodePlugin struct {
 	staging bool
 }
 
-const TargetStagePath string = "/var/lib/docker/stage/%s"
+const TargetStagePath string = "/var/lib/docker/stage"
 
-const TargetPublishPath string = "/var/lib/docker/publish/%s"
+const TargetPublishPath string = "/var/lib/docker/publish"
 
 func NewNodePlugin(name string, nodeID string) *NodePlugin {
 	return &NodePlugin{
@@ -175,7 +175,7 @@ func (np *NodePlugin) NodeStageVolume(ctx context.Context, req *api.VolumeAssign
 	}
 
 	volID := req.VolumeID
-	stagingTarget := fmt.Sprintf(TargetStagePath, volID)
+	stagingTarget := filepath.Join(TargetStagePath, volID)
 
 	// Check arguments
 	if len(volID) == 0 {
@@ -214,7 +214,7 @@ func (np *NodePlugin) NodeUnstageVolume(ctx context.Context, req *api.VolumeAssi
 	}
 
 	volID := req.VolumeID
-	stagingTarget := fmt.Sprintf(TargetStagePath, volID)
+	stagingTarget := filepath.Join(TargetStagePath, volID)
 
 	// Check arguments
 	if len(volID) == 0 {
@@ -258,7 +258,7 @@ func (np *NodePlugin) NodePublishVolume(ctx context.Context, req *api.VolumeAssi
 	np.mu.Lock()
 	defer np.mu.Unlock()
 
-	publishPath := fmt.Sprintf(TargetPublishPath, volID)
+	publishPath := filepath.Join(TargetPublishPath, volID)
 
 	c, err := np.Client(ctx)
 	if err != nil {
@@ -302,7 +302,7 @@ func (np *NodePlugin) NodeUnpublishVolume(ctx context.Context, req *api.VolumeAs
 
 	np.mu.Lock()
 	defer np.mu.Unlock()
-	publishPath := fmt.Sprintf(TargetPublishPath, volID)
+	publishPath := filepath.Join(TargetPublishPath, volID)
 
 	c, err := np.Client(ctx)
 	if err != nil {
