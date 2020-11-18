@@ -1,14 +1,20 @@
-package csi
+package plugin
 
 import (
 	"context"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 )
 
 type fakeNodeClient struct {
+	// stagedVolumes is a set of all volume IDs for which NodeStageVolume has been
+	// called on this fake
+	stagedVolumes map[string]struct{}
+
 	// getInfoRequests is a log of all requests to NodeGetInfo.
 	getInfoRequests []*csi.NodeGetInfoRequest
 	// stageVolumeRequests is a log of all requests to NodeStageVolume.
@@ -31,6 +37,7 @@ type fakeNodeClient struct {
 
 func newFakeNodeClient(isStaging bool, nodeID string) *fakeNodeClient {
 	return &fakeNodeClient{
+		stagedVolumes:           map[string]struct{}{},
 		getInfoRequests:         []*csi.NodeGetInfoRequest{},
 		stageVolumeRequests:     []*csi.NodeStageVolumeRequest{},
 		unstageVolumeRequests:   []*csi.NodeUnstageVolumeRequest{},
@@ -54,6 +61,7 @@ func (f *fakeNodeClient) NodeGetInfo(ctx context.Context, in *csi.NodeGetInfoReq
 func (f *fakeNodeClient) NodeStageVolume(ctx context.Context, in *csi.NodeStageVolumeRequest, opts ...grpc.CallOption) (*csi.NodeStageVolumeResponse, error) {
 	f.idCounter++
 	f.stageVolumeRequests = append(f.stageVolumeRequests, in)
+	f.stagedVolumes[in.VolumeId] = struct{}{}
 
 	return &csi.NodeStageVolumeResponse{}, nil
 }
@@ -61,6 +69,12 @@ func (f *fakeNodeClient) NodeStageVolume(ctx context.Context, in *csi.NodeStageV
 func (f *fakeNodeClient) NodeUnstageVolume(ctx context.Context, in *csi.NodeUnstageVolumeRequest, opts ...grpc.CallOption) (*csi.NodeUnstageVolumeResponse, error) {
 	f.idCounter++
 	f.unstageVolumeRequests = append(f.unstageVolumeRequests, in)
+
+	if _, ok := f.stagedVolumes[in.VolumeId]; !ok {
+		return nil, status.Error(codes.FailedPrecondition, "can't unstage volume that is not already staged")
+	}
+
+	delete(f.stagedVolumes, in.VolumeId)
 
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
