@@ -5,16 +5,13 @@ import (
 	"path/filepath"
 	"sync"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/docker/swarmkit/api"
 )
-
-const TargetStagePath string = "/var/lib/docker/stage/%s"
-
-const TargetPublishPath string = "/var/lib/docker/publish/%s"
 
 type NodePlugin interface {
 	GetPublishedPath(volumeID string) string
@@ -43,8 +40,6 @@ type nodePlugin struct {
 	// socket is the path of the unix socket to connect to this plugin at
 	socket string
 
-	mu sync.RWMutex
-
 	// volumeMap is the map from volume ID to Volume. Will place a volume once it is staged,
 	// remove it from the map for unstage.
 	// TODO: Make this map persistent if the swarm node goes down
@@ -55,6 +50,15 @@ type nodePlugin struct {
 
 	// staging indicates that the plugin has staging capabilities.
 	staging bool
+
+	// cc is the gRPC client connection
+	cc *grpc.ClientConn
+
+	// idClient is the CSI Identity Service client
+	idClient csi.IdentityClient
+
+	// nodeClient is the CSI Node Service client
+	nodeClient csi.NodeClient
 }
 
 const TargetStagePath string = "/var/lib/docker/stage"
@@ -77,7 +81,7 @@ func newNodePlugin(name, socket string) *nodePlugin {
 // connect is a private method that sets up the identity client and node
 // client from a grpc client. it exists separately so that testing code can
 // substitute in fake clients without a grpc connection
-func (np *NodePlugin) connect(ctx context.Context) error {
+func (np *nodePlugin) connect(ctx context.Context) error {
 	cc, err := grpc.DialContext(ctx, np.socket)
 	if err != nil {
 		return err
@@ -93,7 +97,7 @@ func (np *NodePlugin) connect(ctx context.Context) error {
 	return nil
 }
 
-func (np *NodePlugin) Client(ctx context.Context) (csi.NodeClient, error) {
+func (np *nodePlugin) Client(ctx context.Context) (csi.NodeClient, error) {
 	if np.nodeClient == nil {
 		if err := np.connect(ctx); err != nil {
 			return nil, err
@@ -102,7 +106,7 @@ func (np *NodePlugin) Client(ctx context.Context) (csi.NodeClient, error) {
 	return np.nodeClient, nil
 }
 
-func (np *NodePlugin) init(ctx context.Context) error {
+func (np *nodePlugin) init(ctx context.Context) error {
 	probe, err := np.idClient.Probe(ctx, &csi.ProbeRequest{})
 	if err != nil {
 		return err
