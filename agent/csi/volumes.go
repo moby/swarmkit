@@ -53,6 +53,8 @@ func (r *volumes) Get(volumeID string) (string, error) {
 				return path, nil
 			}
 			log.G(ctx).WithField("method", "(*volumes).Get").Debugf("Path not published for volume:%v", volumeID)
+		} else {
+			return "", err
 		}
 	}
 	return "", fmt.Errorf("%w: published path is unavailable", exec.ErrDependencyNotReady)

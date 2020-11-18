@@ -3,16 +3,11 @@ package csi
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
-	"github.com/docker/swarmkit/agent/csi/plugin"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/identity"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,84 +18,71 @@ func NewFakeManager() *volumes {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &volumes{
 		m:                make(map[string]*api.VolumeAssignment),
-		plugins:          plugin.NewPluginManager(),
+		plugins:          newFakePluginManager(),
 		tryVolumesCtx:    ctx,
 		tryVolumesCancel: cancel,
 	}
 }
 
 func TestTaskRestrictedVolumesProvider(t *testing.T) {
+	driver := "driver"
+
+	volumesManager := NewFakeManager()
+	volumesManager.plugins.Set([]*api.CSINodePlugin{{Name: driver}})
+
+	taskID := "taskID1"
 	type testCase struct {
-		desc          string
-		volumeIDs     map[string]struct{}
-		volumes       exec.VolumeGetter
-		volumeID      string
-		taskID        string
-		volumeIDToGet string
-		value         string
-		expected      string
-		expectedErr   string
+		desc        string
+		volumes     exec.VolumeGetter
+		volumeID    string
+		expectedErr string
 	}
 
-	originalvolumeID := identity.NewID()
-	taskID := identity.NewID()
-	fakeVolumeID := fmt.Sprintf("%s.%s", originalvolumeID, taskID)
-	driver := identity.NewID()
 	testCases := []testCase{
 		// The default case when not using a volumes driver or not returning.
 		// Test to check if volume ID is allowed to access
 		{
-			desc:     "Test getting volume by original ID when restricted by task",
-			value:    "value",
-			expected: originalvolumeID,
-			volumeIDs: map[string]struct{}{
-				originalvolumeID: {},
-			},
-			volumeID:      originalvolumeID,
-			volumeIDToGet: originalvolumeID,
-			taskID:        taskID,
+			desc:     "AllowedVolume",
+			volumeID: "volume1",
 		},
 		// Test to check if volume ID is not allowed to access
 		{
-			desc:        "Test attempting to get a volume by task specific ID when volume is added with original ID",
-			value:       "value",
-			expectedErr: fmt.Sprintf("task not authorized to access volume %s", fakeVolumeID),
-			volumeIDs: map[string]struct{}{
-				originalvolumeID: {},
-			},
-			volumeID:      originalvolumeID,
-			volumeIDToGet: fakeVolumeID,
-			taskID:        taskID,
+			desc:        "RestrictedVolume",
+			expectedErr: fmt.Sprintf("task not authorized to access volume volume2"),
+			volumeID:    "volume2",
 		},
 	}
-	volumesManager := NewFakeManager()
-	for _, testCase := range testCases {
-		t.Logf("volumeID=%s, taskID=%s, volumeIDToGet=%s", originalvolumeID, taskID, testCase.volumeIDToGet)
-		v := &api.VolumeAssignment{
-			VolumeID: originalvolumeID,
-			Driver:   &api.Driver{Name: driver},
-		}
-		ctx := context.Background()
-		volumesManager.m[originalvolumeID] = v
-		volumesManager.plugins.Set([]*api.CSINodePlugin{{Name: driver}})
-		volumesManager.tryAddVolume(ctx, v)
-		volumesGetter := Restrict(volumesManager, &api.Task{
-			ID: taskID,
-		})
-		(volumesGetter.(*taskRestrictedVolumesProvider)).volumeIDs = testCase.volumeIDs
 
-		volume, err := volumesGetter.Get(testCase.volumeIDToGet)
-		if testCase.expectedErr != "" {
-			assert.Error(t, err, testCase.desc)
-			assert.Equal(t, testCase.expectedErr, err.Error(), testCase.desc)
-		} else {
-			t.Logf("volumeIDs=%v", originalvolumeID)
-			expectedPath := filepath.Join(plugin.TargetPublishPath, testCase.expected)
-			t.Logf("expectedPath=%v", expectedPath)
-			assert.NoError(t, err, testCase.desc)
-			require.NotNil(t, volume, testCase.desc)
-			assert.Equal(t, expectedPath, volume, testCase.desc)
-		}
-		volumesManager.Reset()
+	for _, testCase := range testCases {
+		testCase := testCase
+		t.Run(testCase.desc, func(t *testing.T) {
+			v := &api.VolumeAssignment{
+				ID:     testCase.volumeID,
+				Driver: &api.Driver{Name: driver},
+			}
+			// adding to the map happens in Add, not in tryAdd, so we do that
+			// manually
+			volumesManager.m[testCase.volumeID] = v
+			// call tryAddVolume in this test so that the add happens synchronously
+			volumesManager.tryAddVolume(context.Background(), v)
+			volumesGetter := Restrict(volumesManager, &api.Task{
+				ID: taskID,
+				Volumes: []*api.VolumeAttachment{
+					{
+						ID: "volume1",
+					},
+				},
+			})
+
+			volume, err := volumesGetter.Get(testCase.volumeID)
+			if testCase.expectedErr != "" {
+				assert.Error(t, err, testCase.desc)
+				assert.Equal(t, testCase.expectedErr, err.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.NotEmpty(t, volume)
+			}
+			volumesManager.Reset()
+		})
 	}
 }
