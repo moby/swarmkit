@@ -11,6 +11,7 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/volumequeue"
 )
 
 type Manager struct {
@@ -34,7 +35,7 @@ type Manager struct {
 	cluster *api.Cluster
 	plugins map[string]Plugin
 
-	pendingVolumes *volumeQueue
+	pendingVolumes *volumequeue.VolumeQueue
 }
 
 func NewManager(s *store.MemoryStore) *Manager {
@@ -45,7 +46,7 @@ func NewManager(s *store.MemoryStore) *Manager {
 		newPlugin:      NewPlugin,
 		plugins:        map[string]Plugin{},
 		provider:       NewSecretProvider(s),
-		pendingVolumes: newVolumeQueue(),
+		pendingVolumes: volumequeue.NewVolumeQueue(),
 	}
 }
 
@@ -95,7 +96,7 @@ func (vm *Manager) run(pctx context.Context) {
 	doneProc := make(chan struct{})
 	go func() {
 		for {
-			id, attempt := vm.pendingVolumes.wait()
+			id, attempt := vm.pendingVolumes.Wait()
 			// this case occurs when the stop method has been called on
 			// pendingVolumes. stop is called on pendingVolumes when Stop is
 			// called on the CSI manager.
@@ -126,7 +127,7 @@ func (vm *Manager) run(pctx context.Context) {
 		case ev := <-watch:
 			vm.handleEvent(ev)
 		case <-vm.stopChan:
-			vm.pendingVolumes.stop()
+			vm.pendingVolumes.Stop()
 			return
 		}
 	}
@@ -145,7 +146,7 @@ func (vm *Manager) processVolume(ctx context.Context, id string, attempt uint) {
 	// errors.
 	if err != nil {
 		log.G(dctx).WithError(err).Info("error handling volume")
-		vm.pendingVolumes.enqueue(id, attempt+1)
+		vm.pendingVolumes.Enqueue(id, attempt+1)
 	}
 }
 
@@ -270,7 +271,7 @@ func (vm *Manager) createVolume(ctx context.Context, v *api.Volume) error {
 // response to a new Volume update event, not for a retry, the retry number is
 // always reset to 0.
 func (vm *Manager) enqueueVolume(id string) {
-	vm.pendingVolumes.enqueue(id, 0)
+	vm.pendingVolumes.Enqueue(id, 0)
 }
 
 // handleVolume processes a Volume. It determines if any relevant update has

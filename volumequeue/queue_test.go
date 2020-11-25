@@ -1,4 +1,4 @@
-package csi
+package volumequeue
 
 import (
 	"time"
@@ -58,9 +58,9 @@ func (f *fakeTimer) Stop() bool {
 	return false
 }
 
-var _ = Describe("volumeQueue", func() {
+var _ = Describe("VolumeQueue", func() {
 	var (
-		vq         *volumeQueue
+		vq         *VolumeQueue
 		fakeSource *fakeTimerSource
 	)
 
@@ -69,30 +69,30 @@ var _ = Describe("volumeQueue", func() {
 			timers: []*fakeTimer{},
 		}
 
-		vq = newVolumeQueue()
+		vq = NewVolumeQueue()
 		// swap out the timerSource for the fake
 		vq.timerSource = fakeSource
 	})
 
 	It("should dequeue ready entries", func() {
-		vq.enqueue("id1", 0)
-		vq.enqueue("id2", 0)
-		vq.enqueue("id3", 1)
-		vq.enqueue("id4", 2)
+		vq.Enqueue("id1", 0)
+		vq.Enqueue("id2", 0)
+		vq.Enqueue("id3", 1)
+		vq.Enqueue("id4", 2)
 
-		rs1, _ := vq.wait()
-		rs2, _ := vq.wait()
+		rs1, _ := vq.Wait()
+		rs2, _ := vq.Wait()
 		Expect([]string{rs1, rs2}).To(ConsistOf("id1", "id2"))
 
 		// advance the fake source so the next fake timer becomes ready.
 		fakeSource.advance()
 
-		rs3, _ := vq.wait()
+		rs3, _ := vq.Wait()
 		Expect(rs3).To(Equal("id3"))
 
 		fakeSource.advance()
 
-		rs4, _ := vq.wait()
+		rs4, _ := vq.Wait()
 		Expect(rs4).To(Equal("id4"))
 	})
 })

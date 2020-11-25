@@ -1,4 +1,4 @@
-package csi
+package volumequeue
 
 import (
 	"sync"
@@ -60,12 +60,12 @@ func (t timer) Done() <-chan time.Time {
 	return t.C
 }
 
-// volumeQueue manages the exponential backoff of retrying volumes. it behaves
+// VolumeQueue manages the exponential backoff of retrying volumes. it behaves
 // somewhat like a priority queue. however, the key difference is that volumes
 // which are ready to process or reprocess are read off of an unbuffered
 // channel, meaning the order in which ready volumes are processed is at the
 // mercy of the golang scheduler. in practice, this does not matter.
-type volumeQueue struct {
+type VolumeQueue struct {
 	sync.Mutex
 	// next returns the next volumeQueueEntry when it is ready.
 	next chan *volumeQueueEntry
@@ -93,9 +93,9 @@ type volumeQueueEntry struct {
 	cancel func()
 }
 
-// newVolumeQueue returns a new volumeQueue with the default timerSource.
-func newVolumeQueue() *volumeQueue {
-	return &volumeQueue{
+// NewVolumeQueue returns a new VolumeQueue with the default timerSource.
+func NewVolumeQueue() *VolumeQueue {
+	return &VolumeQueue{
 		next:        make(chan *volumeQueueEntry),
 		outstanding: make(map[string]*volumeQueueEntry),
 		stopChan:    make(chan struct{}),
@@ -103,10 +103,10 @@ func newVolumeQueue() *volumeQueue {
 	}
 }
 
-// enqueue adds an entry to the volumeQueue with the specified retry attempt.
+// Enqueue adds an entry to the VolumeQueue with the specified retry attempt.
 // if an entry for the specified id already exists, enqueue will remove it and
 // create a new entry.
-func (vq *volumeQueue) enqueue(id string, attempt uint) {
+func (vq *VolumeQueue) Enqueue(id string, attempt uint) {
 	// we must lock the volumeQueue when we add entries, because we will be
 	// accessing the outstanding map
 	vq.Lock()
@@ -165,10 +165,10 @@ func (vq *volumeQueue) enqueue(id string, attempt uint) {
 	vq.outstanding[id] = v
 }
 
-// wait returns the ID and attempt number of the next Volume ready to process.
+// Wait returns the ID and attempt number of the next Volume ready to process.
 // If no volume is ready, wait blocks until one is ready. if the volumeQueue
 // is stopped, wait returns "", 0
-func (vq *volumeQueue) wait() (string, uint) {
+func (vq *VolumeQueue) Wait() (string, uint) {
 	select {
 	case v := <-vq.next:
 		vq.Lock()
@@ -197,9 +197,14 @@ func (vq *volumeQueue) wait() (string, uint) {
 	}
 }
 
-// stop stops the volumeQueue and cancels all outstanding entries. stop may
+// Outstanding returns the number of items outstanding in this queue
+func (vq *VolumeQueue) Outstanding() int {
+	return len(vq.outstanding)
+}
+
+// Stop stops the volumeQueue and cancels all outstanding entries. stop may
 // only be called once.
-func (vq *volumeQueue) stop() {
+func (vq *VolumeQueue) Stop() {
 	vq.Lock()
 	defer vq.Unlock()
 	close(vq.stopChan)

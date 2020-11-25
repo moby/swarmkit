@@ -307,7 +307,7 @@ var _ = Describe("Manager", func() {
 		})
 
 		It("should not requeue a successful volume", func() {
-			Expect(vm.pendingVolumes.outstanding).To(HaveLen(0))
+			Expect(vm.pendingVolumes.Outstanding()).To(Equal(0))
 		})
 	})
 
@@ -634,7 +634,7 @@ var _ = Describe("Manager", func() {
 				ConsistOf("node1"),
 			)
 
-			Expect(vm.pendingVolumes.outstanding).To(HaveLen(0))
+			Expect(vm.pendingVolumes.Outstanding()).To(Equal(0))
 		})
 	})
 
@@ -688,7 +688,7 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(v).To(BeNil())
 
-			Expect(vm.pendingVolumes.outstanding).To(HaveLen(0))
+			Expect(vm.pendingVolumes.Outstanding()).To(Equal(0))
 		})
 
 		It("should not remove the volume from the store if DeleteVolume fails", func() {
@@ -717,7 +717,7 @@ var _ = Describe("Manager", func() {
 			// this will create a timer, but because it's only the first retry,
 			// it is a very short timer, and in any case, the entry remains in
 			// outstanding until it is plucked off by a call to wait.
-			Expect(vm.pendingVolumes.outstanding).To(HaveLen(1))
+			Expect(vm.pendingVolumes.Outstanding()).To(Equal(1))
 		})
 	})
 })
