@@ -10,34 +10,84 @@ import (
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/volumequeue"
 )
+
+// volumeState keeps track of the state of a volume on this node.
+type volumeState struct {
+	// volume is the actual VolumeAssignment for this volume
+	volume *api.VolumeAssignment
+	// remove is true if the volume is to be removed, or false if it should be
+	// active.
+	remove bool
+	// removeCallback is called when the volume is successfully removed.
+	removeCallback func(id string)
+}
 
 // volumes is a map that keeps all the currently available volumes to the agent
 // mapped by volume ID.
 type volumes struct {
-	mu sync.RWMutex                     // To sync map "m" and "pluginMap"
-	m  map[string]*api.VolumeAssignment // Map between VolumeID and VolumeAssignment
+	// mu guards access to the volumes map.
+	mu sync.RWMutex
 
+	// volumes is a mapping of volume ID to volumeState
+	volumes map[string]volumeState
+
+	// plugins is the PluginManager, which provides translation to the CSI RPCs
 	plugins plugin.PluginManager
 
-	// tryVolumesCtx is a context for retrying volume operations.
-	tryVolumesCtx context.Context
-	// tryVolumesCancel is the cancel func for tryVolumesCtx
-	tryVolumesCancel context.CancelFunc
+	// pendingVolumes is a VolumeQueue which manages which volumes are
+	// processed and when.
+	pendingVolumes *volumequeue.VolumeQueue
 }
-
-const maxRetries int = 20
-
-const initialBackoff = 1 * time.Millisecond
 
 // NewManager returns a place to store volumes.
 func NewManager() exec.VolumesManager {
-	ctx, cancel := context.WithCancel(context.TODO())
-	return &volumes{
-		m:                map[string]*api.VolumeAssignment{},
-		plugins:          plugin.NewPluginManager(),
-		tryVolumesCtx:    ctx,
-		tryVolumesCancel: cancel,
+	r := &volumes{
+		volumes:        map[string]volumeState{},
+		plugins:        plugin.NewPluginManager(),
+		pendingVolumes: volumequeue.NewVolumeQueue(),
+	}
+	go r.retryVolumes()
+
+	return r
+}
+
+// retryVolumes runs in a goroutine to retry failing volumes.
+func (r *volumes) retryVolumes() {
+	for {
+		vid, attempt := r.pendingVolumes.Wait()
+		// this case occurs when the Stop method has been called on
+		// pendingVolumes, and means that we should pack up and exit.
+		if vid == "" && attempt == 0 {
+			break
+		}
+		r.tryVolume(id, attempt)
+	}
+}
+
+// tryVolume synchronously tries one volume. it puts the volume back into the
+// queue if the attempt fails.
+func (r *volumes) tryVolume(id string, attempt uint) {
+	r.mu.RLock()
+	vs, ok := r.volumes[id]
+	r.mu.RUnlock()
+
+	if !ok {
+		return
+	}
+
+	if !vs.remove {
+		if err := r.publishVolume(vs.volume); err != nil {
+			r.pendingVolumes.Enqueue(id, attempt+1)
+		}
+	} else {
+		if err := r.unpublishVolume(vs.volume); err != nil {
+			r.pendingVolumes.Enqueue(id, attempt+1)
+		} else {
+			// if unpublishing was successful, then call the callback
+			vs.removeCallback(id)
+		}
 	}
 }
 
@@ -45,17 +95,22 @@ func NewManager() exec.VolumesManager {
 func (r *volumes) Get(volumeID string) (string, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	ctx := context.Background()
-	if volume, ok := r.m[volumeID]; ok {
-		if plugin, err := r.plugins.Get(volume.Driver.Name); err == nil {
+	if vs, ok := r.volumes[volumeID]; ok {
+		if vs.remove {
+			// TODO(dperny): use a structured error
+			return "", fmt.Errorf("volume being removed")
+		}
+
+		if plugin, err := r.plugins.Get(vs.volume.Driver.Name); err == nil {
 			path := plugin.GetPublishedPath(volumeID)
 			if path != "" {
 				return path, nil
 			}
-			log.G(ctx).WithField("method", "(*volumes).Get").Debugf("Path not published for volume:%v", volumeID)
+			log.L.WithField("method", "(*volumes).Get").Debugf("Path not published for volume:%v", volumeID)
 		} else {
 			return "", err
 		}
+
 	}
 	return "", fmt.Errorf("%w: published path is unavailable", exec.ErrDependencyNotReady)
 }
@@ -65,188 +120,73 @@ func (r *volumes) Add(volumes ...api.VolumeAssignment) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	var volumeObjects []*api.VolumeAssignment
-	ctx := context.Background()
 	for _, volume := range volumes {
+		// if we get an Add operation, then we will always restart the retries.
 		v := volume.Copy()
-		log.G(ctx).WithField("method", "(*volumes).Add").Debugf("Add Volume: %v", volume.VolumeID)
-
-		r.m[volume.VolumeID] = v
-		volumeObjects = append(volumeObjects, v)
+		r.volumes[volume.ID] = volumeState{
+			volume: v,
+		}
+		// enqueue the volume so that we process it
+		r.pendingVolumes.Enqueue(volume.ID, 0)
+		log.L.WithField("method", "(*volumes).Add").Debugf("Add Volume: %v", volume.VolumeID)
 	}
-	go r.iterateVolumes(volumeObjects, true)
 }
 
-func (r *volumes) iterateVolumes(volumeObjects []*api.VolumeAssignment, isAdd bool) {
+// Remove removes one or more volumes from this manager. callback is called
+// whenever the removal is successful.
+func (r *volumes) Remove(volumes []api.VolumeAssignment, callback func(id string)) {
 	r.mu.Lock()
-	ctx := r.tryVolumesCtx
-	r.mu.Unlock()
+	defer r.mu.Unlock()
 
-	for _, v := range volumeObjects {
-		if isAdd {
-			r.tryAddVolume(ctx, v)
-		} else {
-			r.tryRemoveVolume(ctx, v)
+	for _, volume := range volumes {
+		// if we get a Remove call, then we always restart the retries and
+		// attempt removal.
+		v := volume.Copy()
+		r.volumes[volume.ID] = volumeState{
+			volume:         v,
+			remove:         true,
+			removeCallback: callback,
 		}
+		r.pendingVolumes.Enqueue(volume.ID, 0)
 	}
 }
 
-func (r *volumes) tryAddVolume(ctx context.Context, assignment *api.VolumeAssignment) {
+func (r *volumes) publishVolume(assignment *api.VolumeAssignment) error {
+	ctx := context.TODO()
 
-	driverName := assignment.Driver.Name
-
-	var (
-		plugin      plugin.NodePlugin
-		pluginFound bool
-		err         error
-	)
-
-	plugin, err = r.plugins.Get(driverName)
-	pluginFound = err == nil
-
-	if !pluginFound {
-		err = fmt.Errorf("plugin %s not found", driverName)
-	} else {
-		err = plugin.NodeStageVolume(ctx, assignment)
-	}
-
+	plugin, err := r.plugins.Get(assignment.Driver.Name)
 	if err != nil {
-		waitFor := initialBackoff
-	retryStage:
-		for i := 0; i < maxRetries; i++ {
-			log.G(ctx).WithError(err).Debugf("staging volume %s failed, retrying", assignment.ID)
-			select {
-			case <-ctx.Done():
-				// selecting on ctx.Done() allows us to bail out of retrying early
-				return
-			case <-time.After(waitFor):
-				// time.After is better than using time.Sleep, because it blocks
-				// on a channel read, rather than suspending the whole
-				// goroutine. That lets us do the above check on ctx.Done().
-				//
-				// time.After is convenient, but it has a key problem: the timer
-				// is not garbage collected until the channel fires. this
-				// shouldn't be a problem, unless the context is canceled, there
-				// is a very long timer, and there are a lot of other goroutines
-				// in the same situation.
-
-				// we may still be waiting on the plugin to become available.
-				// if this is the case, then we should check if it's yet
-				// available.
-				if !pluginFound {
-					plugin, err = r.plugins.Get(driverName)
-					pluginFound = err == nil
-
-					if !pluginFound {
-						err = fmt.Errorf("plugin %s not found", driverName)
-						continue retryStage
-					}
-				}
-
-				err = plugin.NodeStageVolume(ctx, assignment)
-				if err == nil {
-					break retryStage
-				}
-			}
-			// if the exponential factor is 2, you can avoid using floats by
-			// doing bit shifts. each shift left increases the number by a power
-			// of 2. we can do this because Duration is ultimately int64.
-			waitFor = waitFor << 1
-			// clamp the value of waitFor at 5 minutes, though. any longer
-			// would be basically useless to us
-			if waitFor > (5 * time.Minute) {
-				waitFor = 5 * time.Minute
-			}
-		}
-		// if we've gone through the whole retry loop and the error is still
-		// nil, then there is nothing else to be tried.
-		if err != nil {
-			return
-		}
+		return err
 	}
 
-	// we know, now, that the plugin is available, because we checked in the
-	// stage loop for it.
-	if err := plugin.NodePublishVolume(ctx, assignment); err != nil {
-		waitFor := initialBackoff
-	retryPublish:
-		for i := 0; i < maxRetries; i++ {
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(waitFor):
-				if err := plugin.NodePublishVolume(ctx, assignment); err == nil {
-					break retryPublish
-				}
-			}
-			waitFor = waitFor << 1
-		}
+	// even though this may have succeeded already, the call to NodeStageVolume
+	// is idempotent, so we can retry it every time.
+	if err := plugin.NodeStageVolume(ctx, assignment); err != nil {
+		return err
 	}
+
+	return plugin.NodePublishVolume(ctx, assignment)
 }
 
-// TODO(ameyag): Cancel existing tryAddVolume when we try to remove a volume
-func (r *volumes) tryRemoveVolume(ctx context.Context, assignment *api.VolumeAssignment) {
-	return
+func (r *volumes) unpublishVolume(assignment *api.VolumeAssignment) error {
+	ctx := context.TODO()
 
-	/*
-		r.mu.RLock()
-		plugin, ok := r.pluginMap[assignment.VolumeID]
-		r.mu.RUnlock()
-		if !ok {
-			log.G(ctx).Debugf("plugin not found for VolumeID:%v", assignment.VolumeID)
-			return
-		}
-		if err := plugin.NodeUnpublishVolume(ctx, assignment); err != nil {
-			waitFor := initialBackoff
-		retryUnPublish:
-			for i := 0; i < maxRetries; i++ {
-				select {
-				case <-ctx.Done():
-					return
-				case <-time.After(waitFor):
-					if err := plugin.NodeUnpublishVolume(ctx, assignment); err == nil {
-						break retryUnPublish
-					}
-				}
-				waitFor = waitFor << 1
-			}
-		}
+	plugin, err := r.plugins.Get(assignment.Driver.Name)
+	if err != nil {
+		return err
+	}
 
-		// Unstage
-		if err := plugin.NodeUnstageVolume(ctx, assignment); err != nil {
-			waitFor := initialBackoff
-		retryUnstage:
-			for i := 0; i < maxRetries; i++ {
-				select {
-				case <-ctx.Done():
-					return
-				case <-time.After(waitFor):
-					if err := plugin.NodeUnstageVolume(ctx, assignment); err == nil {
-						break retryUnstage
-					}
-				}
-				waitFor = waitFor << 1
-			}
-		}
-	*/
-}
+	if err := plugin.NodeUnpublishVolume(ctx, assignment); err != nil {
+		return err
+	}
 
-// Remove removes one or more volumes by ID from the volumes map. Succeeds
-// whether or not the given IDs are in the map.
-func (r *volumes) Remove(volumes []string) {
-	// noop
+	return plugin.NodeUnstageVolume(ctx, assignment)
 }
 
 // Reset removes all the volumes.
 func (r *volumes) Reset() {
+	// TODO(dperny): Reset may not be necessary for the volumes manager.
 	// no-op
-}
-
-func (r *volumes) removeVolumes(volumeObjects []*api.VolumeAssignment) {
-	ctx := context.Background()
-	for _, v := range volumeObjects {
-		go r.tryRemoveVolume(ctx, v)
-	}
 }
 
 func (r *volumes) Plugins() exec.VolumePluginManager {

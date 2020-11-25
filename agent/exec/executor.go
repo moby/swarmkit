@@ -2,7 +2,6 @@ package exec
 
 import (
 	"context"
-	"errors"
 
 	"github.com/docker/swarmkit/api"
 )
@@ -104,9 +103,17 @@ type VolumeGetter interface {
 type VolumesManager interface {
 	VolumeGetter
 
-	Add(VolumeAssignment ...api.VolumeAssignment) // add one or more volumes
-	Remove(volumes []string)                      // remove the volumes by ID
-	Reset()                                       // remove all volumes
+	// Add adds one or more volumes
+	Add(volumes ...api.VolumeAssignment)
+	// Remove removes one or more volumes. The callback is called each time a
+	// volume is successfully removed with the ID of the volume removed.
+	//
+	// Remove takes a full VolumeAssignment because we may be instructed by the
+	// swarm manager to attempt removal of a Volume we don't know we have.
+	Remove(volumes []api.VolumeAssignment, callback func(string))
+	// Reset removes all volumes under this manager.
+	Reset()
+	// Plugins returns the VolumePluginManager for this VolumesManager
 	Plugins() VolumePluginManager
 }
 
@@ -127,10 +134,3 @@ type VolumePluginManager interface {
 	// successfully established will not be included.
 	NodeInfo(ctx context.Context) ([]*api.NodeCSIInfo, error)
 }
-
-var (
-	// ErrDependencyNotReady is returned if a given dependency can be accessed
-	// through the Getter, but is not yet ready to be used. This is most
-	// relevant for Volumes, which must be staged and published on the node.
-	ErrDependencyNotReady error = errors.New("dependency not ready")
-)
