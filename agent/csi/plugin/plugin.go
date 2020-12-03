@@ -1,4 +1,4 @@
-package csi
+package plugin
 
 import (
 	"context"
@@ -13,12 +13,13 @@ import (
 	"github.com/docker/swarmkit/api"
 )
 
-type NodePluginInterface interface {
+type NodePlugin interface {
+	GetPublishedPath(volumeID string) string
 	NodeGetInfo(ctx context.Context) (*api.NodeCSIInfo, error)
 	NodeStageVolume(ctx context.Context, req *api.VolumeAssignment) error
-	NodeUnstageVolume(ctx context.Context, req []*api.VolumeAssignment) error
-	NodePublishVolume(ctx context.Context, req []*api.VolumeAssignment) error
-	NodeUnpublishVolume(ctx context.Context, req []*api.VolumeAssignment) error
+	NodeUnstageVolume(ctx context.Context, req *api.VolumeAssignment) error
+	NodePublishVolume(ctx context.Context, req *api.VolumeAssignment) error
+	NodeUnpublishVolume(ctx context.Context, req *api.VolumeAssignment) error
 }
 
 type volumePublishStatus struct {
@@ -32,26 +33,12 @@ type volumePublishStatus struct {
 	publishedPath string
 }
 
-// plugin represents an individual CSI node plugin
-type NodePlugin struct {
-	// name is the name of the plugin, which is also the name used as the
-	// Driver.Name field
+type nodePlugin struct {
+	// name is the name of the plugin, which is used in the Driver.Name field.
 	name string
 
-	// node ID is identifier for the node.
-	nodeID string
-
-	// socket is the unix socket to connect to this plugin at.
+	// socket is the path of the unix socket to connect to this plugin at
 	socket string
-
-	// cc is the grpc client connection
-	cc *grpc.ClientConn
-
-	// idClient is the identity service client
-	idClient csi.IdentityClient
-
-	// nodeClient is the node service client
-	nodeClient csi.NodeClient
 
 	// volumeMap is the map from volume ID to Volume. Will place a volume once it is staged,
 	// remove it from the map for unstage.
@@ -63,24 +50,38 @@ type NodePlugin struct {
 
 	// staging indicates that the plugin has staging capabilities.
 	staging bool
+
+	// cc is the gRPC client connection
+	cc *grpc.ClientConn
+
+	// idClient is the CSI Identity Service client
+	idClient csi.IdentityClient
+
+	// nodeClient is the CSI Node Service client
+	nodeClient csi.NodeClient
 }
 
 const TargetStagePath string = "/var/lib/docker/stage"
-
 const TargetPublishPath string = "/var/lib/docker/publish"
 
-func NewNodePlugin(name string, nodeID string) *NodePlugin {
-	return &NodePlugin{
+func NewNodePlugin(name, socket string) NodePlugin {
+	return newNodePlugin(name, socket)
+}
+
+// newNodePlugin returns a raw nodePlugin object, not behind an interface. this
+// is useful for testing.
+func newNodePlugin(name, socket string) *nodePlugin {
+	return &nodePlugin{
 		name:      name,
-		nodeID:    nodeID,
-		volumeMap: make(map[string]*volumePublishStatus),
+		socket:    socket,
+		volumeMap: map[string]*volumePublishStatus{},
 	}
 }
 
 // connect is a private method that sets up the identity client and node
 // client from a grpc client. it exists separately so that testing code can
 // substitute in fake clients without a grpc connection
-func (np *NodePlugin) connect(ctx context.Context) error {
+func (np *nodePlugin) connect(ctx context.Context) error {
 	cc, err := grpc.DialContext(ctx, np.socket)
 	if err != nil {
 		return err
@@ -96,7 +97,7 @@ func (np *NodePlugin) connect(ctx context.Context) error {
 	return nil
 }
 
-func (np *NodePlugin) Client(ctx context.Context) (csi.NodeClient, error) {
+func (np *nodePlugin) Client(ctx context.Context) (csi.NodeClient, error) {
 	if np.nodeClient == nil {
 		if err := np.connect(ctx); err != nil {
 			return nil, err
@@ -105,7 +106,7 @@ func (np *NodePlugin) Client(ctx context.Context) (csi.NodeClient, error) {
 	return np.nodeClient, nil
 }
 
-func (np *NodePlugin) init(ctx context.Context) error {
+func (np *nodePlugin) init(ctx context.Context) error {
 	probe, err := np.idClient.Probe(ctx, &csi.ProbeRequest{})
 	if err != nil {
 		return err
@@ -141,7 +142,7 @@ func (np *NodePlugin) init(ctx context.Context) error {
 
 // GetPublishedPath returns the path at which the provided volume ID is published.
 // Returns an empty string if the volume does not exist.
-func (np *NodePlugin) GetPublishedPath(volumeID string) string {
+func (np *nodePlugin) GetPublishedPath(volumeID string) string {
 	np.mu.RLock()
 	defer np.mu.RUnlock()
 	if volInfo, ok := np.volumeMap[volumeID]; ok {
@@ -152,8 +153,7 @@ func (np *NodePlugin) GetPublishedPath(volumeID string) string {
 	return ""
 }
 
-func (np *NodePlugin) NodeGetInfo(ctx context.Context) (*api.NodeCSIInfo, error) {
-
+func (np *nodePlugin) NodeGetInfo(ctx context.Context) (*api.NodeCSIInfo, error) {
 	c, err := np.Client(ctx)
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (np *NodePlugin) NodeGetInfo(ctx context.Context) (*api.NodeCSIInfo, error)
 	return makeNodeInfo(resp), nil
 }
 
-func (np *NodePlugin) NodeStageVolume(ctx context.Context, req *api.VolumeAssignment) error {
+func (np *nodePlugin) NodeStageVolume(ctx context.Context, req *api.VolumeAssignment) error {
 
 	np.mu.Lock()
 	defer np.mu.Unlock()
@@ -205,7 +205,7 @@ func (np *NodePlugin) NodeStageVolume(ctx context.Context, req *api.VolumeAssign
 	return nil
 }
 
-func (np *NodePlugin) NodeUnstageVolume(ctx context.Context, req *api.VolumeAssignment) error {
+func (np *nodePlugin) NodeUnstageVolume(ctx context.Context, req *api.VolumeAssignment) error {
 
 	np.mu.Lock()
 	defer np.mu.Unlock()
@@ -246,7 +246,7 @@ func (np *NodePlugin) NodeUnstageVolume(ctx context.Context, req *api.VolumeAssi
 	return status.Errorf(codes.FailedPrecondition, "VolumeID %s is not staged", volID)
 }
 
-func (np *NodePlugin) NodePublishVolume(ctx context.Context, req *api.VolumeAssignment) error {
+func (np *nodePlugin) NodePublishVolume(ctx context.Context, req *api.VolumeAssignment) error {
 
 	volID := req.VolumeID
 
@@ -291,7 +291,7 @@ func (np *NodePlugin) NodePublishVolume(ctx context.Context, req *api.VolumeAssi
 	return status.Errorf(codes.FailedPrecondition, "VolumeID %s is not staged", volID)
 }
 
-func (np *NodePlugin) NodeUnpublishVolume(ctx context.Context, req *api.VolumeAssignment) error {
+func (np *nodePlugin) NodeUnpublishVolume(ctx context.Context, req *api.VolumeAssignment) error {
 
 	volID := req.VolumeID
 
@@ -325,4 +325,13 @@ func (np *NodePlugin) NodeUnpublishVolume(ctx context.Context, req *api.VolumeAs
 	}
 
 	return status.Errorf(codes.FailedPrecondition, "VolumeID %s is not staged", volID)
+}
+
+// makeNodeInfo converts a csi.NodeGetInfoResponse object into a swarmkit NodeCSIInfo
+// object.
+func makeNodeInfo(csiNodeInfo *csi.NodeGetInfoResponse) *api.NodeCSIInfo {
+	return &api.NodeCSIInfo{
+		NodeID:            csiNodeInfo.NodeId,
+		MaxVolumesPerNode: csiNodeInfo.MaxVolumesPerNode,
+	}
 }

@@ -36,9 +36,10 @@ func TestWorkerAssign(t *testing.T) {
 	ctx := context.Background()
 	executor := &mockExecutor{dependencies: NewDependencyManager()}
 
-	// the VolumeManager has some async components, which are canceled when
-	// Reset is called
-	defer executor.Volumes().Reset()
+	executor.Volumes().Plugins().Set([]*api.CSINodePlugin{
+		{Name: "plugin-1"},
+		{Name: "plugin-2"},
+	})
 
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
@@ -250,6 +251,9 @@ func TestWorkerWait(t *testing.T) {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
 		return nil
 	})
+	executor.Volumes().Plugins().Set([]*api.CSINodePlugin{
+		{Name: "plugin-1"},
+	})
 
 	worker.Listen(ctx, reporter)
 
@@ -381,6 +385,11 @@ func TestWorkerUpdate(t *testing.T) {
 	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
 		return nil
+	})
+
+	executor.Volumes().Plugins().Set([]*api.CSINodePlugin{
+		{Name: "plugin-1"},
+		{Name: "plugin-2"},
 	})
 
 	worker.Listen(ctx, reporter)
@@ -709,7 +718,7 @@ func TestWorkerUpdate(t *testing.T) {
 			_, err := executor.Volumes().Get(volume.VolumeID)
 			// volumes should not be ready yet, so we expect an error.
 			assert.Error(t, err)
-			assert.True(t, errors.Is(err, exec.ErrDependencyNotReady))
+			assert.True(t, errors.Is(err, exec.ErrDependencyNotReady), "error: %v", err)
 		}
 	}
 }

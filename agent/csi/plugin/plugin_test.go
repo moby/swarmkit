@@ -1,4 +1,4 @@
-package csi
+package plugin
 
 import (
 	"context"
@@ -13,14 +13,19 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func newVolumeClient(name string, nodeID string, isStaging bool) *NodePlugin {
-	return NewFakeNodePlugin(name, nodeID, isStaging)
+func newVolumeClient(name string, nodeID string) *nodePlugin {
+	n := newNodePlugin(name, nodeID)
+	n.staging = true
+
+	fakeNodeClient := newFakeNodeClient(true, nodeID)
+	n.nodeClient = fakeNodeClient
+	return n
 }
 
 func TestNodeStageVolume(t *testing.T) {
 	plugin := "plugin-1"
 	node := "node-1"
-	nodePlugin := newVolumeClient(plugin, node, true)
+	nodePlugin := newVolumeClient(plugin, node)
 	s := &api.VolumeAssignment{
 		VolumeID: "vol1",
 		AccessMode: &api.VolumeAccessMode{
@@ -38,7 +43,7 @@ func TestNodeStageVolume(t *testing.T) {
 func TestNodeUnstageVolume(t *testing.T) {
 	plugin := "plugin-2"
 	node := "node-1"
-	nodePlugin := newVolumeClient(plugin, node, true)
+	nodePlugin := newVolumeClient(plugin, node)
 	s := &api.VolumeAssignment{
 		VolumeID: "vol2",
 		AccessMode: &api.VolumeAccessMode{
@@ -66,7 +71,7 @@ func TestNodeUnstageVolume(t *testing.T) {
 func TestNodePublishVolume(t *testing.T) {
 	plugin := "plugin-3"
 	node := "node-1"
-	nodePlugin := newVolumeClient(plugin, node, true)
+	nodePlugin := newVolumeClient(plugin, node)
 	s := &api.VolumeAssignment{
 		VolumeID: "vol3",
 		AccessMode: &api.VolumeAccessMode{
@@ -90,7 +95,7 @@ func TestNodePublishVolume(t *testing.T) {
 func TestNodeUnpublishVolume(t *testing.T) {
 	plugin := "plugin-4"
 	node := "node-1"
-	nodePlugin := newVolumeClient(plugin, node, true)
+	nodePlugin := newVolumeClient(plugin, node)
 	s := &api.VolumeAssignment{
 		VolumeID: "vol4",
 		AccessMode: &api.VolumeAccessMode{

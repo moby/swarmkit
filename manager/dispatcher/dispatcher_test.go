@@ -1597,6 +1597,27 @@ func TestSession(t *testing.T) {
 	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
+	// update the cluster to include some csi plugins
+	err := gd.Store.Update(func(tx store.Tx) error {
+		cluster := store.GetCluster(tx, gd.testCA.Organization)
+		if cluster == nil {
+			return errors.New("no cluster")
+		}
+		cluster.Spec.CSIConfig.Plugins = []*api.CSIConfig_Plugin{
+			{
+				Name:             "plugin1",
+				ControllerSocket: "plugin1cs",
+				NodeSocket:       "plugin1ns",
+			}, {
+				Name:             "plugin2",
+				ControllerSocket: "plugin2cs",
+				NodeSocket:       "plugin2ns",
+			},
+		}
+		return store.UpdateCluster(tx, cluster)
+	})
+	require.NoError(t, err)
+
 	stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
 	assert.NoError(t, err)
 	stream.CloseSend()
@@ -1604,6 +1625,16 @@ func TestSession(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp.SessionID)
 	assert.Equal(t, 1, len(resp.Managers))
+	assert.Equal(t, len(resp.CSINodePlugins), 2)
+	assert.ElementsMatch(t, resp.CSINodePlugins, []*api.CSINodePlugin{
+		{
+			Name:   "plugin1",
+			Socket: "plugin1ns",
+		}, {
+			Name:   "plugin2",
+			Socket: "plugin2ns",
+		},
+	})
 }
 
 func TestSessionNoCert(t *testing.T) {
@@ -2311,6 +2342,36 @@ func TestClusterUpdatesSendMessages(t *testing.T) {
 		}
 		cluster.RootCA.CACert = cautils.ECDSA256SHA256Cert
 		cluster.RootCA.CACertHash = digest.FromBytes(cautils.ECDSA256SHA256Cert).String()
+		return store.UpdateCluster(tx, cluster)
+	}))
+	time.Sleep(100 * time.Millisecond)
+	{
+		msg, err = stream.Recv()
+		require.NoError(t, err)
+		require.Equal(t, expected, msg)
+	}
+
+	// changing the CSI plugins results in a new message with updated plugins
+	expected = msg.Copy()
+	expected.CSINodePlugins = []*api.CSINodePlugin{
+		{
+			Name:   "plugin1",
+			Socket: "plugin1ns",
+		},
+	}
+	require.NoError(t, gd.Store.Update(func(tx store.Tx) error {
+		cluster := store.GetCluster(tx, gd.testCA.Organization)
+		if cluster == nil {
+			return errors.New("no cluster")
+		}
+		cluster.Spec.CSIConfig.Plugins = append(
+			cluster.Spec.CSIConfig.Plugins,
+			&api.CSIConfig_Plugin{
+				Name:             "plugin1",
+				ControllerSocket: "plugin1cs",
+				NodeSocket:       "plugin1ns",
+			},
+		)
 		return store.UpdateCluster(tx, cluster)
 	}))
 	time.Sleep(100 * time.Millisecond)
