@@ -111,8 +111,6 @@ type VolumesManager interface {
 	// Remove takes a full VolumeAssignment because we may be instructed by the
 	// swarm manager to attempt removal of a Volume we don't know we have.
 	Remove(volumes []api.VolumeAssignment, callback func(string))
-	// Reset removes all volumes under this manager.
-	Reset()
 	// Plugins returns the VolumePluginManager for this VolumesManager
 	Plugins() VolumePluginManager
 }

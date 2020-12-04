@@ -558,7 +558,7 @@ func (a *Agent) ReportVolumeUnpublished(ctx context.Context, volumeID string) er
 	errs := make(chan error, 1)
 	if err := a.withSession(ctx, func(session *session) error {
 		go func() {
-			err := session.reportVolumeUnpublished(ctx, volumeID, status)
+			err := session.reportVolumeUnpublished(ctx, []string{volumeID})
 			if err != nil {
 				l.WithError(err).Error("error reporting volume unpublished")
 			} else {

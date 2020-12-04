@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/docker/swarmkit/agent/csi/plugin"
 	"github.com/docker/swarmkit/agent/exec"
@@ -62,7 +61,7 @@ func (r *volumes) retryVolumes() {
 		if vid == "" && attempt == 0 {
 			break
 		}
-		r.tryVolume(id, attempt)
+		r.tryVolume(vid, attempt)
 	}
 }
 
@@ -181,12 +180,6 @@ func (r *volumes) unpublishVolume(assignment *api.VolumeAssignment) error {
 	}
 
 	return plugin.NodeUnstageVolume(ctx, assignment)
-}
-
-// Reset removes all the volumes.
-func (r *volumes) Reset() {
-	// TODO(dperny): Reset may not be necessary for the volumes manager.
-	// no-op
 }
 
 func (r *volumes) Plugins() exec.VolumePluginManager {

@@ -25,9 +25,6 @@ func NewFakeManager() *volumes {
 func TestTaskRestrictedVolumesProvider(t *testing.T) {
 	driver := "driver"
 
-	volumesManager := NewFakeManager()
-	volumesManager.plugins.Set([]*api.CSINodePlugin{{Name: driver}})
-
 	taskID := "taskID1"
 	type testCase struct {
 		desc        string
@@ -54,6 +51,10 @@ func TestTaskRestrictedVolumesProvider(t *testing.T) {
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.desc, func(t *testing.T) {
+			// create a new volumesManager each test.
+			volumesManager := NewFakeManager()
+			volumesManager.plugins.Set([]*api.CSINodePlugin{{Name: driver}})
+
 			v := api.VolumeAssignment{
 				ID:     testCase.volumeID,
 				Driver: &api.Driver{Name: driver},
@@ -80,7 +81,6 @@ func TestTaskRestrictedVolumesProvider(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotEmpty(t, volume)
 			}
-			volumesManager.Reset()
 		})
 	}
 }
