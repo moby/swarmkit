@@ -29,6 +29,13 @@ func (tpp *testPublisherProvider) Publisher(ctx context.Context, subscriptionID 
 		}, nil
 }
 
+func newFakeReporter(statuses statusReporterFunc, volumes volumeReporterFunc) Reporter {
+	return statusReporterCombined{
+		statusReporterFunc: statuses,
+		volumeReporterFunc: volumes,
+	}
+}
+
 func TestWorkerAssign(t *testing.T) {
 	db, cleanup := storageTestEnv(t)
 	defer cleanup()
@@ -42,10 +49,15 @@ func TestWorkerAssign(t *testing.T) {
 	})
 
 	worker := newWorker(db, executor, &testPublisherProvider{})
-	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
-		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
-		return nil
-	})
+	reporter := newFakeReporter(
+		statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
+			log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
+			return nil
+		}),
+		volumeReporterFunc(func(ctx context.Context, volumeID string) error {
+			return nil
+		}),
+	)
 
 	worker.Listen(ctx, reporter)
 
@@ -247,10 +259,16 @@ func TestWorkerWait(t *testing.T) {
 	ctx := context.Background()
 	executor := &mockExecutor{dependencies: NewDependencyManager()}
 	worker := newWorker(db, executor, &testPublisherProvider{})
-	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
-		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
-		return nil
-	})
+	reporter := newFakeReporter(
+		statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
+			log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
+			return nil
+		}),
+		volumeReporterFunc(func(ctx context.Context, volumeID string) error {
+			return nil
+		}),
+	)
+
 	executor.Volumes().Plugins().Set([]*api.CSINodePlugin{
 		{Name: "plugin-1"},
 	})
@@ -382,10 +400,15 @@ func TestWorkerUpdate(t *testing.T) {
 	ctx := context.Background()
 	executor := &mockExecutor{dependencies: NewDependencyManager()}
 	worker := newWorker(db, executor, &testPublisherProvider{})
-	reporter := statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
-		log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
-		return nil
-	})
+	reporter := newFakeReporter(
+		statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
+			log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
+			return nil
+		}),
+		volumeReporterFunc(func(ctx context.Context, volumeID string) error {
+			return nil
+		}),
+	)
 
 	executor.Volumes().Plugins().Set([]*api.CSINodePlugin{
 		{Name: "plugin-1"},

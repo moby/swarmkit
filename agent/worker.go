@@ -37,7 +37,7 @@ type Worker interface {
 	// by the worker.
 	//
 	// The listener will be removed if the context is cancelled.
-	Listen(ctx context.Context, reporter StatusReporter)
+	Listen(ctx context.Context, reporter Reporter)
 
 	// Report resends the status of all tasks controlled by this worker.
 	Report(ctx context.Context, reporter StatusReporter)
@@ -51,7 +51,7 @@ type Worker interface {
 
 // statusReporterKey protects removal map from panic.
 type statusReporterKey struct {
-	StatusReporter
+	Reporter
 }
 
 type worker struct {
@@ -157,7 +157,7 @@ func (w *worker) Assign(ctx context.Context, assignments []*api.AssignmentChange
 		return err
 	}
 
-	return reconcileVolumes(ctx, w, assignments, true)
+	return reconcileVolumes(ctx, w, assignments)
 }
 
 // Update updates the set of tasks, configs, and secrets for the worker.
@@ -194,7 +194,7 @@ func (w *worker) Update(ctx context.Context, assignments []*api.AssignmentChange
 		return err
 	}
 
-	return reconcileVolumes(ctx, w, assignments, false)
+	return reconcileVolumes(ctx, w, assignments)
 }
 
 func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.AssignmentChange, fullSnapshot bool) error {
@@ -419,10 +419,13 @@ func reconcileConfigs(ctx context.Context, w *worker, assignments []*api.Assignm
 	return nil
 }
 
-func reconcileVolumes(ctx context.Context, w *worker, assignments []*api.AssignmentChange, fullSnapshot bool) error {
+// reconcileVolumes reconciles the CSI volumes on this node. It does not need
+// fullSnapshot like other reconcile functions because volumes are non-trivial
+// and are never reset.
+func reconcileVolumes(ctx context.Context, w *worker, assignments []*api.AssignmentChange) error {
 	var (
 		updatedVolumes []api.VolumeAssignment
-		removedVolumes []string
+		removedVolumes []api.VolumeAssignment
 	)
 	for _, a := range assignments {
 		if r := a.Assignment.GetVolume(); r != nil {
@@ -430,7 +433,7 @@ func reconcileVolumes(ctx context.Context, w *worker, assignments []*api.Assignm
 			case api.AssignmentChange_AssignmentActionUpdate:
 				updatedVolumes = append(updatedVolumes, *r)
 			case api.AssignmentChange_AssignmentActionRemove:
-				removedVolumes = append(removedVolumes, r.ID)
+				removedVolumes = append(removedVolumes, *r)
 			}
 
 		}
@@ -451,19 +454,22 @@ func reconcileVolumes(ctx context.Context, w *worker, assignments []*api.Assignm
 		"len(removedVolumes)": len(removedVolumes),
 	}).Debug("(*worker).reconcileVolumes")
 
-	// If this was a complete set of volumes, we're going to clear the volumes map and add all of them
-	if fullSnapshot {
-		//TODO(ameyag): Handle when we reset volumes, we don't want to unpublish and unstage only to publish and stage again a moment later
-		volumes.Reset()
-	} else {
-		volumes.Remove(removedVolumes)
-	}
+	volumes.Remove(removedVolumes, func(id string) {
+		w.mu.RLock()
+		defer w.mu.RUnlock()
+
+		for key := range w.listeners {
+			if err := key.Reporter.ReportVolumeUnpublished(ctx, id); err != nil {
+				log.G(ctx).WithError(err).Errorf("failed reporting volume unpublished for reporter %v", key.Reporter)
+			}
+		}
+	})
 	volumes.Add(updatedVolumes...)
 
 	return nil
 }
 
-func (w *worker) Listen(ctx context.Context, reporter StatusReporter) {
+func (w *worker) Listen(ctx context.Context, reporter Reporter) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -580,8 +586,8 @@ func (w *worker) updateTaskStatus(ctx context.Context, tx *bolt.Tx, taskID strin
 
 	// broadcast the task status out.
 	for key := range w.listeners {
-		if err := key.StatusReporter.UpdateTaskStatus(ctx, taskID, status); err != nil {
-			log.G(ctx).WithError(err).Errorf("failed updating status for reporter %v", key.StatusReporter)
+		if err := key.Reporter.UpdateTaskStatus(ctx, taskID, status); err != nil {
+			log.G(ctx).WithError(err).Errorf("failed updating status for reporter %v", key.Reporter)
 		}
 	}
 

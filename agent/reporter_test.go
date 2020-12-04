@@ -29,35 +29,42 @@ func TestReporter(t *testing.T) {
 		wg       sync.WaitGroup
 	)
 
-	reporter := newStatusReporter(ctx, statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
-		if rand.Float64() > 0.9 {
-			return errors.New("status send failed")
-		}
+	reporter := newStatusReporter(
+		ctx, newFakeReporter(
+			statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
+				if rand.Float64() > 0.9 {
+					return errors.New("status send failed")
+				}
 
-		mu.Lock()
-		defer mu.Unlock()
+				mu.Lock()
+				defer mu.Unlock()
 
-		key := uniqueStatus{taskID, status}
-		// make sure we get the status only once.
-		if _, ok := unique[key]; ok {
-			t.Fatal("encountered status twice")
-		}
+				key := uniqueStatus{taskID, status}
+				// make sure we get the status only once.
+				if _, ok := unique[key]; ok {
+					t.Fatal("encountered status twice")
+				}
 
-		if status.State == api.TaskStateCompleted {
-			wg.Done()
-		}
+				if status.State == api.TaskStateCompleted {
+					wg.Done()
+				}
 
-		unique[key] = struct{}{}
-		if current, ok := statuses[taskID]; ok {
-			if status.State <= current.State {
-				return nil // only allow forward updates
-			}
-		}
+				unique[key] = struct{}{}
+				if current, ok := statuses[taskID]; ok {
+					if status.State <= current.State {
+						return nil // only allow forward updates
+					}
+				}
 
-		statuses[taskID] = status
+				statuses[taskID] = status
 
-		return nil
-	}))
+				return nil
+			}),
+			volumeReporterFunc(func(ctx context.Context, volumeID string) error {
+				return nil
+			}),
+		),
+	)
 
 	wg.Add(ntasks) // statuses will be reported!
 

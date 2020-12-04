@@ -438,6 +438,7 @@ func (s *session) reportVolumeUnpublished(ctx context.Context, volumes []string)
 			Unpublished: true,
 		})
 	}
+	client := api.NewDispatcherClient(s.conn.ClientConn)
 	_, err := client.UpdateVolumeStatus(ctx, &api.UpdateVolumeStatusRequest{
 		SessionID: s.sessionID,
 		Updates:   updates,

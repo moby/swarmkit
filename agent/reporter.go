@@ -15,15 +15,27 @@ type StatusReporter interface {
 	UpdateTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error
 }
 
+// Reporter recieves update to both task and volume status.
+type Reporter interface {
+	StatusReporter
+	ReportVolumeUnpublished(ctx context.Context, volumeID string) error
+}
+
 type statusReporterFunc func(ctx context.Context, taskID string, status *api.TaskStatus) error
 
 func (fn statusReporterFunc) UpdateTaskStatus(ctx context.Context, taskID string, status *api.TaskStatus) error {
 	return fn(ctx, taskID, status)
 }
 
-// VolumeStatusReporter recieves updates to volume status.
-type VolumeStatusReporter interface {
-	ReportVolumeUnpublished(ctx context.Context, volumeID string) error
+type volumeReporterFunc func(ctx context.Context, volumeID string) error
+
+func (fn volumeReporterFunc) ReportVolumeUnpublished(ctx context.Context, volumeID string) error {
+	return fn(ctx, volumeID)
+}
+
+type statusReporterCombined struct {
+	statusReporterFunc
+	volumeReporterFunc
 }
 
 // statusReporter creates a reliable StatusReporter that will always succeed.
@@ -31,9 +43,8 @@ type VolumeStatusReporter interface {
 //
 // The reporter will continue reporting the current status until it succeeds.
 type statusReporter struct {
-	reporter       StatusReporter
-	volumeReporter VolumeStatusReporter
-	statuses       map[string]*api.TaskStatus
+	reporter Reporter
+	statuses map[string]*api.TaskStatus
 	// volumes is a set of volumes which are to be reported unpublished.
 	volumes map[string]struct{}
 	mu      sync.Mutex
@@ -41,12 +52,11 @@ type statusReporter struct {
 	closed  bool
 }
 
-func newStatusReporter(ctx context.Context, upstream StatusReporter, volumeUpstream VolumeStatusReporter) *statusReporter {
+func newStatusReporter(ctx context.Context, upstream Reporter) *statusReporter {
 	r := &statusReporter{
-		reporter:       upstream,
-		volumeReporter: volumeUpstream,
-		statuses:       make(map[string]*api.TaskStatus),
-		volumes:        make(map[string]struct{}),
+		reporter: upstream,
+		statuses: make(map[string]*api.TaskStatus),
+		volumes:  make(map[string]struct{}),
 	}
 
 	r.cond.L = &r.mu
@@ -150,7 +160,7 @@ func (sr *statusReporter) run(ctx context.Context) {
 			delete(sr.volumes, volumeID)
 
 			sr.mu.Unlock()
-			err := sr.volumesReporter.ReportVolumeUnpublished(ctx, volumeID)
+			err := sr.reporter.ReportVolumeUnpublished(ctx, volumeID)
 			sr.mu.Lock()
 
 			// reporter might be closed during ReportVolumeUnpublished call
