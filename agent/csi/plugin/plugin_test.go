@@ -14,7 +14,7 @@ import (
 )
 
 func newVolumeClient(name string, nodeID string) *nodePlugin {
-	n := newNodePlugin(name, nodeID)
+	n := newNodePlugin(name, nodeID, nil)
 	n.staging = true
 
 	fakeNodeClient := newFakeNodeClient(true, nodeID)

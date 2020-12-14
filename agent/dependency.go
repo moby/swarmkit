@@ -17,11 +17,12 @@ type dependencyManager struct {
 // NewDependencyManager creates a dependency manager object that wraps
 // objects which provide access to various dependency types.
 func NewDependencyManager() exec.DependencyManager {
-	return &dependencyManager{
+	d := &dependencyManager{
 		secrets: secrets.NewManager(),
 		configs: configs.NewManager(),
-		volumes: csi.NewManager(),
 	}
+	d.volumes = csi.NewManager(d.secrets)
+	return d
 }
 
 func (d *dependencyManager) Secrets() exec.SecretsManager {

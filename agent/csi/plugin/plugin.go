@@ -13,6 +13,13 @@ import (
 	"github.com/docker/swarmkit/api"
 )
 
+// SecretGetter is a reimplementation of the exec.SecretGetter interface in the
+// scope of the plugin package. This avoids the needing to import exec into the
+// plugin package.
+type SecretGetter interface {
+	Get(secretID string) (*api.Secret, error)
+}
+
 type NodePlugin interface {
 	GetPublishedPath(volumeID string) string
 	NodeGetInfo(ctx context.Context) (*api.NodeCSIInfo, error)
@@ -40,6 +47,9 @@ type nodePlugin struct {
 	// socket is the path of the unix socket to connect to this plugin at
 	socket string
 
+	// secrets is the SecretGetter to get volume secret data
+	secrets SecretGetter
+
 	// volumeMap is the map from volume ID to Volume. Will place a volume once it is staged,
 	// remove it from the map for unstage.
 	// TODO: Make this map persistent if the swarm node goes down
@@ -64,16 +74,17 @@ type nodePlugin struct {
 const TargetStagePath string = "/var/lib/docker/stage"
 const TargetPublishPath string = "/var/lib/docker/publish"
 
-func NewNodePlugin(name, socket string) NodePlugin {
-	return newNodePlugin(name, socket)
+func NewNodePlugin(name, socket string, secrets SecretGetter) NodePlugin {
+	return newNodePlugin(name, socket, secrets)
 }
 
 // newNodePlugin returns a raw nodePlugin object, not behind an interface. this
 // is useful for testing.
-func newNodePlugin(name, socket string) *nodePlugin {
+func newNodePlugin(name, socket string, secrets SecretGetter) *nodePlugin {
 	return &nodePlugin{
 		name:      name,
 		socket:    socket,
+		secrets:   secrets,
 		volumeMap: map[string]*volumePublishStatus{},
 	}
 }
@@ -190,6 +201,10 @@ func (np *nodePlugin) NodeStageVolume(ctx context.Context, req *api.VolumeAssign
 	_, err = c.NodeStageVolume(ctx, &csi.NodeStageVolumeRequest{
 		VolumeId:          volID,
 		StagingTargetPath: stagingTarget,
+		Secrets:           np.makeSecrets(req),
+		VolumeCapability:  makeAccessMode(req.AccessMode),
+		VolumeContext:     req.VolumeContext,
+		PublishContext:    req.PublishContext,
 	})
 
 	if err != nil {
@@ -260,14 +275,24 @@ func (np *nodePlugin) NodePublishVolume(ctx context.Context, req *api.VolumeAssi
 
 	publishPath := filepath.Join(TargetPublishPath, volID)
 
+	var stagingPath string
+	if vs, ok := np.volumeMap[req.ID]; ok {
+		stagingPath = vs.stagingPath
+	}
+
 	c, err := np.Client(ctx)
 	if err != nil {
 		return err
 	}
 
 	_, err = c.NodePublishVolume(ctx, &csi.NodePublishVolumeRequest{
-		VolumeId:   volID,
-		TargetPath: publishPath,
+		VolumeId:          volID,
+		TargetPath:        publishPath,
+		StagingTargetPath: stagingPath,
+		VolumeCapability:  makeAccessMode(req.AccessMode),
+		Secrets:           np.makeSecrets(req),
+		VolumeContext:     req.VolumeContext,
+		PublishContext:    req.PublishContext,
 	})
 
 	if err != nil {
@@ -327,11 +352,57 @@ func (np *nodePlugin) NodeUnpublishVolume(ctx context.Context, req *api.VolumeAs
 	return status.Errorf(codes.FailedPrecondition, "VolumeID %s is not staged", volID)
 }
 
+func (np *nodePlugin) makeSecrets(v *api.VolumeAssignment) map[string]string {
+	// this should never happen, but program defensively.
+	if v == nil {
+		return nil
+	}
+
+	secrets := make(map[string]string, len(v.Secrets))
+	for _, secret := range v.Secrets {
+		// TODO(dperny): handle error from Get
+		value, _ := np.secrets.Get(secret.Secret)
+		if value != nil {
+			secrets[secret.Key] = string(value.Spec.Data)
+		}
+	}
+
+	return secrets
+}
+
 // makeNodeInfo converts a csi.NodeGetInfoResponse object into a swarmkit NodeCSIInfo
 // object.
 func makeNodeInfo(csiNodeInfo *csi.NodeGetInfoResponse) *api.NodeCSIInfo {
 	return &api.NodeCSIInfo{
 		NodeID:            csiNodeInfo.NodeId,
 		MaxVolumesPerNode: csiNodeInfo.MaxVolumesPerNode,
+	}
+}
+
+func makeAccessMode(am *api.VolumeAccessMode) *csi.VolumeCapability {
+	var mode csi.VolumeCapability_AccessMode_Mode
+	switch am.Scope {
+	case api.VolumeScopeSingleNode:
+		switch am.Sharing {
+		case api.VolumeSharingNone, api.VolumeSharingOneWriter, api.VolumeSharingAll:
+			mode = csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER
+		case api.VolumeSharingReadOnly:
+			mode = csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY
+		}
+	case api.VolumeScopeMultiNode:
+		switch am.Sharing {
+		case api.VolumeSharingReadOnly:
+			mode = csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY
+		case api.VolumeSharingOneWriter:
+			mode = csi.VolumeCapability_AccessMode_MULTI_NODE_SINGLE_WRITER
+		case api.VolumeSharingAll:
+			mode = csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER
+		}
+	}
+
+	return &csi.VolumeCapability{
+		AccessMode: &csi.VolumeCapability_AccessMode{
+			Mode: mode,
+		},
 	}
 }

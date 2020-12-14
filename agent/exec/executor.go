@@ -58,6 +58,7 @@ type DependencyManager interface {
 type DependencyGetter interface {
 	Secrets() SecretGetter
 	Configs() ConfigGetter
+	Volumes() VolumeGetter
 }
 
 // SecretGetter contains secret data necessary for the Controller.
