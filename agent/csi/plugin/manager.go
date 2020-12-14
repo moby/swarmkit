@@ -30,13 +30,17 @@ type pluginManager struct {
 	// newNodePluginFunc usually points to NewNodePlugin. However, for testing,
 	// NewNodePlugin can be swapped out with a function that creates fake node
 	// plugins
-	newNodePluginFunc func(string, string) NodePlugin
+	newNodePluginFunc func(string, string, SecretGetter) NodePlugin
+
+	// secrets is a SecretGetter for use by node plugins.
+	secrets SecretGetter
 }
 
-func NewPluginManager() PluginManager {
+func NewPluginManager(secrets SecretGetter) PluginManager {
 	return &pluginManager{
 		plugins:           map[string]NodePlugin{},
 		newNodePluginFunc: NewNodePlugin,
+		secrets:           secrets,
 	}
 }
 
@@ -61,7 +65,7 @@ func (pm *pluginManager) Set(plugins []*api.CSINodePlugin) error {
 	for _, plugin := range plugins {
 		np, ok := pm.plugins[plugin.Name]
 		if !ok {
-			newPlugins[plugin.Name] = pm.newNodePluginFunc(plugin.Name, plugin.Socket)
+			newPlugins[plugin.Name] = pm.newNodePluginFunc(plugin.Name, plugin.Socket, pm.secrets)
 		} else {
 			newPlugins[plugin.Name] = np
 		}

@@ -20,9 +20,9 @@ var _ = Describe("PluginManager", func() {
 			newNodePluginFunc: newFakeNodePlugin,
 		}
 
-		pm.plugins["plug1"] = newFakeNodePlugin("plug1", "")
-		pm.plugins["plug2"] = newFakeNodePlugin("plug2", "fail")
-		pm.plugins["plug3"] = newFakeNodePlugin("plug3", "")
+		pm.plugins["plug1"] = newFakeNodePlugin("plug1", "", nil)
+		pm.plugins["plug2"] = newFakeNodePlugin("plug2", "fail", nil)
+		pm.plugins["plug3"] = newFakeNodePlugin("plug3", "", nil)
 	})
 
 	Describe("Get", func() {

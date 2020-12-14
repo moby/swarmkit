@@ -18,7 +18,7 @@ type fakeNodePlugin struct {
 
 // newFakeNodePlugin has the same signature as NewNodePlugin, allowing it to be
 // substituted in testing.
-func newFakeNodePlugin(name, socket string) NodePlugin {
+func newFakeNodePlugin(name, socket string, secrets SecretGetter) NodePlugin {
 	return &fakeNodePlugin{
 		name:   name,
 		socket: socket,

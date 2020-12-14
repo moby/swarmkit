@@ -41,10 +41,10 @@ type volumes struct {
 }
 
 // NewManager returns a place to store volumes.
-func NewManager() exec.VolumesManager {
+func NewManager(secrets exec.SecretGetter) exec.VolumesManager {
 	r := &volumes{
 		volumes:        map[string]volumeState{},
-		plugins:        plugin.NewPluginManager(),
+		plugins:        plugin.NewPluginManager(secrets),
 		pendingVolumes: volumequeue.NewVolumeQueue(),
 	}
 	go r.retryVolumes()
