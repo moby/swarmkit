@@ -1012,6 +1012,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	m.scheduler = scheduler.New(s)
 	m.keyManager = keymanager.New(s, keymanager.DefaultConfig())
 	m.roleManager = newRoleManager(s, m.raftNode)
+	m.volumeManager = csi.NewManager(s)
 
 	// TODO(stevvooe): Allocate a context that can be used to
 	// shutdown underlying manager processes when leadership isTestUpdaterRollback
@@ -1131,6 +1132,10 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	go func(roleManager *roleManager) {
 		roleManager.Run(ctx)
 	}(m.roleManager)
+
+	go func(volumeManager *csi.Manager) {
+		volumeManager.Run(ctx)
+	}(m.volumeManager)
 }
 
 // becomeFollower shuts down the subsystems that are only run by the leader.
@@ -1173,6 +1178,9 @@ func (m *Manager) becomeFollower() {
 		m.keyManager.Stop()
 		m.keyManager = nil
 	}
+
+	m.volumeManager.Stop()
+	m.volumeManager = nil
 }
 
 // defaultClusterObject creates a default cluster.
