@@ -106,11 +106,10 @@ func TestNodeUnpublishVolume(t *testing.T) {
 			Name: plugin,
 		},
 	}
-	err := nodePlugin.NodeUnpublishVolume(context.Background(), s)
-	assert.Equal(t, codes.FailedPrecondition, testutils.ErrorCode(err))
+	// don't need to publish volume, necessarily, to unpublish itt.
 
 	// Volume needs to be staged and published before unpublish. Stage -> Publish -> Unpublish
-	err = nodePlugin.NodeStageVolume(context.Background(), s)
+	err := nodePlugin.NodeStageVolume(context.Background(), s)
 	require.NoError(t, err)
 	err = nodePlugin.NodePublishVolume(context.Background(), s)
 	require.NoError(t, err)

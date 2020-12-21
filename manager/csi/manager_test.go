@@ -207,7 +207,9 @@ var _ = Describe("Manager", func() {
 		})
 
 		JustBeforeEach(func() {
-			vm.init()
+			// we can use context.Background because the context here is only
+			// used for logging.
+			vm.init(context.Background())
 		})
 
 		It("should create all Plugins", func() {
@@ -307,7 +309,7 @@ var _ = Describe("Manager", func() {
 		})
 
 		JustBeforeEach(func() {
-			vm.init()
+			vm.init(context.Background())
 			volume := &api.Volume{
 				ID: "someVolume",
 				Spec: api.VolumeSpec{
@@ -416,7 +418,7 @@ var _ = Describe("Manager", func() {
 		})
 
 		JustBeforeEach(func() {
-			vm.init()
+			vm.init(context.Background())
 		})
 
 		It("should add new nodes to the plugins", func() {
@@ -610,7 +612,7 @@ var _ = Describe("Manager", func() {
 		})
 
 		JustBeforeEach(func() {
-			vm.init()
+			vm.init(context.Background())
 
 			// do the creation after the initialization, so that the init does
 			// not enqueue the volumes for processing.
@@ -723,7 +725,7 @@ var _ = Describe("Manager", func() {
 		})
 
 		JustBeforeEach(func() {
-			vm.init()
+			vm.init(context.Background())
 
 			// do creation after initialization to avoid init enqueuing the
 			// volume

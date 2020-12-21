@@ -28,6 +28,8 @@ var cannedVolume = &api.Volume{
 		Driver: &api.Driver{
 			Name: testVolumeDriver,
 		},
+		// use defaults for access mode.
+		AccessMode: &api.VolumeAccessMode{},
 	},
 }
 
