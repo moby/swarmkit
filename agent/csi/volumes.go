@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/docker/swarmkit/agent/csi/plugin"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
@@ -54,20 +56,27 @@ func NewManager(secrets exec.SecretGetter) exec.VolumesManager {
 
 // retryVolumes runs in a goroutine to retry failing volumes.
 func (r *volumes) retryVolumes() {
+	ctx := log.WithModule(context.Background(), "node/agent/csi")
 	for {
 		vid, attempt := r.pendingVolumes.Wait()
+
+		dctx := log.WithFields(ctx, logrus.Fields{
+			"volume.id": vid,
+			"attempt":   fmt.Sprintf("%d", attempt),
+		})
+
 		// this case occurs when the Stop method has been called on
 		// pendingVolumes, and means that we should pack up and exit.
 		if vid == "" && attempt == 0 {
 			break
 		}
-		r.tryVolume(vid, attempt)
+		r.tryVolume(dctx, vid, attempt)
 	}
 }
 
 // tryVolume synchronously tries one volume. it puts the volume back into the
 // queue if the attempt fails.
-func (r *volumes) tryVolume(id string, attempt uint) {
+func (r *volumes) tryVolume(ctx context.Context, id string, attempt uint) {
 	r.mu.RLock()
 	vs, ok := r.volumes[id]
 	r.mu.RUnlock()
@@ -77,11 +86,13 @@ func (r *volumes) tryVolume(id string, attempt uint) {
 	}
 
 	if !vs.remove {
-		if err := r.publishVolume(vs.volume); err != nil {
+		if err := r.publishVolume(ctx, vs.volume); err != nil {
+			log.G(ctx).WithError(err).Info("publishing volume failed")
 			r.pendingVolumes.Enqueue(id, attempt+1)
 		}
 	} else {
-		if err := r.unpublishVolume(vs.volume); err != nil {
+		if err := r.unpublishVolume(ctx, vs.volume); err != nil {
+			log.G(ctx).WithError(err).Info("upublishing volume failed")
 			r.pendingVolumes.Enqueue(id, attempt+1)
 		} else {
 			// if unpublishing was successful, then call the callback
@@ -100,12 +111,13 @@ func (r *volumes) Get(volumeID string) (string, error) {
 			return "", fmt.Errorf("volume being removed")
 		}
 
-		if plugin, err := r.plugins.Get(vs.volume.Driver.Name); err == nil {
-			path := plugin.GetPublishedPath(volumeID)
+		if p, err := r.plugins.Get(vs.volume.Driver.Name); err == nil {
+			path := p.GetPublishedPath(volumeID)
 			if path != "" {
 				return path, nil
 			}
-			log.L.WithField("method", "(*volumes).Get").Debugf("Path not published for volume:%v", volumeID)
+			// don't put this line here, it spams like crazy.
+			// log.L.WithField("method", "(*volumes).Get").Debugf("Path not published for volume:%v", volumeID)
 		} else {
 			return "", err
 		}
@@ -150,36 +162,36 @@ func (r *volumes) Remove(volumes []api.VolumeAssignment, callback func(id string
 	}
 }
 
-func (r *volumes) publishVolume(assignment *api.VolumeAssignment) error {
-	ctx := context.TODO()
-
-	plugin, err := r.plugins.Get(assignment.Driver.Name)
+func (r *volumes) publishVolume(ctx context.Context, assignment *api.VolumeAssignment) error {
+	log.G(ctx).Info("attempting to publish volume")
+	p, err := r.plugins.Get(assignment.Driver.Name)
 	if err != nil {
 		return err
 	}
 
 	// even though this may have succeeded already, the call to NodeStageVolume
 	// is idempotent, so we can retry it every time.
-	if err := plugin.NodeStageVolume(ctx, assignment); err != nil {
+	if err := p.NodeStageVolume(ctx, assignment); err != nil {
 		return err
 	}
 
-	return plugin.NodePublishVolume(ctx, assignment)
+	log.G(ctx).Debug("staging volume succeeded, attempting to publish volume")
+
+	return p.NodePublishVolume(ctx, assignment)
 }
 
-func (r *volumes) unpublishVolume(assignment *api.VolumeAssignment) error {
-	ctx := context.TODO()
-
-	plugin, err := r.plugins.Get(assignment.Driver.Name)
+func (r *volumes) unpublishVolume(ctx context.Context, assignment *api.VolumeAssignment) error {
+	log.G(ctx).Info("attempting to unpublish volume")
+	p, err := r.plugins.Get(assignment.Driver.Name)
 	if err != nil {
 		return err
 	}
 
-	if err := plugin.NodeUnpublishVolume(ctx, assignment); err != nil {
+	if err := p.NodeUnpublishVolume(ctx, assignment); err != nil {
 		return err
 	}
 
-	return plugin.NodeUnstageVolume(ctx, assignment)
+	return p.NodeUnstageVolume(ctx, assignment)
 }
 
 func (r *volumes) Plugins() exec.VolumePluginManager {

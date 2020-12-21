@@ -10,6 +10,9 @@ import (
 
 // makeTopology converts a swarmkit topology into a CSI topology.
 func makeTopologyRequirement(t *api.TopologyRequirement) *csi.TopologyRequirement {
+	if t == nil {
+		return nil
+	}
 	return &csi.TopologyRequirement{
 		Requisite: makeTopologies(t.Requisite),
 		Preferred: makeTopologies(t.Preferred),
@@ -34,6 +37,9 @@ func makeTopologies(ts []*api.Topology) []*csi.Topology {
 // are essentially homologous, with the swarm type being copied verbatim from
 // the CSI type (for build reasons).
 func makeTopology(t *api.Topology) *csi.Topology {
+	if t == nil {
+		return nil
+	}
 	return &csi.Topology{
 		Segments: t.Segments,
 	}
@@ -63,6 +69,11 @@ func makeAccessMode(am *api.VolumeAccessMode) *csi.VolumeCapability {
 	return &csi.VolumeCapability{
 		AccessMode: &csi.VolumeCapability_AccessMode{
 			Mode: mode,
+		},
+		AccessType: &csi.VolumeCapability_Mount{
+			Mount: &csi.VolumeCapability_MountVolume{
+				// intentionally left blank
+			},
 		},
 	}
 }

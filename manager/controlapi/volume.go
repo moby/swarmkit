@@ -111,7 +111,7 @@ func (s *Server) UpdateVolume(ctx context.Context, request *api.UpdateVolumeRequ
 		if request.Spec.Driver == nil || request.Spec.Driver.Name != volume.Spec.Driver.Name {
 			return status.Errorf(codes.InvalidArgument, "Driver cannot be updated")
 		}
-		if request.Spec.AccessMode != volume.Spec.AccessMode {
+		if request.Spec.AccessMode.Scope != volume.Spec.AccessMode.Scope || request.Spec.AccessMode.Sharing != volume.Spec.AccessMode.Sharing {
 			return status.Errorf(codes.InvalidArgument, "AccessMode cannot be updated")
 		}
 

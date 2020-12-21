@@ -83,12 +83,12 @@ func (vm *Manager) run(pctx context.Context) {
 		return nil
 	})
 	if err != nil {
-		// TODO(dperny): log message
+		log.G(ctx).WithError(err).Error("error in store view and watch")
 		return
 	}
 	defer cancel()
 
-	vm.init()
+	vm.init(ctx)
 
 	// run a goroutine which periodically processes incoming volumes. the
 	// handle function will trigger processing every time new events come in
@@ -153,7 +153,7 @@ func (vm *Manager) processVolume(ctx context.Context, id string, attempt uint) {
 
 // init does one-time setup work for the Manager, like creating all of
 // the Plugins and initializing the local state of the component.
-func (vm *Manager) init() {
+func (vm *Manager) init(ctx context.Context) {
 	vm.updatePlugins()
 
 	var (
@@ -164,11 +164,14 @@ func (vm *Manager) init() {
 		var err error
 		nodes, err = store.FindNodes(tx, store.All)
 		if err != nil {
-			// TODO(dperny): log something
+			// this should *never happen*. Find only returns errors if the find
+			// by is invalid.
+			log.G(ctx).WithError(err).Error("error finding nodes")
 		}
 		volumes, err = store.FindVolumes(tx, store.All)
 		if err != nil {
-			// TODO(dperny): log something
+			// likewise, should never happen.
+			log.G(ctx).WithError(err).Error("error finding volumes")
 		}
 	})
 
@@ -221,14 +224,13 @@ func (vm *Manager) Stop() {
 }
 
 func (vm *Manager) handleEvent(ev events.Event) {
-	// TODO(dperny): instead of executing directly off of the event stream, add
-	// objects received to some kind of intermediate structure, so we can
-	// easily retry.
 	switch e := ev.(type) {
 	case api.EventUpdateCluster:
 		// TODO(dperny): verify that the Cluster in this event can never be nil
-		vm.cluster = e.Cluster
-		vm.updatePlugins()
+		if e.Cluster != nil {
+			vm.cluster = e.Cluster
+			vm.updatePlugins()
+		}
 	case api.EventCreateVolume:
 		vm.enqueueVolume(e.Volume.ID)
 	case api.EventUpdateVolume:
@@ -264,10 +266,11 @@ func (vm *Manager) createVolume(ctx context.Context, v *api.Volume) error {
 		return err
 	}
 
-	// TODO(dperny): handle error
 	err = vm.store.Update(func(tx store.Tx) error {
 		v2 := store.GetVolume(tx, v.ID)
-		// TODO(dperny): handle missing volume
+		// the volume should never be missing. I don't know of even any race
+		// condition that could result in this behavior. nevertheless, it's
+		// better to do this than to segfault.
 		if v2 == nil {
 			return nil
 		}
@@ -345,7 +348,6 @@ func (vm *Manager) handleVolume(ctx context.Context, id string) error {
 			plug := vm.plugins[volume.Spec.Driver.Name]
 			publishContext, err := plug.PublishVolume(ctx, volume, status.NodeID)
 			if err == nil {
-				// TODO(dperny): handle error
 				status.State = api.VolumePublishStatus_PUBLISHED
 				status.PublishContext = publishContext
 				status.Message = ""
@@ -365,6 +367,7 @@ func (vm *Manager) handleVolume(ctx context.Context, id string) error {
 				adjustIndex++
 			} else {
 				status.Message = fmt.Sprintf("error unpublishing volume: %v", err)
+				failedPublishOrUnpublish = append(failedPublishOrUnpublish, status.NodeID)
 			}
 
 			updated = true
@@ -377,8 +380,9 @@ func (vm *Manager) handleVolume(ctx context.Context, id string) error {
 			// volume object.
 			v := store.GetVolume(tx, volume.ID)
 			if v == nil {
-				// TODO(dperny): volume should never be deleted with pending publishes.
-				// either handle this error otherwise document why we don't.
+				// volume should never be deleted with pending publishes. if
+				// this does occur somehow, then we will just ignore it, rather
+				// than crashing.
 				return nil
 			}
 

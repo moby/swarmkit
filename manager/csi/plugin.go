@@ -45,6 +45,10 @@ type plugin struct {
 	// controller indicates that the plugin has controller capabilities.
 	controller bool
 
+	// publisher indicates that the controller plugin has
+	// PUBLISH_UNPUBLISH_VOLUME capability.
+	publisher bool
+
 	// swarmToCSI maps a swarm node ID to the corresponding CSI node ID
 	swarmToCSI map[string]string
 
@@ -66,7 +70,7 @@ func NewPlugin(config *api.CSIConfig_Plugin, provider SecretProvider) Plugin {
 // connect is a private method that initializes a gRPC ClientConn and creates
 // the IdentityClient and ControllerClient.
 func (p *plugin) connect(ctx context.Context) error {
-	cc, err := grpc.DialContext(ctx, p.socket)
+	cc, err := grpc.DialContext(ctx, p.socket, grpc.WithInsecure())
 	if err != nil {
 		return err
 	}
@@ -77,16 +81,12 @@ func (p *plugin) connect(ctx context.Context) error {
 	idc := csi.NewIdentityClient(cc)
 	p.idClient = idc
 
-	if err := p.init(ctx); err != nil {
-		return err
-	}
-
 	// controllerClient may not do anything if the plugin does not support
 	// the controller service, but it should not be an error to create it now
 	// anyway
 	p.controllerClient = csi.NewControllerClient(cc)
 
-	return nil
+	return p.init(ctx)
 }
 
 // init checks uses the identity service to check the properties of the plugin,
@@ -115,6 +115,22 @@ func (p *plugin) init(ctx context.Context) error {
 			switch sc.Type {
 			case csi.PluginCapability_Service_CONTROLLER_SERVICE:
 				p.controller = true
+			}
+		}
+	}
+
+	if p.controller {
+		cCapResp, err := p.controllerClient.ControllerGetCapabilities(
+			ctx, &csi.ControllerGetCapabilitiesRequest{},
+		)
+		if err != nil {
+			return err
+		}
+
+		for _, c := range cCapResp.Capabilities {
+			rpc := c.GetRpc()
+			if rpc.Type == csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME {
+				p.publisher = true
 			}
 		}
 	}
@@ -169,6 +185,10 @@ func (p *plugin) DeleteVolume(ctx context.Context, v *api.Volume) error {
 // the Node with the given swarmkit ID. It returns a map, which is the
 // PublishContext for this Volume on this Node.
 func (p *plugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string) (map[string]string, error) {
+	if !p.publisher {
+		return nil, nil
+	}
+
 	req := p.makeControllerPublishVolumeRequest(v, nodeID)
 	c, err := p.Client(ctx)
 	if err != nil {
@@ -186,6 +206,10 @@ func (p *plugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string
 // Volume from the Node with the given swarmkit ID. It returns an error if the
 // unpublish does not succeed
 func (p *plugin) UnpublishVolume(ctx context.Context, v *api.Volume, nodeID string) error {
+	if !p.publisher {
+		return nil
+	}
+
 	req := p.makeControllerUnpublishVolumeRequest(v, nodeID)
 	c, err := p.Client(ctx)
 	if err != nil {

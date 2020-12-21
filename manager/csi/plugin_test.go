@@ -5,7 +5,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	"context"
-	"fmt"
 
 	// "google.golang.org/grpc"
 
@@ -154,6 +153,9 @@ var _ = Describe("Plugin manager", func() {
 				{
 					AccessMode: &csi.VolumeCapability_AccessMode{
 						Mode: csi.VolumeCapability_AccessMode_MULTI_NODE_SINGLE_WRITER,
+					},
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{},
 					},
 				},
 			}))
@@ -329,6 +331,20 @@ var _ = Describe("Plugin manager", func() {
 		It("should not return an error", func() {
 			Expect(publishError).ToNot(HaveOccurred())
 		})
+
+		When("the controller plugin does not support publish/unpublish", func() {
+			BeforeEach(func() {
+				controller.publisher = false
+			})
+
+			It("should not call the ControllerPublishVolume RPC", func() {
+				Expect(controller.publishRequests).To(BeEmpty())
+			})
+
+			It("should return a nil PublishContext", func() {
+				Expect(publishContext).To(BeNil())
+			})
+		})
 	})
 
 	Describe("Unpublishing Volumes", func() {
@@ -408,6 +424,16 @@ var _ = Describe("Plugin manager", func() {
 				Expect(controller.unpublishRequests).To(HaveLen(1))
 				Expect(controller.unpublishRequests[0]).ToNot(BeNil())
 				Expect(controller.unpublishRequests[0].VolumeId).To(Equal("volumePluginID1"))
+			})
+
+			When("the controller plugin does not support publish/unpublish", func() {
+				BeforeEach(func() {
+					controller.publisher = false
+				})
+
+				It("should not call the ControllerUnpublishVolume RPC", func() {
+					Expect(controller.publishRequests).To(BeEmpty())
+				})
 			})
 		})
 	})

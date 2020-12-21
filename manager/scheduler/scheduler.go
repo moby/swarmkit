@@ -125,7 +125,8 @@ func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
 }
 
 // Run is the scheduler event loop.
-func (s *Scheduler) Run(ctx context.Context) error {
+func (s *Scheduler) Run(pctx context.Context) error {
+	ctx := log.WithModule(pctx, "scheduler")
 	defer close(s.doneChan)
 
 	s.pipeline.AddFilter(&VolumesFilter{vs: s.volumes})
@@ -206,6 +207,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 				if v.Volume.VolumeInfo != nil && v.Volume.VolumeInfo.VolumeID != "" {
 					// TODO(dperny): verify that updating volumes doesn't break
 					// scheduling
+					log.G(ctx).WithField("volume.id", v.Volume.ID).Debug("updated volume")
 					s.volumes.addOrUpdateVolume(v.Volume)
 					tickRequired = true
 				}
@@ -418,7 +420,7 @@ func (s *Scheduler) processPreassignedTasks(ctx context.Context) {
 		}
 
 		for _, va := range decision.new.Volumes {
-			s.volumes.releaseVolume(decision.new.ID, va.ID)
+			s.volumes.releaseVolume(va.ID, decision.new.ID)
 		}
 	}
 }
@@ -477,7 +479,7 @@ func (s *Scheduler) tick(ctx context.Context) {
 
 		// release the volumes we tried to use
 		for _, va := range decision.new.Volumes {
-			s.volumes.releaseVolume(decision.new.ID, va.ID)
+			s.volumes.releaseVolume(va.ID, decision.new.ID)
 		}
 
 		// enqueue task for next scheduling attempt
@@ -540,6 +542,7 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 								va.ID,
 							)
 							failed = append(failed, decision)
+							continue taskLoop
 						}
 
 						// it's ok if the copy of the Volume we scheduled off
@@ -566,6 +569,7 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 								taskID, v.ID, v.Spec.Availability.String(),
 							)
 							failed = append(failed, decision)
+							continue taskLoop
 						}
 
 						alreadyPublished := false
@@ -853,8 +857,8 @@ func (s *Scheduler) scheduleNTasksOnNodes(ctx context.Context, n int, taskGroup 
 		// she turned me into a newT!
 		newT := *t
 		newT.Volumes = attachments
-		s.volumes.reserveTaskVolumes(&newT)
 		newT.NodeID = node.ID
+		s.volumes.reserveTaskVolumes(&newT)
 		newT.Status = api.TaskStatus{
 			State:     api.TaskStateAssigned,
 			Timestamp: ptypes.MustTimestampProto(time.Now()),

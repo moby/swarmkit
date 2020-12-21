@@ -1,6 +1,7 @@
 package csi
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -51,6 +52,8 @@ func TestTaskRestrictedVolumesProvider(t *testing.T) {
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.desc, func(t *testing.T) {
+			ctx := context.Background()
+
 			// create a new volumesManager each test.
 			volumesManager := NewFakeManager()
 			volumesManager.plugins.Set([]*api.CSINodePlugin{{Name: driver}})
@@ -62,7 +65,7 @@ func TestTaskRestrictedVolumesProvider(t *testing.T) {
 
 			volumesManager.Add(v)
 			volumesManager.pendingVolumes.Wait()
-			volumesManager.tryVolume(v.ID, 0)
+			volumesManager.tryVolume(ctx, v.ID, 0)
 
 			volumesGetter := Restrict(volumesManager, &api.Task{
 				ID: taskID,

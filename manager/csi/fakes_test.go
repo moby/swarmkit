@@ -85,6 +85,7 @@ func (f *fakeIdentityClient) Probe(ctx context.Context, in *csi.ProbeRequest, _ 
 type fakeControllerClient struct {
 	volumes    map[string]*csi.Volume
 	namesToIds map[string]string
+	publisher  bool
 	// createVolumeRequests is a log of all requests to CreateVolume.
 	createVolumeRequests []*csi.CreateVolumeRequest
 	// publishRequests is a log of all requests to ControllerPublishVolume
@@ -101,6 +102,7 @@ func newFakeControllerClient() *fakeControllerClient {
 	return &fakeControllerClient{
 		volumes:              map[string]*csi.Volume{},
 		namesToIds:           map[string]string{},
+		publisher:            true,
 		createVolumeRequests: []*csi.CreateVolumeRequest{},
 		publishRequests:      []*csi.ControllerPublishVolumeRequest{},
 	}
@@ -162,7 +164,20 @@ func (f *fakeControllerClient) GetCapacity(ctx context.Context, in *csi.GetCapac
 }
 
 func (f *fakeControllerClient) ControllerGetCapabilities(ctx context.Context, in *csi.ControllerGetCapabilitiesRequest, _ ...grpc.CallOption) (*csi.ControllerGetCapabilitiesResponse, error) {
-	return nil, nil
+	caps := &csi.ControllerGetCapabilitiesResponse{}
+	if f.publisher {
+		caps.Capabilities = append(
+			caps.Capabilities,
+			&csi.ControllerServiceCapability{
+				Type: &csi.ControllerServiceCapability_Rpc{
+					Rpc: &csi.ControllerServiceCapability_RPC{
+						Type: csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+					},
+				},
+			},
+		)
+	}
+	return caps, nil
 }
 
 func (f *fakeControllerClient) CreateSnapshot(ctx context.Context, in *csi.CreateSnapshotRequest, _ ...grpc.CallOption) (*csi.CreateSnapshotResponse, error) {
