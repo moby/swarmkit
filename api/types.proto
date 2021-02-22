@@ -1197,8 +1197,8 @@ message JobStatus {
 }
 
 // VolumeAccessMode is the access mode of the volume, and is used to determine
-// the CSI AccessMode value. It is a combination of two fields, the Sharing and
-// the Scope.
+// the CSI AccessMode value, as well as the volume access type (block vs
+// mount). In this way, it is more similar to the CSI VolumeCapability message.
 //
 // This defines how and where a volume can be accessed by more than
 // one Task, but does not imply anything about the accessible topology of the
@@ -1237,13 +1237,38 @@ message VolumeAccessMode {
 		ALL = 3 [(gogoproto.enumvalue_customname) = "VolumeSharingAll"];
 	}
 
+	// BlockVolume indicates the volume will be accessed with the block device
+	// API.
+	message BlockVolume {
+		// intentionally empty
+	}
+
+	// MountVolume indicates the volume will be access with the filesystem API.
+	message MountVolume {
+		// FsType is the filesystem type. This field is optional, and an empty
+		// string is equal to an unspecified value.
+		string fs_type = 1;
+
+		// MountFlags indicates mount options to be used for the volume. This
+		// field is optional, and may contain sensitive data.
+		repeated string mount_flags = 2;
+	}
+
 	// Scope defines on how many nodes this volume can be accessed
-	// simultaneously.
+	// simultaneously. If unset, will default to the zero-value of SINGLE_NODE.
 	Scope scope = 1;
 
 	// Sharing defines how many tasks can use this volume at the same time, and
-	// in what way.
+	// in what way. If unset, will default to the zero-value of NONE.
 	Sharing sharing = 2;
+
+	// AccessType defines the access type of the volume. Unlike Sharing and
+	// Scope, Swarmkit itself doesn't define either of these as a default, but
+	// but the upstream is free to do so. However, one of these MUST be set.
+	oneof access_type {
+		BlockVolume block = 3;
+		MountVolume mount = 4;
+	}
 }
 
 // VolumeSecret indicates a secret value that must be passed to CSI plugin

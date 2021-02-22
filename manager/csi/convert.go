@@ -45,7 +45,7 @@ func makeTopology(t *api.Topology) *csi.Topology {
 	}
 }
 
-func makeAccessMode(am *api.VolumeAccessMode) *csi.VolumeCapability {
+func makeCapability(am *api.VolumeAccessMode) *csi.VolumeCapability {
 	var mode csi.VolumeCapability_AccessMode_Mode
 	switch am.Scope {
 	case api.VolumeScopeSingleNode:
@@ -66,16 +66,29 @@ func makeAccessMode(am *api.VolumeAccessMode) *csi.VolumeCapability {
 		}
 	}
 
-	return &csi.VolumeCapability{
+	capability := &csi.VolumeCapability{
 		AccessMode: &csi.VolumeCapability_AccessMode{
 			Mode: mode,
 		},
-		AccessType: &csi.VolumeCapability_Mount{
-			Mount: &csi.VolumeCapability_MountVolume{
-				// intentionally left blank
-			},
-		},
 	}
+
+	if block := am.GetBlock(); block != nil {
+		capability.AccessType = &csi.VolumeCapability_Block{
+			// Block type is empty.
+			Block: &csi.VolumeCapability_BlockVolume{},
+		}
+	}
+
+	if mount := am.GetMount(); mount != nil {
+		capability.AccessType = &csi.VolumeCapability_Mount{
+			Mount: &csi.VolumeCapability_MountVolume{
+				FsType:     mount.FsType,
+				MountFlags: mount.MountFlags,
+			},
+		}
+	}
+
+	return capability
 }
 
 // makeCapcityRange converts the swarmkit CapacityRange object to the

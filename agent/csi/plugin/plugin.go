@@ -205,7 +205,7 @@ func (np *nodePlugin) NodeStageVolume(ctx context.Context, req *api.VolumeAssign
 		VolumeId:          req.VolumeID,
 		StagingTargetPath: stagingTarget,
 		Secrets:           np.makeSecrets(req),
-		VolumeCapability:  makeAccessMode(req.AccessMode),
+		VolumeCapability:  makeCapability(req.AccessMode),
 		VolumeContext:     req.VolumeContext,
 		PublishContext:    req.PublishContext,
 	})
@@ -297,7 +297,7 @@ func (np *nodePlugin) NodePublishVolume(ctx context.Context, req *api.VolumeAssi
 		VolumeId:          req.VolumeID,
 		TargetPath:        publishTarget,
 		StagingTargetPath: stagingPath,
-		VolumeCapability:  makeAccessMode(req.AccessMode),
+		VolumeCapability:  makeCapability(req.AccessMode),
 		Secrets:           np.makeSecrets(req),
 		VolumeContext:     req.VolumeContext,
 		PublishContext:    req.PublishContext,
@@ -381,7 +381,7 @@ func makeNodeInfo(csiNodeInfo *csi.NodeGetInfoResponse) *api.NodeCSIInfo {
 	}
 }
 
-func makeAccessMode(am *api.VolumeAccessMode) *csi.VolumeCapability {
+func makeCapability(am *api.VolumeAccessMode) *csi.VolumeCapability {
 	var mode csi.VolumeCapability_AccessMode_Mode
 	switch am.Scope {
 	case api.VolumeScopeSingleNode:
@@ -402,16 +402,28 @@ func makeAccessMode(am *api.VolumeAccessMode) *csi.VolumeCapability {
 		}
 	}
 
-	return &csi.VolumeCapability{
+	capability := &csi.VolumeCapability{
 		AccessMode: &csi.VolumeCapability_AccessMode{
 			Mode: mode,
 		},
-		AccessType: &csi.VolumeCapability_Mount{
-			Mount: &csi.VolumeCapability_MountVolume{
-				// intentionally left blank
-			},
-		},
 	}
+
+	if block := am.GetBlock(); block != nil {
+		capability.AccessType = &csi.VolumeCapability_Block{
+			// Block type is empty.
+			Block: &csi.VolumeCapability_BlockVolume{},
+		}
+	}
+
+	if mount := am.GetMount(); mount != nil {
+		capability.AccessType = &csi.VolumeCapability_Mount{
+			Mount: &csi.VolumeCapability_MountVolume{
+				FsType:     mount.FsType,
+				MountFlags: mount.MountFlags,
+			},
+		}
+	}
+	return capability
 }
 
 // stagePath returns the staging path for a given volume assignment
