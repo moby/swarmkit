@@ -31,6 +31,9 @@ func TestNodeStageVolume(t *testing.T) {
 		AccessMode: &api.VolumeAccessMode{
 			Scope:   api.VolumeScopeMultiNode,
 			Sharing: api.VolumeSharingOneWriter,
+			AccessType: &api.VolumeAccessMode_Mount{
+				Mount: &api.VolumeAccessMode_MountVolume{},
+			},
 		},
 		Driver: &api.Driver{
 			Name: plugin,
@@ -49,6 +52,9 @@ func TestNodeUnstageVolume(t *testing.T) {
 		AccessMode: &api.VolumeAccessMode{
 			Scope:   api.VolumeScopeMultiNode,
 			Sharing: api.VolumeSharingOneWriter,
+			AccessType: &api.VolumeAccessMode_Mount{
+				Mount: &api.VolumeAccessMode_MountVolume{},
+			},
 		},
 		Driver: &api.Driver{
 			Name: plugin,
@@ -77,6 +83,9 @@ func TestNodePublishVolume(t *testing.T) {
 		AccessMode: &api.VolumeAccessMode{
 			Scope:   api.VolumeScopeMultiNode,
 			Sharing: api.VolumeSharingOneWriter,
+			AccessType: &api.VolumeAccessMode_Mount{
+				Mount: &api.VolumeAccessMode_MountVolume{},
+			},
 		},
 		Driver: &api.Driver{
 			Name: plugin,
@@ -101,6 +110,9 @@ func TestNodeUnpublishVolume(t *testing.T) {
 		AccessMode: &api.VolumeAccessMode{
 			Scope:   api.VolumeScopeMultiNode,
 			Sharing: api.VolumeSharingOneWriter,
+			AccessType: &api.VolumeAccessMode_Mount{
+				Mount: &api.VolumeAccessMode_MountVolume{},
+			},
 		},
 		Driver: &api.Driver{
 			Name: plugin,

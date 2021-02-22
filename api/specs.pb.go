@@ -1335,7 +1335,9 @@ type VolumeSpec struct {
 	// specified; there is no default CSI Plugin.
 	Driver *Driver `protobuf:"bytes,3,opt,name=driver,proto3" json:"driver,omitempty"`
 	// AccessMode is similar to, and used to determine, the volume access mode as
-	// defined in the CSI spec.
+	// defined in the CSI spec, as well as the volume type (block vs mount). In
+	// this way, it is more similar to the VolumeCapability message in the CSI
+	// spec.
 	AccessMode *VolumeAccessMode `protobuf:"bytes,4,opt,name=access_mode,json=accessMode,proto3" json:"access_mode,omitempty"`
 	// Secrets represents a set of key/value pairs to pass to the CSI plugin. The
 	// keys of the secrets can be anything, but the values refer to swarmkit

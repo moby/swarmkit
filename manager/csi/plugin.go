@@ -260,7 +260,7 @@ func (p *plugin) makeCreateVolume(v *api.Volume) *csi.CreateVolumeRequest {
 		Name:       v.Spec.Annotations.Name,
 		Parameters: v.Spec.Driver.Options,
 		VolumeCapabilities: []*csi.VolumeCapability{
-			makeAccessMode(v.Spec.AccessMode),
+			makeCapability(v.Spec.AccessMode),
 		},
 		Secrets:                   secrets,
 		AccessibilityRequirements: makeTopologyRequirement(v.Spec.AccessibilityRequirements),
@@ -292,7 +292,7 @@ func (p *plugin) makeControllerPublishVolumeRequest(v *api.Volume, nodeID string
 	}
 
 	secrets := p.makeSecrets(v)
-	capability := makeAccessMode(v.Spec.AccessMode)
+	capability := makeCapability(v.Spec.AccessMode)
 	capability.AccessType = &csi.VolumeCapability_Mount{
 		Mount: &csi.VolumeCapability_MountVolume{},
 	}

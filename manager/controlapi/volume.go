@@ -25,6 +25,14 @@ func (s *Server) CreateVolume(ctx context.Context, request *api.CreateVolumeRequ
 		return nil, status.Errorf(codes.InvalidArgument, "meta: name must be provided")
 	}
 
+	if request.Spec.AccessMode == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "AccessMode must not be nil")
+	}
+
+	if request.Spec.AccessMode.GetAccessType() == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Volume AccessMode must specify either Mount or Block access type")
+	}
+
 	volume := &api.Volume{
 		ID:   identity.NewID(),
 		Spec: *request.Spec,

@@ -4447,6 +4447,44 @@ file {
       type_name: ".docker.swarmkit.v1.VolumeAccessMode.Sharing"
       json_name: "sharing"
     }
+    field {
+      name: "block"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.VolumeAccessMode.BlockVolume"
+      oneof_index: 0
+      json_name: "block"
+    }
+    field {
+      name: "mount"
+      number: 4
+      label: LABEL_OPTIONAL
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.VolumeAccessMode.MountVolume"
+      oneof_index: 0
+      json_name: "mount"
+    }
+    nested_type {
+      name: "BlockVolume"
+    }
+    nested_type {
+      name: "MountVolume"
+      field {
+        name: "fs_type"
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "fsType"
+      }
+      field {
+        name: "mount_flags"
+        number: 2
+        label: LABEL_REPEATED
+        type: TYPE_STRING
+        json_name: "mountFlags"
+      }
+    }
     enum_type {
       name: "Scope"
       value {
@@ -4500,6 +4538,9 @@ file {
       options {
         62001: 0
       }
+    }
+    oneof_decl {
+      name: "access_type"
     }
   }
   message_type {

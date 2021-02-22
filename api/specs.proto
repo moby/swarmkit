@@ -529,7 +529,9 @@ message VolumeSpec {
 	Driver driver = 3;
 
 	// AccessMode is similar to, and used to determine, the volume access mode as
-	// defined in the CSI spec.
+	// defined in the CSI spec, as well as the volume type (block vs mount). In
+	// this way, it is more similar to the VolumeCapability message in the CSI
+	// spec.
 	VolumeAccessMode access_mode = 4;
 
 	// Secrets represents a set of key/value pairs to pass to the CSI plugin. The

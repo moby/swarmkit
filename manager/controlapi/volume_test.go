@@ -29,7 +29,12 @@ var cannedVolume = &api.Volume{
 			Name: testVolumeDriver,
 		},
 		// use defaults for access mode.
-		AccessMode: &api.VolumeAccessMode{},
+		AccessMode: &api.VolumeAccessMode{
+			// use block access mode because it has no fields
+			AccessType: &api.VolumeAccessMode_Block{
+				Block: &api.VolumeAccessMode_BlockVolume{},
+			},
+		},
 	},
 }
 
@@ -70,13 +75,10 @@ func TestCreateVolumeNoName(t *testing.T) {
 	ts := newVolumeTestServer(t)
 	defer ts.Stop()
 
+	v := cannedVolume.Copy()
+	v.Spec.Annotations = api.Annotations{}
 	_, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
-		Spec: &api.VolumeSpec{
-			Annotations: api.Annotations{},
-			Driver: &api.Driver{
-				Name: "testdriver",
-			},
-		},
+		Spec: &v.Spec,
 	})
 
 	assert.Error(t, err)
@@ -88,13 +90,12 @@ func TestCreateVolumeNoDriver(t *testing.T) {
 	ts := newVolumeTestServer(t)
 	defer ts.Stop()
 
+	v := cannedVolume.Copy()
+	v.Spec.Driver = nil
+
 	// no driver
 	_, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
-		Spec: &api.VolumeSpec{
-			Annotations: api.Annotations{
-				Name: "testvolume",
-			},
-		},
+		Spec: &v.Spec,
 	})
 
 	assert.Error(t, err)
@@ -108,24 +109,17 @@ func TestCreateVolumeValid(t *testing.T) {
 	ts := newVolumeTestServer(t)
 	defer ts.Stop()
 
-	spec := &api.VolumeSpec{
-		Annotations: api.Annotations{
-			Name: "foovolume",
-		},
-		Driver: &api.Driver{
-			Name: testVolumeDriver,
-		},
-	}
+	v := cannedVolume.Copy()
 
 	resp, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
-		Spec: spec,
+		Spec: &v.Spec,
 	})
 
 	assert.NoError(t, err)
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Volume, "volume in response should not be nil")
 	assert.NotEmpty(t, resp.Volume.ID, "volume ID should not be empty")
-	assert.Equal(t, resp.Volume.Spec, *spec, "response spec should match request spec")
+	assert.Equal(t, resp.Volume.Spec, v.Spec, "response spec should match request spec")
 
 	var volume *api.Volume
 	ts.Store.View(func(tx store.ReadTx) {
@@ -161,26 +155,19 @@ func TestCreateVolumeValidateSecrets(t *testing.T) {
 		return nil
 	})
 
-	spec := &api.VolumeSpec{
-		Annotations: api.Annotations{
-			Name: "testvol",
-		},
-		Driver: &api.Driver{
-			Name: testVolumeDriver,
-		},
-		Secrets: []*api.VolumeSecret{
-			{
-				Key:    "foo",
-				Secret: "someIDnotReal",
-			}, {
-				Key:    "bar",
-				Secret: "someOtherNotRealID",
-			},
+	v := cannedVolume.Copy()
+	v.Spec.Secrets = []*api.VolumeSecret{
+		{
+			Key:    "foo",
+			Secret: "someIDnotReal",
+		}, {
+			Key:    "bar",
+			Secret: "someOtherNotRealID",
 		},
 	}
 
 	_, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
-		Spec: spec,
+		Spec: &v.Spec,
 	})
 	assert.Error(t, err, "expected creating a volume when a secret doesn't exist to fail")
 	assert.Contains(t, err.Error(), "secret")
@@ -188,14 +175,14 @@ func TestCreateVolumeValidateSecrets(t *testing.T) {
 	assert.Contains(t, err.Error(), "someOtherNotRealID")
 
 	// replace the secret with the ones that exist.
-	spec.Secrets = []*api.VolumeSecret{
+	v.Spec.Secrets = []*api.VolumeSecret{
 		{
 			Key:    "foo",
 			Secret: "someID1",
 		},
 	}
 	_, err = ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
-		Spec: spec,
+		Spec: &v.Spec,
 	})
 	assert.NoError(t, err)
 }
@@ -214,6 +201,31 @@ func TestCreateVolumeInvalidDriver(t *testing.T) {
 	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "CSI plugin")
+}
+
+// TestCreateVolumeInvalidAccessMode tests that CreateVolume enforces the
+// existence of the VolumeAccessMode, and the existence of the AccessType
+// inside it.
+func TestCreateVolumeInvalidAccessMode(t *testing.T) {
+	ts := newVolumeTestServer(t)
+	defer ts.Stop()
+
+	volume := cannedVolume.Copy()
+	volume.Spec.AccessMode = nil
+
+	_, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
+		Spec: &volume.Spec,
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "AccessMode must not be nil")
+
+	volume.Spec.AccessMode = &api.VolumeAccessMode{}
+
+	_, err = ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
+		Spec: &volume.Spec,
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "either Mount or Block")
 }
 
 // TestUpdateVolume tests that correctly updating a volume succeeds.
