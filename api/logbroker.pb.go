@@ -2563,10 +2563,7 @@ func (m *LogSubscriptionOptions) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLogbroker
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLogbroker
 			}
 			if (iNdEx + skippy) > l {
@@ -2712,10 +2709,7 @@ func (m *LogSelector) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLogbroker
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLogbroker
 			}
 			if (iNdEx + skippy) > l {
@@ -2861,10 +2855,7 @@ func (m *LogContext) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLogbroker
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLogbroker
 			}
 			if (iNdEx + skippy) > l {
@@ -2978,10 +2969,7 @@ func (m *LogAttr) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLogbroker
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLogbroker
 			}
 			if (iNdEx + skippy) > l {
@@ -3187,10 +3175,7 @@ func (m *LogMessage) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLogbroker
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLogbroker
 			}
 			if (iNdEx + skippy) > l {
@@ -3312,10 +3297,7 @@ func (m *SubscribeLogsRequest) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLogbroker
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLogbroker
 			}
 			if (iNdEx + skippy) > l {
@@ -3399,10 +3381,7 @@ func (m *SubscribeLogsMessage) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLogbroker
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLogbroker
 			}
 			if (iNdEx + skippy) > l {
@@ -3452,10 +3431,7 @@ func (m *ListenSubscriptionsRequest) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLogbroker
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLogbroker
 			}
 			if (iNdEx + skippy) > l {
@@ -3629,10 +3605,7 @@ func (m *SubscriptionMessage) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLogbroker
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLogbroker
 			}
 			if (iNdEx + skippy) > l {
@@ -3768,10 +3741,7 @@ func (m *PublishLogsMessage) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLogbroker
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLogbroker
 			}
 			if (iNdEx + skippy) > l {
@@ -3821,10 +3791,7 @@ func (m *PublishLogsResponse) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLogbroker
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLogbroker
 			}
 			if (iNdEx + skippy) > l {

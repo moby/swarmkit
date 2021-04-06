@@ -4669,10 +4669,7 @@ func (m *NodeSpec) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -5070,10 +5067,7 @@ func (m *ServiceSpec) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -5142,10 +5136,7 @@ func (m *ReplicatedService) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -5195,10 +5186,7 @@ func (m *GlobalService) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -5286,10 +5274,7 @@ func (m *ReplicatedJob) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -5339,10 +5324,7 @@ func (m *GlobalJob) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -5728,10 +5710,7 @@ func (m *TaskSpec) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -5832,10 +5811,7 @@ func (m *ResourceReference) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -5953,10 +5929,7 @@ func (m *GenericRuntimeSpec) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -6038,10 +6011,7 @@ func (m *NetworkAttachmentSpec) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -6233,7 +6203,7 @@ func (m *ContainerSpec) Unmarshal(dAtA []byte) error {
 					if err != nil {
 						return err
 					}
-					if skippy < 0 {
+					if (skippy < 0) || (iNdEx+skippy) < 0 {
 						return ErrInvalidLengthSpecs
 					}
 					if (iNdEx + skippy) > postIndex {
@@ -7064,7 +7034,7 @@ func (m *ContainerSpec) Unmarshal(dAtA []byte) error {
 					if err != nil {
 						return err
 					}
-					if skippy < 0 {
+					if (skippy < 0) || (iNdEx+skippy) < 0 {
 						return ErrInvalidLengthSpecs
 					}
 					if (iNdEx + skippy) > postIndex {
@@ -7179,10 +7149,7 @@ func (m *ContainerSpec) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -7264,10 +7231,7 @@ func (m *ContainerSpec_PullOptions) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -7413,10 +7377,7 @@ func (m *ContainerSpec_DNSConfig) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -7536,10 +7497,7 @@ func (m *ContainerSpec_Ulimit) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -7642,10 +7600,7 @@ func (m *EndpointSpec) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -7912,10 +7867,7 @@ func (m *NetworkSpec) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -8229,10 +8181,7 @@ func (m *ClusterSpec) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -8421,10 +8370,7 @@ func (m *SecretSpec) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {
@@ -8577,10 +8523,7 @@ func (m *ConfigSpec) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthSpecs
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthSpecs
 			}
 			if (iNdEx + skippy) > l {

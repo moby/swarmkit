@@ -3362,10 +3362,7 @@ func (m *Object) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthWatch
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthWatch
 			}
 			if (iNdEx + skippy) > l {
@@ -3466,10 +3463,7 @@ func (m *SelectBySlot) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthWatch
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthWatch
 			}
 			if (iNdEx + skippy) > l {
@@ -3615,10 +3609,7 @@ func (m *SelectByCustom) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthWatch
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthWatch
 			}
 			if (iNdEx + skippy) > l {
@@ -4153,10 +4144,7 @@ func (m *SelectBy) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthWatch
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthWatch
 			}
 			if (iNdEx + skippy) > l {
@@ -4296,10 +4284,7 @@ func (m *WatchRequest) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthWatch
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthWatch
 			}
 			if (iNdEx + skippy) > l {
@@ -4434,10 +4419,7 @@ func (m *WatchRequest_WatchEntry) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthWatch
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthWatch
 			}
 			if (iNdEx + skippy) > l {
@@ -4557,10 +4539,7 @@ func (m *WatchMessage) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthWatch
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthWatch
 			}
 			if (iNdEx + skippy) > l {
@@ -4701,10 +4680,7 @@ func (m *WatchMessage_Event) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthWatch
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthWatch
 			}
 			if (iNdEx + skippy) > l {
