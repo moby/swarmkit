@@ -21,7 +21,7 @@ import (
 	"github.com/docker/swarmkit/node"
 	"github.com/docker/swarmkit/version"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -196,7 +196,7 @@ var (
 					panic(err)
 				}
 				mux := http.NewServeMux()
-				mux.Handle("/metrics", prometheus.Handler())
+				mux.Handle("/metrics", promhttp.Handler())
 
 				go func() {
 					if err := http.Serve(l, mux); err != nil {
