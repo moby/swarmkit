@@ -171,7 +171,9 @@ var (
 				return err
 			}
 
-			client, err := engineapi.NewClient(engineAddr, "", nil, nil)
+			client, err := engineapi.NewClientWithOpts(
+				engineapi.WithHost(engineAddr),
+			)
 			if err != nil {
 				return err
 			}

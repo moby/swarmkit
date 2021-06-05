@@ -5,8 +5,8 @@ import (
 	"net"
 	"testing"
 
-	"github.com/docker/libnetwork/discoverapi"
-	"github.com/docker/libnetwork/types"
+	"github.com/docker/docker/libnetwork/discoverapi"
+	"github.com/docker/docker/libnetwork/types"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/allocator/networkallocator"
 	"github.com/stretchr/testify/assert"
