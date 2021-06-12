@@ -59,6 +59,30 @@ func TestMain(m *testing.M) {
 	os.Exit(res)
 }
 
+func TestDefaultConfigsFromEnv(t *testing.T) {
+	os.Setenv(raft.EnvRaftHeartbeatTick, "10")
+	os.Setenv(raft.EnvRaftElectionTick, "100")
+
+	config := raft.DefaultNodeConfig()
+	assert.Equal(t, config.HeartbeatTick, 10)
+	assert.Equal(t, config.ElectionTick, 100)
+
+	rconfig := raft.DefaultRaftConfig()
+	assert.Equal(t, rconfig.HeartbeatTick, uint32(10))
+	assert.Equal(t, rconfig.ElectionTick, uint32(100))
+
+	os.Unsetenv(raft.EnvRaftHeartbeatTick)
+	os.Unsetenv(raft.EnvRaftElectionTick)
+
+	config = raft.DefaultNodeConfig()
+	assert.Equal(t, config.HeartbeatTick, 1)
+	assert.Equal(t, config.ElectionTick, 10)
+
+	rconfig = raft.DefaultRaftConfig()
+	assert.Equal(t, rconfig.HeartbeatTick, uint32(1))
+	assert.Equal(t, rconfig.ElectionTick, uint32(10))
+}
+
 func TestRaftBootstrap(t *testing.T) {
 	t.Parallel()
 
