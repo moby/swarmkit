@@ -120,7 +120,6 @@ type clusterUpdate struct {
 	managerUpdate      *[]*api.WeightedPeer
 	bootstrapKeyUpdate *[]*api.EncryptionKey
 	rootCAUpdate       *[]byte
-	csiNodePlugins     *[]*api.CSINodePlugin
 }
 
 // Dispatcher is responsible for dispatching tasks and tracking agent health.
@@ -140,7 +139,6 @@ type Dispatcher struct {
 	store                *store.MemoryStore
 	lastSeenManagers     []*api.WeightedPeer
 	networkBootstrapKeys []*api.EncryptionKey
-	csiNodePlugins       []*api.CSINodePlugin
 	lastSeenRootCert     []byte
 	config               *Config
 	cluster              Cluster
@@ -259,16 +257,6 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 					d.networkBootstrapKeys = clusters[0].NetworkBootstrapKeys
 				}
 				d.lastSeenRootCert = clusters[0].RootCA.CACert
-				d.csiNodePlugins = []*api.CSINodePlugin{}
-				log.G(ctx).Infof("iterating through %d plugins", len(clusters[0].Spec.CSIConfig.Plugins))
-				for _, plugin := range clusters[0].Spec.CSIConfig.Plugins {
-					d.csiNodePlugins = append(
-						d.csiNodePlugins, &api.CSINodePlugin{
-							Name:   plugin.Name,
-							Socket: plugin.NodeSocket,
-						},
-					)
-				}
 			}
 			return nil
 		},
@@ -342,22 +330,10 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			}
 			d.lastSeenRootCert = cluster.Cluster.RootCA.CACert
 			d.networkBootstrapKeys = cluster.Cluster.NetworkBootstrapKeys
-			csiNodePlugins := []*api.CSINodePlugin{}
-			log.G(ctx).Infof("iterating through %d plugins", len(cluster.Cluster.Spec.CSIConfig.Plugins))
-			for _, plugin := range cluster.Cluster.Spec.CSIConfig.Plugins {
-				csiNodePlugins = append(
-					csiNodePlugins, &api.CSINodePlugin{
-						Name:   plugin.Name,
-						Socket: plugin.NodeSocket,
-					},
-				)
-			}
-			d.csiNodePlugins = csiNodePlugins
 			d.mu.Unlock()
 			d.clusterUpdateQueue.Publish(clusterUpdate{
 				bootstrapKeyUpdate: &cluster.Cluster.NetworkBootstrapKeys,
 				rootCAUpdate:       &cluster.Cluster.RootCA.CACert,
-				csiNodePlugins:     &csiNodePlugins,
 			})
 		case <-ctx.Done():
 			return nil
@@ -1377,12 +1353,6 @@ func (d *Dispatcher) getRootCACert() []byte {
 	return d.lastSeenRootCert
 }
 
-func (d *Dispatcher) getCSINodePlugins() []*api.CSINodePlugin {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	return d.csiNodePlugins
-}
-
 // Session is a stream which controls agent connection.
 // Each message contains list of backup Managers with weights. Also there is
 // a special boolean field Disconnect which if true indicates that node should
@@ -1462,7 +1432,6 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		Managers:             d.getManagers(),
 		NetworkBootstrapKeys: d.getNetworkBootstrapKeys(),
 		RootCA:               d.getRootCACert(),
-		CSINodePlugins:       d.getCSINodePlugins(),
 	}); err != nil {
 		return err
 	}
@@ -1487,11 +1456,10 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		}
 
 		var (
-			disconnect     bool
-			mgrs           []*api.WeightedPeer
-			netKeys        []*api.EncryptionKey
-			rootCert       []byte
-			csiNodePlugins []*api.CSINodePlugin
+			disconnect bool
+			mgrs       []*api.WeightedPeer
+			netKeys    []*api.EncryptionKey
+			rootCert   []byte
 		)
 
 		select {
@@ -1505,9 +1473,6 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			}
 			if update.rootCAUpdate != nil {
 				rootCert = *update.rootCAUpdate
-			}
-			if update.csiNodePlugins != nil {
-				csiNodePlugins = *update.csiNodePlugins
 			}
 		case ev := <-nodeUpdates:
 			nodeObj = ev.(api.EventUpdateNode).Node
@@ -1527,9 +1492,6 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 		if rootCert == nil {
 			rootCert = d.getRootCACert()
 		}
-		if csiNodePlugins == nil {
-			csiNodePlugins = d.getCSINodePlugins()
-		}
 
 		if err := stream.Send(&api.SessionMessage{
 			SessionID:            sessionID,
@@ -1537,7 +1499,6 @@ func (d *Dispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Sessio
 			Managers:             mgrs,
 			NetworkBootstrapKeys: netKeys,
 			RootCA:               rootCert,
-			CSINodePlugins:       csiNodePlugins,
 		}); err != nil {
 			return err
 		}

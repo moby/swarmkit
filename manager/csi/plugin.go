@@ -3,14 +3,22 @@ package csi
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"google.golang.org/grpc"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/swarmkit/api"
 )
 
-// Plugin is the interface for a CSI controller plugin
+// Plugin is the interface for a CSI controller plugin.
+//
+// In this package, the word "plugin" is unfortunately overused. This
+// particular "Plugin" is the interface used by volume Manager to interact with
+// CSI controller plugins. It should not be confused with the "plugin" returned
+// from the plugingetter interface, which is the interface that gives us the
+// information we need to create this Plugin.
 type Plugin interface {
 	CreateVolume(context.Context, *api.Volume) (*api.VolumeInfo, error)
 	DeleteVolume(context.Context, *api.Volume) error
@@ -57,10 +65,17 @@ type plugin struct {
 }
 
 // NewPlugin creates a new Plugin object.
-func NewPlugin(config *api.CSIConfig_Plugin, provider SecretProvider) Plugin {
+//
+// NewPlugin takes both the CompatPlugin and the PluginAddr. These should be
+// the same object. By taking both parts here, we can push off the work of
+// assuring that the given plugin implements the PluginAddr interface without
+// having to typecast in this constructor.
+func NewPlugin(pc plugingetter.CompatPlugin, pa plugingetter.PluginAddr, provider SecretProvider) Plugin {
 	return &plugin{
-		name:       config.Name,
-		socket:     config.ControllerSocket,
+		name: pc.Name(),
+		// TODO(dperny): verify that we do not need to include the Network()
+		// portion of the Addr.
+		socket:     fmt.Sprintf("%s://%s", pa.Addr().Network(), pa.Addr().String()),
 		provider:   provider,
 		swarmToCSI: map[string]string{},
 		csiToSwarm: map[string]string{},

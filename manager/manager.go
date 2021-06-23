@@ -1012,7 +1012,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	m.scheduler = scheduler.New(s)
 	m.keyManager = keymanager.New(s, keymanager.DefaultConfig())
 	m.roleManager = newRoleManager(s, m.raftNode)
-	m.volumeManager = csi.NewManager(s)
+	m.volumeManager = csi.NewManager(s, m.config.PluginGetter)
 
 	// TODO(stevvooe): Allocate a context that can be used to
 	// shutdown underlying manager processes when leadership isTestUpdaterRollback

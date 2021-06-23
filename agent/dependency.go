@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"github.com/docker/docker/pkg/plugingetter"
+
 	"github.com/docker/swarmkit/agent/configs"
 	"github.com/docker/swarmkit/agent/csi"
 	"github.com/docker/swarmkit/agent/exec"
@@ -16,12 +18,12 @@ type dependencyManager struct {
 
 // NewDependencyManager creates a dependency manager object that wraps
 // objects which provide access to various dependency types.
-func NewDependencyManager() exec.DependencyManager {
+func NewDependencyManager(pg plugingetter.PluginGetter) exec.DependencyManager {
 	d := &dependencyManager{
 		secrets: secrets.NewManager(),
 		configs: configs.NewManager(),
 	}
-	d.volumes = csi.NewManager(d.secrets)
+	d.volumes = csi.NewManager(pg, d.secrets)
 	return d
 }
 

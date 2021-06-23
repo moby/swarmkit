@@ -472,10 +472,6 @@ func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMe
 		}
 	}
 
-	if err := a.config.Executor.SetCSINodePlugins(message.CSINodePlugins); err != nil {
-		return errors.Wrap(err, "configuring CSI node plugins failed")
-	}
-
 	return nil
 }
 

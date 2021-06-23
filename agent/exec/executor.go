@@ -21,10 +21,6 @@ type Executor interface {
 	// SetNetworkBootstrapKeys passes the symmetric keys from the
 	// manager to the executor.
 	SetNetworkBootstrapKeys([]*api.EncryptionKey) error
-
-	// SetCSINodePlugins tells the executor to use the plugins provided in the
-	// list when handling volumes
-	SetCSINodePlugins([]*api.CSINodePlugin) error
 }
 
 // SecretsProvider is implemented by objects that can store secrets, typically
@@ -123,11 +119,6 @@ type VolumesManager interface {
 // contain that Get method, to avoid having to import the Plugin type, and
 // because in this context, it is not needed.
 type VolumePluginManager interface {
-	// Set sets the active plugins on the node. The argument should include all
-	// and only the plugins currently active; any plugins not included may be
-	// removed from the PluginManager.
-	Set(plugins []*api.CSINodePlugin) error
-
 	// NodeInfo returns the NodeCSIInfo for each active plugin. Plugins which
 	// are added through Set but to which no connection has yet been
 	// successfully established will not be included.

@@ -7,6 +7,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/docker/docker/pkg/plugingetter"
+
 	"github.com/docker/swarmkit/agent/csi/plugin"
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
@@ -43,10 +45,10 @@ type volumes struct {
 }
 
 // NewManager returns a place to store volumes.
-func NewManager(secrets exec.SecretGetter) exec.VolumesManager {
+func NewManager(pg plugingetter.PluginGetter, secrets exec.SecretGetter) exec.VolumesManager {
 	r := &volumes{
 		volumes:        map[string]volumeState{},
-		plugins:        plugin.NewPluginManager(secrets),
+		plugins:        plugin.NewPluginManager(pg, secrets),
 		pendingVolumes: volumequeue.NewVolumeQueue(),
 	}
 	go r.retryVolumes()

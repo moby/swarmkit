@@ -5,7 +5,16 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/docker/docker/pkg/plugingetter"
+
 	"github.com/docker/swarmkit/api"
+)
+
+const (
+	// DockerCSIPluginCap is the capability name of the plugins we use with the
+	// PluginGetter to get only the plugins we need. The full name of the
+	// plugin interface is "swarm.csiplugin/1.0"
+	DockerCSIPluginCap = "csiplugin"
 )
 
 // PluginManager manages the multiple CSI plugins that may be in use on the
@@ -13,11 +22,6 @@ import (
 type PluginManager interface {
 	// Get gets the plugin with the given name
 	Get(name string) (NodePlugin, error)
-
-	// Set sets all of the active plugins managed by this PluginManager. Any
-	// plugins active which are not in the argument are removed. Any plugins
-	// not yet active which are in the argument are created.
-	Set(plugins []*api.CSINodePlugin) error
 
 	// NodeInfo returns the NodeCSIInfo for every active plugin.
 	NodeInfo(ctx context.Context) ([]*api.NodeCSIInfo, error)
@@ -30,17 +34,20 @@ type pluginManager struct {
 	// newNodePluginFunc usually points to NewNodePlugin. However, for testing,
 	// NewNodePlugin can be swapped out with a function that creates fake node
 	// plugins
-	newNodePluginFunc func(string, string, SecretGetter) NodePlugin
+	newNodePluginFunc func(string, plugingetter.CompatPlugin, plugingetter.PluginAddr, SecretGetter) NodePlugin
 
 	// secrets is a SecretGetter for use by node plugins.
 	secrets SecretGetter
+
+	pg plugingetter.PluginGetter
 }
 
-func NewPluginManager(secrets SecretGetter) PluginManager {
+func NewPluginManager(pg plugingetter.PluginGetter, secrets SecretGetter) PluginManager {
 	return &pluginManager{
 		plugins:           map[string]NodePlugin{},
 		newNodePluginFunc: NewNodePlugin,
 		secrets:           secrets,
+		pg:                pg,
 	}
 }
 
@@ -48,32 +55,12 @@ func (pm *pluginManager) Get(name string) (NodePlugin, error) {
 	pm.pluginsMu.Lock()
 	defer pm.pluginsMu.Unlock()
 
-	plugin, ok := pm.plugins[name]
-	if !ok {
-		return nil, fmt.Errorf("cannot find plugin %v", name)
+	plugin, err := pm.getPlugin(name)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get plugin %v: %v", name, err)
 	}
 
 	return plugin, nil
-}
-
-// TODO(dperny): skipping removing plugins for now.
-func (pm *pluginManager) Set(plugins []*api.CSINodePlugin) error {
-	pm.pluginsMu.Lock()
-	defer pm.pluginsMu.Unlock()
-
-	newPlugins := map[string]NodePlugin{}
-	for _, plugin := range plugins {
-		np, ok := pm.plugins[plugin.Name]
-		if !ok {
-			newPlugins[plugin.Name] = pm.newNodePluginFunc(plugin.Name, plugin.Socket, pm.secrets)
-		} else {
-			newPlugins[plugin.Name] = np
-		}
-	}
-
-	pm.plugins = newPlugins
-
-	return nil
 }
 
 func (pm *pluginManager) NodeInfo(ctx context.Context) ([]*api.NodeCSIInfo, error) {
@@ -81,6 +68,19 @@ func (pm *pluginManager) NodeInfo(ctx context.Context) ([]*api.NodeCSIInfo, erro
 	// function call. that's too long and too blocking.
 	pm.pluginsMu.Lock()
 	defer pm.pluginsMu.Unlock()
+
+	// first, we should make sure all of the plugins are initialized. do this
+	// by looking up all the current plugins with DockerCSIPluginCap.
+	plugins := pm.pg.GetAllManagedPluginsByCap(DockerCSIPluginCap)
+	for _, plugin := range plugins {
+		// TODO(dperny): use this opportunity to drop plugins that we're
+		// tracking but which no longer exist.
+
+		// we don't actually need the plugin returned, we just need it loaded
+		// as a side effect.
+		pm.getPlugin(plugin.Name())
+	}
+
 	nodeInfo := []*api.NodeCSIInfo{}
 	for _, plugin := range pm.plugins {
 		info, err := plugin.NodeGetInfo(ctx)
@@ -92,4 +92,28 @@ func (pm *pluginManager) NodeInfo(ctx context.Context) ([]*api.NodeCSIInfo, erro
 		nodeInfo = append(nodeInfo, info)
 	}
 	return nodeInfo, nil
+}
+
+// getPlugin looks up the plugin with the specified name. Loads the plugin if
+// not yet loaded.
+//
+// pm.pluginsMu must be obtained before calling this method.
+func (pm *pluginManager) getPlugin(name string) (NodePlugin, error) {
+	if p, ok := pm.plugins[name]; ok {
+		return p, nil
+	}
+
+	pc, err := pm.pg.Get(name, DockerCSIPluginCap, plugingetter.Lookup)
+	if err != nil {
+		return nil, err
+	}
+
+	pa, ok := pc.(plugingetter.PluginAddr)
+	if !ok {
+		return nil, fmt.Errorf("plugin does not implement PluginAddr interface")
+	}
+
+	p := pm.newNodePluginFunc(name, pc, pa, pm.secrets)
+	pm.plugins[name] = p
+	return p, nil
 }

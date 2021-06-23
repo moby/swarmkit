@@ -9,10 +9,19 @@ import (
 	"github.com/docker/go-events"
 	"github.com/sirupsen/logrus"
 
+	"github.com/docker/docker/pkg/plugingetter"
+
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/docker/swarmkit/volumequeue"
+)
+
+const (
+	// DockerCSIPluginCap is the capability name of the plugins we use with the
+	// PluginGetter to get only the plugins we need. The full name of the
+	// plugin interface is "swarm.csiplugin/1.0"
+	DockerCSIPluginCap = "csiplugin"
 )
 
 type Manager struct {
@@ -21,10 +30,14 @@ type Manager struct {
 	// when creating new Plugin objects.
 	provider SecretProvider
 
+	// pg is the plugingetter, which allows us to access the Docker Engine's
+	// plugin store.
+	pg plugingetter.PluginGetter
+
 	// newPlugin is a function which returns an object implementing the Plugin
 	// interface. It allows us to swap out the implementation of plugins while
 	// unit-testing the Manager
-	newPlugin func(config *api.CSIConfig_Plugin, provider SecretProvider) Plugin
+	newPlugin func(pc plugingetter.CompatPlugin, pa plugingetter.PluginAddr, provider SecretProvider) Plugin
 
 	// synchronization for starting and stopping the Manager
 	startOnce sync.Once
@@ -33,18 +46,18 @@ type Manager struct {
 	stopOnce sync.Once
 	doneChan chan struct{}
 
-	cluster *api.Cluster
 	plugins map[string]Plugin
 
 	pendingVolumes *volumequeue.VolumeQueue
 }
 
-func NewManager(s *store.MemoryStore) *Manager {
+func NewManager(s *store.MemoryStore, pg plugingetter.PluginGetter) *Manager {
 	return &Manager{
 		store:          s,
 		stopChan:       make(chan struct{}),
 		doneChan:       make(chan struct{}),
 		newPlugin:      NewPlugin,
+		pg:             pg,
 		plugins:        map[string]Plugin{},
 		provider:       NewSecretProvider(s),
 		pendingVolumes: volumequeue.NewVolumeQueue(),
@@ -75,13 +88,11 @@ func (vm *Manager) run(pctx context.Context) {
 	defer ctxCancel()
 
 	watch, cancel, err := store.ViewAndWatch(vm.store, func(tx store.ReadTx) error {
-		cluster, err := store.FindClusters(tx, store.ByName(store.DefaultClusterName))
-		if err != nil {
-			return err
-		}
-		vm.cluster = cluster[0]
+		// TODO(dperny): change this from ViewAndWatch to one that's just
+		// Watch.
 		return nil
 	})
+
 	if err != nil {
 		log.G(ctx).WithError(err).Error("error in store view and watch")
 		return
@@ -154,8 +165,6 @@ func (vm *Manager) processVolume(ctx context.Context, id string, attempt uint) {
 // init does one-time setup work for the Manager, like creating all of
 // the Plugins and initializing the local state of the component.
 func (vm *Manager) init(ctx context.Context) {
-	vm.updatePlugins()
-
 	var (
 		nodes   []*api.Node
 		volumes []*api.Volume
@@ -188,33 +197,6 @@ func (vm *Manager) init(ctx context.Context) {
 	}
 }
 
-func (vm *Manager) updatePlugins() {
-	// activePlugins is a set of plugin names that are currently in the cluster
-	// spec. this lets remove from the vm.plugins map any plugins that are
-	// no longer in use.
-	activePlugins := map[string]struct{}{}
-
-	if vm.cluster != nil {
-		for _, plugin := range vm.cluster.Spec.CSIConfig.Plugins {
-			// it's exceedingly unlikely that plugin could ever be nil but
-			// better this than segfault
-			if plugin != nil {
-				if _, ok := vm.plugins[plugin.Name]; !ok {
-					vm.plugins[plugin.Name] = vm.newPlugin(plugin, vm.provider)
-				}
-				activePlugins[plugin.Name] = struct{}{}
-			}
-		}
-	}
-
-	// remove any plugins that are no longer in use.
-	for pluginName := range vm.plugins {
-		if _, ok := activePlugins[pluginName]; !ok {
-			delete(vm.plugins, pluginName)
-		}
-	}
-}
-
 func (vm *Manager) Stop() {
 	vm.stopOnce.Do(func() {
 		close(vm.stopChan)
@@ -225,12 +207,6 @@ func (vm *Manager) Stop() {
 
 func (vm *Manager) handleEvent(ev events.Event) {
 	switch e := ev.(type) {
-	case api.EventUpdateCluster:
-		// TODO(dperny): verify that the Cluster in this event can never be nil
-		if e.Cluster != nil {
-			vm.cluster = e.Cluster
-			vm.updatePlugins()
-		}
 	case api.EventCreateVolume:
 		vm.enqueueVolume(e.Volume.ID)
 	case api.EventUpdateVolume:
@@ -254,10 +230,10 @@ func (vm *Manager) createVolume(ctx context.Context, v *api.Volume) error {
 	l := log.G(ctx).WithField("volume.id", v.ID).WithField("driver", v.Spec.Driver.Name)
 	l.Info("creating volume")
 
-	p, ok := vm.plugins[v.Spec.Driver.Name]
-	if !ok {
-		l.Errorf("volume creation failed: driver %s not found", v.Spec.Driver.Name)
-		return errors.New("TODO")
+	p, err := vm.getPlugin(v.Spec.Driver.Name)
+	if err != nil {
+		l.Errorf("volume creation failed: %s", err.Error())
+		return err
 	}
 
 	info, err := p.CreateVolume(ctx, v)
@@ -345,29 +321,39 @@ func (vm *Manager) handleVolume(ctx context.Context, id string) error {
 	for i, status := range statuses {
 		switch status.State {
 		case api.VolumePublishStatus_PENDING_PUBLISH:
-			plug := vm.plugins[volume.Spec.Driver.Name]
-			publishContext, err := plug.PublishVolume(ctx, volume, status.NodeID)
-			if err == nil {
-				status.State = api.VolumePublishStatus_PUBLISHED
-				status.PublishContext = publishContext
-				status.Message = ""
-			} else {
+			plug, err := vm.getPlugin(volume.Spec.Driver.Name)
+			if err != nil {
 				status.Message = fmt.Sprintf("error publishing volume: %v", err)
 				failedPublishOrUnpublish = append(failedPublishOrUnpublish, status.NodeID)
+			} else {
+				publishContext, err := plug.PublishVolume(ctx, volume, status.NodeID)
+				if err == nil {
+					status.State = api.VolumePublishStatus_PUBLISHED
+					status.PublishContext = publishContext
+					status.Message = ""
+				} else {
+					status.Message = fmt.Sprintf("error publishing volume: %v", err)
+					failedPublishOrUnpublish = append(failedPublishOrUnpublish, status.NodeID)
+				}
 			}
 			updated = true
 		case api.VolumePublishStatus_PENDING_UNPUBLISH:
-			plug := vm.plugins[volume.Spec.Driver.Name]
-			err := plug.UnpublishVolume(ctx, volume, status.NodeID)
-			if err == nil {
-				// if there is no error with unpublishing, then we delete the
-				// status from the statuses slice.
-				j := i - adjustIndex
-				volume.PublishStatus = append(volume.PublishStatus[:j], volume.PublishStatus[j+1:]...)
-				adjustIndex++
-			} else {
+			plug, err := vm.getPlugin(volume.Spec.Driver.Name)
+			if err != nil {
 				status.Message = fmt.Sprintf("error unpublishing volume: %v", err)
 				failedPublishOrUnpublish = append(failedPublishOrUnpublish, status.NodeID)
+			} else {
+				err := plug.UnpublishVolume(ctx, volume, status.NodeID)
+				if err == nil {
+					// if there is no error with unpublishing, then we delete the
+					// status from the statuses slice.
+					j := i - adjustIndex
+					volume.PublishStatus = append(volume.PublishStatus[:j], volume.PublishStatus[j+1:]...)
+					adjustIndex++
+				} else {
+					status.Message = fmt.Sprintf("error unpublishing volume: %v", err)
+					failedPublishOrUnpublish = append(failedPublishOrUnpublish, status.NodeID)
+				}
 			}
 
 			updated = true
@@ -407,8 +393,9 @@ func (vm *Manager) handleNode(n *api.Node) {
 	// we just call AddNode on every update. Because it's just a map
 	// assignment, this is probably faster than checking if something changed.
 	for _, info := range n.Description.CSIInfo {
-		p, ok := vm.plugins[info.PluginName]
-		if !ok {
+		p, err := vm.getPlugin(info.PluginName)
+		if err != nil {
+			log.L.Warnf("error handling node: %v", err)
 			// TODO(dperny): log something
 			continue
 		}
@@ -420,6 +407,9 @@ func (vm *Manager) handleNode(n *api.Node) {
 func (vm *Manager) handleNodeRemove(nodeID string) {
 	// we just call RemoveNode on every plugin, because it's probably quicker
 	// than checking if the node was using that plugin.
+	//
+	// we don't need to worry about lazy-loading here, because if don't have
+	// the plugin loaded, there's no need to call remove.
 	for _, plugin := range vm.plugins {
 		plugin.RemoveNode(nodeID)
 	}
@@ -427,8 +417,11 @@ func (vm *Manager) handleNodeRemove(nodeID string) {
 
 func (vm *Manager) deleteVolume(ctx context.Context, v *api.Volume) error {
 	// TODO(dperny): handle missing plugin
-	plug := vm.plugins[v.Spec.Driver.Name]
-	err := plug.DeleteVolume(ctx, v)
+	plug, err := vm.getPlugin(v.Spec.Driver.Name)
+	if err != nil {
+		return err
+	}
+	err = plug.DeleteVolume(ctx, v)
 	if err != nil {
 		return err
 	}
@@ -437,4 +430,51 @@ func (vm *Manager) deleteVolume(ctx context.Context, v *api.Volume) error {
 	return vm.store.Update(func(tx store.Tx) error {
 		return store.DeleteVolume(tx, v.ID)
 	})
+}
+
+// getPlugin returns the plugin with the given name.
+//
+// In a previous iteration of the architecture of this component, plugins were
+// added to the manager through an update to the Cluster object, which
+// triggered an event. In other words, they were eagerly loaded.
+//
+// When rearchitecting to use the plugingetter.PluginGetter interface, that
+// eager loading is no longer practical, because the method for getting events
+// about new plugins would be difficult to plumb this deep into swarm.
+//
+// Instead, we change from what was previously a bunch of raw map lookups to
+// instead a method call which lazy-loads the plugins as needed. This is fine,
+// because in the Plugin object itself, the network connection is made lazily
+// as well.
+//
+// TODO(dperny): There is no way to unload a plugin. Unloading plugins will
+// happen as part of a leadership change, but otherwise, on especially
+// long-lived managers with especially high plugin churn, this is a memory
+// leak. It's acceptable for now because we expect neither exceptionally long
+// lived managers nor exceptionally high plugin churn.
+func (vm *Manager) getPlugin(name string) (Plugin, error) {
+	// if the plugin already exists, we can just return it.
+	if p, ok := vm.plugins[name]; ok {
+		return p, nil
+	}
+
+	// otherwise, we need to load the plugin.
+	pc, err := vm.pg.Get(name, DockerCSIPluginCap, plugingetter.Lookup)
+	if err != nil {
+		return nil, err
+	}
+
+	if pc == nil {
+		return nil, errors.New("driver \"" + name + "\" not found")
+	}
+
+	pa, ok := pc.(plugingetter.PluginAddr)
+	if !ok {
+		return nil, errors.New("plugin for driver \"" + name + "\" does not implement PluginAddr")
+	}
+
+	p := vm.newPlugin(pc, pa, vm.provider)
+	vm.plugins[name] = p
+
+	return p, nil
 }
