@@ -42,7 +42,11 @@ setup: ## install dependencies
 	# install golangci-lint version 1.17.1 to ./bin/golangci-lint
 	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.17.1
 	@go get -u github.com/lk4d4/vndr
-	@go get -u github.com/stevvooe/protobuild
+	# horrid, awful hack to fix CI. we use a version of protobuild that predates
+	# some changes that result in it failing on some newer version because of
+	# dependencies. this is a binary checked into this branch, then copied into
+	# the go path where it would be expected.
+	@cp ./hack/protobuild ./bin/protobuild
 
 .PHONY: generate
 generate: protos

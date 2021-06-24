@@ -1,5 +1,10 @@
 # NOTE(dperny): for some reason, alpine was giving me trouble
-FROM golang:1.11.0-stretch
+ARG GO_VERSION=1.13.15
+ARG DEBIAN_FRONTEND=noninteractive
+ARG BASE_DEBIAN_DISTRO="buster"
+ARG GOLANG_IMAGE="golang:${GO_VERSION}-${BASE_DEBIAN_DISTRO}"
+
+FROM ${GOLANG_IMAGE}
 
 RUN apt-get update && apt-get install -y make git unzip
 
@@ -16,6 +21,7 @@ WORKDIR /go/src/github.com/docker/swarmkit/
 # install the dependencies from `make setup`
 # we only copy `direct.mk` to avoid busting the cache too easily
 COPY direct.mk .
+COPY hack/protobuild hack/protobuild
 RUN make --file=direct.mk setup
 
 # now we can copy the rest
