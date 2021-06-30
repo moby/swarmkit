@@ -6,17 +6,19 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/docker/swarmkit/testutils"
 )
 
 var _ = Describe("PluginManager", func() {
 	var (
 		pm *pluginManager
-		pg *fakePluginGetter
+		pg *testutils.FakePluginGetter
 	)
 
 	BeforeEach(func() {
-		pg = &fakePluginGetter{
-			plugins: map[string]*fakeCompatPlugin{},
+		pg = &testutils.FakePluginGetter{
+			Plugins: map[string]*testutils.FakeCompatPlugin{},
 		}
 
 		pm = &pluginManager{
@@ -25,23 +27,23 @@ var _ = Describe("PluginManager", func() {
 			pg:                pg,
 		}
 
-		pg.plugins["plug1"] = &fakeCompatPlugin{
-			name: "plug1",
-			addr: &net.UnixAddr{
+		pg.Plugins["plug1"] = &testutils.FakeCompatPlugin{
+			PluginName: "plug1",
+			PluginAddr: &net.UnixAddr{
 				Net:  "unix",
 				Name: "",
 			},
 		}
-		pg.plugins["plug2"] = &fakeCompatPlugin{
-			name: "plug2",
-			addr: &net.UnixAddr{
+		pg.Plugins["plug2"] = &testutils.FakeCompatPlugin{
+			PluginName: "plug2",
+			PluginAddr: &net.UnixAddr{
 				Net:  "unix",
 				Name: "fail",
 			},
 		}
-		pg.plugins["plug3"] = &fakeCompatPlugin{
-			name: "plug3",
-			addr: &net.UnixAddr{
+		pg.Plugins["plug3"] = &testutils.FakeCompatPlugin{
+			PluginName: "plug3",
+			PluginAddr: &net.UnixAddr{
 				Net:  "unix",
 				Name: "",
 			},

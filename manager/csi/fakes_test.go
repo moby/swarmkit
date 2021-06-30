@@ -3,17 +3,14 @@ package csi
 import (
 	"context"
 	"fmt"
-	"net"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/docker/docker/pkg/plugingetter"
-	"github.com/docker/docker/pkg/plugins"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"google.golang.org/grpc"
 
+	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/swarmkit/api"
 )
 
@@ -289,95 +286,4 @@ func (f *fakePlugin) AddNode(swarmID, csiID string) {
 
 func (f *fakePlugin) RemoveNode(swarmID string) {
 	f.removedIDs[swarmID] = struct{}{}
-}
-
-// fakePluginGetter is a fake of the plugingetter.PluginGetter interface.
-type fakePluginGetter struct {
-	// plugins maps a pluginName to a fakeCompatPlugin object.
-	plugins map[string]*fakeCompatPlugin
-}
-
-// Get returns the plugin with the given name. The capability must be
-// DockerCSIPluginCap or an error will be returned.
-//
-// TODO(dperny): Mode is ignored because we don't bother with reference
-// counting, but should we?
-func (f *fakePluginGetter) Get(name, capability string, _ int) (plugingetter.CompatPlugin, error) {
-	if capability != DockerCSIPluginCap {
-		return nil, fmt.Errorf(
-			"should only ever get plugins with cap %q, but passed %q",
-			capability, DockerCSIPluginCap,
-		)
-	}
-
-	if plugin, ok := f.plugins[name]; ok {
-		return plugin, nil
-	}
-	return nil, fmt.Errorf("plugin %q not found", name)
-}
-
-// GetAllByCap isn't needed by us. We use GetAllManagedPluginsByCap instead.
-func (f *fakePluginGetter) GetAllByCap(_ string) ([]plugingetter.CompatPlugin, error) {
-	return nil, nil
-}
-
-// GetAllManagedPluginsByCap returns all of the plugins. If capability is
-// anything other than DockerCSIPluginCap, nil is returned.
-func (f *fakePluginGetter) GetAllManagedPluginsByCap(capability string) []plugingetter.CompatPlugin {
-	if capability != DockerCSIPluginCap {
-		return nil
-	}
-
-	allPlugins := make([]plugingetter.CompatPlugin, 0, len(f.plugins))
-	for _, plugin := range f.plugins {
-		allPlugins = append(allPlugins, plugin)
-	}
-	return allPlugins
-}
-
-// Handle isn't necessary for our code, because we don't use it, so it can be left blank.
-func (f *fakePluginGetter) Handle(_ string, _ func(string, *plugins.Client)) {}
-
-// fakeCompatPlugin is a fake plugin, implementing two interfaces:
-// * plugingetter.CompatPlugin, which is what's returned from the
-//   plugingetter.PluginGetter interface.
-// * plugingetter.PluginAddr, which is implemented by V2 plugins (the plugin
-//   type we actually use) and which gives us access to the address of the
-//   plugin (which is the part we actually need).
-type fakeCompatPlugin struct {
-	name     string
-	addr     net.Addr
-	timeout  time.Duration
-	protocol string
-}
-
-func (f *fakeCompatPlugin) Name() string {
-	return f.name
-}
-
-func (f *fakeCompatPlugin) ScopedPath(_ string) string {
-	return ""
-}
-
-// IsV1 will always return false for the plugin, because we only use V2 plugins.
-func (f *fakeCompatPlugin) IsV1() bool {
-	return false
-}
-
-// Client isn't used. We don't need a client, we create a client from the
-// address.
-func (f *fakeCompatPlugin) Client() *plugins.Client {
-	return nil
-}
-
-func (f *fakeCompatPlugin) Addr() net.Addr {
-	return f.addr
-}
-
-func (f *fakeCompatPlugin) Timeout() time.Duration {
-	return f.timeout
-}
-
-func (f *fakeCompatPlugin) Protocol() string {
-	return f.protocol
 }

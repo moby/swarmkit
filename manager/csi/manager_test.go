@@ -12,6 +12,7 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/testutils"
 )
 
 var _ = Describe("Manager", func() {
@@ -29,7 +30,7 @@ var _ = Describe("Manager", func() {
 		volumes []*api.Volume
 
 		pluginMaker  *fakePluginMaker
-		pluginGetter *fakePluginGetter
+		pluginGetter *testutils.FakePluginGetter
 
 		// watch contains an event channel, which is produced by
 		// store.ViewAndWatch.
@@ -62,8 +63,8 @@ var _ = Describe("Manager", func() {
 		pluginMaker = &fakePluginMaker{
 			plugins: map[string]*fakePlugin{},
 		}
-		pluginGetter = &fakePluginGetter{
-			plugins: map[string]*fakeCompatPlugin{},
+		pluginGetter = &testutils.FakePluginGetter{
+			Plugins: map[string]*testutils.FakeCompatPlugin{},
 		}
 
 		s = store.NewMemoryStore(nil)
@@ -108,16 +109,16 @@ var _ = Describe("Manager", func() {
 
 	When("starting up", func() {
 		BeforeEach(func() {
-			pluginGetter.plugins["newPlugin"] = &fakeCompatPlugin{
-				name: "newPlugin",
-				addr: &net.UnixAddr{
+			pluginGetter.Plugins["newPlugin"] = &testutils.FakeCompatPlugin{
+				PluginName: "newPlugin",
+				PluginAddr: &net.UnixAddr{
 					Net:  "unix",
 					Name: "unix:///whatever.sock",
 				},
 			}
-			pluginGetter.plugins["differentPlugin"] = &fakeCompatPlugin{
-				name: "differentPlugin",
-				addr: &net.UnixAddr{
+			pluginGetter.Plugins["differentPlugin"] = &testutils.FakeCompatPlugin{
+				PluginName: "differentPlugin",
+				PluginAddr: &net.UnixAddr{
 					Net:  "unix",
 					Name: "unix:///somethingElse.sock",
 				},
@@ -233,16 +234,16 @@ var _ = Describe("Manager", func() {
 
 	When("a volume is created", func() {
 		BeforeEach(func() {
-			pluginGetter.plugins["somePlugin"] = &fakeCompatPlugin{
-				name: "somePlugin",
-				addr: &net.UnixAddr{
+			pluginGetter.Plugins["somePlugin"] = &testutils.FakeCompatPlugin{
+				PluginName: "somePlugin",
+				PluginAddr: &net.UnixAddr{
 					Net:  "unix",
 					Name: "unix:///whatever.sock",
 				},
 			}
-			pluginGetter.plugins["someOtherPlugin"] = &fakeCompatPlugin{
-				name: "someOtherPlugin",
-				addr: &net.UnixAddr{
+			pluginGetter.Plugins["someOtherPlugin"] = &testutils.FakeCompatPlugin{
+				PluginName: "someOtherPlugin",
+				PluginAddr: &net.UnixAddr{
 					Net:  "unix",
 					Name: "unix:///somethingElse.sock",
 				},
@@ -297,16 +298,16 @@ var _ = Describe("Manager", func() {
 
 	Describe("managing node inventory", func() {
 		BeforeEach(func() {
-			pluginGetter.plugins["newPlugin"] = &fakeCompatPlugin{
-				name: "newPlugin",
-				addr: &net.UnixAddr{
+			pluginGetter.Plugins["newPlugin"] = &testutils.FakeCompatPlugin{
+				PluginName: "newPlugin",
+				PluginAddr: &net.UnixAddr{
 					Net:  "unix",
 					Name: "unix:///whatever.sock",
 				},
 			}
-			pluginGetter.plugins["differentPlugin"] = &fakeCompatPlugin{
-				name: "differentPlugin",
-				addr: &net.UnixAddr{
+			pluginGetter.Plugins["differentPlugin"] = &testutils.FakeCompatPlugin{
+				PluginName: "differentPlugin",
+				PluginAddr: &net.UnixAddr{
 					Net:  "unix",
 					Name: "unix:///somethingElse.sock",
 				},
@@ -469,9 +470,9 @@ var _ = Describe("Manager", func() {
 			v1 *api.Volume
 		)
 		BeforeEach(func() {
-			pluginGetter.plugins["plug1"] = &fakeCompatPlugin{
-				name: "plug1",
-				addr: &net.UnixAddr{
+			pluginGetter.Plugins["plug1"] = &testutils.FakeCompatPlugin{
+				PluginName: "plug1",
+				PluginAddr: &net.UnixAddr{
 					Net:  "unix",
 					Name: "unix:///whatever.sock",
 				},
@@ -666,9 +667,9 @@ var _ = Describe("Manager", func() {
 
 	Describe("removing a Volume", func() {
 		BeforeEach(func() {
-			pluginGetter.plugins["plug"] = &fakeCompatPlugin{
-				name: "plug",
-				addr: &net.UnixAddr{
+			pluginGetter.Plugins["plug"] = &testutils.FakeCompatPlugin{
+				PluginName: "plug",
+				PluginAddr: &net.UnixAddr{
 					Net:  "unix",
 					Name: "unix:///whatever.sock",
 				},
