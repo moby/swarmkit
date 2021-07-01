@@ -38,30 +38,10 @@ var cannedVolume = &api.Volume{
 	},
 }
 
-// newVolumeTestServer creates a new test server but adds a cluster object with
-// a CSIConfig.
-func newVolumeTestServer(t *testing.T) *testServer {
-	ts := newTestServer(t)
-
-	createCluster(t, ts, "whateverid", store.DefaultClusterName, api.AcceptancePolicy{}, ts.Server.securityConfig.RootCA())
-	err := ts.Store.Update(func(tx store.Tx) error {
-		cluster := store.GetCluster(tx, "whateverid")
-		cluster.Spec.CSIConfig.Plugins = []*api.CSIConfig_Plugin{
-			{
-				Name: testVolumeDriver,
-			},
-		}
-		return store.UpdateCluster(tx, cluster)
-	})
-	assert.NoError(t, err)
-
-	return ts
-}
-
 // TestCreateVolumeEmptyRequest tests that calling CreateVolume with an empty
 // request returns an error
 func TestCreateVolumeEmptyRequest(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	_, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{})
@@ -72,7 +52,7 @@ func TestCreateVolumeEmptyRequest(t *testing.T) {
 // TestCreateVolumeNoName tests that creating a volume without setting a name
 // returns an error
 func TestCreateVolumeNoName(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	v := cannedVolume.Copy()
@@ -87,7 +67,7 @@ func TestCreateVolumeNoName(t *testing.T) {
 }
 
 func TestCreateVolumeNoDriver(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	v := cannedVolume.Copy()
@@ -106,7 +86,7 @@ func TestCreateVolumeNoDriver(t *testing.T) {
 // TestCreateVolumeValid tests that creating a volume with valid parameters
 // succeeds
 func TestCreateVolumeValid(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	v := cannedVolume.Copy()
@@ -132,7 +112,7 @@ func TestCreateVolumeValid(t *testing.T) {
 // TestCreateVolumeValidateSecrets tests that creating a volume that uses
 // secrets validates that those secrets exist.
 func TestCreateVolumeValidateSecrets(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	secrets := []*api.Secret{
@@ -187,27 +167,11 @@ func TestCreateVolumeValidateSecrets(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestCreateVolumeInvalidDriver tests that the controlapi rejects a volume with
-// a driver not known to swarmkit
-func TestCreateVolumeInvalidDriver(t *testing.T) {
-	ts := newVolumeTestServer(t)
-	defer ts.Stop()
-
-	volume := cannedVolume.Copy()
-	volume.Spec.Driver.Name = "notknown"
-
-	_, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
-		Spec: &volume.Spec,
-	})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "CSI plugin")
-}
-
 // TestCreateVolumeInvalidAccessMode tests that CreateVolume enforces the
 // existence of the VolumeAccessMode, and the existence of the AccessType
 // inside it.
 func TestCreateVolumeInvalidAccessMode(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	volume := cannedVolume.Copy()
@@ -230,7 +194,7 @@ func TestCreateVolumeInvalidAccessMode(t *testing.T) {
 
 // TestUpdateVolume tests that correctly updating a volume succeeds.
 func TestUpdateVolume(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	volume := cannedVolume.Copy()
@@ -276,7 +240,7 @@ func TestUpdateVolume(t *testing.T) {
 // TestUpdateVolumeMissingRequestComponents tests that an UpdateVolumeRequest
 // missing any of its fields is invalid.
 func TestUpdateVolumeMissingRequestComponents(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	// empty ID
@@ -310,7 +274,7 @@ func TestUpdateVolumeMissingRequestComponents(t *testing.T) {
 // TestUpdateVolumeNotFound tests that trying to update a volume that does not
 // exist returns a not found error
 func TestUpdateVolumeNotFound(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	_, err := ts.Client.UpdateVolume(context.Background(), &api.UpdateVolumeRequest{
@@ -326,7 +290,7 @@ func TestUpdateVolumeNotFound(t *testing.T) {
 // TestUpdateVolumeOutOfSequence tests that if the VolumeVersion is incorrect,
 // an error is returned.
 func TestUpdateVolumeOutOfSequence(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	volume := cannedVolume.Copy()
@@ -354,7 +318,7 @@ func TestUpdateVolumeOutOfSequence(t *testing.T) {
 // TestUpdateVolumeInvalidFields tests that updating several different fields
 // in a volume is disallowed.
 func TestUpdateVolumeInvalidFields(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	for _, tc := range []struct {
@@ -439,7 +403,7 @@ func TestUpdateVolumeValidateSecrets(t *testing.T) {
 }
 
 func TestGetVolume(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 	volume := cannedVolume.Copy()
 	err := ts.Store.Update(func(tx store.Tx) error {
@@ -457,7 +421,7 @@ func TestGetVolume(t *testing.T) {
 }
 
 func TestGetVolumeNotFound(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	_, err := ts.Client.GetVolume(context.Background(), &api.GetVolumeRequest{
@@ -470,7 +434,7 @@ func TestGetVolumeNotFound(t *testing.T) {
 // TestListVolumesByDriver tests that filtering volumes based on volume group
 // works correctly.
 func TestListVolumesByGroup(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	alternativeDriver := "someOtherDriver"
@@ -551,20 +515,6 @@ func TestListVolumesByGroup(t *testing.T) {
 	}
 
 	err := ts.Store.Update(func(tx store.Tx) error {
-		cluster := store.GetCluster(tx, "whateverid")
-		// add an extra driver, so we can test filtering on drivers
-		cluster.Spec.CSIConfig.Plugins = []*api.CSIConfig_Plugin{
-			{
-				Name: testVolumeDriver,
-			}, {
-				Name: alternativeDriver,
-			},
-		}
-
-		if err := store.UpdateCluster(tx, cluster); err != nil {
-			return err
-		}
-
 		for _, v := range volumes {
 			if err := store.CreateVolume(tx, v); err != nil {
 				return err
@@ -665,7 +615,7 @@ func TestListVolumesByGroup(t *testing.T) {
 // TestRemoveVolume tests that an unused volume can be removed successfully,
 // meaning PendingDelete == true.
 func TestRemoveVolume(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	require.NoError(t, ts.Store.Update(func(tx store.Tx) error {
@@ -692,7 +642,7 @@ func TestRemoveVolume(t *testing.T) {
 // through the creation stage and gotten a VolumeInfo, but is not published,
 // can be successfully removed.
 func TestRemoveVolumeCreatedButNotInUse(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	volume := cannedVolume.Copy()
@@ -721,7 +671,7 @@ func TestRemoveVolumeCreatedButNotInUse(t *testing.T) {
 }
 
 func TestRemoveVolumeInUse(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	volume := cannedVolume.Copy()
@@ -760,7 +710,7 @@ func TestRemoveVolumeInUse(t *testing.T) {
 }
 
 func TestRemoveVolumeNotFound(t *testing.T) {
-	ts := newVolumeTestServer(t)
+	ts := newTestServer(t)
 	defer ts.Stop()
 
 	resp, err := ts.Client.RemoveVolume(context.Background(), &api.RemoveVolumeRequest{
