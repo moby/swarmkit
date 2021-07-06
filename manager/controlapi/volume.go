@@ -38,25 +38,6 @@ func (s *Server) CreateVolume(ctx context.Context, request *api.CreateVolumeRequ
 		Spec: *request.Spec,
 	}
 	err := s.store.Update(func(tx store.Tx) error {
-		// verify that the specified driver exists
-		clusters, err := store.FindClusters(tx, store.ByName(store.DefaultClusterName))
-		if err == nil && len(clusters) == 1 {
-			found := false
-			for _, plugin := range clusters[0].Spec.CSIConfig.Plugins {
-				if plugin.Name == volume.Spec.Driver.Name {
-					found = true
-					break
-				}
-			}
-
-			if !found {
-				return status.Errorf(
-					codes.FailedPrecondition,
-					"CSI plugin %v not found", volume.Spec.Driver.Name,
-				)
-			}
-		}
-
 		// check all secrets, so that we can return an error indicating ALL
 		// missing secrets, instead of just the first one.
 		var missingSecrets []string

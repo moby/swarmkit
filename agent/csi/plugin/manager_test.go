@@ -2,27 +2,52 @@ package plugin
 
 import (
 	"context"
+	"net"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/testutils"
 )
 
 var _ = Describe("PluginManager", func() {
 	var (
 		pm *pluginManager
+		pg *testutils.FakePluginGetter
 	)
 
 	BeforeEach(func() {
+		pg = &testutils.FakePluginGetter{
+			Plugins: map[string]*testutils.FakeCompatPlugin{},
+		}
+
 		pm = &pluginManager{
 			plugins:           map[string]NodePlugin{},
 			newNodePluginFunc: newFakeNodePlugin,
+			pg:                pg,
 		}
 
-		pm.plugins["plug1"] = newFakeNodePlugin("plug1", "", nil)
-		pm.plugins["plug2"] = newFakeNodePlugin("plug2", "fail", nil)
-		pm.plugins["plug3"] = newFakeNodePlugin("plug3", "", nil)
+		pg.Plugins["plug1"] = &testutils.FakeCompatPlugin{
+			PluginName: "plug1",
+			PluginAddr: &net.UnixAddr{
+				Net:  "unix",
+				Name: "",
+			},
+		}
+		pg.Plugins["plug2"] = &testutils.FakeCompatPlugin{
+			PluginName: "plug2",
+			PluginAddr: &net.UnixAddr{
+				Net:  "unix",
+				Name: "fail",
+			},
+		}
+		pg.Plugins["plug3"] = &testutils.FakeCompatPlugin{
+			PluginName: "plug3",
+			PluginAddr: &net.UnixAddr{
+				Net:  "unix",
+				Name: "",
+			},
+		}
 	})
 
 	Describe("Get", func() {
@@ -36,55 +61,6 @@ var _ = Describe("PluginManager", func() {
 			p, err := pm.Get("plugNotHere")
 			Expect(err).To(HaveOccurred())
 			Expect(p).To(BeNil())
-		})
-	})
-
-	Describe("Set", func() {
-		var (
-			plug1Before, plug3Before NodePlugin
-		)
-
-		BeforeEach(func() {
-			plugins := []*api.CSINodePlugin{
-				{
-					Name: "plug1",
-				}, {
-					Name:   "plug3",
-					Socket: "fail",
-				}, {
-					Name: "plug4",
-				},
-			}
-
-			plug1Before = pm.plugins["plug1"]
-			plug3Before = pm.plugins["plug3"]
-
-			err := pm.Set(plugins)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("should create plugins that do not already exist", func() {
-			p, err := pm.Get("plug4")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(p).ToNot(BeNil())
-		})
-
-		It("should remove plugins that exist in the PluginManager, but are not in the arg", func() {
-			p, err := pm.Get("plug2")
-			Expect(err).To(HaveOccurred())
-			Expect(p).To(BeNil())
-		})
-
-		It("should not re-create plugins which are already created", func() {
-			p1, err := pm.Get("plug1")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(p1).ToNot(BeNil())
-			Expect(p1).To(Equal(plug1Before))
-
-			p3, err := pm.Get("plug3")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(p3).ToNot(BeNil())
-			Expect(p3).To(Equal(plug3Before))
 		})
 	})
 

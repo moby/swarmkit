@@ -145,11 +145,6 @@ func (e *executor) SetNetworkBootstrapKeys([]*api.EncryptionKey) error {
 	return nil
 }
 
-// SetCSINodePlugins has no function in the dockerapi executor.
-func (e *executor) SetCSINodePlugins([]*api.CSINodePlugin) error {
-	return nil
-}
-
 func (e *executor) Secrets() exec.SecretsManager {
 	return e.secrets
 }

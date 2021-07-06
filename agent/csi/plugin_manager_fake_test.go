@@ -31,14 +31,6 @@ func (f *fakePluginManager) Get(name string) (plugin.NodePlugin, error) {
 	return nil, fmt.Errorf("error getting plugin")
 }
 
-// Set sets the active plugins
-func (f *fakePluginManager) Set(plugins []*api.CSINodePlugin) error {
-	for _, plugin := range plugins {
-		f.plugins[plugin.Name] = newFakeNodePlugin(plugin.Name)
-	}
-	return nil
-}
-
 // NodeInfo returns the CSI Info for every plugin.
 func (f *fakePluginManager) NodeInfo(ctx context.Context) ([]*api.NodeCSIInfo, error) {
 	return nil, nil

@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"net"
 	"testing"
 
 	"github.com/docker/swarmkit/api"
@@ -14,7 +15,11 @@ import (
 )
 
 func newVolumeClient(name string, nodeID string) *nodePlugin {
-	n := newNodePlugin(name, nodeID, nil)
+	p := &testutils.FakeCompatPlugin{
+		PluginName: name,
+		PluginAddr: &net.UnixAddr{},
+	}
+	n := newNodePlugin(name, p, p, nil)
 	n.staging = true
 
 	fakeNodeClient := newFakeNodeClient(true, nodeID)

@@ -10,6 +10,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"google.golang.org/grpc"
 
+	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/swarmkit/api"
 )
 
@@ -202,12 +203,12 @@ type fakePluginMaker struct {
 	plugins map[string]*fakePlugin
 }
 
-func (fpm *fakePluginMaker) newFakePlugin(config *api.CSIConfig_Plugin, provider SecretProvider) Plugin {
+func (fpm *fakePluginMaker) newFakePlugin(pc plugingetter.CompatPlugin, pa plugingetter.PluginAddr, provider SecretProvider) Plugin {
 	fpm.Lock()
 	defer fpm.Unlock()
 	p := &fakePlugin{
-		name:               config.Name,
-		socket:             config.ControllerSocket,
+		name:               pc.Name(),
+		socket:             pa.Addr().String(),
 		swarmToCSI:         map[string]string{},
 		volumesCreated:     map[string]*api.Volume{},
 		volumesDeleted:     []string{},
@@ -215,7 +216,7 @@ func (fpm *fakePluginMaker) newFakePlugin(config *api.CSIConfig_Plugin, provider
 		volumesUnpublished: map[string][]string{},
 		removedIDs:         map[string]struct{}{},
 	}
-	fpm.plugins[config.Name] = p
+	fpm.plugins[pc.Name()] = p
 	return p
 }
 

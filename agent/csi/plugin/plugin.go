@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"sync"
 
@@ -10,6 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
 )
@@ -48,6 +50,9 @@ type nodePlugin struct {
 	// socket is the path of the unix socket to connect to this plugin at
 	socket string
 
+	// scopePath gets the provided path relative to the plugin directory.
+	scopePath func(s string) string
+
 	// secrets is the SecretGetter to get volume secret data
 	secrets SecretGetter
 
@@ -72,19 +77,27 @@ type nodePlugin struct {
 	nodeClient csi.NodeClient
 }
 
-const TargetStagePath string = "/var/lib/docker/stage"
-const TargetPublishPath string = "/var/lib/docker/publish"
+const (
+	// TargetStagePath is the path within the plugin's scope that the volume is
+	// to be staged. This does not need to be accessible or propagated outside
+	// of the plugin rootfs.
+	TargetStagePath string = "/data/staged"
+	// TargetPublishPath is the path within the plugin's scope that the volume
+	// is to be published. This needs to be the plugin's PropagatedMount.
+	TargetPublishPath string = "/data/published"
+)
 
-func NewNodePlugin(name, socket string, secrets SecretGetter) NodePlugin {
-	return newNodePlugin(name, socket, secrets)
+func NewNodePlugin(name string, pc plugingetter.CompatPlugin, pa plugingetter.PluginAddr, secrets SecretGetter) NodePlugin {
+	return newNodePlugin(name, pc, pa, secrets)
 }
 
 // newNodePlugin returns a raw nodePlugin object, not behind an interface. this
 // is useful for testing.
-func newNodePlugin(name, socket string, secrets SecretGetter) *nodePlugin {
+func newNodePlugin(name string, pc plugingetter.CompatPlugin, pa plugingetter.PluginAddr, secrets SecretGetter) *nodePlugin {
 	return &nodePlugin{
 		name:      name,
-		socket:    socket,
+		socket:    fmt.Sprintf("%s://%s", pa.Addr().Network(), pa.Addr().String()),
+		scopePath: pc.ScopedPath,
 		secrets:   secrets,
 		volumeMap: map[string]*volumePublishStatus{},
 	}
@@ -156,14 +169,17 @@ func (np *nodePlugin) init(ctx context.Context) error {
 	return nil
 }
 
-// GetPublishedPath returns the path at which the provided volume ID is published.
+// GetPublishedPath returns the path at which the provided volume ID is
+// published. This path is provided in terms of absolute location on the host,
+// not the location in the plugins' scope.
+//
 // Returns an empty string if the volume does not exist.
 func (np *nodePlugin) GetPublishedPath(volumeID string) string {
 	np.mu.RLock()
 	defer np.mu.RUnlock()
 	if volInfo, ok := np.volumeMap[volumeID]; ok {
 		if volInfo.isPublished {
-			return volInfo.publishedPath
+			return np.scopePath(volInfo.publishedPath)
 		}
 	}
 	return ""
@@ -179,7 +195,9 @@ func (np *nodePlugin) NodeGetInfo(ctx context.Context) (*api.NodeCSIInfo, error)
 		return nil, err
 	}
 
-	return makeNodeInfo(resp), nil
+	i := makeNodeInfo(resp)
+	i.PluginName = np.name
+	return i, nil
 }
 
 func (np *nodePlugin) NodeStageVolume(ctx context.Context, req *api.VolumeAssignment) error {

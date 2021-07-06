@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/docker/docker/pkg/plugingetter"
+
 	"github.com/docker/swarmkit/api"
 )
 
@@ -18,10 +20,10 @@ type fakeNodePlugin struct {
 
 // newFakeNodePlugin has the same signature as NewNodePlugin, allowing it to be
 // substituted in testing.
-func newFakeNodePlugin(name, socket string, secrets SecretGetter) NodePlugin {
+func newFakeNodePlugin(name string, pc plugingetter.CompatPlugin, pa plugingetter.PluginAddr, secrets SecretGetter) NodePlugin {
 	return &fakeNodePlugin{
 		name:   name,
-		socket: socket,
+		socket: pa.Addr().String(),
 	}
 }
 

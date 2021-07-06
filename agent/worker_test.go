@@ -3,11 +3,13 @@ package agent
 import (
 	"context"
 	"errors"
+	"net"
 	"testing"
 
 	"github.com/docker/swarmkit/agent/exec"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/log"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	bolt "go.etcd.io/bbolt"
@@ -40,13 +42,21 @@ func TestWorkerAssign(t *testing.T) {
 	db, cleanup := storageTestEnv(t)
 	defer cleanup()
 
-	ctx := context.Background()
-	executor := &mockExecutor{dependencies: NewDependencyManager()}
+	pg := &testutils.FakePluginGetter{
+		Plugins: map[string]*testutils.FakeCompatPlugin{
+			"plugin-1": &testutils.FakeCompatPlugin{
+				PluginName: "plugin-1",
+				PluginAddr: &net.UnixAddr{},
+			},
+			"plugin-2": &testutils.FakeCompatPlugin{
+				PluginName: "plugin-2",
+				PluginAddr: &net.UnixAddr{},
+			},
+		},
+	}
 
-	executor.Volumes().Plugins().Set([]*api.CSINodePlugin{
-		{Name: "plugin-1"},
-		{Name: "plugin-2"},
-	})
+	ctx := context.Background()
+	executor := &mockExecutor{dependencies: NewDependencyManager(pg)}
 
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := newFakeReporter(
@@ -257,7 +267,18 @@ func TestWorkerWait(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	executor := &mockExecutor{dependencies: NewDependencyManager()}
+
+	pg := &testutils.FakePluginGetter{
+		Plugins: map[string]*testutils.FakeCompatPlugin{
+			"plugin-1": &testutils.FakeCompatPlugin{
+				PluginName: "plugin-1",
+				PluginAddr: &net.UnixAddr{},
+			},
+		},
+	}
+
+	executor := &mockExecutor{dependencies: NewDependencyManager(pg)}
+
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := newFakeReporter(
 		statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
@@ -268,10 +289,6 @@ func TestWorkerWait(t *testing.T) {
 			return nil
 		}),
 	)
-
-	executor.Volumes().Plugins().Set([]*api.CSINodePlugin{
-		{Name: "plugin-1"},
-	})
 
 	worker.Listen(ctx, reporter)
 
@@ -398,7 +415,21 @@ func TestWorkerUpdate(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	executor := &mockExecutor{dependencies: NewDependencyManager()}
+
+	pg := &testutils.FakePluginGetter{
+		Plugins: map[string]*testutils.FakeCompatPlugin{
+			"plugin-1": &testutils.FakeCompatPlugin{
+				PluginName: "plugin-1",
+				PluginAddr: &net.UnixAddr{},
+			},
+			"plugin-2": &testutils.FakeCompatPlugin{
+				PluginName: "plugin-2",
+				PluginAddr: &net.UnixAddr{},
+			},
+		},
+	}
+
+	executor := &mockExecutor{dependencies: NewDependencyManager(pg)}
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := newFakeReporter(
 		statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
@@ -409,11 +440,6 @@ func TestWorkerUpdate(t *testing.T) {
 			return nil
 		}),
 	)
-
-	executor.Volumes().Plugins().Set([]*api.CSINodePlugin{
-		{Name: "plugin-1"},
-		{Name: "plugin-2"},
-	})
 
 	worker.Listen(ctx, reporter)
 

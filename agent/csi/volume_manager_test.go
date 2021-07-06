@@ -12,20 +12,28 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const iterations = 25
-const interval = 100 * time.Millisecond
+const (
+	driver = "driver"
+
+	iterations = 25
+	interval   = 100 * time.Millisecond
+)
 
 func NewFakeManager() *volumes {
+	// with fakes, we don't need to actually USE plugingetter, because it's
+	// only used by the plugin manager, which we are faking. instead, manually
+	// set the enabled plugins
+	pm := newFakePluginManager()
+	pm.plugins[driver] = newFakeNodePlugin(driver)
+
 	return &volumes{
 		volumes:        map[string]volumeState{},
 		pendingVolumes: volumequeue.NewVolumeQueue(),
-		plugins:        newFakePluginManager(),
+		plugins:        pm,
 	}
 }
 
 func TestTaskRestrictedVolumesProvider(t *testing.T) {
-	driver := "driver"
-
 	taskID := "taskID1"
 	type testCase struct {
 		desc        string
@@ -56,7 +64,6 @@ func TestTaskRestrictedVolumesProvider(t *testing.T) {
 
 			// create a new volumesManager each test.
 			volumesManager := NewFakeManager()
-			volumesManager.plugins.Set([]*api.CSINodePlugin{{Name: driver}})
 
 			v := api.VolumeAssignment{
 				ID:     testCase.volumeID,

@@ -2,6 +2,7 @@ package csi
 
 import (
 	"context"
+	"net"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/docker/swarmkit/testutils"
 )
 
 var _ = Describe("Manager", func() {
@@ -21,18 +23,14 @@ var _ = Describe("Manager", func() {
 		vm *Manager
 		s  *store.MemoryStore
 
-		cluster *api.Cluster
-
-		// plugins is a slice of all plugins used in a particular test.
-		plugins []*api.CSIConfig_Plugin
-
 		// nodes is a slice of all nodes to create during setup
 		nodes []*api.Node
 
 		// volumes is a slice of all volumes to create during setup
 		volumes []*api.Volume
 
-		pluginMaker *fakePluginMaker
+		pluginMaker  *fakePluginMaker
+		pluginGetter *testutils.FakePluginGetter
 
 		// watch contains an event channel, which is produced by
 		// store.ViewAndWatch.
@@ -65,30 +63,20 @@ var _ = Describe("Manager", func() {
 		pluginMaker = &fakePluginMaker{
 			plugins: map[string]*fakePlugin{},
 		}
+		pluginGetter = &testutils.FakePluginGetter{
+			Plugins: map[string]*testutils.FakeCompatPlugin{},
+		}
 
 		s = store.NewMemoryStore(nil)
 
-		plugins = []*api.CSIConfig_Plugin{}
 		nodes = []*api.Node{}
 		volumes = []*api.Volume{}
 
-		vm = NewManager(s)
+		vm = NewManager(s, pluginGetter)
 		vm.newPlugin = pluginMaker.newFakePlugin
 	})
 
 	JustBeforeEach(func() {
-		cluster = &api.Cluster{
-			ID: "somecluster",
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
-					Name: store.DefaultClusterName,
-				},
-				CSIConfig: api.CSIConfig{
-					Plugins: plugins,
-				},
-			},
-		}
-
 		err := s.Update(func(tx store.Tx) error {
 			for _, node := range nodes {
 				if err := store.CreateNode(tx, node); err != nil {
@@ -100,7 +88,7 @@ var _ = Describe("Manager", func() {
 					return err
 				}
 			}
-			return store.CreateCluster(tx, cluster)
+			return nil
 		})
 
 		Expect(err).ToNot(HaveOccurred())
@@ -108,11 +96,7 @@ var _ = Describe("Manager", func() {
 		// start the watch after everything else is set up, so we don't get any
 		// events from our setup phase.
 		watch, watchCancel, err = store.ViewAndWatch(s, func(tx store.ReadTx) error {
-			// because setting up the cluster object is done as part of the run
-			// function, not the init function, we must do that work here
-			// manually.
-			clusters, _ := store.FindClusters(tx, store.ByName(store.DefaultClusterName))
-			vm.cluster = clusters[0]
+			// TODO(dperny): use the regular Watch, not ViewAndWatch
 			return nil
 		})
 		Expect(err).ToNot(HaveOccurred())
@@ -125,16 +109,20 @@ var _ = Describe("Manager", func() {
 
 	When("starting up", func() {
 		BeforeEach(func() {
-			plugins = append(plugins,
-				&api.CSIConfig_Plugin{
-					Name:             "newPlugin",
-					ControllerSocket: "unix:///whatever.sock",
+			pluginGetter.Plugins["newPlugin"] = &testutils.FakeCompatPlugin{
+				PluginName: "newPlugin",
+				PluginAddr: &net.UnixAddr{
+					Net:  "unix",
+					Name: "unix:///whatever.sock",
 				},
-				&api.CSIConfig_Plugin{
-					Name:             "differentPlugin",
-					ControllerSocket: "unix:///somethingElse.sock",
+			}
+			pluginGetter.Plugins["differentPlugin"] = &testutils.FakeCompatPlugin{
+				PluginName: "differentPlugin",
+				PluginAddr: &net.UnixAddr{
+					Net:  "unix",
+					Name: "unix:///somethingElse.sock",
 				},
-			)
+			}
 
 			nodes = append(nodes,
 				&api.Node{
@@ -213,6 +201,10 @@ var _ = Describe("Manager", func() {
 		})
 
 		It("should create all Plugins", func() {
+			// NOTE(dperny): originally, plugins were eagerly loaded, and this
+			// check ensured that. Now, plugins are lazy-loaded, but this check
+			// is still valid because lazy-loaded plugins will be loaded when
+			// the node is added.
 			Expect(vm.plugins).To(HaveLen(2))
 			Expect(pluginMaker.plugins).To(SatisfyAll(
 				HaveLen(2), HaveKey("newPlugin"), HaveKey("differentPlugin"),
@@ -240,72 +232,22 @@ var _ = Describe("Manager", func() {
 		})
 	})
 
-	It("should add and remove plugins when the cluster is updated", func() {
-		err := s.Update(func(tx store.Tx) error {
-			clusters, _ := store.FindClusters(tx, store.ByName(store.DefaultClusterName))
-			c := clusters[0]
-			c.Spec.CSIConfig.Plugins = append(c.Spec.CSIConfig.Plugins,
-				&api.CSIConfig_Plugin{
-					Name:             "newPlugin",
-					ControllerSocket: "whatever",
-				},
-				&api.CSIConfig_Plugin{
-					Name:             "newPlugin2",
-					ControllerSocket: "whateverElse",
-				},
-			)
-			return store.UpdateCluster(tx, c)
-		})
-		Expect(err).ToNot(HaveOccurred())
-
-		passEvents(func(ev events.Event) bool {
-			_, ok := ev.(api.EventUpdateCluster)
-			return ok
-		})
-
-		Expect(pluginMaker.plugins).To(SatisfyAll(
-			HaveLen(2), HaveKey("newPlugin"), HaveKey("newPlugin2"),
-		))
-
-		Expect(vm.plugins).To(HaveLen(2))
-
-		// now, update again. delete newPlugin, and add newPlugin3
-		err = s.Update(func(tx store.Tx) error {
-			clusters, _ := store.FindClusters(tx, store.ByName(store.DefaultClusterName))
-			c := clusters[0]
-			c.Spec.CSIConfig.Plugins = append(
-				c.Spec.CSIConfig.Plugins[1:],
-				&api.CSIConfig_Plugin{Name: "newPlugin3", ControllerSocket: "whateverElseAgain"},
-			)
-			return store.UpdateCluster(tx, c)
-		})
-		Expect(err).ToNot(HaveOccurred())
-
-		passEvents(func(ev events.Event) bool {
-			_, ok := ev.(api.EventUpdateCluster)
-			return ok
-		})
-
-		Expect(vm.plugins).To(SatisfyAll(
-			HaveLen(2),
-			HaveKey("newPlugin2"),
-			HaveKey("newPlugin3"),
-		))
-		Expect(pluginMaker.plugins).To(HaveKey("newPlugin3"))
-	})
-
 	When("a volume is created", func() {
 		BeforeEach(func() {
-			plugins = append(plugins,
-				&api.CSIConfig_Plugin{
-					Name:             "somePlugin",
-					ControllerSocket: "whatever",
+			pluginGetter.Plugins["somePlugin"] = &testutils.FakeCompatPlugin{
+				PluginName: "somePlugin",
+				PluginAddr: &net.UnixAddr{
+					Net:  "unix",
+					Name: "unix:///whatever.sock",
 				},
-				&api.CSIConfig_Plugin{
-					Name:             "someOtherPlugin",
-					ControllerSocket: "whateverElse",
+			}
+			pluginGetter.Plugins["someOtherPlugin"] = &testutils.FakeCompatPlugin{
+				PluginName: "someOtherPlugin",
+				PluginAddr: &net.UnixAddr{
+					Net:  "unix",
+					Name: "unix:///somethingElse.sock",
 				},
-			)
+			}
 		})
 
 		JustBeforeEach(func() {
@@ -332,7 +274,7 @@ var _ = Describe("Manager", func() {
 
 		It("should call the correct plugin to create volumes", func() {
 			Expect(pluginMaker.plugins["somePlugin"].volumesCreated).To(HaveKey("someVolume"))
-			Expect(pluginMaker.plugins["someOtherPlugin"].volumesCreated).To(BeEmpty())
+			Expect(pluginMaker.plugins["someOtherPlugin"]).To(BeNil())
 		})
 
 		It("should persist the volume in the store", func() {
@@ -356,16 +298,20 @@ var _ = Describe("Manager", func() {
 
 	Describe("managing node inventory", func() {
 		BeforeEach(func() {
-			plugins = append(plugins,
-				&api.CSIConfig_Plugin{
-					Name:             "newPlugin",
-					ControllerSocket: "unix:///whatever.sock",
+			pluginGetter.Plugins["newPlugin"] = &testutils.FakeCompatPlugin{
+				PluginName: "newPlugin",
+				PluginAddr: &net.UnixAddr{
+					Net:  "unix",
+					Name: "unix:///whatever.sock",
 				},
-				&api.CSIConfig_Plugin{
-					Name:             "differentPlugin",
-					ControllerSocket: "unix:///somethingElse.sock",
+			}
+			pluginGetter.Plugins["differentPlugin"] = &testutils.FakeCompatPlugin{
+				PluginName: "differentPlugin",
+				PluginAddr: &net.UnixAddr{
+					Net:  "unix",
+					Name: "unix:///somethingElse.sock",
 				},
-			)
+			}
 
 			nodes = append(nodes,
 				&api.Node{
@@ -524,11 +470,13 @@ var _ = Describe("Manager", func() {
 			v1 *api.Volume
 		)
 		BeforeEach(func() {
-			plugins = append(plugins,
-				&api.CSIConfig_Plugin{
-					Name: "plug1",
+			pluginGetter.Plugins["plug1"] = &testutils.FakeCompatPlugin{
+				PluginName: "plug1",
+				PluginAddr: &net.UnixAddr{
+					Net:  "unix",
+					Name: "unix:///whatever.sock",
 				},
-			)
+			}
 
 			nodes = append(nodes,
 				&api.Node{
@@ -719,9 +667,13 @@ var _ = Describe("Manager", func() {
 
 	Describe("removing a Volume", func() {
 		BeforeEach(func() {
-			plugins = append(plugins, &api.CSIConfig_Plugin{
-				Name: "plug",
-			})
+			pluginGetter.Plugins["plug"] = &testutils.FakeCompatPlugin{
+				PluginName: "plug",
+				PluginAddr: &net.UnixAddr{
+					Net:  "unix",
+					Name: "unix:///whatever.sock",
+				},
+			}
 		})
 
 		JustBeforeEach(func() {

@@ -3764,41 +3764,6 @@ file {
     }
   }
   message_type {
-    name: "CSIConfig"
-    field {
-      name: "plugins"
-      number: 1
-      label: LABEL_REPEATED
-      type: TYPE_MESSAGE
-      type_name: ".docker.swarmkit.v1.CSIConfig.Plugin"
-      json_name: "plugins"
-    }
-    nested_type {
-      name: "Plugin"
-      field {
-        name: "name"
-        number: 1
-        label: LABEL_OPTIONAL
-        type: TYPE_STRING
-        json_name: "name"
-      }
-      field {
-        name: "controller_socket"
-        number: 2
-        label: LABEL_OPTIONAL
-        type: TYPE_STRING
-        json_name: "controllerSocket"
-      }
-      field {
-        name: "node_socket"
-        number: 3
-        label: LABEL_OPTIONAL
-        type: TYPE_STRING
-        json_name: "nodeSocket"
-      }
-    }
-  }
-  message_type {
     name: "SpreadOver"
     field {
       name: "spread_descriptor"
@@ -4053,23 +4018,6 @@ file {
       type: TYPE_ENUM
       type_name: ".docker.swarmkit.v1.RaftMemberStatus.Reachability"
       json_name: "reachability"
-    }
-  }
-  message_type {
-    name: "CSINodePlugin"
-    field {
-      name: "name"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_STRING
-      json_name: "name"
-    }
-    field {
-      name: "socket"
-      number: 2
-      label: LABEL_OPTIONAL
-      type: TYPE_STRING
-      json_name: "socket"
     }
   }
   message_type {
@@ -6057,18 +6005,6 @@ file {
         65001: 0
       }
       json_name: "encryptionConfig"
-    }
-    field {
-      name: "csi_config"
-      number: 9
-      label: LABEL_OPTIONAL
-      type: TYPE_MESSAGE
-      type_name: ".docker.swarmkit.v1.CSIConfig"
-      options {
-        65001: 0
-        65004: "CSIConfig"
-      }
-      json_name: "csiConfig"
     }
   }
   message_type {
@@ -9775,17 +9711,6 @@ file {
       label: LABEL_OPTIONAL
       type: TYPE_BYTES
       json_name: "RootCA"
-    }
-    field {
-      name: "csi_node_plugins"
-      number: 6
-      label: LABEL_REPEATED
-      type: TYPE_MESSAGE
-      type_name: ".docker.swarmkit.v1.CSINodePlugin"
-      options {
-        65004: "CSINodePlugins"
-      }
-      json_name: "csiNodePlugins"
     }
   }
   message_type {
