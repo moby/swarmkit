@@ -212,7 +212,12 @@ type Info struct {
 	SecurityOptions     []string
 	ProductLicense      string               `json:",omitempty"`
 	DefaultAddressPools []NetworkAddressPool `json:",omitempty"`
-	Warnings            []string
+
+	// Warnings contains a slice of warnings that occurred  while collecting
+	// system information. These warnings are intended to be informational
+	// messages for the user, and are not intended to be parsed / used for
+	// other purposes, as they do not have a fixed format.
+	Warnings []string
 }
 
 // KeyValue holds a key/value pair
@@ -538,7 +543,7 @@ type DiskUsage struct {
 	Containers  []*Container
 	Volumes     []*Volume
 	BuildCache  []*BuildCache
-	BuilderSize int64 // deprecated
+	BuilderSize int64 `json:",omitempty"` // Deprecated: deprecated in API 1.38, and no longer used since API 1.40.
 }
 
 // ContainersPruneReport contains the response for Engine API:
