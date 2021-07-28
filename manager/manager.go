@@ -30,6 +30,7 @@ import (
 	"github.com/docker/swarmkit/manager/health"
 	"github.com/docker/swarmkit/manager/keymanager"
 	"github.com/docker/swarmkit/manager/logbroker"
+	"github.com/docker/swarmkit/manager/logger"
 	"github.com/docker/swarmkit/manager/metrics"
 	"github.com/docker/swarmkit/manager/orchestrator/constraintenforcer"
 	"github.com/docker/swarmkit/manager/orchestrator/global"
@@ -158,6 +159,7 @@ type Manager struct {
 	raftNode               *raft.Node
 	dekRotator             *RaftDEKManager
 	roleManager            *roleManager
+	taskStatusLogger       *logger.TaskStatusLogger
 
 	cancelFunc context.CancelFunc
 
@@ -1004,6 +1006,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	m.scheduler = scheduler.New(s)
 	m.keyManager = keymanager.New(s, keymanager.DefaultConfig())
 	m.roleManager = newRoleManager(s, m.raftNode)
+	m.taskStatusLogger = logger.NewTaskStatusLogger(s)
 
 	// TODO(stevvooe): Allocate a context that can be used to
 	// shutdown underlying manager processes when leadership isTestUpdaterRollback
@@ -1119,6 +1122,10 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	go func(roleManager *roleManager) {
 		roleManager.Run(ctx)
 	}(m.roleManager)
+
+	go func(l *logger.TaskStatusLogger) {
+		l.Run(ctx)
+	}(m.taskStatusLogger)
 }
 
 // becomeFollower shuts down the subsystems that are only run by the leader.
