@@ -138,6 +138,10 @@ func (m *MockDispatcher) UpdateTaskStatus(context.Context, *api.UpdateTaskStatus
 	panic("not implemented")
 }
 
+func (m *MockDispatcher) UpdateVolumeStatus(context.Context, *api.UpdateVolumeStatusRequest) (*api.UpdateVolumeStatusResponse, error) {
+	panic("not implemented")
+}
+
 // Tasks keeps an open stream until canceled
 func (m *MockDispatcher) Tasks(_ *api.TasksRequest, stream api.Dispatcher_TasksServer) error {
 	<-stream.Context().Done()

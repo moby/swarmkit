@@ -5,6 +5,7 @@ import (
 
 	"github.com/docker/swarmkit/agent"
 	"github.com/docker/swarmkit/api"
+	"github.com/docker/swarmkit/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -270,7 +271,9 @@ func TestTemplatedSecret(t *testing.T) {
 	for _, testCase := range testCases {
 		templatedSecret.Spec = testCase.secretSpec
 
-		dependencyManager := agent.NewDependencyManager()
+		// just add an empty FakePluginGetter so that the tests work. We don't
+		// need to actually use it.
+		dependencyManager := agent.NewDependencyManager(&testutils.FakePluginGetter{})
 		dependencyManager.Secrets().Add(*templatedSecret, *referencedSecret)
 		dependencyManager.Configs().Add(*referencedConfig)
 
@@ -550,7 +553,7 @@ func TestTemplatedConfig(t *testing.T) {
 	for _, testCase := range testCases {
 		templatedConfig.Spec = testCase.configSpec
 
-		dependencyManager := agent.NewDependencyManager()
+		dependencyManager := agent.NewDependencyManager(&testutils.FakePluginGetter{})
 		dependencyManager.Configs().Add(*templatedConfig, *referencedConfig)
 		dependencyManager.Secrets().Add(*referencedSecret)
 
