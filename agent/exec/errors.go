@@ -65,17 +65,14 @@ func (t temporary) Temporary() bool { return true }
 // IsTemporary returns true if the error or a recursive cause returns true for
 // temporary.
 func IsTemporary(err error) bool {
-	for err != nil {
-		if tmp, ok := err.(Temporary); ok && tmp.Temporary() {
-			return true
-		}
+	if tmp, ok := err.(Temporary); ok && tmp.Temporary() {
+		return true
+	}
 
-		cause := errors.Cause(err)
-		if cause == err {
-			break
-		}
+	cause := errors.Cause(err)
 
-		err = cause
+	if tmp, ok := cause.(Temporary); ok && tmp.Temporary() {
+		return true
 	}
 
 	return false
