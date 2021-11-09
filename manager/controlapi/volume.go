@@ -231,6 +231,16 @@ func (s *Server) RemoveVolume(ctx context.Context, request *api.RemoveVolumeRequ
 		if volume == nil {
 			return status.Errorf(codes.NotFound, "volume %s not found", request.VolumeID)
 		}
+
+		// If this is a force delete, we force the delete. No survivors. This
+		// is a last resort to resolve otherwise intractable problems with
+		// volumes. Using this has the potential to break other things in the
+		// cluster, because testing every case where we force-remove a volume
+		// is difficult at best.
+		if request.Force {
+			return store.DeleteVolume(tx, request.VolumeID)
+		}
+
 		if len(volume.PublishStatus) != 0 {
 			return status.Error(codes.FailedPrecondition, "volume is still in use")
 		}

@@ -863,6 +863,9 @@ message ListVolumesResponse {
 
 message RemoveVolumeRequest {
 	string volume_id = 1;
+	// Force forces the volume to be deleted from swarmkit, regardless of
+	// whether its current state would permit such an action.
+	bool force = 2;
 }
 
 message RemoveVolumeResponse {}

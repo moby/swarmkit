@@ -9207,6 +9207,13 @@ file {
       type: TYPE_STRING
       json_name: "volumeId"
     }
+    field {
+      name: "force"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      json_name: "force"
+    }
   }
   message_type {
     name: "RemoveVolumeResponse"

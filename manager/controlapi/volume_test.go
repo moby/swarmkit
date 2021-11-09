@@ -724,3 +724,35 @@ func TestRemoveVolumeNotFound(t *testing.T) {
 	)
 	assert.Nil(t, resp)
 }
+
+func TestRemoveVolumeForce(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+
+	volume := cannedVolume.Copy()
+	volume.VolumeInfo = &api.VolumeInfo{
+		VolumeID: "csiID",
+	}
+	volume.PublishStatus = []*api.VolumePublishStatus{
+		{
+			NodeID: "someNode",
+			State:  api.VolumePublishStatus_PUBLISHED,
+		},
+	}
+
+	require.NoError(t, ts.Store.Update(func(tx store.Tx) error {
+		return store.CreateVolume(tx, volume)
+	}))
+
+	_, err := ts.Client.RemoveVolume(context.Background(), &api.RemoveVolumeRequest{
+		VolumeID: volume.ID,
+		Force:    true,
+	})
+
+	assert.NoError(t, err)
+
+	ts.Store.View(func(tx store.ReadTx) {
+		v := store.GetVolume(tx, volume.ID)
+		assert.Nil(t, v)
+	})
+}
