@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net"
 	"os"
@@ -41,8 +41,8 @@ const (
 
 func init() {
 	store.WedgeTimeout = 3 * time.Second
-	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
-	logrus.SetOutput(ioutil.Discard)
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, io.Discard))
+	logrus.SetOutput(io.Discard)
 }
 
 var tc *cautils.TestCA

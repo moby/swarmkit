@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -140,7 +139,7 @@ func MigrateSnapshot(oldDir, newDir string, oldFactory, newFactory SnapFactory) 
 // ListSnapshots lists all the snapshot files in a particular directory and returns
 // the snapshot files in reverse lexical order (newest first)
 func ListSnapshots(dirpath string) ([]string, error) {
-	dirents, err := ioutil.ReadDir(dirpath)
+	dirents, err := os.ReadDir(dirpath)
 	if err != nil {
 		return nil, err
 	}

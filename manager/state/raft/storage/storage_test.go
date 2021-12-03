@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,7 +14,7 @@ import (
 )
 
 func TestBootstrapFromDisk(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "raft-storage")
+	tempdir, err := os.MkdirTemp("", "raft-storage")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -95,7 +94,7 @@ func TestBootstrapFromDisk(t *testing.T) {
 
 // Ensure that we can change encoding and not have a race condition
 func TestRaftLoggerRace(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "raft-storage")
+	tempdir, err := os.MkdirTemp("", "raft-storage")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -142,7 +141,7 @@ func TestRaftLoggerRace(t *testing.T) {
 func TestMigrateToV3EncryptedForm(t *testing.T) {
 	t.Parallel()
 
-	tempdir, err := ioutil.TempDir("", "raft-storage")
+	tempdir, err := os.MkdirTemp("", "raft-storage")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -151,7 +150,7 @@ func TestMigrateToV3EncryptedForm(t *testing.T) {
 	writeDataTo := func(suffix string, snapshot raftpb.Snapshot, walFactory WALFactory, snapFactory SnapFactory) []raftpb.Entry {
 		snapDir := filepath.Join(tempdir, "snap"+suffix)
 		walDir := filepath.Join(tempdir, "wal"+suffix)
-		require.NoError(t, os.MkdirAll(snapDir, 0755))
+		require.NoError(t, os.MkdirAll(snapDir, 0o755))
 		require.NoError(t, snapFactory.New(snapDir).SaveSnap(snapshot))
 
 		_, entries, _ := makeWALData(snapshot.Metadata.Index, snapshot.Metadata.Term)

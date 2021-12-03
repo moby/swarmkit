@@ -3,7 +3,7 @@ package controlapi
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"testing"
 
 	"github.com/docker/swarmkit/api"
@@ -451,8 +451,8 @@ func TestRemoveNodes(t *testing.T) {
 }
 
 func init() {
-	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
-	logrus.SetOutput(ioutil.Discard)
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, io.Discard))
+	logrus.SetOutput(io.Discard)
 }
 
 func getMap(t *testing.T, nodes []*api.Node) map[uint64]*api.ManagerStatus {

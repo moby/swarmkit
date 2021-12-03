@@ -7,7 +7,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,14 +28,14 @@ import (
 )
 
 func TestManager(t *testing.T) {
-	temp, err := ioutil.TempFile("", "test-socket")
+	temp, err := os.CreateTemp("", "test-socket")
 	require.NoError(t, err)
 	require.NoError(t, temp.Close())
 	require.NoError(t, os.Remove(temp.Name()))
 
 	defer os.RemoveAll(temp.Name())
 
-	stateDir, err := ioutil.TempDir("", "test-raft")
+	stateDir, err := os.MkdirTemp("", "test-raft")
 	require.NoError(t, err)
 	defer os.RemoveAll(stateDir)
 
@@ -221,14 +220,14 @@ func TestManager(t *testing.T) {
 
 // Tests locking and unlocking the manager and key rotations
 func TestManagerLockUnlock(t *testing.T) {
-	temp, err := ioutil.TempFile("", "test-manager-lock")
+	temp, err := os.CreateTemp("", "test-manager-lock")
 	require.NoError(t, err)
 	require.NoError(t, temp.Close())
 	require.NoError(t, os.Remove(temp.Name()))
 
 	defer os.RemoveAll(temp.Name())
 
-	stateDir, err := ioutil.TempDir("", "test-raft")
+	stateDir, err := os.MkdirTemp("", "test-raft")
 	require.NoError(t, err)
 	defer os.RemoveAll(stateDir)
 
@@ -289,7 +288,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	require.Nil(t, cluster.UnlockKeys)
 
 	// tls key is unencrypted, but there is a DEK
-	unencryptedKey, err := ioutil.ReadFile(tc.Paths.Node.Key)
+	unencryptedKey, err := os.ReadFile(tc.Paths.Node.Key)
 	require.NoError(t, err)
 	keyBlock, _ := pem.Decode(unencryptedKey)
 	require.NotNil(t, keyBlock)
@@ -330,7 +329,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	// this should update the TLS key, rotate the DEK, and finish snapshotting
 	var encryptedKey []byte
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
-		encryptedKey, err = ioutil.ReadFile(tc.Paths.Node.Key)
+		encryptedKey, err = os.ReadFile(tc.Paths.Node.Key)
 		require.NoError(t, err) // this should never error due to atomic writes
 
 		if bytes.Equal(unencryptedKey, encryptedKey) {
@@ -394,7 +393,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	// this should update the TLS key
 	var unlockedKey []byte
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
-		unlockedKey, err = ioutil.ReadFile(tc.Paths.Node.Key)
+		unlockedKey, err = os.ReadFile(tc.Paths.Node.Key)
 		if err != nil {
 			return err
 		}

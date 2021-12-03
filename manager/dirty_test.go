@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -18,14 +17,14 @@ import (
 func TestIsStateDirty(t *testing.T) {
 	ctx := context.Background()
 
-	temp, err := ioutil.TempFile("", "test-socket")
+	temp, err := os.CreateTemp("", "test-socket")
 	assert.NoError(t, err)
 	assert.NoError(t, temp.Close())
 	assert.NoError(t, os.Remove(temp.Name()))
 
 	defer os.RemoveAll(temp.Name())
 
-	stateDir, err := ioutil.TempDir("", "test-raft")
+	stateDir, err := os.MkdirTemp("", "test-raft")
 	assert.NoError(t, err)
 	defer os.RemoveAll(stateDir)
 

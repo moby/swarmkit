@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
 	"net"
 	"os"
 	"strings"
@@ -102,7 +101,7 @@ var External bool
 // NewTestCA is a helper method that creates a TestCA and a bunch of default
 // connections and security configs.
 func NewTestCA(t *testing.T, krwGenerators ...func(ca.CertPaths) *ca.KeyReadWriter) *TestCA {
-	tempdir, err := ioutil.TempDir("", "swarm-ca-test-")
+	tempdir, err := os.MkdirTemp("", "swarm-ca-test-")
 	if t != nil {
 		require.NoError(t, err)
 	}
@@ -122,7 +121,7 @@ func NewTestCA(t *testing.T, krwGenerators ...func(ca.CertPaths) *ca.KeyReadWrit
 // NewFIPSTestCA is a helper method that creates a mandatory fips TestCA and a bunch of default
 // connections and security configs.
 func NewFIPSTestCA(t *testing.T) *TestCA {
-	tempdir, err := ioutil.TempDir("", "swarm-ca-test-")
+	tempdir, err := os.MkdirTemp("", "swarm-ca-test-")
 	if t != nil {
 		require.NoError(t, err)
 	}
@@ -175,7 +174,7 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 	}
 
 	// Write the root certificate to disk, using decent permissions
-	err = ioutils.AtomicWriteFile(paths.RootCA.Cert, apiRootCA.CACert, 0644)
+	err = ioutils.AtomicWriteFile(paths.RootCA.Cert, apiRootCA.CACert, 0o644)
 	if t != nil {
 		require.NoError(t, err)
 	}
@@ -369,10 +368,10 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 	// If we were instructed to persist the files
 	if tmpDir != "" {
 		paths := ca.NewConfigPaths(tmpDir)
-		if err := ioutil.WriteFile(paths.Node.Cert, certChain, 0644); err != nil {
+		if err := os.WriteFile(paths.Node.Cert, certChain, 0o644); err != nil {
 			return nil, nil, err
 		}
-		if err := ioutil.WriteFile(paths.Node.Key, key, 0600); err != nil {
+		if err := os.WriteFile(paths.Node.Key, key, 0o600); err != nil {
 			return nil, nil, err
 		}
 	}

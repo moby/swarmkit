@@ -2,7 +2,7 @@ package watchapi
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net"
 	"os"
 	"testing"
@@ -52,7 +52,7 @@ func newTestServer(t *testing.T) *testServer {
 
 	require.NoError(t, ts.Server.Start(context.Background()))
 
-	temp, err := ioutil.TempFile("", "test-socket")
+	temp, err := os.CreateTemp("", "test-socket")
 	assert.NoError(t, err)
 	assert.NoError(t, temp.Close())
 	assert.NoError(t, os.Remove(temp.Name()))
@@ -101,6 +101,6 @@ func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, memb
 }
 
 func init() {
-	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, ioutil.Discard))
-	logrus.SetOutput(ioutil.Discard)
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, io.Discard))
+	logrus.SetOutput(io.Discard)
 }

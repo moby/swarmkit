@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -203,7 +202,7 @@ func MigrateWALs(ctx context.Context, oldDir, newDir string, oldFactory, newFact
 	}
 	oldReader.Close()
 
-	if err := os.MkdirAll(filepath.Dir(newDir), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(newDir), 0o700); err != nil {
 		return errors.Wrap(err, "could not create parent directory")
 	}
 
@@ -237,7 +236,7 @@ func MigrateWALs(ctx context.Context, oldDir, newDir string, oldFactory, newFact
 // ListWALs lists all the wals in a directory and returns the list in lexical
 // order (oldest first)
 func ListWALs(dirpath string) ([]string, error) {
-	dirents, err := ioutil.ReadDir(dirpath)
+	dirents, err := os.ReadDir(dirpath)
 	if err != nil {
 		return nil, err
 	}

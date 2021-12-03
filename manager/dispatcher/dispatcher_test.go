@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -426,7 +426,7 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc(drivers.SecretsProviderAPI, func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		var request drivers.SecretsProviderRequest
 		assert.NoError(t, err)
 		assert.NoError(t, json.Unmarshal(body, &request))

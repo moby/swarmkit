@@ -1,8 +1,9 @@
 package scheduler
 
 import (
-	"github.com/docker/swarmkit/api"
 	"testing"
+
+	"github.com/docker/swarmkit/api"
 )
 
 func TestIsInTopology(t *testing.T) {

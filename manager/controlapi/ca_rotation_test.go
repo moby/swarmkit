@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -57,7 +56,7 @@ func uglifyOnePEM(pemBytes []byte) []byte {
 }
 
 func getSecurityConfig(t *testing.T, localRootCA *ca.RootCA, cluster *api.Cluster) *ca.SecurityConfig {
-	tempdir, err := ioutil.TempDir("", "test-validate-CA")
+	tempdir, err := os.MkdirTemp("", "test-validate-CA")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 	paths := ca.NewConfigPaths(tempdir)
@@ -93,7 +92,7 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 	}
 
 	// set up 2 external CAs that can be contacted for signing
-	tempdir, err := ioutil.TempDir("", "test-validate-CA")
+	tempdir, err := os.MkdirTemp("", "test-validate-CA")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -385,7 +384,7 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 	initialExternalRootCA.CAKey = nil
 
 	// set up 2 external CAs that can be contacted for signing
-	tempdir, err := ioutil.TempDir("", "test-validate-CA")
+	tempdir, err := os.MkdirTemp("", "test-validate-CA")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
