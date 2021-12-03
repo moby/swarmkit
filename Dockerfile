@@ -1,5 +1,5 @@
 # NOTE(dperny): for some reason, alpine was giving me trouble
-ARG GO_VERSION=1.13.15
+ARG GO_VERSION=1.17.4
 ARG DEBIAN_FRONTEND=noninteractive
 ARG BASE_DEBIAN_DISTRO="buster"
 ARG GOLANG_IMAGE="golang:${GO_VERSION}-${BASE_DEBIAN_DISTRO}"
@@ -16,6 +16,7 @@ RUN curl --silent --show-error --location --output protoc.zip \
   && unzip -d /usr/local protoc.zip include/\* bin/\* \
   && rm -f protoc.zip
 
+ENV GO111MODULE=off
 WORKDIR /go/src/github.com/docker/swarmkit/
 
 # install the dependencies from `make setup`
