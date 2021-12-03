@@ -167,7 +167,7 @@ var (
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
-			if err := os.MkdirAll(stateDir, 0700); err != nil {
+			if err := os.MkdirAll(stateDir, 0o700); err != nil {
 				return err
 			}
 

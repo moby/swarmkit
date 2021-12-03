@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -42,7 +41,7 @@ func main() {
 
 	// And copy the Root CA certificate into the node config path for its
 	// CA.
-	ioutil.WriteFile(nodeConfigPaths.RootCA.Cert, rootCA.Certs, os.FileMode(0644))
+	os.WriteFile(nodeConfigPaths.RootCA.Cert, rootCA.Certs, os.FileMode(0o644))
 
 	server, err := testutils.NewExternalSigningServer(rootCA, "ca")
 	if err != nil {

@@ -204,13 +204,13 @@ func (l *closeOnceListener) Close() error {
 
 // New creates a Manager which has not started to accept requests yet.
 func New(config *Config) (*Manager, error) {
-	err := os.MkdirAll(config.StateDir, 0700)
+	err := os.MkdirAll(config.StateDir, 0o700)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create state directory")
 	}
 
 	raftStateDir := filepath.Join(config.StateDir, "raft")
-	err = os.MkdirAll(raftStateDir, 0700)
+	err = os.MkdirAll(raftStateDir, 0o700)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create raft state directory")
 	}
@@ -332,7 +332,7 @@ func (m *Manager) BindControl(addr string) error {
 
 	// don't create a socket directory if we're on windows. we used named pipe
 	if runtime.GOOS != "windows" {
-		err := os.MkdirAll(filepath.Dir(addr), 0700)
+		err := os.MkdirAll(filepath.Dir(addr), 0o700)
 		if err != nil {
 			return errors.Wrap(err, "failed to create socket directory")
 		}

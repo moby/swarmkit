@@ -2,7 +2,6 @@ package testutils
 
 import (
 	"context"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -235,7 +234,7 @@ func NewMockDispatcher(t *testing.T, secConfig *ca.SecurityConfig, local bool) (
 		cleanup func()
 	)
 	if local {
-		tempDir, err := ioutil.TempDir("", "local-dispatcher-socket")
+		tempDir, err := os.MkdirTemp("", "local-dispatcher-socket")
 		require.NoError(t, err)
 		addr = filepath.Join(tempDir, "socket")
 		l, err = net.Listen("unix", addr)

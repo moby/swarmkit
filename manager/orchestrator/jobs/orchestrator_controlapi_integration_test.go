@@ -5,7 +5,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	"context"
-	"io/ioutil"
 	"net"
 	"os"
 	"time"
@@ -58,7 +57,7 @@ var _ = Describe("Integration between the controlapi and jobs orchestrator", fun
 		server = controlapi.NewServer(s, nil, nil, nil, nil)
 
 		// we need a temporary unix socket to server on
-		temp, err := ioutil.TempFile("", "test-socket")
+		temp, err := os.CreateTemp("", "test-socket")
 		// this is probably to make sure that the socket can be created
 		// successfully.
 		Expect(err).ToNot(HaveOccurred())

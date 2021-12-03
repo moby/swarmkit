@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -136,7 +135,7 @@ func TestRaftDEKMarshalUnmarshal(t *testing.T) {
 
 // NewRaftDEKManager creates a key if one doesn't exist
 func TestNewRaftDEKManager(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "manager-new-dek-manager-")
+	tempDir, err := os.MkdirTemp("", "manager-new-dek-manager-")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
@@ -148,14 +147,14 @@ func TestNewRaftDEKManager(t *testing.T) {
 		krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
 		require.NoError(t, krw.Write(cert, key, nil))
 
-		keyBytes, err := ioutil.ReadFile(paths.Node.Key)
+		keyBytes, err := os.ReadFile(paths.Node.Key)
 		require.NoError(t, err)
 		require.NotContains(t, string(keyBytes), pemHeaderRaftDEK) // headers are not written
 
 		dekManager, err := NewRaftDEKManager(krw, fips) // this should create a new DEK and write it to the file
 		require.NoError(t, err)
 
-		keyBytes, err = ioutil.ReadFile(paths.Node.Key)
+		keyBytes, err = os.ReadFile(paths.Node.Key)
 		require.NoError(t, err)
 		require.Contains(t, string(keyBytes), pemHeaderRaftDEK) // header is written now
 
@@ -174,7 +173,7 @@ func TestNewRaftDEKManager(t *testing.T) {
 		dekManager, err = NewRaftDEKManager(krw, fips) // this should not have created a new dek
 		require.NoError(t, err)
 
-		keyBytes2, err := ioutil.ReadFile(paths.Node.Key)
+		keyBytes2, err := os.ReadFile(paths.Node.Key)
 		require.NoError(t, err)
 		require.Equal(t, keyBytes, keyBytes2)
 
@@ -189,7 +188,7 @@ func TestNewRaftDEKManager(t *testing.T) {
 // NeedsRotation flag are there, it does not remove the NeedsRotation flag, because that indicates
 // that we basically need to do 2 rotations.
 func TestRaftDEKManagerNeedsRotateGetKeys(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "manager-maybe-get-data-")
+	tempDir, err := os.MkdirTemp("", "manager-maybe-get-data-")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
@@ -271,7 +270,7 @@ func TestRaftDEKManagerNeedsRotateGetKeys(t *testing.T) {
 		} {
 			// clear the directory
 			require.NoError(t, os.RemoveAll(tempDir))
-			os.Mkdir(tempDir, 0777)
+			os.Mkdir(tempDir, 0o777)
 			testcase.dekData.FIPS = fips
 			krw := ca.NewKeyReadWriter(paths.Node, nil, testcase.dekData)
 			if testcase.keyOnDisk {
@@ -302,7 +301,7 @@ func TestRaftDEKManagerNeedsRotateGetKeys(t *testing.T) {
 }
 
 func TestRaftDEKManagerUpdateKeys(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "manager-update-keys-")
+	tempDir, err := os.MkdirTemp("", "manager-update-keys-")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
@@ -345,7 +344,7 @@ func TestRaftDEKManagerUpdateKeys(t *testing.T) {
 		h, _ = krw.GetCurrentState()
 		require.Nil(t, h)
 
-		keyBytes, err := ioutil.ReadFile(paths.Node.Key)
+		keyBytes, err := os.ReadFile(paths.Node.Key)
 		require.NoError(t, err)
 		keyBlock, _ := pem.Decode(keyBytes)
 		require.NotNil(t, keyBlock)
@@ -357,7 +356,7 @@ func TestRaftDEKManagerUpdateKeys(t *testing.T) {
 }
 
 func TestRaftDEKManagerMaybeUpdateKEK(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "manager-maybe-update-kek-")
+	tempDir, err := os.MkdirTemp("", "manager-maybe-update-kek-")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
@@ -377,14 +376,14 @@ func TestRaftDEKManagerMaybeUpdateKEK(t *testing.T) {
 		dekManager, err := NewRaftDEKManager(krw, fips)
 		require.NoError(t, err)
 
-		keyBytes, err := ioutil.ReadFile(paths.Node.Key)
+		keyBytes, err := os.ReadFile(paths.Node.Key)
 		require.NoError(t, err)
 
 		_, _, err = dekManager.MaybeUpdateKEK(ca.KEKData{KEK: []byte("locked now")})
 		require.Error(t, err)
 		require.False(t, dekManager.NeedsRotation())
 
-		keyBytes2, err := ioutil.ReadFile(paths.Node.Key)
+		keyBytes2, err := os.ReadFile(paths.Node.Key)
 		require.NoError(t, err)
 		require.Equal(t, keyBytes, keyBytes2)
 
@@ -402,7 +401,7 @@ func TestRaftDEKManagerMaybeUpdateKEK(t *testing.T) {
 		require.Equal(t, fips, dekData.FIPS)
 		require.NotNil(t, <-dekManager.RotationNotify()) // we are notified of a new pending key
 
-		keyBytes2, err = ioutil.ReadFile(paths.Node.Key)
+		keyBytes2, err = os.ReadFile(paths.Node.Key)
 		require.NoError(t, err)
 		require.NotEqual(t, keyBytes, keyBytes2)
 		keyBytes = keyBytes2
@@ -424,7 +423,7 @@ func TestRaftDEKManagerMaybeUpdateKEK(t *testing.T) {
 		require.True(t, dekData.NeedsRotation)
 		require.Equal(t, fips, dekData.FIPS)
 
-		keyBytes2, err = ioutil.ReadFile(paths.Node.Key)
+		keyBytes2, err = os.ReadFile(paths.Node.Key)
 		require.NoError(t, err)
 		require.Equal(t, keyBytes, keyBytes2, string(keyBytes), string(keyBytes2))
 
@@ -441,7 +440,7 @@ func TestRaftDEKManagerMaybeUpdateKEK(t *testing.T) {
 		require.True(t, dekData.NeedsRotation)
 		require.Equal(t, fips, dekData.FIPS)
 
-		keyBytes2, err = ioutil.ReadFile(paths.Node.Key)
+		keyBytes2, err = os.ReadFile(paths.Node.Key)
 		require.NoError(t, err)
 		require.Equal(t, keyBytes, keyBytes2)
 
@@ -455,7 +454,7 @@ func TestRaftDEKManagerMaybeUpdateKEK(t *testing.T) {
 		dekManager, err = NewRaftDEKManager(krw, fips)
 		require.NoError(t, err)
 
-		keyBytes, err = ioutil.ReadFile(paths.Node.Key)
+		keyBytes, err = os.ReadFile(paths.Node.Key)
 		require.NoError(t, err)
 
 		updated, unlockedToLocked, err = dekManager.MaybeUpdateKEK(ca.KEKData{Version: 2})
@@ -465,7 +464,7 @@ func TestRaftDEKManagerMaybeUpdateKEK(t *testing.T) {
 		require.Equal(t, keys, dekManager.GetKeys())
 		require.False(t, dekManager.NeedsRotation())
 
-		keyBytes2, err = ioutil.ReadFile(paths.Node.Key)
+		keyBytes2, err = os.ReadFile(paths.Node.Key)
 		require.NoError(t, err)
 		require.NotEqual(t, keyBytes, keyBytes2)
 
@@ -518,13 +517,13 @@ O0T3aXuZGYNyh//KqAoA3erCmh6HauMz84Y=
 	realKEK, err := base64.RawStdEncoding.DecodeString("fDg9YejLnMjU+FpulWR62oJLzVpkD2j7VQuP5xiK9QA")
 	require.NoError(t, err)
 
-	tempdir, err := ioutil.TempDir("", "KeyReadWriter-false-positive-decryption")
+	tempdir, err := os.MkdirTemp("", "KeyReadWriter-false-positive-decryption")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
 	path := ca.NewConfigPaths(tempdir)
-	require.NoError(t, ioutil.WriteFile(path.Node.Key, badKey, 0600))
-	require.NoError(t, ioutil.WriteFile(path.Node.Cert, matchingCert, 0644))
+	require.NoError(t, os.WriteFile(path.Node.Key, badKey, 0o600))
+	require.NoError(t, os.WriteFile(path.Node.Cert, matchingCert, 0o644))
 
 	krw := ca.NewKeyReadWriter(path.Node, wrongKEK, RaftDEKData{})
 	_, _, err = krw.Read()
@@ -542,7 +541,7 @@ O0T3aXuZGYNyh//KqAoA3erCmh6HauMz84Y=
 
 // If FIPS is enabled, the raft DEK will be encrypted using fernet, and not NACL secretbox.
 func TestRaftDEKsFIPSEnabledUsesFernet(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "manager-dek-fips")
+	tempDir, err := os.MkdirTemp("", "manager-dek-fips")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 

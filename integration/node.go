@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -33,15 +32,15 @@ func generateCerts(tmpDir string, rootCA *ca.RootCA, nodeID, role, org string, w
 		return err
 	}
 	certDir := filepath.Join(tmpDir, "certificates")
-	if err := os.MkdirAll(certDir, 0700); err != nil {
+	if err := os.MkdirAll(certDir, 0o700); err != nil {
 		return err
 	}
 	certPaths := ca.NewConfigPaths(certDir)
-	if err := ioutil.WriteFile(certPaths.RootCA.Cert, signer.Cert, 0644); err != nil {
+	if err := os.WriteFile(certPaths.RootCA.Cert, signer.Cert, 0o644); err != nil {
 		return err
 	}
 	if writeKey {
-		if err := ioutil.WriteFile(certPaths.RootCA.Key, signer.Key, 0600); err != nil {
+		if err := os.WriteFile(certPaths.RootCA.Key, signer.Key, 0o600); err != nil {
 			return err
 		}
 	}
@@ -55,7 +54,7 @@ func generateCerts(tmpDir string, rootCA *ca.RootCA, nodeID, role, org string, w
 // It uses TestExecutor as executor. If lateBind is set, the remote API port is not
 // bound.  If rootCA is set, this root is used to bootstrap the node's TLS certs.
 func newTestNode(joinAddr, joinToken string, lateBind bool, fips bool) (*testNode, error) {
-	tmpDir, err := ioutil.TempDir("", "swarmkit-integration-")
+	tmpDir, err := os.MkdirTemp("", "swarmkit-integration-")
 	if err != nil {
 		return nil, err
 	}
