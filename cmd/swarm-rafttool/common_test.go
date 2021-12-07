@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.etcd.io/etcd/pkg/fileutil"
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/wal/walpb"
+	"github.com/coreos/etcd/pkg/fileutil"
+	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager"

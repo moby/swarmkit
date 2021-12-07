@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/wal/walpb"
+	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"

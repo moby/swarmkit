@@ -6,7 +6,7 @@ package api
 import (
 	context "context"
 	fmt "fmt"
-	raftpb "go.etcd.io/etcd/raft/raftpb"
+	raftpb "github.com/coreos/etcd/raft/raftpb"
 	github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 	raftselector "github.com/docker/swarmkit/manager/raftselector"
 	proto "github.com/gogo/protobuf/proto"

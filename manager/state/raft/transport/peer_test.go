@@ -5,7 +5,7 @@ import (
 	"math"
 	"testing"
 
-	"go.etcd.io/etcd/raft/raftpb"
+	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/stretchr/testify/assert"
 )
 

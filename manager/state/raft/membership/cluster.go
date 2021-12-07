@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"go.etcd.io/etcd/raft/raftpb"
+	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/watch"
 	"github.com/gogo/protobuf/proto"

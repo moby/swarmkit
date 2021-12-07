@@ -12,8 +12,8 @@ import (
 	"google.golang.org/grpc"
 
 	"code.cloudfoundry.org/clock/fakeclock"
-	etcdraft "go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/raftpb"
+	etcdraft "github.com/coreos/etcd/raft"
+	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"

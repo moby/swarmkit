@@ -8,19 +8,19 @@ import (
 	"sort"
 	"strings"
 
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/wal"
-	"go.etcd.io/etcd/wal/walpb"
+	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/wal"
+	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/pkg/errors"
 )
 
-// This package wraps the go.etcd.io/etcd/wal package, and encrypts
+// This package wraps the github.com/coreos/etcd/wal package, and encrypts
 // the bytes of whatever entry is passed to it, and decrypts the bytes of
 // whatever entry it reads.
 
-// WAL is the interface presented by go.etcd.io/etcd/wal.WAL that we depend upon
+// WAL is the interface presented by github.com/coreos/etcd/wal.WAL that we depend upon
 type WAL interface {
 	ReadAll() ([]byte, raftpb.HardState, []raftpb.Entry, error)
 	ReleaseLockTo(index uint64) error
@@ -40,7 +40,7 @@ var _ WAL = &wrappedWAL{}
 var _ WAL = &wal.WAL{}
 var _ WALFactory = walCryptor{}
 
-// wrappedWAL wraps a go.etcd.io/etcd/wal.WAL, and handles encrypting/decrypting
+// wrappedWAL wraps a github.com/coreos/etcd/wal.WAL, and handles encrypting/decrypting
 type wrappedWAL struct {
 	*wal.WAL
 	encrypter encryption.Encrypter

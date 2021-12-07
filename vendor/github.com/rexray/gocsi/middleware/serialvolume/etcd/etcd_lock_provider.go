@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	etcd "go.etcd.io/etcd/clientv3"
-	etcdsync "go.etcd.io/etcd/clientv3/concurrency"
+	etcd "github.com/coreos/etcd/clientv3"
+	etcdsync "github.com/coreos/etcd/clientv3/concurrency"
 	log "github.com/sirupsen/logrus"
 	"github.com/akutz/gosync"
 

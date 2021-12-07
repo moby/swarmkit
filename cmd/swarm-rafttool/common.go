@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"go.etcd.io/etcd/pkg/fileutil"
-	"go.etcd.io/etcd/wal/walpb"
+	"github.com/coreos/etcd/pkg/fileutil"
+	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/manager"
 	"github.com/docker/swarmkit/manager/encryption"

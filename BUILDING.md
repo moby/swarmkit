@@ -88,14 +88,14 @@ vndr
 
 It's possible to update only one dependency:
 ```
-vndr go.etcd.io/etcd v3.0.9
+vndr github.com/coreos/etcd v3.0.9
 ```
 
 but it should be in sync with `vendor.conf`.
 
 Also, you can update dependency from fork for testing:
 ```
-vndr go.etcd.io/etcd <revision> https://github.com/LK4D4/etcd.git
+vndr github.com/coreos/etcd <revision> https://github.com/LK4D4/etcd.git
 ```
 
 ### Regenerating protobuf bindings
