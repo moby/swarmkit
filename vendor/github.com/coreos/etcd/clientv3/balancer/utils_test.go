@@ -12,28 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package picker
+package balancer
 
 import (
-	"context"
+	"reflect"
+	"testing"
 
-	"google.golang.org/grpc/balancer"
+	"google.golang.org/grpc/resolver"
 )
 
-// NewErr returns a picker that always returns err on "Pick".
-func NewErr(err error) Picker {
-	return &errPicker{p: Error, err: err}
-}
-
-type errPicker struct {
-	p   Policy
-	err error
-}
-
-func (ep *errPicker) String() string {
-	return ep.p.String()
-}
-
-func (ep *errPicker) Pick(context.Context, balancer.PickInfo) (balancer.SubConn, func(balancer.DoneInfo), error) {
-	return nil, nil, ep.err
+func Test_epsToAddrs(t *testing.T) {
+	eps := []string{"https://example.com:2379", "127.0.0.1:2379"}
+	exp := []resolver.Address{
+		{Addr: "example.com:2379", Type: resolver.Backend},
+		{Addr: "127.0.0.1:2379", Type: resolver.Backend},
+	}
+	rs := epsToAddrs(eps...)
+	if !reflect.DeepEqual(rs, exp) {
+		t.Fatalf("expected %v, got %v", exp, rs)
+	}
 }
