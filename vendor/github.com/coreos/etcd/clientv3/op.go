@@ -14,7 +14,7 @@
 
 package clientv3
 
-import pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+import pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 
 type opType int
 
@@ -26,9 +26,7 @@ const (
 	tTxn
 )
 
-var (
-	noPrefixEnd = []byte{0}
-)
+var noPrefixEnd = []byte{0}
 
 // Op represents an Operation that kv can execute.
 type Op struct {
@@ -83,8 +81,15 @@ type Op struct {
 
 // accessors / mutators
 
-func (op Op) IsTxn() bool              { return op.t == tTxn }
-func (op Op) Txn() ([]Cmp, []Op, []Op) { return op.cmps, op.thenOps, op.elseOps }
+// IsTxn returns true if the "Op" type is transaction.
+func (op Op) IsTxn() bool {
+	return op.t == tTxn
+}
+
+// Txn returns the comparison(if) operations, "then" operations, and "else" operations.
+func (op Op) Txn() ([]Cmp, []Op, []Op) {
+	return op.cmps, op.thenOps, op.elseOps
+}
 
 // KeyBytes returns the byte slice holding the Op's key.
 func (op Op) KeyBytes() []byte { return op.key }
@@ -108,13 +113,13 @@ func (op Op) IsGet() bool { return op.t == tRange }
 func (op Op) IsDelete() bool { return op.t == tDeleteRange }
 
 // IsSerializable returns true if the serializable field is true.
-func (op Op) IsSerializable() bool { return op.serializable == true }
+func (op Op) IsSerializable() bool { return op.serializable }
 
 // IsKeysOnly returns whether keysOnly is set.
-func (op Op) IsKeysOnly() bool { return op.keysOnly == true }
+func (op Op) IsKeysOnly() bool { return op.keysOnly }
 
 // IsCountOnly returns whether countOnly is set.
-func (op Op) IsCountOnly() bool { return op.countOnly == true }
+func (op Op) IsCountOnly() bool { return op.countOnly }
 
 // MinModRev returns the operation's minimum modify revision.
 func (op Op) MinModRev() int64 { return op.minModRev }
@@ -211,13 +216,23 @@ func (op Op) isWrite() bool {
 	return op.t != tRange
 }
 
+// OpGet returns "get" operation based on given key and operation options.
 func OpGet(key string, opts ...OpOption) Op {
+	// WithPrefix and WithFromKey are not supported together
+	if isWithPrefix(opts) && isWithFromKey(opts) {
+		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
+	}
 	ret := Op{t: tRange, key: []byte(key)}
 	ret.applyOpts(opts)
 	return ret
 }
 
+// OpDelete returns "delete" operation based on given key and operation options.
 func OpDelete(key string, opts ...OpOption) Op {
+	// WithPrefix and WithFromKey are not supported together
+	if isWithPrefix(opts) && isWithFromKey(opts) {
+		panic("`WithPrefix` and `WithFromKey` cannot be set at the same time, choose one")
+	}
 	ret := Op{t: tDeleteRange, key: []byte(key)}
 	ret.applyOpts(opts)
 	switch {
@@ -245,6 +260,7 @@ func OpDelete(key string, opts ...OpOption) Op {
 	return ret
 }
 
+// OpPut returns "put" operation based on given key-value and operation options.
 func OpPut(key, val string, opts ...OpOption) Op {
 	ret := Op{t: tPut, key: []byte(key), val: []byte(val)}
 	ret.applyOpts(opts)
@@ -273,6 +289,7 @@ func OpPut(key, val string, opts ...OpOption) Op {
 	return ret
 }
 
+// OpTxn returns "txn" operation based on given transaction conditions.
 func OpTxn(cmps []Cmp, thenOps []Op, elseOps []Op) Op {
 	return Op{t: tTxn, cmps: cmps, thenOps: thenOps, elseOps: elseOps}
 }
@@ -383,7 +400,14 @@ func WithRange(endKey string) OpOption {
 
 // WithFromKey specifies the range of 'Get', 'Delete', 'Watch' requests
 // to be equal or greater than the key in the argument.
-func WithFromKey() OpOption { return WithRange("\x00") }
+func WithFromKey() OpOption {
+	return func(op *Op) {
+		if len(op.key) == 0 {
+			op.key = []byte{0}
+		}
+		op.end = []byte("\x00")
+	}
+}
 
 // WithSerializable makes 'Get' request serializable. By default,
 // it's linearizable. Serializable requests are better for lower latency
@@ -472,6 +496,17 @@ func WithPrevKV() OpOption {
 	}
 }
 
+// WithFragment to receive raw watch response with fragmentation.
+// Fragmentation is disabled by default. If fragmentation is enabled,
+// etcd watch server will split watch response before sending to clients
+// when the total size of watch events exceed server-side request limit.
+// The default server-side request limit is 1.5 MiB, which can be configured
+// as "--max-request-bytes" flag value + gRPC-overhead 512 bytes.
+// See "etcdserver/api/v3rpc/watch.go" for more details.
+func WithFragment() OpOption {
+	return func(op *Op) { op.fragment = true }
+}
+
 // WithIgnoreValue updates the key using its current value.
 // This option can not be combined with non-empty values.
 // Returns an error if the key does not exist.
@@ -518,13 +553,8 @@ func toLeaseTimeToLiveRequest(id LeaseID, opts ...LeaseOption) *pb.LeaseTimeToLi
 	return &pb.LeaseTimeToLiveRequest{ID: int64(id), Keys: ret.attachedKeys}
 }
 
-// WithFragment to receive raw watch response with fragmentation.
-// Fragmentation is disabled by default. If fragmentation is enabled,
-// etcd watch server will split watch response before sending to clients
-// when the total size of watch events exceed server-side request limit.
-// The default server-side request limit is 1.5 MiB, which can be configured
-// as "--max-request-bytes" flag value + gRPC-overhead 512 bytes.
-// See "etcdserver/api/v3rpc/watch.go" for more details.
-func WithFragment() OpOption {
-	return func(op *Op) { op.fragment = true }
-}
+// isWithPrefix returns true if WithPrefix is being called in the op
+func isWithPrefix(opts []OpOption) bool { return isOpFuncCalled("WithPrefix", opts) }
+
+// isWithFromKey returns true if WithFromKey is being called in the op
+func isWithFromKey(opts []OpOption) bool { return isOpFuncCalled("WithFromKey", opts) }

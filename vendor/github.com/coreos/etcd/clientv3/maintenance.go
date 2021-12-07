@@ -19,7 +19,8 @@ import (
 	"fmt"
 	"io"
 
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.uber.org/zap"
 
 	"google.golang.org/grpc"
 )
@@ -68,6 +69,7 @@ type Maintenance interface {
 }
 
 type maintenance struct {
+	lg       *zap.Logger
 	dial     func(endpoint string) (pb.MaintenanceClient, func(), error)
 	remote   pb.MaintenanceClient
 	callOpts []grpc.CallOption
@@ -75,6 +77,7 @@ type maintenance struct {
 
 func NewMaintenance(c *Client) Maintenance {
 	api := &maintenance{
+		lg: c.lg,
 		dial: func(endpoint string) (pb.MaintenanceClient, func(), error) {
 			conn, err := c.Dial(endpoint)
 			if err != nil {
@@ -93,6 +96,7 @@ func NewMaintenance(c *Client) Maintenance {
 
 func NewMaintenanceFromMaintenanceClient(remote pb.MaintenanceClient, c *Client) Maintenance {
 	api := &maintenance{
+		lg: c.lg,
 		dial: func(string) (pb.MaintenanceClient, func(), error) {
 			return remote, func() {}, nil
 		},
@@ -193,7 +197,7 @@ func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
 		return nil, toErr(ctx, err)
 	}
 
-	plog.Info("opened snapshot stream; downloading")
+	m.lg.Info("opened snapshot stream; downloading")
 	pr, pw := io.Pipe()
 	go func() {
 		for {
@@ -201,9 +205,9 @@ func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
 			if err != nil {
 				switch err {
 				case io.EOF:
-					plog.Info("completed snapshot read; closing")
+					m.lg.Info("completed snapshot read; closing")
 				default:
-					plog.Warningf("failed to receive from snapshot stream; closing (%v)", err)
+					m.lg.Warn("failed to receive from snapshot stream; closing", zap.Error(err))
 				}
 				pw.CloseWithError(err)
 				return
