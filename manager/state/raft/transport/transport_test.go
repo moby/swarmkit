@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
+	"go.etcd.io/etcd/raft"
+	"go.etcd.io/etcd/raft/raftpb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

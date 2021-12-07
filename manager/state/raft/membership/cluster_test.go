@@ -11,7 +11,7 @@ import (
 
 	"google.golang.org/grpc/grpclog"
 
-	"github.com/coreos/etcd/raft/raftpb"
+	"go.etcd.io/etcd/raft/raftpb"
 	"github.com/docker/swarmkit/api"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state/raft"

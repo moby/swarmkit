@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/snap"
-	"github.com/coreos/etcd/wal/walpb"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/server/etcdserver/api/snap"
+	"go.etcd.io/etcd/wal/walpb"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/docker/swarmkit/manager/state/raft/storage"

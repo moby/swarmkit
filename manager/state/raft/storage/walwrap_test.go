@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/wal/walpb"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal/walpb"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/stretchr/testify/require"
