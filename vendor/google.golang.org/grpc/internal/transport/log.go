@@ -1,8 +1,6 @@
-// +build linux,!appengine
-
 /*
  *
- * Copyright 2018 gRPC authors.
+ * Copyright 2017 gRPC authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,22 +16,29 @@
  *
  */
 
-package channelz
+// This file contains wrappers for grpclog functions.
+// The transport package only logs to verbose level 2 by default.
 
-import (
-	"syscall"
-)
+package transport
 
-// GetSocketOption gets the socket option info of the conn.
-func GetSocketOption(socket interface{}) *SocketOptionData {
-	c, ok := socket.(syscall.Conn)
-	if !ok {
-		return nil
+import "google.golang.org/grpc/grpclog"
+
+const logLevel = 2
+
+func infof(format string, args ...interface{}) {
+	if grpclog.V(logLevel) {
+		grpclog.Infof(format, args...)
 	}
-	data := &SocketOptionData{}
-	if rawConn, err := c.SyscallConn(); err == nil {
-		rawConn.Control(data.Getsockopt)
-		return data
+}
+
+func warningf(format string, args ...interface{}) {
+	if grpclog.V(logLevel) {
+		grpclog.Warningf(format, args...)
 	}
-	return nil
+}
+
+func errorf(format string, args ...interface{}) {
+	if grpclog.V(logLevel) {
+		grpclog.Errorf(format, args...)
+	}
 }

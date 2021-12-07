@@ -1,6 +1,8 @@
+// +build appengine
+
 /*
  *
- * Copyright 2015 gRPC authors.
+ * Copyright 2018 gRPC authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +18,13 @@
  *
  */
 
-/*
-Package grpc implements an RPC system called gRPC.
+package internal
 
-See grpc.io for more information about gRPC.
-*/
-package grpc // import "google.golang.org/grpc"
+import (
+	"net"
+)
+
+// WrapSyscallConn returns newConn on appengine.
+func WrapSyscallConn(rawConn, newConn net.Conn) net.Conn {
+	return newConn
+}
