@@ -7,14 +7,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/etcdserver/api/snap"
-	"go.etcd.io/etcd/wal/walpb"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/docker/swarmkit/manager/state/raft/storage"
 	"github.com/docker/swarmkit/manager/state/store"
 	"github.com/gogo/protobuf/proto"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/server/etcdserver/api/snap"
+	"go.etcd.io/etcd/wal/walpb"
 )
 
 func loadData(swarmdir, unlockKey string) (*storage.WALData, *raftpb.Snapshot, error) {
