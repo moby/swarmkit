@@ -7,14 +7,14 @@ import (
 	"path/filepath"
 	"sync"
 
-	"go.etcd.io/etcd/pkg/fileutil"
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/etcdserver/api/snap"
-	"go.etcd.io/etcd/wal"
-	"go.etcd.io/etcd/wal/walpb"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/pkg/errors"
+	"go.etcd.io/etcd/etcdserver/api/snap"
+	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal"
+	"go.etcd.io/etcd/wal/walpb"
 )
 
 // ErrNoWAL is returned if there are no WALs on disk
@@ -65,7 +65,7 @@ func (e *EncryptedRaftLogger) BootstrapFromDisk(ctx context.Context, oldEncrypti
 		decrypter = encryption.NewMultiDecrypter(decrypters...)
 	}
 
-	snapFactory := NewSnapFactory(encrypter, decrypter)
+	snapFactory := NewSnapFactory(nil, encrypter, decrypter)
 
 	if !fileutil.Exist(snapDir) {
 		// If snapshots created by the etcd-v2 code exist, or by swarmkit development version,
@@ -158,7 +158,7 @@ func (e *EncryptedRaftLogger) BootstrapNew(metadata []byte) error {
 		return errors.Wrap(err, "failed to create WAL")
 	}
 
-	e.snapshotter = NewSnapFactory(encrypter, decrypter).New(e.snapDir())
+	e.snapshotter = NewSnapFactory(nil, encrypter, decrypter).New(e.snapDir())
 	return nil
 }
 
@@ -188,7 +188,7 @@ func (e *EncryptedRaftLogger) RotateEncryptionKey(newKey []byte) {
 
 		wrapped.encrypter, wrapped.decrypter = encryption.Defaults(newKey, e.FIPS)
 
-		e.snapshotter = NewSnapFactory(wrapped.encrypter, wrapped.decrypter).New(e.snapDir())
+		e.snapshotter = NewSnapFactory(nil, wrapped.encrypter, wrapped.decrypter).New(e.snapDir())
 	}
 	e.EncryptionKey = newKey
 }

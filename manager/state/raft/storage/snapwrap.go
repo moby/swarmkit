@@ -6,11 +6,12 @@ import (
 	"sort"
 	"strings"
 
-	"go.etcd.io/etcd/pkg/fileutil"
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/etcdserver/api/snap"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/pkg/errors"
+	"go.etcd.io/etcd/etcdserver/api/snap"
+	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.uber.org/zap"
 )
 
 // This package wraps the go.etcd.io/etcd/etcdserver/api/snap package, and encrypts
@@ -71,14 +72,16 @@ func (s *wrappedSnap) Load() (*raftpb.Snapshot, error) {
 // snapCryptor is an object that provides the same functions as `etcd/wal`
 // and `etcd/snap` that we need to open a WAL object or Snapshotter object
 type snapCryptor struct {
+	logger    *zap.Logger
 	encrypter encryption.Encrypter
 	decrypter encryption.Decrypter
 }
 
 // NewSnapFactory returns a new object that can read from and write to encrypted
 // snapshots on disk
-func NewSnapFactory(encrypter encryption.Encrypter, decrypter encryption.Decrypter) SnapFactory {
+func NewSnapFactory(logger *zap.Logger, encrypter encryption.Encrypter, decrypter encryption.Decrypter) SnapFactory {
 	return snapCryptor{
+		logger:    logger,
 		encrypter: encrypter,
 		decrypter: decrypter,
 	}
@@ -87,16 +90,18 @@ func NewSnapFactory(encrypter encryption.Encrypter, decrypter encryption.Decrypt
 // NewSnapshotter returns a new Snapshotter with the given encrypters and decrypters
 func (sc snapCryptor) New(dirpath string) Snapshotter {
 	return &wrappedSnap{
-		Snapshotter: snap.New(dirpath),
+		Snapshotter: snap.New(sc.logger, dirpath),
 		encrypter:   sc.encrypter,
 		decrypter:   sc.decrypter,
 	}
 }
 
-type originalSnap struct{}
+type originalSnap struct {
+	logger *zap.Logger
+}
 
 func (o originalSnap) New(dirpath string) Snapshotter {
-	return snap.New(dirpath)
+	return snap.New(o.logger, dirpath)
 }
 
 // OriginalSnap is the original `snap` package as an implementation of the SnapFactory interface

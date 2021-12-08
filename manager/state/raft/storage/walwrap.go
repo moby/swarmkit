@@ -8,12 +8,12 @@ import (
 	"sort"
 	"strings"
 
-	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/wal"
-	"go.etcd.io/etcd/wal/walpb"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/pkg/errors"
+	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/wal"
+	"go.etcd.io/etcd/wal/walpb"
 )
 
 // This package wraps the go.etcd.io/etcd/wal package, and encrypts
@@ -102,7 +102,7 @@ func NewWALFactory(encrypter encryption.Encrypter, decrypter encryption.Decrypte
 
 // Create returns a new WAL object with the given encrypters and decrypters.
 func (wc walCryptor) Create(dirpath string, metadata []byte) (WAL, error) {
-	w, err := wal.Create(dirpath, metadata)
+	w, err := wal.Create(nil, dirpath, metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (wc walCryptor) Create(dirpath string, metadata []byte) (WAL, error) {
 
 // Open returns a new WAL object with the given encrypters and decrypters.
 func (wc walCryptor) Open(dirpath string, snap walpb.Snapshot) (WAL, error) {
-	w, err := wal.Open(dirpath, snap)
+	w, err := wal.Open(nil, dirpath, snap)
 	if err != nil {
 		return nil, err
 	}
@@ -129,10 +129,10 @@ func (wc walCryptor) Open(dirpath string, snap walpb.Snapshot) (WAL, error) {
 type originalWAL struct{}
 
 func (o originalWAL) Create(dirpath string, metadata []byte) (WAL, error) {
-	return wal.Create(dirpath, metadata)
+	return wal.Create(nil, dirpath, metadata)
 }
 func (o originalWAL) Open(dirpath string, walsnap walpb.Snapshot) (WAL, error) {
-	return wal.Open(dirpath, walsnap)
+	return wal.Open(nil, dirpath, walsnap)
 }
 
 // OriginalWAL is the original `wal` package as an implementation of the WALFactory interface
@@ -177,7 +177,7 @@ func ReadRepairWAL(
 			if repaired || err != io.ErrUnexpectedEOF {
 				return nil, WALData{}, errors.Wrap(err, "irreparable WAL error")
 			}
-			if !wal.Repair(walDir) {
+			if !wal.Repair(nil, walDir) {
 				return nil, WALData{}, errors.Wrap(err, "WAL error cannot be repaired")
 			}
 			log.G(ctx).WithError(err).Info("repaired WAL error")
