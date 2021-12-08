@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	etcd "github.com/coreos/etcd/clientv3"
-	etcdsync "github.com/coreos/etcd/clientv3/concurrency"
-	log "github.com/sirupsen/logrus"
 	"github.com/akutz/gosync"
+	log "github.com/sirupsen/logrus"
+	etcd "go.etcd.io/etcd/clientv3"
+	etcdsync "go.etcd.io/etcd/clientv3/concurrency"
 
 	csictx "github.com/rexray/gocsi/context"
 	mwtypes "github.com/rexray/gocsi/middleware/serialvolume/types"
