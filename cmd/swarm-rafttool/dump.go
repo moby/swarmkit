@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/snap"
+	"go.etcd.io/etcd/etcdserver/api/snap"
 	"go.etcd.io/etcd/wal/walpb"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/encryption"

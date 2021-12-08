@@ -8,16 +8,16 @@ import (
 
 	"go.etcd.io/etcd/pkg/fileutil"
 	"go.etcd.io/etcd/raft/raftpb"
-	"go.etcd.io/etcd/snap"
+	"go.etcd.io/etcd/etcdserver/api/snap"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/pkg/errors"
 )
 
-// This package wraps the go.etcd.io/etcd/snap package, and encrypts
+// This package wraps the go.etcd.io/etcd/etcdserver/api/snap package, and encrypts
 // the bytes of whatever snapshot is passed to it, and decrypts the bytes of
 // whatever snapshot it reads.
 
-// Snapshotter is the interface presented by go.etcd.io/etcd/snap.Snapshotter that we depend upon
+// Snapshotter is the interface presented by go.etcd.io/etcd/etcdserver/api/snap.Snapshotter that we depend upon
 type Snapshotter interface {
 	SaveSnap(snapshot raftpb.Snapshot) error
 	Load() (*raftpb.Snapshot, error)
@@ -33,7 +33,7 @@ var _ Snapshotter = &wrappedSnap{}
 var _ Snapshotter = &snap.Snapshotter{}
 var _ SnapFactory = snapCryptor{}
 
-// wrappedSnap wraps a go.etcd.io/etcd/snap.Snapshotter, and handles
+// wrappedSnap wraps a go.etcd.io/etcd/etcdserver/api/snap.Snapshotter, and handles
 // encrypting/decrypting.
 type wrappedSnap struct {
 	*snap.Snapshotter
