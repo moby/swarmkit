@@ -72,21 +72,15 @@ type Config struct {
 	// Without this, Dial returns immediately and connecting the server happens in background.
 	DialOptions []grpc.DialOption
 
-	// Context is the default client context; it can be used to cancel grpc dial out and
-	// other operations that do not have an explicit context.
-	Context context.Context
-
-	// Logger sets client-side logger.
-	// If nil, fallback to building LogConfig.
-	Logger *zap.Logger
-
 	// LogConfig configures client-side logger.
 	// If nil, use the default logger.
 	// TODO: configure gRPC logger
 	LogConfig *zap.Config
 
+	// Context is the default client context; it can be used to cancel grpc dial out and
+	// other operations that do not have an explicit context.
+	Context context.Context
+
 	// PermitWithoutStream when set will allow client to send keepalive pings to server without any active streams(RPCs).
 	PermitWithoutStream bool `json:"permit-without-stream"`
-
-	// TODO: support custom balancer picker
 }
