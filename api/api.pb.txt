@@ -10691,11 +10691,11 @@ file {
   message_type {
     name: "ConfState"
     field {
-      name: "nodes"
+      name: "voters"
       number: 1
       label: LABEL_REPEATED
       type: TYPE_UINT64
-      json_name: "nodes"
+      json_name: "voters"
     }
     field {
       name: "learners"
@@ -10704,21 +10704,35 @@ file {
       type: TYPE_UINT64
       json_name: "learners"
     }
+    field {
+      name: "voters_outgoing"
+      number: 3
+      label: LABEL_REPEATED
+      type: TYPE_UINT64
+      json_name: "votersOutgoing"
+    }
+    field {
+      name: "learners_next"
+      number: 4
+      label: LABEL_REPEATED
+      type: TYPE_UINT64
+      json_name: "learnersNext"
+    }
+    field {
+      name: "auto_leave"
+      number: 5
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      options {
+        65001: 0
+      }
+      json_name: "autoLeave"
+    }
   }
   message_type {
     name: "ConfChange"
     field {
-      name: "ID"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_UINT64
-      options {
-        65001: 0
-      }
-      json_name: "ID"
-    }
-    field {
-      name: "Type"
+      name: "type"
       number: 2
       label: LABEL_OPTIONAL
       type: TYPE_ENUM
@@ -10726,24 +10740,93 @@ file {
       options {
         65001: 0
       }
-      json_name: "Type"
+      json_name: "type"
     }
     field {
-      name: "NodeID"
+      name: "node_id"
       number: 3
       label: LABEL_OPTIONAL
       type: TYPE_UINT64
       options {
         65001: 0
+        65004: "NodeID"
       }
-      json_name: "NodeID"
+      json_name: "nodeId"
     }
     field {
-      name: "Context"
+      name: "context"
       number: 4
       label: LABEL_OPTIONAL
       type: TYPE_BYTES
-      json_name: "Context"
+      json_name: "context"
+    }
+    field {
+      name: "id"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      options {
+        65001: 0
+        65004: "ID"
+      }
+      json_name: "id"
+    }
+  }
+  message_type {
+    name: "ConfChangeSingle"
+    field {
+      name: "type"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_ENUM
+      type_name: ".raftpb.ConfChangeType"
+      options {
+        65001: 0
+      }
+      json_name: "type"
+    }
+    field {
+      name: "node_id"
+      number: 2
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      options {
+        65001: 0
+        65004: "NodeID"
+      }
+      json_name: "nodeId"
+    }
+  }
+  message_type {
+    name: "ConfChangeV2"
+    field {
+      name: "transition"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_ENUM
+      type_name: ".raftpb.ConfChangeTransition"
+      options {
+        65001: 0
+      }
+      json_name: "transition"
+    }
+    field {
+      name: "changes"
+      number: 2
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".raftpb.ConfChangeSingle"
+      options {
+        65001: 0
+      }
+      json_name: "changes"
+    }
+    field {
+      name: "context"
+      number: 3
+      label: LABEL_OPTIONAL
+      type: TYPE_BYTES
+      json_name: "context"
     }
   }
   enum_type {
@@ -10755,6 +10838,10 @@ file {
     value {
       name: "EntryConfChange"
       number: 1
+    }
+    value {
+      name: "EntryConfChangeV2"
+      number: 2
     }
   }
   enum_type {
@@ -10834,6 +10921,21 @@ file {
     value {
       name: "MsgPreVoteResp"
       number: 18
+    }
+  }
+  enum_type {
+    name: "ConfChangeTransition"
+    value {
+      name: "ConfChangeTransitionAuto"
+      number: 0
+    }
+    value {
+      name: "ConfChangeTransitionJointImplicit"
+      number: 1
+    }
+    value {
+      name: "ConfChangeTransitionJointExplicit"
+      number: 2
     }
   }
   enum_type {
