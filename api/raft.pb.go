@@ -1630,7 +1630,7 @@ func (m *ProcessRaftMessageRequest) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	_ = l
 	if m.Message != nil {
 		{
-			size, err := m.Message.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -1688,7 +1688,7 @@ func (m *StreamRaftMessageRequest) MarshalToSizedBuffer(dAtA []byte) (int, error
 	_ = l
 	if m.Message != nil {
 		{
-			size, err := m.Message.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
