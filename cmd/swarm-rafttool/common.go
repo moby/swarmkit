@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -55,7 +54,7 @@ func getKRW(swarmdir, unlockKey string) (*ca.KeyReadWriter, error) {
 
 func moveDirAside(dirname string) error {
 	if fileutil.Exist(dirname) {
-		tempdir, err := ioutil.TempDir(filepath.Dir(dirname), filepath.Base(dirname))
+		tempdir, err := os.MkdirTemp(filepath.Dir(dirname), filepath.Base(dirname))
 		if err != nil {
 			return err
 		}

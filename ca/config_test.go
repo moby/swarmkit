@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -234,7 +233,7 @@ func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 
 	// A cert that is not yet valid is not valid even if expiry is allowed
 	invalidCert := cautils.ReDateCert(t, certBytes, tc.RootCA.Certs, s.Key, now.Add(time.Hour), now.Add(time.Hour*2))
-	require.NoError(t, ioutil.WriteFile(tc.Paths.Node.Cert, invalidCert, 0700))
+	require.NoError(t, os.WriteFile(tc.Paths.Node.Cert, invalidCert, 0o700))
 
 	_, _, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
 	require.Error(t, err)
@@ -246,7 +245,7 @@ func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 
 	// a cert that is expired is not valid if expiry is not allowed
 	invalidCert = cautils.ReDateCert(t, certBytes, tc.RootCA.Certs, s.Key, now.Add(-2*time.Minute), now.Add(-1*time.Minute))
-	require.NoError(t, ioutil.WriteFile(tc.Paths.Node.Cert, invalidCert, 0700))
+	require.NoError(t, os.WriteFile(tc.Paths.Node.Cert, invalidCert, 0o700))
 
 	_, _, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
 	require.Error(t, err)
@@ -266,9 +265,9 @@ func TestLoadSecurityConfigInvalidCert(t *testing.T) {
 	defer tc.Stop()
 
 	// Write some garbage to the cert
-	ioutil.WriteFile(tc.Paths.Node.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
+	os.WriteFile(tc.Paths.Node.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
 some random garbage\n
------END CERTIFICATE-----`), 0644)
+-----END CERTIFICATE-----`), 0o644)
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 
@@ -284,9 +283,9 @@ func TestLoadSecurityConfigInvalidKey(t *testing.T) {
 	defer tc.Stop()
 
 	// Write some garbage to the Key
-	ioutil.WriteFile(tc.Paths.Node.Key, []byte(`-----BEGIN PRIVATE KEY-----\n
+	os.WriteFile(tc.Paths.Node.Key, []byte(`-----BEGIN PRIVATE KEY-----\n
 some random garbage\n
------END PRIVATE KEY-----`), 0644)
+-----END PRIVATE KEY-----`), 0o644)
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 
@@ -314,7 +313,7 @@ func TestLoadSecurityConfigIntermediates(t *testing.T) {
 	if cautils.External {
 		return // this doesn't require any servers at all
 	}
-	tempdir, err := ioutil.TempDir("", "test-load-config-with-intermediates")
+	tempdir, err := os.MkdirTemp("", "test-load-config-with-intermediates")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 	paths := ca.NewConfigPaths(tempdir)
@@ -354,7 +353,7 @@ func TestLoadSecurityConfigKeyFormat(t *testing.T) {
 	if cautils.External {
 		return // this doesn't require any servers at all
 	}
-	tempdir, err := ioutil.TempDir("", "test-load-config")
+	tempdir, err := os.MkdirTemp("", "test-load-config")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 	paths := ca.NewConfigPaths(tempdir)
@@ -440,7 +439,7 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	rootCA, err := ca.NewRootCA(cert, cert, key, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
-	tempdir, err := ioutil.TempDir("", "test-security-config-update")
+	tempdir, err := os.MkdirTemp("", "test-security-config-update")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 	configPaths := ca.NewConfigPaths(tempdir)
@@ -535,7 +534,7 @@ func TestSecurityConfigUpdateRootCAUpdateConsistentWithTLSCertificates(t *testin
 	if cautils.External {
 		return // we don't care about external CAs at all
 	}
-	tempdir, err := ioutil.TempDir("", "")
+	tempdir, err := os.MkdirTemp("", "")
 	require.NoError(t, err)
 	krw := ca.NewKeyReadWriter(ca.NewConfigPaths(tempdir).Node, nil, nil)
 
@@ -628,7 +627,7 @@ func TestSecurityConfigWatch(t *testing.T) {
 // root certificate.  If it validates against the current TLS credentials, it will be used to download
 // new ones, (only if the new certificate indicates that it's a worker, though).
 func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "test-renew-tls-config-now-downloads-root")
+	tempdir, err := os.MkdirTemp("", "test-renew-tls-config-now-downloads-root")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -746,13 +745,13 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 		if testCase.expectedRoot != nil {
 			// only rotate if we are a worker, and if the new cert validates against the old TLS creds
 			require.NoError(t, err)
-			downloadedRoot, err := ioutil.ReadFile(paths.RootCA.Cert)
+			downloadedRoot, err := os.ReadFile(paths.RootCA.Cert)
 			require.NoError(t, err)
 			require.Equal(t, testCase.expectedRoot, downloadedRoot)
 		} else {
 			require.Error(t, err)
 			require.IsType(t, x509.UnknownAuthorityError{}, err)
-			_, err = ioutil.ReadFile(paths.RootCA.Cert) // we didn't download a file
+			_, err = os.ReadFile(paths.RootCA.Cert) // we didn't download a file
 			require.Error(t, err)
 		}
 	}
@@ -761,7 +760,7 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 // If we get a not unknown authority error when trying to renew the TLS certificate, just return the
 // error and do not attempt to download the root certificate.
 func TestRenewTLSConfigUpdatesRootNonUnknownAuthError(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "test-renew-tls-config-now-downloads-root")
+	tempdir, err := os.MkdirTemp("", "test-renew-tls-config-now-downloads-root")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -822,7 +821,7 @@ func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
 	secConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
 	require.NoError(t, err)
 
-	leafCert, err := ioutil.ReadFile(paths.Node.Cert)
+	leafCert, err := os.ReadFile(paths.Node.Cert)
 	require.NoError(t, err)
 
 	for i := 0; i < 5; i++ {
@@ -853,7 +852,7 @@ func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
 		<-done1
 		<-done2
 
-		newCert, err := ioutil.ReadFile(paths.Node.Cert)
+		newCert, err := os.ReadFile(paths.Node.Cert)
 		require.NoError(t, err)
 
 		require.NotEqual(t, newCert, leafCert)

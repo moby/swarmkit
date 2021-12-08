@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"reflect"
 	"runtime"
 	"testing"
@@ -38,7 +37,7 @@ func TestControllerPrepare(t *testing.T) {
 
 	client.ImagePullFn = func(_ context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error) {
 		if refStr == config.image() {
-			return ioutil.NopCloser(bytes.NewBuffer([]byte{})), nil
+			return io.NopCloser(bytes.NewBuffer([]byte{})), nil
 		}
 		panic("unexpected call of ImagePull")
 	}
@@ -68,7 +67,7 @@ func TestControllerPrepareAlreadyPrepared(t *testing.T) {
 
 	client.ImagePullFn = func(_ context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error) {
 		if refStr == config.image() {
-			return ioutil.NopCloser(bytes.NewBuffer([]byte{})), nil
+			return io.NopCloser(bytes.NewBuffer([]byte{})), nil
 		}
 		panic("unexpected call of ImagePull")
 	}

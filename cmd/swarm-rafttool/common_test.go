@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,7 +22,7 @@ import (
 func writeFakeRaftData(t *testing.T, stateDir string, snapshot *raftpb.Snapshot, wf storage.WALFactory, sf storage.SnapFactory) {
 	snapDir := filepath.Join(stateDir, "raft", "snap-v3-encrypted")
 	walDir := filepath.Join(stateDir, "raft", "wal-v3-encrypted")
-	require.NoError(t, os.MkdirAll(snapDir, 0755))
+	require.NoError(t, os.MkdirAll(snapDir, 0o755))
 
 	wsn := walpb.Snapshot{}
 	if snapshot != nil {
@@ -50,7 +49,7 @@ func writeFakeRaftData(t *testing.T, stateDir string, snapshot *raftpb.Snapshot,
 }
 
 func TestDecrypt(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "rafttool")
+	tempdir, err := os.MkdirTemp("", "rafttool")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 

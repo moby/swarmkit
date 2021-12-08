@@ -83,7 +83,7 @@ func (e *EncryptedRaftLogger) BootstrapFromDisk(ctx context.Context, oldEncrypti
 		}
 	}
 	// ensure the new directory exists
-	if err := os.MkdirAll(snapDir, 0700); err != nil {
+	if err := os.MkdirAll(snapDir, 0o700); err != nil {
 		return nil, WALData{}, errors.Wrap(err, "failed to create snapshot directory")
 	}
 
@@ -147,7 +147,7 @@ func (e *EncryptedRaftLogger) BootstrapNew(metadata []byte) error {
 	walFactory := NewWALFactory(encrypter, decrypter)
 
 	for _, dirpath := range []string{filepath.Dir(e.walDir()), e.snapDir()} {
-		if err := os.MkdirAll(dirpath, 0700); err != nil {
+		if err := os.MkdirAll(dirpath, 0o700); err != nil {
 			return errors.Wrapf(err, "failed to create %s", dirpath)
 		}
 	}

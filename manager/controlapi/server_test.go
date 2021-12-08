@@ -2,7 +2,6 @@ package controlapi
 
 import (
 	"context"
-	"io/ioutil"
 	"net"
 	"os"
 	"testing"
@@ -51,7 +50,7 @@ func newTestServer(t *testing.T) *testServer {
 	ts.Server = NewServer(ts.Store, nil, securityConfig, nil, nil)
 	assert.NotNil(t, ts.Server)
 
-	temp, err := ioutil.TempFile("", "test-socket")
+	temp, err := os.CreateTemp("", "test-socket")
 	assert.NoError(t, err)
 	assert.NoError(t, temp.Close())
 	assert.NoError(t, os.Remove(temp.Name()))

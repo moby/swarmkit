@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -38,7 +37,7 @@ func makeWALData(index uint64, term uint64) ([]byte, []raftpb.Entry, walpb.Snaps
 }
 
 func createWithWAL(t *testing.T, w WALFactory, metadata []byte, startSnap walpb.Snapshot, entries []raftpb.Entry) string {
-	walDir, err := ioutil.TempDir("", "waltests")
+	walDir, err := os.MkdirTemp("", "waltests")
 	require.NoError(t, err)
 	require.NoError(t, os.RemoveAll(walDir))
 
@@ -161,7 +160,7 @@ func TestSave(t *testing.T) {
 func TestSaveEncryptionFails(t *testing.T) {
 	metadata, entries, snapshot := makeWALData(1, 1)
 
-	tempdir, err := ioutil.TempDir("", "waltests")
+	tempdir, err := os.MkdirTemp("", "waltests")
 	require.NoError(t, err)
 	os.RemoveAll(tempdir)
 	defer os.RemoveAll(tempdir)
@@ -197,7 +196,7 @@ func TestCreateOpenInvalidDirFails(t *testing.T) {
 	_, err := c.Create("/not/existing/directory", []byte("metadata"))
 	require.Error(t, err)
 
-	tempDir, err := ioutil.TempDir("", "test-migrate")
+	tempDir, err := os.MkdirTemp("", "test-migrate")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
@@ -230,14 +229,16 @@ func TestReadRepairWAL(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 
 	// there should only be one WAL file in there - corrupt it
-	files, err := ioutil.ReadDir(tempdir)
+	files, err := os.ReadDir(tempdir)
 	require.NoError(t, err)
 	require.Len(t, files, 1)
 
 	fName := filepath.Join(tempdir, files[0].Name())
-	fileContents, err := ioutil.ReadFile(fName)
+	fileContents, err := os.ReadFile(fName)
 	require.NoError(t, err)
-	require.NoError(t, ioutil.WriteFile(fName, fileContents[:200], files[0].Mode()))
+	info, err := files[0].Info()
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(fName, fileContents[:200], info.Mode()))
 
 	ogWAL, err := OriginalWAL.Open(tempdir, snapshot)
 	require.NoError(t, err)
@@ -261,7 +262,7 @@ func TestMigrateWALs(t *testing.T) {
 		dirs = make([]string, 2)
 	)
 
-	tempDir, err := ioutil.TempDir("", "test-migrate")
+	tempDir, err := os.MkdirTemp("", "test-migrate")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
@@ -313,7 +314,7 @@ func TestMigrateWALs(t *testing.T) {
 	err = MigrateWALs(context.Background(), oldDir, newDir, OriginalWAL, c, walpb.Snapshot{})
 	require.Error(t, err)
 
-	subdirs, err := ioutil.ReadDir(tempDir)
+	subdirs, err := os.ReadDir(tempDir)
 	require.NoError(t, err)
 	require.Empty(t, subdirs)
 }

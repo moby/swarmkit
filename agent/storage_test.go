@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -176,11 +175,11 @@ func genTaskStatus() *api.TaskStatus {
 // tests.
 func storageTestEnv(t *testing.T) (*bolt.DB, func()) {
 	var cleanup []func()
-	dir, err := ioutil.TempDir("", "agent-TestStorage-")
+	dir, err := os.MkdirTemp("", "agent-TestStorage-")
 	assert.NoError(t, err)
 
 	dbpath := filepath.Join(dir, "tasks.db")
-	assert.NoError(t, os.MkdirAll(dir, 0777))
+	assert.NoError(t, os.MkdirAll(dir, 0o777))
 	cleanup = append(cleanup, func() { os.RemoveAll(dir) })
 
 	db, err := bolt.Open(dbpath, 0666, nil)

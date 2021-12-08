@@ -3,7 +3,7 @@ package secret
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/docker/swarmkit/api"
@@ -36,12 +36,12 @@ var createCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			secretData, err = ioutil.ReadFile(filename)
+			secretData, err = os.ReadFile(filename)
 			if err != nil {
 				return fmt.Errorf("Error reading from file '%s': %s", filename, err.Error())
 			}
 		} else if driver == "" {
-			secretData, err = ioutil.ReadAll(os.Stdin)
+			secretData, err = io.ReadAll(os.Stdin)
 			if err != nil {
 				return fmt.Errorf("Error reading content from STDIN: %s", err.Error())
 			}

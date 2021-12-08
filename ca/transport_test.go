@@ -2,7 +2,6 @@ package ca
 
 import (
 	"crypto/tls"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -11,7 +10,7 @@ import (
 )
 
 func TestNewMutableTLS(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "test-transport")
+	tempdir, err := os.MkdirTemp("", "test-transport")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 	paths := NewConfigPaths(tempdir)
@@ -32,7 +31,7 @@ func TestNewMutableTLS(t *testing.T) {
 }
 
 func TestGetAndValidateCertificateSubject(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "test-transport")
+	tempdir, err := os.MkdirTemp("", "test-transport")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 	paths := NewConfigPaths(tempdir)
@@ -52,7 +51,7 @@ func TestGetAndValidateCertificateSubject(t *testing.T) {
 }
 
 func TestLoadNewTLSConfig(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "test-transport")
+	tempdir, err := os.MkdirTemp("", "test-transport")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 	paths := NewConfigPaths(tempdir)

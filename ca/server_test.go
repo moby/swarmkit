@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -1171,7 +1170,7 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 		t:  t,
 	}
 
-	tempDir, err := ioutil.TempDir("", "competing-ca-server")
+	tempDir, err := os.MkdirTemp("", "competing-ca-server")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
