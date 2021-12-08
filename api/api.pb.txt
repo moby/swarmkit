@@ -10433,7 +10433,7 @@ file {
   syntax: "proto3"
 }
 file {
-  name: "github.com/coreos/etcd/raft/raftpb/raft.proto"
+  name: "go.etcd.io/etcd/raft/raftpb/raft.proto"
   package: "raftpb"
   dependency: "gogoproto/gogo.proto"
   message_type {
@@ -10868,7 +10868,7 @@ file {
   package: "docker.swarmkit.v1"
   dependency: "github.com/docker/swarmkit/api/objects.proto"
   dependency: "github.com/docker/swarmkit/api/types.proto"
-  dependency: "github.com/coreos/etcd/raft/raftpb/raft.proto"
+  dependency: "go.etcd.io/etcd/raft/raftpb/raft.proto"
   dependency: "gogoproto/gogo.proto"
   dependency: "github.com/docker/swarmkit/protobuf/plugin/plugin.proto"
   message_type {

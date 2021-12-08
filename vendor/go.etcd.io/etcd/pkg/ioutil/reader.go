@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,26 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3
+// Package ioutil implements I/O utility functions.
+package ioutil
 
-type SortTarget int
-type SortOrder int
+import "io"
 
-const (
-	SortNone SortOrder = iota
-	SortAscend
-	SortDescend
-)
+// NewLimitedBufferReader returns a reader that reads from the given reader
+// but limits the amount of data returned to at most n bytes.
+func NewLimitedBufferReader(r io.Reader, n int) io.Reader {
+	return &limitedBufferReader{
+		r: r,
+		n: n,
+	}
+}
 
-const (
-	SortByKey SortTarget = iota
-	SortByVersion
-	SortByCreateRevision
-	SortByModRevision
-	SortByValue
-)
+type limitedBufferReader struct {
+	r io.Reader
+	n int
+}
 
-type SortOption struct {
-	Target SortTarget
-	Order  SortOrder
+func (r *limitedBufferReader) Read(p []byte) (n int, err error) {
+	np := p
+	if len(np) > r.n {
+		np = np[:r.n]
+	}
+	return r.r.Read(np)
 }
