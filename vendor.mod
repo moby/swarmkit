@@ -90,8 +90,6 @@ replace (
 	github.com/akutz/gosync => github.com/akutz/gosync v0.1.0
 	github.com/containerd/containerd => github.com/containerd/containerd v1.5.2
 	github.com/coreos/go-semver => github.com/coreos/go-semver v0.2.0
-	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20180511133405-39ca1b05acc7
-	github.com/coreos/pkg => github.com/coreos/pkg v0.0.0-20180108230652-97fdf19511ea
 	github.com/docker/distribution => github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
 	github.com/golang/protobuf => github.com/golang/protobuf v1.3.5
 	github.com/google/uuid => github.com/google/uuid v1.0.0
@@ -110,6 +108,21 @@ replace (
 	golang.org/x/text => golang.org/x/text v0.3.3
 	golang.org/x/time => golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20200227132054-3f1135a288c9
-	google.golang.org/grpc => google.golang.org/grpc v1.23.0
 	gopkg.in/fsnotify.v1 => gopkg.in/fsnotify.v1 v1.4.7
+)
+
+// NOTE(dperny,cyli): there is some error handling, found in the
+// (*firstSessionErrorTracker).SessionClosed method in node/node.go, which
+// relies on string matching to handle x509 errors. between grpc versions 1.3.0
+// and 1.7.5, the error string we were matching changed, breaking swarmkit.
+// In 1.10.x, GRPC stopped surfacing those errors entirely, breaking swarmkit.
+// In >=1.11, those errors were brought back but the string had changed again.
+// After updating GRPC, if integration test failures occur, verify that the
+// string matching there is correct.
+replace google.golang.org/grpc => google.golang.org/grpc v1.23.0
+
+// go-systemd v17 is required by github.com/coreos/pkg/capnslog/journald_formatter.go
+replace (
+	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20180511133405-39ca1b05acc7
+	github.com/coreos/pkg => github.com/coreos/pkg v0.0.0-20180108230652-97fdf19511ea
 )
