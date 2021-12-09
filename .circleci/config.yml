@@ -72,14 +72,6 @@ jobs:
         name: Install test/lint dependencies
         command: make setup
 
-    - run:
-        name: Validate dependency vendoring
-        command: |
-            git fetch origin
-            if test -n "`git diff --stat=1000 origin/master | grep -E \"^[[:space:]]*vendor\"`"; then
-                make dep-validate;
-            fi
-
     # The GOPATH setting would not be needed if we used the golang docker image
     - run:
         name: Compile/lint/vet/protobuf validation
