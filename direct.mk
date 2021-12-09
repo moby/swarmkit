@@ -15,8 +15,6 @@ INTEGRATION_PACKAGE=${PROJECT_ROOT}/integration
 COMMANDS=swarmd swarmctl swarm-bench swarm-rafttool protoc-gen-gogoswarm
 BINARIES=$(addprefix bin/,$(COMMANDS))
 
-VNDR=$(shell which vndr || echo '')
-
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
 
@@ -139,14 +137,16 @@ help: ## this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
 
 .PHONY: dep-validate
-dep-validate:
+dep-validate: go-mod-vendor
 	@echo "+ $@"
-	$(if $(VNDR), , \
-		$(error Please install vndr: go get github.com/lk4d4/vndr))
-	@rm -Rf .vendor.bak
-	@mv vendor .vendor.bak
-	@$(VNDR)
-	@test -z "$$(diff -r vendor .vendor.bak 2>&1 | tee /dev/stderr)" || \
-		(echo >&2 "+ inconsistent dependencies! what you have in vendor.conf does not match with what you have in vendor" && false)
-	@rm -Rf vendor
-	@mv .vendor.bak vendor
+	@go mod tidy -modfile vendor.mod
+	@git diff --exit-code vendor.mod vendor.sum vendor || \
+		(echo >&2 "+ inconsistent dependencies! what you have in vendor.mod does not match with what you have in vendor" && false)
+
+go.mod:
+	@printf "module github.com/docker/swarmkit\n\ngo 1.17\n" > $@
+
+.PHONY: go-mod-vendor
+go-mod-vendor: go.mod
+	@GO111MODULE=on go mod vendor -modfile vendor.mod
+
