@@ -39,7 +39,6 @@ setup: ## install dependencies
 	# TODO(stevvooe): Install these from the vendor directory
 	# install golangci-lint version 1.17.1 to ./bin/golangci-lint
 	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.17.1
-	@go get -u github.com/lk4d4/vndr
 	# use GO111MODULE=on to get protobuild with the appropriate versions of its
 	# dependencies
 	@GO111MODULE=on go get github.com/stevvooe/protobuild
