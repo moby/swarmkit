@@ -74,6 +74,10 @@ jobs:
 
     - run:
         name: Validate dependency vendoring
+        environment:
+          # ensure GOPATH is set to single directory so the make target doesn't need to handle a column-separated list
+          GOPATH: /home/circleci/.go_workspace
+          GO111MODULE: "on"
         command: |
             git fetch origin
             if test -n "`git diff --stat=1000 origin/master | grep -E \"^[[:space:]]*vendor\"`"; then
