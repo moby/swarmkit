@@ -17,6 +17,7 @@ BINARIES=$(addprefix bin/,$(COMMANDS))
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
+GOBIN=$(shell go env GOPATH)/bin
 
 .DEFAULT_GOAL = all
 .PHONY: all
@@ -39,19 +40,17 @@ setup: ## install dependencies
 	# TODO(stevvooe): Install these from the vendor directory
 	# install golangci-lint version 1.17.1 to ./bin/golangci-lint
 	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.17.1
-	# use GO111MODULE=on to get protobuild with the appropriate versions of its
-	# dependencies
-	@GO111MODULE=on go get github.com/stevvooe/protobuild
+	@(cd tools ; GO111MODULE=on go install github.com/containerd/protobuild)
 
 .PHONY: generate
 generate: protos
 	@echo "🐳 $@"
-	@PATH=${ROOTDIR}/bin:${PATH} go generate -x ${PACKAGES}
+	@PATH=${ROOTDIR}/bin:${GOBIN}:${PATH} go generate -x ${PACKAGES}
 
 .PHONY: protos
 protos: bin/protoc-gen-gogoswarm ## generate protobuf
 	@echo "🐳 $@"
-	@PATH=${ROOTDIR}/bin:${PATH} protobuild ${PACKAGES}
+	@PATH=${ROOTDIR}/bin:${GOBIN}:${PATH} protobuild ${PACKAGES}
 
 .PHONY: checkprotos
 checkprotos: generate ## check if protobufs needs to be generated again

@@ -22,6 +22,7 @@ WORKDIR /go/src/github.com/docker/swarmkit/
 # install the dependencies from `make setup`
 # we only copy `direct.mk` to avoid busting the cache too easily
 COPY direct.mk .
+COPY tools .
 RUN make --file=direct.mk setup
 
 # now we can copy the rest
