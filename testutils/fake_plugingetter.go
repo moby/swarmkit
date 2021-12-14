@@ -9,18 +9,18 @@ import (
 	"github.com/docker/docker/pkg/plugins"
 )
 
-// DockerCSIPluginCap is the capability for CSI plugins.
-const DockerCSIPluginCap = "csiplugin"
+const DockerCSIPluginNodeCap = "csinode"
+const DockerCSIPluginControllerCap = "csicontroller"
 
 type FakePluginGetter struct {
 	Plugins map[string]*FakeCompatPlugin
 }
 
 func (f *FakePluginGetter) Get(name, capability string, _ int) (plugingetter.CompatPlugin, error) {
-	if capability != DockerCSIPluginCap {
+	if capability != DockerCSIPluginNodeCap && capability != DockerCSIPluginControllerCap {
 		return nil, fmt.Errorf(
-			"requested plugin with %s cap, but should only ever request %s",
-			capability, DockerCSIPluginCap,
+			"requested plugin with %s cap, but should only ever request %s or %s",
+			capability, DockerCSIPluginNodeCap, DockerCSIPluginControllerCap,
 		)
 	}
 
@@ -38,7 +38,7 @@ func (f *FakePluginGetter) GetAllByCap(_ string) ([]plugingetter.CompatPlugin, e
 // GetAllManagedPluginsByCap returns all of the fake's plugins. If capability
 // is anything other than DockerCSIPluginCap, it returns nothing.
 func (f *FakePluginGetter) GetAllManagedPluginsByCap(capability string) []plugingetter.CompatPlugin {
-	if capability != DockerCSIPluginCap {
+	if capability != DockerCSIPluginNodeCap && capability != DockerCSIPluginControllerCap {
 		return nil
 	}
 
