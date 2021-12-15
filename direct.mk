@@ -150,4 +150,4 @@ GOGO_PROTOBUF_PATH=$(shell go env GOPATH)/pkg/mod/github.com/gogo/protobuf@$(she
 go-mod-vendor: go.mod
 	@go mod vendor -modfile vendor.mod
 	@# ensure that key protobuf spec files are in vendor dir
-	@cp -a $(GOGO_PROTOBUF_PATH) vendor/github.com/gogo/protobuf/
+	@cp -a $(GOGO_PROTOBUF_PATH) vendor/github.com/gogo/protobuf/ && chmod -R u+w vendor/github.com/gogo/protobuf/
