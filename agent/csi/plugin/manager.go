@@ -13,8 +13,9 @@ import (
 const (
 	// DockerCSIPluginCap is the capability name of the plugins we use with the
 	// PluginGetter to get only the plugins we need. The full name of the
-	// plugin interface is "swarm.csiplugin/1.0"
-	DockerCSIPluginCap = "csiplugin"
+	// plugin interface is "docker.csinode/1.0". This gets only plugins with
+	// Node capabilities.
+	DockerCSIPluginCap = "csinode"
 )
 
 // PluginManager manages the multiple CSI plugins that may be in use on the
