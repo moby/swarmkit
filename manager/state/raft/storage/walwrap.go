@@ -8,19 +8,20 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/wal"
-	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarmkit/log"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/pkg/errors"
+	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/etcd/server/v3/wal"
+	"go.etcd.io/etcd/server/v3/wal/walpb"
+	"go.uber.org/zap"
 )
 
-// This package wraps the github.com/coreos/etcd/wal package, and encrypts
+// This package wraps the go.etcd.io/etcd/server/v3/storage/wal package, and encrypts
 // the bytes of whatever entry is passed to it, and decrypts the bytes of
 // whatever entry it reads.
 
-// WAL is the interface presented by github.com/coreos/etcd/wal.WAL that we depend upon
+// WAL is the interface presented by go.etcd.io/etcd/server/v3/storage/wal.WAL that we depend upon
 type WAL interface {
 	ReadAll() ([]byte, raftpb.HardState, []raftpb.Entry, error)
 	ReleaseLockTo(index uint64) error
@@ -40,7 +41,7 @@ var _ WAL = &wrappedWAL{}
 var _ WAL = &wal.WAL{}
 var _ WALFactory = walCryptor{}
 
-// wrappedWAL wraps a github.com/coreos/etcd/wal.WAL, and handles encrypting/decrypting
+// wrappedWAL wraps a go.etcd.io/etcd/server/v3/storage/wal.WAL, and handles encrypting/decrypting
 type wrappedWAL struct {
 	*wal.WAL
 	encrypter encryption.Encrypter
@@ -102,7 +103,8 @@ func NewWALFactory(encrypter encryption.Encrypter, decrypter encryption.Decrypte
 
 // Create returns a new WAL object with the given encrypters and decrypters.
 func (wc walCryptor) Create(dirpath string, metadata []byte) (WAL, error) {
-	w, err := wal.Create(dirpath, metadata)
+	lg, _ := zap.NewProduction()
+	w, err := wal.Create(lg, dirpath, metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +117,8 @@ func (wc walCryptor) Create(dirpath string, metadata []byte) (WAL, error) {
 
 // Open returns a new WAL object with the given encrypters and decrypters.
 func (wc walCryptor) Open(dirpath string, snap walpb.Snapshot) (WAL, error) {
-	w, err := wal.Open(dirpath, snap)
+	lg, _ := zap.NewProduction()
+	w, err := wal.Open(lg, dirpath, snap)
 	if err != nil {
 		return nil, err
 	}
@@ -129,10 +132,12 @@ func (wc walCryptor) Open(dirpath string, snap walpb.Snapshot) (WAL, error) {
 type originalWAL struct{}
 
 func (o originalWAL) Create(dirpath string, metadata []byte) (WAL, error) {
-	return wal.Create(dirpath, metadata)
+	lg, _ := zap.NewProduction()
+	return wal.Create(lg, dirpath, metadata)
 }
 func (o originalWAL) Open(dirpath string, walsnap walpb.Snapshot) (WAL, error) {
-	return wal.Open(dirpath, walsnap)
+	lg, _ := zap.NewProduction()
+	return wal.Open(lg, dirpath, walsnap)
 }
 
 // OriginalWAL is the original `wal` package as an implementation of the WALFactory interface
@@ -162,6 +167,7 @@ func ReadRepairWAL(
 		err      error
 	)
 	repaired := false
+	lg, _ := zap.NewProduction()
 	for {
 		if reader, err = factory.Open(walDir, walsnap); err != nil {
 			return nil, WALData{}, errors.Wrap(err, "failed to open WAL")
@@ -177,7 +183,7 @@ func ReadRepairWAL(
 			if repaired || err != io.ErrUnexpectedEOF {
 				return nil, WALData{}, errors.Wrap(err, "irreparable WAL error")
 			}
-			if !wal.Repair(walDir) {
+			if !wal.Repair(lg, walDir) {
 				return nil, WALData{}, errors.Wrap(err, "WAL error cannot be repaired")
 			}
 			log.G(ctx).WithError(err).Info("repaired WAL error")

@@ -12,8 +12,6 @@ import (
 	"google.golang.org/grpc"
 
 	"code.cloudfoundry.org/clock/fakeclock"
-	etcdraft "github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
@@ -25,6 +23,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	etcdraft "go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
 // TestNode represents a raft test node

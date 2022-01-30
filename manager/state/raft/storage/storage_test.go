@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/etcd/server/v3/wal/walpb"
 )
 
 func TestBootstrapFromDisk(t *testing.T) {

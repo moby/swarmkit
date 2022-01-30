@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/etcd/server/v3/wal/walpb"
 )
 
 var _ WALFactory = walCryptor{}

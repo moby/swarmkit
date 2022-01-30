@@ -39,7 +39,6 @@ func initOptions() {
 		{Name: "avx512bf16", Feature: &X86.HasAVX512BF16},
 		{Name: "bmi1", Feature: &X86.HasBMI1},
 		{Name: "bmi2", Feature: &X86.HasBMI2},
-		{Name: "cx16", Feature: &X86.HasCX16},
 		{Name: "erms", Feature: &X86.HasERMS},
 		{Name: "fma", Feature: &X86.HasFMA},
 		{Name: "osxsave", Feature: &X86.HasOSXSAVE},
@@ -74,7 +73,6 @@ func archInit() {
 	X86.HasPCLMULQDQ = isSet(1, ecx1)
 	X86.HasSSSE3 = isSet(9, ecx1)
 	X86.HasFMA = isSet(12, ecx1)
-	X86.HasCX16 = isSet(13, ecx1)
 	X86.HasSSE41 = isSet(19, ecx1)
 	X86.HasSSE42 = isSet(20, ecx1)
 	X86.HasPOPCNT = isSet(23, ecx1)

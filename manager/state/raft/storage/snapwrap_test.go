@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
 var _ SnapFactory = snapCryptor{}
@@ -17,7 +17,7 @@ var _ SnapFactory = snapCryptor{}
 var fakeSnapshotData = raftpb.Snapshot{
 	Data: []byte("snapshotdata"),
 	Metadata: raftpb.SnapshotMetadata{
-		ConfState: raftpb.ConfState{Nodes: []uint64{3}},
+		ConfState: raftpb.ConfState{Voters: []uint64{3}},
 		Index:     6,
 		Term:      2,
 	},

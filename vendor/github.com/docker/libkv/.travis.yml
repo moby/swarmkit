@@ -1,7 +1,7 @@
 language: go
 
 go:
-  - 1.8.7
+  - 1.5.3
 
 # let us have speedy Docker-based Travis workers
 sudo: false
@@ -17,7 +17,7 @@ before_install:
 before_script:
   - script/travis_consul.sh 0.6.3
   - script/travis_etcd.sh 3.0.0
-  - script/travis_zk.sh 3.5.4-beta
+  - script/travis_zk.sh 3.5.1-alpha
 
 script:
   - ./consul agent -server -bootstrap -advertise=127.0.0.1 -data-dir /tmp/consul -config-file=./config.json 1>/dev/null &
