@@ -99,6 +99,7 @@ func decryptRaftData(swarmdir, outdir, unlockKey string) error {
 	if snap != nil {
 		walsnap.Index = snap.Metadata.Index
 		walsnap.Term = snap.Metadata.Term
+		walsnap.ConfState = &snap.Metadata.ConfState
 	}
 
 	walDir := filepath.Join(outdir, "wal-decrypted")

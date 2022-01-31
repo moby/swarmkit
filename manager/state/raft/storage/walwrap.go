@@ -14,7 +14,6 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
-	"go.uber.org/zap"
 )
 
 // This package wraps the go.etcd.io/etcd/server/v3/storage/wal package, and encrypts
@@ -103,8 +102,7 @@ func NewWALFactory(encrypter encryption.Encrypter, decrypter encryption.Decrypte
 
 // Create returns a new WAL object with the given encrypters and decrypters.
 func (wc walCryptor) Create(dirpath string, metadata []byte) (WAL, error) {
-	lg, _ := zap.NewProduction()
-	w, err := wal.Create(lg, dirpath, metadata)
+	w, err := wal.Create(nil, dirpath, metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -117,8 +115,7 @@ func (wc walCryptor) Create(dirpath string, metadata []byte) (WAL, error) {
 
 // Open returns a new WAL object with the given encrypters and decrypters.
 func (wc walCryptor) Open(dirpath string, snap walpb.Snapshot) (WAL, error) {
-	lg, _ := zap.NewProduction()
-	w, err := wal.Open(lg, dirpath, snap)
+	w, err := wal.Open(nil, dirpath, snap)
 	if err != nil {
 		return nil, err
 	}
@@ -132,12 +129,10 @@ func (wc walCryptor) Open(dirpath string, snap walpb.Snapshot) (WAL, error) {
 type originalWAL struct{}
 
 func (o originalWAL) Create(dirpath string, metadata []byte) (WAL, error) {
-	lg, _ := zap.NewProduction()
-	return wal.Create(lg, dirpath, metadata)
+	return wal.Create(nil, dirpath, metadata)
 }
 func (o originalWAL) Open(dirpath string, walsnap walpb.Snapshot) (WAL, error) {
-	lg, _ := zap.NewProduction()
-	return wal.Open(lg, dirpath, walsnap)
+	return wal.Open(nil, dirpath, walsnap)
 }
 
 // OriginalWAL is the original `wal` package as an implementation of the WALFactory interface
@@ -167,7 +162,6 @@ func ReadRepairWAL(
 		err      error
 	)
 	repaired := false
-	lg, _ := zap.NewProduction()
 	for {
 		if reader, err = factory.Open(walDir, walsnap); err != nil {
 			return nil, WALData{}, errors.Wrap(err, "failed to open WAL")
@@ -183,7 +177,7 @@ func ReadRepairWAL(
 			if repaired || err != io.ErrUnexpectedEOF {
 				return nil, WALData{}, errors.Wrap(err, "irreparable WAL error")
 			}
-			if !wal.Repair(lg, walDir) {
+			if !wal.Repair(nil, walDir) {
 				return nil, WALData{}, errors.Wrap(err, "WAL error cannot be repaired")
 			}
 			log.G(ctx).WithError(err).Info("repaired WAL error")

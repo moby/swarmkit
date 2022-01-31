@@ -677,7 +677,7 @@ func (d *Dispatcher) UpdateTaskStatus(ctx context.Context, r *api.UpdateTaskStat
 		}
 	}
 
-	return nil, nil
+	return &api.UpdateTaskStatusResponse{}, nil
 }
 
 func (d *Dispatcher) UpdateVolumeStatus(ctx context.Context, r *api.UpdateVolumeStatusRequest) (*api.UpdateVolumeStatusResponse, error) {
@@ -721,7 +721,7 @@ func (d *Dispatcher) UpdateVolumeStatus(ctx context.Context, r *api.UpdateVolume
 	d.unpublishedVolumesLock.Unlock()
 
 	// we won't kick off a batch here, we'll just wait for the timer.
-	return nil, nil
+	return &api.UpdateVolumeStatusResponse{}, nil
 }
 
 func (d *Dispatcher) processUpdates(ctx context.Context) {

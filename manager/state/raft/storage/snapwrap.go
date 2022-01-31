@@ -11,7 +11,6 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.uber.org/zap"
 )
 
 // This package wraps the go.etcd.io/etcd/server/v3/api/snap package, and encrypts
@@ -87,9 +86,8 @@ func NewSnapFactory(encrypter encryption.Encrypter, decrypter encryption.Decrypt
 
 // NewSnapshotter returns a new Snapshotter with the given encrypters and decrypters
 func (sc snapCryptor) New(dirpath string) Snapshotter {
-	lg, _ := zap.NewProduction()
 	return &wrappedSnap{
-		Snapshotter: snap.New(lg, dirpath),
+		Snapshotter: snap.New(nil, dirpath),
 		encrypter:   sc.encrypter,
 		decrypter:   sc.decrypter,
 	}
@@ -98,8 +96,7 @@ func (sc snapCryptor) New(dirpath string) Snapshotter {
 type originalSnap struct{}
 
 func (o originalSnap) New(dirpath string) Snapshotter {
-	lg, _ := zap.NewProduction()
-	return snap.New(lg, dirpath)
+	return snap.New(nil, dirpath)
 }
 
 // OriginalSnap is the original `snap` package as an implementation of the SnapFactory interface

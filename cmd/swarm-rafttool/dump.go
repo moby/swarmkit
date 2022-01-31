@@ -65,6 +65,7 @@ func loadData(swarmdir, unlockKey string) (*storage.WALData, *raftpb.Snapshot, e
 	if snapshot != nil {
 		walsnap.Index = snapshot.Metadata.Index
 		walsnap.Term = snapshot.Metadata.Term
+		walsnap.ConfState = &snapshot.Metadata.ConfState
 	}
 
 	wal, walData, err := storage.ReadRepairWAL(context.Background(), walDir, walsnap, walFactory)

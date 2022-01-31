@@ -447,7 +447,7 @@ func (n *Node) JoinAndStart(ctx context.Context) (err error) {
 	}
 
 	n.initTransport()
-	n.raftNode = raft.StartNode(n.Config, nil)
+	n.raftNode = raft.RestartNode(n.Config)
 
 	return nil
 }

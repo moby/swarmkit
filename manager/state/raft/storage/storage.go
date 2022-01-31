@@ -105,6 +105,7 @@ func (e *EncryptedRaftLogger) BootstrapFromDisk(ctx context.Context, oldEncrypti
 	if snapshot != nil {
 		walsnap.Index = snapshot.Metadata.Index
 		walsnap.Term = snapshot.Metadata.Term
+		walsnap.ConfState = &snapshot.Metadata.ConfState
 	}
 
 	if !wal.Exist(walDir) {
@@ -197,8 +198,9 @@ func (e *EncryptedRaftLogger) RotateEncryptionKey(newKey []byte) {
 func (e *EncryptedRaftLogger) SaveSnapshot(snapshot raftpb.Snapshot) error {
 
 	walsnap := walpb.Snapshot{
-		Index: snapshot.Metadata.Index,
-		Term:  snapshot.Metadata.Term,
+		Index:     snapshot.Metadata.Index,
+		Term:      snapshot.Metadata.Term,
+		ConfState: &snapshot.Metadata.ConfState,
 	}
 
 	e.encoderMu.RLock()

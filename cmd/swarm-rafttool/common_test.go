@@ -30,6 +30,7 @@ func writeFakeRaftData(t *testing.T, stateDir string, snapshot *raftpb.Snapshot,
 
 		wsn.Index = snapshot.Metadata.Index
 		wsn.Term = snapshot.Metadata.Term
+		wsn.ConfState = &snapshot.Metadata.ConfState
 	}
 
 	var entries []raftpb.Entry
