@@ -12,6 +12,12 @@ code.cloudfoundry.org/clock/fakeclock
 ## explicit; go 1.12
 github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/pkg/guid
+# github.com/akutz/gosync v0.1.0
+## explicit
+github.com/akutz/gosync
+# github.com/akutz/memconn v0.1.0
+## explicit
+github.com/akutz/memconn
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
@@ -434,6 +440,18 @@ github.com/prometheus/procfs/internal/util
 # github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
 ## explicit
 github.com/rcrowley/go-metrics
+# github.com/rexray/gocsi v1.2.1 => github.com/dperny/gocsi v1.2.3-pre
+## explicit; go 1.12
+github.com/rexray/gocsi
+github.com/rexray/gocsi/context
+github.com/rexray/gocsi/middleware/logging
+github.com/rexray/gocsi/middleware/requestid
+github.com/rexray/gocsi/middleware/serialvolume
+github.com/rexray/gocsi/middleware/serialvolume/types
+github.com/rexray/gocsi/middleware/specvalidator
+github.com/rexray/gocsi/mock/provider
+github.com/rexray/gocsi/mock/service
+github.com/rexray/gocsi/utils
 # github.com/russross/blackfriday/v2 v2.0.1
 ## explicit
 github.com/russross/blackfriday/v2
@@ -955,6 +973,7 @@ gopkg.in/yaml.v3
 # sigs.k8s.io/yaml v1.2.0
 ## explicit; go 1.12
 sigs.k8s.io/yaml
+# github.com/rexray/gocsi => github.com/dperny/gocsi v1.2.3-pre
 # github.com/golang/protobuf => github.com/golang/protobuf v1.5.2
 # google.golang.org/genproto => google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1
 # google.golang.org/grpc => google.golang.org/grpc v1.41.0

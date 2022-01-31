@@ -10,6 +10,7 @@ go 1.17
 require (
 	code.cloudfoundry.org/clock v1.0.0
 	github.com/Microsoft/go-winio v0.4.17
+	github.com/akutz/memconn v0.1.0
 	github.com/cloudflare/cfssl v0.0.0-20180323000720-5d63dbd981b5
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/docker/distribution v2.7.1+incompatible
@@ -32,6 +33,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
+	github.com/rexray/gocsi v1.2.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
@@ -50,6 +52,7 @@ require (
 require (
 	bitbucket.org/creachadair/shell v0.0.6 // indirect
 	cloud.google.com/go v0.93.3 // indirect
+	github.com/akutz/gosync v0.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
@@ -141,6 +144,9 @@ require (
 	gotest.tools/v3 v3.1.0 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
+
+// Removes etcd dependency
+replace github.com/rexray/gocsi => github.com/dperny/gocsi v1.2.3-pre
 
 // NOTE(dperny,cyli): there is some error handling, found in the
 // (*firstSessionErrorTracker).SessionClosed method in node/node.go, which

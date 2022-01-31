@@ -1,0 +1,36 @@
+# The etcd binary, log, and default data directory
+/etcd
+/etcd.log
+default.etcd
+
+# The vendor dir
+/vendor
+
+# The csi-sp test log file
+csi-sp.log
+
+# The archives built from this package.
+/*.a
+/middleware/*.a
+
+# A temporary build dir
+.build/
+
+# Protoc and protoc-gen-go related files
+/protoc
+/protoc-gen-go
+
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# A macOS metadata file
+.DS_Store
