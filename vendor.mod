@@ -24,7 +24,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/hashicorp/go-memdb v0.0.0-20161216180745-cb9a474f84cc
+	github.com/hashicorp/go-memdb v1.3.2
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.3
 	github.com/opencontainers/go-digest v1.0.0
@@ -81,8 +81,8 @@ require (
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
-	github.com/hashicorp/go-immutable-radix v1.0.0 // indirect
-	github.com/hashicorp/golang-lru v0.5.1 // indirect
+	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
+	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/ishidawataru/sctp v0.0.0-20210707070123-9a39160e9062 // indirect
 	github.com/jhump/protoreflect v1.9.0 // indirect
