@@ -607,6 +607,12 @@ func (n *Node) Run(ctx context.Context) error {
 			}
 
 			for _, msg := range rd.Messages {
+				// if the message is a snapshot, before we send it, we should
+				// overwrite the original ConfState from the snapshot with the
+				// current one
+				if msg.Type == raftpb.MsgSnap {
+					msg.Snapshot.Metadata.ConfState = n.confState
+				}
 				// Send raft messages to peers
 				if err := n.transport.Send(msg); err != nil {
 					log.G(ctx).WithError(err).Error("failed to send message to member")
