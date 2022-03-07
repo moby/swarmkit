@@ -144,10 +144,12 @@ dep-validate: go-mod-vendor
 go.mod:
 	@printf "module github.com/docker/swarmkit\n\ngo 1.17\n" > $@
 
-GOGO_PROTOBUF_PATH=$(shell go env GOPATH)/pkg/mod/github.com/gogo/protobuf@$(shell go list -modfile vendor.mod -m -f '{{.Version}}' github.com/gogo/protobuf)/protobuf
 
 .PHONY: go-mod-vendor
 go-mod-vendor: go.mod
 	@go mod vendor -modfile vendor.mod
 	@# ensure that key protobuf spec files are in vendor dir
-	@cp -a $(GOGO_PROTOBUF_PATH) vendor/github.com/gogo/protobuf/
+	@module=github.com/gogo/protobuf ; \
+		prefix=$$(go env GOPATH)/pkg/mod/$${module} ; \
+		version=$$(go list -modfile vendor.mod -m -f '{{.Version}}' $${module}) ; \
+		cp -a $${prefix}@$${version}/protobuf vendor/$${module}/ && chmod -R u+w vendor/$${module}

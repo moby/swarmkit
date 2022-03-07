@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -19,7 +18,7 @@ import (
 // provider which can be used for testing. name indicates the name of the mock,
 // which allows for testing situation with multiple CSI drivers installed.
 //
-// returns a client connection to a a new mock CSI provider, and a cancel
+// returns a client connection to a new mock CSI provider, and a cancel
 // function to call when cleaing up.
 func startMockServer(ctx context.Context, name string) (*grpc.ClientConn, func()) {
 	sp := provider.New()
@@ -37,7 +36,7 @@ func startMockServer(ctx context.Context, name string) (*grpc.ClientConn, func()
 
 	clientOpts := []grpc.DialOption{
 		grpc.WithInsecure(),
-		grpc.WithDialer(func(string, time.Duration) (net.Conn, error) {
+		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
 			return memconn.Dial("memu", fmt.Sprintf("csi-test-%v", name))
 		}),
 	}

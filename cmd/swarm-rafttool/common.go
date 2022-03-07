@@ -6,13 +6,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/manager"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/docker/swarmkit/manager/state/raft/storage"
 	"github.com/docker/swarmkit/node"
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/server/v3/wal/walpb"
 )
 
 func certPaths(swarmdir string) *ca.SecurityConfigPaths {
@@ -99,6 +99,7 @@ func decryptRaftData(swarmdir, outdir, unlockKey string) error {
 	if snap != nil {
 		walsnap.Index = snap.Metadata.Index
 		walsnap.Term = snap.Metadata.Term
+		walsnap.ConfState = &snap.Metadata.ConfState
 	}
 
 	walDir := filepath.Join(outdir, "wal-decrypted")

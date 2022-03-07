@@ -12,7 +12,6 @@ import (
 	"github.com/rexray/gocsi/middleware/logging"
 	"github.com/rexray/gocsi/middleware/requestid"
 	"github.com/rexray/gocsi/middleware/serialvolume"
-	"github.com/rexray/gocsi/middleware/serialvolume/etcd"
 	"github.com/rexray/gocsi/middleware/specvalidator"
 	"github.com/rexray/gocsi/utils"
 )
@@ -204,15 +203,6 @@ func (sp *StoragePlugin) initInterceptors(ctx context.Context) {
 				fields["serialVol.timeout"] = t
 				opts = append(opts, serialvolume.WithTimeout(t))
 			}
-		}
-
-		// Check for etcd
-		if csictx.Getenv(ctx, EnvVarSerialVolAccessEtcdEndpoints) != "" {
-			p, err := etcd.New(ctx, "", 0, nil)
-			if err != nil {
-				log.Fatal(err)
-			}
-			opts = append(opts, serialvolume.WithLockProvider(p))
 		}
 
 		sp.Interceptors = append(sp.Interceptors, serialvolume.New(opts...))

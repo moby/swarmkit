@@ -8,20 +8,28 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/etcd/server/v3/wal/walpb"
 )
 
 var _ WALFactory = walCryptor{}
 
+var (
+	confState = raftpb.ConfState{
+		Voters:    []uint64{0x00ffca74},
+		AutoLeave: false,
+	}
+)
+
 // Generates a bunch of WAL test data
-func makeWALData(index uint64, term uint64) ([]byte, []raftpb.Entry, walpb.Snapshot) {
+func makeWALData(index uint64, term uint64, state *raftpb.ConfState) ([]byte, []raftpb.Entry, walpb.Snapshot) {
 	wsn := walpb.Snapshot{
-		Index: index,
-		Term:  term,
+		Index:     index,
+		Term:      term,
+		ConfState: state,
 	}
 
 	var entries []raftpb.Entry
@@ -53,7 +61,7 @@ func createWithWAL(t *testing.T, w WALFactory, metadata []byte, startSnap walpb.
 
 // WAL can read entries are not wrapped, but not encrypted
 func TestReadAllWrappedNoEncryption(t *testing.T) {
-	metadata, entries, snapshot := makeWALData(1, 1)
+	metadata, entries, snapshot := makeWALData(1, 1, &confState)
 	wrappedEntries := make([]raftpb.Entry, len(entries))
 	for i, entry := range entries {
 		r := api.MaybeEncryptedRecord{Data: entry.Data}
@@ -81,7 +89,7 @@ func TestReadAllWrappedNoEncryption(t *testing.T) {
 
 // When reading WAL, if the decrypter can't read the encryption type, errors
 func TestReadAllNoSupportedDecrypter(t *testing.T) {
-	metadata, entries, snapshot := makeWALData(1, 1)
+	metadata, entries, snapshot := makeWALData(1, 1, &confState)
 	for i, entry := range entries {
 		r := api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: api.MaybeEncryptedRecord_Algorithm(-3)}
 		data, err := r.Marshal()
@@ -106,7 +114,7 @@ func TestReadAllNoSupportedDecrypter(t *testing.T) {
 // entry is incorrectly encryptd, an error is returned
 func TestReadAllEntryIncorrectlyEncrypted(t *testing.T) {
 	crypter := &meowCrypter{}
-	metadata, entries, snapshot := makeWALData(1, 1)
+	metadata, entries, snapshot := makeWALData(1, 1, &confState)
 
 	// metadata is correctly encryptd, but entries are not meow-encryptd
 	for i, entry := range entries {
@@ -132,7 +140,7 @@ func TestReadAllEntryIncorrectlyEncrypted(t *testing.T) {
 // The entry data and metadata are encryptd with the given encrypter, and a regular
 // WAL will see them as such.
 func TestSave(t *testing.T) {
-	metadata, entries, snapshot := makeWALData(1, 1)
+	metadata, entries, snapshot := makeWALData(1, 1, &confState)
 
 	crypter := &meowCrypter{}
 	c := NewWALFactory(crypter, encryption.NoopCrypter)
@@ -158,7 +166,7 @@ func TestSave(t *testing.T) {
 
 // If encryption fails, saving will fail
 func TestSaveEncryptionFails(t *testing.T) {
-	metadata, entries, snapshot := makeWALData(1, 1)
+	metadata, entries, snapshot := makeWALData(1, 1, &confState)
 
 	tempdir, err := os.MkdirTemp("", "waltests")
 	require.NoError(t, err)
@@ -207,7 +215,7 @@ func TestCreateOpenInvalidDirFails(t *testing.T) {
 // A WAL can read what it wrote so long as it has a corresponding decrypter
 func TestSaveAndRead(t *testing.T) {
 	crypter := &meowCrypter{}
-	metadata, entries, snapshot := makeWALData(1, 1)
+	metadata, entries, snapshot := makeWALData(1, 1, &confState)
 
 	c := NewWALFactory(crypter, crypter)
 	tempdir := createWithWAL(t, c, metadata, snapshot, entries)
@@ -224,7 +232,7 @@ func TestSaveAndRead(t *testing.T) {
 }
 
 func TestReadRepairWAL(t *testing.T) {
-	metadata, entries, snapshot := makeWALData(1, 1)
+	metadata, entries, snapshot := makeWALData(1, 1, &confState)
 	tempdir := createWithWAL(t, OriginalWAL, metadata, snapshot, entries)
 	defer os.RemoveAll(tempdir)
 
@@ -253,7 +261,7 @@ func TestReadRepairWAL(t *testing.T) {
 }
 
 func TestMigrateWALs(t *testing.T) {
-	metadata, entries, snapshot := makeWALData(1, 1)
+	metadata, entries, snapshot := makeWALData(1, 1, &confState)
 	coder := &meowCrypter{}
 	c := NewWALFactory(coder, coder)
 

@@ -2,7 +2,7 @@
 
 SwarmKit uses the Raft consensus protocol to synchronize state between manager
 nodes and support high availability. The lowest level portions of this are
-provided by the `github.com/coreos/etcd/raft` package. SwarmKit's
+provided by the `go.etcd.io/etcd/raft/v3` package. SwarmKit's
 `github.com/docker/swarmkit/manager/state/raft` package builds a complete
 solution on top of this, adding things like saving and loading state on disk,
 an RPC layer so nodes can pass Raft messages over a network, and dynamic cluster

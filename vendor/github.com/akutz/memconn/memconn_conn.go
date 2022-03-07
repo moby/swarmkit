@@ -1,8 +1,6 @@
 package memconn
 
 import (
-	"bytes"
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -21,19 +19,22 @@ type Conn struct {
 }
 
 type bufConn struct {
-
-	// writeMu prevents concurrent, buffered writes
-	writeMu sync.Mutex
+	// Please see the SetCopyOnWrite function for more information.
+	cow bool
 
 	// Please see the SetBufferSize function for more information.
-	max int
+	max uint64
 
-	// Please see the SetCloseTimeout function for more information.
-	closeTimeout time.Duration
+	// cur is the amount of buffered, pending Write data
+	cur uint64
 
-	// configMu is used to synchronize access to buffered connection
-	// settings.
-	configMu sync.RWMutex
+	// cond is a condition used to wait when writing buffered data
+	cond sync.Cond
+
+	// mu is the mutex used by the condition. The mutex is exposed
+	// directly in order to access RLock and RUnlock for getting the
+	// buffer size.
+	mu sync.RWMutex
 
 	// errs is the error channel returned by the Errs() function and
 	// used to report erros that occur as a result of buffered write
@@ -41,14 +42,8 @@ type bufConn struct {
 	// field will always be nil.
 	errs chan error
 
-	// data is a circular buffer used to provide buffered writes
-	data bytes.Buffer
-
-	// dataN is a FIFO list of the n bytes written to data
-	dataN []int
-
-	// dataMu guards access to data and dataN
-	dataMu sync.Mutex
+	// Please see the SetCloseTimeout function for more information.
+	closeTimeout time.Duration
 }
 
 func makeNewConns(network string, laddr, raddr Addr) (*Conn, *Conn) {
@@ -100,15 +95,17 @@ func makeNewConns(network string, laddr, raddr Addr) (*Conn, *Conn) {
 	if laddr.Buffered() {
 		local.buf = &bufConn{
 			errs:         make(chan error),
-			closeTimeout: 0 * time.Second,
+			closeTimeout: 10 * time.Second,
 		}
+		local.buf.cond.L = &local.buf.mu
 	}
 
 	if raddr.Buffered() {
 		remote.buf = &bufConn{
 			errs:         make(chan error),
-			closeTimeout: 3 * time.Second,
+			closeTimeout: 10 * time.Second,
 		}
+		remote.buf.cond.L = &remote.buf.mu
 	}
 
 	return local, remote
@@ -133,10 +130,10 @@ func (c *Conn) RemoteBuffered() bool {
 // connections.
 //
 // Please see the function SetBufferSize for more information.
-func (c *Conn) BufferSize() int {
+func (c *Conn) BufferSize() uint64 {
 	if c.laddr.Buffered() {
-		c.buf.configMu.RLock()
-		defer c.buf.configMu.RUnlock()
+		c.buf.mu.RLock()
+		defer c.buf.mu.RUnlock()
 		return c.buf.max
 	}
 	return 0
@@ -154,10 +151,10 @@ func (c *Conn) BufferSize() int {
 //
 // Please note that setting the buffer size has no effect on unbuffered
 // connections.
-func (c *Conn) SetBufferSize(i int) {
+func (c *Conn) SetBufferSize(i uint64) {
 	if c.laddr.Buffered() {
-		c.buf.configMu.Lock()
-		defer c.buf.configMu.Unlock()
+		c.buf.cond.L.Lock()
+		defer c.buf.cond.L.Unlock()
 		c.buf.max = i
 	}
 }
@@ -171,8 +168,8 @@ func (c *Conn) SetBufferSize(i int) {
 // Please see the function SetCloseTimeout for more information.
 func (c *Conn) CloseTimeout() time.Duration {
 	if c.laddr.Buffered() {
-		c.buf.configMu.RLock()
-		defer c.buf.configMu.RUnlock()
+		c.buf.mu.RLock()
+		defer c.buf.mu.RUnlock()
 		return c.buf.closeTimeout
 	}
 	return 0
@@ -187,11 +184,50 @@ func (c *Conn) CloseTimeout() time.Duration {
 //
 // Please note that setting this value has no effect on unbuffered
 // connections.
-func (c *Conn) SetCloseTimeout(d time.Duration) {
+func (c *Conn) SetCloseTimeout(duration time.Duration) {
 	if c.laddr.Buffered() {
-		c.buf.configMu.Lock()
-		defer c.buf.configMu.Unlock()
-		c.buf.closeTimeout = d
+		c.buf.cond.L.Lock()
+		defer c.buf.cond.L.Unlock()
+		c.buf.closeTimeout = duration
+	}
+}
+
+// CopyOnWrite gets a flag indicating whether or not copy-on-write is
+// enabled for this connection.
+//
+// Please note that this function will always return false for
+// unbuffered connections.
+//
+// Please see the function SetCopyOnWrite for more information.
+func (c *Conn) CopyOnWrite() bool {
+	if c.laddr.Buffered() {
+		c.buf.mu.RLock()
+		defer c.buf.mu.RUnlock()
+		return c.buf.cow
+	}
+	return false
+}
+
+// SetCopyOnWrite sets a flag indicating whether or not copy-on-write
+// is enabled for this connection.
+//
+// When a connection is buffered, data submitted to a Write operation
+// is processed in a goroutine and the function returns control to the
+// caller immediately. Because of this, it's possible to modify the
+// data provided to the Write function before or during the actual
+// Write operation. Enabling copy-on-write causes the payload to be
+// copied to a new buffer before control is returned to the caller.
+//
+// Please note that enabling copy-on-write will double the amount of
+// memory required for all Write operations.
+//
+// Please note that enabling copy-on-write has no effect on unbuffered
+// connections.
+func (c *Conn) SetCopyOnWrite(enabled bool) {
+	if c.laddr.Buffered() {
+		c.buf.cond.L.Lock()
+		defer c.buf.cond.L.Unlock()
+		c.buf.cow = enabled
 	}
 }
 
@@ -210,13 +246,16 @@ func (c *Conn) Close() error {
 	c.pipe.once.Do(func() {
 
 		// Buffered connections will attempt to wait until all
-		// pending Writes are completed or until the specified
-		// timeout value has elapsed.
+		// pending Writes are completed, until the specified
+		// timeout value has elapsed, or until the remote side
+		// of the connection is closed.
 		if c.laddr.Buffered() {
+			c.buf.mu.RLock()
+			timeout := c.buf.closeTimeout
+			c.buf.mu.RUnlock()
 
 			// Set up a channel that is closed when the specified
 			// timer elapses.
-			timeout := c.CloseTimeout()
 			timeoutDone := make(chan struct{})
 			if timeout == 0 {
 				close(timeoutDone)
@@ -224,23 +263,23 @@ func (c *Conn) Close() error {
 				time.AfterFunc(timeout, func() { close(timeoutDone) })
 			}
 
-			// Set up a channel that is closed when there is
-			// no more buffered data.
+			// Set up a channel that is closed when the number of
+			// pending bytes is zero.
 			writesDone := make(chan struct{})
 			go func() {
-				c.buf.dataMu.Lock()
-				defer c.buf.dataMu.Unlock()
-				for len(c.buf.dataN) > 0 {
-					c.buf.dataMu.Unlock()
-					c.buf.dataMu.Lock()
+				c.buf.cond.L.Lock()
+				for c.buf.cur > 0 {
+					c.buf.cond.Wait()
 				}
 				close(writesDone)
+				c.buf.cond.L.Unlock()
 			}()
 
 			// Wait to close the connection.
 			select {
 			case <-writesDone:
 			case <-timeoutDone:
+			case <-c.pipe.remoteDone:
 			}
 		}
 
@@ -315,97 +354,45 @@ func (c *Conn) writeSync(b []byte) (int, error) {
 // that when Write operations fail the associated error is not returned
 // from this function.
 func (c *Conn) writeAsync(b []byte) (int, error) {
-	// Prevent concurrent writes.
-	c.buf.writeMu.Lock()
-	defer c.buf.writeMu.Unlock()
-
-	// Get the max buffer size to determine if the buffer's capacity
-	// should be grown.
-	c.buf.configMu.RLock()
-	max := c.buf.max
-	c.buf.configMu.RUnlock()
-
-	// If the provided data is too large for the buffer then force
-	// a synchrnous write.
-	if max > 0 && len(b) > max {
+	// Perform a synchronous Write if the connection has a non-zero
+	// value for the maximum allowed buffer size and if the size of
+	// the payload exceeds that maximum value.
+	if c.buf.max > 0 && uint64(len(b)) > c.buf.max {
 		return c.writeSync(b)
 	}
 
-	// Lock access to the buffer. This prevents concurrent writes to
-	// the buffer. Occasionally the lock is released temporarily to
-	// check if the buffer's length allows this write operation to
-	// proceed.
-	c.buf.dataMu.Lock()
-
-	// If the max buffer size is non-zero and larger than the
-	// capacity of the buffer, then grow the buffer capacity.
-	if max > 0 && max > c.buf.data.Cap() {
-		c.buf.data.Grow(max)
+	// Block the operation from proceeding until there is available
+	// buffer space.
+	c.buf.cond.L.Lock()
+	for c.buf.max > 0 && uint64(len(b))+c.buf.cur > c.buf.max {
+		c.buf.cond.Wait()
 	}
 
-	// Wait until there is room in the buffer to proceed.
-	for max > 0 && c.buf.data.Len()+len(b) > c.buf.data.Cap() {
-		c.buf.dataMu.Unlock()
-		c.buf.dataMu.Lock()
-	}
-	defer c.buf.dataMu.Unlock()
-
-	// Write the data to the buffer.
-	n, err := c.buf.data.Write(b)
-	if err != nil {
-		return n, err
-	} else if n < len(b) {
-		return n, fmt.Errorf("trunc write: exp=%d act=%d", len(b), n)
+	// Copy the buffer if the connection uses copy-on-write.
+	cb := b
+	if c.buf.cow {
+		cb = make([]byte, len(b))
+		copy(cb, b)
 	}
 
-	// Record the number of bytes written in a FIFO list.
-	c.buf.dataN = append(c.buf.dataN, n)
+	// Update the amount of active data being written.
+	c.buf.cur = c.buf.cur + uint64(len(cb))
 
-	// Start a goroutine that reads n bytes from the buffer where n
-	// is the first element in the FIFO list from above. The read
-	// below may not actually correspond to the write from above;
-	// that's okay. The important thing is the order of the reads,
-	// and that's achieved using the circular buffer and FIFO list
-	// of bytes written.
+	c.buf.cond.L.Unlock()
+
 	go func() {
-		// The read operation must also obtain a lock, preventing
-		// concurrent access to the buffer.
-		c.buf.dataMu.Lock()
-
-		// Get the number of bytes to read.
-		n := c.buf.dataN[0]
-		c.buf.dataN = c.buf.dataN[1:]
-
-		// Read the bytes from the buffer into a temporary buffer.
-		b := make([]byte, n)
-		if nr, err := c.buf.data.Read(b); err != nil {
+		if _, err := c.writeSync(cb); err != nil {
 			go func() { c.buf.errs <- err }()
-			c.buf.dataMu.Unlock()
-			return
-		} else if nr < n {
-			go func() {
-				c.buf.errs <- fmt.Errorf("trunc read: exp=%d act=%d", n, nr)
-			}()
-			c.buf.dataMu.Unlock()
-			return
 		}
 
-		// Ensure access to the buffer is restored.
-		defer c.buf.dataMu.Unlock()
-
-		// Write the temporary buffer into the underlying connection.
-		if nw, err := c.writeSync(b); err != nil {
-			go func() { c.buf.errs <- err }()
-			return
-		} else if nw < n {
-			go func() {
-				c.buf.errs <- fmt.Errorf("trunc write: exp=%d act=%d", n, nw)
-			}()
-			return
-		}
+		// Decrement the enqueued buffer size and signal a blocked
+		// goroutine that it may proceed
+		c.buf.cond.L.Lock()
+		c.buf.cur = c.buf.cur - uint64(len(cb))
+		c.buf.cond.L.Unlock()
+		c.buf.cond.Signal()
 	}()
-
-	return n, nil
+	return len(cb), nil
 }
 
 // SetReadDeadline implements the net.Conn SetReadDeadline method.

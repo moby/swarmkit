@@ -11,7 +11,6 @@ import (
 
 	"google.golang.org/grpc/grpclog"
 
-	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/docker/swarmkit/api"
 	cautils "github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager/state/raft"
@@ -20,6 +19,7 @@ import (
 	"github.com/docker/swarmkit/testutils"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
 var tc *cautils.TestCA
