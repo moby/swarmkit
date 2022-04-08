@@ -137,19 +137,15 @@ help: ## this help
 .PHONY: dep-validate
 dep-validate: go-mod-vendor
 	@echo "+ $@"
-	@go mod tidy -modfile vendor.mod
-	@git diff --exit-code vendor.mod vendor.sum vendor || \
-		(echo >&2 "+ inconsistent dependencies! what you have in vendor.mod does not match with what you have in vendor" && false)
-
-go.mod:
-	@printf "module github.com/docker/swarmkit\n\ngo 1.17\n" > $@
-
+	@go mod tidy
+	@git diff --exit-code go.mod go.sum vendor || \
+		(echo >&2 "+ inconsistent dependencies! what you have in go.mod does not match with what you have in vendor" && false)
 
 .PHONY: go-mod-vendor
-go-mod-vendor: go.mod
-	@go mod vendor -modfile vendor.mod
+go-mod-vendor:
+	@go mod vendor
 	@# ensure that key protobuf spec files are in vendor dir
 	@module=github.com/gogo/protobuf ; \
 		prefix=$$(go env GOPATH)/pkg/mod/$${module} ; \
-		version=$$(go list -modfile vendor.mod -m -f '{{.Version}}' $${module}) ; \
+		version=$$(go list -m -f '{{.Version}}' $${module}) ; \
 		cp -a $${prefix}@$${version}/protobuf vendor/$${module}/ && chmod -R u+w vendor/$${module}

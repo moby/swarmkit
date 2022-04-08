@@ -80,7 +80,7 @@ for details.
 
 ### Update vendored dependencies
 
-To update dependency you need just change `vendor.mod` file and run:
+To update dependency you need just change `go.mod` file and run:
 ```
 make go-mod-vendor
 ```
