@@ -2,6 +2,11 @@ module github.com/docker/swarmkit
 
 go 1.17
 
+retract (
+	v1.12.1 // Contains retractions only.
+	v1.12.0 // Not intended as a Swarmkit release.
+)
+
 require (
 	code.cloudfoundry.org/clock v1.0.0
 	github.com/Microsoft/go-winio v0.4.17
