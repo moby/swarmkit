@@ -13,10 +13,10 @@ import (
 
 	"github.com/docker/go-events"
 	"github.com/docker/go-metrics"
-	"github.com/docker/swarmkit/api"
-	pb "github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state"
-	"github.com/docker/swarmkit/watch"
+	"github.com/moby/swarmkit/v2/api"
+	pb "github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/state"
+	"github.com/moby/swarmkit/v2/watch"
 	gogotypes "github.com/gogo/protobuf/types"
 	memdb "github.com/hashicorp/go-memdb"
 )

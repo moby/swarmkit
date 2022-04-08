@@ -1,9 +1,9 @@
 package watchapi
 
 import (
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/state"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

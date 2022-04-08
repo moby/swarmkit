@@ -1,7 +1,7 @@
 package agent
 
 import (
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 	"github.com/gogo/protobuf/proto"
 	bolt "go.etcd.io/bbolt"
 )

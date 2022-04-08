@@ -3,10 +3,10 @@ package constraintenforcer
 import (
 	"testing"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/orchestrator/testutils"
-	"github.com/docker/swarmkit/manager/state"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/orchestrator/testutils"
+	"github.com/moby/swarmkit/v2/manager/state"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

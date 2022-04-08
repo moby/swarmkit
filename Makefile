@@ -1,8 +1,6 @@
 # Root directory of the project (absolute path).
 ROOTDIR=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-PROJECT_ROOT=github.com/docker/swarmkit
-
 SHELL := /bin/bash
 
 # stop here. do we want to run everything inside of a container, or do we want

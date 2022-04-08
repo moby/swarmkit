@@ -3,7 +3,7 @@ package exec
 import (
 	"context"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 // Executor provides controllers for tasks.

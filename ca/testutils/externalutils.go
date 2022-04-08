@@ -16,7 +16,7 @@ import (
 	"github.com/cloudflare/cfssl/config"
 	cfsslerrors "github.com/cloudflare/cfssl/errors"
 	"github.com/cloudflare/cfssl/signer"
-	"github.com/docker/swarmkit/ca"
+	"github.com/moby/swarmkit/v2/ca"
 	"github.com/pkg/errors"
 )
 

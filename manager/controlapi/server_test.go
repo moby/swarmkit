@@ -9,11 +9,11 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/ca"
-	cautils "github.com/docker/swarmkit/ca/testutils"
-	"github.com/docker/swarmkit/manager/state/store"
-	stateutils "github.com/docker/swarmkit/manager/state/testutils"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/ca"
+	cautils "github.com/moby/swarmkit/v2/ca/testutils"
+	"github.com/moby/swarmkit/v2/manager/state/store"
+	stateutils "github.com/moby/swarmkit/v2/manager/state/testutils"
 	"github.com/stretchr/testify/assert"
 )
 

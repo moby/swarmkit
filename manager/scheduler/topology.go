@@ -1,7 +1,7 @@
 package scheduler
 
 import (
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 // IsInTopology takes a Topology `top` (which is reported by a Node) and a list

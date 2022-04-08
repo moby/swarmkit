@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/testutils"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/state/store"
+	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 )

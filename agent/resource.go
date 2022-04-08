@@ -3,7 +3,7 @@ package agent
 import (
 	"context"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 type resourceAllocator struct {

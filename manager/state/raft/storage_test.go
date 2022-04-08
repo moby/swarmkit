@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state/raft"
-	"github.com/docker/swarmkit/manager/state/raft/storage"
-	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
-	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/testutils"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/state/raft"
+	"github.com/moby/swarmkit/v2/manager/state/raft/storage"
+	raftutils "github.com/moby/swarmkit/v2/manager/state/raft/testutils"
+	"github.com/moby/swarmkit/v2/manager/state/store"
+	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

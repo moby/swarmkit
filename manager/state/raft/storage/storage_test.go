@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/docker/swarmkit/manager/encryption"
+	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/raft/v3/raftpb"

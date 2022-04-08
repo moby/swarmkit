@@ -9,7 +9,7 @@ import (
 	enginemount "github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/go-units"
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 	gogotypes "github.com/gogo/protobuf/types"
 )
 

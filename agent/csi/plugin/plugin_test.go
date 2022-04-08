@@ -5,8 +5,8 @@ import (
 	"net"
 	"testing"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/testutils"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/testutils"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -1,6 +1,6 @@
 IMAGE_NAME=docker/swarmkit
 GOPATH=/go
-DOCKER_IMAGE_DIR=${GOPATH}/src/${PROJECT_ROOT}
+DOCKER_IMAGE_DIR=${GOPATH}/src/github.com/docker/swarmkit
 
 DOCKER_SWARMKIT_DELVE_PORT ?= 2345
 

@@ -4,11 +4,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/docker/swarmkit/api"
-	cautils "github.com/docker/swarmkit/ca/testutils"
-	raftutils "github.com/docker/swarmkit/manager/state/raft/testutils"
-	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/testutils"
+	"github.com/moby/swarmkit/v2/api"
+	cautils "github.com/moby/swarmkit/v2/ca/testutils"
+	raftutils "github.com/moby/swarmkit/v2/manager/state/raft/testutils"
+	"github.com/moby/swarmkit/v2/manager/state/store"
+	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/require"
 )
 

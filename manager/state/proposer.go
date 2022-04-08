@@ -3,7 +3,7 @@ package state
 import (
 	"context"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 // A Change includes a version number and a set of store actions from a

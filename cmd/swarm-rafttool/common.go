@@ -6,11 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/manager"
-	"github.com/docker/swarmkit/manager/encryption"
-	"github.com/docker/swarmkit/manager/state/raft/storage"
-	"github.com/docker/swarmkit/node"
+	"github.com/moby/swarmkit/v2/ca"
+	"github.com/moby/swarmkit/v2/manager"
+	"github.com/moby/swarmkit/v2/manager/encryption"
+	"github.com/moby/swarmkit/v2/manager/state/raft/storage"
+	"github.com/moby/swarmkit/v2/node"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
 )

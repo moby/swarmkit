@@ -7,8 +7,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/docker/swarmkit/agent/csi/plugin"
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/agent/csi/plugin"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 // fakePluginManager is a fake pluginManager, used for testing the volume

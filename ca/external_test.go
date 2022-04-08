@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/cloudflare/cfssl/helpers"
-	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/testutils"
-	"github.com/docker/swarmkit/log"
+	"github.com/moby/swarmkit/v2/ca"
+	"github.com/moby/swarmkit/v2/ca/testutils"
+	"github.com/moby/swarmkit/v2/log"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )

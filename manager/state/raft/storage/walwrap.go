@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/encryption"
+	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/wal"

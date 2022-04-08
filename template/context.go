@@ -6,11 +6,11 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/docker/swarmkit/agent/configs"
-	"github.com/docker/swarmkit/agent/exec"
-	"github.com/docker/swarmkit/agent/secrets"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/naming"
+	"github.com/moby/swarmkit/v2/agent/configs"
+	"github.com/moby/swarmkit/v2/agent/exec"
+	"github.com/moby/swarmkit/v2/agent/secrets"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/api/naming"
 	"github.com/pkg/errors"
 )
 

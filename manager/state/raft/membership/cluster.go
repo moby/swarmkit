@@ -4,8 +4,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/watch"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/watch"
 	"github.com/gogo/protobuf/proto"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )

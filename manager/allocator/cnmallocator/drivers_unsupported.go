@@ -4,7 +4,7 @@
 package cnmallocator
 
 import (
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
+	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 )
 
 const initializers = nil

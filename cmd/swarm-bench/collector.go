@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/docker/swarmkit/log"
+	"github.com/moby/swarmkit/v2/log"
 	"github.com/rcrowley/go-metrics"
 )
 

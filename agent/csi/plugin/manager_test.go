@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/docker/swarmkit/testutils"
+	"github.com/moby/swarmkit/v2/testutils"
 )
 
 var _ = Describe("PluginManager", func() {

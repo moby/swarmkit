@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/swarmkit/agent/exec"
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/agent/exec"
+	"github.com/moby/swarmkit/v2/api"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )

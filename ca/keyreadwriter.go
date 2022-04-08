@@ -11,9 +11,9 @@ import (
 
 	"crypto/tls"
 
-	"github.com/docker/swarmkit/ca/keyutils"
-	"github.com/docker/swarmkit/ca/pkcs8"
-	"github.com/docker/swarmkit/ioutils"
+	"github.com/moby/swarmkit/v2/ca/keyutils"
+	"github.com/moby/swarmkit/v2/ca/pkcs8"
+	"github.com/moby/swarmkit/v2/ioutils"
 	"github.com/pkg/errors"
 )
 

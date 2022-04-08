@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
-	"github.com/docker/swarmkit/watch/queue"
+	"github.com/moby/swarmkit/v2/watch/queue"
 )
 
 // ChannelSinkGenerator is a constructor of sinks that eventually lead to a

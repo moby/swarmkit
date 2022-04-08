@@ -377,7 +377,7 @@ func (g *raftProxyGen) GenerateImports(file *generator.FileDescriptor) {
 	if len(file.Service) == 0 {
 		return
 	}
-	g.gen.PrintImport("raftselector", "github.com/docker/swarmkit/manager/raftselector")
+	g.gen.PrintImport("raftselector", "github.com/moby/swarmkit/v2/manager/raftselector")
 	g.gen.PrintImport("codes", "google.golang.org/grpc/codes")
 	g.gen.PrintImport("status", "google.golang.org/grpc/status")
 	g.gen.PrintImport("metadata", "google.golang.org/grpc/metadata")

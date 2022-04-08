@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/docker/docker/pkg/plugingetter"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/naming"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/api/naming"
 )
 
 const (

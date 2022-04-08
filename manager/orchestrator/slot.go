@@ -1,7 +1,7 @@
 package orchestrator
 
 import (
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 // Slot is a list of the running tasks occupying a certain slot. Generally this

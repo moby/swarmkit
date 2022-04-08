@@ -1,8 +1,8 @@
 package csi
 
 import (
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 )
 
 // SecretProvider is an interface for retrieving secrets to use with CSI calls.

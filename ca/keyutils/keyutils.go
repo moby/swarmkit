@@ -12,7 +12,7 @@ import (
 	"errors"
 
 	"github.com/cloudflare/cfssl/helpers"
-	"github.com/docker/swarmkit/ca/pkcs8"
+	"github.com/moby/swarmkit/v2/ca/pkcs8"
 )
 
 // Formatter provides an interface for converting keys to the right format, and encrypting and decrypting keys

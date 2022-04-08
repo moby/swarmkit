@@ -9,11 +9,11 @@ import (
 
 	"github.com/docker/docker/pkg/plugingetter"
 
-	"github.com/docker/swarmkit/agent/csi/plugin"
-	"github.com/docker/swarmkit/agent/exec"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/volumequeue"
+	"github.com/moby/swarmkit/v2/agent/csi/plugin"
+	"github.com/moby/swarmkit/v2/agent/exec"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/volumequeue"
 )
 
 // volumeState keeps track of the state of a volume on this node.

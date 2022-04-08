@@ -7,10 +7,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/identity"
+	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 )
 
 // CreateResource returns a `CreateResourceResponse` after creating a `Resource` based

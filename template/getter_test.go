@@ -3,9 +3,9 @@ package template
 import (
 	"testing"
 
-	"github.com/docker/swarmkit/agent"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/testutils"
+	"github.com/moby/swarmkit/v2/agent"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

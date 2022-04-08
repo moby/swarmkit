@@ -7,9 +7,9 @@ import (
 	"github.com/docker/docker/libnetwork/driverapi"
 	"github.com/docker/docker/libnetwork/ipamapi"
 	"github.com/docker/docker/pkg/plugingetter"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/allocator"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/allocator"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

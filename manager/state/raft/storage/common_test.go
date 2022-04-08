@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/encryption"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/encryption"
 )
 
 // Common test utilities

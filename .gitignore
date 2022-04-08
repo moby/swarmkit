@@ -34,6 +34,3 @@ bin/swarmkitstate
 
 # dev sync, if used
 /.docker-sync/
-
-# top-level go.mod is not meant to be checked in yet
-/go.mod

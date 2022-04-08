@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/docker/swarmkit/agent/exec"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/identity"
+	"github.com/moby/swarmkit/v2/agent/exec"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/identity"
 )
 
 // secrets is a map that keeps all the currently available secrets to the agent

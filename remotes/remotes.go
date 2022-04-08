@@ -7,7 +7,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 var errRemotesUnavailable = fmt.Errorf("no remote hosts provided")

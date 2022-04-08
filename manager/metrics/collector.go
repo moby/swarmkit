@@ -7,8 +7,8 @@ import (
 
 	"github.com/docker/go-events"
 	metrics "github.com/docker/go-metrics"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 )
 
 var (

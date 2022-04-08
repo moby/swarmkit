@@ -7,7 +7,7 @@ import (
 	"github.com/docker/docker/libnetwork/drivers/macvlan/mvmanager"
 	"github.com/docker/docker/libnetwork/drivers/overlay/ovmanager"
 	"github.com/docker/docker/libnetwork/drivers/remote"
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
+	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 )
 
 var initializers = []initializer{

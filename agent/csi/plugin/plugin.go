@@ -12,8 +12,8 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/docker/docker/pkg/plugingetter"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/log"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/log"
 )
 
 // SecretGetter is a reimplementation of the exec.SecretGetter interface in the

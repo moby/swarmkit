@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/cli"
-	"github.com/docker/swarmkit/cmd/swarmctl/common"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/cli"
+	"github.com/moby/swarmkit/v2/cmd/swarmctl/common"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/spf13/cobra"
 )

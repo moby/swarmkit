@@ -6,7 +6,7 @@ import (
 
 	"github.com/docker/docker/pkg/plugingetter"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 // plugin_fake_test.go contains code for faking node plugins in the context of

@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/keyutils"
-	"github.com/docker/swarmkit/ca/pkcs8"
-	"github.com/docker/swarmkit/ca/testutils"
+	"github.com/moby/swarmkit/v2/ca"
+	"github.com/moby/swarmkit/v2/ca/keyutils"
+	"github.com/moby/swarmkit/v2/ca/pkcs8"
+	"github.com/moby/swarmkit/v2/ca/testutils"
 	"github.com/stretchr/testify/require"
 )
 

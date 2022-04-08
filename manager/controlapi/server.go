@@ -4,10 +4,10 @@ import (
 	"errors"
 
 	"github.com/docker/docker/pkg/plugingetter"
-	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/manager/drivers"
-	"github.com/docker/swarmkit/manager/state/raft"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/ca"
+	"github.com/moby/swarmkit/v2/manager/drivers"
+	"github.com/moby/swarmkit/v2/manager/state/raft"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 )
 
 var (

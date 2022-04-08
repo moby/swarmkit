@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/constraint"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/constraint"
 )
 
 var errNodeNotFound = errors.New("node not found in scheduler dataset")

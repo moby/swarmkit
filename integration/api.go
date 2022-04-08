@@ -3,7 +3,7 @@ package integration
 import (
 	"context"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 type dummyAPI struct {

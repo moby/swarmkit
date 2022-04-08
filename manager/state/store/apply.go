@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/docker/go-events"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/state"
 )
 
 // Apply takes an item from the event stream of one Store and applies it to
