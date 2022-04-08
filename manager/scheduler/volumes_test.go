@@ -97,7 +97,7 @@ var _ = Describe("volumeSet", func() {
 			// if the volume is the last one in the group, it should be removed.
 			Expect(vs.byGroup).To(SatisfyAll(
 				HaveLen(1),
-				HaveKeyWithValue("group", map[string]struct{}{v2.ID: struct{}{}}),
+				HaveKeyWithValue("group", map[string]struct{}{v2.ID: {}}),
 			))
 		})
 
