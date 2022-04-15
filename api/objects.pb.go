@@ -6,12 +6,12 @@ package api
 import (
 	fmt "fmt"
 	github_com_docker_go_events "github.com/docker/go-events"
-	_ "github.com/docker/swarmkit/protobuf/plugin"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
 	types "github.com/gogo/protobuf/types"
 	github_com_moby_swarmkit_v2_api_deepcopy "github.com/moby/swarmkit/v2/api/deepcopy"
+	_ "github.com/moby/swarmkit/v2/protobuf/plugin"
 	io "io"
 	math "math"
 	math_bits "math/bits"

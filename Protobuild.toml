@@ -31,6 +31,7 @@ plugins = ["grpc", "deepcopy", "storeobject", "raftproxy", "authenticatedwrapper
   "google/protobuf/timestamp.proto" = "github.com/gogo/protobuf/types"
   "google/protobuf/duration.proto" = "github.com/gogo/protobuf/types"
   "google/protobuf/wrappers.proto" = "github.com/gogo/protobuf/types"
+  "github.com/docker/swarmkit/protobuf/plugin/plugin.proto" = "github.com/moby/swarmkit/v2/protobuf/plugin"
 
 [[descriptors]]
 prefix = "github.com/docker/swarmkit/api"
