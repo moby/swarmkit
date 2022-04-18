@@ -8,8 +8,8 @@ VERSION=$(shell git describe --match 'v[0-9]*' --dirty='.m' --always)
 RACE := $(shell test $$(go env GOARCH) != "amd64" || (echo "-race"))
 
 # Project packages.
-PACKAGES := $(shell go list ./...)
-INTEGRATION_PACKAGE := $(shell go list ./integration)
+PACKAGES = $(shell go list ./...)
+INTEGRATION_PACKAGE = $(shell go list ./integration)
 
 # Project binaries.
 COMMANDS=swarmd swarmctl swarm-bench swarm-rafttool protoc-gen-gogoswarm
@@ -119,14 +119,14 @@ uninstall:
 coverage: ## generate coverprofiles from the unit tests
 	@echo "🐳 $@"
 	@( for pkg in $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES}); do \
-		go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
-		go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../$$pkg/coverage.txt" -covermode=atomic $$pkg || exit; \
+		go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$(go list -f "{{.Dir}}" $$pkg)/coverage.txt" -covermode=atomic $$pkg || exit; \
+		go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$(go list -f "{{.Dir}}" $$pkg)/coverage.txt" -covermode=atomic $$pkg || exit; \
 	done )
 
 .PHONY: coverage-integration
 coverage-integration: ## generate coverprofiles from the integration tests
 	@echo "🐳 $@"
-	go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="../../../${INTEGRATION_PACKAGE}/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
+	go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$(go list -f "{{.Dir}}" ${INTEGRATION_PACKAGE})/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
 
 .PHONY: help
 help: ## this help
