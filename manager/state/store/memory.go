@@ -13,12 +13,12 @@ import (
 
 	"github.com/docker/go-events"
 	"github.com/docker/go-metrics"
+	gogotypes "github.com/gogo/protobuf/types"
+	memdb "github.com/hashicorp/go-memdb"
 	"github.com/moby/swarmkit/v2/api"
 	pb "github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/watch"
-	gogotypes "github.com/gogo/protobuf/types"
-	memdb "github.com/hashicorp/go-memdb"
 )
 
 const (
@@ -335,6 +335,9 @@ func (s *MemoryStore) update(proposer state.Proposer, cb func(Tx) error) error {
 
 	err := cb(&tx)
 
+	commitGuard := make(chan struct{}, 1)
+	commitGuard <- struct{}{}
+
 	if err == nil {
 		if proposer == nil {
 			memDBTx.Commit()
@@ -345,7 +348,12 @@ func (s *MemoryStore) update(proposer state.Proposer, cb func(Tx) error) error {
 			if err == nil {
 				if len(sa) != 0 {
 					err = proposer.ProposeValue(context.Background(), sa, func() {
-						memDBTx.Commit()
+						select {
+						case <-commitGuard:
+							memDBTx.Commit()
+						default:
+							// Already Abort()ed.
+						}
 					})
 				} else {
 					memDBTx.Commit()
@@ -366,7 +374,15 @@ func (s *MemoryStore) update(proposer state.Proposer, cb func(Tx) error) error {
 			s.queue.Publish(state.EventCommit{Version: curVersion})
 		}
 	} else {
-		memDBTx.Abort()
+		// The ProposeValue callback could still have executed, or be
+		// executed in the near future. Guard against racing the
+		// Commit().
+		select {
+		case <-commitGuard:
+			memDBTx.Abort()
+		default:
+			// Already Abort()ed.
+		}
 	}
 	s.updateLock.Unlock()
 	return err
@@ -448,6 +464,9 @@ func (batch *Batch) newTx() {
 }
 
 func (batch *Batch) commit() error {
+	guard := make(chan struct{}, 1)
+	guard <- struct{}{}
+
 	if batch.store.proposer != nil {
 		var sa []api.StoreAction
 		sa, batch.err = batch.tx.changelistStoreActions()
@@ -455,7 +474,12 @@ func (batch *Batch) commit() error {
 		if batch.err == nil {
 			if len(sa) != 0 {
 				batch.err = batch.store.proposer.ProposeValue(context.Background(), sa, func() {
-					batch.tx.memDBTx.Commit()
+					select {
+					case <-guard:
+						batch.tx.memDBTx.Commit()
+					default:
+						// Already Abort()ed.
+					}
 				})
 			} else {
 				batch.tx.memDBTx.Commit()
@@ -466,7 +490,15 @@ func (batch *Batch) commit() error {
 	}
 
 	if batch.err != nil {
-		batch.tx.memDBTx.Abort()
+		// The ProposeValue callback could still have executed, or be
+		// executed in the near future. Guard against racing the
+		// Commit().
+		select {
+		case <-guard:
+			batch.tx.memDBTx.Abort()
+		default:
+			// Already Commit()ed.
+		}
 		return batch.err
 	}
 
