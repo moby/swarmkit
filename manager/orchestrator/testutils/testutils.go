@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"fmt"
+	"runtime"
 	"testing"
 	"time"
 
@@ -39,7 +40,7 @@ func WatchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {
 				assert.FailNow(t, "got EventUpdateTask when expecting EventCreateTask", fmt.Sprint(event))
 			}
 		case <-time.After(3 * time.Second):
-			assert.FailNow(t, "no task creation")
+			FatalStack(t, "no task creation")
 		}
 	}
 }
@@ -56,7 +57,7 @@ func WatchTaskUpdate(t *testing.T, watch chan events.Event) *api.Task {
 				assert.FailNow(t, "got EventCreateTask when expecting EventUpdateTask", fmt.Sprint(event))
 			}
 		case <-time.After(2 * time.Second):
-			assert.FailNow(t, "no task update")
+			FatalStack(t, "no task update")
 		}
 	}
 }
@@ -70,7 +71,7 @@ func WatchTaskDelete(t *testing.T, watch chan events.Event) *api.Task {
 				return task.Task
 			}
 		case <-time.After(time.Second):
-			assert.FailNow(t, "no task deletion")
+			FatalStack(t, "no task deletion")
 		}
 	}
 }
@@ -88,7 +89,7 @@ func WatchShutdownTask(t *testing.T, watch chan events.Event) *api.Task {
 				assert.FailNow(t, "got EventCreateTask when expecting EventUpdateTask", fmt.Sprint(event))
 			}
 		case <-time.After(time.Second):
-			assert.FailNow(t, "no task shutdown")
+			FatalStack(t, "no task shutdown")
 		}
 	}
 }
@@ -104,7 +105,15 @@ func Expect(t *testing.T, watch chan events.Event, specifiers ...api.Event) {
 			}
 			return
 		case <-time.After(time.Second):
-			assert.FailNow(t, "no matching event")
+			FatalStack(t, "no matching event")
 		}
 	}
+}
+
+// FatalStack logs the stacks of all goroutines and immediately fails the test.
+func FatalStack(t *testing.T, msg string, args ...interface{}) {
+	stack := make([]byte, 1024*1024)
+	stack = stack[:runtime.Stack(stack, true)]
+	t.Logf("%s\n", stack)
+	assert.FailNow(t, msg, args...)
 }
