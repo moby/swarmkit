@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 	memdb "github.com/hashicorp/go-memdb"
 )
 

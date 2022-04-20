@@ -1,9 +1,4 @@
-// 'vendor.mod' enables use of 'go mod vendor' to managed 'vendor/' directory.
-// There is no 'go.mod' file, as that would imply opting in for all the rules
-// around SemVer. Switch over may occur in the future, but presently the goal
-// is to just use 'go mod vendor' here and other projects including moby.
-
-module github.com/docker/swarmkit
+module github.com/moby/swarmkit/v2
 
 go 1.17
 
@@ -14,7 +9,7 @@ require (
 	github.com/cloudflare/cfssl v0.0.0-20180323000720-5d63dbd981b5
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/docker/distribution v2.7.1+incompatible
-	github.com/docker/docker v20.10.3-0.20220126110425-3c06ebd87668+incompatible
+	github.com/docker/docker v20.10.3-0.20220408103430-7ea283fd9166+incompatible // v22.04 dev
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c
 	github.com/docker/go-metrics v0.0.1
@@ -60,7 +55,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/cncf/udpa/go v0.0.0-20201120205902-5459f2c99403 // indirect
 	github.com/cncf/xds/go v0.0.0-20210805033703-aa0b78936158 // indirect
-	github.com/containerd/containerd v1.5.9 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
@@ -77,7 +71,7 @@ require (
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/certificate-transparency-go v1.1.2 // indirect
 	github.com/google/trillian v1.4.0 // indirect
-	github.com/gorilla/mux v1.8.0 // indirect
+	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect

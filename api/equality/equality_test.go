@@ -3,7 +3,7 @@ package equality
 import (
 	"testing"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

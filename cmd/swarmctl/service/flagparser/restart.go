@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/spf13/pflag"
 )

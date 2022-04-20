@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/encryption"
+	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"

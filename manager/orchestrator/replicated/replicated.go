@@ -3,11 +3,11 @@ package replicated
 import (
 	"context"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/orchestrator/restart"
-	"github.com/docker/swarmkit/manager/orchestrator/update"
-	"github.com/docker/swarmkit/manager/state"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/orchestrator/restart"
+	"github.com/moby/swarmkit/v2/manager/orchestrator/update"
+	"github.com/moby/swarmkit/v2/manager/state"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 )
 
 // An Orchestrator runs a reconciliation loop to create and destroy

@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 func TestRemotesSimple(t *testing.T) {

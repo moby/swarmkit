@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 
 	"golang.org/x/crypto/nacl/secretbox"
 )

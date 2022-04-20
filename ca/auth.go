@@ -8,8 +8,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/log"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"

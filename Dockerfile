@@ -16,7 +16,7 @@ RUN curl --silent --show-error --location --output protoc.zip \
   && unzip -d /usr/local protoc.zip include/\* bin/\* \
   && rm -f protoc.zip
 
-ENV GO111MODULE=off
+ENV GO111MODULE=on
 WORKDIR /go/src/github.com/docker/swarmkit/
 
 # install the dependencies from `make setup`

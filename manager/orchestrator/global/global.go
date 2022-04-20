@@ -3,14 +3,14 @@ package global
 import (
 	"context"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/constraint"
-	"github.com/docker/swarmkit/manager/orchestrator"
-	"github.com/docker/swarmkit/manager/orchestrator/restart"
-	"github.com/docker/swarmkit/manager/orchestrator/taskinit"
-	"github.com/docker/swarmkit/manager/orchestrator/update"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/manager/constraint"
+	"github.com/moby/swarmkit/v2/manager/orchestrator"
+	"github.com/moby/swarmkit/v2/manager/orchestrator/restart"
+	"github.com/moby/swarmkit/v2/manager/orchestrator/taskinit"
+	"github.com/moby/swarmkit/v2/manager/orchestrator/update"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 )
 
 type globalService struct {

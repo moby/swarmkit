@@ -1,10 +1,10 @@
 package main
 
 import (
-	_ "github.com/docker/swarmkit/protobuf/plugin/authenticatedwrapper"
-	_ "github.com/docker/swarmkit/protobuf/plugin/deepcopy"
-	_ "github.com/docker/swarmkit/protobuf/plugin/raftproxy"
-	_ "github.com/docker/swarmkit/protobuf/plugin/storeobject"
+	_ "github.com/moby/swarmkit/v2/protobuf/plugin/authenticatedwrapper"
+	_ "github.com/moby/swarmkit/v2/protobuf/plugin/deepcopy"
+	_ "github.com/moby/swarmkit/v2/protobuf/plugin/raftproxy"
+	_ "github.com/moby/swarmkit/v2/protobuf/plugin/storeobject"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/gogo/protobuf/vanity"
 	"github.com/gogo/protobuf/vanity/command"

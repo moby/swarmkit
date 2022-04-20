@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/testutils"
-	"github.com/docker/swarmkit/identity"
+	"github.com/moby/swarmkit/v2/ca"
+	"github.com/moby/swarmkit/v2/ca/testutils"
+	"github.com/moby/swarmkit/v2/identity"
 	"github.com/sirupsen/logrus"
 )
 

@@ -1,10 +1,10 @@
 package deepcopy
 
 import (
-	"github.com/docker/swarmkit/protobuf/plugin"
 	"github.com/gogo/protobuf/gogoproto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
+	"github.com/moby/swarmkit/v2/protobuf/plugin"
 )
 
 type deepCopyGen struct {
@@ -276,7 +276,7 @@ func (d *deepCopyGen) Generate(file *generator.FileDescriptor) {
 	// TODO(stevvooe): Ideally, this could be taken as a parameter to the
 	// deepcopy plugin to control the package import, but this is good enough,
 	// for now.
-	d.copyPkg = d.NewImport("github.com/docker/swarmkit/api/deepcopy")
+	d.copyPkg = d.NewImport("github.com/moby/swarmkit/v2/api/deepcopy")
 
 	d.P()
 	for _, m := range file.Messages() {

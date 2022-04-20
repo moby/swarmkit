@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/docker/swarmkit/testutils"
+	"github.com/moby/swarmkit/v2/testutils"
 
 	"google.golang.org/grpc/codes"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/identity"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
 

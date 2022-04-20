@@ -3,9 +3,9 @@ package replicated
 import (
 	"context"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/orchestrator"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/orchestrator"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 )
 
 type slotsByRunningState []orchestrator.Slot

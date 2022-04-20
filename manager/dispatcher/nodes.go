@@ -4,9 +4,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/dispatcher/heartbeat"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/identity"
+	"github.com/moby/swarmkit/v2/manager/dispatcher/heartbeat"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

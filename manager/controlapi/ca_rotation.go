@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/cloudflare/cfssl/helpers"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/log"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/ca"
+	"github.com/moby/swarmkit/v2/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

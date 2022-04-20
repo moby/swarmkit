@@ -5,7 +5,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 )
 
 var (

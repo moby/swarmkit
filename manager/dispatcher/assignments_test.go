@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/manager/state/testutils"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/state/store"
+	"github.com/moby/swarmkit/v2/manager/state/testutils"
 )
 
 func TestAssignVolume(t *testing.T) {

@@ -4,11 +4,11 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/defaults"
-	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/constraint"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/api/defaults"
+	"github.com/moby/swarmkit/v2/identity"
+	"github.com/moby/swarmkit/v2/manager/constraint"
+	"github.com/moby/swarmkit/v2/protobuf/ptypes"
 	google_protobuf "github.com/gogo/protobuf/types"
 )
 

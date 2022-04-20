@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/pkg/errors"
 )
 

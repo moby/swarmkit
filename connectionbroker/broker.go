@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/remotes"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/remotes"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"google.golang.org/grpc"
 )

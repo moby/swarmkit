@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/swarmkit/agent/exec"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/equality"
-	"github.com/docker/swarmkit/log"
+	"github.com/moby/swarmkit/v2/agent/exec"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/api/equality"
+	"github.com/moby/swarmkit/v2/log"
 )
 
 // taskManager manages all aspects of task execution and reporting for an agent

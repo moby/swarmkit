@@ -1,7 +1,7 @@
 package flagparser
 
 import (
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/cobra"
 )
 

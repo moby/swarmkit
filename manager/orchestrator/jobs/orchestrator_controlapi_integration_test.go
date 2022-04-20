@@ -11,11 +11,11 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/controlapi"
-	"github.com/docker/swarmkit/manager/orchestrator/testutils"
-	"github.com/docker/swarmkit/manager/state/store"
-	stateutils "github.com/docker/swarmkit/manager/state/testutils"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/controlapi"
+	"github.com/moby/swarmkit/v2/manager/orchestrator/testutils"
+	"github.com/moby/swarmkit/v2/manager/state/store"
+	stateutils "github.com/moby/swarmkit/v2/manager/state/testutils"
 )
 
 var _ = Describe("Integration between the controlapi and jobs orchestrator", func() {

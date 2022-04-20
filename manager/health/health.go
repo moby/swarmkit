@@ -11,7 +11,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

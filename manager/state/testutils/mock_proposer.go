@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/state"
 )
 
 // MockProposer is a simple proposer implementation for use in tests.

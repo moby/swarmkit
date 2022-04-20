@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/genericresource"
-	"github.com/docker/swarmkit/manager/constraint"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/api/genericresource"
+	"github.com/moby/swarmkit/v2/manager/constraint"
 )
 
 // Filter checks whether the given task can run on the given node.

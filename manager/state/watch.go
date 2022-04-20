@@ -2,8 +2,8 @@ package state
 
 import (
 	"github.com/docker/go-events"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/watch"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/watch"
 )
 
 // EventCommit delineates a transaction boundary.

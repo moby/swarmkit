@@ -6,10 +6,10 @@ package test
 import (
 	bytes "bytes"
 	fmt "fmt"
-	github_com_docker_swarmkit_api_deepcopy "github.com/docker/swarmkit/api/deepcopy"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
+	github_com_moby_swarmkit_v2_api_deepcopy "github.com/moby/swarmkit/v2/api/deepcopy"
 	math "math"
 	reflect "reflect"
 	strings "strings"
@@ -783,15 +783,15 @@ func (m *ExternalStruct) CopyFrom(src interface{}) {
 	*m = *o
 	if o.Field1 != nil {
 		m.Field1 = &BasicScalar{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Field1, o.Field1)
+		github_com_moby_swarmkit_v2_api_deepcopy.Copy(m.Field1, o.Field1)
 	}
 	if o.Field2 != nil {
 		m.Field2 = &RepeatedScalar{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Field2, o.Field2)
+		github_com_moby_swarmkit_v2_api_deepcopy.Copy(m.Field2, o.Field2)
 	}
 	if o.Field3 != nil {
 		m.Field3 = &RepeatedScalarPacked{}
-		github_com_docker_swarmkit_api_deepcopy.Copy(m.Field3, o.Field3)
+		github_com_moby_swarmkit_v2_api_deepcopy.Copy(m.Field3, o.Field3)
 	}
 }
 
@@ -812,7 +812,7 @@ func (m *RepeatedExternalStruct) CopyFrom(src interface{}) {
 		m.Field1 = make([]*BasicScalar, len(o.Field1))
 		for i := range m.Field1 {
 			m.Field1[i] = &BasicScalar{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Field1[i], o.Field1[i])
+			github_com_moby_swarmkit_v2_api_deepcopy.Copy(m.Field1[i], o.Field1[i])
 		}
 	}
 
@@ -820,7 +820,7 @@ func (m *RepeatedExternalStruct) CopyFrom(src interface{}) {
 		m.Field2 = make([]*RepeatedScalar, len(o.Field2))
 		for i := range m.Field2 {
 			m.Field2[i] = &RepeatedScalar{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Field2[i], o.Field2[i])
+			github_com_moby_swarmkit_v2_api_deepcopy.Copy(m.Field2[i], o.Field2[i])
 		}
 	}
 
@@ -828,7 +828,7 @@ func (m *RepeatedExternalStruct) CopyFrom(src interface{}) {
 		m.Field3 = make([]*RepeatedScalarPacked, len(o.Field3))
 		for i := range m.Field3 {
 			m.Field3[i] = &RepeatedScalarPacked{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.Field3[i], o.Field3[i])
+			github_com_moby_swarmkit_v2_api_deepcopy.Copy(m.Field3[i], o.Field3[i])
 		}
 	}
 
@@ -847,9 +847,9 @@ func (m *NonNullableExternalStruct) CopyFrom(src interface{}) {
 
 	o := src.(*NonNullableExternalStruct)
 	*m = *o
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field1, &o.Field1)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field2, &o.Field2)
-	github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field3, &o.Field3)
+	github_com_moby_swarmkit_v2_api_deepcopy.Copy(&m.Field1, &o.Field1)
+	github_com_moby_swarmkit_v2_api_deepcopy.Copy(&m.Field2, &o.Field2)
+	github_com_moby_swarmkit_v2_api_deepcopy.Copy(&m.Field3, &o.Field3)
 }
 
 func (m *RepeatedNonNullableExternalStruct) Copy() *RepeatedNonNullableExternalStruct {
@@ -868,21 +868,21 @@ func (m *RepeatedNonNullableExternalStruct) CopyFrom(src interface{}) {
 	if o.Field1 != nil {
 		m.Field1 = make([]BasicScalar, len(o.Field1))
 		for i := range m.Field1 {
-			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field1[i], &o.Field1[i])
+			github_com_moby_swarmkit_v2_api_deepcopy.Copy(&m.Field1[i], &o.Field1[i])
 		}
 	}
 
 	if o.Field2 != nil {
 		m.Field2 = make([]RepeatedScalar, len(o.Field2))
 		for i := range m.Field2 {
-			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field2[i], &o.Field2[i])
+			github_com_moby_swarmkit_v2_api_deepcopy.Copy(&m.Field2[i], &o.Field2[i])
 		}
 	}
 
 	if o.Field3 != nil {
 		m.Field3 = make([]RepeatedScalarPacked, len(o.Field3))
 		for i := range m.Field3 {
-			github_com_docker_swarmkit_api_deepcopy.Copy(&m.Field3[i], &o.Field3[i])
+			github_com_moby_swarmkit_v2_api_deepcopy.Copy(&m.Field3[i], &o.Field3[i])
 		}
 	}
 
@@ -905,7 +905,7 @@ func (m *MapStruct) CopyFrom(src interface{}) {
 		m.NullableMap = make(map[string]*BasicScalar, len(o.NullableMap))
 		for k, v := range o.NullableMap {
 			m.NullableMap[k] = &BasicScalar{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(m.NullableMap[k], v)
+			github_com_moby_swarmkit_v2_api_deepcopy.Copy(m.NullableMap[k], v)
 		}
 	}
 
@@ -913,7 +913,7 @@ func (m *MapStruct) CopyFrom(src interface{}) {
 		m.NonnullableMap = make(map[string]BasicScalar, len(o.NonnullableMap))
 		for k, v := range o.NonnullableMap {
 			n := BasicScalar{}
-			github_com_docker_swarmkit_api_deepcopy.Copy(&n, &v)
+			github_com_moby_swarmkit_v2_api_deepcopy.Copy(&n, &v)
 			m.NonnullableMap[k] = n
 		}
 	}
@@ -978,13 +978,13 @@ func (m *OneOf) CopyFrom(src interface{}) {
 			v := OneOf_Field8{
 				Field8: &MapStruct{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Field8, o.GetField8())
+			github_com_moby_swarmkit_v2_api_deepcopy.Copy(v.Field8, o.GetField8())
 			m.Fields = &v
 		case *OneOf_Field9:
 			v := OneOf_Field9{
 				Field9: &RepeatedNonNullableExternalStruct{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Field9, o.GetField9())
+			github_com_moby_swarmkit_v2_api_deepcopy.Copy(v.Field9, o.GetField9())
 			m.Fields = &v
 		}
 	}
@@ -995,13 +995,13 @@ func (m *OneOf) CopyFrom(src interface{}) {
 			v := OneOf_Field10{
 				Field10: &NonNullableExternalStruct{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Field10, o.GetField10())
+			github_com_moby_swarmkit_v2_api_deepcopy.Copy(v.Field10, o.GetField10())
 			m.FieldsTwo = &v
 		case *OneOf_Field11:
 			v := OneOf_Field11{
 				Field11: &RepeatedExternalStruct{},
 			}
-			github_com_docker_swarmkit_api_deepcopy.Copy(v.Field11, o.GetField11())
+			github_com_moby_swarmkit_v2_api_deepcopy.Copy(v.Field11, o.GetField11())
 			m.FieldsTwo = &v
 		}
 	}

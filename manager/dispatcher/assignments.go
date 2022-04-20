@@ -3,12 +3,12 @@ package dispatcher
 import (
 	"fmt"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/equality"
-	"github.com/docker/swarmkit/api/validation"
-	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/drivers"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/api/equality"
+	"github.com/moby/swarmkit/v2/api/validation"
+	"github.com/moby/swarmkit/v2/identity"
+	"github.com/moby/swarmkit/v2/manager/drivers"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/sirupsen/logrus"
 )
 

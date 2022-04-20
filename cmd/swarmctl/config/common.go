@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 func getConfig(ctx context.Context, c api.ControlClient, input string) (*api.Config, error) {

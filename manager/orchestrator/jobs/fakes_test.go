@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/orchestrator"
-	"github.com/docker/swarmkit/manager/orchestrator/restart"
-	"github.com/docker/swarmkit/manager/orchestrator/taskinit"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/orchestrator"
+	"github.com/moby/swarmkit/v2/manager/orchestrator/restart"
+	"github.com/moby/swarmkit/v2/manager/orchestrator/taskinit"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 )
 
 // fakes_test.go is just a file to hold all of the test fakes used with the

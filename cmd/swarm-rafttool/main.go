@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/docker/swarmkit/cmd/swarmd/defaults"
+	"github.com/moby/swarmkit/v2/cmd/swarmd/defaults"
 	"github.com/spf13/cobra"
 )
 

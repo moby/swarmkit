@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/allocator/cnmallocator"
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
-	"github.com/docker/swarmkit/manager/state"
-	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/manager/allocator/cnmallocator"
+	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
+	"github.com/moby/swarmkit/v2/manager/state"
+	"github.com/moby/swarmkit/v2/manager/state/store"
+	"github.com/moby/swarmkit/v2/protobuf/ptypes"
 	"github.com/pkg/errors"
 )
 

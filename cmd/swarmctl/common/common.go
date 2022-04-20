@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/xnet"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/xnet"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"

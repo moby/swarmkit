@@ -3,7 +3,7 @@ package encryption
 import (
 	"fmt"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 
 	"github.com/fernet/fernet-go"
 )

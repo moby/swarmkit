@@ -11,8 +11,8 @@ import (
 	"github.com/docker/go-events"
 	gogotypes "github.com/gogo/protobuf/types"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 )
 
 // passEventsUntil is a helper method that calls handleEvent on all events from

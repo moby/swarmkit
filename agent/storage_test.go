@@ -7,8 +7,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/identity"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/identity"
 	"github.com/stretchr/testify/assert"
 	bolt "go.etcd.io/bbolt"
 )

@@ -7,9 +7,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/docker/swarmkit/ca"
-	cautils "github.com/docker/swarmkit/ca/testutils"
-	"github.com/docker/swarmkit/manager/state/raft"
+	"github.com/moby/swarmkit/v2/ca"
+	cautils "github.com/moby/swarmkit/v2/ca/testutils"
+	"github.com/moby/swarmkit/v2/manager/state/raft"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )

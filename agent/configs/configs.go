@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/docker/swarmkit/agent/exec"
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/agent/exec"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 // configs is a map that keeps all the currently available configs to the agent

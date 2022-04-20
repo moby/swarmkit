@@ -3,11 +3,11 @@ package agent
 import (
 	"github.com/docker/docker/pkg/plugingetter"
 
-	"github.com/docker/swarmkit/agent/configs"
-	"github.com/docker/swarmkit/agent/csi"
-	"github.com/docker/swarmkit/agent/exec"
-	"github.com/docker/swarmkit/agent/secrets"
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/agent/configs"
+	"github.com/moby/swarmkit/v2/agent/csi"
+	"github.com/moby/swarmkit/v2/agent/exec"
+	"github.com/moby/swarmkit/v2/agent/secrets"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 type dependencyManager struct {

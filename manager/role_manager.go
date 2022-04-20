@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/clock"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/state/raft"
-	"github.com/docker/swarmkit/manager/state/raft/membership"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/manager/state/raft"
+	"github.com/moby/swarmkit/v2/manager/state/raft/membership"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 )
 
 const (

@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/defaults"
-	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/orchestrator"
-	"github.com/docker/swarmkit/manager/state"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/api/defaults"
+	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/manager/orchestrator"
+	"github.com/moby/swarmkit/v2/manager/state"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 	gogotypes "github.com/gogo/protobuf/types"
 )
 

@@ -1,6 +1,6 @@
 package store
 
-import "github.com/docker/swarmkit/api"
+import "github.com/moby/swarmkit/v2/api"
 
 // By is an interface type passed to Find methods. Implementations must be
 // defined in this package.

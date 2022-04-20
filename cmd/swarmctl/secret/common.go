@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 func getSecret(ctx context.Context, c api.ControlClient, input string) (*api.Secret, error) {

@@ -10,11 +10,11 @@ import (
 
 	"google.golang.org/grpc"
 
-	agentutils "github.com/docker/swarmkit/agent/testutils"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/node"
-	"github.com/docker/swarmkit/testutils"
+	agentutils "github.com/moby/swarmkit/v2/agent/testutils"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/ca"
+	"github.com/moby/swarmkit/v2/node"
+	"github.com/moby/swarmkit/v2/testutils"
 )
 
 // TestNode is representation of *agent.Node. It stores listeners, connections,

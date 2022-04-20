@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/log"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/log"
 )
 
 // StatusReporter receives updates to task status. Method may be called

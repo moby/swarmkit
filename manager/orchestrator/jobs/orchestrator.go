@@ -6,14 +6,14 @@ import (
 
 	"github.com/docker/go-events"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/orchestrator"
-	"github.com/docker/swarmkit/manager/orchestrator/jobs/global"
-	"github.com/docker/swarmkit/manager/orchestrator/jobs/replicated"
-	"github.com/docker/swarmkit/manager/orchestrator/restart"
-	"github.com/docker/swarmkit/manager/orchestrator/taskinit"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/manager/orchestrator"
+	"github.com/moby/swarmkit/v2/manager/orchestrator/jobs/global"
+	"github.com/moby/swarmkit/v2/manager/orchestrator/jobs/replicated"
+	"github.com/moby/swarmkit/v2/manager/orchestrator/restart"
+	"github.com/moby/swarmkit/v2/manager/orchestrator/taskinit"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 )
 
 // Reconciler is the type that holds the reconciliation logic for the

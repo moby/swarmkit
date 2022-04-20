@@ -4,7 +4,7 @@ import (
 	"crypto/subtle"
 	"reflect"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 // TasksEqualStable returns true if the tasks are functionally equal, ignoring status,

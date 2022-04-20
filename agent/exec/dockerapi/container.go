@@ -17,11 +17,11 @@ import (
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/go-connections/nat"
 	"github.com/docker/go-units"
-	"github.com/docker/swarmkit/agent/exec"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/genericresource"
-	"github.com/docker/swarmkit/api/naming"
-	"github.com/docker/swarmkit/template"
+	"github.com/moby/swarmkit/v2/agent/exec"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/api/genericresource"
+	"github.com/moby/swarmkit/v2/api/naming"
+	"github.com/moby/swarmkit/v2/template"
 	gogotypes "github.com/gogo/protobuf/types"
 )
 

@@ -7,8 +7,8 @@ import (
 
 	"github.com/docker/docker/libnetwork/discoverapi"
 	"github.com/docker/docker/libnetwork/types"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/allocator/networkallocator"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 	"github.com/stretchr/testify/assert"
 )
 

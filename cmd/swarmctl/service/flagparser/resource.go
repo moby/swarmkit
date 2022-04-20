@@ -5,8 +5,8 @@ import (
 	"math/big"
 
 	"github.com/docker/go-units"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/genericresource"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/api/genericresource"
 	"github.com/spf13/pflag"
 )
 

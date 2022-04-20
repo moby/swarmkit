@@ -12,13 +12,13 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/manager/encryption"
-	"github.com/docker/swarmkit/node"
-	"github.com/docker/swarmkit/testutils"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/ca"
+	"github.com/moby/swarmkit/v2/identity"
+	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/manager/encryption"
+	"github.com/moby/swarmkit/v2/node"
+	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/sirupsen/logrus"
 )
 

@@ -5,11 +5,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/ca"
+	"github.com/moby/swarmkit/v2/identity"
+	"github.com/moby/swarmkit/v2/manager/state/store"
+	"github.com/moby/swarmkit/v2/protobuf/ptypes"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

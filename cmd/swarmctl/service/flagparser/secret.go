@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/cmd/swarmctl/common"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/cmd/swarmctl/common"
 	"github.com/spf13/cobra"
 )
 

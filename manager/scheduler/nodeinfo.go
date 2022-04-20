@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/genericresource"
-	"github.com/docker/swarmkit/log"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/api/genericresource"
+	"github.com/moby/swarmkit/v2/log"
 )
 
 // hostPortSpec specifies a used host port.

@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/genericresource"
-	"github.com/docker/swarmkit/identity"
-	"github.com/docker/swarmkit/manager/state"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/api/genericresource"
+	"github.com/moby/swarmkit/v2/identity"
+	"github.com/moby/swarmkit/v2/manager/state"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

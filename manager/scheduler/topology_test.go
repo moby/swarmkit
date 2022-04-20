@@ -3,7 +3,7 @@ package scheduler
 import (
 	"testing"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 func TestIsInTopology(t *testing.T) {

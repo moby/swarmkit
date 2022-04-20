@@ -8,7 +8,7 @@ import (
 	google_protobuf "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 // Test IsTaskDirty() for placement constraints.

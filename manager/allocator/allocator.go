@@ -6,10 +6,10 @@ import (
 
 	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/go-events"
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/manager/allocator/cnmallocator"
-	"github.com/docker/swarmkit/manager/state"
-	"github.com/docker/swarmkit/manager/state/store"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/allocator/cnmallocator"
+	"github.com/moby/swarmkit/v2/manager/state"
+	"github.com/moby/swarmkit/v2/manager/state/store"
 )
 
 // Allocator controls how the allocation stage in the manager is handled.

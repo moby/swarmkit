@@ -2,7 +2,7 @@ package csi
 
 import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/docker/swarmkit/api"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 // convert.go contains functions for converting swarm objects into CSI requests

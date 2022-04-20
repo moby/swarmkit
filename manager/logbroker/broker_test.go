@@ -11,11 +11,11 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/ca/testutils"
-	"github.com/docker/swarmkit/manager/state/store"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/ca"
+	"github.com/moby/swarmkit/v2/ca/testutils"
+	"github.com/moby/swarmkit/v2/manager/state/store"
+	"github.com/moby/swarmkit/v2/protobuf/ptypes"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 )

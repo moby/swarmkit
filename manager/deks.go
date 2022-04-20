@@ -5,9 +5,9 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/docker/swarmkit/ca"
-	"github.com/docker/swarmkit/manager/encryption"
-	"github.com/docker/swarmkit/manager/state/raft"
+	"github.com/moby/swarmkit/v2/ca"
+	"github.com/moby/swarmkit/v2/manager/encryption"
+	"github.com/moby/swarmkit/v2/manager/state/raft"
 )
 
 // This module contains the data structures and control flow to manage rotating the raft

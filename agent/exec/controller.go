@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/swarmkit/api"
-	"github.com/docker/swarmkit/api/equality"
-	"github.com/docker/swarmkit/log"
-	"github.com/docker/swarmkit/protobuf/ptypes"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/api/equality"
+	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/protobuf/ptypes"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
