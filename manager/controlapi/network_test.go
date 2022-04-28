@@ -22,6 +22,21 @@ func createNetworkSpec(name string) *api.NetworkSpec {
 	}
 }
 
+func createOverlayNetworkSpecWithSubnet(name, subnet string) *api.NetworkSpec {
+	spec := createNetworkSpec(name)
+	spec.DriverConfig = &api.Driver{
+		Name: "overlay",
+	}
+	spec.IPAM = &api.IPAMOptions{
+		Configs: []*api.IPAMConfig{
+			&api.IPAMConfig{
+				Subnet: subnet,
+			},
+		},
+	}
+	return spec
+}
+
 // createInternalNetwork creates an internal network for testing. it is the same
 // as Server.CreateNetwork except without the label check.
 func (s *Server) createInternalNetwork(ctx context.Context, request *api.CreateNetworkRequest) (*api.CreateNetworkResponse, error) {
@@ -205,6 +220,25 @@ func TestCreateNetworkInvalidDriver(t *testing.T) {
 	}
 	_, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
 		Spec: spec,
+	})
+	assert.Error(t, err)
+}
+
+func TestCreateNetworkOverlapIP(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+
+	//create first net
+	spec := createOverlayNetworkSpecWithSubnet("overlaynet", "10.2.0.0/24")
+	_, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
+		Spec: spec,
+	})
+	assert.NoError(t, err)
+
+	//create second net with overlap subnet
+	spec2 := createOverlayNetworkSpecWithSubnet("overlaynet2", "10.2.0.0/24")
+	_, err = ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
+		Spec: spec2,
 	})
 	assert.Error(t, err)
 }

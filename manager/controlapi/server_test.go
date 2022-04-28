@@ -12,15 +12,17 @@ import (
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/ca"
 	cautils "github.com/docker/swarmkit/ca/testutils"
+	"github.com/docker/swarmkit/manager/allocator"
 	"github.com/docker/swarmkit/manager/state/store"
 	stateutils "github.com/docker/swarmkit/manager/state/testutils"
 	"github.com/stretchr/testify/assert"
 )
 
 type testServer struct {
-	Server *Server
-	Client api.ControlClient
-	Store  *store.MemoryStore
+	Server    *Server
+	Client    api.ControlClient
+	Store     *store.MemoryStore
+	Allocator *allocator.Allocator
 
 	grpcServer *grpc.Server
 	clientConn *grpc.ClientConn
@@ -32,6 +34,7 @@ func (ts *testServer) Stop() {
 	ts.clientConn.Close()
 	ts.grpcServer.Stop()
 	ts.Store.Close()
+	ts.Allocator.Stop()
 	os.RemoveAll(ts.tempUnixSocket)
 }
 
@@ -46,6 +49,13 @@ func newTestServer(t *testing.T) *testServer {
 
 	ts.Store = store.NewMemoryStore(&stateutils.MockProposer{})
 	assert.NotNil(t, ts.Store)
+
+	ts.Allocator, err = allocator.New(ts.Store, nil, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, ts.Allocator)
+	go func() {
+		assert.NoError(t, ts.Allocator.Run(context.Background()))
+	}()
 
 	ts.Server = NewServer(ts.Store, nil, securityConfig, nil, nil)
 	assert.NotNil(t, ts.Server)
