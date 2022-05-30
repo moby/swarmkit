@@ -3,7 +3,6 @@ package ca_test
 import (
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,7 +22,7 @@ func TestKeyReadWriter(t *testing.T) {
 
 	expectedKey := key
 
-	tempdir, err := ioutil.TempDir("", "KeyReadWriter")
+	tempdir, err := os.MkdirTemp("", "KeyReadWriter")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -59,7 +58,7 @@ func TestKeyReadWriter(t *testing.T) {
 	expectedKey = pem.EncodeToMemory(keyBlock)
 	// write a version, but that's not what we'd expect back once we read
 	keyBlock.Headers["kek-version"] = "8"
-	require.NoError(t, ioutil.WriteFile(path.Node.Key, pem.EncodeToMemory(keyBlock), 0600))
+	require.NoError(t, os.WriteFile(path.Node.Key, pem.EncodeToMemory(keyBlock), 0o600))
 
 	// if a kek is provided, we can still read unencrypted keys, and read
 	// the provided version
@@ -131,7 +130,7 @@ func TestKeyReadWriterWithPemHeaderManager(t *testing.T) {
 	keyBlock.Headers = map[string]string{"hello": "world"}
 	key = pem.EncodeToMemory(keyBlock)
 
-	tempdir, err := ioutil.TempDir("", "KeyReadWriter")
+	tempdir, err := os.MkdirTemp("", "KeyReadWriter")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -207,7 +206,7 @@ func TestKeyReadWriterViewAndUpdateHeaders(t *testing.T) {
 	cert, key, err := testutils.CreateRootCertAndKey("cn")
 	require.NoError(t, err)
 
-	tempdir, err := ioutil.TempDir("", "KeyReadWriter")
+	tempdir, err := os.MkdirTemp("", "KeyReadWriter")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -218,8 +217,8 @@ func TestKeyReadWriterViewAndUpdateHeaders(t *testing.T) {
 	require.NotNil(t, keyBlock)
 	keyBlock.Headers = map[string]string{"hello": "world"}
 	key = pem.EncodeToMemory(keyBlock)
-	require.NoError(t, ioutil.WriteFile(path.Node.Cert, cert, 0644))
-	require.NoError(t, ioutil.WriteFile(path.Node.Key, key, 0600))
+	require.NoError(t, os.WriteFile(path.Node.Cert, cert, 0o644))
+	require.NoError(t, os.WriteFile(path.Node.Key, key, 0o600))
 
 	// if the update headers callback function fails, updating headers fails
 	k := ca.NewKeyReadWriter(path.Node, nil, nil)
@@ -273,7 +272,7 @@ func TestKeyReadWriterViewAndRotateKEK(t *testing.T) {
 	cert, key, err := testutils.CreateRootCertAndKey("cn")
 	require.NoError(t, err)
 
-	tempdir, err := ioutil.TempDir("", "KeyReadWriter")
+	tempdir, err := os.MkdirTemp("", "KeyReadWriter")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -332,7 +331,7 @@ func TestTwoPhaseReadWrite(t *testing.T) {
 	cert2, key2, err := testutils.CreateRootCertAndKey("cn")
 	require.NoError(t, err)
 
-	tempdir, err := ioutil.TempDir("", "KeyReadWriter")
+	tempdir, err := os.MkdirTemp("", "KeyReadWriter")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -341,12 +340,12 @@ func TestTwoPhaseReadWrite(t *testing.T) {
 
 	// put a directory in the location where the cert goes, so we can't actually move
 	// the cert from the temporary location to the final location.
-	require.NoError(t, os.Mkdir(filepath.Join(path.Node.Cert), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(path.Node.Cert), 0o755))
 	require.Error(t, krw.Write(cert2, key2, nil))
 
 	// the temp cert file should exist
 	tempCertPath := filepath.Join(filepath.Dir(path.Node.Cert), "."+filepath.Base(path.Node.Cert))
-	readCert, err := ioutil.ReadFile(tempCertPath)
+	readCert, err := os.ReadFile(tempCertPath)
 	require.NoError(t, err)
 	require.Equal(t, cert2, readCert)
 
@@ -361,8 +360,8 @@ func TestTwoPhaseReadWrite(t *testing.T) {
 	require.True(t, os.IsNotExist(err))
 
 	// If the cert in the proper location doesn't match the key, the temp location is checked
-	require.NoError(t, ioutil.WriteFile(tempCertPath, cert2, 0644))
-	require.NoError(t, ioutil.WriteFile(path.Node.Cert, cert1, 0644))
+	require.NoError(t, os.WriteFile(tempCertPath, cert2, 0o644))
+	require.NoError(t, os.WriteFile(path.Node.Cert, cert1, 0o644))
 	readCert, readKey, err = krw.Read()
 	require.NoError(t, err)
 	require.Equal(t, cert2, readCert)
@@ -374,7 +373,7 @@ func TestTwoPhaseReadWrite(t *testing.T) {
 	// If the cert in the temp location also doesn't match, the failure matching the
 	// correctly-located cert is returned
 	require.NoError(t, os.Remove(path.Node.Cert))
-	require.NoError(t, ioutil.WriteFile(tempCertPath, cert1, 0644)) // mismatching cert
+	require.NoError(t, os.WriteFile(tempCertPath, cert1, 0o644)) // mismatching cert
 	_, _, err = krw.Read()
 	require.True(t, os.IsNotExist(err))
 	// the cert should have been removed
@@ -386,7 +385,7 @@ func TestKeyReadWriterMigrate(t *testing.T) {
 	cert, key, err := testutils.CreateRootCertAndKey("cn")
 	require.NoError(t, err)
 
-	tempdir, err := ioutil.TempDir("", "KeyReadWriter")
+	tempdir, err := os.MkdirTemp("", "KeyReadWriter")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -394,8 +393,8 @@ func TestKeyReadWriterMigrate(t *testing.T) {
 
 	// if the key exists in an old location, migrate it from there.
 	tempKeyPath := filepath.Join(filepath.Dir(path.Node.Key), "."+filepath.Base(path.Node.Key))
-	require.NoError(t, ioutil.WriteFile(path.Node.Cert, cert, 0644))
-	require.NoError(t, ioutil.WriteFile(tempKeyPath, key, 0600))
+	require.NoError(t, os.WriteFile(path.Node.Cert, cert, 0o644))
+	require.NoError(t, os.WriteFile(tempKeyPath, key, 0o600))
 
 	krw := ca.NewKeyReadWriter(path.Node, nil, nil)
 	require.NoError(t, krw.Migrate())
@@ -405,10 +404,10 @@ func TestKeyReadWriterMigrate(t *testing.T) {
 	require.NoError(t, err)
 
 	// migrate does not affect any existing files
-	dirList, err := ioutil.ReadDir(filepath.Dir(path.Node.Key))
+	dirList, err := os.ReadDir(filepath.Dir(path.Node.Key))
 	require.NoError(t, err)
 	require.NoError(t, krw.Migrate())
-	dirList2, err := ioutil.ReadDir(filepath.Dir(path.Node.Key))
+	dirList2, err := os.ReadDir(filepath.Dir(path.Node.Key))
 	require.NoError(t, err)
 	require.Equal(t, dirList, dirList2)
 	_, _, err = krw.Read()
@@ -442,7 +441,7 @@ func testKeyReadWriterDowngradeKeyCase(t *testing.T, tc downgradeTestCase) error
 		key = pem.EncodeToMemory(block)
 	}
 
-	tempdir, err := ioutil.TempDir("", "KeyReadWriterDowngrade")
+	tempdir, err := os.MkdirTemp("", "KeyReadWriterDowngrade")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -455,8 +454,8 @@ func testKeyReadWriterDowngradeKeyCase(t *testing.T, tc downgradeTestCase) error
 	block.Headers["kek-version"] = "5"
 
 	key = pem.EncodeToMemory(block)
-	require.NoError(t, ioutil.WriteFile(path.Node.Cert, cert, 0644))
-	require.NoError(t, ioutil.WriteFile(path.Node.Key, key, 0600))
+	require.NoError(t, os.WriteFile(path.Node.Cert, cert, 0o644))
+	require.NoError(t, os.WriteFile(path.Node.Key, key, 0o600))
 
 	// if the update headers callback function fails, updating headers fails
 	k := ca.NewKeyReadWriter(path.Node, kek, nil)
@@ -465,7 +464,7 @@ func testKeyReadWriterDowngradeKeyCase(t *testing.T, tc downgradeTestCase) error
 	}
 
 	// read the key directly from fs so we can check if key
-	key, err = ioutil.ReadFile(path.Node.Key)
+	key, err = os.ReadFile(path.Node.Key)
 	require.NoError(t, err)
 
 	keyBlock, _ := pem.Decode(key)
@@ -528,7 +527,7 @@ func TestKeyReadWriterReadNonFIPS(t *testing.T) {
 	key, err = pkcs8.ConvertToECPrivateKeyPEM(key)
 	require.NoError(t, err)
 
-	tempdir, err := ioutil.TempDir("", "KeyReadWriter")
+	tempdir, err := os.MkdirTemp("", "KeyReadWriter")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 

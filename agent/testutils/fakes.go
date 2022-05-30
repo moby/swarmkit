@@ -2,7 +2,6 @@ package testutils
 
 import (
 	"context"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -138,6 +137,10 @@ func (m *MockDispatcher) UpdateTaskStatus(context.Context, *api.UpdateTaskStatus
 	panic("not implemented")
 }
 
+func (m *MockDispatcher) UpdateVolumeStatus(context.Context, *api.UpdateVolumeStatusRequest) (*api.UpdateVolumeStatusResponse, error) {
+	panic("not implemented")
+}
+
 // Tasks keeps an open stream until canceled
 func (m *MockDispatcher) Tasks(_ *api.TasksRequest, stream api.Dispatcher_TasksServer) error {
 	<-stream.Context().Done()
@@ -231,7 +234,7 @@ func NewMockDispatcher(t *testing.T, secConfig *ca.SecurityConfig, local bool) (
 		cleanup func()
 	)
 	if local {
-		tempDir, err := ioutil.TempDir("", "local-dispatcher-socket")
+		tempDir, err := os.MkdirTemp("", "local-dispatcher-socket")
 		require.NoError(t, err)
 		addr = filepath.Join(tempDir, "socket")
 		l, err = net.Listen("unix", addr)

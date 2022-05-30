@@ -15,10 +15,9 @@ INTEGRATION_PACKAGE=${PROJECT_ROOT}/integration
 COMMANDS=swarmd swarmctl swarm-bench swarm-rafttool protoc-gen-gogoswarm
 BINARIES=$(addprefix bin/,$(COMMANDS))
 
-VNDR=$(shell which vndr || echo '')
-
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
 
+GOBIN=$(shell go env GOPATH)/bin
 
 .DEFAULT_GOAL = all
 .PHONY: all
@@ -41,20 +40,17 @@ setup: ## install dependencies
 	# TODO(stevvooe): Install these from the vendor directory
 	# install golangci-lint version 1.17.1 to ./bin/golangci-lint
 	@curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.17.1
-	@go get -u github.com/lk4d4/vndr
-	# use GO111MODULE=on to get protobuild with the appropriate versions of its
-	# dependencies
-	@GO111MODULE=on go get github.com/stevvooe/protobuild
+	@(cd tools ; GO111MODULE=on go install github.com/containerd/protobuild)
 
 .PHONY: generate
 generate: protos
 	@echo "🐳 $@"
-	@PATH=${ROOTDIR}/bin:${PATH} go generate -x ${PACKAGES}
+	@PATH=${ROOTDIR}/bin:${GOBIN}:${PATH} go generate -x ${PACKAGES}
 
 .PHONY: protos
 protos: bin/protoc-gen-gogoswarm ## generate protobuf
 	@echo "🐳 $@"
-	@PATH=${ROOTDIR}/bin:${PATH} protobuild ${PACKAGES}
+	@PATH=${ROOTDIR}/bin:${GOBIN}:${PATH} protobuild ${PACKAGES}
 
 .PHONY: checkprotos
 checkprotos: generate ## check if protobufs needs to be generated again
@@ -139,14 +135,21 @@ help: ## this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
 
 .PHONY: dep-validate
-dep-validate:
+dep-validate: go-mod-vendor
 	@echo "+ $@"
-	$(if $(VNDR), , \
-		$(error Please install vndr: go get github.com/lk4d4/vndr))
-	@rm -Rf .vendor.bak
-	@mv vendor .vendor.bak
-	@$(VNDR)
-	@test -z "$$(diff -r vendor .vendor.bak 2>&1 | tee /dev/stderr)" || \
-		(echo >&2 "+ inconsistent dependencies! what you have in vendor.conf does not match with what you have in vendor" && false)
-	@rm -Rf vendor
-	@mv .vendor.bak vendor
+	@go mod tidy -modfile vendor.mod
+	@git diff --exit-code vendor.mod vendor.sum vendor || \
+		(echo >&2 "+ inconsistent dependencies! what you have in vendor.mod does not match with what you have in vendor" && false)
+
+go.mod:
+	@printf "module github.com/docker/swarmkit\n\ngo 1.17\n" > $@
+
+
+.PHONY: go-mod-vendor
+go-mod-vendor: go.mod
+	@go mod vendor -modfile vendor.mod
+	@# ensure that key protobuf spec files are in vendor dir
+	@module=github.com/gogo/protobuf ; \
+		prefix=$$(go env GOPATH)/pkg/mod/$${module} ; \
+		version=$$(go list -modfile vendor.mod -m -f '{{.Version}}' $${module}) ; \
+		cp -a $${prefix}@$${version}/protobuf vendor/$${module}/ && chmod -R u+w vendor/$${module}

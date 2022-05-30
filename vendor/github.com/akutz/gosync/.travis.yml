@@ -1,0 +1,35 @@
+# Use the newer Travis-CI build templates based on the
+# Debian Linux distribution "Trusty" release.
+dist: trusty
+
+# Setting "sudo" to false forces Travis-CI to use its
+# container-based build infrastructure, which has shorter
+# queue times.
+sudo: false
+
+# Select Go as the language used to run the buid.
+language:       go
+go_import_path: github.com/thecodeteam/gosync
+
+# Instruct Travis-CI to skip its built-in "go get"
+install: true
+
+jobs:
+  include:
+      # Validate sources (tests included) build without errors
+      - &build-stage
+        stage:   build
+        go:      1.8.5
+        script:  go build
+
+      - <<: *build-stage
+        go:      1.9.2
+
+      # Run tests
+      - &test-stage
+        stage:   test
+        go:      1.8.5
+        script:  go test -v
+
+      - <<: *test-stage
+        go:      1.9.2

@@ -5,7 +5,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -577,7 +576,7 @@ func TestForceNewCluster(t *testing.T) {
 
 	// generate an expired certificate
 	managerCertFile := filepath.Join(leader.stateDir, "certificates", "swarm-node.crt")
-	certBytes, err := ioutil.ReadFile(managerCertFile)
+	certBytes, err := os.ReadFile(managerCertFile)
 	require.NoError(t, err)
 	now := time.Now()
 	// we don't want it too expired, because it can't have expired before the root CA cert is valid
@@ -588,13 +587,13 @@ func TestForceNewCluster(t *testing.T) {
 	// restart node with an expired certificate while forcing a new cluster - it should start without error and the certificate should be renewed
 	nodeID := leader.node.NodeID()
 	require.NoError(t, leader.Pause(true))
-	require.NoError(t, ioutil.WriteFile(managerCertFile, expiredCertPEM, 0644))
+	require.NoError(t, os.WriteFile(managerCertFile, expiredCertPEM, 0o644))
 	require.NoError(t, cl.StartNode(nodeID))
 	pollClusterReady(t, cl, numWorker, numManager)
 	pollServiceReady(t, cl, sid, 2)
 
 	err = testutils.PollFuncWithTimeout(nil, func() error {
-		certBytes, err := ioutil.ReadFile(managerCertFile)
+		certBytes, err := os.ReadFile(managerCertFile)
 		if err != nil {
 			return err
 		}
@@ -611,7 +610,7 @@ func TestForceNewCluster(t *testing.T) {
 
 	// restart node with an expired certificate without forcing a new cluster - it should error on start
 	require.NoError(t, leader.Pause(true))
-	require.NoError(t, ioutil.WriteFile(managerCertFile, expiredCertPEM, 0644))
+	require.NoError(t, os.WriteFile(managerCertFile, expiredCertPEM, 0o644))
 	require.Error(t, cl.StartNode(nodeID))
 }
 

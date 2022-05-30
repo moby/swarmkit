@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -426,7 +426,7 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc(drivers.SecretsProviderAPI, func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		var request drivers.SecretsProviderRequest
 		assert.NoError(t, err)
 		assert.NoError(t, json.Unmarshal(body, &request))
@@ -521,7 +521,7 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 	resp, err := stream.Recv()
 	assert.NoError(t, err)
 
-	_, _, secretChanges := splitChanges(resp.Changes)
+	_, _, secretChanges, _ := splitChanges(resp.Changes)
 	assert.Len(t, secretChanges, 2)
 	for _, s := range secretChanges {
 		if s.ID == "driverSecret" {
@@ -534,6 +534,277 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 			assert.Equal(t, doNotReuseSecretValue, s.Spec.Data)
 		}
 	}
+}
+
+// TestAssignmentsWithVolume tests that Assignments correctly sends down
+// volumes.
+func TestAssignmentsWithVolume(t *testing.T) {
+	gd := startDispatcher(t, DefaultConfig())
+	defer gd.Close()
+
+	expectedSessionID, nodeID := getSessionAndNodeID(t, gd.Clients[0])
+
+	volumes := []*api.Volume{
+		{
+			ID: "volumeID0",
+			Spec: api.VolumeSpec{
+				Annotations: api.Annotations{
+					Name: "volumeName",
+				},
+				Driver: &api.Driver{
+					Name: "someDriver",
+				},
+				Secrets: []*api.VolumeSecret{
+					{
+						Key:    "volumeSecret0",
+						Secret: "secret0",
+					}, {
+						Key:    "volumeSecret1",
+						Secret: "secret1",
+					},
+				},
+			},
+			VolumeInfo: &api.VolumeInfo{
+				VolumeID: "csiID0",
+				VolumeContext: map[string]string{
+					"volumeID": "0",
+				},
+			},
+			PublishStatus: []*api.VolumePublishStatus{
+				{
+					NodeID: nodeID,
+					State:  api.VolumePublishStatus_PENDING_PUBLISH,
+				},
+			},
+		}, {
+			ID: "volumeID1",
+			Spec: api.VolumeSpec{
+				Annotations: api.Annotations{
+					Name: "volumeOtherName",
+				},
+				Group: "volumeGroup",
+				Driver: &api.Driver{
+					Name: "someDriver",
+				},
+				Secrets: []*api.VolumeSecret{
+					{
+						Key:    "volumeSecret0",
+						Secret: "secret0",
+					}, {
+						Key:    "volumeSecret2",
+						Secret: "secret2",
+					},
+				},
+			},
+			VolumeInfo: &api.VolumeInfo{
+				VolumeID: "csiID1",
+				VolumeContext: map[string]string{
+					"volumeID": "1",
+				},
+			},
+			PublishStatus: []*api.VolumePublishStatus{
+				{
+					NodeID: nodeID,
+					State:  api.VolumePublishStatus_PUBLISHED,
+					PublishContext: map[string]string{
+						"published": "yes",
+						"volumeID":  "1",
+					},
+				},
+			},
+		},
+	}
+
+	secrets := []*api.Secret{
+		{
+			ID: "secret0",
+			Spec: api.SecretSpec{
+				Annotations: api.Annotations{
+					Name: "secretName0",
+				},
+				Data: []byte("secret0 data"),
+			},
+		}, {
+			ID: "secret1",
+			Spec: api.SecretSpec{
+				Annotations: api.Annotations{
+					Name: "secretName1",
+				},
+				Data: []byte("secret1 data"),
+			},
+		}, {
+			ID: "secret2",
+			Spec: api.SecretSpec{
+				Annotations: api.Annotations{
+					Name: "secretName2",
+				},
+				Data: []byte("secret2 data"),
+			},
+		},
+	}
+
+	task := &api.Task{
+		ID:     "task1",
+		NodeID: nodeID,
+		Status: api.TaskStatus{
+			State: api.TaskStateAssigned,
+		},
+		DesiredState: api.TaskStateRunning,
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Mounts: []api.Mount{
+						{
+							Type:   api.MountTypeCSI,
+							Source: "volumeName",
+							Target: "/foo",
+						}, {
+							Type:   api.MountTypeCSI,
+							Source: "group:volumeGroup",
+							Target: "/bar",
+						},
+					},
+					Secrets: []*api.SecretReference{
+						{
+							SecretID:   "secret1",
+							SecretName: "secretName1",
+							Target: &api.SecretReference_File{
+								File: &api.FileTarget{
+									Name: "somefile",
+								},
+							},
+						},
+					},
+				},
+			},
+			ResourceReferences: []api.ResourceReference{
+				{
+					ResourceID:   "secret1",
+					ResourceType: api.ResourceType_SECRET,
+				},
+			},
+		},
+		Volumes: []*api.VolumeAttachment{
+			{
+				ID:     "volumeID0",
+				Source: "volumeName",
+				Target: "/foo",
+			}, {
+				ID:     "volumeID1",
+				Source: "group:volumeGroup",
+				Target: "/bar",
+			},
+		},
+	}
+
+	err := gd.Store.Update(func(tx store.Tx) error {
+		for _, secret := range secrets {
+			if err := store.CreateSecret(tx, secret); err != nil {
+				return err
+			}
+		}
+
+		for _, volume := range volumes {
+			if err := store.CreateVolume(tx, volume); err != nil {
+				return err
+			}
+		}
+
+		return store.CreateTask(tx, task)
+	})
+	assert.NoError(t, err)
+
+	stream, err := gd.Clients[0].Assignments(
+		context.Background(),
+		&api.AssignmentsRequest{SessionID: expectedSessionID},
+	)
+	assert.NoError(t, err)
+	defer stream.CloseSend()
+
+	time.Sleep(100 * time.Millisecond)
+
+	resp, err := stream.Recv()
+	assert.NoError(t, err)
+
+	verifyChanges(t, resp.Changes, []changeExpectations{
+		{
+			action:  api.AssignmentChange_AssignmentActionUpdate,
+			tasks:   []*api.Task{task},
+			secrets: secrets,
+			volumes: []*api.VolumeAssignment{
+				{
+					ID:       "volumeID1",
+					VolumeID: "csiID1",
+					Driver: &api.Driver{
+						Name: "someDriver",
+					},
+					VolumeContext: map[string]string{
+						"volumeID": "1",
+					},
+					PublishContext: map[string]string{
+						"published": "yes",
+						"volumeID":  "1",
+					},
+					Secrets: []*api.VolumeSecret{
+						{
+							Key:    "volumeSecret0",
+							Secret: "secret0",
+						}, {
+							Key:    "volumeSecret2",
+							Secret: "secret2",
+						},
+					},
+				},
+			},
+		},
+	})
+
+	// now update the volume to be published
+	assert.NoError(t, gd.Store.Update(func(tx store.Tx) error {
+		v := store.GetVolume(tx, "volumeID0")
+		v.PublishStatus[0].State = api.VolumePublishStatus_PUBLISHED
+		v.PublishStatus[0].PublishContext = map[string]string{
+			"published": "yes",
+			"volumeID":  "0",
+		}
+		return store.UpdateVolume(tx, v)
+	}))
+
+	// now see if we get a volume assignment
+	resp, err = stream.Recv()
+	assert.NoError(t, err)
+
+	_, _, _, volumeChanges := splitChanges(resp.Changes)
+	assert.Len(t, volumeChanges, 1)
+	assert.Equal(t,
+		volumeChanges[idAndAction{
+			id:     "volumeID0",
+			action: api.AssignmentChange_AssignmentActionUpdate,
+		}],
+		&api.VolumeAssignment{
+			ID:       "volumeID0",
+			VolumeID: "csiID0",
+			Driver: &api.Driver{
+				Name: "someDriver",
+			},
+			VolumeContext: map[string]string{
+				"volumeID": "0",
+			},
+			PublishContext: map[string]string{
+				"published": "yes",
+				"volumeID":  "0",
+			},
+			Secrets: []*api.VolumeSecret{
+				{
+					Key:    "volumeSecret0",
+					Secret: "secret0",
+				}, {
+					Key:    "volumeSecret1",
+					Secret: "secret1",
+				},
+			},
+		},
+	)
 }
 
 // When connecting to a dispatcher to get Assignments, if there are tasks already in the store,
@@ -1326,6 +1597,16 @@ func TestSession(t *testing.T) {
 	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
+	// update the cluster to include some csi plugins
+	err := gd.Store.Update(func(tx store.Tx) error {
+		cluster := store.GetCluster(tx, gd.testCA.Organization)
+		if cluster == nil {
+			return errors.New("no cluster")
+		}
+		return store.UpdateCluster(tx, cluster)
+	})
+	require.NoError(t, err)
+
 	stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
 	assert.NoError(t, err)
 	stream.CloseSend()
@@ -1361,10 +1642,11 @@ type idAndAction struct {
 	action api.AssignmentChange_AssignmentAction
 }
 
-func splitChanges(changes []*api.AssignmentChange) (map[idAndAction]*api.Task, map[idAndAction]*api.Config, map[idAndAction]*api.Secret) {
+func splitChanges(changes []*api.AssignmentChange) (map[idAndAction]*api.Task, map[idAndAction]*api.Config, map[idAndAction]*api.Secret, map[idAndAction]*api.VolumeAssignment) {
 	tasks := make(map[idAndAction]*api.Task)
 	secrets := make(map[idAndAction]*api.Secret)
 	configs := make(map[idAndAction]*api.Config)
+	volumes := make(map[idAndAction]*api.VolumeAssignment)
 	for _, change := range changes {
 		task := change.Assignment.GetTask()
 		if task != nil {
@@ -1378,23 +1660,28 @@ func splitChanges(changes []*api.AssignmentChange) (map[idAndAction]*api.Task, m
 		if config != nil {
 			configs[idAndAction{id: config.ID, action: change.Action}] = config
 		}
+		volume := change.Assignment.GetVolume()
+		if volume != nil {
+			volumes[idAndAction{id: volume.ID, action: change.Action}] = volume
+		}
 	}
 
-	return tasks, configs, secrets
+	return tasks, configs, secrets, volumes
 }
 
 type changeExpectations struct {
 	tasks   []*api.Task
 	secrets []*api.Secret
 	configs []*api.Config
+	volumes []*api.VolumeAssignment
 	action  api.AssignmentChange_AssignmentAction
 }
 
 // Ensures that the changes contain the following actions for the following tasks/secrets/configs
 func verifyChanges(t *testing.T, changes []*api.AssignmentChange, expectations []changeExpectations) {
-	taskChanges, configChanges, secretChanges := splitChanges(changes)
+	taskChanges, configChanges, secretChanges, volumeChanges := splitChanges(changes)
 
-	var expectedTasks, expectedSecrets, expectedConfigs int
+	var expectedTasks, expectedSecrets, expectedConfigs, expectedVolumes int
 	for _, c := range expectations {
 		for _, task := range c.tasks {
 			expectedTasks++
@@ -1413,12 +1700,18 @@ func verifyChanges(t *testing.T, changes []*api.AssignmentChange, expectations [
 			index := idAndAction{id: config.ID, action: c.action}
 			require.NotNil(t, configChanges[index], "missing config change %v", index)
 		}
+		for _, volume := range c.volumes {
+			expectedVolumes++
+			index := idAndAction{id: volume.ID, action: c.action}
+			require.NotNil(t, volumeChanges[index], "missing volume change %v", index)
+		}
 	}
 
 	require.Len(t, taskChanges, expectedTasks)
 	require.Len(t, secretChanges, expectedSecrets)
 	require.Len(t, configChanges, expectedConfigs)
-	require.Len(t, changes, expectedTasks+expectedSecrets+expectedConfigs)
+	require.Len(t, volumeChanges, expectedVolumes)
+	require.Len(t, changes, expectedTasks+expectedSecrets+expectedConfigs+expectedVolumes)
 }
 
 // filter all tasks by task state, which is given by a function because it's hard to take a range of constants

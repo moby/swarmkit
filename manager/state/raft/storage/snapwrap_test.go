@@ -2,15 +2,14 @@ package storage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/docker/swarmkit/api"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
 var _ SnapFactory = snapCryptor{}
@@ -18,7 +17,7 @@ var _ SnapFactory = snapCryptor{}
 var fakeSnapshotData = raftpb.Snapshot{
 	Data: []byte("snapshotdata"),
 	Metadata: raftpb.SnapshotMetadata{
-		ConfState: raftpb.ConfState{Nodes: []uint64{3}},
+		ConfState: raftpb.ConfState{Voters: []uint64{3}},
 		Index:     6,
 		Term:      2,
 	},
@@ -40,7 +39,7 @@ func getSnapshotFile(t *testing.T, tempdir string) string {
 
 // Snapshotter can read snapshots that are wrapped, but not encrypted
 func TestSnapshotterLoadNotEncryptedSnapshot(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "snapwrap")
+	tempdir, err := os.MkdirTemp("", "snapwrap")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -66,7 +65,7 @@ func TestSnapshotterLoadNotEncryptedSnapshot(t *testing.T) {
 
 // If there is no decrypter for a snapshot, decrypting fails
 func TestSnapshotterLoadNoDecrypter(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "snapwrap")
+	tempdir, err := os.MkdirTemp("", "snapwrap")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -92,7 +91,7 @@ func TestSnapshotterLoadNoDecrypter(t *testing.T) {
 
 // If decrypting a snapshot fails, the error is propagated
 func TestSnapshotterLoadDecryptingFail(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "snapwrap")
+	tempdir, err := os.MkdirTemp("", "snapwrap")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -122,7 +121,7 @@ func TestSnapshotterLoadDecryptingFail(t *testing.T) {
 // The snapshot data (but not metadata or anything else) is encryptd before being
 // passed to the wrapped Snapshotter.
 func TestSnapshotterSavesSnapshotWithEncryption(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "snapwrap")
+	tempdir, err := os.MkdirTemp("", "snapwrap")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -143,7 +142,7 @@ func TestSnapshotterSavesSnapshotWithEncryption(t *testing.T) {
 // If an encrypter is passed to Snapshotter, but encrypting the data fails, the
 // error is propagated up
 func TestSnapshotterSavesSnapshotEncryptionFails(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "snapwrap")
+	tempdir, err := os.MkdirTemp("", "snapwrap")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -164,7 +163,7 @@ func TestSnapshotterSavesSnapshotEncryptionFails(t *testing.T) {
 // Snapshotter can read what it wrote so long as it has the same decrypter
 func TestSaveAndLoad(t *testing.T) {
 	crypter := &meowCrypter{}
-	tempdir, err := ioutil.TempDir("", "waltests")
+	tempdir, err := os.MkdirTemp("", "waltests")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -184,14 +183,14 @@ func TestMigrateSnapshot(t *testing.T) {
 		dirs = make([]string, 3)
 	)
 
-	tempDir, err := ioutil.TempDir("", "test-migrate")
+	tempDir, err := os.MkdirTemp("", "test-migrate")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
 	for i := range dirs {
 		dirs[i] = filepath.Join(tempDir, fmt.Sprintf("snapDir%d", i))
 	}
-	require.NoError(t, os.Mkdir(dirs[0], 0755))
+	require.NoError(t, os.Mkdir(dirs[0], 0o755))
 	require.NoError(t, OriginalSnap.New(dirs[0]).SaveSnap(fakeSnapshotData))
 
 	// original to new
@@ -220,14 +219,14 @@ func TestMigrateSnapshot(t *testing.T) {
 	for _, dir := range dirs {
 		require.NoError(t, os.RemoveAll(dir))
 	}
-	require.NoError(t, os.Mkdir(dirs[0], 0755))
+	require.NoError(t, os.Mkdir(dirs[0], 0o755))
 	oldDir = dirs[0]
 	newDir = dirs[1]
 
 	err = MigrateSnapshot(oldDir, newDir, OriginalSnap, c)
 	require.NoError(t, err)
 
-	subdirs, err := ioutil.ReadDir(tempDir)
+	subdirs, err := os.ReadDir(tempDir)
 	require.NoError(t, err)
 	require.Len(t, subdirs, 1)
 }

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/url"
 
 	"github.com/docker/docker/api/types"
@@ -34,12 +34,12 @@ func (cli *Client) NetworkInspectWithRaw(ctx context.Context, networkID string, 
 		query.Set("scope", options.Scope)
 	}
 	resp, err = cli.get(ctx, "/networks/"+networkID, query, nil)
+	defer ensureReaderClosed(resp)
 	if err != nil {
 		return networkResource, nil, wrapResponseError(err, resp, "network", networkID)
 	}
-	defer ensureReaderClosed(resp)
 
-	body, err := ioutil.ReadAll(resp.body)
+	body, err := io.ReadAll(resp.body)
 	if err != nil {
 		return networkResource, nil, err
 	}

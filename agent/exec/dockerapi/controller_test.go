@@ -5,11 +5,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"reflect"
 	"runtime"
 	"testing"
 	"time"
+
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/docker/docker/api/types"
 	containertypes "github.com/docker/docker/api/types/container"
@@ -36,12 +37,12 @@ func TestControllerPrepare(t *testing.T) {
 
 	client.ImagePullFn = func(_ context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error) {
 		if refStr == config.image() {
-			return ioutil.NopCloser(bytes.NewBuffer([]byte{})), nil
+			return io.NopCloser(bytes.NewBuffer([]byte{})), nil
 		}
 		panic("unexpected call of ImagePull")
 	}
 
-	client.ContainerCreateFn = func(_ context.Context, cConfig *containertypes.Config, hConfig *containertypes.HostConfig, nConfig *network.NetworkingConfig, containerName string) (containertypes.ContainerCreateCreatedBody, error) {
+	client.ContainerCreateFn = func(_ context.Context, cConfig *containertypes.Config, hConfig *containertypes.HostConfig, nConfig *network.NetworkingConfig, platform *v1.Platform, containerName string) (containertypes.ContainerCreateCreatedBody, error) {
 		if reflect.DeepEqual(*cConfig, *config.config()) &&
 			reflect.DeepEqual(*hConfig, *config.hostConfig()) &&
 			reflect.DeepEqual(*nConfig, *config.networkingConfig()) &&
@@ -66,12 +67,12 @@ func TestControllerPrepareAlreadyPrepared(t *testing.T) {
 
 	client.ImagePullFn = func(_ context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error) {
 		if refStr == config.image() {
-			return ioutil.NopCloser(bytes.NewBuffer([]byte{})), nil
+			return io.NopCloser(bytes.NewBuffer([]byte{})), nil
 		}
 		panic("unexpected call of ImagePull")
 	}
 
-	client.ContainerCreateFn = func(_ context.Context, cConfig *containertypes.Config, hostConfig *containertypes.HostConfig, networking *network.NetworkingConfig, containerName string) (containertypes.ContainerCreateCreatedBody, error) {
+	client.ContainerCreateFn = func(_ context.Context, cConfig *containertypes.Config, hostConfig *containertypes.HostConfig, networking *network.NetworkingConfig, platform *v1.Platform, containerName string) (containertypes.ContainerCreateCreatedBody, error) {
 		if reflect.DeepEqual(*cConfig, *config.config()) &&
 			reflect.DeepEqual(*networking, *config.networkingConfig()) &&
 			containerName == config.name() {

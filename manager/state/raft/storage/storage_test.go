@@ -2,20 +2,19 @@ package storage
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarmkit/manager/encryption"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/etcd/server/v3/wal/walpb"
 )
 
 func TestBootstrapFromDisk(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "raft-storage")
+	tempdir, err := os.MkdirTemp("", "raft-storage")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -27,7 +26,7 @@ func TestBootstrapFromDisk(t *testing.T) {
 	require.NoError(t, err)
 
 	// everything should be saved with "key1"
-	_, entries, _ := makeWALData(0, 0)
+	_, entries, _ := makeWALData(0, 0, &confState)
 	err = logger.SaveEntries(raftpb.HardState{}, entries)
 	require.NoError(t, err)
 	logger.Close(context.Background())
@@ -46,7 +45,7 @@ func TestBootstrapFromDisk(t *testing.T) {
 	snapshot := fakeSnapshotData
 	err = logger.SaveSnapshot(snapshot)
 	require.NoError(t, err)
-	_, entries, _ = makeWALData(snapshot.Metadata.Index, snapshot.Metadata.Term)
+	_, entries, _ = makeWALData(snapshot.Metadata.Index, snapshot.Metadata.Term, &snapshot.Metadata.ConfState)
 	err = logger.SaveEntries(raftpb.HardState{}, entries)
 	require.NoError(t, err)
 	logger.Close(context.Background())
@@ -63,7 +62,7 @@ func TestBootstrapFromDisk(t *testing.T) {
 	require.Equal(t, entries, waldata.Entries)
 
 	// start writing more wals and rotate in the middle
-	_, entries, _ = makeWALData(snapshot.Metadata.Index, snapshot.Metadata.Term)
+	_, entries, _ = makeWALData(snapshot.Metadata.Index, snapshot.Metadata.Term, &snapshot.Metadata.ConfState)
 	err = logger.SaveEntries(raftpb.HardState{}, entries[:1])
 	require.NoError(t, err)
 	logger.RotateEncryptionKey([]byte("key2"))
@@ -95,7 +94,7 @@ func TestBootstrapFromDisk(t *testing.T) {
 
 // Ensure that we can change encoding and not have a race condition
 func TestRaftLoggerRace(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "raft-storage")
+	tempdir, err := os.MkdirTemp("", "raft-storage")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -106,7 +105,7 @@ func TestRaftLoggerRace(t *testing.T) {
 	err = logger.BootstrapNew([]byte("metadata"))
 	require.NoError(t, err)
 
-	_, entries, _ := makeWALData(fakeSnapshotData.Metadata.Index, fakeSnapshotData.Metadata.Term)
+	_, entries, _ := makeWALData(fakeSnapshotData.Metadata.Index, fakeSnapshotData.Metadata.Term, &fakeSnapshotData.Metadata.ConfState)
 
 	done1 := make(chan error)
 	done2 := make(chan error)
@@ -142,7 +141,7 @@ func TestRaftLoggerRace(t *testing.T) {
 func TestMigrateToV3EncryptedForm(t *testing.T) {
 	t.Parallel()
 
-	tempdir, err := ioutil.TempDir("", "raft-storage")
+	tempdir, err := os.MkdirTemp("", "raft-storage")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -151,13 +150,13 @@ func TestMigrateToV3EncryptedForm(t *testing.T) {
 	writeDataTo := func(suffix string, snapshot raftpb.Snapshot, walFactory WALFactory, snapFactory SnapFactory) []raftpb.Entry {
 		snapDir := filepath.Join(tempdir, "snap"+suffix)
 		walDir := filepath.Join(tempdir, "wal"+suffix)
-		require.NoError(t, os.MkdirAll(snapDir, 0755))
+		require.NoError(t, os.MkdirAll(snapDir, 0o755))
 		require.NoError(t, snapFactory.New(snapDir).SaveSnap(snapshot))
 
-		_, entries, _ := makeWALData(snapshot.Metadata.Index, snapshot.Metadata.Term)
+		_, entries, _ := makeWALData(snapshot.Metadata.Index, snapshot.Metadata.Term, &snapshot.Metadata.ConfState)
 		walWriter, err := walFactory.Create(walDir, []byte("metadata"))
 		require.NoError(t, err)
-		require.NoError(t, walWriter.SaveSnapshot(walpb.Snapshot{Index: snapshot.Metadata.Index, Term: snapshot.Metadata.Term}))
+		require.NoError(t, walWriter.SaveSnapshot(walpb.Snapshot{Index: snapshot.Metadata.Index, Term: snapshot.Metadata.Term, ConfState: &snapshot.Metadata.ConfState}))
 		require.NoError(t, walWriter.Save(raftpb.HardState{}, entries))
 		require.NoError(t, walWriter.Close())
 		return entries
@@ -180,9 +179,11 @@ func TestMigrateToV3EncryptedForm(t *testing.T) {
 	v3Snapshot := fakeSnapshotData
 	v3Snapshot.Metadata.Index += 100
 	v3Snapshot.Metadata.Term += 10
+	v3Snapshot.Metadata.ConfState = confState
 	v3EncryptedSnapshot := fakeSnapshotData
 	v3EncryptedSnapshot.Metadata.Index += 200
 	v3EncryptedSnapshot.Metadata.Term += 20
+	v3EncryptedSnapshot.Metadata.ConfState = confState
 
 	encoder, decoders := encryption.Defaults(dek, false)
 	walFactory := NewWALFactory(encoder, decoders)

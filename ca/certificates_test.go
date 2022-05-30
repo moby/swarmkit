@@ -11,7 +11,6 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"sync"
@@ -79,7 +78,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestCreateRootCASaveRootCA(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
+	tempBaseDir, err := os.MkdirTemp("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
@@ -100,7 +99,7 @@ func TestCreateRootCASaveRootCA(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 
 	// ensure that the cert that was written is already normalized
-	written, err := ioutil.ReadFile(paths.RootCA.Cert)
+	written, err := os.ReadFile(paths.RootCA.Cert)
 	assert.NoError(t, err)
 	assert.Equal(t, written, ca.NormalizePEMs(written))
 }
@@ -118,7 +117,7 @@ func TestCreateRootCAExpiry(t *testing.T) {
 }
 
 func TestGetLocalRootCA(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
+	tempBaseDir, err := os.MkdirTemp("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
@@ -144,7 +143,7 @@ func TestGetLocalRootCA(t *testing.T) {
 	assert.Equal(t, err, ca.ErrNoValidSigner)
 
 	// write private key and assert we can load it and sign
-	assert.NoError(t, ioutil.WriteFile(paths.RootCA.Key, s.Key, os.FileMode(0600)))
+	assert.NoError(t, os.WriteFile(paths.RootCA.Key, s.Key, os.FileMode(0o600)))
 	rootCA3, err := ca.GetLocalRootCA(paths.RootCA)
 	assert.NoError(t, err)
 	assert.Equal(t, rootCA.Certs, rootCA3.Certs)
@@ -160,30 +159,30 @@ func TestGetLocalRootCA(t *testing.T) {
 		Type:  "EC PRIVATE KEY",
 		Bytes: privKeyBytes,
 	})
-	assert.NoError(t, ioutil.WriteFile(paths.RootCA.Key, privKeyPem, os.FileMode(0600)))
+	assert.NoError(t, os.WriteFile(paths.RootCA.Key, privKeyPem, os.FileMode(0o600)))
 
 	_, err = ca.GetLocalRootCA(paths.RootCA)
 	assert.EqualError(t, err, "certificate key mismatch")
 }
 
 func TestGetLocalRootCAInvalidCert(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
+	tempBaseDir, err := os.MkdirTemp("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
 	paths := ca.NewConfigPaths(tempBaseDir)
 
 	// Write some garbage to the CA cert
-	require.NoError(t, ioutil.WriteFile(paths.RootCA.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
+	require.NoError(t, os.WriteFile(paths.RootCA.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
 some random garbage\n
------END CERTIFICATE-----`), 0644))
+-----END CERTIFICATE-----`), 0o644))
 
 	_, err = ca.GetLocalRootCA(paths.RootCA)
 	require.Error(t, err)
 }
 
 func TestGetLocalRootCAInvalidKey(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
+	tempBaseDir, err := os.MkdirTemp("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
@@ -194,9 +193,9 @@ func TestGetLocalRootCAInvalidKey(t *testing.T) {
 	require.NoError(t, ca.SaveRootCA(rootCA, paths.RootCA))
 
 	// Write some garbage to the root key - this will cause the loading to fail
-	require.NoError(t, ioutil.WriteFile(paths.RootCA.Key, []byte(`-----BEGIN PRIVATE KEY-----\n
+	require.NoError(t, os.WriteFile(paths.RootCA.Key, []byte(`-----BEGIN PRIVATE KEY-----\n
 some random garbage\n
------END PRIVATE KEY-----`), 0600))
+-----END PRIVATE KEY-----`), 0o600))
 
 	_, err = ca.GetLocalRootCA(paths.RootCA)
 	require.Error(t, err)
@@ -261,7 +260,7 @@ func TestGetRemoteCA(t *testing.T) {
 
 	// update the test CA to include a multi-certificate bundle as the root - the digest
 	// we use to verify with must be the digest of the whole bundle
-	tmpDir, err := ioutil.TempDir("", "GetRemoteCA")
+	tmpDir, err := os.MkdirTemp("", "GetRemoteCA")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 	paths := ca.NewConfigPaths(tmpDir)
@@ -338,7 +337,7 @@ func testRequestAndSaveNewCertificates(t *testing.T, tc *cautils.TestCA) (*ca.Is
 	require.False(t, perms.GroupWrite())
 	require.False(t, perms.OtherWrite())
 
-	certs, err := ioutil.ReadFile(tc.Paths.Node.Cert)
+	certs, err := os.ReadFile(tc.Paths.Node.Cert)
 	require.NoError(t, err)
 	require.Equal(t, certs, ca.NormalizePEMs(certs))
 
@@ -374,7 +373,7 @@ func TestRequestAndSaveNewCertificatesWithIntermediates(t *testing.T) {
 			CrossSignedCACert: concat([]byte("   "), cautils.ECDSACertChain[1]),
 		},
 	}
-	tempdir, err := ioutil.TempDir("", "test-request-and-save-new-certificates")
+	tempdir, err := os.MkdirTemp("", "test-request-and-save-new-certificates")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -453,7 +452,7 @@ func TestRequestAndSaveNewCertificatesWithKEKUpdate(t *testing.T) {
 
 // returns the issuer of the issued certificate and the parsed certs of the issued certificate
 func testIssueAndSaveNewCertificates(t *testing.T, rca *ca.RootCA) {
-	tempdir, err := ioutil.TempDir("", "test-issue-and-save-new-certificates")
+	tempdir, err := os.MkdirTemp("", "test-issue-and-save-new-certificates")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 	paths := ca.NewConfigPaths(tempdir)
@@ -485,7 +484,7 @@ func testIssueAndSaveNewCertificates(t *testing.T, rca *ca.RootCA) {
 		require.False(t, perms.GroupWrite())
 		require.False(t, perms.OtherWrite())
 
-		certBytes, err := ioutil.ReadFile(paths.Node.Cert)
+		certBytes, err := os.ReadFile(paths.Node.Cert)
 		require.NoError(t, err)
 		parsed := checkLeafCert(t, certBytes, issuer.Subject.CommonName, "CN", role, "org", additionalNames...)
 		if len(rca.Intermediates) > 0 {
@@ -926,7 +925,7 @@ func TestNewRootCA(t *testing.T) {
 }
 
 func TestNewRootCABundle(t *testing.T) {
-	tempBaseDir, err := ioutil.TempDir("", "swarm-ca-test-")
+	tempBaseDir, err := os.MkdirTemp("", "swarm-ca-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempBaseDir)
 
@@ -944,7 +943,7 @@ func TestNewRootCABundle(t *testing.T) {
 
 	// Overwrite the bytes of the second Root CA with the bundle, creating a valid 2 cert bundle
 	bundle := append(firstRootCA.Certs, secondRootCA.Certs...)
-	err = ioutil.WriteFile(paths.RootCA.Cert, bundle, 0644)
+	err = os.WriteFile(paths.RootCA.Cert, bundle, 0o644)
 	assert.NoError(t, err)
 
 	newRootCA, err := ca.NewRootCA(bundle, firstRootCA.Certs, s.Key, ca.DefaultNodeCertExpiration, nil)
@@ -957,7 +956,7 @@ func TestNewRootCABundle(t *testing.T) {
 	_, _, err = newRootCA.IssueAndSaveNewCertificates(kw, "CN", "OU", "ORG")
 	assert.NoError(t, err)
 
-	certBytes, err := ioutil.ReadFile(paths.Node.Cert)
+	certBytes, err := os.ReadFile(paths.Node.Cert)
 	assert.NoError(t, err)
 	assert.Len(t, checkLeafCert(t, certBytes, "rootCN1", "CN", "OU", "ORG"), 1)
 }
@@ -1189,7 +1188,7 @@ func TestNewRootCAInvalidCertAndKeys(t *testing.T) {
 }
 
 func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "swarm-ca-test-")
+	tempdir, err := os.MkdirTemp("", "swarm-ca-test-")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 
@@ -1485,7 +1484,7 @@ func TestRootCACrossSignCACertificate(t *testing.T) {
 		},
 	}
 
-	tempdir, err := ioutil.TempDir("", "cross-sign-cert")
+	tempdir, err := os.MkdirTemp("", "cross-sign-cert")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 	paths := ca.NewConfigPaths(tempdir)

@@ -24,7 +24,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type BasicScalar struct {
 	Field1  float64 `protobuf:"fixed64,1,opt,name=Field1,proto3" json:"Field1,omitempty"`
@@ -342,37 +342,37 @@ type isOneOf_FieldsTwo interface {
 }
 
 type OneOf_Field1 struct {
-	Field1 float64 `protobuf:"fixed64,1,opt,name=Field1,proto3,oneof"`
+	Field1 float64 `protobuf:"fixed64,1,opt,name=Field1,proto3,oneof" json:"Field1,omitempty"`
 }
 type OneOf_Field2 struct {
-	Field2 float32 `protobuf:"fixed32,2,opt,name=Field2,proto3,oneof"`
+	Field2 float32 `protobuf:"fixed32,2,opt,name=Field2,proto3,oneof" json:"Field2,omitempty"`
 }
 type OneOf_Field3 struct {
-	Field3 int32 `protobuf:"varint,3,opt,name=Field3,proto3,oneof"`
+	Field3 int32 `protobuf:"varint,3,opt,name=Field3,proto3,oneof" json:"Field3,omitempty"`
 }
 type OneOf_Field4 struct {
-	Field4 int64 `protobuf:"varint,4,opt,name=Field4,proto3,oneof"`
+	Field4 int64 `protobuf:"varint,4,opt,name=Field4,proto3,oneof" json:"Field4,omitempty"`
 }
 type OneOf_Field5 struct {
-	Field5 uint32 `protobuf:"varint,5,opt,name=Field5,proto3,oneof"`
+	Field5 uint32 `protobuf:"varint,5,opt,name=Field5,proto3,oneof" json:"Field5,omitempty"`
 }
 type OneOf_Field6 struct {
-	Field6 string `protobuf:"bytes,6,opt,name=Field6,proto3,oneof"`
+	Field6 string `protobuf:"bytes,6,opt,name=Field6,proto3,oneof" json:"Field6,omitempty"`
 }
 type OneOf_Field7 struct {
-	Field7 []byte `protobuf:"bytes,7,opt,name=Field7,proto3,oneof"`
+	Field7 []byte `protobuf:"bytes,7,opt,name=Field7,proto3,oneof" json:"Field7,omitempty"`
 }
 type OneOf_Field8 struct {
-	Field8 *MapStruct `protobuf:"bytes,8,opt,name=Field8,proto3,oneof"`
+	Field8 *MapStruct `protobuf:"bytes,8,opt,name=Field8,proto3,oneof" json:"Field8,omitempty"`
 }
 type OneOf_Field9 struct {
-	Field9 *RepeatedNonNullableExternalStruct `protobuf:"bytes,9,opt,name=Field9,proto3,oneof"`
+	Field9 *RepeatedNonNullableExternalStruct `protobuf:"bytes,9,opt,name=Field9,proto3,oneof" json:"Field9,omitempty"`
 }
 type OneOf_Field10 struct {
-	Field10 *NonNullableExternalStruct `protobuf:"bytes,10,opt,name=Field10,proto3,oneof"`
+	Field10 *NonNullableExternalStruct `protobuf:"bytes,10,opt,name=Field10,proto3,oneof" json:"Field10,omitempty"`
 }
 type OneOf_Field11 struct {
-	Field11 *RepeatedExternalStruct `protobuf:"bytes,11,opt,name=Field11,proto3,oneof"`
+	Field11 *RepeatedExternalStruct `protobuf:"bytes,11,opt,name=Field11,proto3,oneof" json:"Field11,omitempty"`
 }
 
 func (*OneOf_Field1) isOneOf_Fields()     {}
@@ -477,9 +477,9 @@ func (m *OneOf) GetField11() *RepeatedExternalStruct {
 	return nil
 }
 
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*OneOf) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _OneOf_OneofMarshaler, _OneOf_OneofUnmarshaler, _OneOf_OneofSizer, []interface{}{
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*OneOf) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
 		(*OneOf_Field1)(nil),
 		(*OneOf_Field2)(nil),
 		(*OneOf_Field3)(nil),
@@ -492,213 +492,6 @@ func (*OneOf) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, 
 		(*OneOf_Field10)(nil),
 		(*OneOf_Field11)(nil),
 	}
-}
-
-func _OneOf_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*OneOf)
-	// fields
-	switch x := m.Fields.(type) {
-	case *OneOf_Field1:
-		_ = b.EncodeVarint(1<<3 | proto.WireFixed64)
-		_ = b.EncodeFixed64(math.Float64bits(x.Field1))
-	case *OneOf_Field2:
-		_ = b.EncodeVarint(2<<3 | proto.WireFixed32)
-		_ = b.EncodeFixed32(uint64(math.Float32bits(x.Field2)))
-	case *OneOf_Field3:
-		_ = b.EncodeVarint(3<<3 | proto.WireVarint)
-		_ = b.EncodeVarint(uint64(x.Field3))
-	case *OneOf_Field4:
-		_ = b.EncodeVarint(4<<3 | proto.WireVarint)
-		_ = b.EncodeVarint(uint64(x.Field4))
-	case *OneOf_Field5:
-		_ = b.EncodeVarint(5<<3 | proto.WireVarint)
-		_ = b.EncodeVarint(uint64(x.Field5))
-	case *OneOf_Field6:
-		_ = b.EncodeVarint(6<<3 | proto.WireBytes)
-		_ = b.EncodeStringBytes(x.Field6)
-	case *OneOf_Field7:
-		_ = b.EncodeVarint(7<<3 | proto.WireBytes)
-		_ = b.EncodeRawBytes(x.Field7)
-	case *OneOf_Field8:
-		_ = b.EncodeVarint(8<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Field8); err != nil {
-			return err
-		}
-	case *OneOf_Field9:
-		_ = b.EncodeVarint(9<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Field9); err != nil {
-			return err
-		}
-	case nil:
-	default:
-		return fmt.Errorf("OneOf.Fields has unexpected type %T", x)
-	}
-	// fieldsTwo
-	switch x := m.FieldsTwo.(type) {
-	case *OneOf_Field10:
-		_ = b.EncodeVarint(10<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Field10); err != nil {
-			return err
-		}
-	case *OneOf_Field11:
-		_ = b.EncodeVarint(11<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Field11); err != nil {
-			return err
-		}
-	case nil:
-	default:
-		return fmt.Errorf("OneOf.FieldsTwo has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _OneOf_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*OneOf)
-	switch tag {
-	case 1: // fields.Field1
-		if wire != proto.WireFixed64 {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeFixed64()
-		m.Fields = &OneOf_Field1{math.Float64frombits(x)}
-		return true, err
-	case 2: // fields.Field2
-		if wire != proto.WireFixed32 {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeFixed32()
-		m.Fields = &OneOf_Field2{math.Float32frombits(uint32(x))}
-		return true, err
-	case 3: // fields.Field3
-		if wire != proto.WireVarint {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeVarint()
-		m.Fields = &OneOf_Field3{int32(x)}
-		return true, err
-	case 4: // fields.Field4
-		if wire != proto.WireVarint {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeVarint()
-		m.Fields = &OneOf_Field4{int64(x)}
-		return true, err
-	case 5: // fields.Field5
-		if wire != proto.WireVarint {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeVarint()
-		m.Fields = &OneOf_Field5{uint32(x)}
-		return true, err
-	case 6: // fields.Field6
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.Fields = &OneOf_Field6{x}
-		return true, err
-	case 7: // fields.Field7
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeRawBytes(true)
-		m.Fields = &OneOf_Field7{x}
-		return true, err
-	case 8: // fields.Field8
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(MapStruct)
-		err := b.DecodeMessage(msg)
-		m.Fields = &OneOf_Field8{msg}
-		return true, err
-	case 9: // fields.Field9
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(RepeatedNonNullableExternalStruct)
-		err := b.DecodeMessage(msg)
-		m.Fields = &OneOf_Field9{msg}
-		return true, err
-	case 10: // fieldsTwo.Field10
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(NonNullableExternalStruct)
-		err := b.DecodeMessage(msg)
-		m.FieldsTwo = &OneOf_Field10{msg}
-		return true, err
-	case 11: // fieldsTwo.Field11
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(RepeatedExternalStruct)
-		err := b.DecodeMessage(msg)
-		m.FieldsTwo = &OneOf_Field11{msg}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _OneOf_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*OneOf)
-	// fields
-	switch x := m.Fields.(type) {
-	case *OneOf_Field1:
-		n += 1 // tag and wire
-		n += 8
-	case *OneOf_Field2:
-		n += 1 // tag and wire
-		n += 4
-	case *OneOf_Field3:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(x.Field3))
-	case *OneOf_Field4:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(x.Field4))
-	case *OneOf_Field5:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(x.Field5))
-	case *OneOf_Field6:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(len(x.Field6)))
-		n += len(x.Field6)
-	case *OneOf_Field7:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(len(x.Field7)))
-		n += len(x.Field7)
-	case *OneOf_Field8:
-		s := proto.Size(x.Field8)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *OneOf_Field9:
-		s := proto.Size(x.Field9)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	// fieldsTwo
-	switch x := m.FieldsTwo.(type) {
-	case *OneOf_Field10:
-		s := proto.Size(x.Field10)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *OneOf_Field11:
-		s := proto.Size(x.Field11)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
 }
 
 func init() {
@@ -2297,13 +2090,13 @@ func NewPopulatedRepeatedScalarPacked(r randyDeepcopy, easy bool) *RepeatedScala
 
 func NewPopulatedExternalStruct(r randyDeepcopy, easy bool) *ExternalStruct {
 	this := &ExternalStruct{}
-	if r.Intn(10) != 0 {
+	if r.Intn(5) != 0 {
 		this.Field1 = NewPopulatedBasicScalar(r, easy)
 	}
-	if r.Intn(10) != 0 {
+	if r.Intn(5) != 0 {
 		this.Field2 = NewPopulatedRepeatedScalar(r, easy)
 	}
-	if r.Intn(10) != 0 {
+	if r.Intn(5) != 0 {
 		this.Field3 = NewPopulatedRepeatedScalarPacked(r, easy)
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -2313,21 +2106,21 @@ func NewPopulatedExternalStruct(r randyDeepcopy, easy bool) *ExternalStruct {
 
 func NewPopulatedRepeatedExternalStruct(r randyDeepcopy, easy bool) *RepeatedExternalStruct {
 	this := &RepeatedExternalStruct{}
-	if r.Intn(10) != 0 {
+	if r.Intn(5) != 0 {
 		v31 := r.Intn(5)
 		this.Field1 = make([]*BasicScalar, v31)
 		for i := 0; i < v31; i++ {
 			this.Field1[i] = NewPopulatedBasicScalar(r, easy)
 		}
 	}
-	if r.Intn(10) != 0 {
+	if r.Intn(5) != 0 {
 		v32 := r.Intn(5)
 		this.Field2 = make([]*RepeatedScalar, v32)
 		for i := 0; i < v32; i++ {
 			this.Field2[i] = NewPopulatedRepeatedScalar(r, easy)
 		}
 	}
-	if r.Intn(10) != 0 {
+	if r.Intn(5) != 0 {
 		v33 := r.Intn(5)
 		this.Field3 = make([]*RepeatedScalarPacked, v33)
 		for i := 0; i < v33; i++ {
@@ -2354,7 +2147,7 @@ func NewPopulatedNonNullableExternalStruct(r randyDeepcopy, easy bool) *NonNulla
 
 func NewPopulatedRepeatedNonNullableExternalStruct(r randyDeepcopy, easy bool) *RepeatedNonNullableExternalStruct {
 	this := &RepeatedNonNullableExternalStruct{}
-	if r.Intn(10) != 0 {
+	if r.Intn(5) != 0 {
 		v37 := r.Intn(5)
 		this.Field1 = make([]BasicScalar, v37)
 		for i := 0; i < v37; i++ {
@@ -2362,7 +2155,7 @@ func NewPopulatedRepeatedNonNullableExternalStruct(r randyDeepcopy, easy bool) *
 			this.Field1[i] = *v38
 		}
 	}
-	if r.Intn(10) != 0 {
+	if r.Intn(5) != 0 {
 		v39 := r.Intn(5)
 		this.Field2 = make([]RepeatedScalar, v39)
 		for i := 0; i < v39; i++ {
@@ -2370,7 +2163,7 @@ func NewPopulatedRepeatedNonNullableExternalStruct(r randyDeepcopy, easy bool) *
 			this.Field2[i] = *v40
 		}
 	}
-	if r.Intn(10) != 0 {
+	if r.Intn(5) != 0 {
 		v41 := r.Intn(5)
 		this.Field3 = make([]RepeatedScalarPacked, v41)
 		for i := 0; i < v41; i++ {
@@ -2385,14 +2178,14 @@ func NewPopulatedRepeatedNonNullableExternalStruct(r randyDeepcopy, easy bool) *
 
 func NewPopulatedMapStruct(r randyDeepcopy, easy bool) *MapStruct {
 	this := &MapStruct{}
-	if r.Intn(10) != 0 {
+	if r.Intn(5) != 0 {
 		v43 := r.Intn(10)
 		this.NullableMap = make(map[string]*BasicScalar)
 		for i := 0; i < v43; i++ {
 			this.NullableMap[randStringDeepcopy(r)] = NewPopulatedBasicScalar(r, easy)
 		}
 	}
-	if r.Intn(10) != 0 {
+	if r.Intn(5) != 0 {
 		v44 := r.Intn(10)
 		this.NonnullableMap = make(map[string]BasicScalar)
 		for i := 0; i < v44; i++ {
@@ -2658,9 +2451,9 @@ func (this *ExternalStruct) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&ExternalStruct{`,
-		`Field1:` + strings.Replace(fmt.Sprintf("%v", this.Field1), "BasicScalar", "BasicScalar", 1) + `,`,
-		`Field2:` + strings.Replace(fmt.Sprintf("%v", this.Field2), "RepeatedScalar", "RepeatedScalar", 1) + `,`,
-		`Field3:` + strings.Replace(fmt.Sprintf("%v", this.Field3), "RepeatedScalarPacked", "RepeatedScalarPacked", 1) + `,`,
+		`Field1:` + strings.Replace(this.Field1.String(), "BasicScalar", "BasicScalar", 1) + `,`,
+		`Field2:` + strings.Replace(this.Field2.String(), "RepeatedScalar", "RepeatedScalar", 1) + `,`,
+		`Field3:` + strings.Replace(this.Field3.String(), "RepeatedScalarPacked", "RepeatedScalarPacked", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2669,10 +2462,25 @@ func (this *RepeatedExternalStruct) String() string {
 	if this == nil {
 		return "nil"
 	}
+	repeatedStringForField1 := "[]*BasicScalar{"
+	for _, f := range this.Field1 {
+		repeatedStringForField1 += strings.Replace(f.String(), "BasicScalar", "BasicScalar", 1) + ","
+	}
+	repeatedStringForField1 += "}"
+	repeatedStringForField2 := "[]*RepeatedScalar{"
+	for _, f := range this.Field2 {
+		repeatedStringForField2 += strings.Replace(f.String(), "RepeatedScalar", "RepeatedScalar", 1) + ","
+	}
+	repeatedStringForField2 += "}"
+	repeatedStringForField3 := "[]*RepeatedScalarPacked{"
+	for _, f := range this.Field3 {
+		repeatedStringForField3 += strings.Replace(f.String(), "RepeatedScalarPacked", "RepeatedScalarPacked", 1) + ","
+	}
+	repeatedStringForField3 += "}"
 	s := strings.Join([]string{`&RepeatedExternalStruct{`,
-		`Field1:` + strings.Replace(fmt.Sprintf("%v", this.Field1), "BasicScalar", "BasicScalar", 1) + `,`,
-		`Field2:` + strings.Replace(fmt.Sprintf("%v", this.Field2), "RepeatedScalar", "RepeatedScalar", 1) + `,`,
-		`Field3:` + strings.Replace(fmt.Sprintf("%v", this.Field3), "RepeatedScalarPacked", "RepeatedScalarPacked", 1) + `,`,
+		`Field1:` + repeatedStringForField1 + `,`,
+		`Field2:` + repeatedStringForField2 + `,`,
+		`Field3:` + repeatedStringForField3 + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2693,10 +2501,25 @@ func (this *RepeatedNonNullableExternalStruct) String() string {
 	if this == nil {
 		return "nil"
 	}
+	repeatedStringForField1 := "[]BasicScalar{"
+	for _, f := range this.Field1 {
+		repeatedStringForField1 += strings.Replace(strings.Replace(f.String(), "BasicScalar", "BasicScalar", 1), `&`, ``, 1) + ","
+	}
+	repeatedStringForField1 += "}"
+	repeatedStringForField2 := "[]RepeatedScalar{"
+	for _, f := range this.Field2 {
+		repeatedStringForField2 += strings.Replace(strings.Replace(f.String(), "RepeatedScalar", "RepeatedScalar", 1), `&`, ``, 1) + ","
+	}
+	repeatedStringForField2 += "}"
+	repeatedStringForField3 := "[]RepeatedScalarPacked{"
+	for _, f := range this.Field3 {
+		repeatedStringForField3 += strings.Replace(strings.Replace(f.String(), "RepeatedScalarPacked", "RepeatedScalarPacked", 1), `&`, ``, 1) + ","
+	}
+	repeatedStringForField3 += "}"
 	s := strings.Join([]string{`&RepeatedNonNullableExternalStruct{`,
-		`Field1:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Field1), "BasicScalar", "BasicScalar", 1), `&`, ``, 1) + `,`,
-		`Field2:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Field2), "RepeatedScalar", "RepeatedScalar", 1), `&`, ``, 1) + `,`,
-		`Field3:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Field3), "RepeatedScalarPacked", "RepeatedScalarPacked", 1), `&`, ``, 1) + `,`,
+		`Field1:` + repeatedStringForField1 + `,`,
+		`Field2:` + repeatedStringForField2 + `,`,
+		`Field3:` + repeatedStringForField3 + `,`,
 		`}`,
 	}, "")
 	return s

@@ -14,17 +14,17 @@ import (
 	"github.com/docker/docker/api/types"
 )
 
-// ContainerStatPath returns Stat information about a path inside the container filesystem.
+// ContainerStatPath returns stat information about a path inside the container filesystem.
 func (cli *Client) ContainerStatPath(ctx context.Context, containerID, path string) (types.ContainerPathStat, error) {
 	query := url.Values{}
 	query.Set("path", filepath.ToSlash(path)) // Normalize the paths used in the API.
 
 	urlStr := "/containers/" + containerID + "/archive"
 	response, err := cli.head(ctx, urlStr, query, nil)
+	defer ensureReaderClosed(response)
 	if err != nil {
 		return types.ContainerPathStat{}, wrapResponseError(err, response, "container:path", containerID+":"+path)
 	}
-	defer ensureReaderClosed(response)
 	return getContainerPathStatFromHeader(response.header)
 }
 
@@ -45,10 +45,10 @@ func (cli *Client) CopyToContainer(ctx context.Context, containerID, dstPath str
 	apiPath := "/containers/" + containerID + "/archive"
 
 	response, err := cli.putRaw(ctx, apiPath, query, content, nil)
+	defer ensureReaderClosed(response)
 	if err != nil {
 		return wrapResponseError(err, response, "container:path", containerID+":"+dstPath)
 	}
-	defer ensureReaderClosed(response)
 
 	// TODO this code converts non-error status-codes (e.g., "204 No Content") into an error; verify if this is the desired behavior
 	if response.statusCode != http.StatusOK {

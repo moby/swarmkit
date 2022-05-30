@@ -24,6 +24,7 @@ package plugins // import "github.com/docker/docker/pkg/plugins"
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -254,6 +255,9 @@ func get(name string) (*Plugin, error) {
 
 // Get returns the plugin given the specified name and requested implementation.
 func Get(name, imp string) (*Plugin, error) {
+	if name == "" {
+		return nil, errors.New("Unable to find plugin without name")
+	}
 	pl, err := get(name)
 	if err != nil {
 		return nil, err
@@ -262,7 +266,7 @@ func Get(name, imp string) (*Plugin, error) {
 		logrus.Debugf("%s implements: %s", name, imp)
 		return pl, nil
 	}
-	return nil, ErrNotImplements
+	return nil, fmt.Errorf("%w: plugin=%q, requested implementation=%q", ErrNotImplements, name, imp)
 }
 
 // Handle adds the specified function to the extpointHandlers.

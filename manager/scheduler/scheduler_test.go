@@ -2468,6 +2468,220 @@ func TestIgnoreTasks(t *testing.T) {
 	assert.Equal(t, assignment3.NodeID, "node1")
 }
 
+// TestNoStuckTask tests that a task which is cannot be scheduled (because of
+// MaxReplicas or otherwise) does not remain stuck in the Pending state forever
+// if the service is updated.
+//
+// Before the change which introduced this test, if a task got stuck in
+// Pending, it could stay there forever, because it could not progress through
+// the scheduler, and could likewise not be shut down.
+//
+// After the change which introduced this test, if the desired state of a task
+// is terminal, and the task is in pending, and there is no suitable node, then
+// the task is shut down.
+func TestUnscheduleableTask(t *testing.T) {
+	ctx := context.Background()
+	node := &api.Node{
+		ID: "nodeid1",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node",
+			},
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+		Description: &api.NodeDescription{},
+	}
+
+	task1 := &api.Task{
+		ID:           "taskid1",
+		ServiceID:    "serviceid1",
+		DesiredState: api.TaskStateRunning,
+		SpecVersion: &api.Version{
+			Index: 0,
+		},
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{},
+			},
+			Placement: &api.Placement{
+				MaxReplicas: 1,
+			},
+		},
+		ServiceAnnotations: api.Annotations{
+			Name: "servicename1",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+	}
+
+	task2 := &api.Task{
+		ID:           "taskid2",
+		ServiceID:    "serviceid1",
+		DesiredState: api.TaskStateRunning,
+		SpecVersion: &api.Version{
+			Index: 0,
+		},
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{},
+			},
+			Placement: &api.Placement{
+				MaxReplicas: 1,
+			},
+		},
+		ServiceAnnotations: api.Annotations{
+			Name: "servicename1",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+	}
+
+	service1 := &api.Service{
+		ID: "serviceid1",
+		SpecVersion: &api.Version{
+			Index: 0,
+		},
+	}
+
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	err := s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateService(tx, service1))
+		assert.NoError(t, store.CreateTask(tx, task1))
+		assert.NoError(t, store.CreateTask(tx, task2))
+		assert.NoError(t, store.CreateNode(tx, node))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(s)
+
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run(ctx))
+	}()
+	defer scheduler.Stop()
+
+	var assigned, failed *api.Task
+watchAttempt:
+	for {
+		select {
+		case event := <-watch:
+			if task, ok := event.(api.EventUpdateTask); ok {
+				if task.Task.Status.State < api.TaskStateAssigned {
+					failed = task.Task.Copy()
+				} else if task.Task.Status.State >= api.TaskStateAssigned &&
+					task.Task.Status.State <= api.TaskStateRunning &&
+					task.Task.NodeID != "" {
+					assigned = task.Task.Copy()
+				}
+			}
+		case <-time.After(time.Second):
+			assignedID := "none"
+			failedID := "none"
+
+			if assigned != nil {
+				assignedID = assigned.ID
+			}
+			if failed != nil {
+				failedID = failed.ID
+			}
+			t.Fatalf(
+				"did not get assignment and failure. Assigned: %v, Failed: %v",
+				assignedID, failedID,
+			)
+		}
+		if assigned != nil && failed != nil {
+			break watchAttempt
+		}
+	}
+
+	assert.Equal(t, "no suitable node (max replicas per node limit exceed)", failed.Status.Err)
+
+	// this is a case where the service is scaled down. in practice, scaling
+	// down a service does not work like this, but for this test, it can.
+	task1Update := &api.Task{
+		ID:           "taskid1update",
+		ServiceID:    "serviceid1",
+		DesiredState: api.TaskStateRunning,
+		SpecVersion: &api.Version{
+			Index: 1,
+		},
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{},
+			},
+			Placement: &api.Placement{
+				MaxReplicas: 1,
+			},
+		},
+		ServiceAnnotations: api.Annotations{
+			Name: "servicename1",
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+	}
+
+	service1.SpecVersion.Index = 1
+
+	// now, update the tasks.
+	err = s.Update(func(tx store.Tx) error {
+		assigned.Status.State = api.TaskStateRunning
+		// simulate Start First ordering, where we'll start the new task then
+		// stop the old one. this is worst-case scenario, because it means that
+		// the other task (the one that succeeded) cannot be freed yet.
+		//
+		// if we set the old task to a terminal state, it there will be a race
+		// in the test where the old task might be marked freed, allowing the
+		// failed task to progress. We want to handle the case where this does
+		// not happen
+		assert.NoError(t, store.UpdateTask(tx, assigned))
+
+		failed.DesiredState = api.TaskStateShutdown
+		assert.NoError(t, store.UpdateTask(tx, failed))
+
+		assert.NoError(t, store.CreateTask(tx, task1Update))
+
+		assert.NoError(t, store.UpdateService(tx, service1))
+
+		return nil
+	})
+
+	assert.NoError(t, err)
+
+	// because the failed task is still currently under the purview of the
+	// scheduler, the scheduler should shut it down.
+watchShutdown:
+	for {
+		select {
+		case event := <-watch:
+			if task, ok := event.(api.EventUpdateTask); ok {
+				if task.Task.ID == failed.ID {
+					if task.Task.Status.State >= api.TaskStateShutdown {
+						break watchShutdown
+					}
+				}
+				if task.Task.ID == task1Update.ID {
+					if task.Task.Status.State == api.TaskStateAssigned {
+						t.Logf("updated task assigned")
+					}
+				}
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("old task %s never shut down", failed.ID)
+		}
+	}
+}
+
 func watchAssignmentFailure(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {

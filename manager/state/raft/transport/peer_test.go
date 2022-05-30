@@ -5,8 +5,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
 // Test SplitSnapshot() for different snapshot sizes.

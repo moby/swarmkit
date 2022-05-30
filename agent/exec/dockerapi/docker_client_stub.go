@@ -12,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // StubAPIClient implements the client.APIClient interface, but allows
@@ -19,7 +20,7 @@ import (
 type StubAPIClient struct {
 	client.APIClient
 	calls              map[string]int
-	ContainerCreateFn  func(_ context.Context, config *container.Config, hostConfig *container.HostConfig, networking *network.NetworkingConfig, containerName string) (container.ContainerCreateCreatedBody, error)
+	ContainerCreateFn  func(_ context.Context, config *container.Config, hostConfig *container.HostConfig, networking *network.NetworkingConfig, platform *v1.Platform, containerName string) (container.ContainerCreateCreatedBody, error)
 	ContainerInspectFn func(_ context.Context, containerID string) (types.ContainerJSON, error)
 	ContainerKillFn    func(_ context.Context, containerID, signal string) error
 	ContainerRemoveFn  func(_ context.Context, containerID string, options types.ContainerRemoveOptions) error
@@ -51,9 +52,9 @@ func (sa *StubAPIClient) called() {
 }
 
 // ContainerCreate is part of the APIClient interface
-func (sa *StubAPIClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networking *network.NetworkingConfig, containerName string) (container.ContainerCreateCreatedBody, error) {
+func (sa *StubAPIClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networking *network.NetworkingConfig, platform *v1.Platform, containerName string) (container.ContainerCreateCreatedBody, error) {
 	sa.called()
-	return sa.ContainerCreateFn(ctx, config, hostConfig, networking, containerName)
+	return sa.ContainerCreateFn(ctx, config, hostConfig, networking, platform, containerName)
 }
 
 // ContainerInspect is part of the APIClient interface

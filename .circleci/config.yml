@@ -11,7 +11,8 @@ jobs:
       # Needed to install go
       OS: linux
       ARCH: amd64
-      GOVERSION: 1.12
+      GOVERSION: 1.17
+      GO111MODULE: "off"
       # Needed to install protoc
       PROTOC_VERSION: 3.6.1
 
@@ -29,7 +30,7 @@ jobs:
 
     # /dev/shm in the container is tmpfs although files in /dev/shm are not executable.
     # If we specify TMPDIR=/dev/shm, /dev/shm will be used by our tests, which call
-    # ioutil.TempDir/ioutil.TempFile, to write temporary files.
+    # os.MkdirTemp/os.CreateTemp, to write temporary files.
     # We can also specify GOTMPDIR=/tmp or some other non-tmpfs directory
     # (see https://golang.org/doc/go1.10#goroot) - this is the directory in which the
     # go tool itself will put temporarily compiled test executables, etc.
@@ -73,6 +74,10 @@ jobs:
 
     - run:
         name: Validate dependency vendoring
+        environment:
+          # ensure GOPATH is set to single directory so the make target doesn't need to handle a column-separated list
+          GOPATH: /home/circleci/.go_workspace
+          GO111MODULE: "on"
         command: |
             git fetch origin
             if test -n "`git diff --stat=1000 origin/master | grep -E \"^[[:space:]]*vendor\"`"; then

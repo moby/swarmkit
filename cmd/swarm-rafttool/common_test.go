@@ -2,14 +2,10 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/wal/walpb"
 	"github.com/docker/swarmkit/ca"
 	"github.com/docker/swarmkit/ca/testutils"
 	"github.com/docker/swarmkit/manager"
@@ -17,13 +13,16 @@ import (
 	"github.com/docker/swarmkit/manager/state/raft"
 	"github.com/docker/swarmkit/manager/state/raft/storage"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/etcd/server/v3/wal/walpb"
 )
 
 // writeFakeRaftData writes the given snapshot and some generated WAL data to given "snap" and "wal" directories
 func writeFakeRaftData(t *testing.T, stateDir string, snapshot *raftpb.Snapshot, wf storage.WALFactory, sf storage.SnapFactory) {
 	snapDir := filepath.Join(stateDir, "raft", "snap-v3-encrypted")
 	walDir := filepath.Join(stateDir, "raft", "wal-v3-encrypted")
-	require.NoError(t, os.MkdirAll(snapDir, 0755))
+	require.NoError(t, os.MkdirAll(snapDir, 0o755))
 
 	wsn := walpb.Snapshot{}
 	if snapshot != nil {
@@ -31,6 +30,7 @@ func writeFakeRaftData(t *testing.T, stateDir string, snapshot *raftpb.Snapshot,
 
 		wsn.Index = snapshot.Metadata.Index
 		wsn.Term = snapshot.Metadata.Term
+		wsn.ConfState = &snapshot.Metadata.ConfState
 	}
 
 	var entries []raftpb.Entry
@@ -50,7 +50,7 @@ func writeFakeRaftData(t *testing.T, stateDir string, snapshot *raftpb.Snapshot,
 }
 
 func TestDecrypt(t *testing.T) {
-	tempdir, err := ioutil.TempDir("", "rafttool")
+	tempdir, err := os.MkdirTemp("", "rafttool")
 	require.NoError(t, err)
 	defer os.RemoveAll(tempdir)
 

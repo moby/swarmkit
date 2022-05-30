@@ -3,7 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/docker/swarmkit/api"
@@ -31,12 +31,12 @@ var createCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			configData, err = ioutil.ReadFile(filename)
+			configData, err = os.ReadFile(filename)
 			if err != nil {
 				return fmt.Errorf("Error reading from file '%s': %s", filename, err.Error())
 			}
 		} else {
-			configData, err = ioutil.ReadAll(os.Stdin)
+			configData, err = io.ReadAll(os.Stdin)
 			if err != nil {
 				return fmt.Errorf("Error reading content from STDIN: %s", err.Error())
 			}

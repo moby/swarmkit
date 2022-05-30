@@ -12,7 +12,7 @@ import (
 	"github.com/docker/docker/errdefs"
 )
 
-// ImageSearch makes the docker host to search by a term in a remote registry.
+// ImageSearch makes the docker host search by a term in a remote registry.
 // The list of results is not sorted in any fashion.
 func (cli *Client) ImageSearch(ctx context.Context, term string, options types.ImageSearchOptions) ([]registry.SearchResult, error) {
 	var results []registry.SearchResult
@@ -29,6 +29,7 @@ func (cli *Client) ImageSearch(ctx context.Context, term string, options types.I
 	}
 
 	resp, err := cli.tryImageSearch(ctx, query, options.RegistryAuth)
+	defer ensureReaderClosed(resp)
 	if errdefs.IsUnauthorized(err) && options.PrivilegeFunc != nil {
 		newAuthHeader, privilegeErr := options.PrivilegeFunc()
 		if privilegeErr != nil {
@@ -41,7 +42,6 @@ func (cli *Client) ImageSearch(ctx context.Context, term string, options types.I
 	}
 
 	err = json.NewDecoder(resp.body).Decode(&results)
-	ensureReaderClosed(resp)
 	return results, err
 }
 
