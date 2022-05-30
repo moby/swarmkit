@@ -1,7 +1,7 @@
 # Root directory of the project (absolute path).
 ROOTDIR=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-PROJECT_ROOT=github.com/docker/swarmkit
+PROJECT_ROOT=github.com/shezhua/swarmkit
 
 SHELL := /bin/bash
 

@@ -207,6 +207,7 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 		Mounts:       c.mounts(),
 		Tmpfs:        c.tmpfs(),
 		GroupAdd:     c.spec().Groups,
+		Privileged:   c.spec().Privileged,
 		PortBindings: c.portBindings(),
 		Init:         c.init(),
 		Isolation:    c.isolation(),
