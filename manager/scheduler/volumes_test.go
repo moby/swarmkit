@@ -129,7 +129,7 @@ var _ = Describe("volumeSet", func() {
 						Container: &api.ContainerSpec{
 							Mounts: []api.Mount{
 								{
-									Type:   api.MountTypeCSI,
+									Type:   api.MountTypeCluster,
 									Source: v1.Spec.Group,
 									Target: "/var/spool/mail",
 								}, {
@@ -137,7 +137,7 @@ var _ = Describe("volumeSet", func() {
 									Source: "/var/run/docker.sock",
 									Target: "/var/run/docker.sock",
 								}, {
-									Type:     api.MountTypeCSI,
+									Type:     api.MountTypeCluster,
 									Source:   v2.Spec.Annotations.Name,
 									Target:   "/srv/www",
 									ReadOnly: true,
@@ -444,7 +444,7 @@ var _ = Describe("volumeSet", func() {
 
 			It("should choose and return an available volume", func() {
 				mount := &api.Mount{
-					Type:   api.MountTypeCSI,
+					Type:   api.MountTypeCluster,
 					Source: "volumeName1",
 				}
 				volumeID := vs.isVolumeAvailableOnNode(mount, node)
@@ -453,7 +453,7 @@ var _ = Describe("volumeSet", func() {
 
 			It("should return an empty string if there are no available volumes", func() {
 				mount := &api.Mount{
-					Type:   api.MountTypeCSI,
+					Type:   api.MountTypeCluster,
 					Source: "volumeNameNotReal",
 				}
 				volumeID := vs.isVolumeAvailableOnNode(mount, node)
@@ -462,7 +462,7 @@ var _ = Describe("volumeSet", func() {
 
 			It("should specify one volume from a group, if the source is a group", func() {
 				mount := &api.Mount{
-					Type:   api.MountTypeCSI,
+					Type:   api.MountTypeCluster,
 					Source: "group:someVolumeGroup",
 				}
 				volumeID := vs.isVolumeAvailableOnNode(mount, node)
@@ -480,12 +480,12 @@ var _ = Describe("volumeSet", func() {
 			vs.addOrUpdateVolume(v3)
 			mounts := []api.Mount{
 				{
-					Type:     api.MountTypeCSI,
+					Type:     api.MountTypeCluster,
 					Source:   "group:volumeGroup",
 					Target:   "/somedir",
 					ReadOnly: true,
 				}, {
-					Type:   api.MountTypeCSI,
+					Type:   api.MountTypeCluster,
 					Source: v2.Spec.Annotations.Name,
 					Target: "/someOtherDir",
 				}, {
@@ -493,7 +493,7 @@ var _ = Describe("volumeSet", func() {
 					Source: "/some/subdir",
 					Target: "/some/container/dir",
 				}, {
-					Type:   api.MountTypeCSI,
+					Type:   api.MountTypeCluster,
 					Source: v3.Spec.Annotations.Name,
 					Target: "/some/third/dir",
 				},
@@ -569,12 +569,12 @@ var _ = Describe("volumeSet", func() {
 							Container: &api.ContainerSpec{
 								Mounts: []api.Mount{
 									{
-										Type:   api.MountTypeCSI,
+										Type:   api.MountTypeCluster,
 										Source: volumes[i].Spec.Annotations.Name,
 										Target: "bar",
 									},
 									{
-										Type:   api.MountTypeCSI,
+										Type:   api.MountTypeCluster,
 										Source: allVolume.Spec.Annotations.Name,
 										Target: "baz",
 									},

@@ -655,11 +655,11 @@ func TestAssignmentsWithVolume(t *testing.T) {
 				Container: &api.ContainerSpec{
 					Mounts: []api.Mount{
 						{
-							Type:   api.MountTypeCSI,
+							Type:   api.MountTypeCluster,
 							Source: "volumeName",
 							Target: "/foo",
 						}, {
-							Type:   api.MountTypeCSI,
+							Type:   api.MountTypeCluster,
 							Source: "group:volumeGroup",
 							Target: "/bar",
 						},

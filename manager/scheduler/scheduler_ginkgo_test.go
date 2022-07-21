@@ -129,7 +129,7 @@ var _ = Describe("Scheduler", func() {
 							Container: &api.ContainerSpec{
 								Mounts: []api.Mount{
 									{
-										Type:   api.MountTypeCSI,
+										Type:   api.MountTypeCluster,
 										Source: "volume1",
 										Target: "/var/",
 									},
@@ -474,12 +474,12 @@ var _ = Describe("Scheduler", func() {
 							Container: &api.ContainerSpec{
 								Mounts: []api.Mount{
 									{
-										Type:   api.MountTypeCSI,
+										Type:   api.MountTypeCluster,
 										Source: "volume1",
 										Target: "/var/",
 									},
 									{
-										Type:   api.MountTypeCSI,
+										Type:   api.MountTypeCluster,
 										Source: "group:group2",
 										Target: "/home/",
 									},
@@ -511,7 +511,7 @@ var _ = Describe("Scheduler", func() {
 							Container: &api.ContainerSpec{
 								Mounts: []api.Mount{
 									{
-										Type:   api.MountTypeCSI,
+										Type:   api.MountTypeCluster,
 										Source: "volume1",
 										Target: "/foo/",
 									},
@@ -539,7 +539,7 @@ var _ = Describe("Scheduler", func() {
 							Container: &api.ContainerSpec{
 								Mounts: []api.Mount{
 									{
-										Type:   api.MountTypeCSI,
+										Type:   api.MountTypeCluster,
 										Source: "group:group2",
 										Target: "/foo/",
 									},
