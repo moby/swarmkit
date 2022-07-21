@@ -7,11 +7,11 @@ import (
 	"sort"
 	"text/tabwriter"
 
+	"github.com/dustin/go-humanize"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/genericresource"
 	"github.com/moby/swarmkit/v2/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/cmd/swarmctl/task"
-	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 )
 

@@ -30,7 +30,6 @@ func init() {
 // Run with something like this:
 //
 //	go test -run TestControllerFlowIntegration -test.docker.addr unix:///var/run/docker.sock
-//
 func TestControllerFlowIntegration(t *testing.T) {
 	if dockerTestAddr == "" {
 		t.Skip("specify docker address to run integration")

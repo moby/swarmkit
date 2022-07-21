@@ -3,9 +3,9 @@ package storeobject
 import (
 	"strings"
 
-	"github.com/moby/swarmkit/v2/protobuf/plugin"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
+	"github.com/moby/swarmkit/v2/protobuf/plugin"
 )
 
 // FIXME(aaronl): Look at fields inside the descriptor instead of

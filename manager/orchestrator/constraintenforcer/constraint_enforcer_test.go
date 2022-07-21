@@ -196,14 +196,15 @@ func TestConstraintEnforcer(t *testing.T) {
 // updates, the tasks are not considered "dirty" and are not restarted but it
 // will mean that the task spec's placement constraints are outdated. Consider
 // this example:
-// - A service is created with no constraints and a task is scheduled
-//   to a node.
-// - The node is updated to add a label, this doesn't affect the task
-//   on that node because it has no constraints.
-// - The service is updated to add a node label constraint which
-//   matches the label which was just added to the node. The updater
-//   does not shut down the task because the only the constraints have
-//   changed and the node still matches the updated constraints.
+//   - A service is created with no constraints and a task is scheduled
+//     to a node.
+//   - The node is updated to add a label, this doesn't affect the task
+//     on that node because it has no constraints.
+//   - The service is updated to add a node label constraint which
+//     matches the label which was just added to the node. The updater
+//     does not shut down the task because the only the constraints have
+//     changed and the node still matches the updated constraints.
+//
 // This test initializes a new in-memory store with the expected state from
 // above, starts a new constraint enforcer, and then updates the node to remove
 // the node label. Since the node no longer satisfies the placement constraints

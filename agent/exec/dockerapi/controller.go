@@ -15,10 +15,10 @@ import (
 	"github.com/docker/docker/api/types/events"
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"golang.org/x/time/rate"
 )

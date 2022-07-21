@@ -8,9 +8,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/cmd/swarmctl/common"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/spf13/cobra"
 )
 

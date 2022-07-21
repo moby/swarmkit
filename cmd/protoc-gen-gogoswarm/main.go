@@ -1,13 +1,13 @@
 package main
 
 import (
+	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	"github.com/gogo/protobuf/vanity"
+	"github.com/gogo/protobuf/vanity/command"
 	_ "github.com/moby/swarmkit/v2/protobuf/plugin/authenticatedwrapper"
 	_ "github.com/moby/swarmkit/v2/protobuf/plugin/deepcopy"
 	_ "github.com/moby/swarmkit/v2/protobuf/plugin/raftproxy"
 	_ "github.com/moby/swarmkit/v2/protobuf/plugin/storeobject"
-	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
-	"github.com/gogo/protobuf/vanity"
-	"github.com/gogo/protobuf/vanity/command"
 )
 
 func main() {
