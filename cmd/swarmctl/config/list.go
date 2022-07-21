@@ -7,10 +7,10 @@ import (
 	"sort"
 	"text/tabwriter"
 
-	"github.com/moby/swarmkit/v2/api"
-	"github.com/moby/swarmkit/v2/cmd/swarmctl/common"
 	"github.com/dustin/go-humanize"
 	gogotypes "github.com/gogo/protobuf/types"
+	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/cmd/swarmctl/common"
 	"github.com/spf13/cobra"
 )
 

@@ -9,12 +9,12 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/dustin/go-humanize"
+	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/genericresource"
 	"github.com/moby/swarmkit/v2/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/cmd/swarmctl/task"
-	"github.com/dustin/go-humanize"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/spf13/cobra"
 )
 

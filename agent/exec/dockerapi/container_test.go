@@ -9,8 +9,8 @@ import (
 	enginemount "github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/go-units"
-	"github.com/moby/swarmkit/v2/api"
 	gogotypes "github.com/gogo/protobuf/types"
+	"github.com/moby/swarmkit/v2/api"
 )
 
 func TestVolumesAndBinds(t *testing.T) {

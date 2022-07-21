@@ -1745,7 +1745,7 @@ func getResourcesFromReferences(gd *grpcDispatcher, resourceRefs []*api.Resource
 	return referencedSecrets, referencedConfigs
 }
 
-// filters all dependencies (secrets, configs); dependencies should be in `inTasks`, but not be in `notInTasks``
+// filters all dependencies (secrets, configs); dependencies should be in inTasks, but not be in notInTasks
 func filterDependencies(secrets []*api.Secret, configs []*api.Config, inTasks, notInTasks []*api.Task) ([]*api.Secret, []*api.Config) {
 	var (
 		wantSecrets, wantConfigs = make(map[string]struct{}), make(map[string]struct{})

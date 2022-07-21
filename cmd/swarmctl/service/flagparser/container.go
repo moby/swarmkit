@@ -1,8 +1,8 @@
 package flagparser
 
 import (
-	"github.com/moby/swarmkit/v2/api"
 	gogotypes "github.com/gogo/protobuf/types"
+	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/pflag"
 )
 
