@@ -139,6 +139,7 @@ dep-validate: go-mod-vendor
 
 .PHONY: go-mod-vendor
 go-mod-vendor:
+	@go mod tidy
 	@go mod vendor
 	@# ensure that key protobuf spec files are in vendor dir
 	@module=github.com/gogo/protobuf ; \
