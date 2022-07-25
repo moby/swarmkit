@@ -7,7 +7,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.2
 	github.com/akutz/memconn v0.1.0
 	github.com/cloudflare/cfssl v1.6.4
-	github.com/container-storage-interface/spec v1.2.0
+	github.com/container-storage-interface/spec v1.5.0
 	github.com/docker/distribution v2.8.2+incompatible
 	github.com/docker/docker v24.0.0-rc.2.0.20230714223606-37b908aa628c+incompatible // master (v25.0.0-dev)
 	github.com/docker/go-connections v0.4.0
