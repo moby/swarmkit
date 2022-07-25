@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	code.cloudfoundry.org/clock v1.0.0
-	github.com/Microsoft/go-winio v0.4.17
+	github.com/Microsoft/go-winio v0.5.2
 	github.com/akutz/memconn v0.1.0
 	github.com/cloudflare/cfssl v0.0.0-20180323000720-5d63dbd981b5
 	github.com/container-storage-interface/spec v1.2.0
