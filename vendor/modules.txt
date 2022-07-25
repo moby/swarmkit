@@ -15,8 +15,6 @@ github.com/akutz/memconn
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
-# github.com/boltdb/bolt v1.3.1
-## explicit
 # github.com/cespare/xxhash/v2 v2.1.2
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
@@ -110,7 +108,7 @@ github.com/docker/go-metrics
 # github.com/docker/go-units v0.5.0
 ## explicit
 github.com/docker/go-units
-# github.com/docker/libkv v0.2.1
+# github.com/docker/libkv v0.2.2-0.20211217103745-e480589147e3
 ## explicit
 github.com/docker/libkv
 github.com/docker/libkv/store
