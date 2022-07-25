@@ -248,7 +248,7 @@ github.com/opencontainers/go-digest
 ## explicit
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/phayes/permbits v0.0.0-20160117212716-f7e3ac5e859d
+# github.com/phayes/permbits v0.0.0-20190612203442-39d7c581d2ee
 ## explicit
 github.com/phayes/permbits
 # github.com/pkg/errors v0.9.1
