@@ -218,7 +218,7 @@ There is a watch server that provides a very similar interface to the `Watch`
 call. See `api/watch.proto` for the relevant protobuf definitions.
 
 A full gRPC API for the store has been proposed, but not yet merged at the time
-this document was written. See https://github.com/docker/swarmkit/pull/1998 for
+this document was written. See https://github.com/moby/swarmkit/pull/1998 for
 draft code. In this proposal, the gRPC store API did not support full
 transactions, but did allow creations and updates to happen in atomic sets.
 Implementing full transactions over gRPC presents some challenges, because of

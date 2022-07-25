@@ -81,7 +81,7 @@ number of tasks running on multiple nodes, it prefers to remove tasks that
 aren't running (in terms of observed state) over tasks that are currently
 running. Note that scale-down decisions are made by the orchestrator, and don't
 quite match the state the scheduler would arrive at when scaling up. This is an
-area for future improvement; see https://github.com/docker/swarmkit/issues/2320
+area for future improvement; see https://github.com/moby/swarmkit/issues/2320
 for more details.
 
 In both of these cases, and also in the case where the number of replicas is

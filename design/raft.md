@@ -3,7 +3,7 @@
 SwarmKit uses the Raft consensus protocol to synchronize state between manager
 nodes and support high availability. The lowest level portions of this are
 provided by the `go.etcd.io/etcd/raft/v3` package. SwarmKit's
-`github.com/docker/swarmkit/manager/state/raft` package builds a complete
+`github.com/moby/swarmkit/manager/state/raft` package builds a complete
 solution on top of this, adding things like saving and loading state on disk,
 an RPC layer so nodes can pass Raft messages over a network, and dynamic cluster
 membership.
@@ -201,7 +201,7 @@ invoke RPCs on the leader, so the communication would only happen in one
 direction. It would normally be impossible for the node to catch up. With
 `ResolveAddress`, it can query other cluster members for the leader's address,
 and restore two-way communication. See
-https://github.com/docker/swarmkit/issues/436 more details on this situation.
+https://github.com/moby/swarmkit/issues/436 more details on this situation.
 
 SwarmKit's `raft/transport` package abstracts the mechanism for keeping track of
 peers, and sending messages to them over gRPC in a specific message order.

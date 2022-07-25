@@ -44,7 +44,7 @@ func (sa *StubAPIClient) called() {
 	if !ok {
 		panic("failed to update counts")
 	}
-	// longName looks like 'github.com/docker/swarmkit/agent/exec.(*StubController).Prepare:1'
+	// longName looks like 'github.com/moby/swarmkit/agent/exec.(*StubController).Prepare:1'
 	longName := runtime.FuncForPC(pc).Name()
 	parts := strings.Split(longName, ".")
 	tail := strings.Split(parts[len(parts)-1], ":")

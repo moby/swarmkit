@@ -57,15 +57,15 @@ to be cluster wide in order to satisfy other use cases (e.g: pool of licenses)
 
 ## Related Issues
 
-  * [Support abstract resource](https://github.com/docker/swarmkit/issues/594)
+  * [Support abstract resource](https://github.com/moby/swarmkit/issues/594)
   * [Add new node filter to scheduler](https://github.com/docker/swarm/issues/2223)
-  * [Add support for devices](https://github.com/docker/swarmkit/issues/1244)
-  * [Resource Control](https://github.com/docker/swarmkit/issues/211)
+  * [Add support for devices](https://github.com/moby/swarmkit/issues/1244)
+  * [Resource Control](https://github.com/moby/swarmkit/issues/211)
   * [NVIDIA GPU support](https://github.com/docker/docker/issues/23917)
   * [Does Docker have plan to support allocating GPU](https://github.com/docker/docker/issues/24582)
   * [Docker Swarm to orchestrate "Swarm Cluster" which supports GPU](https://github.com/docker/docker/issues/24750)
   * [Use accelerator in docker container](https://github.com/docker/docker/issues/28642)
-  * [Specify resource selectors](https://github.com/docker/swarmkit/issues/206)
+  * [Specify resource selectors](https://github.com/moby/swarmkit/issues/206)
 
 ## Objectives
 

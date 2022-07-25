@@ -1,5 +1,5 @@
 #
-# This file describes who runs the docker/swarmkit project and how.
+# This file describes who runs the moby/swarmkit project and how.
 # This file is compiled into the MAINTAINERS file in docker/opensource.
 #
 [Org]
