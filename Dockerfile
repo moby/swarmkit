@@ -1,7 +1,7 @@
 # NOTE(dperny): for some reason, alpine was giving me trouble
-ARG GO_VERSION=1.17.4
+ARG GO_VERSION=1.18.8
 ARG DEBIAN_FRONTEND=noninteractive
-ARG BASE_DEBIAN_DISTRO="buster"
+ARG BASE_DEBIAN_DISTRO="bullseye"
 ARG GOLANG_IMAGE="golang:${GO_VERSION}-${BASE_DEBIAN_DISTRO}"
 
 FROM ${GOLANG_IMAGE}

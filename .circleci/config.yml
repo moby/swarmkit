@@ -11,7 +11,7 @@ jobs:
       # Needed to install go
       OS: linux
       ARCH: amd64
-      GOVERSION: 1.17.9
+      GOVERSION: 1.18.8
       GO111MODULE: "on"
       # Needed to install protoc
       PROTOC_VERSION: 3.6.1
