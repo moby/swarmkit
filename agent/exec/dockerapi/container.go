@@ -212,6 +212,7 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 		Isolation:    c.isolation(),
 		CapAdd:       c.spec().CapabilityAdd,
 		CapDrop:      c.spec().CapabilityDrop,
+		Privileged:   c.spec().Privileged,
 	}
 
 	// The format of extra hosts on swarmkit is specified in:

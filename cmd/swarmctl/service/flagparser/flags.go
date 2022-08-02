@@ -25,6 +25,7 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.StringSlice("env", nil, "container env")
 	flags.Bool("tty", false, "open a tty on standard streams")
 	flags.Bool("open-stdin", false, "open standard input")
+	flags.Bool("privileged", false, "give extended privileges to container (default false)")
 
 	flags.StringSlice("ports", nil, "ports")
 	flags.String("network", "", "network name")
