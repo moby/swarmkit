@@ -28,6 +28,7 @@ var cannedVolume = &api.Volume{
 		Driver: &api.Driver{
 			Name: testVolumeDriver,
 		},
+		AccessibilityRequirements: &api.TopologyRequirement{},
 		// use defaults for access mode.
 		AccessMode: &api.VolumeAccessMode{
 			// use block access mode because it has no fields
@@ -212,9 +213,11 @@ func TestUpdateVolume(t *testing.T) {
 		volume = store.GetVolume(tx, volume.ID)
 	})
 
-	// for now, we can only update labels
+	// for now, we can only update labels and availability
 	spec := volume.Spec.Copy()
 	spec.Annotations.Labels = map[string]string{"foolabel": "waldo"}
+	spec.Availability = api.VolumeAvailabilityDrain
+	spec.AccessibilityRequirements = &api.TopologyRequirement{}
 
 	resp, err := ts.Client.UpdateVolume(context.Background(), &api.UpdateVolumeRequest{
 		VolumeID:      volume.ID,
@@ -359,6 +362,21 @@ func TestUpdateVolumeInvalidFields(t *testing.T) {
 				spec.AccessMode = &api.VolumeAccessMode{
 					Scope:   api.VolumeScopeMultiNode,
 					Sharing: api.VolumeSharingReadOnly,
+				}
+			},
+		}, {
+			name: "Secrets",
+			apply: func(spec *api.VolumeSpec) {
+				spec.Secrets = []*api.VolumeSecret{
+					&api.VolumeSecret{Key: "mykey", Secret: "mysecret"},
+				}
+			},
+		}, {
+			name: "CapacityRange",
+			apply: func(spec *api.VolumeSpec) {
+				spec.CapacityRange = &api.CapacityRange{
+					RequiredBytes: 120975108,
+					LimitBytes:    599999999999,
 				}
 			},
 		},
