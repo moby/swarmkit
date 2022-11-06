@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/api/genericresource"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/testutils"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -262,7 +263,7 @@ func TestOutdatedTaskPlacementConstraints(t *testing.T) {
 	defer s.Close()
 
 	require.NoError(t, s.Update(func(tx store.Tx) error {
-		// Prepoulate node, service, and task.
+		// Prepopulate node, service, and task.
 		for _, err := range []error{
 			store.CreateNode(tx, node),
 			store.CreateService(tx, service),
@@ -287,6 +288,102 @@ func TestOutdatedTaskPlacementConstraints(t *testing.T) {
 	require.NoError(t, s.Update(func(tx store.Tx) error {
 		node = store.GetNode(tx, node.ID)
 		delete(node.Spec.Annotations.Labels, "foo")
+		return store.UpdateNode(tx, node)
+	}))
+
+	// The task should be rejected immediately.
+	task = testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, api.TaskStateRejected, task.Status.State)
+}
+
+func TestGenericResourcesPlacementConstraints(t *testing.T) {
+	node := &api.Node{
+		ID: "id0",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node1",
+			},
+			Availability: api.NodeAvailabilityActive,
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+		Role: api.NodeRoleWorker,
+		Description: &api.NodeDescription{
+			Resources: &api.Resources{
+				Generic: genericresource.NewSet("mygeneric", "1"),
+			},
+		},
+	}
+
+	service := &api.Service{
+		ID: "id1",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "service1",
+			},
+			Task: api.TaskSpec{
+				Resources: &api.ResourceRequirements{
+					Reservations: &api.Resources{
+						Generic: genericresource.NewSet("mygeneric", "1"),
+					},
+				},
+			},
+		},
+	}
+
+	task := &api.Task{
+		ID: "id2",
+		Spec: api.TaskSpec{
+			Resources: &api.ResourceRequirements{
+				Reservations: &api.Resources{
+					Generic: genericresource.NewSet("mygeneric", "1"),
+				},
+			},
+		},
+		ServiceID: service.ID,
+		NodeID:    node.ID,
+		Status: api.TaskStatus{
+			State: api.TaskStateRunning,
+		},
+		DesiredState:             api.TaskStateRunning,
+		AssignedGenericResources: genericresource.NewSet("mygeneric", "1"),
+	}
+
+	s := store.NewMemoryStore(nil)
+	require.NotNil(t, s)
+	defer s.Close()
+
+	require.NoError(t, s.Update(func(tx store.Tx) error {
+		// Prepopulate node, service, and task.
+		for _, err := range []error{
+			store.CreateNode(tx, node),
+			store.CreateService(tx, service),
+			store.CreateTask(tx, task),
+		} {
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}))
+
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
+	defer cancel()
+
+	constraintEnforcer := New(s)
+	defer constraintEnforcer.Stop()
+
+	go constraintEnforcer.Run()
+
+	// Update the node to remove the generic resource
+	require.NoError(t, s.Update(func(tx store.Tx) error {
+		node = store.GetNode(tx, node.ID)
+		node.Description = &api.NodeDescription{
+			Resources: &api.Resources{
+				Generic: genericresource.NewSet("mygeneric", "2"),
+			},
+		}
 		return store.UpdateNode(tx, node)
 	}))
 
