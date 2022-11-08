@@ -410,7 +410,6 @@ func (h *Handle) Destroy() error {
 
 // ToByteArray converts this handle's data into a byte array
 func (h *Handle) ToByteArray() ([]byte, error) {
-
 	h.Lock()
 	defer h.Unlock()
 	ba := make([]byte, 16)
@@ -617,13 +616,14 @@ func findSequence(head *sequence, bytePos uint64) (*sequence, *sequence, uint64,
 // Remove current sequence if empty.
 // Check if new sequence can be merged with neighbour (previous/next) sequences.
 //
-//
 // Identify "current" sequence containing block:
-//                                      [prev seq] [current seq] [next seq]
+//
+//	[prev seq] [current seq] [next seq]
 //
 // Based on block position, resulting list of sequences can be any of three forms:
 //
-//        block position                        Resulting list of sequences
+// block position                        Resulting list of sequences
+//
 // A) block is first in current:         [prev seq] [new] [modified current seq] [next seq]
 // B) block is last in current:          [prev seq] [modified current seq] [new] [next seq]
 // C) block is in the middle of current: [prev seq] [curr pre] [new] [curr post] [next seq]

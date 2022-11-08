@@ -77,7 +77,7 @@ github.com/davecgh/go-spew/spew
 ## explicit
 github.com/docker/distribution/digestset
 github.com/docker/distribution/reference
-# github.com/docker/docker v20.10.3-0.20220408103430-7ea283fd9166+incompatible
+# github.com/docker/docker v20.10.3-0.20221105174132-4f3c5b2568c2+incompatible
 ## explicit
 github.com/docker/docker/api
 github.com/docker/docker/api/types

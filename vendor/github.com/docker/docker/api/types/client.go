@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/registry"
 	units "github.com/docker/go-units"
 )
 
@@ -112,15 +113,30 @@ type NetworkListOptions struct {
 	Filters filters.Args
 }
 
+// NewHijackedResponse intializes a HijackedResponse type
+func NewHijackedResponse(conn net.Conn, mediaType string) HijackedResponse {
+	return HijackedResponse{Conn: conn, Reader: bufio.NewReader(conn), mediaType: mediaType}
+}
+
 // HijackedResponse holds connection information for a hijacked request.
 type HijackedResponse struct {
-	Conn   net.Conn
-	Reader *bufio.Reader
+	mediaType string
+	Conn      net.Conn
+	Reader    *bufio.Reader
 }
 
 // Close closes the hijacked connection and reader.
 func (h *HijackedResponse) Close() {
 	h.Conn.Close()
+}
+
+// MediaType let client know if HijackedResponse hold a raw or multiplexed stream.
+// returns false if HTTP Content-Type is not relevant, and container must be inspected
+func (h *HijackedResponse) MediaType() (string, bool) {
+	if h.mediaType == "" {
+		return "", false
+	}
+	return h.mediaType, true
 }
 
 // CloseWriter is an interface that implements structs
@@ -165,7 +181,7 @@ type ImageBuildOptions struct {
 	// at all (nil). See the parsing of buildArgs in
 	// api/server/router/build/build_routes.go for even more info.
 	BuildArgs   map[string]*string
-	AuthConfigs map[string]AuthConfig
+	AuthConfigs map[string]registry.AuthConfig
 	Context     io.Reader
 	Labels      map[string]string
 	// squash the resulting image's layers to the parent

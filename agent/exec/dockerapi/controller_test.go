@@ -13,6 +13,7 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/network"
@@ -24,7 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var tenSecond = 10 * time.Second
+var tenSecond = 10
 
 func TestControllerPrepare(t *testing.T) {
 	task := genTask(t)
@@ -42,12 +43,12 @@ func TestControllerPrepare(t *testing.T) {
 		panic("unexpected call of ImagePull")
 	}
 
-	client.ContainerCreateFn = func(_ context.Context, cConfig *containertypes.Config, hConfig *containertypes.HostConfig, nConfig *network.NetworkingConfig, platform *v1.Platform, containerName string) (containertypes.ContainerCreateCreatedBody, error) {
+	client.ContainerCreateFn = func(_ context.Context, cConfig *containertypes.Config, hConfig *containertypes.HostConfig, nConfig *network.NetworkingConfig, platform *v1.Platform, containerName string) (containertypes.CreateResponse, error) {
 		if reflect.DeepEqual(*cConfig, *config.config()) &&
 			reflect.DeepEqual(*hConfig, *config.hostConfig()) &&
 			reflect.DeepEqual(*nConfig, *config.networkingConfig()) &&
 			containerName == config.name() {
-			return containertypes.ContainerCreateCreatedBody{ID: "container-id-" + task.ID}, nil
+			return containertypes.CreateResponse{ID: "container-id-" + task.ID}, nil
 		}
 		panic("unexpected call to ContainerCreate")
 	}
@@ -72,11 +73,11 @@ func TestControllerPrepareAlreadyPrepared(t *testing.T) {
 		panic("unexpected call of ImagePull")
 	}
 
-	client.ContainerCreateFn = func(_ context.Context, cConfig *containertypes.Config, hostConfig *containertypes.HostConfig, networking *network.NetworkingConfig, platform *v1.Platform, containerName string) (containertypes.ContainerCreateCreatedBody, error) {
+	client.ContainerCreateFn = func(_ context.Context, cConfig *containertypes.Config, hostConfig *containertypes.HostConfig, networking *network.NetworkingConfig, platform *v1.Platform, containerName string) (containertypes.CreateResponse, error) {
 		if reflect.DeepEqual(*cConfig, *config.config()) &&
 			reflect.DeepEqual(*networking, *config.networkingConfig()) &&
 			containerName == config.name() {
-			return containertypes.ContainerCreateCreatedBody{}, fmt.Errorf("Conflict. The name")
+			return containertypes.CreateResponse{}, fmt.Errorf("Conflict. The name")
 		}
 		panic("unexpected call of ContainerCreate")
 	}
@@ -227,8 +228,8 @@ func TestControllerWaitUnhealthy(t *testing.T) {
 		}
 		panic("unexpected call of Events")
 	}
-	client.ContainerStopFn = func(_ context.Context, containerName string, timeout *time.Duration) error {
-		if containerName == config.name() && *timeout == tenSecond {
+	client.ContainerStopFn = func(_ context.Context, containerName string, options container.StopOptions) error {
+		if containerName == config.name() && *options.Timeout == tenSecond {
 			return nil
 		}
 		panic("unexpected call of ContainerStop")
@@ -354,8 +355,8 @@ func TestControllerShutdown(t *testing.T) {
 		assert.Equal(t, 1, client.calls["ContainerStop"])
 	}()
 
-	client.ContainerStopFn = func(_ context.Context, containerName string, timeout *time.Duration) error {
-		if containerName == config.name() && *timeout == tenSecond {
+	client.ContainerStopFn = func(_ context.Context, containerName string, option container.StopOptions) error {
+		if containerName == config.name() && *option.Timeout == tenSecond {
 			return nil
 		}
 		panic("unexpected call of ContainerStop")
@@ -391,8 +392,8 @@ func TestControllerRemove(t *testing.T) {
 		assert.Equal(t, 1, client.calls["ContainerRemove"])
 	}()
 
-	client.ContainerStopFn = func(_ context.Context, container string, timeout *time.Duration) error {
-		if container == config.name() && *timeout == tenSecond {
+	client.ContainerStopFn = func(_ context.Context, container string, option container.StopOptions) error {
+		if container == config.name() && *option.Timeout == tenSecond {
 			return nil
 		}
 		panic("unexpected call of ContainerStop")

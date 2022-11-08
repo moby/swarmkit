@@ -5,7 +5,6 @@ import (
 	"io"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -20,12 +19,12 @@ import (
 type StubAPIClient struct {
 	client.APIClient
 	calls              map[string]int
-	ContainerCreateFn  func(_ context.Context, config *container.Config, hostConfig *container.HostConfig, networking *network.NetworkingConfig, platform *v1.Platform, containerName string) (container.ContainerCreateCreatedBody, error)
+	ContainerCreateFn  func(_ context.Context, config *container.Config, hostConfig *container.HostConfig, networking *network.NetworkingConfig, platform *v1.Platform, containerName string) (container.CreateResponse, error)
 	ContainerInspectFn func(_ context.Context, containerID string) (types.ContainerJSON, error)
 	ContainerKillFn    func(_ context.Context, containerID, signal string) error
 	ContainerRemoveFn  func(_ context.Context, containerID string, options types.ContainerRemoveOptions) error
 	ContainerStartFn   func(_ context.Context, containerID string, options types.ContainerStartOptions) error
-	ContainerStopFn    func(_ context.Context, containerID string, timeout *time.Duration) error
+	ContainerStopFn    func(_ context.Context, containerID string, options container.StopOptions) error
 	ImagePullFn        func(_ context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error)
 	EventsFn           func(_ context.Context, options types.EventsOptions) (<-chan events.Message, <-chan error)
 }
@@ -52,7 +51,7 @@ func (sa *StubAPIClient) called() {
 }
 
 // ContainerCreate is part of the APIClient interface
-func (sa *StubAPIClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networking *network.NetworkingConfig, platform *v1.Platform, containerName string) (container.ContainerCreateCreatedBody, error) {
+func (sa *StubAPIClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networking *network.NetworkingConfig, platform *v1.Platform, containerName string) (container.CreateResponse, error) {
 	sa.called()
 	return sa.ContainerCreateFn(ctx, config, hostConfig, networking, platform, containerName)
 }
@@ -82,9 +81,9 @@ func (sa *StubAPIClient) ContainerStart(ctx context.Context, containerID string,
 }
 
 // ContainerStop is part of the APIClient interface
-func (sa *StubAPIClient) ContainerStop(ctx context.Context, containerID string, timeout *time.Duration) error {
+func (sa *StubAPIClient) ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error {
 	sa.called()
-	return sa.ContainerStopFn(ctx, containerID, timeout)
+	return sa.ContainerStopFn(ctx, containerID, options)
 }
 
 // ImagePull is part of the APIClient interface

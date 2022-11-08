@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	engineapi "github.com/docker/docker/client"
 	gogotypes "github.com/gogo/protobuf/types"
@@ -211,12 +212,13 @@ func (c *containerAdapter) events(ctx context.Context) (<-chan events.Message, <
 
 func (c *containerAdapter) shutdown(ctx context.Context) error {
 	// Default stop grace period to 10s.
-	stopgrace := 10 * time.Second
+	stopgraceSeconds := 10
 	spec := c.container.spec()
 	if spec.StopGracePeriod != nil {
-		stopgrace, _ = gogotypes.DurationFromProto(spec.StopGracePeriod)
+		stopgraceFromProto, _ := gogotypes.DurationFromProto(spec.StopGracePeriod)
+		stopgraceSeconds = int(stopgraceFromProto.Seconds())
 	}
-	return c.client.ContainerStop(ctx, c.container.name(), &stopgrace)
+	return c.client.ContainerStop(ctx, c.container.name(), container.StopOptions{Timeout: &stopgraceSeconds})
 }
 
 func (c *containerAdapter) terminate(ctx context.Context) error {
