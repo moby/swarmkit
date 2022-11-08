@@ -243,7 +243,10 @@ func TestAllocateWithOneSubnetInvalidGateway(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestAllocateWithInvalidSubnet(t *testing.T) {
+// TestAllocateWithSmallSubnet validates that /32 subnets don't produce an error,
+// as /31 and /32 subnets are supported by docker daemon, starting with
+// https://github.com/moby/moby/commit/3a938df4b570aad3bfb4d5342379582e872fc1a3,
+func TestAllocateWithSmallSubnet(t *testing.T) {
 	na := newNetworkAllocator(t)
 	n := &api.Network{
 		ID: "testID",
@@ -264,7 +267,7 @@ func TestAllocateWithInvalidSubnet(t *testing.T) {
 	}
 
 	err := na.Allocate(n)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }
 
 func TestAllocateWithTwoSubnetsNoGateway(t *testing.T) {
@@ -765,7 +768,7 @@ func TestServiceAddRemovePortsIngressMode(t *testing.T) {
 	assert.Len(t, s.Endpoint.VirtualIPs, 1)
 	allocatedVIP := s.Endpoint.VirtualIPs[0].Addr
 
-	//Unpublish port
+	// Unpublish port
 	s.Spec.Endpoint.Ports = s.Spec.Endpoint.Ports[:0]
 	err = na.AllocateService(s)
 	assert.NoError(t, err)
@@ -863,14 +866,14 @@ func TestServiceNetworkUpdate(t *testing.T) {
 		},
 	}
 
-	//Allocate both networks
+	// Allocate both networks
 	err := na.Allocate(n1)
 	assert.NoError(t, err)
 
 	err = na.Allocate(n2)
 	assert.NoError(t, err)
 
-	//Attach a network to a service spec nd allocate a service
+	// Attach a network to a service spec nd allocate a service
 	s := &api.Service{
 		ID: "testID1",
 		Spec: api.ServiceSpec{
@@ -904,7 +907,7 @@ func TestServiceNetworkUpdate(t *testing.T) {
 
 	s.Spec.Task.Networks = s.Spec.Task.Networks[:1]
 
-	//Check if service needs update and allocate with updated service spec
+	// Check if service needs update and allocate with updated service spec
 	assert.False(t, na.IsServiceAllocated(s))
 
 	err = na.AllocateService(s)
@@ -913,7 +916,7 @@ func TestServiceNetworkUpdate(t *testing.T) {
 	assert.Len(t, s.Endpoint.VirtualIPs, 1)
 
 	s.Spec.Task.Networks = s.Spec.Task.Networks[:0]
-	//Check if service needs update with all the networks removed and allocate with updated service spec
+	// Check if service needs update with all the networks removed and allocate with updated service spec
 	assert.False(t, na.IsServiceAllocated(s))
 
 	err = na.AllocateService(s)
@@ -921,7 +924,7 @@ func TestServiceNetworkUpdate(t *testing.T) {
 	assert.True(t, na.IsServiceAllocated(s))
 	assert.Len(t, s.Endpoint.VirtualIPs, 0)
 
-	//Attach a network and allocate service
+	// Attach a network and allocate service
 	s.Spec.Task.Networks = append(s.Spec.Task.Networks, &api.NetworkAttachmentConfig{Target: "testID2"})
 	assert.False(t, na.IsServiceAllocated(s))
 
