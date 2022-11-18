@@ -21,7 +21,6 @@ type StubController struct {
 	RemoveFn    func(ctx context.Context) error
 	CloseFn     func() error
 	calls       map[string]int
-	cstatus     *api.ContainerStatus
 }
 
 // NewStubController returns an initialized StubController

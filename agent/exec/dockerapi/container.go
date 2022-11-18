@@ -76,6 +76,7 @@ func (c *containerConfig) setTask(n *api.NodeDescription, t *api.Task) error {
 	return nil
 }
 
+//nolint:unused // TODO(thaJeztah) this is currently unused: is it safe to remove?
 func (c *containerConfig) endpoint() *api.Endpoint {
 	return c.task.Endpoint
 }
@@ -479,6 +480,7 @@ func (c *containerConfig) resources() enginecontainer.Resources {
 	return resources
 }
 
+//nolint:unused // TODO(thaJeztah) this is currently unused: is it safe to remove?
 func (c *containerConfig) virtualIP(networkID string) string {
 	if c.task.Endpoint == nil {
 		return ""
