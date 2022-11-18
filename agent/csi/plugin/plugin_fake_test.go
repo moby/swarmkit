@@ -39,7 +39,7 @@ func (f *fakeNodePlugin) NodeGetInfo(ctx context.Context) (*api.NodeCSIInfo, err
 }
 
 // these methods are all stubs, as they are not needed for testing the
-// PluginManager.
+// Manager.
 func (f *fakeNodePlugin) GetPublishedPath(volumeID string) string {
 	return ""
 }
