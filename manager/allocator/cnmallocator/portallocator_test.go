@@ -879,7 +879,7 @@ func TestIsPortsAllocated(t *testing.T) {
 
 	for _, singleTest := range testCases {
 		t.Run(singleTest.name, func(t *testing.T) {
-			expect := pa.isPortsAllocated(singleTest.input)
+			expect := pa.isPortsAllocatedOnInit(singleTest.input, false)
 			assert.Equal(t, expect, singleTest.expect)
 		})
 	}
