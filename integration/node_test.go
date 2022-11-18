@@ -8,13 +8,12 @@ import (
 	"runtime"
 	"strings"
 
-	"google.golang.org/grpc"
-
 	agentutils "github.com/moby/swarmkit/v2/agent/testutils"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/node"
 	"github.com/moby/swarmkit/v2/testutils"
+	"google.golang.org/grpc"
 )
 
 // TestNode is representation of *agent.Node. It stores listeners, connections,

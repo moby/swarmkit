@@ -7,14 +7,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/moby/swarmkit/v2/node"
-
-	"reflect"
 
 	"github.com/cloudflare/cfssl/helpers"
 	events "github.com/docker/go-events"
@@ -23,6 +20,7 @@ import (
 	cautils "github.com/moby/swarmkit/v2/ca/testutils"
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/manager"
+	"github.com/moby/swarmkit/v2/node"
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -399,7 +397,7 @@ func TestDemotePromoteLeader(t *testing.T) {
 	numManager--
 	pollClusterReady(t, cl, numWorker, numManager)
 
-	//promote former leader back
+	// promote former leader back
 	require.NoError(t, cl.SetNodeRole(leader.node.NodeID(), api.NodeRoleManager))
 	// agents 1, managers 3
 	numWorker--
