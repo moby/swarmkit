@@ -1,14 +1,15 @@
 run:
   tests: false
+  timeout: 10m
 linters: 
   disable-all: true
   enable:
     - misspell
     - gofmt
     - goimports
-    - golint
     - ineffassign
-    - deadcode
+    - revive
     - unconvert
+    - unused
     - govet
-      
+
