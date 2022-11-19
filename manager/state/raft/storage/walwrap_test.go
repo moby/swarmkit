@@ -196,19 +196,18 @@ func TestSaveEncryptionFails(t *testing.T) {
 	require.Empty(t, ents)
 }
 
-// If the underlying WAL returns an error when opening or creating, the error
-// is propagated up.
-func TestCreateOpenInvalidDirFails(t *testing.T) {
+// If the underlying WAL returns an error when opening, the error is
+// propagated up.
+func TestOpenInvalidDirFails(t *testing.T) {
 	c := NewWALFactory(encryption.NoopCrypter, encryption.NoopCrypter)
 
-	_, err := c.Create("/not/existing/directory", []byte("metadata"))
-	require.Error(t, err)
-
-	tempDir, err := os.MkdirTemp("", "test-migrate")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
-
-	_, err = c.Open(tempDir, walpb.Snapshot{}) // invalid because no WAL file
+	tempDir := t.TempDir()
+	// using a subdirectory, as some of the code uses "filepath.Dir()"
+	// and we want to be sure we scope everything to inside the tempDir
+	// we created.
+	emptyDir := filepath.Join(tempDir, "empty_dir")
+	require.NoError(t, os.Mkdir(emptyDir, 0o700))
+	_, err := c.Open(emptyDir, walpb.Snapshot{}) // invalid because no WAL file
 	require.Error(t, err)
 }
 
