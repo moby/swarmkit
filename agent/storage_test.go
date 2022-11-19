@@ -174,13 +174,11 @@ func genTaskStatus() *api.TaskStatus {
 // storageTestEnv returns an initialized db and cleanup function for use in
 // tests.
 func storageTestEnv(t *testing.T) (*bolt.DB, func()) {
+	t.Helper()
 	var cleanup []func()
-	dir, err := os.MkdirTemp("", "agent-TestStorage-")
-	assert.NoError(t, err)
-
+	dir := t.TempDir()
 	dbpath := filepath.Join(dir, "tasks.db")
 	assert.NoError(t, os.MkdirAll(dir, 0o777))
-	cleanup = append(cleanup, func() { os.RemoveAll(dir) })
 
 	db, err := bolt.Open(dbpath, 0666, nil)
 	assert.NoError(t, err)
