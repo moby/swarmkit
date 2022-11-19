@@ -579,6 +579,7 @@ func newNonSigningCAServer(t *testing.T, tc *cautils.TestCA) *nonSigningCAServer
 
 	api.RegisterNodeCAServer(grpcServer, n)
 	go grpcServer.Serve(l)
+	t.Cleanup(n.server.Stop)
 	return n
 }
 
@@ -669,7 +670,6 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	defer cancel()
 
 	fakeCAServer := newNonSigningCAServer(t, tc)
-	defer fakeCAServer.stop()
 
 	completed := make(chan error)
 	defer close(completed)
@@ -812,8 +812,6 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 
 	// create 2 CA servers referencing the same memory store, so we can have multiple connections
 	fakeSigningServers := []*nonSigningCAServer{newNonSigningCAServer(t, tc), newNonSigningCAServer(t, tc)}
-	defer fakeSigningServers[0].stop()
-	defer fakeSigningServers[1].stop()
 	multiBroker := connectionbroker.New(&fakeRemotes{
 		peers: []api.Peer{
 			{Addr: fakeSigningServers[0].addr},
@@ -875,7 +873,6 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 	// calling GetRemoteSignedCertificate with a connection that doesn't work with IssueNodeCertificate will fail
 	// immediately without retrying with a new connection
 	fakeSigningServers[1] = newNonSigningCAServer(t, tc)
-	defer fakeSigningServers[1].stop()
 	multiBroker = connectionbroker.New(&fakeRemotes{
 		peers: []api.Peer{
 			{Addr: fakeSigningServers[0].addr},
