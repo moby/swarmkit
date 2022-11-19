@@ -22,10 +22,7 @@ func TestKeyReadWriter(t *testing.T) {
 
 	expectedKey := key
 
-	tempdir, err := os.MkdirTemp("", "KeyReadWriter")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	path := ca.NewConfigPaths(filepath.Join(tempdir, "subdir")) // to make sure subdirectories are created
 
 	checkCanReadWithKEK := func(kek []byte) *ca.KeyReadWriter {
@@ -130,10 +127,7 @@ func TestKeyReadWriterWithPemHeaderManager(t *testing.T) {
 	keyBlock.Headers = map[string]string{"hello": "world"}
 	key = pem.EncodeToMemory(keyBlock)
 
-	tempdir, err := os.MkdirTemp("", "KeyReadWriter")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	path := ca.NewConfigPaths(filepath.Join(tempdir, "subdir")) // to make sure subdirectories are created
 
 	// if if getting new headers fail, writing a key fails, and the key does not rotate
@@ -206,10 +200,7 @@ func TestKeyReadWriterViewAndUpdateHeaders(t *testing.T) {
 	cert, key, err := testutils.CreateRootCertAndKey("cn")
 	require.NoError(t, err)
 
-	tempdir, err := os.MkdirTemp("", "KeyReadWriter")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	path := ca.NewConfigPaths(filepath.Join(tempdir))
 
 	// write a key with headers to the key to make sure it gets passed when reading/writing headers
@@ -272,10 +263,7 @@ func TestKeyReadWriterViewAndRotateKEK(t *testing.T) {
 	cert, key, err := testutils.CreateRootCertAndKey("cn")
 	require.NoError(t, err)
 
-	tempdir, err := os.MkdirTemp("", "KeyReadWriter")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	path := ca.NewConfigPaths(filepath.Join(tempdir))
 
 	// write a key with headers to the key to make sure it gets passed when reading/writing headers
@@ -331,10 +319,7 @@ func TestTwoPhaseReadWrite(t *testing.T) {
 	cert2, key2, err := testutils.CreateRootCertAndKey("cn")
 	require.NoError(t, err)
 
-	tempdir, err := os.MkdirTemp("", "KeyReadWriter")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	path := ca.NewConfigPaths(filepath.Join(tempdir))
 	krw := ca.NewKeyReadWriter(path.Node, nil, nil)
 
@@ -385,10 +370,7 @@ func TestKeyReadWriterMigrate(t *testing.T) {
 	cert, key, err := testutils.CreateRootCertAndKey("cn")
 	require.NoError(t, err)
 
-	tempdir, err := os.MkdirTemp("", "KeyReadWriter")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	path := ca.NewConfigPaths(filepath.Join(tempdir))
 
 	// if the key exists in an old location, migrate it from there.
@@ -441,10 +423,7 @@ func testKeyReadWriterDowngradeKeyCase(t *testing.T, tc downgradeTestCase) error
 		key = pem.EncodeToMemory(block)
 	}
 
-	tempdir, err := os.MkdirTemp("", "KeyReadWriterDowngrade")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	path := ca.NewConfigPaths(filepath.Join(tempdir))
 
 	block, _ := pem.Decode(key)
@@ -527,10 +506,7 @@ func TestKeyReadWriterReadNonFIPS(t *testing.T) {
 	key, err = pkcs8.ConvertToECPrivateKeyPEM(key)
 	require.NoError(t, err)
 
-	tempdir, err := os.MkdirTemp("", "KeyReadWriter")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	path := ca.NewConfigPaths(filepath.Join(tempdir, "subdir")) // to make sure subdirectories are created
 
 	k := ca.NewKeyReadWriter(path.Node, nil, nil)

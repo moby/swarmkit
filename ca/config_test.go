@@ -313,9 +313,7 @@ func TestLoadSecurityConfigIntermediates(t *testing.T) {
 	if cautils.External {
 		return // this doesn't require any servers at all
 	}
-	tempdir, err := os.MkdirTemp("", "test-load-config-with-intermediates")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 	paths := ca.NewConfigPaths(tempdir)
 	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
 
@@ -353,9 +351,7 @@ func TestLoadSecurityConfigKeyFormat(t *testing.T) {
 	if cautils.External {
 		return // this doesn't require any servers at all
 	}
-	tempdir, err := os.MkdirTemp("", "test-load-config")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 	paths := ca.NewConfigPaths(tempdir)
 	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
 
@@ -439,9 +435,7 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	rootCA, err := ca.NewRootCA(cert, cert, key, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
-	tempdir, err := os.MkdirTemp("", "test-security-config-update")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 	configPaths := ca.NewConfigPaths(tempdir)
 
 	secConfig, cancel, err := rootCA.CreateSecurityConfig(tc.Context,
@@ -534,8 +528,7 @@ func TestSecurityConfigUpdateRootCAUpdateConsistentWithTLSCertificates(t *testin
 	if cautils.External {
 		return // we don't care about external CAs at all
 	}
-	tempdir, err := os.MkdirTemp("", "")
-	require.NoError(t, err)
+	tempdir := t.TempDir()
 	krw := ca.NewKeyReadWriter(ca.NewConfigPaths(tempdir).Node, nil, nil)
 
 	rootCA, err := ca.CreateRootCA("rootcn")
@@ -627,9 +620,6 @@ func TestSecurityConfigWatch(t *testing.T) {
 // root certificate.  If it validates against the current TLS credentials, it will be used to download
 // new ones, (only if the new certificate indicates that it's a worker, though).
 func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "test-renew-tls-config-now-downloads-root")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
 
 	// make 3 CAs
 	var (
@@ -637,6 +627,7 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 		keys         = make([][]byte, 3)
 		crossSigneds = make([][]byte, 3)
 		cas          = make([]ca.RootCA, 3)
+		err          error
 	)
 	for i := 0; i < 3; i++ {
 		certs[i], keys[i], err = cautils.CreateRootCertAndKey(fmt.Sprintf("CA%d", i))
@@ -656,6 +647,7 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 
 	// the CA server is going to start off with a cert issued by the second CA, cross-signed by the first CA, and then
 	// rotate to one issued by the third CA, cross-signed by the second.
+	tempdir := t.TempDir()
 	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, api.RootCA{
 		CACert: certs[0],
 		CAKey:  keys[0],
@@ -760,15 +752,12 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 // If we get a not unknown authority error when trying to renew the TLS certificate, just return the
 // error and do not attempt to download the root certificate.
 func TestRenewTLSConfigUpdatesRootNonUnknownAuthError(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "test-renew-tls-config-now-downloads-root")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
 	cert, key, err := cautils.CreateRootCertAndKey("rootCA")
 	require.NoError(t, err)
 	rootCA, err := ca.NewRootCA(cert, cert, key, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
+	tempdir := t.TempDir()
 	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, api.RootCA{
 		CACert: cert,
 		CAKey:  key,
