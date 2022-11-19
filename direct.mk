@@ -142,6 +142,6 @@ go-mod-vendor:
 	@go mod vendor
 	@# ensure that key protobuf spec files are in vendor dir
 	@module=github.com/gogo/protobuf ; \
-		prefix=$$(go env GOPATH)/pkg/mod/$${module} ; \
+		prefix=$$(go env GOMODCACHE)/$${module} ; \
 		version=$$(go list -m -f '{{.Version}}' $${module}) ; \
 		cp -a $${prefix}@$${version}/protobuf vendor/$${module}/ && chmod -R u+w vendor/$${module}
