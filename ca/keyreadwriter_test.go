@@ -320,12 +320,12 @@ func TestTwoPhaseReadWrite(t *testing.T) {
 	require.NoError(t, err)
 
 	tempdir := t.TempDir()
-	path := ca.NewConfigPaths(filepath.Join(tempdir))
+	path := ca.NewConfigPaths(tempdir)
 	krw := ca.NewKeyReadWriter(path.Node, nil, nil)
 
 	// put a directory in the location where the cert goes, so we can't actually move
 	// the cert from the temporary location to the final location.
-	require.NoError(t, os.Mkdir(filepath.Join(path.Node.Cert), 0o755))
+	require.NoError(t, os.Mkdir(path.Node.Cert, 0o755))
 	require.Error(t, krw.Write(cert2, key2, nil))
 
 	// the temp cert file should exist
@@ -371,7 +371,7 @@ func TestKeyReadWriterMigrate(t *testing.T) {
 	require.NoError(t, err)
 
 	tempdir := t.TempDir()
-	path := ca.NewConfigPaths(filepath.Join(tempdir))
+	path := ca.NewConfigPaths(tempdir)
 
 	// if the key exists in an old location, migrate it from there.
 	tempKeyPath := filepath.Join(filepath.Dir(path.Node.Key), "."+filepath.Base(path.Node.Key))
@@ -424,7 +424,7 @@ func testKeyReadWriterDowngradeKeyCase(t *testing.T, tc downgradeTestCase) error
 	}
 
 	tempdir := t.TempDir()
-	path := ca.NewConfigPaths(filepath.Join(tempdir))
+	path := ca.NewConfigPaths(tempdir)
 
 	block, _ := pem.Decode(key)
 	require.NotNil(t, block)
