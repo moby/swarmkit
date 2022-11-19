@@ -5,10 +5,10 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -630,7 +630,7 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 		err          error
 	)
 	for i := 0; i < 3; i++ {
-		certs[i], keys[i], err = cautils.CreateRootCertAndKey(fmt.Sprintf("CA%d", i))
+		certs[i], keys[i], err = cautils.CreateRootCertAndKey("CA" + strconv.Itoa(i))
 		require.NoError(t, err)
 		switch i {
 		case 0:
@@ -711,7 +711,7 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 		// requests from certs different than the cluster root CA, add another test case to make sure that the downloaded
 		// root has to validate against both the old TLS creds and new TLS creds
 	} {
-		nodeID := fmt.Sprintf("node%d", i)
+		nodeID := "node" + strconv.Itoa(i)
 		tlsKeyPair, issuerInfo, err := testCase.issuingRootCA.IssueAndSaveNewCertificates(krw, nodeID, ca.ManagerRole, tc.Organization)
 		require.NoError(t, err)
 		// make sure the node is added to the memory store as a worker, so when we renew the cert the test CA will answer
@@ -814,7 +814,7 @@ func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 0; i < 5; i++ {
-		cert, _, err := cautils.CreateRootCertAndKey(fmt.Sprintf("root %d", i+2))
+		cert, _, err := cautils.CreateRootCertAndKey("root " + strconv.Itoa(i+2))
 		require.NoError(t, err)
 
 		ctx, cancel := context.WithCancel(tc.Context)
