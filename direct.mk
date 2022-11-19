@@ -119,7 +119,6 @@ coverage: ## generate coverprofiles from the unit tests
 	@echo "🐳 $@"
 	@( for pkg in $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES}); do \
 		go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$(go list -f "{{.Dir}}" $$pkg)/coverage.txt" -covermode=atomic $$pkg || exit; \
-		go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$(go list -f "{{.Dir}}" $$pkg)/coverage.txt" -covermode=atomic $$pkg || exit; \
 	done )
 
 .PHONY: coverage-integration
