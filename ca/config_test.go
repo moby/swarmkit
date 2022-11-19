@@ -765,7 +765,7 @@ func TestRenewTLSConfigUpdatesRootNonUnknownAuthError(t *testing.T) {
 	defer tc.Stop()
 
 	fakeCAServer := newNonSigningCAServer(t, tc)
-	defer fakeCAServer.stop(t)
+	defer fakeCAServer.stop()
 
 	secConfig, err := tc.NewNodeConfig(ca.WorkerRole)
 	require.NoError(t, err)

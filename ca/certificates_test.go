@@ -582,7 +582,7 @@ func newNonSigningCAServer(t *testing.T, tc *cautils.TestCA) *nonSigningCAServer
 	return n
 }
 
-func (n *nonSigningCAServer) stop(t *testing.T) {
+func (n *nonSigningCAServer) stop() {
 	n.server.Stop()
 }
 
@@ -669,7 +669,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	defer cancel()
 
 	fakeCAServer := newNonSigningCAServer(t, tc)
-	defer fakeCAServer.stop(t)
+	defer fakeCAServer.stop()
 
 	completed := make(chan error)
 	defer close(completed)
@@ -812,8 +812,8 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 
 	// create 2 CA servers referencing the same memory store, so we can have multiple connections
 	fakeSigningServers := []*nonSigningCAServer{newNonSigningCAServer(t, tc), newNonSigningCAServer(t, tc)}
-	defer fakeSigningServers[0].stop(t)
-	defer fakeSigningServers[1].stop(t)
+	defer fakeSigningServers[0].stop()
+	defer fakeSigningServers[1].stop()
 	multiBroker := connectionbroker.New(&fakeRemotes{
 		peers: []api.Peer{
 			{Addr: fakeSigningServers[0].addr},
@@ -846,7 +846,7 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 
 	// stop 1 server, because it will have been the remote GetRemoteSignedCertificate first connected to, and ensure
 	// that GetRemoteSignedCertificate is still going
-	fakeSigningServers[0].stop(t)
+	fakeSigningServers[0].stop()
 	select {
 	case <-completed:
 		require.FailNow(t, "GetRemoteSignedCertificate should still be going after 2.5 seconds")
@@ -863,7 +863,7 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 	}, time.Second*2))
 
 	// kill the last server - this should cause GetRemoteSignedCertificate to fail because there are no more peers
-	fakeSigningServers[1].stop(t)
+	fakeSigningServers[1].stop()
 	// wait for 5 seconds and ensure that GetRemoteSignedCertificate has returned with an error.
 	select {
 	case err = <-completed:
@@ -875,7 +875,7 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 	// calling GetRemoteSignedCertificate with a connection that doesn't work with IssueNodeCertificate will fail
 	// immediately without retrying with a new connection
 	fakeSigningServers[1] = newNonSigningCAServer(t, tc)
-	defer fakeSigningServers[1].stop(t)
+	defer fakeSigningServers[1].stop()
 	multiBroker = connectionbroker.New(&fakeRemotes{
 		peers: []api.Peer{
 			{Addr: fakeSigningServers[0].addr},
