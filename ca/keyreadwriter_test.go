@@ -130,7 +130,7 @@ func TestKeyReadWriterWithPemHeaderManager(t *testing.T) {
 	tempdir := t.TempDir()
 	path := ca.NewConfigPaths(filepath.Join(tempdir, "subdir")) // to make sure subdirectories are created
 
-	// if if getting new headers fail, writing a key fails, and the key does not rotate
+	// if getting new headers fails, writing a key fails, and the key does not rotate
 	var count int
 	badKEKData := ca.KEKData{KEK: []byte("failed kek"), Version: 3}
 	k := ca.NewKeyReadWriter(path.Node, nil, testHeaders{newHeaders: func(k ca.KEKData) (map[string]string, error) {
@@ -144,7 +144,7 @@ func TestKeyReadWriterWithPemHeaderManager(t *testing.T) {
 	}})
 	// first write will fail
 	require.Error(t, k.Write(cert, key, &badKEKData))
-	// the stored kek data will be not be updated because the write failed
+	// the stored kek data will not be updated because the write failed.
 	_, kekData := k.GetCurrentState()
 	require.Equal(t, ca.KEKData{}, kekData)
 	// second write will succeed, using the original kek (nil)
@@ -273,7 +273,7 @@ func TestKeyReadWriterViewAndRotateKEK(t *testing.T) {
 	key = pem.EncodeToMemory(keyBlock)
 	require.NoError(t, ca.NewKeyReadWriter(path.Node, nil, nil).Write(cert, key, nil))
 
-	// if if getting new kek and headers fail, rotating a KEK fails, and the kek does not rotate
+	// if getting new kek and headers fails, rotating a KEK fails, and the kek does not rotate
 	k := ca.NewKeyReadWriter(path.Node, nil, nil)
 	require.Error(t, k.ViewAndRotateKEK(func(k ca.KEKData, h ca.PEMKeyHeaders) (ca.KEKData, ca.PEMKeyHeaders, error) {
 		require.Equal(t, ca.KEKData{}, k)
