@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -285,36 +286,38 @@ func TestLoadSecurityConfigNodeFIPSCreateCluster(t *testing.T) {
 // If FIPS is enabled and there is a join address, the cluster ID is whatever the CA set
 // the cluster ID to.
 func TestLoadSecurityConfigNodeFIPSJoinCluster(t *testing.T) {
-	tempdir := t.TempDir()
-	certDir := filepath.Join(tempdir, "certificates")
-	paths := ca.NewConfigPaths(certDir)
-
 	for _, fips := range []bool{true, false} {
-		require.NoError(t, os.RemoveAll(certDir))
+		fips := fips
+		t.Run("fips="+strconv.FormatBool(fips), func(t *testing.T) {
+			t.Parallel()
+			tempdir := t.TempDir()
+			certDir := filepath.Join(tempdir, "certificates")
+			paths := ca.NewConfigPaths(certDir)
 
-		var tc *cautils.TestCA
-		if fips {
-			tc = cautils.NewFIPSTestCA(t)
-		} else {
-			tc = cautils.NewTestCA(t)
-		}
-		defer tc.Stop()
+			var tc *cautils.TestCA
+			if fips {
+				tc = cautils.NewFIPSTestCA(t)
+			} else {
+				tc = cautils.NewTestCA(t)
+			}
+			defer tc.Stop()
 
-		peer, err := tc.ConnBroker.Remotes().Select()
-		require.NoError(t, err)
+			peer, err := tc.ConnBroker.Remotes().Select()
+			require.NoError(t, err)
 
-		node, err := New(&Config{
-			StateDir:  tempdir,
-			JoinAddr:  peer.Addr,
-			JoinToken: tc.ManagerToken,
-			FIPS:      true,
+			node, err := New(&Config{
+				StateDir:  tempdir,
+				JoinAddr:  peer.Addr,
+				JoinToken: tc.ManagerToken,
+				FIPS:      true,
+			})
+			require.NoError(t, err)
+			securityConfig, cancel, err := node.loadSecurityConfig(tc.Context, paths)
+			require.NoError(t, err)
+			defer cancel()
+			require.NotNil(t, securityConfig)
+			require.Equal(t, fips, strings.HasPrefix(securityConfig.ClientTLSCreds.Organization(), "FIPS."))
 		})
-		require.NoError(t, err)
-		securityConfig, cancel, err := node.loadSecurityConfig(tc.Context, paths)
-		require.NoError(t, err)
-		defer cancel()
-		require.NotNil(t, securityConfig)
-		require.Equal(t, fips, strings.HasPrefix(securityConfig.ClientTLSCreds.Organization(), "FIPS."))
 	}
 }
 
