@@ -620,7 +620,6 @@ func TestSecurityConfigWatch(t *testing.T) {
 // root certificate.  If it validates against the current TLS credentials, it will be used to download
 // new ones, (only if the new certificate indicates that it's a worker, though).
 func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
-
 	// make 3 CAs
 	var (
 		certs        = make([][]byte, 3)
@@ -711,41 +710,44 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 		// requests from certs different than the cluster root CA, add another test case to make sure that the downloaded
 		// root has to validate against both the old TLS creds and new TLS creds
 	} {
+		testCase := testCase
 		nodeID := "node" + strconv.Itoa(i)
-		tlsKeyPair, issuerInfo, err := testCase.issuingRootCA.IssueAndSaveNewCertificates(krw, nodeID, ca.ManagerRole, tc.Organization)
-		require.NoError(t, err)
-		// make sure the node is added to the memory store as a worker, so when we renew the cert the test CA will answer
-		require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
-			return store.CreateNode(tx, &api.Node{
-				Role: testCase.role,
-				ID:   nodeID,
-				Spec: api.NodeSpec{
-					DesiredRole:  testCase.role,
-					Membership:   api.NodeMembershipAccepted,
-					Availability: api.NodeAvailabilityActive,
-				},
-			})
-		}))
-		secConfig, qClose, err := ca.NewSecurityConfig(testCase.initialRootCA, krw, tlsKeyPair, issuerInfo)
-		require.NoError(t, err)
-		defer qClose()
-
-		paths := ca.NewConfigPaths(filepath.Join(tempdir, nodeID))
-		err = ca.RenewTLSConfigNow(tc.Context, secConfig, tc.ConnBroker, paths.RootCA)
-
-		// TODO(cyli): remove this role check once the codepaths for worker and manager are the same
-		if testCase.expectedRoot != nil {
-			// only rotate if we are a worker, and if the new cert validates against the old TLS creds
+		t.Run(nodeID, func(t *testing.T) {
+			tlsKeyPair, issuerInfo, err := testCase.issuingRootCA.IssueAndSaveNewCertificates(krw, nodeID, ca.ManagerRole, tc.Organization)
 			require.NoError(t, err)
-			downloadedRoot, err := os.ReadFile(paths.RootCA.Cert)
+			// make sure the node is added to the memory store as a worker, so when we renew the cert the test CA will answer
+			require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
+				return store.CreateNode(tx, &api.Node{
+					Role: testCase.role,
+					ID:   nodeID,
+					Spec: api.NodeSpec{
+						DesiredRole:  testCase.role,
+						Membership:   api.NodeMembershipAccepted,
+						Availability: api.NodeAvailabilityActive,
+					},
+				})
+			}))
+			secConfig, qClose, err := ca.NewSecurityConfig(testCase.initialRootCA, krw, tlsKeyPair, issuerInfo)
 			require.NoError(t, err)
-			require.Equal(t, testCase.expectedRoot, downloadedRoot)
-		} else {
-			require.Error(t, err)
-			require.IsType(t, x509.UnknownAuthorityError{}, err)
-			_, err = os.ReadFile(paths.RootCA.Cert) // we didn't download a file
-			require.Error(t, err)
-		}
+			defer qClose()
+
+			paths := ca.NewConfigPaths(filepath.Join(tempdir, nodeID))
+			err = ca.RenewTLSConfigNow(tc.Context, secConfig, tc.ConnBroker, paths.RootCA)
+
+			// TODO(cyli): remove this role check once the codepaths for worker and manager are the same
+			if testCase.expectedRoot != nil {
+				// only rotate if we are a worker, and if the new cert validates against the old TLS creds
+				require.NoError(t, err)
+				downloadedRoot, err := os.ReadFile(paths.RootCA.Cert)
+				require.NoError(t, err)
+				require.Equal(t, testCase.expectedRoot, downloadedRoot)
+			} else {
+				require.Error(t, err)
+				require.IsType(t, x509.UnknownAuthorityError{}, err)
+				_, err = os.ReadFile(paths.RootCA.Cert) // we didn't download a file
+				require.Error(t, err)
+			}
+		})
 	}
 }
 
