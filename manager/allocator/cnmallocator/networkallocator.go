@@ -484,11 +484,7 @@ func (na *cnmNetworkAllocator) DeallocateTask(t *api.Task) error {
 
 // IsAttachmentAllocated returns if the passed node and network has resources allocated or not.
 func (na *cnmNetworkAllocator) IsAttachmentAllocated(node *api.Node, networkAttachment *api.NetworkAttachment) bool {
-	if node == nil {
-		return false
-	}
-
-	if networkAttachment == nil || networkAttachment.Network == nil {
+	if node == nil || networkAttachment == nil || networkAttachment.Network == nil {
 		return false
 	}
 
