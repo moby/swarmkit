@@ -31,10 +31,7 @@ import (
 // If AutoLockManagers is enabled, the TLS key is encrypted with a randomly generated lock key.
 func TestLoadSecurityConfigNewNode(t *testing.T) {
 	for _, autoLockManagers := range []bool{true, false} {
-		tempdir, err := os.MkdirTemp("", "test-new-node")
-		require.NoError(t, err)
-		defer os.RemoveAll(tempdir)
-
+		tempdir := t.TempDir()
 		paths := ca.NewConfigPaths(filepath.Join(tempdir, "certificates"))
 
 		node, err := New(&Config{
@@ -60,10 +57,7 @@ func TestLoadSecurityConfigNewNode(t *testing.T) {
 // If there's only a root CA on disk (no TLS certs), and no join addr, we create a new CA
 // and a new set of TLS certs.  Similarly if there's only a TLS cert and key, and no CA.
 func TestLoadSecurityConfigPartialCertsOnDisk(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "test-new-node")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	paths := ca.NewConfigPaths(filepath.Join(tempdir, "certificates"))
 	rootCA, err := ca.CreateRootCA(ca.DefaultRootCN)
 	require.NoError(t, err)
@@ -106,10 +100,7 @@ func TestLoadSecurityConfigPartialCertsOnDisk(t *testing.T) {
 // If there are CAs and TLS certs on disk, it tries to load and fails if there
 // are any errors, even if a join token is provided.
 func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "test-load-node-tls")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	paths := ca.NewConfigPaths(filepath.Join(tempdir, "certificates"))
 
 	tc := cautils.NewTestCA(t)
@@ -183,10 +174,7 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 // join server. If there is a CA, it is just loaded from disk.  The TLS key and
 // cert are also downloaded.
 func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "test-join-node")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	paths := ca.NewConfigPaths(filepath.Join(tempdir, "certificates"))
 
 	// join addr is invalid
@@ -274,10 +262,7 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 // If there is nothing on disk and no join addr, and FIPS is enabled, we create a cluster whose
 // ID starts with 'FIPS.'
 func TestLoadSecurityConfigNodeFIPSCreateCluster(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "test-security-config-fips-new-cluster")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	paths := ca.NewConfigPaths(filepath.Join(tempdir, "certificates"))
 
 	tc := cautils.NewTestCA(t)
@@ -300,10 +285,7 @@ func TestLoadSecurityConfigNodeFIPSCreateCluster(t *testing.T) {
 // If FIPS is enabled and there is a join address, the cluster ID is whatever the CA set
 // the cluster ID to.
 func TestLoadSecurityConfigNodeFIPSJoinCluster(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "test-security-config-fips-join-cluster")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	certDir := filepath.Join(tempdir, "certificates")
 	paths := ca.NewConfigPaths(certDir)
 
@@ -339,19 +321,16 @@ func TestLoadSecurityConfigNodeFIPSJoinCluster(t *testing.T) {
 // If the certificate specifies that the cluster requires FIPS mode, loading the security
 // config will fail if the node is not FIPS enabled.
 func TestLoadSecurityConfigRespectsFIPSCert(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "test-security-config-fips-cert-on-disk")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
 	tc := cautils.NewFIPSTestCA(t)
 	defer tc.Stop()
 
+	tempdir := t.TempDir()
 	certDir := filepath.Join(tempdir, "certificates")
 	require.NoError(t, os.Mkdir(certDir, 0o700))
 	paths := ca.NewConfigPaths(certDir)
 
 	// copy certs and keys from the test CA using a hard link
-	_, err = tc.WriteNewNodeConfig(ca.ManagerRole)
+	_, err := tc.WriteNewNodeConfig(ca.ManagerRole)
 	require.NoError(t, err)
 	require.NoError(t, os.Link(tc.Paths.Node.Cert, paths.Node.Cert))
 	require.NoError(t, os.Link(tc.Paths.Node.Key, paths.Node.Key))
@@ -378,10 +357,7 @@ func TestLoadSecurityConfigRespectsFIPSCert(t *testing.T) {
 // the cluster requires fips, then loading the security config will fail.  However, if
 // there are already certs on disk, it will load them and ignore the join token.
 func TestLoadSecurityConfigNonFIPSNodeJoinCluster(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "test-security-config-nonfips-join-cluster")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	certDir := filepath.Join(tempdir, "certificates")
 	require.NoError(t, os.Mkdir(certDir, 0o700))
 	paths := ca.NewConfigPaths(certDir)
@@ -389,7 +365,7 @@ func TestLoadSecurityConfigNonFIPSNodeJoinCluster(t *testing.T) {
 	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 	// copy certs and keys from the test CA using a hard link
-	_, err = tc.WriteNewNodeConfig(ca.ManagerRole)
+	_, err := tc.WriteNewNodeConfig(ca.ManagerRole)
 	require.NoError(t, err)
 	require.NoError(t, os.Link(tc.Paths.Node.Cert, paths.Node.Cert))
 	require.NoError(t, os.Link(tc.Paths.Node.Key, paths.Node.Key))
@@ -428,9 +404,7 @@ func TestLoadSecurityConfigNonFIPSNodeJoinCluster(t *testing.T) {
 }
 
 func TestManagerRespectsDispatcherRootCAUpdate(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "manager-root-ca-update")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	// don't bother with a listening socket
 	cAddr := filepath.Join(tmpDir, "control.sock")
@@ -484,9 +458,7 @@ func TestManagerRespectsDispatcherRootCAUpdate(t *testing.T) {
 }
 
 func TestAgentRespectsDispatcherRootCAUpdate(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "manager-root-ca-update")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	// bootstrap worker TLS certificates
 	paths := ca.NewConfigPaths(filepath.Join(tmpDir, certDirectory))
@@ -552,10 +524,7 @@ func TestAgentRespectsDispatcherRootCAUpdate(t *testing.T) {
 }
 
 func TestCertRenewals(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "no-top-level-role")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
-
+	tmpDir := t.TempDir()
 	paths := ca.NewConfigPaths(filepath.Join(tmpDir, "certificates"))
 
 	// don't bother with a listening socket
@@ -623,10 +592,7 @@ func TestCertRenewals(t *testing.T) {
 }
 
 func TestManagerFailedStartup(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "manager-root-ca-update")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
-
+	tmpDir := t.TempDir()
 	paths := ca.NewConfigPaths(filepath.Join(tmpDir, certDirectory))
 
 	rootCA, err := ca.CreateRootCA(ca.DefaultRootCN)
@@ -664,10 +630,7 @@ func TestManagerFailedStartup(t *testing.T) {
 
 // TestFIPSConfiguration ensures that new keys will be stored in PKCS8 format.
 func TestFIPSConfiguration(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "fips")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
-
+	tmpDir := t.TempDir()
 	paths := ca.NewConfigPaths(filepath.Join(tmpDir, "certificates"))
 
 	// don't bother with a listening socket
