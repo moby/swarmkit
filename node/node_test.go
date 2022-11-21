@@ -27,10 +27,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getLoggingContext(t *testing.T) context.Context {
-	return log.WithLogger(context.Background(), log.L.WithField("test", t.Name()))
-}
-
 // If there is nothing on disk and no join addr, we create a new CA and a new set of TLS certs.
 // If AutoLockManagers is enabled, the TLS key is encrypted with a randomly generated lock key.
 func TestLoadSecurityConfigNewNode(t *testing.T) {
@@ -668,7 +664,6 @@ func TestManagerFailedStartup(t *testing.T) {
 
 // TestFIPSConfiguration ensures that new keys will be stored in PKCS8 format.
 func TestFIPSConfiguration(t *testing.T) {
-	ctx := getLoggingContext(t)
 	tmpDir, err := os.MkdirTemp("", "fips")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
@@ -685,6 +680,8 @@ func TestFIPSConfiguration(t *testing.T) {
 	}
 	node, err := New(cfg)
 	require.NoError(t, err)
+
+	ctx := log.WithLogger(context.Background(), log.L.WithField("test", t.Name()))
 	require.NoError(t, node.Start(ctx))
 	defer func() {
 		require.NoError(t, node.Stop(ctx))
