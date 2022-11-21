@@ -56,7 +56,7 @@ func testDownloadRootCASuccess(t *testing.T, fips bool) {
 	require.True(t, strings.HasPrefix(token, prefix))
 
 	// Remove the CA cert
-	os.RemoveAll(tc.Paths.RootCA.Cert)
+	assert.NoError(t, os.RemoveAll(tc.Paths.RootCA.Cert))
 
 	rootCA, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, token, tc.ConnBroker)
 	require.NoError(t, err)
@@ -67,7 +67,7 @@ func testDownloadRootCASuccess(t *testing.T, fips bool) {
 	require.Equal(t, tc.RootCA.Certs, rootCA.Certs)
 
 	// Remove the CA cert
-	os.RemoveAll(tc.Paths.RootCA.Cert)
+	assert.NoError(t, os.RemoveAll(tc.Paths.RootCA.Cert))
 
 	// downloading without a join token also succeeds
 	rootCA, err = ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, "", tc.ConnBroker)
@@ -84,7 +84,7 @@ func TestDownloadRootCAWrongCAHash(t *testing.T) {
 	defer tc.Stop()
 
 	// Remove the CA cert
-	os.RemoveAll(tc.Paths.RootCA.Cert)
+	assert.NoError(t, os.RemoveAll(tc.Paths.RootCA.Cert))
 
 	// invalid token
 	for _, invalid := range []string{
@@ -122,7 +122,7 @@ func TestCreateSecurityConfigEmptyDir(t *testing.T) {
 		"",
 		"my_org",
 	} {
-		os.RemoveAll(tc.TempDir)
+		assert.NoError(t, os.RemoveAll(tc.TempDir))
 		krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 		nodeConfig, cancel, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
 			ca.CertificateRequestConfig{
@@ -131,7 +131,7 @@ func TestCreateSecurityConfigEmptyDir(t *testing.T) {
 				Organization: org,
 			})
 		assert.NoError(t, err)
-		cancel()
+		assert.NoError(t, cancel())
 		assert.NotNil(t, nodeConfig)
 		assert.NotNil(t, nodeConfig.ClientTLSCreds)
 		assert.NotNil(t, nodeConfig.ServerTLSCreds)
@@ -165,7 +165,7 @@ func TestCreateSecurityConfigNoCerts(t *testing.T) {
 				ConnBroker: tc.ConnBroker,
 			})
 		assert.NoError(t, err)
-		cancel()
+		assert.NoError(t, cancel())
 		assert.NotNil(t, nodeConfig)
 		assert.NotNil(t, nodeConfig.ClientTLSCreds)
 		assert.NotNil(t, nodeConfig.ServerTLSCreds)
@@ -182,12 +182,12 @@ func TestCreateSecurityConfigNoCerts(t *testing.T) {
 
 	// Remove only the node certificates form the directory, and attest that we get
 	// new certificates that are locally signed
-	os.RemoveAll(tc.Paths.Node.Cert)
+	assert.NoError(t, os.RemoveAll(tc.Paths.Node.Cert))
 	validateNodeConfig(&tc.RootCA)
 
 	// Remove only the node certificates form the directory, get a new rootCA, and attest that we get
 	// new certificates that are issued by the remote CA
-	os.RemoveAll(tc.Paths.Node.Cert)
+	assert.NoError(t, os.RemoveAll(tc.Paths.Node.Cert))
 	rootCA, err := ca.GetLocalRootCA(tc.Paths.RootCA)
 	assert.NoError(t, err)
 	validateNodeConfig(&rootCA)
@@ -211,7 +211,7 @@ func testGRPCConnection(t *testing.T, secConfig *ca.SecurityConfig) {
 	}
 	conn, err := grpc.Dial(l.Addr().String(), dialOpts...)
 	require.NoError(t, err)
-	conn.Close()
+	assert.NoError(t, conn.Close())
 }
 
 func TestLoadSecurityConfigExpiredCert(t *testing.T) {
@@ -254,7 +254,7 @@ func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 	// but it is valid if expiry is allowed
 	_, cancel, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, true)
 	require.NoError(t, err)
-	cancel()
+	assert.NoError(t, cancel())
 }
 
 func TestLoadSecurityConfigInvalidCert(t *testing.T) {
@@ -265,13 +265,14 @@ func TestLoadSecurityConfigInvalidCert(t *testing.T) {
 	defer tc.Stop()
 
 	// Write some garbage to the cert
-	os.WriteFile(tc.Paths.Node.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
+	err := os.WriteFile(tc.Paths.Node.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
 some random garbage\n
 -----END CERTIFICATE-----`), 0o644)
+	assert.NoError(t, err)
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 
-	_, _, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
+	_, _, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
 	assert.Error(t, err)
 }
 
@@ -283,13 +284,14 @@ func TestLoadSecurityConfigInvalidKey(t *testing.T) {
 	defer tc.Stop()
 
 	// Write some garbage to the Key
-	os.WriteFile(tc.Paths.Node.Key, []byte(`-----BEGIN PRIVATE KEY-----\n
+	err := os.WriteFile(tc.Paths.Node.Key, []byte(`-----BEGIN PRIVATE KEY-----\n
 some random garbage\n
 -----END PRIVATE KEY-----`), 0o644)
+	assert.NoError(t, err)
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 
-	_, _, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
+	_, _, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
 	assert.Error(t, err)
 }
 
@@ -441,7 +443,7 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	secConfig, cancel, err := rootCA.CreateSecurityConfig(tc.Context,
 		ca.NewKeyReadWriter(configPaths.Node, nil, nil), ca.CertificateRequestConfig{})
 	require.NoError(t, err)
-	cancel()
+	assert.NoError(t, cancel())
 	// update the server TLS to require certificates, otherwise this will all pass
 	// even if the root pools aren't updated
 	secConfig.ServerTLSCreds.Config().ClientAuth = tls.RequireAndVerifyClientCert
@@ -496,7 +498,7 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 		grpc.WithTransportCredentials(tcConfig.ClientTLSCreds),
 	)
 	require.NoError(t, err)
-	conn.Close()
+	assert.NoError(t, conn.Close())
 
 	conn, err = grpc.Dial(
 		tc.Addr,
@@ -505,7 +507,7 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 		grpc.WithTransportCredentials(secConfig.ClientTLSCreds),
 	)
 	require.NoError(t, err)
-	conn.Close()
+	assert.NoError(t, conn.Close())
 
 	// make sure any generated certs after updating contain the intermediate
 	krw := ca.NewKeyReadWriter(configPaths.Node, nil, nil)
@@ -553,7 +555,7 @@ func TestSecurityConfigUpdateRootCAUpdateConsistentWithTLSCertificates(t *testin
 
 	secConfig, cancel, err := ca.NewSecurityConfig(&rootCA, krw, tlsKeyPair, issuerInfo)
 	require.NoError(t, err)
-	cancel()
+	assert.NoError(t, cancel())
 
 	// can't update the root CA to one that doesn't match the tls certs
 	require.Error(t, secConfig.UpdateRootCA(&otherRootCA))
