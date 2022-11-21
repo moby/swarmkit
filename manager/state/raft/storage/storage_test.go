@@ -14,15 +14,12 @@ import (
 )
 
 func TestBootstrapFromDisk(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "raft-storage")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	logger := EncryptedRaftLogger{
 		StateDir:      tempdir,
 		EncryptionKey: []byte("key1"),
 	}
-	err = logger.BootstrapNew([]byte("metadata"))
+	err := logger.BootstrapNew([]byte("metadata"))
 	require.NoError(t, err)
 
 	// everything should be saved with "key1"
@@ -94,15 +91,12 @@ func TestBootstrapFromDisk(t *testing.T) {
 
 // Ensure that we can change encoding and not have a race condition
 func TestRaftLoggerRace(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "raft-storage")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	logger := EncryptedRaftLogger{
 		StateDir:      tempdir,
 		EncryptionKey: []byte("Hello"),
 	}
-	err = logger.BootstrapNew([]byte("metadata"))
+	err := logger.BootstrapNew([]byte("metadata"))
 	require.NoError(t, err)
 
 	_, entries, _ := makeWALData(fakeSnapshotData.Metadata.Index, fakeSnapshotData.Metadata.Term, &fakeSnapshotData.Metadata.ConfState)
@@ -141,10 +135,7 @@ func TestRaftLoggerRace(t *testing.T) {
 func TestMigrateToV3EncryptedForm(t *testing.T) {
 	t.Parallel()
 
-	tempdir, err := os.MkdirTemp("", "raft-storage")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	dek := []byte("key")
 
 	writeDataTo := func(suffix string, snapshot raftpb.Snapshot, walFactory WALFactory, snapFactory SnapFactory) []raftpb.Entry {
@@ -206,7 +197,7 @@ func TestMigrateToV3EncryptedForm(t *testing.T) {
 	require.NoError(t, os.RemoveAll(filepath.Join(tempdir, "snap-v3-encrypted")))
 	requireLoadedData(v3Snapshot, v3Entries)
 	// v3 dirs still there
-	_, err = os.Stat(filepath.Join(tempdir, "snap-v3"))
+	_, err := os.Stat(filepath.Join(tempdir, "snap-v3"))
 	require.NoError(t, err)
 	_, err = os.Stat(filepath.Join(tempdir, "wal-v3"))
 	require.NoError(t, err)
