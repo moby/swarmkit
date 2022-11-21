@@ -10,7 +10,7 @@ import (
 	"github.com/moby/swarmkit/v2/testutils"
 )
 
-var _ = Describe("PluginManager", func() {
+var _ = Describe("Manager", func() {
 	var (
 		pm *pluginManager
 		pg *testutils.FakePluginGetter
