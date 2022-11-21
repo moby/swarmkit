@@ -135,10 +135,7 @@ func TestRaftDEKMarshalUnmarshal(t *testing.T) {
 
 // NewRaftDEKManager creates a key if one doesn't exist
 func TestNewRaftDEKManager(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "manager-new-dek-manager-")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
-
+	tempDir := t.TempDir()
 	paths := ca.NewConfigPaths(tempDir)
 	cert, key, err := cautils.CreateRootCertAndKey("cn")
 	require.NoError(t, err)
@@ -188,10 +185,7 @@ func TestNewRaftDEKManager(t *testing.T) {
 // NeedsRotation flag are there, it does not remove the NeedsRotation flag, because that indicates
 // that we basically need to do 2 rotations.
 func TestRaftDEKManagerNeedsRotateGetKeys(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "manager-maybe-get-data-")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
-
+	tempDir := t.TempDir()
 	paths := ca.NewConfigPaths(tempDir)
 
 	for _, fips := range []bool{true, false} {
@@ -270,7 +264,7 @@ func TestRaftDEKManagerNeedsRotateGetKeys(t *testing.T) {
 		} {
 			// clear the directory
 			require.NoError(t, os.RemoveAll(tempDir))
-			os.Mkdir(tempDir, 0o777)
+			require.NoError(t, os.MkdirAll(tempDir, 0o777))
 			testcase.dekData.FIPS = fips
 			krw := ca.NewKeyReadWriter(paths.Node, nil, testcase.dekData)
 			if testcase.keyOnDisk {
@@ -301,10 +295,7 @@ func TestRaftDEKManagerNeedsRotateGetKeys(t *testing.T) {
 }
 
 func TestRaftDEKManagerUpdateKeys(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "manager-update-keys-")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
-
+	tempDir := t.TempDir()
 	paths := ca.NewConfigPaths(tempDir)
 	cert, key, err := cautils.CreateRootCertAndKey("cn")
 	require.NoError(t, err)
@@ -356,10 +347,7 @@ func TestRaftDEKManagerUpdateKeys(t *testing.T) {
 }
 
 func TestRaftDEKManagerMaybeUpdateKEK(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "manager-maybe-update-kek-")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
-
+	tempDir := t.TempDir()
 	paths := ca.NewConfigPaths(tempDir)
 	cert, key, err := cautils.CreateRootCertAndKey("cn")
 	require.NoError(t, err)
@@ -517,10 +505,7 @@ O0T3aXuZGYNyh//KqAoA3erCmh6HauMz84Y=
 	realKEK, err := base64.RawStdEncoding.DecodeString("fDg9YejLnMjU+FpulWR62oJLzVpkD2j7VQuP5xiK9QA")
 	require.NoError(t, err)
 
-	tempdir, err := os.MkdirTemp("", "KeyReadWriter-false-positive-decryption")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	path := ca.NewConfigPaths(tempdir)
 	require.NoError(t, os.WriteFile(path.Node.Key, badKey, 0o600))
 	require.NoError(t, os.WriteFile(path.Node.Cert, matchingCert, 0o644))
@@ -541,10 +526,7 @@ O0T3aXuZGYNyh//KqAoA3erCmh6HauMz84Y=
 
 // If FIPS is enabled, the raft DEK will be encrypted using fernet, and not NACL secretbox.
 func TestRaftDEKsFIPSEnabledUsesFernet(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "manager-dek-fips")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
-
+	tempDir := t.TempDir()
 	paths := ca.NewConfigPaths(tempDir)
 	cert, key, err := cautils.CreateRootCertAndKey("cn")
 	require.NoError(t, err)

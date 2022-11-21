@@ -24,10 +24,6 @@ func TestIsStateDirty(t *testing.T) {
 
 	defer os.RemoveAll(temp.Name())
 
-	stateDir, err := os.MkdirTemp("", "test-raft")
-	assert.NoError(t, err)
-	defer os.RemoveAll(stateDir)
-
 	tc := testutils.NewTestCA(t, func(p ca.CertPaths) *ca.KeyReadWriter {
 		return ca.NewKeyReadWriter(p, []byte("kek"), nil)
 	})
@@ -36,6 +32,7 @@ func TestIsStateDirty(t *testing.T) {
 	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
 	assert.NoError(t, err)
 
+	stateDir := t.TempDir()
 	m, err := New(&Config{
 		RemoteAPI:        &RemoteAddrs{ListenAddr: "127.0.0.1:0"},
 		ControlAPI:       temp.Name(),
