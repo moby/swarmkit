@@ -6,19 +6,20 @@ jobs:
     # other environment variables (although the working directory can use the `~` character,
     # but environment variables cannot), so to avoid having to override the GOPATH for every
     # run command, just hard code in the directory to be CircleCI expects it to be.
+    # FIXME: this still needs to be docker/swarmkit, as that's how it's referenced in protobuf
     working_directory: /home/circleci/.go_workspace/src/github.com/docker/swarmkit
     environment:
       # Needed to install go
       OS: linux
       ARCH: amd64
-      GOVERSION: 1.17.9
+      GOVERSION: 1.18.8
       GO111MODULE: "on"
       # Needed to install protoc
       PROTOC_VERSION: 3.6.1
 
     # Note(cyli): We create a tmpfs mount to be used for temporary files created by tests
     # to mitigate the excessive I/O latencies that sometimes cause the tests to fail.
-    # See https://github.com/docker/swarmkit/pull/2254.
+    # See https://github.com/moby/swarmkit/pull/2254.
 
     # There is no way to mount tmpfs volumes in the docker executor, so we are using
     # the machine executor. However, this incur a performance overhead

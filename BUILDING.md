@@ -7,18 +7,18 @@ When setup correctly, you should have a GOROOT and GOPATH set in the environment
 After you set up the Go development environment, use `go get` to check out
 `swarmkit`:
 
-    go get -d github.com/docker/swarmkit
+    go get -d github.com/moby/swarmkit/v2@latest
 
 This command installs the source repository into the `GOPATH`.
 
 It is not mandatory to use `go get` to checkout the SwarmKit project. However,
 for these instructions to work, you need to check out the project to the
-correct subdirectory of the `GOPATH`: `$GOPATH/src/github.com/docker/swarmkit`.
+correct subdirectory of the `GOPATH`: `$GOPATH/src/github.com/moby/swarmkit`.
 
 ### Repeatable Builds
 
 For the full development experience, one should `cd` into
-`$GOPATH/src/github.com/docker/swarmkit`. From there, the regular `go`
+`$GOPATH/src/github.com/moby/swarmkit`. From there, the regular `go`
 commands, such as `go test`, should work per package (please see
 [Developing](#developing) if they don't work).
 
@@ -41,35 +41,35 @@ build:
     🐳 vet
     🐳 lint
     🐳 build
-    github.com/docker/swarmkit
-    github.com/docker/swarmkit/vendor/github.com/davecgh/go-spew/spew
-    github.com/docker/swarmkit/vendor/github.com/pmezard/go-difflib/difflib
-    github.com/docker/swarmkit/cmd/protoc-gen-gogoswarm
-    github.com/docker/swarmkit/cmd/swarm-bench
-    github.com/docker/swarmkit/cmd/swarmctl
-    github.com/docker/swarmkit/vendor/github.com/stretchr/testify/assert
-    github.com/docker/swarmkit/ca/testutils
-    github.com/docker/swarmkit/cmd/swarmd
-    github.com/docker/swarmkit/vendor/code.cloudfoundry.org/clock/fakeclock
-    github.com/docker/swarmkit/vendor/github.com/stretchr/testify/require
-    github.com/docker/swarmkit/manager/state/raft/testutils
-    github.com/docker/swarmkit/manager/testcluster
-    github.com/docker/swarmkit/protobuf/plugin/deepcopy/test
-    github.com/docker/swarmkit/protobuf/plugin/raftproxy/test
+    github.com/moby/swarmkit
+    github.com/moby/swarmkit/vendor/github.com/davecgh/go-spew/spew
+    github.com/moby/swarmkit/vendor/github.com/pmezard/go-difflib/difflib
+    github.com/moby/swarmkit/cmd/protoc-gen-gogoswarm
+    github.com/moby/swarmkit/cmd/swarm-bench
+    github.com/moby/swarmkit/cmd/swarmctl
+    github.com/moby/swarmkit/vendor/github.com/stretchr/testify/assert
+    github.com/moby/swarmkit/ca/testutils
+    github.com/moby/swarmkit/cmd/swarmd
+    github.com/moby/swarmkit/vendor/code.cloudfoundry.org/clock/fakeclock
+    github.com/moby/swarmkit/vendor/github.com/stretchr/testify/require
+    github.com/moby/swarmkit/manager/state/raft/testutils
+    github.com/moby/swarmkit/manager/testcluster
+    github.com/moby/swarmkit/protobuf/plugin/deepcopy/test
+    github.com/moby/swarmkit/protobuf/plugin/raftproxy/test
     🐳 test
-    ?       github.com/docker/swarmkit      [no test files]
-    ?       github.com/docker/swarmkit      [no test files]
-    ok      github.com/docker/swarmkit/agent        2.264s
-    ok      github.com/docker/swarmkit/agent/exec   1.055s
-    ok      github.com/docker/swarmkit/agent/exec/container 1.094s
-    ?       github.com/docker/swarmkit/api  [no test files]
-    ?       github.com/docker/swarmkit/api/duration [no test files]
-    ?       github.com/docker/swarmkit/api/timestamp        [no test files]
-    ok      github.com/docker/swarmkit/ca   15.634s
+    ?       github.com/moby/swarmkit      [no test files]
+    ?       github.com/moby/swarmkit      [no test files]
+    ok      github.com/moby/swarmkit/agent        2.264s
+    ok      github.com/moby/swarmkit/agent/exec   1.055s
+    ok      github.com/moby/swarmkit/agent/exec/container 1.094s
+    ?       github.com/moby/swarmkit/api  [no test files]
+    ?       github.com/moby/swarmkit/api/duration [no test files]
+    ?       github.com/moby/swarmkit/api/timestamp        [no test files]
+    ok      github.com/moby/swarmkit/ca   15.634s
     ...
-    ok      github.com/docker/swarmkit/protobuf/plugin/raftproxy/test       1.084s
-    ok      github.com/docker/swarmkit/protobuf/ptypes      1.025s
-    ?       github.com/docker/swarmkit/version      [no test files]
+    ok      github.com/moby/swarmkit/protobuf/plugin/raftproxy/test       1.084s
+    ok      github.com/moby/swarmkit/protobuf/ptypes      1.025s
+    ?       github.com/moby/swarmkit/version      [no test files]
 
 The above provides a repeatable build using the contents of the vendored
 `./vendor` directory. This includes formatting, vetting, linting, building,
