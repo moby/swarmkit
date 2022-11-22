@@ -78,10 +78,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestCreateRootCASaveRootCA(t *testing.T) {
-	tempBaseDir, err := os.MkdirTemp("", "swarm-ca-test-")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempBaseDir)
-
+	tempBaseDir := t.TempDir()
 	paths := ca.NewConfigPaths(tempBaseDir)
 
 	rootCA, err := ca.CreateRootCA("rootCN")
@@ -117,14 +114,11 @@ func TestCreateRootCAExpiry(t *testing.T) {
 }
 
 func TestGetLocalRootCA(t *testing.T) {
-	tempBaseDir, err := os.MkdirTemp("", "swarm-ca-test-")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempBaseDir)
-
+	tempBaseDir := t.TempDir()
 	paths := ca.NewConfigPaths(tempBaseDir)
 
 	// First, try to load the local Root CA with the certificate missing.
-	_, err = ca.GetLocalRootCA(paths.RootCA)
+	_, err := ca.GetLocalRootCA(paths.RootCA)
 	assert.Equal(t, ca.ErrNoLocalRootCA, err)
 
 	// Create the local Root CA to ensure that we can reload it correctly.
@@ -166,10 +160,7 @@ func TestGetLocalRootCA(t *testing.T) {
 }
 
 func TestGetLocalRootCAInvalidCert(t *testing.T) {
-	tempBaseDir, err := os.MkdirTemp("", "swarm-ca-test-")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempBaseDir)
-
+	tempBaseDir := t.TempDir()
 	paths := ca.NewConfigPaths(tempBaseDir)
 
 	// Write some garbage to the CA cert
@@ -177,15 +168,12 @@ func TestGetLocalRootCAInvalidCert(t *testing.T) {
 some random garbage\n
 -----END CERTIFICATE-----`), 0o644))
 
-	_, err = ca.GetLocalRootCA(paths.RootCA)
+	_, err := ca.GetLocalRootCA(paths.RootCA)
 	require.Error(t, err)
 }
 
 func TestGetLocalRootCAInvalidKey(t *testing.T) {
-	tempBaseDir, err := os.MkdirTemp("", "swarm-ca-test-")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempBaseDir)
-
+	tempBaseDir := t.TempDir()
 	paths := ca.NewConfigPaths(tempBaseDir)
 	// Create the local Root CA to ensure that we can reload it correctly.
 	rootCA, err := ca.CreateRootCA("rootCN")
@@ -260,9 +248,7 @@ func TestGetRemoteCA(t *testing.T) {
 
 	// update the test CA to include a multi-certificate bundle as the root - the digest
 	// we use to verify with must be the digest of the whole bundle
-	tmpDir, err := os.MkdirTemp("", "GetRemoteCA")
-	require.NoError(t, err)
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 	paths := ca.NewConfigPaths(tmpDir)
 	otherRootCA, err := ca.CreateRootCA("other")
 	require.NoError(t, err)
@@ -373,10 +359,7 @@ func TestRequestAndSaveNewCertificatesWithIntermediates(t *testing.T) {
 			CrossSignedCACert: concat([]byte("   "), cautils.ECDSACertChain[1]),
 		},
 	}
-	tempdir, err := os.MkdirTemp("", "test-request-and-save-new-certificates")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, apiRootCA, nil)
 	defer tc.Stop()
 	issuerInfo, parsedCerts := testRequestAndSaveNewCertificates(t, tc)
@@ -452,13 +435,12 @@ func TestRequestAndSaveNewCertificatesWithKEKUpdate(t *testing.T) {
 
 // returns the issuer of the issued certificate and the parsed certs of the issued certificate
 func testIssueAndSaveNewCertificates(t *testing.T, rca *ca.RootCA) {
-	tempdir, err := os.MkdirTemp("", "test-issue-and-save-new-certificates")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 	paths := ca.NewConfigPaths(tempdir)
 	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
 
 	var issuer *x509.Certificate
+	var err error
 	if len(rca.Intermediates) > 0 {
 		issuer, err = helpers.ParseCertificatePEM(rca.Intermediates)
 		require.NoError(t, err)
@@ -597,10 +579,11 @@ func newNonSigningCAServer(t *testing.T, tc *cautils.TestCA) *nonSigningCAServer
 
 	api.RegisterNodeCAServer(grpcServer, n)
 	go grpcServer.Serve(l)
+	t.Cleanup(n.server.Stop)
 	return n
 }
 
-func (n *nonSigningCAServer) stop(t *testing.T) {
+func (n *nonSigningCAServer) stop() {
 	n.server.Stop()
 }
 
@@ -687,7 +670,6 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	defer cancel()
 
 	fakeCAServer := newNonSigningCAServer(t, tc)
-	defer fakeCAServer.stop(t)
 
 	completed := make(chan error)
 	defer close(completed)
@@ -830,8 +812,6 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 
 	// create 2 CA servers referencing the same memory store, so we can have multiple connections
 	fakeSigningServers := []*nonSigningCAServer{newNonSigningCAServer(t, tc), newNonSigningCAServer(t, tc)}
-	defer fakeSigningServers[0].stop(t)
-	defer fakeSigningServers[1].stop(t)
 	multiBroker := connectionbroker.New(&fakeRemotes{
 		peers: []api.Peer{
 			{Addr: fakeSigningServers[0].addr},
@@ -864,7 +844,7 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 
 	// stop 1 server, because it will have been the remote GetRemoteSignedCertificate first connected to, and ensure
 	// that GetRemoteSignedCertificate is still going
-	fakeSigningServers[0].stop(t)
+	fakeSigningServers[0].stop()
 	select {
 	case <-completed:
 		require.FailNow(t, "GetRemoteSignedCertificate should still be going after 2.5 seconds")
@@ -881,7 +861,7 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 	}, time.Second*2))
 
 	// kill the last server - this should cause GetRemoteSignedCertificate to fail because there are no more peers
-	fakeSigningServers[1].stop(t)
+	fakeSigningServers[1].stop()
 	// wait for 5 seconds and ensure that GetRemoteSignedCertificate has returned with an error.
 	select {
 	case err = <-completed:
@@ -893,7 +873,6 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 	// calling GetRemoteSignedCertificate with a connection that doesn't work with IssueNodeCertificate will fail
 	// immediately without retrying with a new connection
 	fakeSigningServers[1] = newNonSigningCAServer(t, tc)
-	defer fakeSigningServers[1].stop(t)
 	multiBroker = connectionbroker.New(&fakeRemotes{
 		peers: []api.Peer{
 			{Addr: fakeSigningServers[0].addr},
@@ -925,10 +904,7 @@ func TestNewRootCA(t *testing.T) {
 }
 
 func TestNewRootCABundle(t *testing.T) {
-	tempBaseDir, err := os.MkdirTemp("", "swarm-ca-test-")
-	assert.NoError(t, err)
-	defer os.RemoveAll(tempBaseDir)
-
+	tempBaseDir := t.TempDir()
 	paths := ca.NewConfigPaths(tempBaseDir)
 
 	// make one rootCA
@@ -1188,10 +1164,6 @@ func TestNewRootCAInvalidCertAndKeys(t *testing.T) {
 }
 
 func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "swarm-ca-test-")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
 	// re-generate the intermediate to be a self-signed root, and use that as the second root
 	parsedKey, err := helpers.ParsePrivateKeyPEM(cautils.ECDSACertChainKeys[1])
 	require.NoError(t, err)
@@ -1214,6 +1186,7 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 		ca.DefaultNodeCertExpiration, cautils.ECDSACertChain[1])
 	require.NoError(t, err)
 
+	tempdir := t.TempDir()
 	paths := ca.NewConfigPaths(tempdir)
 	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
 	_, _, err = signWithIntermediate.IssueAndSaveNewCertificates(krw, "cn", "ou", "org")
@@ -1484,9 +1457,7 @@ func TestRootCACrossSignCACertificate(t *testing.T) {
 		},
 	}
 
-	tempdir, err := os.MkdirTemp("", "cross-sign-cert")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 	paths := ca.NewConfigPaths(tempdir)
 	krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
 

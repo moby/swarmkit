@@ -20,6 +20,7 @@ import (
 
 // writeFakeRaftData writes the given snapshot and some generated WAL data to given "snap" and "wal" directories
 func writeFakeRaftData(t *testing.T, stateDir string, snapshot *raftpb.Snapshot, wf storage.WALFactory, sf storage.SnapFactory) {
+	t.Helper()
 	snapDir := filepath.Join(stateDir, "raft", "snap-v3-encrypted")
 	walDir := filepath.Join(stateDir, "raft", "wal-v3-encrypted")
 	require.NoError(t, os.MkdirAll(snapDir, 0o755))
@@ -50,15 +51,12 @@ func writeFakeRaftData(t *testing.T, stateDir string, snapshot *raftpb.Snapshot,
 }
 
 func TestDecrypt(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "rafttool")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
 	kek := []byte("kek")
 	dek := []byte("dek")
 	unlockKey := encryption.HumanReadableKey(kek)
 
 	// write a key to disk, else we won't be able to decrypt anything
+	tempdir := t.TempDir()
 	paths := certPaths(tempdir)
 	krw := ca.NewKeyReadWriter(paths.Node, kek,
 		manager.RaftDEKData{EncryptionKeys: raft.EncryptionKeys{CurrentDEK: dek}})

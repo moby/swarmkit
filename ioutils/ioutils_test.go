@@ -8,12 +8,7 @@ import (
 )
 
 func TestAtomicWriteToFile(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "atomic-writers-test")
-	if err != nil {
-		t.Fatalf("Error when creating temporary directory: %s", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
+	tmpDir := t.TempDir()
 	expected := []byte("barbaz")
 	if err := AtomicWriteFile(filepath.Join(tmpDir, "foo"), expected, 0o600); err != nil {
 		t.Fatalf("Error writing to file: %v", err)

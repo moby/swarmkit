@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -1170,16 +1169,13 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 		t:  t,
 	}
 
-	tempDir, err := os.MkdirTemp("", "competing-ca-server")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
-
 	var (
 		otherServers   = make([]*ca.Server, 5)
 		serverContexts = make([]context.Context, 5)
 		paths          = make([]*ca.SecurityConfigPaths, 5)
 	)
 
+	tempDir := t.TempDir()
 	for i := 0; i < 5; i++ { // to make sure we get some collision
 		// start a competing CA server
 		paths[i] = ca.NewConfigPaths(filepath.Join(tempDir, fmt.Sprintf("%d", i)))
@@ -1217,6 +1213,7 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 			rotationCrossSigned []byte
 			rotationTLSInfo     *api.NodeTLSInfo
 			caRootCA            ca.RootCA
+			err                 error
 		)
 		rotationCert, rotationKey, err = cautils.CreateRootCertAndKey(fmt.Sprintf("root cn %d", i))
 		require.NoError(t, err)

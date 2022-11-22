@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -45,10 +46,8 @@ func makeWALData(index uint64, term uint64, state *raftpb.ConfState) ([]byte, []
 }
 
 func createWithWAL(t *testing.T, w WALFactory, metadata []byte, startSnap walpb.Snapshot, entries []raftpb.Entry) string {
-	walDir, err := os.MkdirTemp("", "waltests")
-	require.NoError(t, err)
-	require.NoError(t, os.RemoveAll(walDir))
-
+	t.Helper()
+	walDir := t.TempDir()
 	walWriter, err := w.Create(walDir, metadata)
 	require.NoError(t, err)
 
@@ -72,7 +71,6 @@ func TestReadAllWrappedNoEncryption(t *testing.T) {
 	}
 
 	tempdir := createWithWAL(t, OriginalWAL, metadata, snapshot, wrappedEntries)
-	defer os.RemoveAll(tempdir)
 
 	c := NewWALFactory(encryption.NoopCrypter, encryption.NoopCrypter)
 	wrapped, err := c.Open(tempdir, snapshot)
@@ -98,7 +96,6 @@ func TestReadAllNoSupportedDecrypter(t *testing.T) {
 	}
 
 	tempdir := createWithWAL(t, OriginalWAL, metadata, snapshot, entries)
-	defer os.RemoveAll(tempdir)
 
 	c := NewWALFactory(encryption.NoopCrypter, encryption.NoopCrypter)
 	wrapped, err := c.Open(tempdir, snapshot)
@@ -125,7 +122,6 @@ func TestReadAllEntryIncorrectlyEncrypted(t *testing.T) {
 	}
 
 	tempdir := createWithWAL(t, OriginalWAL, metadata, snapshot, entries)
-	defer os.RemoveAll(tempdir)
 
 	c := NewWALFactory(encryption.NoopCrypter, crypter)
 	wrapped, err := c.Open(tempdir, snapshot)
@@ -145,7 +141,6 @@ func TestSave(t *testing.T) {
 	crypter := &meowCrypter{}
 	c := NewWALFactory(crypter, encryption.NoopCrypter)
 	tempdir := createWithWAL(t, c, metadata, snapshot, entries)
-	defer os.RemoveAll(tempdir)
 
 	ogWAL, err := OriginalWAL.Open(tempdir, snapshot)
 	require.NoError(t, err)
@@ -168,16 +163,14 @@ func TestSave(t *testing.T) {
 func TestSaveEncryptionFails(t *testing.T) {
 	metadata, entries, snapshot := makeWALData(1, 1, &confState)
 
-	tempdir, err := os.MkdirTemp("", "waltests")
-	require.NoError(t, err)
-	os.RemoveAll(tempdir)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
+	walDir := filepath.Join(tempdir, "non_existing_dir") // non existing path
 
 	// fail encrypting one of the entries, but not the first one
 	c := NewWALFactory(&meowCrypter{encryptFailures: map[string]struct{}{
 		"Entry 3": {},
 	}}, nil)
-	wrapped, err := c.Create(tempdir, metadata)
+	wrapped, err := c.Create(walDir, metadata)
 	require.NoError(t, err)
 
 	require.NoError(t, wrapped.SaveSnapshot(snapshot))
@@ -187,7 +180,7 @@ func TestSaveEncryptionFails(t *testing.T) {
 	require.NoError(t, wrapped.Close())
 
 	// no entries are written at all
-	ogWAL, err := OriginalWAL.Open(tempdir, snapshot)
+	ogWAL, err := OriginalWAL.Open(walDir, snapshot)
 	require.NoError(t, err)
 	defer ogWAL.Close()
 
@@ -218,7 +211,6 @@ func TestSaveAndRead(t *testing.T) {
 
 	c := NewWALFactory(crypter, crypter)
 	tempdir := createWithWAL(t, c, metadata, snapshot, entries)
-	defer os.RemoveAll(tempdir)
 
 	wrapped, err := c.Open(tempdir, snapshot)
 	require.NoError(t, err)
@@ -233,7 +225,6 @@ func TestSaveAndRead(t *testing.T) {
 func TestReadRepairWAL(t *testing.T) {
 	metadata, entries, snapshot := makeWALData(1, 1, &confState)
 	tempdir := createWithWAL(t, OriginalWAL, metadata, snapshot, entries)
-	defer os.RemoveAll(tempdir)
 
 	// there should only be one WAL file in there - corrupt it
 	files, err := os.ReadDir(tempdir)
@@ -269,16 +260,12 @@ func TestMigrateWALs(t *testing.T) {
 		dirs = make([]string, 2)
 	)
 
-	tempDir, err := os.MkdirTemp("", "test-migrate")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
-
+	tempDir := t.TempDir()
 	for i := range dirs {
-		dirs[i] = filepath.Join(tempDir, fmt.Sprintf("walDir%d", i))
+		dirs[i] = filepath.Join(tempDir, "walDir"+strconv.Itoa(i))
 	}
 
 	origDir := createWithWAL(t, OriginalWAL, metadata, snapshot, entries)
-	defer os.RemoveAll(origDir)
 
 	// original to new
 	oldDir := origDir

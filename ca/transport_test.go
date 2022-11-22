@@ -2,7 +2,6 @@ package ca
 
 import (
 	"crypto/tls"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,9 +9,7 @@ import (
 )
 
 func TestNewMutableTLS(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "test-transport")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 	paths := NewConfigPaths(tempdir)
 	krw := NewKeyReadWriter(paths.Node, nil, nil)
 
@@ -31,9 +28,7 @@ func TestNewMutableTLS(t *testing.T) {
 }
 
 func TestGetAndValidateCertificateSubject(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "test-transport")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 	paths := NewConfigPaths(tempdir)
 	krw := NewKeyReadWriter(paths.Node, nil, nil)
 
@@ -51,9 +46,7 @@ func TestGetAndValidateCertificateSubject(t *testing.T) {
 }
 
 func TestLoadNewTLSConfig(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "test-transport")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
+	tempdir := t.TempDir()
 	paths := NewConfigPaths(tempdir)
 	krw := NewKeyReadWriter(paths.Node, nil, nil)
 

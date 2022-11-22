@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
-	"os"
 	"testing"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/ca/testutils"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -56,13 +56,12 @@ func uglifyOnePEM(pemBytes []byte) []byte {
 }
 
 func getSecurityConfig(t *testing.T, localRootCA *ca.RootCA, cluster *api.Cluster) *ca.SecurityConfig {
-	tempdir, err := os.MkdirTemp("", "test-validate-CA")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
+	t.Helper()
+	tempdir := t.TempDir()
 	paths := ca.NewConfigPaths(tempdir)
 	secConfig, cancel, err := localRootCA.CreateSecurityConfig(context.Background(), ca.NewKeyReadWriter(paths.Node, nil, nil), ca.CertificateRequestConfig{})
 	require.NoError(t, err)
-	cancel()
+	assert.NoError(t, cancel())
 	return secConfig
 }
 
@@ -92,10 +91,7 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 	}
 
 	// set up 2 external CAs that can be contacted for signing
-	tempdir, err := os.MkdirTemp("", "test-validate-CA")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	initExtServer, err := testutils.NewExternalSigningServer(localRootCA, tempdir)
 	require.NoError(t, err)
 	defer initExtServer.Stop()
@@ -244,7 +240,7 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 					},
 					{
 						URL:    rotateExtServer.URL,
-						CACert: rotationCert, //new cert
+						CACert: rotationCert, // new cert
 					},
 				},
 			},
@@ -261,7 +257,7 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 					},
 					{
 						URL:    rotateExtServer.URL,
-						CACert: rotationCert, //new cert
+						CACert: rotationCert, // new cert
 					},
 				},
 			},
@@ -384,10 +380,7 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 	initialExternalRootCA.CAKey = nil
 
 	// set up 2 external CAs that can be contacted for signing
-	tempdir, err := os.MkdirTemp("", "test-validate-CA")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	initExtServer, err := testutils.NewExternalSigningServer(localRootCA, tempdir)
 	require.NoError(t, err)
 	defer initExtServer.Stop()

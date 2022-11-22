@@ -1,9 +1,9 @@
 package storage
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -39,10 +39,7 @@ func getSnapshotFile(t *testing.T, tempdir string) string {
 
 // Snapshotter can read snapshots that are wrapped, but not encrypted
 func TestSnapshotterLoadNotEncryptedSnapshot(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "snapwrap")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	ogSnap := OriginalSnap.New(tempdir)
 	r := api.MaybeEncryptedRecord{
 		Data: fakeSnapshotData.Data,
@@ -65,10 +62,7 @@ func TestSnapshotterLoadNotEncryptedSnapshot(t *testing.T) {
 
 // If there is no decrypter for a snapshot, decrypting fails
 func TestSnapshotterLoadNoDecrypter(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "snapwrap")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	ogSnap := OriginalSnap.New(tempdir)
 	r := api.MaybeEncryptedRecord{
 		Data:      fakeSnapshotData.Data,
@@ -91,10 +85,7 @@ func TestSnapshotterLoadNoDecrypter(t *testing.T) {
 
 // If decrypting a snapshot fails, the error is propagated
 func TestSnapshotterLoadDecryptingFail(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "snapwrap")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	crypter := &meowCrypter{}
 
 	ogSnap := OriginalSnap.New(tempdir)
@@ -121,10 +112,7 @@ func TestSnapshotterLoadDecryptingFail(t *testing.T) {
 // The snapshot data (but not metadata or anything else) is encryptd before being
 // passed to the wrapped Snapshotter.
 func TestSnapshotterSavesSnapshotWithEncryption(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "snapwrap")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	c := NewSnapFactory(meowCrypter{}, encryption.NoopCrypter)
 	wrapped := c.New(tempdir)
 	require.NoError(t, wrapped.SaveSnap(fakeSnapshotData))
@@ -142,15 +130,12 @@ func TestSnapshotterSavesSnapshotWithEncryption(t *testing.T) {
 // If an encrypter is passed to Snapshotter, but encrypting the data fails, the
 // error is propagated up
 func TestSnapshotterSavesSnapshotEncryptionFails(t *testing.T) {
-	tempdir, err := os.MkdirTemp("", "snapwrap")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	c := NewSnapFactory(&meowCrypter{encryptFailures: map[string]struct{}{
 		"snapshotdata": {},
 	}}, encryption.NoopCrypter)
 	wrapped := c.New(tempdir)
-	err = wrapped.SaveSnap(fakeSnapshotData)
+	err := wrapped.SaveSnap(fakeSnapshotData)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "refusing to encrypt")
 
@@ -163,10 +148,7 @@ func TestSnapshotterSavesSnapshotEncryptionFails(t *testing.T) {
 // Snapshotter can read what it wrote so long as it has the same decrypter
 func TestSaveAndLoad(t *testing.T) {
 	crypter := &meowCrypter{}
-	tempdir, err := os.MkdirTemp("", "waltests")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempdir)
-
+	tempdir := t.TempDir()
 	c := NewSnapFactory(crypter, crypter)
 	wrapped := c.New(tempdir)
 	require.NoError(t, wrapped.SaveSnap(fakeSnapshotData))
@@ -183,12 +165,9 @@ func TestMigrateSnapshot(t *testing.T) {
 		dirs = make([]string, 3)
 	)
 
-	tempDir, err := os.MkdirTemp("", "test-migrate")
-	require.NoError(t, err)
-	defer os.RemoveAll(tempDir)
-
+	tempDir := t.TempDir()
 	for i := range dirs {
-		dirs[i] = filepath.Join(tempDir, fmt.Sprintf("snapDir%d", i))
+		dirs[i] = filepath.Join(tempDir, "snapDir"+strconv.Itoa(i))
 	}
 	require.NoError(t, os.Mkdir(dirs[0], 0o755))
 	require.NoError(t, OriginalSnap.New(dirs[0]).SaveSnap(fakeSnapshotData))
