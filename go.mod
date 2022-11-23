@@ -41,7 +41,21 @@ require (
 	golang.org/x/crypto v0.1.0
 	golang.org/x/net v0.1.0
 	golang.org/x/time v0.1.0
-	google.golang.org/grpc v1.40.0
+
+	// NOTE(dperny,cyli): there is some error handling, found in the
+	// (*firstSessionErrorTracker).SessionClosed method in node/node.go, which
+	// relies on string matching to handle x509 errors. between grpc versions 1.3.0
+	// and 1.7.5, the error string we were matching changed, breaking swarmkit.
+	// In 1.10.x, GRPC stopped surfacing those errors entirely, breaking swarmkit.
+	// In >=1.11, those errors were brought back but the string had changed again.
+	// After updating GRPC, if integration test failures occur, verify that the
+	// string matching there is correct.
+	//
+	// For details, see:
+	//
+	// - https://github.com/moby/swarmkit/commit/4343384f11737119c3fa1524da2cb2707c70e04a
+	// - https://github.com/moby/swarmkit/commit/8a2b6fd64944bcef8154ced28f90aeec6abfeb04
+	google.golang.org/grpc v1.41.0
 )
 
 require (
@@ -140,17 +154,8 @@ require (
 // Removes etcd dependency
 replace github.com/rexray/gocsi => github.com/dperny/gocsi v1.2.3-pre
 
-// NOTE(dperny,cyli): there is some error handling, found in the
-// (*firstSessionErrorTracker).SessionClosed method in node/node.go, which
-// relies on string matching to handle x509 errors. between grpc versions 1.3.0
-// and 1.7.5, the error string we were matching changed, breaking swarmkit.
-// In 1.10.x, GRPC stopped surfacing those errors entirely, breaking swarmkit.
-// In >=1.11, those errors were brought back but the string had changed again.
-// After updating GRPC, if integration test failures occur, verify that the
-// string matching there is correct.
 replace (
 	github.com/golang/protobuf => github.com/golang/protobuf v1.5.2
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1
-	google.golang.org/grpc => google.golang.org/grpc v1.41.0
 	google.golang.org/protobuf => google.golang.org/protobuf v1.27.1
 )
