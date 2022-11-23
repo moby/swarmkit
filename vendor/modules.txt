@@ -896,7 +896,7 @@ google.golang.org/grpc/xds/internal/xdsclient/bootstrap
 google.golang.org/grpc/xds/internal/xdsclient/load
 google.golang.org/grpc/xds/internal/xdsclient/v2
 google.golang.org/grpc/xds/internal/xdsclient/v3
-# google.golang.org/protobuf v1.27.1 => google.golang.org/protobuf v1.27.1
+# google.golang.org/protobuf v1.27.1
 ## explicit; go 1.9
 google.golang.org/protobuf/cmd/protoc-gen-go
 google.golang.org/protobuf/cmd/protoc-gen-go/internal_gengo
@@ -963,4 +963,3 @@ gopkg.in/yaml.v3
 sigs.k8s.io/yaml
 # github.com/rexray/gocsi => github.com/dperny/gocsi v1.2.3-pre
 # google.golang.org/genproto => google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1
-# google.golang.org/protobuf => google.golang.org/protobuf v1.27.1
