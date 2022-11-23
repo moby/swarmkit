@@ -788,7 +788,7 @@ google.golang.org/appengine/internal/modules
 google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
-# google.golang.org/genproto v0.0.0-20210821163610-241b8fcbd6c8 => google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1
+# google.golang.org/genproto v0.0.0-20210821163610-241b8fcbd6c8
 ## explicit; go 1.11
 google.golang.org/genproto/googleapis/api/annotations
 google.golang.org/genproto/googleapis/api/httpbody
@@ -962,4 +962,3 @@ gopkg.in/yaml.v3
 ## explicit; go 1.12
 sigs.k8s.io/yaml
 # github.com/rexray/gocsi => github.com/dperny/gocsi v1.2.3-pre
-# google.golang.org/genproto => google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1

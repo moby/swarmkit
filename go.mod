@@ -153,5 +153,3 @@ require (
 
 // Removes etcd dependency
 replace github.com/rexray/gocsi => github.com/dperny/gocsi v1.2.3-pre
-
-replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1
