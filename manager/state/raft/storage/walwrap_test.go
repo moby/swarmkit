@@ -260,6 +260,16 @@ func TestReadRepairWAL(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, metadata, waldata.Metadata)
 	require.NoError(t, ogWAL.Close())
+
+	// Also run with a file beyond repair.
+	tempdir = createWithWAL(t, OriginalWAL, metadata, snapshot, entries)
+	files, err = os.ReadDir(tempdir)
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+	require.NoError(t, os.Truncate(filepath.Join(tempdir, files[0].Name()), 200))
+
+	_, _, err = ReadRepairWAL(context.Background(), tempdir, snapshot, OriginalWAL)
+	require.ErrorContains(t, err, "wal: max entry size limit exceeded")
 }
 
 func TestMigrateWALs(t *testing.T) {
