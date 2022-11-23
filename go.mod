@@ -15,7 +15,7 @@ require (
 	github.com/docker/go-metrics v0.0.1
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.0
-	github.com/fernet/fernet-go v0.0.0-20180830025343-9eac43b88a5e
+	github.com/fernet/fernet-go v0.0.0-20211208181803-9f70042a33ee
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
