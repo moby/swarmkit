@@ -527,7 +527,7 @@ go.etcd.io/etcd/etcdctl/v3/ctlv3/command
 ## explicit; go 1.16
 go.etcd.io/etcd/etcdutl/v3/etcdutl
 go.etcd.io/etcd/etcdutl/v3/snapshot
-# go.etcd.io/etcd/pkg/v3 v3.5.4
+# go.etcd.io/etcd/pkg/v3 v3.5.5
 ## explicit; go 1.16
 go.etcd.io/etcd/pkg/v3/adt
 go.etcd.io/etcd/pkg/v3/cobrautl
