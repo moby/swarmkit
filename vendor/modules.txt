@@ -248,7 +248,7 @@ github.com/golang/groupcache/lru
 ## explicit; go 1.11
 github.com/golang/mock/mockgen
 github.com/golang/mock/mockgen/model
-# github.com/golang/protobuf v1.5.2 => github.com/golang/protobuf v1.5.2
+# github.com/golang/protobuf v1.5.2
 ## explicit; go 1.9
 github.com/golang/protobuf/descriptor
 github.com/golang/protobuf/jsonpb
@@ -962,6 +962,5 @@ gopkg.in/yaml.v3
 ## explicit; go 1.12
 sigs.k8s.io/yaml
 # github.com/rexray/gocsi => github.com/dperny/gocsi v1.2.3-pre
-# github.com/golang/protobuf => github.com/golang/protobuf v1.5.2
 # google.golang.org/genproto => google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1
 # google.golang.org/protobuf => google.golang.org/protobuf v1.27.1
