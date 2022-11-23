@@ -34,10 +34,10 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.5
 	go.etcd.io/bbolt v1.3.6
-	go.etcd.io/etcd/client/pkg/v3 v3.5.5
-	go.etcd.io/etcd/pkg/v3 v3.5.5
-	go.etcd.io/etcd/raft/v3 v3.5.5
-	go.etcd.io/etcd/server/v3 v3.5.5
+	go.etcd.io/etcd/client/pkg/v3 v3.5.6
+	go.etcd.io/etcd/pkg/v3 v3.5.6
+	go.etcd.io/etcd/raft/v3 v3.5.6
+	go.etcd.io/etcd/server/v3 v3.5.6
 	golang.org/x/crypto v0.1.0
 	golang.org/x/net v0.1.0
 	golang.org/x/time v0.1.0
