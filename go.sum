@@ -859,8 +859,9 @@ go.etcd.io/etcd/pkg/v3 v3.5.5/go.mod h1:6ksYFxttiUGzC2uxyqiyOEvhAiD0tuIqSZkX3TyP
 go.etcd.io/etcd/raft/v3 v3.5.0-alpha.0/go.mod h1:FAwse6Zlm5v4tEWZaTjmNhe17Int4Oxbu7+2r0DiD3w=
 go.etcd.io/etcd/raft/v3 v3.5.0/go.mod h1:UFOHSIvO/nKwd4lhkwabrTD3cqW5yVyYYf/KlD00Szc=
 go.etcd.io/etcd/raft/v3 v3.5.1/go.mod h1:WIlKzH/rjc54LDZ8SOa7GObrrdX3z96MkP1WDfODBeA=
-go.etcd.io/etcd/raft/v3 v3.5.4 h1:YGrnAgRfgXloBNuqa+oBI/aRZMcK/1GS6trJePJ/Gqc=
 go.etcd.io/etcd/raft/v3 v3.5.4/go.mod h1:SCuunjYvZFC0fBX0vxMSPjuZmpcSk+XaAcMrD6Do03w=
+go.etcd.io/etcd/raft/v3 v3.5.5 h1:Ibz6XyZ60OYyRopu73lLM/P+qco3YtlZMOhnXNS051I=
+go.etcd.io/etcd/raft/v3 v3.5.5/go.mod h1:76TA48q03g1y1VpTue92jZLr9lIHKUNcYdZOOGyx8rI=
 go.etcd.io/etcd/server/v3 v3.5.0-alpha.0/go.mod h1:tsKetYpt980ZTpzl/gb+UOJj9RkIyCb1u4wjzMg90BQ=
 go.etcd.io/etcd/server/v3 v3.5.0/go.mod h1:3Ah5ruV+M+7RZr0+Y/5mNLwC+eQlni+mQmOVdCRJoS4=
 go.etcd.io/etcd/server/v3 v3.5.1/go.mod h1:yBKYw++NWu6ciuWoKuL7UXgGKDP7ICBCuVQrIcYbPdw=

@@ -36,7 +36,7 @@ require (
 	go.etcd.io/bbolt v1.3.6
 	go.etcd.io/etcd/client/pkg/v3 v3.5.5
 	go.etcd.io/etcd/pkg/v3 v3.5.5
-	go.etcd.io/etcd/raft/v3 v3.5.4
+	go.etcd.io/etcd/raft/v3 v3.5.5
 	go.etcd.io/etcd/server/v3 v3.5.4
 	golang.org/x/crypto v0.1.0
 	golang.org/x/net v0.1.0
