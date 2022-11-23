@@ -116,7 +116,7 @@ require (
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.5 // indirect
 	go.etcd.io/etcd/client/v2 v2.305.5 // indirect
-	go.etcd.io/etcd/client/v3 v3.5.4 // indirect
+	go.etcd.io/etcd/client/v3 v3.5.5 // indirect
 	go.etcd.io/etcd/etcdctl/v3 v3.5.1 // indirect
 	go.etcd.io/etcd/etcdutl/v3 v3.5.1 // indirect
 	go.etcd.io/etcd/tests/v3 v3.5.1 // indirect
