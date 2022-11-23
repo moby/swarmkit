@@ -231,12 +231,24 @@ func TestReadRepairWAL(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, files, 1)
 
-	fName := filepath.Join(tempdir, files[0].Name())
-	fileContents, err := os.ReadFile(fName)
-	require.NoError(t, err)
-	info, err := files[0].Info()
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(fName, fileContents[:200], info.Mode()))
+	// Corrupt the file by truncating it to replicate a broken state (partial
+	// write), but for this test, make sure that there's enough bytes left to
+	// read a record (24 bytes). The record size (recBytes) is calculated here;
+	//
+	// - https://github.com/etcd-io/etcd/blob/621cd7b9e5aa2ccf634b555e4ebe0037b8975066/server/wal/decoder.go#L83
+	// - https://github.com/etcd-io/etcd/blob/621cd7b9e5aa2ccf634b555e4ebe0037b8975066/server/wal/decoder.go#L122-L131
+	//
+	// Using a shorter length will make the test fail:
+	//
+	//	wal: max entry size limit exceeded, recBytes: 24, fileSize(200) - offset(184) - padBytes(0) = entryLimit(16)
+	//
+	// So the file should be >= 208 bytes.
+	//
+	// For further details, see:
+	//
+	// - https://github.com/etcd-io/etcd/commit/621cd7b9e5aa2ccf634b555e4ebe0037b8975066 / https://github.com/etcd-io/etcd/pull/14127 (backport of https://github.com/etcd-io/etcd/pull/14122)
+	// - https://github.com/etcd-io/etcd/issues/14114
+	require.NoError(t, os.Truncate(filepath.Join(tempdir, files[0].Name()), 300))
 
 	ogWAL, err := OriginalWAL.Open(tempdir, snapshot)
 	require.NoError(t, err)
