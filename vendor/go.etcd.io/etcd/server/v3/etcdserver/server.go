@@ -514,6 +514,9 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 			if be, err = recoverSnapshotBackend(cfg, be, *snapshot, beExist, beHooks); err != nil {
 				cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
 			}
+			// A snapshot db may have already been recovered, and the old db should have
+			// already been closed in this case, so we should set the backend again.
+			ci.SetBackend(be)
 			s1, s2 := be.Size(), be.SizeInUse()
 			cfg.Logger.Info(
 				"recovered v3 backend from snapshot",
@@ -592,9 +595,10 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
-	srv.lessor = lease.NewLessor(srv.Logger(), srv.be, lease.LessorConfig{
+	srv.lessor = lease.NewLessor(srv.Logger(), srv.be, srv.cluster, lease.LessorConfig{
 		MinLeaseTTL:                int64(math.Ceil(minTTL.Seconds())),
 		CheckpointInterval:         cfg.LeaseCheckpointInterval,
+		CheckpointPersist:          cfg.LeaseCheckpointPersist,
 		ExpiredLeasesRetryInterval: srv.Cfg.ReqTimeout(),
 	})
 
