@@ -36,7 +36,10 @@ func TestControllerFlowIntegration(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	client, err := engineapi.NewClient(dockerTestAddr, "", nil, nil)
+	client, err := engineapi.NewClientWithOpts(
+		engineapi.WithHost(dockerTestAddr),
+		engineapi.WithAPIVersionNegotiation(),
+	)
 	assert.NoError(t, err)
 	assert.NotNil(t, client)
 
