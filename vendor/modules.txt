@@ -195,8 +195,8 @@ github.com/ishidawataru/sctp
 # github.com/matttproud/golang_protobuf_extensions v1.0.2
 ## explicit; go 1.9
 github.com/matttproud/golang_protobuf_extensions/pbutil
-# github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
-## explicit; go 1.13
+# github.com/moby/term v0.0.0-20221120202655-abb19827d345
+## explicit; go 1.18
 # github.com/morikuni/aec v1.0.0
 ## explicit
 # github.com/nxadm/tail v1.4.4
