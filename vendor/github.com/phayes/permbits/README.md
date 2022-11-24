@@ -1,4 +1,9 @@
-[![GoDoc](https://godoc.org/github.com/phayes/permbits?status.svg)](https://godoc.org/github.com/phayes/permbits)  [![Build Status](https://travis-ci.org/phayes/permbits.svg?branch=master)](https://travis-ci.org/phayes/permbits)  [![Coverage Status](https://coveralls.io/repos/phayes/permbits/badge.svg?branch=master&service=github)](https://coveralls.io/github/phayes/permbits?branch=master) 
+[![GoDoc](https://godoc.org/github.com/phayes/permbits?status.svg)](https://godoc.org/github.com/phayes/permbits)
+[![CircleCI](https://circleci.com/gh/phayes/permbits.svg?style=svg)](https://circleci.com/gh/phayes/permbits)
+[![Maintainability](https://api.codeclimate.com/v1/badges/4066ed1d4e9e3c9fc1de/maintainability)](https://codeclimate.com/github/phayes/permbits/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/4066ed1d4e9e3c9fc1de/test_coverage)](https://codeclimate.com/github/phayes/permbits/test_coverage)
+[![patreon](https://img.shields.io/badge/patreon-donate-green.svg)](https://patreon.com/phayes)
+[![flattr](https://img.shields.io/badge/flattr-donate-green.svg)](https://flattr.com/@phayes)
 
 # PermBits
 
@@ -6,7 +11,7 @@ Easy file permissions for golang. Easily get and set file permission bits.
 
 This package makes it a breeze to check and modify file permission bits in Linux, Mac, and other Unix systems. 
 
-##Example
+## Example
 
 ```go
 permissions, err := permbits.Stat("/path/to/my/file")
@@ -43,3 +48,7 @@ if permissions != 0777 {
 }
 
 ```
+
+ ## Contributors
+ 
+ 1. Patrick Hayes ([linkedin](https://www.linkedin.com/in/patrickdhayes/)) ([github](https://github.com/phayes)) - Available for hire.

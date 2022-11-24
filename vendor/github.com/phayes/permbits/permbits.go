@@ -124,15 +124,15 @@ func (b PermissionBits) GroupExecute() bool {
 }
 
 func (b PermissionBits) OtherRead() bool {
-	return b&GroupRead != 0
+	return b&OtherRead != 0
 }
 
 func (b PermissionBits) OtherWrite() bool {
-	return b&GroupWrite != 0
+	return b&OtherWrite != 0
 }
 
 func (b PermissionBits) OtherExecute() bool {
-	return b&GroupExecute != 0
+	return b&OtherExecute != 0
 }
 
 func (b *PermissionBits) SetSetuid(set bool) {
