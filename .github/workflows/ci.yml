@@ -4,12 +4,60 @@ on:
   push:
     branches:
       - master
+      - main
   pull_request:
 
+env:
+  DOCKER_SWARMKIT_USE_CONTAINER: 1
+  IMAGE_NAME: moby/swarmkit
+
 jobs:
-  build:
+  build-dev:
     runs-on: ubuntu-22.04
     steps:
       -
         name: Checkout
         uses: actions/checkout@v3
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      -
+        name: Build dev image
+        uses: docker/bake-action@v2
+        with:
+          targets: dev
+          set: |
+            *.cache-from=type=gha,scope=dev${{ matrix.mode }}
+            *.cache-to=type=gha,scope=dev${{ matrix.mode }},mode=max
+            *.output=type=cacheonly
+
+  test:
+    runs-on: ubuntu-22.04
+    needs:
+      - build-dev
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - coverage
+          - coverage-integration
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      -
+        name: Build dev image
+        uses: docker/bake-action@v2
+        with:
+          targets: dev
+          set: |
+            *.cache-from=type=gha,scope=dev
+      -
+        name: Test
+        run: |
+          make IMAGE_NAME=$IMAGE_NAME ${{ matrix.target }}
