@@ -61,3 +61,9 @@ jobs:
         name: Test
         run: |
           make IMAGE_NAME=$IMAGE_NAME ${{ matrix.target }}
+      -
+        name: Send to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          env_vars: RUNNER_OS
+          flags: ${{ matrix.target }}

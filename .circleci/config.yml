@@ -102,7 +102,3 @@ jobs:
         command: |
             # TMPFS has already been set up previously in the unit test step
             TMPDIR=/tmpfs make coverage-integration
-
-    - run:
-        name: Push coverage info to codecov.io
-        command: bash <(curl -fsSL https://codecov.io/bash)
