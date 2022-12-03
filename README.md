@@ -1,9 +1,9 @@
 # [SwarmKit](https://github.com/moby/swarmkit)
 
-[![GoDoc](https://godoc.org/github.com/moby/swarmkit?status.svg)](https://godoc.org/github.com/moby/swarmkit)
-[![Circle CI](https://circleci.com/gh/moby/swarmkit.svg?style=shield&circle-token=a7bf494e28963703a59de71cf19b73ad546058a7)](https://circleci.com/gh/moby/swarmkit)
-[![codecov.io](https://codecov.io/github/moby/swarmkit/coverage.svg?branch=master&token=LqD1dzTjsN)](https://codecov.io/github/moby/swarmkit?branch=master)
-[![Badge Badge](http://doyouevenbadge.com/github.com/moby/swarmkit)](http://doyouevenbadge.com/report/github.com/moby/swarmkit)
+[![PkgGoDev](https://img.shields.io/badge/go.dev-docs-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/moby/swarmkit)
+[![CI Status](https://img.shields.io/github/actions/workflow/status/moby/swarmkit/ci.yml?branch=master&label=ci&logo=github&style=flat-square)](https://github.com/moby/swarmkit/actions?query=workflow%3Aci)
+[![Go Report Card](https://goreportcard.com/badge/github.com/moby/swarmkit)](https://goreportcard.com/report/github.com/moby/swarmkit)
+[![codecov](https://img.shields.io/codecov/c/github/moby/swarmkit?logo=codecov&style=flat-square)](https://codecov.io/gh/moby/swarmkit)
 
 *SwarmKit* is a toolkit for orchestrating distributed systems at any scale. It includes primitives for node discovery, raft-based consensus, task scheduling and more.
 
