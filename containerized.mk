@@ -1,6 +1,7 @@
 IMAGE_NAME=docker/swarmkit
 GOPATH=/go
 DOCKER_IMAGE_DIR=${GOPATH}/src/github.com/docker/swarmkit
+BUILDX_CMD ?= docker buildx
 
 DOCKER_SWARMKIT_DELVE_PORT ?= 2345
 
@@ -55,3 +56,20 @@ run: ensure_image_exists
 		&& DOCKER_RUN_COMMAND+=" $$DOCKER_SWARMKIT_DOCKER_RUN_FLAGS $$DOCKER_SWARMKIT_EXTRA_RUN_FLAGS ${IMAGE_NAME} $$DOCKER_SWARMKIT_DOCKER_RUN_CMD" \
 		&& echo $$DOCKER_RUN_COMMAND \
 		&& eval $$DOCKER_RUN_COMMAND
+
+# use buildx/bake for the following targets
+.PHONY: fmt-proto
+fmt-proto:
+	$(BUILDX_CMD) bake fmt-proto
+
+.PHONY: lint
+lint:
+	$(BUILDX_CMD) bake lint
+
+.PHONY: vendor-validate
+vendor-validate:
+	$(BUILDX_CMD) bake vendor-validate
+
+.PHONY: generate-validate
+generate-validate:
+	$(BUILDX_CMD) bake generate-validate
