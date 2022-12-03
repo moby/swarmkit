@@ -106,6 +106,10 @@ RUN --mount=type=bind,target=. \
     --mount=from=golangci-lint,source=/usr/bin/golangci-lint,target=/usr/bin/golangci-lint \
     golangci-lint run ./...
 
+FROM gobase AS fmt-proto
+RUN --mount=type=bind,target=. \
+    make fmt-proto
+
 # use generate-base to have protoc available
 FROM generate-base
 ENV GO111MODULE=on

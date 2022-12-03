@@ -15,8 +15,17 @@ group "validate" {
   targets = ["lint", "vendor-validate", "generate-validate"]
 }
 
-target "lint" {
+group "lint" {
+  targets = ["golangci-lint", "fmt-proto"]
+}
+
+target "golangci-lint" {
   target = "lint"
+  output = ["type=cacheonly"]
+}
+
+target "fmt-proto" {
+  target = "fmt-proto"
   output = ["type=cacheonly"]
 }
 
