@@ -12,7 +12,12 @@ group "default" {
 }
 
 group "validate" {
-  targets = ["vendor-validate", "generate-validate"]
+  targets = ["lint", "vendor-validate", "generate-validate"]
+}
+
+target "lint" {
+  target = "lint"
+  output = ["type=cacheonly"]
 }
 
 target "vendor-validate" {

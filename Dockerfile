@@ -2,6 +2,7 @@
 
 ARG GO_VERSION=1.18.9
 ARG PROTOC_VERSION=3.11.4
+ARG GOLANGCI_LINT_VERSION=v1.50.1
 ARG DEBIAN_FRONTEND=noninteractive
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS gobase
@@ -95,6 +96,15 @@ RUN --mount=type=bind,target=.,rw \
     exit 1
   fi
 EOT
+
+FROM golangci/golangci-lint:${GOLANGCI_LINT_VERSION} AS golangci-lint
+FROM gobase AS lint
+ARG DEBIAN_FRONTEND
+RUN apt-get install -y --no-install-recommends libgcc-10-dev libc6-dev
+RUN --mount=type=bind,target=. \
+    --mount=type=cache,target=/root/.cache \
+    --mount=from=golangci-lint,source=/usr/bin/golangci-lint,target=/usr/bin/golangci-lint \
+    golangci-lint run ./...
 
 # use generate-base to have protoc available
 FROM generate-base
