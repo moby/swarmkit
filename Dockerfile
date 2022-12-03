@@ -15,6 +15,32 @@ RUN --mount=target=. \
   echo $(go list ./...) | tee /tmp/packages/packages; \
   echo $(go list ./integration) | tee /tmp/packages/integration-packages;
 
+FROM gobase AS vendored
+RUN --mount=target=.,rw \
+    --mount=target=/go/pkg/mod,type=cache <<EOT
+  set -e
+  make go-mod-vendor
+  mkdir /out
+  cp -r go.mod go.sum vendor /out
+EOT
+
+FROM scratch AS vendor-update
+COPY --from=vendored /out /
+
+FROM gobase AS vendor-validate
+RUN --mount=type=bind,target=.,rw \
+    --mount=from=vendored,source=/out,target=/out <<EOT
+  set -e
+  git add -A
+  rm -rf vendor
+  cp -rf /out/* .
+  if [ -n "$(git status --porcelain -- go.mod go.sum vendor)" ]; then
+    echo >&2 'ERROR: Vendor result differs. Please vendor your package with "make go-mod-vendor"'
+    git status --porcelain -- go.mod go.sum vendor
+    exit 1
+  fi
+EOT
+
 FROM gobase AS protoc-gen-gogoswarm
 RUN --mount=type=bind,target=.,rw \
     --mount=type=cache,target=/root/.cache \

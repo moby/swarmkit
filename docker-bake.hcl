@@ -12,7 +12,17 @@ group "default" {
 }
 
 group "validate" {
-  targets = ["generate-validate"]
+  targets = ["vendor-validate", "generate-validate"]
+}
+
+target "vendor-validate" {
+  target = "vendor-validate"
+  output = ["type=cacheonly"]
+}
+
+target "vendor" {
+  target = "vendor-update"
+  output = ["."]
 }
 
 target "generate-validate" {
