@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	engineapi "github.com/docker/docker/client"
 	gogotypes "github.com/gogo/protobuf/types"
@@ -211,12 +212,16 @@ func (c *containerAdapter) events(ctx context.Context) (<-chan events.Message, <
 
 func (c *containerAdapter) shutdown(ctx context.Context) error {
 	// Default stop grace period to 10s.
-	stopgrace := 10 * time.Second
+	// TODO(thaJeztah): this should probably not set a default and leave it to the daemon to pick
+	// a default (which could be in the container's config or daemon config)
+	// see https://github.com/docker/cli/commit/86c30e6a0d153c2a99d9d12385179b22e8b7b935
+	stopgraceSeconds := 10
 	spec := c.container.spec()
 	if spec.StopGracePeriod != nil {
-		stopgrace, _ = gogotypes.DurationFromProto(spec.StopGracePeriod)
+		stopgraceFromProto, _ := gogotypes.DurationFromProto(spec.StopGracePeriod)
+		stopgraceSeconds = int(stopgraceFromProto.Seconds())
 	}
-	return c.client.ContainerStop(ctx, c.container.name(), &stopgrace)
+	return c.client.ContainerStop(ctx, c.container.name(), container.StopOptions{Timeout: &stopgraceSeconds})
 }
 
 func (c *containerAdapter) terminate(ctx context.Context) error {
