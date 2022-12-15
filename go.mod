@@ -26,9 +26,9 @@ require (
 	github.com/opencontainers/image-spec v1.0.2
 	github.com/phayes/permbits v0.0.0-20190612203442-39d7c581d2ee
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.13.0
+	github.com/prometheus/client_golang v1.14.0
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
-	github.com/rexray/gocsi v1.2.1
+	github.com/rexray/gocsi v1.2.2 // replaced; see replace rules for the version used.
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
@@ -38,8 +38,8 @@ require (
 	go.etcd.io/etcd/pkg/v3 v3.5.6
 	go.etcd.io/etcd/raft/v3 v3.5.6
 	go.etcd.io/etcd/server/v3 v3.5.6
-	golang.org/x/crypto v0.1.0
-	golang.org/x/net v0.1.0
+	golang.org/x/crypto v0.2.0
+	golang.org/x/net v0.4.0
 	golang.org/x/time v0.1.0
 
 	// NOTE(dperny,cyli): there is some error handling, found in the
@@ -65,26 +65,26 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/libkv v0.2.2-0.20211217103745-e480589147e3 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/go-logr/logr v1.2.0 // indirect
+	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/google/certificate-transparency-go v1.1.4 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/ishidawataru/sctp v0.0.0-20210707070123-9a39160e9062 // indirect
-	github.com/matttproud/golang_protobuf_extensions v1.0.2 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/moby/term v0.0.0-20221120202655-abb19827d345 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/nxadm/tail v1.4.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_model v0.2.0 // indirect
+	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/tedsuo/ifrit v0.0.0-20220120221754-dd274de71113 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect
-	golang.org/x/sys v0.1.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/sys v0.3.0 // indirect
+	golang.org/x/text v0.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20220706185917-7780775163c4 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
