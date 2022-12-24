@@ -370,6 +370,14 @@ message ContainerSpec {
 	// Ulimits defines the list of ulimits to set in the container. This option
 	// is equivalent to passing --ulimit to docker run.
 	repeated Ulimit ulimits = 29;
+
+	message DeviceMapping {
+		string pathOnHost = 1;
+		string pathInContainer = 2;
+		string cgroupPermissions = 3;
+	}
+
+	repeated DeviceMapping Devices = 30;
 }
 
 // EndpointSpec defines the properties that can be configured to
