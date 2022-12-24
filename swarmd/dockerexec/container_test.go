@@ -332,3 +332,35 @@ func TestUlimits(t *testing.T) {
 		t.Fatalf("expected %v, got %v", expected, actual)
 	}
 }
+
+func TestDevices(t *testing.T) {
+	c := containerConfig{
+		task: &api.Task{
+			Spec: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{
+						Devices: []*api.ContainerSpec_DeviceMapping{
+							{
+								PathOnHost:        "/dev/dri/card0",
+								PathInContainer:   "/dev/card0",
+								CgroupPermissions: "ro",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	expected := []enginecontainer.DeviceMapping{
+		{
+			PathOnHost:        "/dev/dri/card0",
+			PathInContainer:   "/dev/card0",
+			CgroupPermissions: "ro",
+		},
+	}
+	actual := c.resources().Devices
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("expected %v, got %v", expected, actual)
+	}
+}
