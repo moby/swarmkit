@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"net"
 	"os"
 	"path/filepath"
@@ -618,6 +619,24 @@ func TestSecurityConfigWatch(t *testing.T) {
 	require.NoError(t, ca.RenewTLSConfigNow(tc.Context, secConfig, tc.ConnBroker, tc.Paths.RootCA))
 }
 
+func printCert(t *testing.T, pemData []byte) {
+	t.Helper()
+
+	block, _ := pem.Decode(pemData)
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Error(err)
+	}
+
+	cert.RawSubject = nil
+	cert.Raw = nil
+	cert.RawIssuer = nil
+	cert.RawSubjectPublicKeyInfo = nil
+	cert.RawTBSCertificate = nil
+	cert.Signature = nil
+	t.Logf("%+v", cert)
+}
+
 // If we get an unknown authority error when trying to renew the TLS certificate, attempt to download the
 // root certificate.  If it validates against the current TLS credentials, it will be used to download
 // new ones, (only if the new certificate indicates that it's a worker, though).
@@ -633,6 +652,8 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		certs[i], keys[i], err = cautils.CreateRootCertAndKey("CA" + strconv.Itoa(i))
 		require.NoError(t, err)
+		t.Log("CA"+strconv.Itoa(i), ":\n", string(certs[i]))
+		printCert(t, certs[i])
 		switch i {
 		case 0:
 			crossSigneds[i] = nil
@@ -641,6 +662,8 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 		default:
 			crossSigneds[i], err = cas[i-1].CrossSignCACertificate(certs[i])
 			require.NoError(t, err)
+			t.Log("Intermediate"+strconv.Itoa(i), ":\n", string(crossSigneds[i]))
+			printCert(t, crossSigneds[i])
 			cas[i], err = ca.NewRootCA(certs[i-1], certs[i], keys[i], ca.DefaultNodeCertExpiration, crossSigneds[i])
 			require.NoError(t, err)
 		}
