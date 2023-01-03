@@ -9,4 +9,4 @@ coverage:
         target: 0
     changes: false
 ignore:
-  -**/testutils
+  - "**/testutils"
