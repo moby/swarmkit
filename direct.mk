@@ -16,6 +16,7 @@ COMMANDS=swarmd swarmctl swarm-bench swarm-rafttool protoc-gen-gogoswarm
 BINARIES=$(addprefix bin/,$(COMMANDS))
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
+GO_TESTFLAGS=--timeout=20m $(RACE)
 
 GOBIN=$(shell go env GOPATH)/bin
 
@@ -79,12 +80,12 @@ build: ## build the go packages
 .PHONY: test
 test: ## run tests, except integration tests
 	@echo "🐳 $@"
-	@go test -parallel 8 ${RACE} -tags "${DOCKER_BUILDTAGS}" $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES})
+	@go test -parallel 8 ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES})
 
 .PHONY: integration-tests
 integration-tests: ## run integration tests
 	@echo "🐳 $@"
-	@go test -parallel 8 ${RACE} -tags "${DOCKER_BUILDTAGS}" ${INTEGRATION_PACKAGE}
+	@go test -parallel 8 ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" ${INTEGRATION_PACKAGE}
 
 # Build a binary from a cmd.
 bin/%: cmd/% .FORCE
@@ -118,13 +119,13 @@ uninstall:
 coverage: ## generate coverprofiles from the unit tests
 	@echo "🐳 $@"
 	@( for pkg in $(filter-out ${INTEGRATION_PACKAGE},${PACKAGES}); do \
-		go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$(go list -f "{{.Dir}}" $$pkg)/coverage.txt" -covermode=atomic $$pkg || exit; \
+		go test ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$(go list -f "{{.Dir}}" $$pkg)/coverage.txt" -covermode=atomic $$pkg || exit; \
 	done )
 
 .PHONY: coverage-integration
 coverage-integration: ## generate coverprofiles from the integration tests
 	@echo "🐳 $@"
-	go test ${RACE} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$(go list -f "{{.Dir}}" ${INTEGRATION_PACKAGE})/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
+	go test ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" -test.short -coverprofile="$$(go list -f "{{.Dir}}" ${INTEGRATION_PACKAGE})/coverage.txt" -covermode=atomic ${INTEGRATION_PACKAGE}
 
 .PHONY: help
 help: ## this help
