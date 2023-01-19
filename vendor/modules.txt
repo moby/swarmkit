@@ -45,7 +45,7 @@ github.com/davecgh/go-spew/spew
 ## explicit
 github.com/docker/distribution/digestset
 github.com/docker/distribution/reference
-# github.com/docker/docker v23.0.0-rc.1+incompatible
+# github.com/docker/docker v23.0.0-rc.2+incompatible
 ## explicit
 github.com/docker/docker/api
 github.com/docker/docker/api/types
@@ -89,11 +89,13 @@ github.com/docker/docker/libnetwork/ipams/windowsipam
 github.com/docker/docker/libnetwork/ipamutils
 github.com/docker/docker/libnetwork/netlabel
 github.com/docker/docker/libnetwork/types
+github.com/docker/docker/pkg/homedir
 github.com/docker/docker/pkg/ioutils
 github.com/docker/docker/pkg/longpath
 github.com/docker/docker/pkg/plugingetter
 github.com/docker/docker/pkg/plugins
 github.com/docker/docker/pkg/plugins/transport
+github.com/docker/docker/pkg/rootless
 # github.com/docker/go-connections v0.4.0
 ## explicit
 github.com/docker/go-connections/nat
@@ -290,6 +292,11 @@ github.com/rexray/gocsi/middleware/specvalidator
 github.com/rexray/gocsi/mock/provider
 github.com/rexray/gocsi/mock/service
 github.com/rexray/gocsi/utils
+# github.com/rootless-containers/rootlesskit v1.1.0
+## explicit; go 1.19
+github.com/rootless-containers/rootlesskit/pkg/api
+github.com/rootless-containers/rootlesskit/pkg/api/client
+github.com/rootless-containers/rootlesskit/pkg/port
 # github.com/sirupsen/logrus v1.9.0
 ## explicit; go 1.13
 github.com/sirupsen/logrus
@@ -500,8 +507,6 @@ gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
-# gotest.tools/v3 v3.4.0
-## explicit; go 1.13
 # k8s.io/klog/v2 v2.80.1
 ## explicit; go 1.13
 k8s.io/klog/v2
