@@ -219,6 +219,89 @@ var _ = Describe("Replicated job orchestrator", func() {
 			))
 		})
 
+		When("a service is deleted", func() {
+			BeforeEach(func() {
+				err := s.Update(func(tx store.Tx) error {
+					service := &api.Service{
+						ID: "serviceDelete",
+						Spec: api.ServiceSpec{
+							Annotations: api.Annotations{
+								Name: "serviceDelete",
+							},
+							Mode: &api.ServiceSpec_ReplicatedJob{
+								ReplicatedJob: &api.ReplicatedJob{
+									MaxConcurrent:    1,
+									TotalCompletions: 1,
+								},
+							},
+						},
+					}
+
+					if err := store.CreateService(tx, service); err != nil {
+						return err
+					}
+
+					// create some tasks, like the service was actually running
+					task1 := &api.Task{
+						ID:           "task1",
+						ServiceID:    "serviceDelete",
+						DesiredState: api.TaskStateCompleted,
+						Status: api.TaskStatus{
+							State: api.TaskStateCompleted,
+						},
+					}
+
+					task2 := &api.Task{
+						ID:           "task2",
+						ServiceID:    "serviceDelete",
+						DesiredState: api.TaskStateCompleted,
+						Status: api.TaskStatus{
+							State: api.TaskStateRunning,
+						},
+					}
+
+					if err := store.CreateTask(tx, task1); err != nil {
+						return err
+					}
+					return store.CreateTask(tx, task2)
+				})
+
+				Expect(err).NotTo(HaveOccurred())
+
+				// wait for a pass through the reconciler
+				Eventually(replicated.getServicesReconciled).Should(ConsistOf(
+					"serviceDelete",
+				))
+			})
+
+			It("should remove tasks when a service is deleted", func() {
+				err := s.Update(func(tx store.Tx) error {
+					return store.DeleteService(tx, "serviceDelete")
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				Eventually(func() []*api.Task {
+					var tasks []*api.Task
+					s.View(func(tx store.ReadTx) {
+						tasks, _ = store.FindTasks(tx, store.ByServiceID("serviceDelete"))
+					})
+					return tasks
+				}).Should(SatisfyAll(
+					HaveLen(2),
+					WithTransform(
+						func(tasks []*api.Task) []api.TaskState {
+							states := []api.TaskState{}
+							for _, task := range tasks {
+								states = append(states, task.DesiredState)
+							}
+							return states
+						},
+						ConsistOf(api.TaskStateCompleted, api.TaskStateCompleted),
+					),
+				))
+			})
+		})
+
 		When("receiving task events", func() {
 			BeforeEach(func() {
 				service := &api.Service{
