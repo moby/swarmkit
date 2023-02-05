@@ -296,14 +296,15 @@ func (np *nodePlugin) NodePublishVolume(ctx context.Context, req *api.VolumeAssi
 
 	publishTarget := publishPath(req)
 
-	// some volumes do not require staging. we can check this by checkign the
-	// staging variable, or we can just see if there is a staging path in the
-	// map.
+	// Some volumes plugins require staging; we track this with a boolean, which
+	// also implies a staging path in the path map. If the plugin is marked as
+	// requiring staging but does not have a staging path in the map, that is an
+	// error.
 	var stagingPath string
 	if vs, ok := np.volumeMap[req.ID]; ok {
 		stagingPath = vs.stagingPath
-	} else {
-		return status.Error(codes.FailedPrecondition, "volume not staged")
+	} else if np.staging {
+		return status.Error(codes.FailedPrecondition, "volume requires staging but was not staged")
 	}
 
 	c, err := np.Client(ctx)
