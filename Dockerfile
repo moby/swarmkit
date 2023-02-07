@@ -9,6 +9,7 @@ FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS gobase
 ARG DEBIAN_FRONTEND
 RUN apt-get update && apt-get install -y --no-install-recommends git make rsync
 WORKDIR /go/src/github.com/docker/swarmkit
+RUN git config --global --add safe.directory /go/src/github.com/docker/swarmkit
 
 FROM gobase AS packages
 RUN --mount=target=. \
