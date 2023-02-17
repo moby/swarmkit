@@ -80,30 +80,48 @@ func TestNodeUnstageVolume(t *testing.T) {
 }
 
 func TestNodePublishVolume(t *testing.T) {
-	plugin := "plugin-3"
-	node := "node-1"
-	nodePlugin := newVolumeClient(plugin, node)
-	s := &api.VolumeAssignment{
-		VolumeID: "vol3",
-		AccessMode: &api.VolumeAccessMode{
-			Scope:   api.VolumeScopeMultiNode,
-			Sharing: api.VolumeSharingOneWriter,
-			AccessType: &api.VolumeAccessMode_Mount{
-				Mount: &api.VolumeAccessMode_MountVolume{},
-			},
+	var testcases = []struct {
+		staging bool
+		plugin  string
+	}{
+		{
+			plugin:  "staging-plugin",
+			staging: true,
 		},
-		Driver: &api.Driver{
-			Name: plugin,
+		{
+			plugin:  "non-staging-plugin",
+			staging: false,
 		},
 	}
-	err := nodePlugin.NodePublishVolume(context.Background(), s)
-	assert.Equal(t, codes.FailedPrecondition, testutils.ErrorCode(err))
 
-	// Volume needs to be staged before publishing. Stage -> Publish
-	err = nodePlugin.NodeStageVolume(context.Background(), s)
-	require.NoError(t, err)
-	err = nodePlugin.NodePublishVolume(context.Background(), s)
-	require.NoError(t, err)
+	for _, tc := range testcases {
+		nodePlugin := newVolumeClient(tc.plugin, "node-1")
+		s := &api.VolumeAssignment{
+			VolumeID: "vol3",
+			AccessMode: &api.VolumeAccessMode{
+				Scope:   api.VolumeScopeMultiNode,
+				Sharing: api.VolumeSharingOneWriter,
+				AccessType: &api.VolumeAccessMode_Mount{
+					Mount: &api.VolumeAccessMode_MountVolume{},
+				},
+			},
+			Driver: &api.Driver{
+				Name: tc.plugin,
+			},
+		}
+
+		nodePlugin.staging = tc.staging
+		if nodePlugin.staging {
+			err := nodePlugin.NodePublishVolume(context.Background(), s)
+			assert.Equal(t, codes.FailedPrecondition, testutils.ErrorCode(err))
+
+			// Volume needs to be staged before publishing. Stage -> Publish
+			err = nodePlugin.NodeStageVolume(context.Background(), s)
+			require.NoError(t, err)
+		}
+		err := nodePlugin.NodePublishVolume(context.Background(), s)
+		require.NoError(t, err)
+	}
 }
 
 func TestNodeUnpublishVolume(t *testing.T) {
