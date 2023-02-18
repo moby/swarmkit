@@ -310,7 +310,7 @@ var _ = Describe("Plugin manager", func() {
 				PublishStatus: []*api.VolumePublishStatus{
 					{
 						State:  api.VolumePublishStatus_PENDING_PUBLISH,
-						NodeID: "node1",
+						NodeID: "swarmNode1",
 					},
 				},
 			}
@@ -318,7 +318,7 @@ var _ = Describe("Plugin manager", func() {
 		})
 
 		JustBeforeEach(func() {
-			publishContext, publishError = plugin.PublishVolume(context.Background(), v, "node1")
+			publishContext, publishError = plugin.PublishVolume(context.Background(), v, "swarmNode1")
 		})
 
 		It("should call the ControllerPublishVolume RPC", func() {
