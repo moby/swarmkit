@@ -4,11 +4,10 @@ import (
 	"context"
 	"net"
 
+	"github.com/docker/go-events"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/types"
-
-	"github.com/docker/go-events"
+	"github.com/onsi/gomega/types"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -575,7 +574,7 @@ var _ = Describe("Manager", func() {
 
 			// node1 and node2 should be published, and node3 and node4 should
 			// be deleted
-			haveBeenPublished := func() GomegaMatcher {
+			haveBeenPublished := func() types.GomegaMatcher {
 				return WithTransform(
 					func(v *api.Volume) []*api.VolumePublishStatus {
 						if v == nil {

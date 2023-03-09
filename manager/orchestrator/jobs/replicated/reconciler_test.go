@@ -1,12 +1,12 @@
 package replicated
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/types"
-
 	"context"
 	"fmt"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/orchestrator"
@@ -53,7 +53,7 @@ func (u uniqueSlotsMatcher) NegatedFailureMessage(_ interface{}) string {
 	return fmt.Sprintf("expected tasks to have duplicate slots")
 }
 
-func HaveUniqueSlots() GomegaMatcher {
+func HaveUniqueSlots() types.GomegaMatcher {
 	return uniqueSlotsMatcher{}
 }
 

@@ -7,7 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/types"
+	"github.com/onsi/gomega/types"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/testutils"
@@ -164,7 +164,7 @@ var _ = Describe("Scheduler", func() {
 		// haveProgressedWithVolume is a composed matcher that verifies that
 		// the task has progressed to the Assigned state, been assigned to the
 		// specified node ID, and has the requested volume attached.
-		haveProgressedWithVolume := func(nodeID string, attachment *api.VolumeAttachment) GomegaMatcher {
+		haveProgressedWithVolume := func(nodeID string, attachment *api.VolumeAttachment) types.GomegaMatcher {
 			return SatisfyAll(
 				// Ensure that the task state has advanced to assigned
 				WithTransform(
@@ -333,7 +333,7 @@ var _ = Describe("Scheduler", func() {
 
 			// havePendingPublish is just a quick composed matcher to make the
 			// test case more readable.
-			havePendingPublish := func() GomegaMatcher {
+			havePendingPublish := func() types.GomegaMatcher {
 				return WithTransform(
 					func(v *api.Volume) []*api.VolumePublishStatus {
 						if v == nil {
