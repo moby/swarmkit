@@ -311,8 +311,8 @@ github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
 # github.com/tedsuo/ifrit v0.0.0-20220120221754-dd274de71113
 ## explicit
-# go.etcd.io/bbolt v1.3.6
-## explicit; go 1.12
+# go.etcd.io/bbolt v1.3.7
+## explicit; go 1.17
 go.etcd.io/bbolt
 # go.etcd.io/etcd/client/pkg/v3 v3.5.6
 ## explicit; go 1.16
