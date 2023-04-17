@@ -96,3 +96,5 @@ require (
 
 // Removes etcd dependency
 replace github.com/rexray/gocsi => github.com/dperny/gocsi v1.2.3-pre
+
+replace github.com/docker/docker v23.0.3+incompatible => github.com/akerouanton/docker v1.4.2-0.20230417132805-65e6a05bf335

@@ -44,8 +44,15 @@ type network struct {
 	sync.Mutex
 }
 
-// Init registers a new instance of overlay driver
+// Init registers a new instance of the overlay driver.
+//
+// Deprecated: use [Register].
 func Init(dc driverapi.DriverCallback, config map[string]interface{}) error {
+	return Register(dc, config)
+}
+
+// Register registers a new instance of the overlay driver.
+func Register(r driverapi.DriverCallback, config map[string]interface{}) error {
 	var err error
 	c := driverapi.Capability{
 		DataScope:         datastore.GlobalScope,
@@ -57,12 +64,12 @@ func Init(dc driverapi.DriverCallback, config map[string]interface{}) error {
 		config:   config,
 	}
 
-	d.vxlanIdm, err = idm.New(nil, "vxlan-id", 0, vxlanIDEnd)
+	d.vxlanIdm, err = idm.New(0, vxlanIDEnd)
 	if err != nil {
 		return fmt.Errorf("failed to initialize vxlan id manager: %v", err)
 	}
 
-	return dc.RegisterDriver(networkType, d, c)
+	return r.RegisterDriver(networkType, d, c)
 }
 
 func (d *driver) NetworkAllocate(id string, option map[string]string, ipV4Data, ipV6Data []driverapi.IPAMData) (map[string]string, error) {
@@ -117,9 +124,9 @@ func (d *driver) NetworkAllocate(id string, option map[string]string, ipV4Data, 
 		n.subnets = append(n.subnets, s)
 	}
 
-	val := fmt.Sprintf("%d", n.subnets[0].vni)
+	val := strconv.FormatUint(uint64(n.subnets[0].vni), 10)
 	for _, s := range n.subnets[1:] {
-		val = val + fmt.Sprintf(",%d", s.vni)
+		val = val + "," + strconv.FormatUint(uint64(s.vni), 10)
 	}
 	opts[netlabel.OverlayVxlanIDList] = val
 

@@ -6,9 +6,10 @@ https://docs.docker.com/engine/api/
 
 # Usage
 
-You use the library by creating a client object and calling methods on it. The
-client can be created either from environment variables with NewClientWithOpts(client.FromEnv),
-or configured manually with NewClient().
+You use the library by constructing a client object using [NewClientWithOpts]
+and calling methods on it. The client can be configured from environment
+variables by passing the [FromEnv] option, or configured manually by passing any
+of the other available [Opts].
 
 For example, to list running containers (the equivalent of "docker ps"):
 
@@ -282,13 +283,12 @@ func (cli *Client) HTTPClient() *http.Client {
 // ParseHostURL parses a url string, validates the string is a host url, and
 // returns the parsed URL
 func ParseHostURL(host string) (*url.URL, error) {
-	protoAddrParts := strings.SplitN(host, "://", 2)
-	if len(protoAddrParts) == 1 {
+	proto, addr, ok := strings.Cut(host, "://")
+	if !ok || addr == "" {
 		return nil, errors.Errorf("unable to parse docker host `%s`", host)
 	}
 
 	var basePath string
-	proto, addr := protoAddrParts[0], protoAddrParts[1]
 	if proto == "tcp" {
 		parsed, err := url.Parse("tcp://" + addr)
 		if err != nil {

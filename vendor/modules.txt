@@ -45,7 +45,7 @@ github.com/davecgh/go-spew/spew
 ## explicit
 github.com/docker/distribution/digestset
 github.com/docker/distribution/reference
-# github.com/docker/docker v23.0.3+incompatible
+# github.com/docker/docker v23.0.3+incompatible => github.com/akerouanton/docker v1.4.2-0.20230417132805-65e6a05bf335
 ## explicit
 github.com/docker/docker/api
 github.com/docker/docker/api/types
@@ -65,7 +65,7 @@ github.com/docker/docker/api/types/versions
 github.com/docker/docker/api/types/volume
 github.com/docker/docker/client
 github.com/docker/docker/errdefs
-github.com/docker/docker/libnetwork/bitseq
+github.com/docker/docker/libnetwork/bitmap
 github.com/docker/docker/libnetwork/datastore
 github.com/docker/docker/libnetwork/discoverapi
 github.com/docker/docker/libnetwork/driverapi
@@ -87,6 +87,7 @@ github.com/docker/docker/libnetwork/ipams/remote
 github.com/docker/docker/libnetwork/ipams/remote/api
 github.com/docker/docker/libnetwork/ipams/windowsipam
 github.com/docker/docker/libnetwork/ipamutils
+github.com/docker/docker/libnetwork/ipbits
 github.com/docker/docker/libnetwork/netlabel
 github.com/docker/docker/libnetwork/types
 github.com/docker/docker/pkg/homedir
