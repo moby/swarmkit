@@ -2,7 +2,6 @@ package csi
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -52,7 +51,7 @@ func TestTaskRestrictedVolumesProvider(t *testing.T) {
 		// Test to check if volume ID is not allowed to access
 		{
 			desc:        "RestrictedVolume",
-			expectedErr: fmt.Sprintf("task not authorized to access volume volume2"),
+			expectedErr: "task not authorized to access volume volume2",
 			volumeID:    "volume2",
 		},
 	}
