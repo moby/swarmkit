@@ -14,7 +14,6 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/network"
 	gogotypes "github.com/gogo/protobuf/types"
@@ -43,12 +42,12 @@ func TestControllerPrepare(t *testing.T) {
 		panic("unexpected call of ImagePull")
 	}
 
-	client.ContainerCreateFn = func(_ context.Context, cConfig *containertypes.Config, hConfig *containertypes.HostConfig, nConfig *network.NetworkingConfig, platform *v1.Platform, containerName string) (containertypes.CreateResponse, error) {
+	client.ContainerCreateFn = func(_ context.Context, cConfig *container.Config, hConfig *container.HostConfig, nConfig *network.NetworkingConfig, platform *v1.Platform, containerName string) (container.CreateResponse, error) {
 		if reflect.DeepEqual(*cConfig, *config.config()) &&
 			reflect.DeepEqual(*hConfig, *config.hostConfig()) &&
 			reflect.DeepEqual(*nConfig, *config.networkingConfig()) &&
 			containerName == config.name() {
-			return containertypes.CreateResponse{ID: "container-id-" + task.ID}, nil
+			return container.CreateResponse{ID: "container-id-" + task.ID}, nil
 		}
 		panic("unexpected call to ContainerCreate")
 	}
@@ -73,11 +72,11 @@ func TestControllerPrepareAlreadyPrepared(t *testing.T) {
 		panic("unexpected call of ImagePull")
 	}
 
-	client.ContainerCreateFn = func(_ context.Context, cConfig *containertypes.Config, hostConfig *containertypes.HostConfig, networking *network.NetworkingConfig, platform *v1.Platform, containerName string) (containertypes.CreateResponse, error) {
+	client.ContainerCreateFn = func(_ context.Context, cConfig *container.Config, hostConfig *container.HostConfig, networking *network.NetworkingConfig, platform *v1.Platform, containerName string) (container.CreateResponse, error) {
 		if reflect.DeepEqual(*cConfig, *config.config()) &&
 			reflect.DeepEqual(*networking, *config.networkingConfig()) &&
 			containerName == config.name() {
-			return containertypes.CreateResponse{}, fmt.Errorf("Conflict. The name")
+			return container.CreateResponse{}, fmt.Errorf("Conflict. The name")
 		}
 		panic("unexpected call of ContainerCreate")
 	}

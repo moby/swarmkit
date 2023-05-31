@@ -366,10 +366,10 @@ var _ = Describe("Replicated job orchestrator", func() {
 		It("should not reconcile anything after calling Stop", func() {
 			err := s.Update(func(tx store.Tx) error {
 				service := &api.Service{
-					ID: fmt.Sprintf("service0"),
+					ID: "service0",
 					Spec: api.ServiceSpec{
 						Annotations: api.Annotations{
-							Name: fmt.Sprintf("service0"),
+							Name: "service0",
 						},
 						Mode: &api.ServiceSpec_ReplicatedJob{
 							ReplicatedJob: &api.ReplicatedJob{},
@@ -388,10 +388,10 @@ var _ = Describe("Replicated job orchestrator", func() {
 
 			err = s.Update(func(tx store.Tx) error {
 				service := &api.Service{
-					ID: fmt.Sprintf("service1"),
+					ID: "service1",
 					Spec: api.ServiceSpec{
 						Annotations: api.Annotations{
-							Name: fmt.Sprintf("service1"),
+							Name: "service1",
 						},
 						Mode: &api.ServiceSpec_ReplicatedJob{
 							ReplicatedJob: &api.ReplicatedJob{},
