@@ -16,6 +16,7 @@ import (
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/go-connections/nat"
+	"github.com/opencontainers/runtime-spec/specs-go/features"
 )
 
 const (
@@ -118,12 +119,7 @@ type ImageInspect struct {
 	// VirtualSize is the total size of the image including all layers it is
 	// composed of.
 	//
-	// In versions of Docker before v1.10, this field was calculated from
-	// the image itself and all of its parent images. Docker v1.10 and up
-	// store images self-contained, and no longer use a parent-chain, making
-	// this field an equivalent of the Size field.
-	//
-	// Deprecated: Unused in API 1.43 and up, but kept for backward compatibility with older API versions.
+	// Deprecated: this field is omitted in API v1.44, but kept for backward compatibility. Use Size instead.
 	VirtualSize int64 `json:"VirtualSize,omitempty"`
 
 	// GraphDriver holds information about the storage driver used to store the
@@ -663,7 +659,8 @@ type Runtime struct {
 	Options map[string]interface{} `json:"options,omitempty"`
 
 	// This is exposed here only for internal use
-	ShimConfig *ShimConfig `json:"-"`
+	ShimConfig *ShimConfig        `json:"-"`
+	Features   *features.Features `json:"-"`
 }
 
 // ShimConfig is used by runtime to configure containerd shims

@@ -19,10 +19,10 @@ produces:
 consumes:
   - "application/json"
   - "text/plain"
-basePath: "/v1.43"
+basePath: "/v1.44"
 info:
   title: "Docker Engine API"
-  version: "1.43"
+  version: "1.44"
   x-logo:
     url: "https://docs.docker.com/assets/images/logo-docker-main.png"
   description: |
@@ -55,8 +55,8 @@ info:
     the URL is not supported by the daemon, a HTTP `400 Bad Request` error message
     is returned.
 
-    If you omit the version-prefix, the current version of the API (v1.43) is used.
-    For example, calling `/info` is the same as calling `/v1.43/info`. Using the
+    If you omit the version-prefix, the current version of the API (v1.44) is used.
+    For example, calling `/info` is the same as calling `/v1.44/info`. Using the
     API without a version-prefix is deprecated and will be removed in a future release.
 
     Engine releases in the near future should support this version of the API,
@@ -386,6 +386,16 @@ definitions:
             default: false
           CreateMountpoint:
             description: "Create mount point on host if missing"
+            type: "boolean"
+            default: false
+          ReadOnlyNonRecursive:
+            description: |
+               Make the mount non-recursively read-only, but still leave the mount recursive
+               (unless NonRecursive is set to true in conjunction).
+            type: "boolean"
+            default: false
+          ReadOnlyForceRecursive:
+            description: "Raise an error if the mount cannot be made recursively read-only."
             type: "boolean"
             default: false
       VolumeOptions:
@@ -1781,13 +1791,7 @@ definitions:
         description: |
           Total size of the image including all layers it is composed of.
 
-          In versions of Docker before v1.10, this field was calculated from
-          the image itself and all of its parent images. Images are now stored
-          self-contained, and no longer use a parent-chain, making this field
-          an equivalent of the Size field.
-
-          > **Deprecated**: this field is kept for backward compatibility, but
-          > will be removed in API v1.44.
+          Deprecated: this field is omitted in API v1.44, but kept for backward compatibility. Use Size instead.
         type: "integer"
         format: "int64"
         example: 1239828
@@ -1925,12 +1929,7 @@ definitions:
         description: |-
           Total size of the image including all layers it is composed of.
 
-          In versions of Docker before v1.10, this field was calculated from
-          the image itself and all of its parent images. Images are now stored
-          self-contained, and no longer use a parent-chain, making this field
-          an equivalent of the Size field.
-
-          Deprecated: this field is kept for backward compatibility, and will be removed in API v1.44.
+          Deprecated: this field is omitted in API v1.44, but kept for backward compatibility. Use Size instead.
         type: "integer"
         format: "int64"
         example: 172064416
@@ -6597,7 +6596,7 @@ paths:
                 StopSignal: "SIGTERM"
                 StopTimeout: 10
               Created: "2015-01-06T15:47:31.485331387Z"
-              Driver: "devicemapper"
+              Driver: "overlay2"
               ExecIDs:
                 - "b35395de42bc8abd327f9dd65d913b9ba28c74d2f0734eeeae84fa1c616a0fca"
                 - "3fc1232e5cd20c8de182ed81178503dc6437f4e7ef12b52cc5e8de020652f1c4"
@@ -9066,7 +9065,6 @@ paths:
                   Created: 1466724217
                   Size: 1092588
                   SharedSize: 0
-                  VirtualSize: 1092588
                   Labels: {}
                   Containers: 1
               Containers:
