@@ -38,6 +38,9 @@ github.com/cloudflare/cfssl/signer/local
 # github.com/container-storage-interface/spec v1.2.0
 ## explicit
 github.com/container-storage-interface/spec/lib/go/csi
+# github.com/containerd/containerd v1.6.21
+## explicit; go 1.17
+github.com/containerd/containerd/log
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
@@ -45,7 +48,7 @@ github.com/davecgh/go-spew/spew
 ## explicit
 github.com/docker/distribution/digestset
 github.com/docker/distribution/reference
-# github.com/docker/docker v24.0.0-rc.2.0.20230612125842-4bef3e9ed394+incompatible
+# github.com/docker/docker v24.0.0-rc.2.0.20230627090017-b1569b9c185b+incompatible
 ## explicit
 github.com/docker/docker/api
 github.com/docker/docker/api/types
@@ -80,6 +83,7 @@ github.com/docker/docker/libnetwork/drivers/remote
 github.com/docker/docker/libnetwork/drivers/remote/api
 github.com/docker/docker/libnetwork/drvregistry
 github.com/docker/docker/libnetwork/idm
+github.com/docker/docker/libnetwork/internal/kvstore
 github.com/docker/docker/libnetwork/ipam
 github.com/docker/docker/libnetwork/ipamapi
 github.com/docker/docker/libnetwork/ipams/builtin
@@ -111,10 +115,6 @@ github.com/docker/go-metrics
 # github.com/docker/go-units v0.5.0
 ## explicit
 github.com/docker/go-units
-# github.com/docker/libkv v0.2.2-0.20211217103745-e480589147e3
-## explicit
-github.com/docker/libkv
-github.com/docker/libkv/store
 # github.com/dustin/go-humanize v1.0.0
 ## explicit
 github.com/dustin/go-humanize
