@@ -38,6 +38,9 @@ github.com/cloudflare/cfssl/signer/local
 # github.com/container-storage-interface/spec v1.2.0
 ## explicit
 github.com/container-storage-interface/spec/lib/go/csi
+# github.com/containerd/containerd v1.6.21
+## explicit; go 1.17
+github.com/containerd/containerd/log
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
@@ -45,7 +48,7 @@ github.com/davecgh/go-spew/spew
 ## explicit
 github.com/docker/distribution/digestset
 github.com/docker/distribution/reference
-# github.com/docker/docker v24.0.0-rc.2.0.20230531091251-8d67d0c1a8d2+incompatible
+# github.com/docker/docker v24.0.0-rc.2.0.20230627090017-b1569b9c185b+incompatible
 ## explicit
 github.com/docker/docker/api
 github.com/docker/docker/api/types
@@ -80,6 +83,7 @@ github.com/docker/docker/libnetwork/drivers/remote
 github.com/docker/docker/libnetwork/drivers/remote/api
 github.com/docker/docker/libnetwork/drvregistry
 github.com/docker/docker/libnetwork/idm
+github.com/docker/docker/libnetwork/internal/kvstore
 github.com/docker/docker/libnetwork/ipam
 github.com/docker/docker/libnetwork/ipamapi
 github.com/docker/docker/libnetwork/ipams/builtin
@@ -111,10 +115,6 @@ github.com/docker/go-metrics
 # github.com/docker/go-units v0.5.0
 ## explicit
 github.com/docker/go-units
-# github.com/docker/libkv v0.2.2-0.20211217103745-e480589147e3
-## explicit
-github.com/docker/libkv
-github.com/docker/libkv/store
 # github.com/dustin/go-humanize v1.0.0
 ## explicit
 github.com/dustin/go-humanize
@@ -250,9 +250,6 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.18
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/opencontainers/runtime-spec v1.1.0-rc.2
-## explicit
-github.com/opencontainers/runtime-spec/specs-go/features
 # github.com/phayes/permbits v0.0.0-20190612203442-39d7c581d2ee
 ## explicit
 github.com/phayes/permbits
@@ -295,12 +292,7 @@ github.com/rexray/gocsi/middleware/specvalidator
 github.com/rexray/gocsi/mock/provider
 github.com/rexray/gocsi/mock/service
 github.com/rexray/gocsi/utils
-# github.com/rootless-containers/rootlesskit v1.1.0
-## explicit; go 1.19
-github.com/rootless-containers/rootlesskit/pkg/api
-github.com/rootless-containers/rootlesskit/pkg/api/client
-github.com/rootless-containers/rootlesskit/pkg/port
-# github.com/sirupsen/logrus v1.9.0
+# github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
 # github.com/spf13/cobra v1.7.0
@@ -367,7 +359,7 @@ golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/pkcs12
 golang.org/x/crypto/pkcs12/internal/rc2
 golang.org/x/crypto/salsa20/salsa
-# golang.org/x/net v0.8.0
+# golang.org/x/net v0.10.0
 ## explicit; go 1.17
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
@@ -382,13 +374,13 @@ golang.org/x/net/internal/socks
 golang.org/x/net/internal/timeseries
 golang.org/x/net/proxy
 golang.org/x/net/trace
-# golang.org/x/sys v0.6.0
+# golang.org/x/sys v0.8.0
 ## explicit; go 1.17
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/text v0.8.0
+# golang.org/x/text v0.9.0
 ## explicit; go 1.17
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
@@ -510,6 +502,8 @@ gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
+# gotest.tools/v3 v3.4.0
+## explicit; go 1.13
 # k8s.io/klog/v2 v2.80.1
 ## explicit; go 1.13
 k8s.io/klog/v2
