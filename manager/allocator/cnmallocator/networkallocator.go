@@ -81,11 +81,6 @@ type networkDriver struct {
 	capability *driverapi.Capability
 }
 
-type initializer struct {
-	fn    drvregistry.InitFunc
-	ntype string
-}
-
 // NetworkConfig is used to store network related cluster config in the Manager.
 type NetworkConfig struct {
 	// DefaultAddrPool specifies default subnet pool for global scope networks
@@ -115,8 +110,10 @@ func New(pg plugingetter.PluginGetter, netConfig *NetworkConfig) (networkallocat
 		return nil, err
 	}
 
-	if err := initializeDrivers(reg); err != nil {
-		return nil, err
+	for name, register := range initializers {
+		if err := register(reg, nil); err != nil {
+			return nil, fmt.Errorf("failed to register %q driver: %w", name, err)
+		}
 	}
 
 	if err = initIPAMDrivers(reg, netConfig); err != nil {
@@ -978,15 +975,6 @@ func (na *cnmNetworkAllocator) allocatePools(n *api.Network) (map[string]string,
 	return pools, nil
 }
 
-func initializeDrivers(reg *drvregistry.DrvRegistry) error {
-	for _, i := range initializers {
-		if err := reg.AddDriver(i.ntype, i.fn, nil); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func serviceNetworks(s *api.Service) []*api.NetworkAttachmentConfig {
 	// Always prefer NetworkAttachmentConfig in the TaskSpec
 	if len(s.Spec.Task.Networks) == 0 && len(s.Spec.Networks) != 0 {
@@ -1010,13 +998,8 @@ func (na *cnmNetworkAllocator) IsVIPOnIngressNetwork(vip *api.Endpoint_VirtualIP
 
 // IsBuiltInDriver returns whether the passed driver is an internal network driver
 func IsBuiltInDriver(name string) bool {
-	n := strings.ToLower(name)
-	for _, d := range initializers {
-		if n == d.ntype {
-			return true
-		}
-	}
-	return false
+	_, ok := initializers[strings.ToLower(name)]
+	return ok
 }
 
 // setIPAMSerialAlloc sets the ipam allocation method to serial

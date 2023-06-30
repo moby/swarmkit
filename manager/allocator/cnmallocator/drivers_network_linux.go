@@ -7,16 +7,17 @@ import (
 	"github.com/docker/docker/libnetwork/drivers/macvlan/mvmanager"
 	"github.com/docker/docker/libnetwork/drivers/overlay/ovmanager"
 	"github.com/docker/docker/libnetwork/drivers/remote"
+	"github.com/docker/docker/libnetwork/drvregistry"
 	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 )
 
-var initializers = []initializer{
-	{remote.Init, "remote"},
-	{ovmanager.Init, "overlay"},
-	{mvmanager.Init, "macvlan"},
-	{brmanager.Init, "bridge"},
-	{ivmanager.Init, "ipvlan"},
-	{host.Init, "host"},
+var initializers = map[string]drvregistry.InitFunc{
+	"remote":  remote.Init,
+	"overlay": ovmanager.Init,
+	"macvlan": mvmanager.Init,
+	"bridge":  brmanager.Init,
+	"ipvlan":  ivmanager.Init,
+	"host":    host.Init,
 }
 
 // PredefinedNetworks returns the list of predefined network structures

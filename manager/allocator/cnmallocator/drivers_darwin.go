@@ -6,9 +6,9 @@ import (
 	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 )
 
-var initializers = []initializer{
-	{remote.Init, "remote"},
-	{ovmanager.Init, "overlay"},
+var initializers = map[string]driverRegisterFn{
+	"remote":  remote.Init,
+	"overlay": ovmanager.Init,
 }
 
 // PredefinedNetworks returns the list of predefined network structures
