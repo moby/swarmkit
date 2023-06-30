@@ -33,7 +33,7 @@ func newDriver(name string, client *plugins.Client) driverapi.Driver {
 // plugin is activated.
 //
 // Deprecated: use [Register].
-func Init(dc driverapi.DriverCallback, config map[string]interface{}) error {
+func Init(dc driverapi.DriverCallback, _ map[string]interface{}) error {
 	return Register(dc, dc.GetPluginGetter())
 }
 
@@ -393,7 +393,7 @@ func (d *driver) DiscoverDelete(dType discoverapi.DiscoveryType, data interface{
 }
 
 func parseStaticRoutes(r api.JoinResponse) ([]*types.StaticRoute, error) {
-	var routes = make([]*types.StaticRoute, len(r.StaticRoutes))
+	routes := make([]*types.StaticRoute, len(r.StaticRoutes))
 	for i, inRoute := range r.StaticRoutes {
 		var err error
 		outRoute := &types.StaticRoute{RouteType: inRoute.RouteType}
