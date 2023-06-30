@@ -17,13 +17,12 @@ func StubManagerInit(networkType string) func(dc driverapi.DriverCallback, confi
 	}
 }
 
-// Register registers a new instance of the manager driver for networkType with r.
-func RegisterManager(r driverapi.DriverCallback, networkType string) error {
-	c := driverapi.Capability{
+// RegisterManager registers a new instance of the manager driver for networkType with r.
+func RegisterManager(r driverapi.Registerer, networkType string) error {
+	return r.RegisterDriver(networkType, &manager{networkType: networkType}, driverapi.Capability{
 		DataScope:         datastore.LocalScope,
 		ConnectivityScope: datastore.LocalScope,
-	}
-	return r.RegisterDriver(networkType, &manager{networkType: networkType}, c)
+	})
 }
 
 func (d *manager) NetworkAllocate(id string, option map[string]string, ipV4Data, ipV6Data []driverapi.IPAMData) (map[string]string, error) {
