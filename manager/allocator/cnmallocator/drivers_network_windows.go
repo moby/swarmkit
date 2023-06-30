@@ -2,17 +2,15 @@ package cnmallocator
 
 import (
 	"github.com/docker/docker/libnetwork/drivers/overlay/ovmanager"
-	"github.com/docker/docker/libnetwork/drivers/remote"
-	"github.com/docker/docker/libnetwork/drvregistry"
 	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 )
 
-var initializers = map[string]drvregistry.InitFunc{
-	"remote":   remote.Init,
-	"overlay":  ovmanager.Init,
-	"internal": StubManagerInit("internal"),
-	"l2bridge": StubManagerInit("l2bridge"),
-	"nat":      StubManagerInit("nat"),
+var initializers = map[string]driverRegisterFn{
+	"remote":   registerRemote,
+	"overlay":  ovmanager.Register,
+	"internal": registerNetworkType("internal"),
+	"l2bridge": registerNetworkType("l2bridge"),
+	"nat":      registerNetworkType("nat"),
 }
 
 // PredefinedNetworks returns the list of predefined network structures
