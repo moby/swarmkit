@@ -48,7 +48,7 @@ github.com/davecgh/go-spew/spew
 ## explicit
 github.com/docker/distribution/digestset
 github.com/docker/distribution/reference
-# github.com/docker/docker v24.0.0-rc.2.0.20230627090017-b1569b9c185b+incompatible
+# github.com/docker/docker v24.0.0-rc.2.0.20230630161949-75ee002347f8+incompatible
 ## explicit
 github.com/docker/docker/api
 github.com/docker/docker/api/types
