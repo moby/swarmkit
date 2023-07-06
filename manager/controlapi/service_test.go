@@ -349,11 +349,12 @@ func TestValidateContainerSpec(t *testing.T) {
 			Container: &api.ContainerSpec{
 				Image: "image",
 				Healthcheck: &api.HealthConfig{
-					Test:        []string{"curl 127.0.0.1:3000"},
-					Interval:    gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
-					Timeout:     gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
-					Retries:     -1,                                                       // invalid negative integer
-					StartPeriod: gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
+					Test:          []string{"curl 127.0.0.1:3000"},
+					Interval:      gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
+					Timeout:       gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
+					Retries:       -1,                                                       // invalid negative integer
+					StartPeriod:   gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
+					StartInterval: gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
 				},
 			},
 		},
@@ -395,11 +396,12 @@ func TestValidateContainerSpec(t *testing.T) {
 					},
 				},
 				Healthcheck: &api.HealthConfig{
-					Test:        []string{"curl 127.0.0.1:3000"},
-					Interval:    gogotypes.DurationProto(time.Duration(1 * time.Second)),
-					Timeout:     gogotypes.DurationProto(time.Duration(3 * time.Second)),
-					Retries:     5,
-					StartPeriod: gogotypes.DurationProto(time.Duration(1 * time.Second)),
+					Test:          []string{"curl 127.0.0.1:3000"},
+					Interval:      gogotypes.DurationProto(time.Duration(1 * time.Second)),
+					Timeout:       gogotypes.DurationProto(time.Duration(3 * time.Second)),
+					Retries:       5,
+					StartPeriod:   gogotypes.DurationProto(time.Duration(1 * time.Second)),
+					StartInterval: gogotypes.DurationProto(time.Duration(1 * time.Second)),
 				},
 			},
 		},
