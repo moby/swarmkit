@@ -48,7 +48,7 @@ github.com/davecgh/go-spew/spew
 ## explicit
 github.com/docker/distribution/digestset
 github.com/docker/distribution/reference
-# github.com/docker/docker v24.0.0-rc.2.0.20230630161949-75ee002347f8+incompatible
+# github.com/docker/docker v24.0.0-rc.2.0.20230706181717-98d3da79ef9c+incompatible
 ## explicit
 github.com/docker/docker/api
 github.com/docker/docker/api/types
@@ -69,7 +69,6 @@ github.com/docker/docker/api/types/volume
 github.com/docker/docker/client
 github.com/docker/docker/errdefs
 github.com/docker/docker/libnetwork/bitmap
-github.com/docker/docker/libnetwork/bitseq
 github.com/docker/docker/libnetwork/datastore
 github.com/docker/docker/libnetwork/discoverapi
 github.com/docker/docker/libnetwork/driverapi
@@ -82,7 +81,6 @@ github.com/docker/docker/libnetwork/drivers/overlay/ovmanager
 github.com/docker/docker/libnetwork/drivers/remote
 github.com/docker/docker/libnetwork/drivers/remote/api
 github.com/docker/docker/libnetwork/drvregistry
-github.com/docker/docker/libnetwork/idm
 github.com/docker/docker/libnetwork/internal/kvstore
 github.com/docker/docker/libnetwork/ipam
 github.com/docker/docker/libnetwork/ipamapi
