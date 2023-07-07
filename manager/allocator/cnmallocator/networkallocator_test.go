@@ -982,7 +982,7 @@ func TestCorrectlyPassIPAMOptions(t *testing.T) {
 	na := newNetworkAllocator(t)
 	ipamDriver := &mockIpam{}
 
-	err = na.(*cnmNetworkAllocator).drvRegistry.RegisterIpamDriver("mockipam", ipamDriver)
+	err = na.(*cnmNetworkAllocator).ipamRegistry.RegisterIpamDriver("mockipam", ipamDriver)
 	assert.NoError(t, err)
 
 	n := &api.Network{

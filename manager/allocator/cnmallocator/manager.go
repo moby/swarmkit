@@ -11,12 +11,6 @@ type manager struct {
 	networkType string
 }
 
-func StubManagerInit(networkType string) func(dc driverapi.DriverCallback, config map[string]interface{}) error {
-	return func(dc driverapi.DriverCallback, config map[string]interface{}) error {
-		return RegisterManager(dc, networkType)
-	}
-}
-
 // RegisterManager registers a new instance of the manager driver for networkType with r.
 func RegisterManager(r driverapi.Registerer, networkType string) error {
 	return r.RegisterDriver(networkType, &manager{networkType: networkType}, driverapi.Capability{
