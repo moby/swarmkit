@@ -652,9 +652,7 @@ var _ = Describe("volumeSet", func() {
 			vs.releaseVolume(volumes[0].ID, tasks[0].ID)
 			vs.releaseVolume(allVolume.ID, tasks[0].ID)
 
-			err := s.Update(func(tx store.Tx) error {
-				return vs.freeVolumes(tx)
-			})
+			err := s.Batch(vs.freeVolumes)
 			Expect(err).ToNot(HaveOccurred())
 
 			var freshVolumes []*api.Volume
