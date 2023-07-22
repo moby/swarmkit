@@ -1112,7 +1112,9 @@ func (s *Server) ListServiceStatuses(ctx context.Context, req *api.ListServiceSt
 						status.CompletedTasks++
 					}
 				}
-				if task.Status.State == api.TaskStateRunning {
+				// report as running only if the task's node is up
+				node := store.GetNode(tx, task.NodeID)
+				if node != nil && node.Status.State != api.NodeStatus_DOWN && task.Status.State == api.TaskStateRunning {
 					status.RunningTasks++
 				}
 
