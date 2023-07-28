@@ -51,7 +51,7 @@ github.com/davecgh/go-spew/spew
 ## explicit
 github.com/docker/distribution/digestset
 github.com/docker/distribution/reference
-# github.com/docker/docker v24.0.0-rc.2.0.20230714223606-37b908aa628c+incompatible
+# github.com/docker/docker v24.0.0-rc.2.0.20230809114405-89b542b421f4+incompatible
 ## explicit
 github.com/docker/docker/api
 github.com/docker/docker/api/types
@@ -73,7 +73,6 @@ github.com/docker/docker/api/types/volume
 github.com/docker/docker/client
 github.com/docker/docker/errdefs
 github.com/docker/docker/libnetwork/bitmap
-github.com/docker/docker/libnetwork/datastore
 github.com/docker/docker/libnetwork/discoverapi
 github.com/docker/docker/libnetwork/driverapi
 github.com/docker/docker/libnetwork/drivers/bridge/brmanager
@@ -85,7 +84,6 @@ github.com/docker/docker/libnetwork/drivers/overlay/ovmanager
 github.com/docker/docker/libnetwork/drivers/remote
 github.com/docker/docker/libnetwork/drivers/remote/api
 github.com/docker/docker/libnetwork/drvregistry
-github.com/docker/docker/libnetwork/internal/kvstore
 github.com/docker/docker/libnetwork/ipam
 github.com/docker/docker/libnetwork/ipamapi
 github.com/docker/docker/libnetwork/ipams/builtin
@@ -96,6 +94,7 @@ github.com/docker/docker/libnetwork/ipams/windowsipam
 github.com/docker/docker/libnetwork/ipamutils
 github.com/docker/docker/libnetwork/ipbits
 github.com/docker/docker/libnetwork/netlabel
+github.com/docker/docker/libnetwork/scope
 github.com/docker/docker/libnetwork/types
 github.com/docker/docker/pkg/homedir
 github.com/docker/docker/pkg/ioutils

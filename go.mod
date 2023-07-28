@@ -9,7 +9,7 @@ require (
 	github.com/cloudflare/cfssl v1.6.4
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/docker/distribution v2.8.2+incompatible
-	github.com/docker/docker v24.0.0-rc.2.0.20230714223606-37b908aa628c+incompatible // master (v25.0.0-dev)
+	github.com/docker/docker v24.0.0-rc.2.0.20230809114405-89b542b421f4+incompatible // master (v25.0.0-dev)
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c
 	github.com/docker/go-metrics v0.0.1

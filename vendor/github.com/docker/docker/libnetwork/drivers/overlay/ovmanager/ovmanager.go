@@ -9,11 +9,10 @@ import (
 
 	"github.com/containerd/containerd/log"
 	"github.com/docker/docker/libnetwork/bitmap"
-	"github.com/docker/docker/libnetwork/datastore"
-	"github.com/docker/docker/libnetwork/discoverapi"
 	"github.com/docker/docker/libnetwork/driverapi"
 	"github.com/docker/docker/libnetwork/drivers/overlay/overlayutils"
 	"github.com/docker/docker/libnetwork/netlabel"
+	"github.com/docker/docker/libnetwork/scope"
 	"github.com/docker/docker/libnetwork/types"
 )
 
@@ -49,8 +48,8 @@ type network struct {
 // Register registers a new instance of the overlay driver.
 func Register(r driverapi.Registerer) error {
 	return r.RegisterDriver(networkType, newDriver(), driverapi.Capability{
-		DataScope:         datastore.GlobalScope,
-		ConnectivityScope: datastore.GlobalScope,
+		DataScope:         scope.Global,
+		ConnectivityScope: scope.Global,
 	})
 }
 
@@ -206,16 +205,6 @@ func (d *driver) Type() string {
 
 func (d *driver) IsBuiltIn() bool {
 	return true
-}
-
-// DiscoverNew is a notification for a new discovery event, such as a new node joining a cluster
-func (d *driver) DiscoverNew(dType discoverapi.DiscoveryType, data interface{}) error {
-	return types.NotImplementedErrorf("not implemented")
-}
-
-// DiscoverDelete is a notification for a discovery delete event, such as a node leaving a cluster
-func (d *driver) DiscoverDelete(dType discoverapi.DiscoveryType, data interface{}) error {
-	return types.NotImplementedErrorf("not implemented")
 }
 
 func (d *driver) ProgramExternalConnectivity(nid, eid string, options map[string]interface{}) error {
