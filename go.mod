@@ -6,7 +6,7 @@ require (
 	code.cloudfoundry.org/clock v1.0.0
 	github.com/Microsoft/go-winio v0.5.2
 	github.com/akutz/memconn v0.1.0
-	github.com/cloudflare/cfssl v0.0.0-20180323000720-5d63dbd981b5
+	github.com/cloudflare/cfssl v1.6.4
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/docker/distribution v2.8.2+incompatible
 	github.com/docker/docker v24.0.0-rc.2.0.20230714223606-37b908aa628c+incompatible // master (v25.0.0-dev)
@@ -38,7 +38,7 @@ require (
 	go.etcd.io/etcd/pkg/v3 v3.5.6
 	go.etcd.io/etcd/raft/v3 v3.5.6
 	go.etcd.io/etcd/server/v3 v3.5.6
-	golang.org/x/crypto v0.2.0
+	golang.org/x/crypto v0.3.0
 	golang.org/x/net v0.10.0
 	golang.org/x/time v0.3.0
 
@@ -71,6 +71,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ishidawataru/sctp v0.0.0-20230406120618-7ff4192f6ff2 // indirect
+	github.com/jmoiron/sqlx v1.3.3 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
@@ -80,6 +81,9 @@ require (
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/tedsuo/ifrit v0.0.0-20220120221754-dd274de71113 // indirect
+	github.com/weppos/publicsuffix-go v0.15.1-0.20210511084619-b1f36a2d6c0b // indirect
+	github.com/zmap/zcrypto v0.0.0-20210511125630-18f1e0152cfc // indirect
+	github.com/zmap/zlint/v3 v3.1.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.21.0 // indirect

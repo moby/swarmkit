@@ -217,7 +217,7 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 		},
 		CN:         "maliciousCN",
 		Hosts:      []string{"docker.com"},
-		KeyRequest: &cfcsr.BasicKeyRequest{A: "ecdsa", S: 256},
+		KeyRequest: &cfcsr.KeyRequest{A: "ecdsa", S: 256},
 	}
 
 	csr, _, err := cfcsr.ParseRequest(req)
@@ -1433,7 +1433,7 @@ func TestRootCACrossSignCACertificate(t *testing.T) {
 
 	rsaReq := cfcsr.CertificateRequest{
 		CN: "rootCNRSA",
-		KeyRequest: &cfcsr.BasicKeyRequest{
+		KeyRequest: &cfcsr.KeyRequest{
 			A: "rsa",
 			S: 2048,
 		},
