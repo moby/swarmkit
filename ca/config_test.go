@@ -26,7 +26,6 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -322,7 +321,7 @@ func TestLoadSecurityConfigIntermediates(t *testing.T) {
 	rootCA, err := ca.NewRootCA(cautils.ECDSACertChain[2], nil, nil, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
-	ctx := log.WithLogger(context.Background(), log.L.WithFields(logrus.Fields{
+	ctx := log.WithLogger(context.Background(), log.L.WithFields(log.Fields{
 		"testname":          t.Name(),
 		"testHasExternalCA": false,
 	}))
@@ -360,7 +359,7 @@ func TestLoadSecurityConfigKeyFormat(t *testing.T) {
 	rootCA, err := ca.NewRootCA(cautils.ECDSACertChain[1], nil, nil, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
-	ctx := log.WithLogger(context.Background(), log.L.WithFields(logrus.Fields{
+	ctx := log.WithLogger(context.Background(), log.L.WithFields(log.Fields{
 		"testname":          t.Name(),
 		"testHasExternalCA": false,
 	}))

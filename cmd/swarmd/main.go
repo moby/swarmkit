@@ -40,7 +40,7 @@ var (
 		Short:        "Run a swarm control process",
 		SilenceUsage: true,
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
-			logrus.SetOutput(os.Stderr)
+			log.L.Logger.SetOutput(os.Stderr)
 			flag, err := cmd.Flags().GetString("log-level")
 			if err != nil {
 				log.L.Fatal(err)

@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/moby/swarmkit/v2/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
@@ -27,7 +28,6 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/raft/transport"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/raft/v3/raftpb"
@@ -42,7 +42,7 @@ const (
 func init() {
 	store.WedgeTimeout = 3 * time.Second
 	grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, io.Discard))
-	logrus.SetOutput(io.Discard)
+	log.L.Logger.SetOutput(io.Discard)
 }
 
 var tc *cautils.TestCA

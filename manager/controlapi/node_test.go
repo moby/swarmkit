@@ -9,10 +9,10 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	cautils "github.com/moby/swarmkit/v2/ca/testutils"
 	"github.com/moby/swarmkit/v2/identity"
+	"github.com/moby/swarmkit/v2/log"
 	raftutils "github.com/moby/swarmkit/v2/manager/state/raft/testutils"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -452,7 +452,7 @@ func TestRemoveNodes(t *testing.T) {
 
 func init() {
 	grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, io.Discard))
-	logrus.SetOutput(io.Discard)
+	log.L.Logger.SetOutput(io.Discard)
 }
 
 func getMap(t *testing.T, nodes []*api.Node) map[uint64]*api.ManagerStatus {

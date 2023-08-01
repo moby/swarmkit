@@ -19,11 +19,11 @@ import (
 	"github.com/moby/swarmkit/v2/ca"
 	cautils "github.com/moby/swarmkit/v2/ca/testutils"
 	"github.com/moby/swarmkit/v2/identity"
+	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager"
 	"github.com/moby/swarmkit/v2/node"
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,9 +41,9 @@ func printTrace() {
 		bufferLen *= 2
 	}
 	buf = buf[:stackSize]
-	logrus.Error("===========================STACK TRACE===========================")
+	log.L.Error("===========================STACK TRACE===========================")
 	fmt.Println(string(buf))
-	logrus.Error("===========================STACK TRACE END=======================")
+	log.L.Error("===========================STACK TRACE END=======================")
 }
 
 func TestMain(m *testing.M) {

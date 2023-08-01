@@ -7,12 +7,14 @@ import (
 
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/sirupsen/logrus"
+	"github.com/moby/swarmkit/v2/log"
 	"github.com/stretchr/testify/assert"
 )
 
+const debugLevel = 5
+
 func init() {
-	logrus.SetLevel(logrus.DebugLevel)
+	log.L.Logger.SetLevel(debugLevel)
 }
 
 func TestTaskManager(t *testing.T) {

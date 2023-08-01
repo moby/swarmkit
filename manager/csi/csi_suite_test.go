@@ -3,10 +3,9 @@ package csi
 import (
 	"testing"
 
+	"github.com/moby/swarmkit/v2/log"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"github.com/sirupsen/logrus"
 )
 
 func TestVolumes(t *testing.T) {
@@ -15,5 +14,5 @@ func TestVolumes(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	logrus.SetOutput(GinkgoWriter)
+	log.L.Logger.SetOutput(GinkgoWriter)
 })

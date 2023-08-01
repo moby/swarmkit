@@ -17,7 +17,6 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
 )
 
@@ -84,13 +83,13 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 			// if we have progress details, we have everything we need
 			if progress, ok := m["progressDetail"].(map[string]interface{}); ok {
 				// first, log the image and status
-				l = l.WithFields(logrus.Fields{
+				l = l.WithFields(log.Fields{
 					"image":  c.container.image(),
 					"status": m["status"],
 				})
 				// then, if we have progress, log the progress
 				if progress["current"] != nil && progress["total"] != nil {
-					l = l.WithFields(logrus.Fields{
+					l = l.WithFields(log.Fields{
 						"current": progress["current"],
 						"total":   progress["total"],
 					})

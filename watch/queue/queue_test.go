@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -142,7 +141,7 @@ func TestLimitQueueWithLimit(t *testing.T) {
 	require.Equal(1, ms.Len())
 
 	// Trying to write a new event in the queue should flush it
-	logrus.Debugf("Closing queue")
+	t.Log("Closing queue")
 	err := q.Write("test event")
 	require.Error(err)
 	require.Equal(ErrQueueFull, err)

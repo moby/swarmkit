@@ -16,7 +16,6 @@ import (
 	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/moby/swarmkit/v2/node"
 	"github.com/moby/swarmkit/v2/testutils"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -154,7 +153,7 @@ func (c *testCluster) AddNode(n *testNode) error {
 
 func (c *testCluster) runNode(n *testNode, nodeOrder int) error {
 	ctx := log.WithLogger(c.ctx, log.L.WithFields(
-		logrus.Fields{
+		log.Fields{
 			"testnode": nodeOrder,
 			"testname": c.ctx.Value(testnameKey),
 		},

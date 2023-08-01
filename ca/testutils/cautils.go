@@ -26,7 +26,6 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	stateutils "github.com/moby/swarmkit/v2/manager/state/testutils"
 	"github.com/moby/swarmkit/v2/remotes"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -273,7 +272,7 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 	api.RegisterCAServer(grpcServer, caServer)
 	api.RegisterNodeCAServer(grpcServer, caServer)
 
-	fields := logrus.Fields{"testHasExternalCA": External}
+	fields := log.Fields{"testHasExternalCA": External}
 	if t != nil {
 		fields["testname"] = t.Name()
 	}
