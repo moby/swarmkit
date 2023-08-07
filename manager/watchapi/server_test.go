@@ -10,9 +10,9 @@ import (
 
 	"github.com/moby/swarmkit/v2/api"
 	cautils "github.com/moby/swarmkit/v2/ca/testutils"
+	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	stateutils "github.com/moby/swarmkit/v2/manager/state/testutils"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -102,5 +102,5 @@ func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, memb
 
 func init() {
 	grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, io.Discard))
-	logrus.SetOutput(io.Discard)
+	log.L.Logger.SetOutput(io.Discard)
 }

@@ -21,7 +21,6 @@ import (
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -1187,7 +1186,7 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 		// offset each server's reconciliation interval somewhat so that some will
 		// pre-empt others
 		otherServers[i].SetRootReconciliationInterval(time.Millisecond * time.Duration((i+1)*10))
-		serverContexts[i] = log.WithLogger(tc.Context, log.G(tc.Context).WithFields(logrus.Fields{
+		serverContexts[i] = log.WithLogger(tc.Context, log.G(tc.Context).WithFields(log.Fields{
 			"otherCAServer": i,
 		}))
 		startCAServer(serverContexts[i], otherServers[i])

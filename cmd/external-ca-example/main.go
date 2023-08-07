@@ -9,7 +9,7 @@ import (
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/ca/testutils"
 	"github.com/moby/swarmkit/v2/identity"
-	"github.com/sirupsen/logrus"
+	"github.com/moby/swarmkit/v2/log"
 )
 
 func main() {
@@ -22,10 +22,10 @@ func main() {
 	// Initialize the Root CA.
 	rootCA, err := ca.CreateRootCA("external-ca-example")
 	if err != nil {
-		logrus.Fatalf("unable to initialize Root CA: %s", err.Error())
+		log.L.Fatalf("unable to initialize Root CA: %s", err.Error())
 	}
 	if err := ca.SaveRootCA(rootCA, rootPaths); err != nil {
-		logrus.Fatalf("unable to save Root CA: %s", err.Error())
+		log.L.Fatalf("unable to save Root CA: %s", err.Error())
 	}
 
 	// Create the initial manager node credentials.
@@ -36,7 +36,7 @@ func main() {
 
 	kw := ca.NewKeyReadWriter(nodeConfigPaths.Node, nil, nil)
 	if _, _, err := rootCA.IssueAndSaveNewCertificates(kw, nodeID, ca.ManagerRole, clusterID); err != nil {
-		logrus.Fatalf("unable to create initial manager node credentials: %s", err)
+		log.L.Fatalf("unable to create initial manager node credentials: %s", err)
 	}
 
 	// And copy the Root CA certificate into the node config path for its
@@ -45,12 +45,12 @@ func main() {
 
 	server, err := testutils.NewExternalSigningServer(rootCA, "ca")
 	if err != nil {
-		logrus.Fatalf("unable to start server: %s", err)
+		log.L.Fatalf("unable to start server: %s", err)
 	}
 
 	defer server.Stop()
 
-	logrus.Infof("Now run: swarmd -d . --listen-control-api ./swarmd.sock --external-ca protocol=cfssl,url=%s", server.URL)
+	log.L.Infof("Now run: swarmd -d . --listen-control-api ./swarmd.sock --external-ca protocol=cfssl,url=%s", server.URL)
 
 	sigC := make(chan os.Signal, 1)
 	signal.Notify(sigC, syscall.SIGTERM, syscall.SIGINT)

@@ -13,7 +13,6 @@ import (
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/ca/testutils"
 	"github.com/moby/swarmkit/v2/log"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -103,7 +102,7 @@ func TestExternalCASignRequestTimesOut(t *testing.T) {
 		return // this does not require the external CA in any way
 	}
 
-	ctx := log.WithLogger(context.Background(), log.L.WithFields(logrus.Fields{
+	ctx := log.WithLogger(context.Background(), log.L.WithFields(log.Fields{
 		"testname":          t.Name(),
 		"testHasExternalCA": false,
 	}))
@@ -151,7 +150,7 @@ func TestExternalCASignRequestSizeLimit(t *testing.T) {
 		return // this does not require the external CA in any way
 	}
 
-	ctx := log.WithLogger(context.Background(), log.L.WithFields(logrus.Fields{
+	ctx := log.WithLogger(context.Background(), log.L.WithFields(log.Fields{
 		"testname":          t.Name(),
 		"testHasExternalCA": false,
 	}))

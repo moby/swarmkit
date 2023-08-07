@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/moby/swarmkit/v2/log"
 	"google.golang.org/grpc/grpclog"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -17,7 +18,6 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/raft/membership"
 	raftutils "github.com/moby/swarmkit/v2/manager/state/raft/testutils"
 	"github.com/moby/swarmkit/v2/testutils"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
@@ -26,7 +26,7 @@ var tc *cautils.TestCA
 
 func init() {
 	grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, io.Discard))
-	logrus.SetOutput(io.Discard)
+	log.L.Logger.SetOutput(io.Discard)
 }
 
 func TestMain(m *testing.M) {

@@ -10,7 +10,6 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/testutils"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	bolt "go.etcd.io/bbolt"
 )
@@ -20,7 +19,7 @@ type testPublisherProvider struct {
 
 func (tpp *testPublisherProvider) Publisher(ctx context.Context, subscriptionID string) (exec.LogPublisher, func(), error) {
 	return exec.LogPublisherFunc(func(ctx context.Context, message api.LogMessage) error {
-			log.G(ctx).WithFields(logrus.Fields{
+			log.G(ctx).WithFields(log.Fields{
 				"subscription": subscriptionID,
 				"task.id":      message.Context.TaskID,
 				"node.id":      message.Context.NodeID,
@@ -61,7 +60,7 @@ func TestWorkerAssign(t *testing.T) {
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := newFakeReporter(
 		statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
-			log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
+			log.G(ctx).WithFields(log.Fields{"task.id": taskID, "status": status}).Info("status update received")
 			return nil
 		}),
 		volumeReporterFunc(func(ctx context.Context, volumeID string) error {
@@ -282,7 +281,7 @@ func TestWorkerWait(t *testing.T) {
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := newFakeReporter(
 		statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
-			log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
+			log.G(ctx).WithFields(log.Fields{"task.id": taskID, "status": status}).Info("status update received")
 			return nil
 		}),
 		volumeReporterFunc(func(ctx context.Context, volumeID string) error {
@@ -433,7 +432,7 @@ func TestWorkerUpdate(t *testing.T) {
 	worker := newWorker(db, executor, &testPublisherProvider{})
 	reporter := newFakeReporter(
 		statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
-			log.G(ctx).WithFields(logrus.Fields{"task.id": taskID, "status": status}).Info("status update received")
+			log.G(ctx).WithFields(log.Fields{"task.id": taskID, "status": status}).Info("status update received")
 			return nil
 		}),
 		volumeReporterFunc(func(ctx context.Context, volumeID string) error {
