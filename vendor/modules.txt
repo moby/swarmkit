@@ -41,8 +41,8 @@ github.com/cloudflare/cfssl/signer/local
 # github.com/container-storage-interface/spec v1.2.0
 ## explicit
 github.com/container-storage-interface/spec/lib/go/csi
-# github.com/containerd/containerd v1.6.21
-## explicit; go 1.17
+# github.com/containerd/containerd v1.6.22
+## explicit; go 1.18
 github.com/containerd/containerd/log
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
