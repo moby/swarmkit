@@ -373,7 +373,7 @@ message ContainerSpec {
 
 	// SecurityOpt defines the security options on the container. This option
 	// is equivalent to passing --security-opt to docker run.
-	map<string, string> security_opt = 30;
+	repeated string security_opt = 30;
 }
 
 // EndpointSpec defines the properties that can be configured to

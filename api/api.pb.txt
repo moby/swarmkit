@@ -5719,8 +5719,7 @@ file {
       name: "security_opt"
       number: 30
       label: LABEL_REPEATED
-      type: TYPE_MESSAGE
-      type_name: ".docker.swarmkit.v1.ContainerSpec.SecurityOptEntry"
+      type: TYPE_STRING
       json_name: "securityOpt"
     }
     nested_type {
@@ -5819,26 +5818,6 @@ file {
         label: LABEL_OPTIONAL
         type: TYPE_INT64
         json_name: "hard"
-      }
-    }
-    nested_type {
-      name: "SecurityOptEntry"
-      field {
-        name: "key"
-        number: 1
-        label: LABEL_OPTIONAL
-        type: TYPE_STRING
-        json_name: "key"
-      }
-      field {
-        name: "value"
-        number: 2
-        label: LABEL_OPTIONAL
-        type: TYPE_STRING
-        json_name: "value"
-      }
-      options {
-        map_entry: true
       }
     }
     enum_type {
