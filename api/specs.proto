@@ -370,10 +370,6 @@ message ContainerSpec {
 	// Ulimits defines the list of ulimits to set in the container. This option
 	// is equivalent to passing --ulimit to docker run.
 	repeated Ulimit ulimits = 29;
-
-	// SecurityOpt defines the security options on the container. This option
-	// is equivalent to passing --security-opt to docker run.
-	map<string, string> security_opt = 30;
 }
 
 // EndpointSpec defines the properties that can be configured to
