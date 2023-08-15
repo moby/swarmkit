@@ -5,7 +5,6 @@ import (
 	"net"
 	"testing"
 
-	"github.com/docker/docker/libnetwork/discoverapi"
 	"github.com/docker/docker/libnetwork/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
@@ -960,14 +959,6 @@ func (a *mockIpam) RequestAddress(poolID string, ip net.IP, opts map[string]stri
 }
 
 func (a *mockIpam) ReleaseAddress(poolID string, ip net.IP) error {
-	return nil
-}
-
-func (a *mockIpam) DiscoverNew(dType discoverapi.DiscoveryType, data interface{}) error {
-	return nil
-}
-
-func (a *mockIpam) DiscoverDelete(dType discoverapi.DiscoveryType, data interface{}) error {
 	return nil
 }
 

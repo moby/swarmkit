@@ -101,6 +101,12 @@ func (p *Plugin) IsV1() bool {
 	return true
 }
 
+// ScopedPath returns the path scoped to the plugin's rootfs.
+// For v1 plugins, this always returns the path unchanged as v1 plugins run directly on the host.
+func (p *Plugin) ScopedPath(s string) string {
+	return s
+}
+
 // NewLocalPlugin creates a new local plugin.
 func NewLocalPlugin(name, addr string) *Plugin {
 	return &Plugin{
@@ -195,14 +201,14 @@ func (p *Plugin) implements(kind string) bool {
 	return false
 }
 
-func load(name string) (*Plugin, error) {
-	return loadWithRetry(name, true)
-}
-
 func loadWithRetry(name string, retry bool) (*Plugin, error) {
 	registry := NewLocalRegistry()
 	start := time.Now()
-
+	var testTimeOut int
+	if name == testNonExistingPlugin {
+		// override the timeout in tests
+		testTimeOut = 2
+	}
 	var retries int
 	for {
 		pl, err := registry.Plugin(name)
@@ -212,7 +218,7 @@ func loadWithRetry(name string, retry bool) (*Plugin, error) {
 			}
 
 			timeOff := backoff(retries)
-			if abort(start, timeOff) {
+			if abort(start, timeOff, testTimeOut) {
 				return nil, err
 			}
 			retries++
@@ -248,7 +254,7 @@ func get(name string) (*Plugin, error) {
 	if ok {
 		return pl, pl.activate()
 	}
-	return load(name)
+	return loadWithRetry(name, true)
 }
 
 // Get returns the plugin given the specified name and requested implementation.

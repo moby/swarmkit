@@ -6,7 +6,6 @@ import (
 	"net"
 
 	"github.com/containerd/containerd/log"
-	"github.com/docker/docker/libnetwork/discoverapi"
 	"github.com/docker/docker/libnetwork/ipamapi"
 	"github.com/docker/docker/libnetwork/ipams/remote/api"
 	"github.com/docker/docker/libnetwork/types"
@@ -117,8 +116,8 @@ func (a *allocator) GetDefaultAddressSpaces() (string, string, error) {
 }
 
 // RequestPool requests an address pool in the specified address space
-func (a *allocator) RequestPool(addressSpace, pool, subPool string, options map[string]string, v6 bool) (string, *net.IPNet, map[string]string, error) {
-	req := &api.RequestPoolRequest{AddressSpace: addressSpace, Pool: pool, SubPool: subPool, Options: options, V6: v6}
+func (a *allocator) RequestPool(addressSpace, requestedPool, requestedSubPool string, options map[string]string, v6 bool) (string, *net.IPNet, map[string]string, error) {
+	req := &api.RequestPoolRequest{AddressSpace: addressSpace, Pool: requestedPool, SubPool: requestedSubPool, Options: options, V6: v6}
 	res := &api.RequestPoolResponse{}
 	if err := a.call("RequestPool", req, res); err != nil {
 		return "", nil, nil, err
@@ -166,16 +165,6 @@ func (a *allocator) ReleaseAddress(poolID string, address net.IP) error {
 	req := &api.ReleaseAddressRequest{PoolID: poolID, Address: relAddress}
 	res := &api.ReleaseAddressResponse{}
 	return a.call("ReleaseAddress", req, res)
-}
-
-// DiscoverNew is a notification for a new discovery event, such as a new global datastore
-func (a *allocator) DiscoverNew(dType discoverapi.DiscoveryType, data interface{}) error {
-	return nil
-}
-
-// DiscoverDelete is a notification for a discovery delete event, such as a node leaving a cluster
-func (a *allocator) DiscoverDelete(dType discoverapi.DiscoveryType, data interface{}) error {
-	return nil
 }
 
 func (a *allocator) IsBuiltIn() bool {
