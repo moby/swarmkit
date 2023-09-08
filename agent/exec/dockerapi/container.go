@@ -582,7 +582,7 @@ func (c *containerConfig) networkCreateOptions(name string) (types.NetworkCreate
 
 func (c containerConfig) eventFilter() filters.Args {
 	filter := filters.NewArgs()
-	filter.Add("type", events.ContainerEventType)
+	filter.Add("type", string(events.ContainerEventType))
 	filter.Add("name", c.name())
 	filter.Add("label", fmt.Sprintf("%v.task.id=%v", systemLabelPrefix, c.task.ID))
 	return filter

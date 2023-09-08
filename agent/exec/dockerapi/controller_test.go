@@ -189,7 +189,7 @@ func TestControllerWait(t *testing.T) {
 			Since:   "0",
 			Filters: config.eventFilter(),
 		}) {
-			return makeEvents(t, config, "create", "die")
+			return makeEvents(t, config, events.ActionCreate, events.ActionDie)
 		}
 		panic("unexpected call of Events")
 	}
@@ -218,7 +218,7 @@ func TestControllerWaitUnhealthy(t *testing.T) {
 		}
 		panic("unexpected call ContainerInspect")
 	}
-	evs, errs := makeEvents(t, config, "create", "health_status: unhealthy")
+	evs, errs := makeEvents(t, config, events.ActionCreate, events.ActionHealthStatusUnhealthy)
 	client.EventsFn = func(_ context.Context, options types.EventsOptions) (<-chan events.Message, <-chan error) {
 		if reflect.DeepEqual(options, types.EventsOptions{
 			Since:   "0",
@@ -276,7 +276,7 @@ func TestControllerWaitExitError(t *testing.T) {
 			Since:   "0",
 			Filters: config.eventFilter(),
 		}) {
-			return makeEvents(t, config, "create", "die")
+			return makeEvents(t, config, events.ActionCreate, events.ActionDie)
 		}
 		panic("unexpected call of Events")
 	}
@@ -464,7 +464,8 @@ func genTask(t *testing.T) *api.Task {
 	}
 }
 
-func makeEvents(t *testing.T, container *containerConfig, actions ...string) (<-chan events.Message, <-chan error) {
+func makeEvents(t *testing.T, container *containerConfig, actions ...events.Action) (<-chan events.Message, <-chan error) {
+	t.Helper()
 	evs := make(chan events.Message, len(actions))
 	for _, action := range actions {
 		evs <- events.Message{
