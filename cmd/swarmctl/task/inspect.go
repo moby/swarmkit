@@ -64,30 +64,32 @@ func printTaskSummary(task *api.Task, res *common.Resolver) {
 
 	fmt.Fprintln(w, "Spec\t")
 	ctr := task.Spec.GetContainer()
-	common.FprintfIfNotEmpty(w, "  Image\t: %s\n", ctr.Image)
-	common.FprintfIfNotEmpty(w, "  Command\t: %q\n", strings.Join(ctr.Command, " "))
-	common.FprintfIfNotEmpty(w, "  Args\t: [%s]\n", strings.Join(ctr.Args, ", "))
-	common.FprintfIfNotEmpty(w, "  Env\t: [%s]\n", strings.Join(ctr.Env, ", "))
-	if len(ctr.Secrets) > 0 {
-		fmt.Fprintln(w, "  Secrets:")
-		for _, sr := range ctr.Secrets {
-			var targetName, mode string
-			if sr.GetFile() != nil {
-				targetName = sr.GetFile().Name
-				mode = "FILE"
+	if ctr != nil {
+		common.FprintfIfNotEmpty(w, "  Image\t: %s\n", ctr.Image)
+		common.FprintfIfNotEmpty(w, "  Command\t: %q\n", strings.Join(ctr.Command, " "))
+		common.FprintfIfNotEmpty(w, "  Args\t: [%s]\n", strings.Join(ctr.Args, ", "))
+		common.FprintfIfNotEmpty(w, "  Env\t: [%s]\n", strings.Join(ctr.Env, ", "))
+		if len(ctr.Secrets) > 0 {
+			fmt.Fprintln(w, "  Secrets:")
+			for _, sr := range ctr.Secrets {
+				var targetName, mode string
+				if sr.GetFile() != nil {
+					targetName = sr.GetFile().Name
+					mode = "FILE"
+				}
+				fmt.Fprintf(w, "    [%s] %s:%s\n", mode, sr.SecretName, targetName)
 			}
-			fmt.Fprintf(w, "    [%s] %s:%s\n", mode, sr.SecretName, targetName)
 		}
-	}
-	if len(ctr.Configs) > 0 {
-		fmt.Fprintln(w, "  Configs:")
-		for _, cr := range ctr.Configs {
-			var targetName, mode string
-			if cr.GetFile() != nil {
-				targetName = cr.GetFile().Name
-				mode = "FILE"
+		if len(ctr.Configs) > 0 {
+			fmt.Fprintln(w, "  Configs:")
+			for _, cr := range ctr.Configs {
+				var targetName, mode string
+				if cr.GetFile() != nil {
+					targetName = cr.GetFile().Name
+					mode = "FILE"
+				}
+				fmt.Fprintf(w, "    [%s] %s:%s\n", mode, cr.ConfigName, targetName)
 			}
-			fmt.Fprintf(w, "    [%s] %s:%s\n", mode, cr.ConfigName, targetName)
 		}
 	}
 }

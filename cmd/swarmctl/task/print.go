@@ -49,11 +49,15 @@ func Print(tasks []*api.Task, all bool, res *common.Resolver) {
 			continue
 		}
 		c := t.Spec.GetContainer()
+		var image string
+		if c != nil {
+			image = c.Image
+		}
 		fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s %s\t%s\n",
 			t.ID,
 			t.ServiceAnnotations.Name,
 			t.Slot,
-			c.Image,
+			image,
 			t.DesiredState.String(),
 			t.Status.State.String(),
 			common.TimestampAgo(t.Status.Timestamp),
