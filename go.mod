@@ -39,7 +39,7 @@ require (
 	go.etcd.io/etcd/raft/v3 v3.5.6
 	go.etcd.io/etcd/server/v3 v3.5.6
 	golang.org/x/crypto v0.14.0
-	golang.org/x/net v0.10.0
+	golang.org/x/net v0.17.0
 	golang.org/x/time v0.3.0
 
 	// NOTE(dperny,cyli): there is some error handling, found in the
