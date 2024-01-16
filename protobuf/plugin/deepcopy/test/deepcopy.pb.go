@@ -293,6 +293,7 @@ var xxx_messageInfo_MapStruct proto.InternalMessageInfo
 
 type OneOf struct {
 	// Types that are valid to be assigned to Fields:
+	//
 	//	*OneOf_Field1
 	//	*OneOf_Field2
 	//	*OneOf_Field3
@@ -304,6 +305,7 @@ type OneOf struct {
 	//	*OneOf_Field9
 	Fields isOneOf_Fields `protobuf_oneof:"fields"`
 	// Types that are valid to be assigned to FieldsTwo:
+	//
 	//	*OneOf_Field10
 	//	*OneOf_Field11
 	FieldsTwo isOneOf_FieldsTwo `protobuf_oneof:"fieldsTwo"`
