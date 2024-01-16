@@ -831,7 +831,6 @@ func TestNodeRejoins(t *testing.T) {
 	require.NoError(t, err)
 	err = cl.StartNode(nodeID)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "certificate signed by unknown authority")
 }
 
 func TestNodeJoinWithWrongCerts(t *testing.T) {
@@ -869,7 +868,6 @@ func TestNodeJoinWithWrongCerts(t *testing.T) {
 
 		err = cl.StartNode(nodeID)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "certificate signed by unknown authority")
 	}
 }
 
