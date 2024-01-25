@@ -391,3 +391,128 @@ func TestGenericResourcesPlacementConstraints(t *testing.T) {
 	task = testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, api.TaskStateRejected, task.Status.State)
 }
+
+func TestGenericResourcesPlacementConstraintsDiscrete(t *testing.T) {
+	node := &api.Node{
+		ID: "id0",
+		Spec: api.NodeSpec{
+			Annotations: api.Annotations{
+				Name: "node1",
+			},
+			Availability: api.NodeAvailabilityActive,
+		},
+		Status: api.NodeStatus{
+			State: api.NodeStatus_READY,
+		},
+		Role: api.NodeRoleWorker,
+		Description: &api.NodeDescription{
+			Resources: &api.Resources{
+				Generic: []*api.GenericResource{
+					genericresource.NewDiscrete("mygeneric", 2),
+				},
+			},
+		},
+		Attachments: []*api.NetworkAttachment{
+			{
+				Network: &api.Network{
+					ID: "id1",
+				},
+			},
+		},
+	}
+
+	service := &api.Service{
+		ID: "id1",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "service1",
+			},
+			Task: api.TaskSpec{
+				Resources: &api.ResourceRequirements{
+					Reservations: &api.Resources{
+						Generic: []*api.GenericResource{
+							genericresource.NewDiscrete("mygeneric", 2),
+						},
+					},
+				},
+				Networks: []*api.NetworkAttachmentConfig{
+					{
+						Target: "id1",
+					},
+				},
+			},
+		},
+	}
+
+	task := &api.Task{
+		ID: "id2",
+		Spec: api.TaskSpec{
+			Resources: &api.ResourceRequirements{
+				Reservations: &api.Resources{
+					Generic: []*api.GenericResource{
+						genericresource.NewDiscrete("mygeneric", 2),
+					},
+				},
+			},
+			Networks: []*api.NetworkAttachmentConfig{
+				{
+					Target: "id1",
+				},
+			},
+		},
+		ServiceID: service.ID,
+		NodeID:    node.ID,
+		Status: api.TaskStatus{
+			State: api.TaskStateRunning,
+		},
+		DesiredState: api.TaskStateRunning,
+		AssignedGenericResources: []*api.GenericResource{
+			genericresource.NewDiscrete("mygeneric", 2),
+		},
+	}
+
+	s := store.NewMemoryStore(nil)
+	require.NotNil(t, s)
+	defer s.Close()
+
+	require.NoError(t, s.Update(func(tx store.Tx) error {
+		// Prepopulate node, service, and task.
+		for _, err := range []error{
+			store.CreateNode(tx, node),
+			store.CreateService(tx, service),
+			store.CreateTask(tx, task),
+		} {
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}))
+
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
+	defer cancel()
+
+	constraintEnforcer := New(s)
+	defer constraintEnforcer.Stop()
+
+	// Update the node to remove the generic resource
+	require.NoError(t, s.Update(func(tx store.Tx) error {
+		node = store.GetNode(tx, node.ID)
+		node.Description = &api.NodeDescription{
+			Resources: &api.Resources{
+				Generic: []*api.GenericResource{
+					genericresource.NewDiscrete("mygeneric", 1),
+				},
+				NanoCPUs:    1e9,
+				MemoryBytes: 1e9,
+			},
+		}
+		return store.UpdateNode(tx, node)
+	}))
+
+	go constraintEnforcer.Run()
+
+	// The task should be rejected immediately.
+	task = testutils.WatchTaskUpdate(t, watch)
+	assert.Equal(t, api.TaskStateRejected, task.Status.State)
+}
