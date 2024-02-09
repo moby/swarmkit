@@ -131,8 +131,15 @@ type Config struct {
 	// FIPS setting.
 	FIPS bool
 
-	// NetworkConfig stores network related config for the cluster
-	NetworkConfig *cnmallocator.NetworkConfig
+	// DefaultAddrPool specifies default subnet pool for global scope networks
+	DefaultAddrPool []string
+
+	// SubnetSize specifies the subnet size of the networks created from
+	// the default subnet pool
+	SubnetSize uint32
+
+	// VXLANUDPPort specifies the UDP port number for VXLAN traffic
+	VXLANUDPPort uint32
 }
 
 // Manager is the cluster manager for Swarm.
@@ -959,15 +966,13 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 
 		// If defaultAddrPool is valid we update cluster object with new value
 		// If VXLANUDPPort is not 0 then we call update cluster object with new value
-		if m.config.NetworkConfig != nil {
-			if m.config.NetworkConfig.DefaultAddrPool != nil {
-				clusterObj.DefaultAddressPool = m.config.NetworkConfig.DefaultAddrPool
-				clusterObj.SubnetSize = m.config.NetworkConfig.SubnetSize
-			}
+		if m.config.DefaultAddrPool != nil {
+			clusterObj.DefaultAddressPool = m.config.DefaultAddrPool
+			clusterObj.SubnetSize = m.config.SubnetSize
+		}
 
-			if m.config.NetworkConfig.VXLANUDPPort != 0 {
-				clusterObj.VXLANUDPPort = m.config.NetworkConfig.VXLANUDPPort
-			}
+		if m.config.VXLANUDPPort != 0 {
+			clusterObj.VXLANUDPPort = m.config.VXLANUDPPort
 		}
 		err := store.CreateCluster(tx, clusterObj)
 
@@ -1019,27 +1024,29 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 	// If DefaultAddrPool is null, Read from store and check if
 	// DefaultAddrPool info is stored in cluster object
 	// If VXLANUDPPort is 0, read it from the store - cluster object
-	if m.config.NetworkConfig == nil || m.config.NetworkConfig.DefaultAddrPool == nil || m.config.NetworkConfig.VXLANUDPPort == 0 {
+	if m.config.DefaultAddrPool == nil || m.config.VXLANUDPPort == 0 {
 		var cluster *api.Cluster
 		s.View(func(tx store.ReadTx) {
 			cluster = store.GetCluster(tx, clusterID)
 		})
 		if cluster.DefaultAddressPool != nil {
-			if m.config.NetworkConfig == nil {
-				m.config.NetworkConfig = &cnmallocator.NetworkConfig{}
-			}
-			m.config.NetworkConfig.DefaultAddrPool = append(m.config.NetworkConfig.DefaultAddrPool, cluster.DefaultAddressPool...)
-			m.config.NetworkConfig.SubnetSize = cluster.SubnetSize
+			m.config.DefaultAddrPool = append(m.config.DefaultAddrPool, cluster.DefaultAddressPool...)
+			m.config.SubnetSize = cluster.SubnetSize
 		}
 		if cluster.VXLANUDPPort != 0 {
-			if m.config.NetworkConfig == nil {
-				m.config.NetworkConfig = &cnmallocator.NetworkConfig{}
-			}
-			m.config.NetworkConfig.VXLANUDPPort = cluster.VXLANUDPPort
+			m.config.VXLANUDPPort = cluster.VXLANUDPPort
 		}
 	}
 
-	m.allocator, err = allocator.New(s, m.config.PluginGetter, m.config.NetworkConfig)
+	// Toss all this info into a netCfg, so that the allocator can do its
+	// thing.
+	netCfg := &cnmallocator.NetworkConfig{
+		DefaultAddrPool: m.config.DefaultAddrPool,
+		SubnetSize:      m.config.SubnetSize,
+		VXLANUDPPort:    m.config.VXLANUDPPort,
+	}
+
+	m.allocator, err = allocator.New(s, m.config.PluginGetter, netCfg)
 	if err != nil {
 		log.G(ctx).WithError(err).Error("failed to create allocator")
 		// TODO(stevvooe): It doesn't seem correct here to fail
