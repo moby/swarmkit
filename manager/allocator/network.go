@@ -71,33 +71,8 @@ type networkContext struct {
 }
 
 func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
-	var netConfig *networkallocator.Config
-	// There are two ways user can invoke swarm init
-	// with default address pool & vxlan port  or with only vxlan port
-	// hence we need two different way to construct netconfig
-	if a.networkConfig != nil {
-		if a.networkConfig.DefaultAddrPool != nil {
-			netConfig = &networkallocator.Config{
-				DefaultAddrPool: a.networkConfig.DefaultAddrPool,
-				SubnetSize:      a.networkConfig.SubnetSize,
-				VXLANUDPPort:    a.networkConfig.VXLANUDPPort,
-			}
-		} else if a.networkConfig.VXLANUDPPort != 0 {
-			netConfig = &networkallocator.Config{
-				DefaultAddrPool: nil,
-				SubnetSize:      0,
-				VXLANUDPPort:    a.networkConfig.VXLANUDPPort,
-			}
-		}
-	}
-
-	na, err := cnmallocator.New(a.pluginGetter, netConfig)
-	if err != nil {
-		return err
-	}
-
 	nc := &networkContext{
-		nwkAllocator:        na,
+		nwkAllocator:        a.nwkAllocator,
 		portAllocator:       newPortAllocator(),
 		pendingTasks:        make(map[string]*api.Task),
 		unallocatedTasks:    make(map[string]*api.Task),
@@ -123,7 +98,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 		// Try to complete ingress network allocation before anything else so
 		// that the we can get the preferred subnet for ingress network.
 		nc.ingressNetwork = ingressNetwork
-		if !na.IsAllocated(nc.ingressNetwork) {
+		if !nc.nwkAllocator.IsAllocated(nc.ingressNetwork) {
 			if err := a.allocateNetwork(ctx, nc.ingressNetwork); err != nil {
 				log.G(ctx).WithError(err).Error("failed allocating ingress network during init")
 			} else if err := a.store.Batch(func(batch *store.Batch) error {

@@ -7,6 +7,7 @@ import (
 	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/allocator/cnmallocator"
 	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -31,11 +32,7 @@ type Allocator struct {
 	// doneChan is closed when the allocator is finished running.
 	doneChan chan struct{}
 
-	// pluginGetter provides access to docker's plugin inventory.
-	pluginGetter plugingetter.PluginGetter
-
-	// networkConfig stores network related config for the cluster
-	networkConfig *networkallocator.Config
+	nwkAllocator networkallocator.NetworkAllocator
 }
 
 // taskBallot controls how the voting for task allocation is
@@ -69,16 +66,40 @@ type allocActor struct {
 
 // New returns a new instance of Allocator for use during allocation
 // stage of the manager.
-func New(store *store.MemoryStore, pg plugingetter.PluginGetter, netConfig *networkallocator.Config) (*Allocator, error) {
+func New(store *store.MemoryStore, pg plugingetter.PluginGetter, networkConfig *networkallocator.Config) (*Allocator, error) {
+	var netConfig *networkallocator.Config
+	// There are two ways user can invoke swarm init
+	// with default address pool & vxlan port  or with only vxlan port
+	// hence we need two different way to construct netconfig
+	if networkConfig != nil {
+		if networkConfig.DefaultAddrPool != nil {
+			netConfig = &networkallocator.Config{
+				DefaultAddrPool: networkConfig.DefaultAddrPool,
+				SubnetSize:      networkConfig.SubnetSize,
+				VXLANUDPPort:    networkConfig.VXLANUDPPort,
+			}
+		} else if networkConfig.VXLANUDPPort != 0 {
+			netConfig = &networkallocator.Config{
+				DefaultAddrPool: nil,
+				SubnetSize:      0,
+				VXLANUDPPort:    networkConfig.VXLANUDPPort,
+			}
+		}
+	}
+
+	na, err := cnmallocator.New(pg, netConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	a := &Allocator{
 		store: store,
 		taskBallot: &taskBallot{
 			votes: make(map[string][]string),
 		},
-		stopChan:      make(chan struct{}),
-		doneChan:      make(chan struct{}),
-		pluginGetter:  pg,
-		networkConfig: netConfig,
+		stopChan:     make(chan struct{}),
+		doneChan:     make(chan struct{}),
+		nwkAllocator: na,
 	}
 
 	return a, nil
