@@ -112,6 +112,7 @@ type DriverValidator interface {
 type Provider interface {
 	DriverValidator
 	PredefinedNetworks() []PredefinedNetworkData
+	SetDefaultVXLANUDPPort(uint32) error
 	NewAllocator(*Config) (NetworkAllocator, error)
 }
 

@@ -15,7 +15,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/docker/libnetwork/drivers/overlay/overlayutils"
 	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/go-metrics"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -164,7 +163,6 @@ type Node struct {
 	manager          *manager.Manager
 	notifyNodeChange chan *agent.NodeChanges // used by the agent to relay node updates from the dispatcher Session stream to (*Node).run
 	unlockKey        []byte
-	vxlanUDPPort     uint32
 }
 
 type lastSeenRole struct {
@@ -274,8 +272,11 @@ func (n *Node) currentRole() api.NodeRole {
 }
 
 // configVXLANUDPPort sets vxlan port in libnetwork
-func configVXLANUDPPort(ctx context.Context, vxlanUDPPort uint32) {
-	if err := overlayutils.ConfigVXLANUDPPort(vxlanUDPPort); err != nil {
+func (n *Node) configVXLANUDPPort(ctx context.Context, vxlanUDPPort uint32) {
+	if n.config.NetworkProvider == nil {
+		return
+	}
+	if err := n.config.NetworkProvider.SetDefaultVXLANUDPPort(vxlanUDPPort); err != nil {
 		log.G(ctx).WithError(err).Error("failed to configure VXLAN UDP port")
 		return
 	}
@@ -372,8 +373,7 @@ func (n *Node) run(ctx context.Context) (err error) {
 			case nodeChanges := <-n.notifyNodeChange:
 				if nodeChanges.Node != nil {
 					if nodeChanges.Node.VXLANUDPPort != 0 {
-						n.vxlanUDPPort = nodeChanges.Node.VXLANUDPPort
-						configVXLANUDPPort(ctx, n.vxlanUDPPort)
+						n.configVXLANUDPPort(ctx, nodeChanges.Node.VXLANUDPPort)
 					}
 					// This is a bit complex to be backward compatible with older CAs that
 					// don't support the Node.Role field. They only use what's presently

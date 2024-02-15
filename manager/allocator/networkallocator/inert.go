@@ -23,6 +23,11 @@ func (InertProvider) PredefinedNetworks() []PredefinedNetworkData {
 	return nil
 }
 
+// SetDefaultVXLANUDPPort is a no-op.
+func (InertProvider) SetDefaultVXLANUDPPort(uint32) error {
+	return nil
+}
+
 // ValidateIPAMDriver returns an InvalidArgument error unless d is nil.
 func (InertProvider) ValidateIPAMDriver(d *api.Driver) error {
 	if d == nil {
