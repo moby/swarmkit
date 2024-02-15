@@ -84,14 +84,14 @@ type networkDriver struct {
 	capability *driverapi.Capability
 }
 
-// New returns a new NetworkAllocator handle
-func New(pg plugingetter.PluginGetter, netConfig *networkallocator.Config) (networkallocator.NetworkAllocator, error) {
+// NewAllocator returns a new NetworkAllocator handle
+func (p *Provider) NewAllocator(netConfig *networkallocator.Config) (networkallocator.NetworkAllocator, error) {
 	na := &cnmNetworkAllocator{
 		networks: make(map[string]*network),
 		services: make(map[string]struct{}),
 		tasks:    make(map[string]struct{}),
 		nodes:    make(map[string]map[string]struct{}),
-		pg:       pg,
+		pg:       p.pg,
 	}
 
 	for ntype, i := range initializers {
@@ -99,14 +99,14 @@ func New(pg plugingetter.PluginGetter, netConfig *networkallocator.Config) (netw
 			return nil, fmt.Errorf("failed to register %q network driver: %w", ntype, err)
 		}
 	}
-	if err := remote.Register(&na.networkRegistry, pg); err != nil {
+	if err := remote.Register(&na.networkRegistry, p.pg); err != nil {
 		return nil, fmt.Errorf("failed to initialize network driver plugins: %w", err)
 	}
 
 	if err := initIPAMDrivers(&na.ipamRegistry, netConfig); err != nil {
 		return nil, err
 	}
-	if err := remoteipam.Register(&na.ipamRegistry, pg); err != nil {
+	if err := remoteipam.Register(&na.ipamRegistry, p.pg); err != nil {
 		return nil, fmt.Errorf("failed to initialize IPAM driver plugins: %w", err)
 	}
 

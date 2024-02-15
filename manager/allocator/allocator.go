@@ -4,10 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/moby/swarmkit/v2/manager/allocator/cnmallocator"
 	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -66,33 +64,11 @@ type allocActor struct {
 
 // New returns a new instance of Allocator for use during allocation
 // stage of the manager.
-func New(store *store.MemoryStore, pg plugingetter.PluginGetter, networkConfig *networkallocator.Config) (*Allocator, error) {
-	var netConfig *networkallocator.Config
-	// There are two ways user can invoke swarm init
-	// with default address pool & vxlan port  or with only vxlan port
-	// hence we need two different way to construct netconfig
-	if networkConfig != nil {
-		if networkConfig.DefaultAddrPool != nil {
-			netConfig = &networkallocator.Config{
-				DefaultAddrPool: networkConfig.DefaultAddrPool,
-				SubnetSize:      networkConfig.SubnetSize,
-				VXLANUDPPort:    networkConfig.VXLANUDPPort,
-			}
-		} else if networkConfig.VXLANUDPPort != 0 {
-			netConfig = &networkallocator.Config{
-				DefaultAddrPool: nil,
-				SubnetSize:      0,
-				VXLANUDPPort:    networkConfig.VXLANUDPPort,
-			}
-		}
+func New(store *store.MemoryStore, na networkallocator.NetworkAllocator) *Allocator {
+	if na == nil {
+		na = networkallocator.Inert{}
 	}
-
-	na, err := cnmallocator.New(pg, netConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	a := &Allocator{
+	return &Allocator{
 		store: store,
 		taskBallot: &taskBallot{
 			votes: make(map[string][]string),
@@ -101,8 +77,6 @@ func New(store *store.MemoryStore, pg plugingetter.PluginGetter, networkConfig *
 		doneChan:     make(chan struct{}),
 		nwkAllocator: na,
 	}
-
-	return a, nil
 }
 
 // Run starts all allocator go-routines and waits for Stop to be called.

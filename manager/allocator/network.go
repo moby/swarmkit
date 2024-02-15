@@ -8,7 +8,6 @@ import (
 	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
-	"github.com/moby/swarmkit/v2/manager/allocator/cnmallocator"
 	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -1523,16 +1522,6 @@ func (a *Allocator) procTasksNetwork(ctx context.Context, onRetry bool) {
 			toAllocate[t.ID] = t
 		}
 	}
-}
-
-// IsBuiltInNetworkDriver returns whether the passed driver is an internal network driver
-func IsBuiltInNetworkDriver(name string) bool {
-	return cnmallocator.IsBuiltInDriver(name)
-}
-
-// PredefinedNetworks returns the list of predefined network structures for a given network model
-func PredefinedNetworks() []networkallocator.PredefinedNetworkData {
-	return cnmallocator.PredefinedNetworks()
 }
 
 // updateTaskStatus sets TaskStatus and updates timestamp.

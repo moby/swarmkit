@@ -100,6 +100,21 @@ type Config struct {
 	VXLANUDPPort uint32
 }
 
+// DriverValidator validates whether a network driver spec is supported by the
+// network provider.
+type DriverValidator interface {
+	ValidateNetworkDriver(*api.Driver) error
+	ValidateIngressNetworkDriver(*api.Driver) error
+	ValidateIPAMDriver(*api.Driver) error
+}
+
+// Provider provides network allocation functionality.
+type Provider interface {
+	DriverValidator
+	PredefinedNetworks() []PredefinedNetworkData
+	NewAllocator(*Config) (NetworkAllocator, error)
+}
+
 // IsIngressNetwork check if the network is an ingress network
 func IsIngressNetwork(nw *api.Network) bool {
 	if nw.Spec.Ingress {

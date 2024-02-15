@@ -29,6 +29,7 @@ import (
 	"github.com/moby/swarmkit/v2/ioutils"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager"
+	"github.com/moby/swarmkit/v2/manager/allocator/cnmallocator"
 	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/moby/swarmkit/v2/remotes"
@@ -1015,6 +1016,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 		RootCAPaths:      rootPaths,
 		FIPS:             n.config.FIPS,
 		NetworkConfig:    n.config.NetworkConfig,
+		NetworkProvider:  cnmallocator.NewProvider(n.config.PluginGetter),
 	})
 	if err != nil {
 		return false, err
