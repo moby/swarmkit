@@ -29,7 +29,6 @@ import (
 	"github.com/moby/swarmkit/v2/ioutils"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager"
-	"github.com/moby/swarmkit/v2/manager/allocator/cnmallocator"
 	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/moby/swarmkit/v2/remotes"
@@ -106,6 +105,9 @@ type Config struct {
 	// AdvertiseRemoteAPI specifies the address that should be advertised
 	// for connections to the remote API (including the raft service).
 	AdvertiseRemoteAPI string
+
+	// NetworkProvider provides network allocation for the cluster
+	NetworkProvider networkallocator.Provider
 
 	// NetworkConfig stores network related config for the cluster
 	NetworkConfig *networkallocator.Config
@@ -1016,7 +1018,7 @@ func (n *Node) runManager(ctx context.Context, securityConfig *ca.SecurityConfig
 		RootCAPaths:      rootPaths,
 		FIPS:             n.config.FIPS,
 		NetworkConfig:    n.config.NetworkConfig,
-		NetworkProvider:  cnmallocator.NewProvider(n.config.PluginGetter),
+		NetworkProvider:  n.config.NetworkProvider,
 	})
 	if err != nil {
 		return false, err
