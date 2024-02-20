@@ -101,36 +101,31 @@ func (ps allocatedPorts) delState(p *api.PortConfig) *api.PortConfig {
 	return nil
 }
 
-func newPortAllocator() (*portAllocator, error) {
+func newPortAllocator() *portAllocator {
 	portSpaces := make(map[api.PortConfig_Protocol]*portSpace)
 	for _, protocol := range []api.PortConfig_Protocol{api.ProtocolTCP, api.ProtocolUDP, api.ProtocolSCTP} {
-		ps, err := newPortSpace(protocol)
-		if err != nil {
-			return nil, err
-		}
-
-		portSpaces[protocol] = ps
+		portSpaces[protocol] = newPortSpace(protocol)
 	}
 
-	return &portAllocator{portSpaces: portSpaces}, nil
+	return &portAllocator{portSpaces: portSpaces}
 }
 
-func newPortSpace(protocol api.PortConfig_Protocol) (*portSpace, error) {
+func newPortSpace(protocol api.PortConfig_Protocol) *portSpace {
 	master, err := idm.New(masterPortStart, masterPortEnd)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	dynamic, err := idm.New(dynamicPortStart, dynamicPortEnd)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	return &portSpace{
 		protocol:         protocol,
 		masterPortSpace:  master,
 		dynamicPortSpace: dynamic,
-	}, nil
+	}
 }
 
 // getPortConfigKey returns a map key for doing set operations with

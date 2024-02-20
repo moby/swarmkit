@@ -108,6 +108,8 @@ func New(pg plugingetter.PluginGetter, netConfig *NetworkConfig) (networkallocat
 		tasks:    make(map[string]struct{}),
 		nodes:    make(map[string]map[string]struct{}),
 		pg:       pg,
+
+		portAllocator: newPortAllocator(),
 	}
 
 	for ntype, i := range initializers {
@@ -126,12 +128,6 @@ func New(pg plugingetter.PluginGetter, netConfig *NetworkConfig) (networkallocat
 		return nil, fmt.Errorf("failed to initialize IPAM driver plugins: %w", err)
 	}
 
-	pa, err := newPortAllocator()
-	if err != nil {
-		return nil, err
-	}
-
-	na.portAllocator = pa
 	return na, nil
 }
 

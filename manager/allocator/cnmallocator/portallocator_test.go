@@ -180,8 +180,7 @@ func TestReconcilePortConfigs(t *testing.T) {
 }
 
 func TestAllocateServicePorts(t *testing.T) {
-	pa, err := newPortAllocator()
-	assert.NoError(t, err)
+	pa := newPortAllocator()
 
 	// Service has no endpoint in ServiceSpec
 	s := &api.Service{
@@ -200,7 +199,7 @@ func TestAllocateServicePorts(t *testing.T) {
 		},
 	}
 
-	err = pa.serviceAllocatePorts(s)
+	err := pa.serviceAllocatePorts(s)
 	assert.NoError(t, err)
 
 	// Service has a published port 10001 in ServiceSpec
@@ -265,8 +264,7 @@ func TestAllocateServicePorts(t *testing.T) {
 }
 
 func TestHostPublishPortsNeedUpdate(t *testing.T) {
-	pa, err := newPortAllocator()
-	assert.NoError(t, err)
+	pa := newPortAllocator()
 
 	type Data struct {
 		name   string
@@ -494,8 +492,7 @@ func TestHostPublishPortsNeedUpdate(t *testing.T) {
 }
 
 func TestIsPortsAllocated(t *testing.T) {
-	pa, err := newPortAllocator()
-	assert.NoError(t, err)
+	pa := newPortAllocator()
 
 	type Data struct {
 		name   string
@@ -886,8 +883,7 @@ func TestIsPortsAllocated(t *testing.T) {
 }
 
 func TestAllocate(t *testing.T) {
-	pSpace, err := newPortSpace(api.ProtocolTCP)
-	assert.NoError(t, err)
+	pSpace := newPortSpace(api.ProtocolTCP)
 
 	pConfig := &api.PortConfig{
 		Name:          "test1",
@@ -897,7 +893,7 @@ func TestAllocate(t *testing.T) {
 	}
 
 	// first consume 30000 in dynamicPortSpace
-	err = pSpace.allocate(pConfig)
+	err := pSpace.allocate(pConfig)
 	assert.NoError(t, err)
 
 	pConfig = &api.PortConfig{
