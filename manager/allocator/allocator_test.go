@@ -21,6 +21,19 @@ func init() {
 	retryInterval = 5 * time.Millisecond
 }
 
+// Temporary copy of constants from cnmallocator/portallocator.go
+// to allow tests to build before portallocator.go is moved into
+// this package.
+const (
+	// Start of the dynamic port range from which node ports will
+	// be allocated when the user did not specify a port.
+	dynamicPortStart = 30000
+
+	// End of the dynamic port range from which node ports will be
+	// allocated when the user did not specify a port.
+	dynamicPortEnd = 32767
+)
+
 func TestAllocator(t *testing.T) {
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
@@ -96,10 +109,26 @@ func TestAllocator(t *testing.T) {
 					Mode: api.ResolutionModeVirtualIP,
 					Ports: []*api.PortConfig{
 						{
-							Name:          "portName",
+							Name:          "some_tcp",
 							Protocol:      api.ProtocolTCP,
 							TargetPort:    8000,
 							PublishedPort: 8001,
+						},
+						{
+							Name:          "some_udp",
+							Protocol:      api.ProtocolUDP,
+							TargetPort:    8000,
+							PublishedPort: 8001,
+						},
+						{
+							Name:       "auto_assigned_tcp",
+							Protocol:   api.ProtocolTCP,
+							TargetPort: 9000,
+						},
+						{
+							Name:       "auto_assigned_udp",
+							Protocol:   api.ProtocolUDP,
+							TargetPort: 9000,
 						},
 					},
 				},
@@ -247,6 +276,22 @@ func TestAllocator(t *testing.T) {
 	assert.Equal(t, tp2.Networks[0].Network.ID, nln.ID)
 	assert.Nil(t, tp1.Networks[0].Addresses, "Non nil addresses for task on node-local network")
 	assert.Nil(t, tp2.Networks[0].Addresses, "Non nil addresses for task on node-local network")
+	// Verify service ports were allocated
+	s.View(func(tx store.ReadTx) {
+		s1 := store.GetService(tx, "testServiceID1")
+		if assert.NotNil(t, s1) && assert.NotNil(t, s1.Endpoint) && assert.Len(t, s1.Endpoint.Ports, 4) {
+			// "some_tcp" and "some_udp"
+			for _, i := range []int{0, 1} {
+				assert.EqualExportedValues(t, *s1.Spec.Endpoint.Ports[i], *s1.Endpoint.Ports[i])
+			}
+			// "auto_assigned_tcp" and "auto_assigned_udp"
+			for _, i := range []int{2, 3} {
+				assert.Equal(t, s1.Spec.Endpoint.Ports[i].TargetPort, s1.Endpoint.Ports[i].TargetPort)
+				assert.GreaterOrEqual(t, s1.Endpoint.Ports[i].PublishedPort, uint32(dynamicPortStart))
+				assert.LessOrEqual(t, s1.Endpoint.Ports[i].PublishedPort, uint32(dynamicPortEnd))
+			}
+		}
+	})
 
 	// Add new networks/tasks/services after allocator is started.
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
@@ -1531,6 +1576,476 @@ func TestNodeAttachmentOnLeadershipChange(t *testing.T) {
 	// now we should see the node get allocated
 	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress"})
 	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress", "net2"})
+}
+
+func TestAllocateServiceConflictingUserDefinedPorts(t *testing.T) {
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	const svcID = "testID1"
+	// Try adding some objects to store before allocator is started
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		// populate ingress network
+		in := &api.Network{
+			ID: "ingress-nw-id",
+			Spec: api.NetworkSpec{
+				Annotations: api.Annotations{
+					Name: "default-ingress",
+				},
+				Ingress: true,
+			},
+			IPAM: &api.IPAMOptions{
+				Driver: &api.Driver{},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet:  "10.0.0.0/24",
+						Gateway: "10.0.0.1",
+					},
+				},
+			},
+			DriverState: &api.Driver{},
+		}
+		assert.NoError(t, store.CreateNetwork(tx, in))
+
+		s1 := &api.Service{
+			ID: svcID,
+			Spec: api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "service1",
+				},
+				Endpoint: &api.EndpointSpec{
+					Ports: []*api.PortConfig{
+						{
+							Name:          "some_tcp",
+							TargetPort:    1234,
+							PublishedPort: 1234,
+						},
+						{
+							Name:          "some_other_tcp",
+							TargetPort:    1234,
+							PublishedPort: 1234,
+						},
+					},
+				},
+			},
+		}
+		assert.NoError(t, store.CreateService(tx, s1))
+
+		return nil
+	}))
+
+	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+	defer cancel()
+
+	a, err := New(s, nil, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, a)
+
+	go func() {
+		assert.NoError(t, a.Run(context.Background()))
+	}()
+	defer a.Stop()
+
+	// Port spec is invalid; service should not be updated
+	watchService(t, serviceWatch, true, func(_ assert.TestingT, service *api.Service) bool {
+		t.Errorf("unexpected service update: %v", service)
+		return true
+	})
+
+	// Update the service to remove the conflicting port
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		s1 := store.GetService(tx, svcID)
+		if assert.NotNil(t, s1) {
+			s1.Spec.Endpoint.Ports[1].TargetPort = 1235
+			s1.Spec.Endpoint.Ports[1].PublishedPort = 1235
+			assert.NoError(t, store.UpdateService(tx, s1))
+		}
+		return nil
+	}))
+	watchService(t, serviceWatch, false, func(t assert.TestingT, service *api.Service) bool {
+		if assert.Equal(t, svcID, service.ID) && assert.NotNil(t, service.Endpoint) && assert.Len(t, service.Endpoint.Ports, 2) {
+			return assert.Equal(t, uint32(1235), service.Endpoint.Ports[1].PublishedPort)
+		}
+		return false
+	})
+}
+
+func TestDeallocateServiceAllocate(t *testing.T) {
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	newSvc := func(id string) *api.Service {
+		return &api.Service{
+			ID: id,
+			Spec: api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "service1",
+				},
+				Endpoint: &api.EndpointSpec{
+					Ports: []*api.PortConfig{
+						{
+							Name:          "some_tcp",
+							TargetPort:    1234,
+							PublishedPort: 1234,
+						},
+					},
+				},
+			},
+		}
+	}
+
+	// Try adding some objects to store before allocator is started
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		// populate ingress network
+		in := &api.Network{
+			ID: "ingress-nw-id",
+			Spec: api.NetworkSpec{
+				Annotations: api.Annotations{
+					Name: "default-ingress",
+				},
+				Ingress: true,
+			},
+			IPAM: &api.IPAMOptions{
+				Driver: &api.Driver{},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet:  "10.0.0.0/24",
+						Gateway: "10.0.0.1",
+					},
+				},
+			},
+			DriverState: &api.Driver{},
+		}
+		assert.NoError(t, store.CreateNetwork(tx, in))
+		assert.NoError(t, store.CreateService(tx, newSvc("testID1")))
+		return nil
+	}))
+
+	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+	defer cancel()
+
+	a, err := New(s, nil, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, a)
+
+	go func() {
+		assert.NoError(t, a.Run(context.Background()))
+	}()
+	defer a.Stop()
+
+	isTestService := func(id string) func(t assert.TestingT, service *api.Service) bool {
+		return func(t assert.TestingT, service *api.Service) bool {
+			return assert.Equal(t, id, service.ID) &&
+				assert.Len(t, service.Endpoint.Ports, 1) &&
+				assert.Equal(t, uint32(1234), service.Endpoint.Ports[0].PublishedPort) &&
+				assert.Len(t, service.Endpoint.VirtualIPs, 1)
+		}
+	}
+	// Confirm service is allocated
+	watchService(t, serviceWatch, false, isTestService("testID1"))
+
+	// Deallocate the service and allocate a new one with the same port spec
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.DeleteService(tx, "testID1"))
+		assert.NoError(t, store.CreateService(tx, newSvc("testID2")))
+		return nil
+	}))
+	// Confirm new service is allocated
+	watchService(t, serviceWatch, false, isTestService("testID2"))
+}
+
+func TestServiceAddRemovePorts(t *testing.T) {
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	const svcID = "testID1"
+	// Try adding some objects to store before allocator is started
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		// populate ingress network
+		in := &api.Network{
+			ID: "ingress-nw-id",
+			Spec: api.NetworkSpec{
+				Annotations: api.Annotations{
+					Name: "default-ingress",
+				},
+				Ingress: true,
+			},
+			IPAM: &api.IPAMOptions{
+				Driver: &api.Driver{},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet:  "10.0.0.0/24",
+						Gateway: "10.0.0.1",
+					},
+				},
+			},
+			DriverState: &api.Driver{},
+		}
+		assert.NoError(t, store.CreateNetwork(tx, in))
+
+		s1 := &api.Service{
+			ID: svcID,
+			Spec: api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "service1",
+				},
+				Endpoint: &api.EndpointSpec{
+					Ports: []*api.PortConfig{
+						{
+							Name:          "some_tcp",
+							TargetPort:    1234,
+							PublishedPort: 1234,
+						},
+					},
+				},
+			},
+		}
+		assert.NoError(t, store.CreateService(tx, s1))
+
+		return nil
+	}))
+
+	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+	defer cancel()
+
+	a, err := New(s, nil, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, a)
+
+	go func() {
+		assert.NoError(t, a.Run(context.Background()))
+	}()
+	defer a.Stop()
+
+	var probedVIP string
+	probeTestService := func(expectPorts ...uint32) func(t assert.TestingT, service *api.Service) bool {
+		return func(t assert.TestingT, service *api.Service) bool {
+			expectedVIPCount := 0
+			if len(expectPorts) > 0 {
+				expectedVIPCount = 1
+			}
+			if len(service.Endpoint.VirtualIPs) > 0 {
+				probedVIP = service.Endpoint.VirtualIPs[0].Addr
+			} else {
+				probedVIP = ""
+			}
+			if assert.Equal(t, svcID, service.ID) && assert.Len(t, service.Endpoint.Ports, len(expectPorts)) {
+				var published []uint32
+				for _, port := range service.Endpoint.Ports {
+					published = append(published, port.PublishedPort)
+				}
+				return assert.Equal(t, expectPorts, published) && assert.Len(t, service.Endpoint.VirtualIPs, expectedVIPCount)
+			}
+
+			return false
+		}
+	}
+	// Confirm service is allocated
+	watchService(t, serviceWatch, false, probeTestService(1234))
+	allocatedVIP := probedVIP
+
+	// Unpublish port
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		s1 := store.GetService(tx, svcID)
+		if assert.NotNil(t, s1) {
+			s1.Spec.Endpoint.Ports = nil
+			assert.NoError(t, store.UpdateService(tx, s1))
+		}
+		return nil
+	}))
+	// Wait for unpublishing to take effect
+	watchService(t, serviceWatch, false, probeTestService())
+
+	// Publish port again and ensure VIP is not the same that was deallocated.
+	// Since IP allocation is serial we should receive the next available IP.
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		s1 := store.GetService(tx, svcID)
+		if assert.NotNil(t, s1) {
+			s1.Spec.Endpoint.Ports = append(s1.Spec.Endpoint.Ports, &api.PortConfig{Name: "some_tcp",
+				TargetPort:    1234,
+				PublishedPort: 1234,
+			})
+			assert.NoError(t, store.UpdateService(tx, s1))
+		}
+		return nil
+	}))
+	watchService(t, serviceWatch, false, probeTestService(1234))
+	assert.NotEqual(t, allocatedVIP, probedVIP)
+}
+
+func TestServiceUpdatePort(t *testing.T) {
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	const svcID = "testID1"
+	// Try adding some objects to store before allocator is started
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		// populate ingress network
+		in := &api.Network{
+			ID: "ingress-nw-id",
+			Spec: api.NetworkSpec{
+				Annotations: api.Annotations{
+					Name: "default-ingress",
+				},
+				Ingress: true,
+			},
+			IPAM: &api.IPAMOptions{
+				Driver: &api.Driver{},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet:  "10.0.0.0/24",
+						Gateway: "10.0.0.1",
+					},
+				},
+			},
+			DriverState: &api.Driver{},
+		}
+		assert.NoError(t, store.CreateNetwork(tx, in))
+
+		s1 := &api.Service{
+			ID: svcID,
+			Spec: api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "service1",
+				},
+				Endpoint: &api.EndpointSpec{
+					Ports: []*api.PortConfig{
+						{
+							Name:          "some_tcp",
+							TargetPort:    1234,
+							PublishedPort: 1234,
+						},
+						{
+							Name:       "some_other_tcp",
+							TargetPort: 1235,
+						},
+					},
+				},
+			},
+		}
+		assert.NoError(t, store.CreateService(tx, s1))
+
+		return nil
+	}))
+
+	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+	defer cancel()
+
+	a, err := New(s, nil, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, a)
+
+	go func() {
+		assert.NoError(t, a.Run(context.Background()))
+	}()
+	defer a.Stop()
+
+	watchService(t, serviceWatch, false, func(t assert.TestingT, service *api.Service) bool {
+		return assert.Equal(t, svcID, service.ID) && assert.Len(t, service.Endpoint.Ports, 2)
+	})
+
+	assert.NoError(t, s.Update(func(tx store.Tx) error {
+		s1 := store.GetService(tx, svcID)
+		if assert.NotNil(t, s1) {
+			s1.Spec.Endpoint.Ports[1].PublishedPort = 1235
+			assert.NoError(t, store.UpdateService(tx, s1))
+		}
+		return nil
+	}))
+	watchService(t, serviceWatch, false, func(t assert.TestingT, service *api.Service) bool {
+		if assert.Equal(t, svcID, service.ID) && assert.Len(t, service.Endpoint.Ports, 2) {
+			return assert.Equal(t, uint32(1235), service.Endpoint.Ports[1].PublishedPort)
+		}
+		return false
+	})
+}
+
+func TestServicePortAllocationIsRepeatable(t *testing.T) {
+	alloc := func() []*api.PortConfig {
+		s := store.NewMemoryStore(nil)
+		assert.NotNil(t, s)
+		defer s.Close()
+
+		const svcID = "testID1"
+		// Try adding some objects to store before allocator is started
+		assert.NoError(t, s.Update(func(tx store.Tx) error {
+			// populate ingress network
+			in := &api.Network{
+				ID: "ingress-nw-id",
+				Spec: api.NetworkSpec{
+					Annotations: api.Annotations{
+						Name: "default-ingress",
+					},
+					Ingress: true,
+				},
+				IPAM: &api.IPAMOptions{
+					Driver: &api.Driver{},
+					Configs: []*api.IPAMConfig{
+						{
+							Subnet:  "10.0.0.0/24",
+							Gateway: "10.0.0.1",
+						},
+					},
+				},
+				DriverState: &api.Driver{},
+			}
+			assert.NoError(t, store.CreateNetwork(tx, in))
+
+			s1 := &api.Service{
+				ID: svcID,
+				Spec: api.ServiceSpec{
+					Annotations: api.Annotations{
+						Name: "service1",
+					},
+					Endpoint: &api.EndpointSpec{
+						Ports: []*api.PortConfig{
+							{
+								Name:          "some_tcp",
+								TargetPort:    1234,
+								PublishedPort: 1234,
+							},
+							{
+								Name:       "some_other_tcp",
+								TargetPort: 1235,
+							},
+						},
+					},
+				},
+			}
+			assert.NoError(t, store.CreateService(tx, s1))
+
+			return nil
+		}))
+
+		serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+		defer cancel()
+
+		a, err := New(s, nil, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, a)
+
+		go func() {
+			assert.NoError(t, a.Run(context.Background()))
+		}()
+		defer a.Stop()
+
+		var probedPorts []*api.PortConfig
+		probeTestService := func(t assert.TestingT, service *api.Service) bool {
+			if assert.Equal(t, svcID, service.ID) && assert.Len(t, service.Endpoint.Ports, 2) {
+				probedPorts = service.Endpoint.Ports
+				return true
+			}
+			return false
+		}
+		watchService(t, serviceWatch, false, probeTestService)
+		return probedPorts
+	}
+
+	assert.Equal(t, alloc(), alloc())
 }
 
 func isValidNode(t assert.TestingT, originalNode, updatedNode *api.Node, networks []string) bool {
