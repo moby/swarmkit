@@ -1,4 +1,4 @@
-package cnmallocator
+package allocator
 
 import (
 	"testing"

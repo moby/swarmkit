@@ -40,9 +40,6 @@ type cnmNetworkAllocator struct {
 	// The driver registry for all internal and external network drivers.
 	networkRegistry drvregistry.Networks
 
-	// The port allocator instance for allocating node ports
-	portAllocator *portAllocator
-
 	// Local network state used by cnmNetworkAllocator to do network management.
 	networks map[string]*network
 
@@ -108,8 +105,6 @@ func New(pg plugingetter.PluginGetter, netConfig *NetworkConfig) (networkallocat
 		tasks:    make(map[string]struct{}),
 		nodes:    make(map[string]map[string]struct{}),
 		pg:       pg,
-
-		portAllocator: newPortAllocator(),
 	}
 
 	for ntype, i := range initializers {
@@ -205,11 +200,8 @@ func (na *cnmNetworkAllocator) Deallocate(n *api.Network) error {
 }
 
 // AllocateService allocates all the network resources such as virtual
-// IP and ports needed by the service.
+// IP needed by the service.
 func (na *cnmNetworkAllocator) AllocateService(s *api.Service) (err error) {
-	if err = na.portAllocator.serviceAllocatePorts(s); err != nil {
-		return err
-	}
 	defer func() {
 		if err != nil {
 			na.DeallocateService(s)
@@ -296,7 +288,7 @@ networkLoop:
 }
 
 // DeallocateService de-allocates all the network resources such as
-// virtual IP and ports associated with the service.
+// virtual IP associated with the service.
 func (na *cnmNetworkAllocator) DeallocateService(s *api.Service) error {
 	if s.Endpoint == nil {
 		return nil
@@ -312,7 +304,6 @@ func (na *cnmNetworkAllocator) DeallocateService(s *api.Service) error {
 	}
 	s.Endpoint.VirtualIPs = nil
 
-	na.portAllocator.serviceDeallocatePorts(s)
 	delete(na.services, s.ID)
 
 	return nil
@@ -369,19 +360,8 @@ func (na *cnmNetworkAllocator) IsTaskAllocated(t *api.Task) bool {
 	return true
 }
 
-// HostPublishPortsNeedUpdate returns true if the passed service needs
-// allocations for its published ports in host (non ingress) mode
-func (na *cnmNetworkAllocator) HostPublishPortsNeedUpdate(s *api.Service) bool {
-	return na.portAllocator.hostPublishPortsNeedUpdate(s)
-}
-
 // IsServiceAllocated returns false if the passed service needs to have network resources allocated/updated.
 func (na *cnmNetworkAllocator) IsServiceAllocated(s *api.Service, flags ...func(*networkallocator.ServiceAllocationOpts)) bool {
-	var options networkallocator.ServiceAllocationOpts
-	for _, flag := range flags {
-		flag(&options)
-	}
-
 	specNetworks := serviceNetworks(s)
 
 	// If endpoint mode is VIP and allocator does not have the
@@ -443,10 +423,6 @@ func (na *cnmNetworkAllocator) IsServiceAllocated(s *api.Service, flags ...func(
 		}
 	}
 
-	if (s.Spec.Endpoint != nil && len(s.Spec.Endpoint.Ports) != 0) ||
-		(s.Endpoint != nil && len(s.Endpoint.Ports) != 0) {
-		return na.portAllocator.isPortsAllocatedOnInit(s, options.OnInit)
-	}
 	return true
 }
 

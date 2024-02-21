@@ -37,6 +37,9 @@ type networkContext struct {
 	// the actual network allocation.
 	nwkAllocator networkallocator.NetworkAllocator
 
+	// The port allocator instance for allocating node ports
+	portAllocator *portAllocator
+
 	// A set of tasks which are ready to be allocated as a batch. This is
 	// distinct from "unallocatedTasks" which are tasks that failed to
 	// allocate on the first try, being held for a future retry.
@@ -95,6 +98,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 
 	nc := &networkContext{
 		nwkAllocator:        na,
+		portAllocator:       newPortAllocator(),
 		pendingTasks:        make(map[string]*api.Task),
 		unallocatedTasks:    make(map[string]*api.Task),
 		unallocatedServices: make(map[string]*api.Service),
@@ -233,7 +237,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			break
 		}
 
-		if nc.nwkAllocator.IsServiceAllocated(s) {
+		if nc.isServiceAllocated(s) {
 			break
 		}
 
@@ -261,8 +265,8 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			break
 		}
 
-		if nc.nwkAllocator.IsServiceAllocated(s) {
-			if !nc.nwkAllocator.HostPublishPortsNeedUpdate(s) {
+		if nc.isServiceAllocated(s) {
+			if !nc.portAllocator.hostPublishPortsNeedUpdate(s) {
 				break
 			}
 			updatePortsInHostPublishMode(s)
@@ -284,7 +288,7 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 	case api.EventDeleteService:
 		s := v.Service.Copy()
 
-		if err := nc.nwkAllocator.DeallocateService(s); err != nil {
+		if err := nc.deallocateService(s); err != nil {
 			log.G(ctx).WithError(err).Errorf("Failed deallocation during delete of service %s", s.ID)
 		} else {
 			nc.somethingWasDeallocated = true
@@ -681,7 +685,7 @@ func (a *Allocator) allocateServices(ctx context.Context, existingAddressesOnly 
 
 	var allocatedServices []*api.Service
 	for _, s := range services {
-		if nc.nwkAllocator.IsServiceAllocated(s, networkallocator.OnInit) {
+		if nc.isServiceAllocated(s, networkallocator.OnInit) {
 			continue
 		}
 		if existingAddressesOnly &&
@@ -711,6 +715,23 @@ func (a *Allocator) allocateServices(ctx context.Context, existingAddressesOnly 
 	}
 
 	return nil
+}
+
+// isServiceAllocated returns false if the passed service needs to have network resources allocated/updated.
+func (nc *networkContext) isServiceAllocated(s *api.Service, flags ...func(*networkallocator.ServiceAllocationOpts)) bool {
+	if !nc.nwkAllocator.IsServiceAllocated(s, flags...) {
+		return false
+	}
+
+	var options networkallocator.ServiceAllocationOpts
+	for _, flag := range flags {
+		flag(&options)
+	}
+	if (s.Spec.Endpoint != nil && len(s.Spec.Endpoint.Ports) != 0) ||
+		(s.Endpoint != nil && len(s.Endpoint.Ports) != 0) {
+		return nc.portAllocator.isPortsAllocatedOnInit(s, options.OnInit)
+	}
+	return true
 }
 
 // allocateTasks allocates tasks in the store so far before we started watching.
@@ -815,7 +836,7 @@ func taskReadyForNetworkVote(t *api.Task, s *api.Service, nc *networkContext) bo
 	// network configured or service endpoints have been
 	// allocated.
 	return (len(t.Networks) == 0 || nc.nwkAllocator.IsTaskAllocated(t)) &&
-		(s == nil || nc.nwkAllocator.IsServiceAllocated(s))
+		(s == nil || nc.isServiceAllocated(s))
 }
 
 func taskUpdateNetworks(t *api.Task, networks []*api.NetworkAttachment) {
@@ -1200,13 +1221,13 @@ func (a *Allocator) allocateService(ctx context.Context, s *api.Service, existin
 		// is not there
 		// service has no user-defined endpoints while has already allocated network resources,
 		// need deallocated.
-		if err := nc.nwkAllocator.DeallocateService(s); err != nil {
+		if err := nc.deallocateService(s); err != nil {
 			return err
 		}
 		nc.somethingWasDeallocated = true
 	}
 
-	if err := nc.nwkAllocator.AllocateService(s); err != nil {
+	if err := nc.allocateService(s); err != nil {
 		nc.unallocatedServices[s.ID] = s
 		return err
 	}
@@ -1229,6 +1250,26 @@ func (a *Allocator) allocateService(ctx context.Context, s *api.Service, existin
 	return nil
 }
 
+func (nc *networkContext) allocateService(s *api.Service) error {
+	if err := nc.portAllocator.serviceAllocatePorts(s); err != nil {
+		return err
+	}
+	if err := nc.nwkAllocator.AllocateService(s); err != nil {
+		nc.portAllocator.serviceDeallocatePorts(s)
+		return err
+	}
+
+	return nil
+}
+
+func (nc *networkContext) deallocateService(s *api.Service) error {
+	if err := nc.nwkAllocator.DeallocateService(s); err != nil {
+		return err
+	}
+	nc.portAllocator.serviceDeallocatePorts(s)
+	return nil
+}
+
 func (a *Allocator) commitAllocatedService(ctx context.Context, batch *store.Batch, s *api.Service) error {
 	if err := batch.Update(func(tx store.Tx) error {
 		err := store.UpdateService(tx, s)
@@ -1241,7 +1282,7 @@ func (a *Allocator) commitAllocatedService(ctx context.Context, batch *store.Bat
 
 		return errors.Wrapf(err, "failed updating state in store transaction for service %s", s.ID)
 	}); err != nil {
-		if err := a.netCtx.nwkAllocator.DeallocateService(s); err != nil {
+		if err := a.netCtx.deallocateService(s); err != nil {
 			log.G(ctx).WithError(err).Errorf("failed rolling back allocation of service %s", s.ID)
 		}
 
@@ -1298,7 +1339,7 @@ func (a *Allocator) allocateTask(ctx context.Context, t *api.Task) (err error) {
 					return
 				}
 
-				if !nc.nwkAllocator.IsServiceAllocated(s) {
+				if !nc.isServiceAllocated(s) {
 					err = fmt.Errorf("service %s to which task %s belongs has pending allocations", s.ID, t.ID)
 					return
 				}
@@ -1423,7 +1464,7 @@ func (a *Allocator) procUnallocatedServices(ctx context.Context) {
 	nc := a.netCtx
 	var allocatedServices []*api.Service
 	for _, s := range nc.unallocatedServices {
-		if !nc.nwkAllocator.IsServiceAllocated(s) {
+		if !nc.isServiceAllocated(s) {
 			if err := a.allocateService(ctx, s, false); err != nil {
 				log.G(ctx).WithError(err).Debugf("Failed allocation of unallocated service %s", s.ID)
 				continue

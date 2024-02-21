@@ -563,11 +563,7 @@ func TestAllocateService(t *testing.T) {
 
 	err = na.AllocateService(s)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(s.Endpoint.Ports))
-	assert.True(t, s.Endpoint.Ports[0].PublishedPort >= dynamicPortStart &&
-		s.Endpoint.Ports[0].PublishedPort <= dynamicPortEnd)
-	assert.True(t, s.Endpoint.Ports[1].PublishedPort >= dynamicPortStart &&
-		s.Endpoint.Ports[1].PublishedPort <= dynamicPortEnd)
+	assert.Len(t, s.Endpoint.Ports, 0) // Network allocator is not responsible for allocating ports.
 
 	assert.Equal(t, 1, len(s.Endpoint.VirtualIPs))
 
@@ -577,94 +573,6 @@ func TestAllocateService(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, true, subnet.Contains(ip))
-}
-
-func TestAllocateServiceUserDefinedPorts(t *testing.T) {
-	na := newNetworkAllocator(t)
-	s := &api.Service{
-		ID: "testID1",
-		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{
-				Ports: []*api.PortConfig{
-					{
-						Name:          "some_tcp",
-						TargetPort:    1234,
-						PublishedPort: 1234,
-					},
-					{
-						Name:          "some_udp",
-						TargetPort:    1234,
-						PublishedPort: 1234,
-						Protocol:      api.ProtocolUDP,
-					},
-				},
-			},
-		},
-	}
-
-	err := na.AllocateService(s)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(s.Endpoint.Ports))
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[1].PublishedPort)
-}
-
-func TestAllocateServiceConflictingUserDefinedPorts(t *testing.T) {
-	na := newNetworkAllocator(t)
-	s := &api.Service{
-		ID: "testID1",
-		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{
-				Ports: []*api.PortConfig{
-					{
-						Name:          "some_tcp",
-						TargetPort:    1234,
-						PublishedPort: 1234,
-					},
-					{
-						Name:          "some_other_tcp",
-						TargetPort:    1234,
-						PublishedPort: 1234,
-					},
-				},
-			},
-		},
-	}
-
-	err := na.AllocateService(s)
-	assert.Error(t, err)
-}
-
-func TestDeallocateServiceAllocate(t *testing.T) {
-	na := newNetworkAllocator(t)
-	s := &api.Service{
-		ID: "testID1",
-		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{
-				Ports: []*api.PortConfig{
-					{
-						Name:          "some_tcp",
-						TargetPort:    1234,
-						PublishedPort: 1234,
-					},
-				},
-			},
-		},
-	}
-
-	err := na.AllocateService(s)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(s.Endpoint.Ports))
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
-
-	err = na.DeallocateService(s)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(s.Endpoint.Ports))
-	// Allocate again.
-	err = na.AllocateService(s)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(s.Endpoint.Ports))
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 }
 
 func TestDeallocateServiceAllocateIngressMode(t *testing.T) {
@@ -705,8 +613,6 @@ func TestDeallocateServiceAllocateIngressMode(t *testing.T) {
 
 	err = na.AllocateService(s)
 	assert.NoError(t, err)
-	assert.Len(t, s.Endpoint.Ports, 1)
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 	assert.Len(t, s.Endpoint.VirtualIPs, 1)
 
 	err = na.DeallocateService(s)
@@ -719,129 +625,7 @@ func TestDeallocateServiceAllocateIngressMode(t *testing.T) {
 
 	err = na.AllocateService(s)
 	assert.NoError(t, err)
-	assert.Len(t, s.Endpoint.Ports, 1)
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
 	assert.Len(t, s.Endpoint.VirtualIPs, 1)
-}
-
-func TestServiceAddRemovePortsIngressMode(t *testing.T) {
-	na := newNetworkAllocator(t)
-
-	n := &api.Network{
-		ID: "testNetID1",
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
-				Name: "test",
-			},
-			Ingress: true,
-		},
-	}
-
-	err := na.Allocate(n)
-	assert.NoError(t, err)
-
-	s := &api.Service{
-		ID: "testID1",
-		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{
-				Ports: []*api.PortConfig{
-					{
-						Name:          "some_tcp",
-						TargetPort:    1234,
-						PublishedPort: 1234,
-						PublishMode:   api.PublishModeIngress,
-					},
-				},
-			},
-		},
-		Endpoint: &api.Endpoint{},
-	}
-
-	s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs,
-		&api.Endpoint_VirtualIP{NetworkID: n.ID})
-
-	err = na.AllocateService(s)
-	assert.NoError(t, err)
-	assert.Len(t, s.Endpoint.Ports, 1)
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
-	assert.Len(t, s.Endpoint.VirtualIPs, 1)
-	allocatedVIP := s.Endpoint.VirtualIPs[0].Addr
-
-	// Unpublish port
-	s.Spec.Endpoint.Ports = s.Spec.Endpoint.Ports[:0]
-	err = na.AllocateService(s)
-	assert.NoError(t, err)
-	assert.Len(t, s.Endpoint.Ports, 0)
-	assert.Len(t, s.Endpoint.VirtualIPs, 0)
-
-	// Publish port again and ensure VIP is not the same that was deallocated.
-	// Since IP allocation is serial we should  receive the next available IP.
-	s.Spec.Endpoint.Ports = append(s.Spec.Endpoint.Ports, &api.PortConfig{Name: "some_tcp",
-		TargetPort:    1234,
-		PublishedPort: 1234,
-		PublishMode:   api.PublishModeIngress,
-	})
-	s.Endpoint.VirtualIPs = append(s.Endpoint.VirtualIPs,
-		&api.Endpoint_VirtualIP{NetworkID: n.ID})
-	err = na.AllocateService(s)
-	assert.NoError(t, err)
-	assert.Len(t, s.Endpoint.Ports, 1)
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
-	assert.Len(t, s.Endpoint.VirtualIPs, 1)
-	assert.NotEqual(t, allocatedVIP, s.Endpoint.VirtualIPs[0].Addr)
-}
-
-func TestServiceUpdate(t *testing.T) {
-	na1 := newNetworkAllocator(t)
-	na2 := newNetworkAllocator(t)
-	s := &api.Service{
-		ID: "testID1",
-		Spec: api.ServiceSpec{
-			Endpoint: &api.EndpointSpec{
-				Ports: []*api.PortConfig{
-					{
-						Name:          "some_tcp",
-						TargetPort:    1234,
-						PublishedPort: 1234,
-					},
-					{
-						Name:          "some_other_tcp",
-						TargetPort:    1235,
-						PublishedPort: 0,
-					},
-				},
-			},
-		},
-	}
-
-	err := na1.AllocateService(s)
-	assert.NoError(t, err)
-	assert.True(t, na1.IsServiceAllocated(s))
-	assert.Equal(t, 2, len(s.Endpoint.Ports))
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
-	assert.NotEqual(t, 0, s.Endpoint.Ports[1].PublishedPort)
-
-	// Cache the secode node port
-	allocatedPort := s.Endpoint.Ports[1].PublishedPort
-
-	// Now allocate the same service in another allocator instance
-	err = na2.AllocateService(s)
-	assert.NoError(t, err)
-	assert.True(t, na2.IsServiceAllocated(s))
-	assert.Equal(t, 2, len(s.Endpoint.Ports))
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
-	// Make sure we got the same port
-	assert.Equal(t, allocatedPort, s.Endpoint.Ports[1].PublishedPort)
-
-	s.Spec.Endpoint.Ports[1].PublishedPort = 1235
-	assert.False(t, na1.IsServiceAllocated(s))
-
-	err = na1.AllocateService(s)
-	assert.NoError(t, err)
-	assert.True(t, na1.IsServiceAllocated(s))
-	assert.Equal(t, 2, len(s.Endpoint.Ports))
-	assert.Equal(t, uint32(1234), s.Endpoint.Ports[0].PublishedPort)
-	assert.Equal(t, uint32(1235), s.Endpoint.Ports[1].PublishedPort)
 }
 
 func TestServiceNetworkUpdate(t *testing.T) {

@@ -61,10 +61,6 @@ type NetworkAllocator interface {
 	// virtual IP and ports associated with the service.
 	DeallocateService(s *api.Service) error
 
-	// HostPublishPortsNeedUpdate returns true if the passed service needs
-	// allocations for its published ports in host (non ingress) mode
-	HostPublishPortsNeedUpdate(s *api.Service) bool
-
 	//
 	// Task Allocation
 	//

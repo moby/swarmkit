@@ -1,4 +1,4 @@
-package cnmallocator
+package allocator
 
 import (
 	"github.com/moby/swarmkit/v2/api"

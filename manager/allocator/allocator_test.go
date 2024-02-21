@@ -21,19 +21,6 @@ func init() {
 	retryInterval = 5 * time.Millisecond
 }
 
-// Temporary copy of constants from cnmallocator/portallocator.go
-// to allow tests to build before portallocator.go is moved into
-// this package.
-const (
-	// Start of the dynamic port range from which node ports will
-	// be allocated when the user did not specify a port.
-	dynamicPortStart = 30000
-
-	// End of the dynamic port range from which node ports will be
-	// allocated when the user did not specify a port.
-	dynamicPortEnd = 32767
-)
-
 func TestAllocator(t *testing.T) {
 	s := store.NewMemoryStore(nil)
 	assert.NotNil(t, s)
