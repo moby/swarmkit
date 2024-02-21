@@ -7,7 +7,7 @@ import (
 	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/moby/swarmkit/v2/manager/allocator/cnmallocator"
+	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 )
@@ -35,7 +35,7 @@ type Allocator struct {
 	pluginGetter plugingetter.PluginGetter
 
 	// networkConfig stores network related config for the cluster
-	networkConfig *cnmallocator.NetworkConfig
+	networkConfig *networkallocator.Config
 }
 
 // taskBallot controls how the voting for task allocation is
@@ -69,7 +69,7 @@ type allocActor struct {
 
 // New returns a new instance of Allocator for use during allocation
 // stage of the manager.
-func New(store *store.MemoryStore, pg plugingetter.PluginGetter, netConfig *cnmallocator.NetworkConfig) (*Allocator, error) {
+func New(store *store.MemoryStore, pg plugingetter.PluginGetter, netConfig *networkallocator.Config) (*Allocator, error) {
 	a := &Allocator{
 		store: store,
 		taskBallot: &taskBallot{

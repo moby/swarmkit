@@ -24,7 +24,6 @@ import (
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/allocator"
-	"github.com/moby/swarmkit/v2/manager/allocator/cnmallocator"
 	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 	"github.com/moby/swarmkit/v2/manager/controlapi"
 	"github.com/moby/swarmkit/v2/manager/csi"
@@ -132,7 +131,7 @@ type Config struct {
 	FIPS bool
 
 	// NetworkConfig stores network related config for the cluster
-	NetworkConfig *cnmallocator.NetworkConfig
+	NetworkConfig *networkallocator.Config
 }
 
 // Manager is the cluster manager for Swarm.
@@ -1026,14 +1025,14 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		})
 		if cluster.DefaultAddressPool != nil {
 			if m.config.NetworkConfig == nil {
-				m.config.NetworkConfig = &cnmallocator.NetworkConfig{}
+				m.config.NetworkConfig = &networkallocator.Config{}
 			}
 			m.config.NetworkConfig.DefaultAddrPool = append(m.config.NetworkConfig.DefaultAddrPool, cluster.DefaultAddressPool...)
 			m.config.NetworkConfig.SubnetSize = cluster.SubnetSize
 		}
 		if cluster.VXLANUDPPort != 0 {
 			if m.config.NetworkConfig == nil {
-				m.config.NetworkConfig = &cnmallocator.NetworkConfig{}
+				m.config.NetworkConfig = &networkallocator.Config{}
 			}
 			m.config.NetworkConfig.VXLANUDPPort = cluster.VXLANUDPPort
 		}

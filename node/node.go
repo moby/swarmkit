@@ -29,7 +29,7 @@ import (
 	"github.com/moby/swarmkit/v2/ioutils"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager"
-	"github.com/moby/swarmkit/v2/manager/allocator/cnmallocator"
+	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/moby/swarmkit/v2/remotes"
 	"github.com/moby/swarmkit/v2/xnet"
@@ -107,7 +107,7 @@ type Config struct {
 	AdvertiseRemoteAPI string
 
 	// NetworkConfig stores network related config for the cluster
-	NetworkConfig *cnmallocator.NetworkConfig
+	NetworkConfig *networkallocator.Config
 
 	// Executor specifies the executor to use for the agent.
 	Executor exec.Executor

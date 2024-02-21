@@ -10,9 +10,10 @@ import (
 	nullIpam "github.com/docker/docker/libnetwork/ipams/null"
 	"github.com/docker/docker/libnetwork/ipamutils"
 	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 )
 
-func initIPAMDrivers(r ipamapi.Registerer, netConfig *NetworkConfig) error {
+func initIPAMDrivers(r ipamapi.Registerer, netConfig *networkallocator.Config) error {
 	var addressPool []*ipamutils.NetworkToSplit
 	var str strings.Builder
 	str.WriteString("Subnetlist - ")

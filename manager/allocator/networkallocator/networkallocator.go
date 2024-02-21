@@ -87,6 +87,19 @@ type NetworkAllocator interface {
 	IsAttachmentAllocated(node *api.Node, networkAttachment *api.NetworkAttachment) bool
 }
 
+// Config is used to store network related cluster config in the Manager.
+type Config struct {
+	// DefaultAddrPool specifies default subnet pool for global scope networks
+	DefaultAddrPool []string
+
+	// SubnetSize specifies the subnet size of the networks created from
+	// the default subnet pool
+	SubnetSize uint32
+
+	// VXLANUDPPort specifies the UDP port number for VXLAN traffic
+	VXLANUDPPort uint32
+}
+
 // IsIngressNetwork check if the network is an ingress network
 func IsIngressNetwork(nw *api.Network) bool {
 	if nw.Spec.Ingress {
