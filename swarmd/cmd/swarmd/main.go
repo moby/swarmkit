@@ -12,13 +12,13 @@ import (
 
 	engineapi "github.com/docker/docker/client"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/moby/swarmkit/v2/agent/exec/dockerapi"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/genericresource"
 	"github.com/moby/swarmkit/v2/cli"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/moby/swarmkit/v2/node"
+	"github.com/moby/swarmkit/v2/swarmd/dockerexec"
 	"github.com/moby/swarmkit/v2/swarmd/internal/defaults"
 	"github.com/moby/swarmkit/v2/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -178,7 +178,7 @@ var (
 				return err
 			}
 
-			executor := dockerapi.NewExecutor(client, resources)
+			executor := dockerexec.NewExecutor(client, resources)
 
 			if debugAddr != "" {
 				go func() {

@@ -1,4 +1,4 @@
-package dockerapi
+package dockerexec
 
 import (
 	"reflect"
