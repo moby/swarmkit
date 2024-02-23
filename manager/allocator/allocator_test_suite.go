@@ -10,25 +10,53 @@ import (
 
 	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
-func init() {
+func RunAllocatorTests(t *testing.T, np networkallocator.Provider) {
 	// set artificially low retry interval for testing
 	retryInterval = 5 * time.Millisecond
+	suite.Run(t, &testSuite{np: np})
 }
 
-func TestAllocator(t *testing.T) {
-	s := store.NewMemoryStore(nil)
-	assert.NotNil(t, s)
-	defer s.Close()
+type testSuite struct {
+	suite.Suite
+	np networkallocator.Provider
+}
 
-	a, err := New(s, nil, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, a)
+func (suite *testSuite) newAllocator(store *store.MemoryStore) *Allocator {
+	na, err := suite.np.NewAllocator(nil)
+	suite.NoError(err)
+	a := New(store, na)
+	suite.NotNil(a)
+	return a
+}
+
+// startAllocator starts running allocator a in a background goroutine and returns a function to stop it.
+// The returned function blocks until the allocator has stopped. It must be called from the test goroutine.
+func (suite *testSuite) startAllocator(a *Allocator) func() {
+	done := make(chan error)
+	go func() {
+		done <- a.Run(context.Background())
+	}()
+	return func() {
+		a.Stop()
+		// Prevent data races with suite.T() by checking the error
+		// return value synchronously, before the test function returns.
+		suite.NoError(<-done)
+	}
+}
+
+func (suite *testSuite) TestAllocator() {
+	s := store.NewMemoryStore(nil)
+	suite.NotNil(s)
+	defer s.Close()
+	a := suite.newAllocator(s)
 
 	// Predefined node-local networkTestNoDuplicateIPs
 	p := &api.Network{
@@ -56,7 +84,7 @@ func TestAllocator(t *testing.T) {
 	}
 
 	// Try adding some objects to store before allocator is started
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress-nw-id",
@@ -67,7 +95,7 @@ func TestAllocator(t *testing.T) {
 				Ingress: true,
 			},
 		}
-		assert.NoError(t, store.CreateNetwork(tx, in))
+		suite.NoError(store.CreateNetwork(tx, in))
 
 		n1 := &api.Network{
 			ID: "testID1",
@@ -77,7 +105,7 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, store.CreateNetwork(tx, n1))
+		suite.NoError(store.CreateNetwork(tx, n1))
 
 		s1 := &api.Service{
 			ID: "testServiceID1",
@@ -96,16 +124,32 @@ func TestAllocator(t *testing.T) {
 					Mode: api.ResolutionModeVirtualIP,
 					Ports: []*api.PortConfig{
 						{
-							Name:          "portName",
+							Name:          "some_tcp",
 							Protocol:      api.ProtocolTCP,
 							TargetPort:    8000,
 							PublishedPort: 8001,
+						},
+						{
+							Name:          "some_udp",
+							Protocol:      api.ProtocolUDP,
+							TargetPort:    8000,
+							PublishedPort: 8001,
+						},
+						{
+							Name:       "auto_assigned_tcp",
+							Protocol:   api.ProtocolTCP,
+							TargetPort: 9000,
+						},
+						{
+							Name:       "auto_assigned_udp",
+							Protocol:   api.ProtocolUDP,
+							TargetPort: 9000,
 						},
 					},
 				},
 			},
 		}
-		assert.NoError(t, store.CreateService(tx, s1))
+		suite.NoError(store.CreateService(tx, s1))
 
 		t1 := &api.Task{
 			ID: "testTaskID1",
@@ -118,7 +162,7 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, store.CreateTask(tx, t1))
+		suite.NoError(store.CreateTask(tx, t1))
 
 		t2 := &api.Task{
 			ID: "testTaskIDPreInit",
@@ -128,10 +172,10 @@ func TestAllocator(t *testing.T) {
 			ServiceID:    "testServiceID1",
 			DesiredState: api.TaskStateRunning,
 		}
-		assert.NoError(t, store.CreateTask(tx, t2))
+		suite.NoError(store.CreateTask(tx, t2))
 
 		// Create the predefined node-local network with one service
-		assert.NoError(t, store.CreateNetwork(tx, p))
+		suite.NoError(store.CreateNetwork(tx, p))
 
 		sp1 := &api.Service{
 			ID: "predServiceID1",
@@ -149,7 +193,7 @@ func TestAllocator(t *testing.T) {
 				Endpoint: &api.EndpointSpec{Mode: api.ResolutionModeDNSRoundRobin},
 			},
 		}
-		assert.NoError(t, store.CreateService(tx, sp1))
+		suite.NoError(store.CreateService(tx, sp1))
 
 		tp1 := &api.Task{
 			ID: "predTaskID1",
@@ -162,10 +206,10 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, store.CreateTask(tx, tp1))
+		suite.NoError(store.CreateTask(tx, tp1))
 
 		// Create the the swarm level node-local network with one service
-		assert.NoError(t, store.CreateNetwork(tx, nln))
+		suite.NoError(store.CreateNetwork(tx, nln))
 
 		sp2 := &api.Service{
 			ID: "predServiceID2",
@@ -183,7 +227,7 @@ func TestAllocator(t *testing.T) {
 				Endpoint: &api.EndpointSpec{Mode: api.ResolutionModeDNSRoundRobin},
 			},
 		}
-		assert.NoError(t, store.CreateService(tx, sp2))
+		suite.NoError(store.CreateService(tx, sp2))
 
 		tp2 := &api.Task{
 			ID: "predTaskID2",
@@ -196,7 +240,7 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, store.CreateTask(tx, tp2))
+		suite.NoError(store.CreateTask(tx, tp2))
 
 		return nil
 	}))
@@ -208,17 +252,13 @@ func TestAllocator(t *testing.T) {
 	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
 	defer cancel()
 
-	// Start allocator
-	go func() {
-		assert.NoError(t, a.Run(context.Background()))
-	}()
-	defer a.Stop()
+	defer suite.startAllocator(a)()
 
 	// Now verify if we get network and tasks updated properly
-	watchNetwork(t, netWatch, false, isValidNetwork)
-	watchTask(t, s, taskWatch, false, isValidTask) // t1
-	watchTask(t, s, taskWatch, false, isValidTask) // t2
-	watchService(t, serviceWatch, false, nil)
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork)
+	watchTask(suite.T(), s, taskWatch, false, isValidTask) // t1
+	watchTask(suite.T(), s, taskWatch, false, isValidTask) // t2
+	watchService(suite.T(), serviceWatch, false, nil)
 
 	// Verify no allocation was done for the node-local networks
 	var (
@@ -230,8 +270,8 @@ func TestAllocator(t *testing.T) {
 		sn = store.GetNetwork(tx, nln.ID)
 
 	})
-	assert.NotNil(t, ps)
-	assert.NotNil(t, sn)
+	suite.NotNil(ps)
+	suite.NotNil(sn)
 	// Verify no allocation was done for tasks on node-local networks
 	var (
 		tp1 *api.Task
@@ -241,15 +281,31 @@ func TestAllocator(t *testing.T) {
 		tp1 = store.GetTask(tx, "predTaskID1")
 		tp2 = store.GetTask(tx, "predTaskID2")
 	})
-	assert.NotNil(t, tp1)
-	assert.NotNil(t, tp2)
-	assert.Equal(t, tp1.Networks[0].Network.ID, p.ID)
-	assert.Equal(t, tp2.Networks[0].Network.ID, nln.ID)
-	assert.Nil(t, tp1.Networks[0].Addresses, "Non nil addresses for task on node-local network")
-	assert.Nil(t, tp2.Networks[0].Addresses, "Non nil addresses for task on node-local network")
+	suite.NotNil(tp1)
+	suite.NotNil(tp2)
+	suite.Equal(tp1.Networks[0].Network.ID, p.ID)
+	suite.Equal(tp2.Networks[0].Network.ID, nln.ID)
+	suite.Nil(tp1.Networks[0].Addresses, "Non nil addresses for task on node-local network")
+	suite.Nil(tp2.Networks[0].Addresses, "Non nil addresses for task on node-local network")
+	// Verify service ports were allocated
+	s.View(func(tx store.ReadTx) {
+		s1 := store.GetService(tx, "testServiceID1")
+		if suite.NotNil(s1) && suite.NotNil(s1.Endpoint) && suite.Len(s1.Endpoint.Ports, 4) {
+			// "some_tcp" and "some_udp"
+			for _, i := range []int{0, 1} {
+				suite.EqualExportedValues(*s1.Spec.Endpoint.Ports[i], *s1.Endpoint.Ports[i])
+			}
+			// "auto_assigned_tcp" and "auto_assigned_udp"
+			for _, i := range []int{2, 3} {
+				suite.Equal(s1.Spec.Endpoint.Ports[i].TargetPort, s1.Endpoint.Ports[i].TargetPort)
+				suite.GreaterOrEqual(s1.Endpoint.Ports[i].PublishedPort, uint32(dynamicPortStart))
+				suite.LessOrEqual(s1.Endpoint.Ports[i].PublishedPort, uint32(dynamicPortEnd))
+			}
+		}
+	})
 
 	// Add new networks/tasks/services after allocator is started.
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		n2 := &api.Network{
 			ID: "testID2",
 			Spec: api.NetworkSpec{
@@ -258,13 +314,13 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, store.CreateNetwork(tx, n2))
+		suite.NoError(store.CreateNetwork(tx, n2))
 		return nil
 	}))
 
-	watchNetwork(t, netWatch, false, isValidNetwork)
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork)
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		s2 := &api.Service{
 			ID: "testServiceID2",
 			Spec: api.ServiceSpec{
@@ -279,13 +335,13 @@ func TestAllocator(t *testing.T) {
 				Endpoint: &api.EndpointSpec{},
 			},
 		}
-		assert.NoError(t, store.CreateService(tx, s2))
+		suite.NoError(store.CreateService(tx, s2))
 		return nil
 	}))
 
-	watchService(t, serviceWatch, false, nil)
+	watchService(suite.T(), serviceWatch, false, nil)
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		t2 := &api.Task{
 			ID: "testTaskID2",
 			Status: api.TaskStatus{
@@ -294,11 +350,11 @@ func TestAllocator(t *testing.T) {
 			ServiceID:    "testServiceID2",
 			DesiredState: api.TaskStateRunning,
 		}
-		assert.NoError(t, store.CreateTask(tx, t2))
+		suite.NoError(store.CreateTask(tx, t2))
 		return nil
 	}))
 
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchTask(suite.T(), s, taskWatch, false, isValidTask)
 
 	// Now try adding a task which depends on a network before adding the network.
 	n3 := &api.Network{
@@ -310,7 +366,7 @@ func TestAllocator(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		t3 := &api.Task{
 			ID: "testTaskID3",
 			Status: api.TaskStatus{
@@ -323,7 +379,7 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, store.CreateTask(tx, t3))
+		suite.NoError(store.CreateTask(tx, t3))
 		return nil
 	}))
 
@@ -332,21 +388,21 @@ func TestAllocator(t *testing.T) {
 	// going through
 	time.Sleep(10 * time.Millisecond)
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNetwork(tx, n3))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.CreateNetwork(tx, n3))
 		return nil
 	}))
 
-	watchNetwork(t, netWatch, false, isValidNetwork)
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork)
+	watchTask(suite.T(), s, taskWatch, false, isValidTask)
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteTask(tx, "testTaskID3"))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.DeleteTask(tx, "testTaskID3"))
 		return nil
 	}))
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchTask(suite.T(), s, taskWatch, false, isValidTask)
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		t5 := &api.Task{
 			ID: "testTaskID5",
 			Spec: api.TaskSpec{
@@ -362,26 +418,26 @@ func TestAllocator(t *testing.T) {
 			DesiredState: api.TaskStateRunning,
 			ServiceID:    "testServiceID2",
 		}
-		assert.NoError(t, store.CreateTask(tx, t5))
+		suite.NoError(store.CreateTask(tx, t5))
 		return nil
 	}))
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchTask(suite.T(), s, taskWatch, false, isValidTask)
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteNetwork(tx, "testID3"))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.DeleteNetwork(tx, "testID3"))
 		return nil
 	}))
-	watchNetwork(t, netWatch, false, isValidNetwork)
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork)
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteService(tx, "testServiceID2"))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.DeleteService(tx, "testServiceID2"))
 		return nil
 	}))
-	watchService(t, serviceWatch, false, nil)
+	watchService(suite.T(), serviceWatch, false, nil)
 
 	// Try to create a task with no network attachments and test
 	// that it moves to ALLOCATED state.
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		t4 := &api.Task{
 			ID: "testTaskID4",
 			Status: api.TaskStatus{
@@ -389,39 +445,39 @@ func TestAllocator(t *testing.T) {
 			},
 			DesiredState: api.TaskStateRunning,
 		}
-		assert.NoError(t, store.CreateTask(tx, t4))
+		suite.NoError(store.CreateTask(tx, t4))
 		return nil
 	}))
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchTask(suite.T(), s, taskWatch, false, isValidTask)
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		n2 := store.GetNetwork(tx, "testID2")
-		require.NotEqual(t, nil, n2)
-		assert.NoError(t, store.UpdateNetwork(tx, n2))
+		require.NotEqual(suite.T(), nil, n2)
+		suite.NoError(store.UpdateNetwork(tx, n2))
 		return nil
 	}))
-	watchNetwork(t, netWatch, false, isValidNetwork)
-	watchNetwork(t, netWatch, true, nil)
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork)
+	watchNetwork(suite.T(), netWatch, true, nil)
 
 	// Try updating service which is already allocated with no endpointSpec
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		s := store.GetService(tx, "testServiceID1")
 		s.Spec.Endpoint = nil
 
-		assert.NoError(t, store.UpdateService(tx, s))
+		suite.NoError(store.UpdateService(tx, s))
 		return nil
 	}))
-	watchService(t, serviceWatch, false, nil)
+	watchService(suite.T(), serviceWatch, false, nil)
 
 	// Try updating task which is already allocated
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		t2 := store.GetTask(tx, "testTaskID2")
-		require.NotEqual(t, nil, t2)
-		assert.NoError(t, store.UpdateTask(tx, t2))
+		require.NotEqual(suite.T(), nil, t2)
+		suite.NoError(store.UpdateTask(tx, t2))
 		return nil
 	}))
-	watchTask(t, s, taskWatch, false, isValidTask)
-	watchTask(t, s, taskWatch, true, nil)
+	watchTask(suite.T(), s, taskWatch, false, isValidTask)
+	watchTask(suite.T(), s, taskWatch, true, nil)
 
 	// Try adding networks with conflicting network resources and
 	// add task which attaches to a network which gets allocated
@@ -444,19 +500,19 @@ func TestAllocator(t *testing.T) {
 	n5 := n4.Copy()
 	n5.ID = "testID5"
 	n5.Spec.Annotations.Name = "test5"
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNetwork(tx, n4))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.CreateNetwork(tx, n4))
 		return nil
 	}))
-	watchNetwork(t, netWatch, false, isValidNetwork)
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork)
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNetwork(tx, n5))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.CreateNetwork(tx, n5))
 		return nil
 	}))
-	watchNetwork(t, netWatch, true, nil)
+	watchNetwork(suite.T(), netWatch, true, nil)
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		t6 := &api.Task{
 			ID: "testTaskID6",
 			Status: api.TaskStatus{
@@ -469,18 +525,18 @@ func TestAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, store.CreateTask(tx, t6))
+		suite.NoError(store.CreateTask(tx, t6))
 		return nil
 	}))
-	watchTask(t, s, taskWatch, true, nil)
+	watchTask(suite.T(), s, taskWatch, true, nil)
 
 	// Now remove the conflicting network.
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteNetwork(tx, n4.ID))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.DeleteNetwork(tx, n4.ID))
 		return nil
 	}))
-	watchNetwork(t, netWatch, false, isValidNetwork)
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork)
+	watchTask(suite.T(), s, taskWatch, false, isValidTask)
 
 	// Try adding services with conflicting port configs and add
 	// task which is part of the service whose allocation hasn't
@@ -512,18 +568,18 @@ func TestAllocator(t *testing.T) {
 	s4 := s3.Copy()
 	s4.ID = "testServiceID4"
 	s4.Spec.Annotations.Name = "service4"
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateService(tx, s3))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.CreateService(tx, s3))
 		return nil
 	}))
-	watchService(t, serviceWatch, false, nil)
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateService(tx, s4))
+	watchService(suite.T(), serviceWatch, false, nil)
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.CreateService(tx, s4))
 		return nil
 	}))
-	watchService(t, serviceWatch, true, nil)
+	watchService(suite.T(), serviceWatch, true, nil)
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		t7 := &api.Task{
 			ID: "testTaskID7",
 			Status: api.TaskStatus{
@@ -532,27 +588,27 @@ func TestAllocator(t *testing.T) {
 			ServiceID:    "testServiceID4",
 			DesiredState: api.TaskStateRunning,
 		}
-		assert.NoError(t, store.CreateTask(tx, t7))
+		suite.NoError(store.CreateTask(tx, t7))
 		return nil
 	}))
-	watchTask(t, s, taskWatch, true, nil)
+	watchTask(suite.T(), s, taskWatch, true, nil)
 
 	// Now remove the conflicting service.
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteService(tx, s3.ID))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.DeleteService(tx, s3.ID))
 		return nil
 	}))
-	watchService(t, serviceWatch, false, nil)
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchService(suite.T(), serviceWatch, false, nil)
+	watchTask(suite.T(), s, taskWatch, false, isValidTask)
 }
 
-func TestNoDuplicateIPs(t *testing.T) {
+func (suite *testSuite) TestNoDuplicateIPs() {
 	s := store.NewMemoryStore(nil)
-	assert.NotNil(t, s)
+	suite.NotNil(s)
 	defer s.Close()
 
 	// Try adding some objects to store before allocator is started
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress-nw-id",
@@ -573,7 +629,7 @@ func TestNoDuplicateIPs(t *testing.T) {
 			},
 			DriverState: &api.Driver{},
 		}
-		assert.NoError(t, store.CreateNetwork(tx, in))
+		suite.NoError(store.CreateNetwork(tx, in))
 		n1 := &api.Network{
 			ID: "testID1",
 			Spec: api.NetworkSpec{
@@ -592,7 +648,7 @@ func TestNoDuplicateIPs(t *testing.T) {
 			},
 			DriverState: &api.Driver{},
 		}
-		assert.NoError(t, store.CreateNetwork(tx, n1))
+		suite.NoError(store.CreateNetwork(tx, n1))
 
 		s1 := &api.Service{
 			ID: "testServiceID1",
@@ -620,7 +676,7 @@ func TestNoDuplicateIPs(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, store.CreateService(tx, s1))
+		suite.NoError(store.CreateService(tx, s1))
 
 		return nil
 	}))
@@ -640,7 +696,7 @@ func TestNoDuplicateIPs(t *testing.T) {
 		assignedIP := task.Networks[0].Addresses[0]
 		oldTaskID, present := assignedIPs[assignedIP]
 		if present && task.ID != oldTaskID {
-			t.Fatalf("task %s assigned duplicate IP %s, previously assigned to task %s", task.ID, assignedIP, oldTaskID)
+			suite.T().Fatalf("task %s assigned duplicate IP %s, previously assigned to task %s", task.ID, assignedIP, oldTaskID)
 		}
 		assignedIPs[assignedIP] = task.ID
 		return true
@@ -648,7 +704,7 @@ func TestNoDuplicateIPs(t *testing.T) {
 
 	reps := 100
 	for i := 0; i != reps; i++ {
-		assert.NoError(t, s.Update(func(tx store.Tx) error {
+		suite.NoError(s.Update(func(tx store.Tx) error {
 			t2 := &api.Task{
 				// The allocator iterates over the tasks in
 				// lexical order, so number tasks in descending
@@ -663,32 +719,26 @@ func TestNoDuplicateIPs(t *testing.T) {
 				ServiceID:    "testServiceID1",
 				DesiredState: api.TaskStateRunning,
 			}
-			assert.NoError(t, store.CreateTask(tx, t2))
+			suite.NoError(store.CreateTask(tx, t2))
 
 			return nil
 		}))
-		a, err := New(s, nil, nil)
-		assert.NoError(t, err)
-		assert.NotNil(t, a)
-
-		// Start allocator
-		go func() {
-			assert.NoError(t, a.Run(context.Background()))
-		}()
+		a := suite.newAllocator(s)
+		stop := suite.startAllocator(a)
 
 		// Confirm task gets a unique IP
-		watchTask(t, s, taskWatch, false, hasUniqueIP)
-		a.Stop()
+		watchTask(suite.T(), s, taskWatch, false, hasUniqueIP)
+		stop()
 	}
 }
 
-func TestAllocatorRestoreForDuplicateIPs(t *testing.T) {
+func (suite *testSuite) TestAllocatorRestoreForDuplicateIPs() {
 	s := store.NewMemoryStore(nil)
-	assert.NotNil(t, s)
+	suite.NotNil(s)
 	defer s.Close()
 	// Create 3 services with 1 task each
 	numsvcstsks := 3
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress-nw-id",
@@ -708,7 +758,7 @@ func TestAllocatorRestoreForDuplicateIPs(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, store.CreateNetwork(tx, in))
+		suite.NoError(store.CreateNetwork(tx, in))
 
 		for i := 0; i != numsvcstsks; i++ {
 			svc := &api.Service{
@@ -747,13 +797,13 @@ func TestAllocatorRestoreForDuplicateIPs(t *testing.T) {
 					},
 				},
 			}
-			assert.NoError(t, store.CreateService(tx, svc))
+			suite.NoError(store.CreateService(tx, svc))
 		}
 		return nil
 	}))
 
 	for i := 0; i != numsvcstsks; i++ {
-		assert.NoError(t, s.Update(func(tx store.Tx) error {
+		suite.NoError(s.Update(func(tx store.Tx) error {
 			tsk := &api.Task{
 				ID: "testTaskID" + strconv.Itoa(i),
 				Status: api.TaskStatus{
@@ -762,7 +812,7 @@ func TestAllocatorRestoreForDuplicateIPs(t *testing.T) {
 				ServiceID:    "testServiceID" + strconv.Itoa(i),
 				DesiredState: api.TaskStateRunning,
 			}
-			assert.NoError(t, store.CreateTask(tx, tsk))
+			suite.NoError(store.CreateTask(tx, tsk))
 			return nil
 		}))
 	}
@@ -775,11 +825,11 @@ func TestAllocatorRestoreForDuplicateIPs(t *testing.T) {
 
 		assignedVIP := service.Endpoint.VirtualIPs[0].Addr
 		if assignedVIPs[assignedVIP] {
-			t.Fatalf("service %s assigned duplicate IP %s", service.ID, assignedVIP)
+			suite.T().Fatalf("service %s assigned duplicate IP %s", service.ID, assignedVIP)
 		}
 		assignedVIPs[assignedVIP] = true
 		if assignedIPs[assignedVIP] {
-			t.Fatalf("a task and service %s have the same IP %s", service.ID, assignedVIP)
+			suite.T().Fatalf("a task and service %s have the same IP %s", service.ID, assignedVIP)
 		}
 		return true
 	}
@@ -790,23 +840,17 @@ func TestAllocatorRestoreForDuplicateIPs(t *testing.T) {
 
 		assignedIP := task.Networks[0].Addresses[0]
 		if assignedIPs[assignedIP] {
-			t.Fatalf("task %s assigned duplicate IP %s", task.ID, assignedIP)
+			suite.T().Fatalf("task %s assigned duplicate IP %s", task.ID, assignedIP)
 		}
 		assignedIPs[assignedIP] = true
 		if assignedVIPs[assignedIP] {
-			t.Fatalf("a service and task %s have the same IP %s", task.ID, assignedIP)
+			suite.T().Fatalf("a service and task %s have the same IP %s", task.ID, assignedIP)
 		}
 		return true
 	}
 
-	a, err := New(s, nil, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, a)
-	// Start allocator
-	go func() {
-		assert.NoError(t, a.Run(context.Background()))
-	}()
-	defer a.Stop()
+	a := suite.newAllocator(s)
+	defer suite.startAllocator(a)()
 
 	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
 	defer cancel()
@@ -816,8 +860,8 @@ func TestAllocatorRestoreForDuplicateIPs(t *testing.T) {
 
 	// Confirm tasks have no IPs that overlap with the services VIPs on restart
 	for i := 0; i != numsvcstsks; i++ {
-		watchTask(t, s, taskWatch, false, hasNoIPOverlapTasks)
-		watchService(t, serviceWatch, false, hasNoIPOverlapServices)
+		watchTask(suite.T(), s, taskWatch, false, hasNoIPOverlapTasks)
+		watchService(suite.T(), serviceWatch, false, hasNoIPOverlapServices)
 	}
 }
 
@@ -825,13 +869,13 @@ func TestAllocatorRestoreForDuplicateIPs(t *testing.T) {
 // does not contain the EndpointSpec.
 // The expected behavior is that the VIP(s) are still correctly populated inside
 // the IPAM and that no configuration on the service is changed.
-func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
+func (suite *testSuite) TestAllocatorRestartNoEndpointSpec() {
 	s := store.NewMemoryStore(nil)
-	assert.NotNil(t, s)
+	suite.NotNil(s)
 	defer s.Close()
 	// Create 3 services with 1 task each
 	numsvcstsks := 3
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		// populate ingress network
 		in := &api.Network{
 			ID: "overlay1",
@@ -851,7 +895,7 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 			},
 			DriverState: &api.Driver{},
 		}
-		assert.NoError(t, store.CreateNetwork(tx, in))
+		suite.NoError(store.CreateNetwork(tx, in))
 
 		for i := 0; i != numsvcstsks; i++ {
 			svc := &api.Service{
@@ -883,13 +927,13 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 					},
 				},
 			}
-			assert.NoError(t, store.CreateService(tx, svc))
+			suite.NoError(store.CreateService(tx, svc))
 		}
 		return nil
 	}))
 
 	for i := 0; i != numsvcstsks; i++ {
-		assert.NoError(t, s.Update(func(tx store.Tx) error {
+		suite.NoError(s.Update(func(tx store.Tx) error {
 			tsk := &api.Task{
 				ID: "testTaskID" + strconv.Itoa(i),
 				Status: api.TaskStatus{
@@ -905,7 +949,7 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 					},
 				},
 			}
-			assert.NoError(t, store.CreateTask(tx, tsk))
+			suite.NoError(store.CreateTask(tx, tsk))
 			return nil
 		}))
 	}
@@ -924,12 +968,12 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 		assert.NotEqual(fakeT, len(service.Endpoint.VirtualIPs[0].Addr), 0)
 		assignedVIP := service.Endpoint.VirtualIPs[0].Addr
 		if assignedIPs[assignedVIP] {
-			t.Fatalf("service %s assigned duplicate IP %s", service.ID, assignedVIP)
+			suite.T().Fatalf("service %s assigned duplicate IP %s", service.ID, assignedVIP)
 		}
 		assignedIPs[assignedVIP] = true
 		ip, ok := expectedIPs[service.ID]
-		assert.True(t, ok)
-		assert.Equal(t, ip, assignedVIP)
+		suite.True(ok)
+		suite.Equal(ip, assignedVIP)
 		delete(expectedIPs, service.ID)
 		return true
 	}
@@ -939,24 +983,18 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 		assert.NotEqual(fakeT, len(task.Networks[0].Addresses), 0)
 		assignedIP := task.Networks[0].Addresses[0]
 		if assignedIPs[assignedIP] {
-			t.Fatalf("task %s assigned duplicate IP %s", task.ID, assignedIP)
+			suite.T().Fatalf("task %s assigned duplicate IP %s", task.ID, assignedIP)
 		}
 		assignedIPs[assignedIP] = true
 		ip, ok := expectedIPs[task.ID]
-		assert.True(t, ok)
-		assert.Equal(t, ip, assignedIP)
+		suite.True(ok)
+		suite.Equal(ip, assignedIP)
 		delete(expectedIPs, task.ID)
 		return true
 	}
 
-	a, err := New(s, nil, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, a)
-	// Start allocator
-	go func() {
-		assert.NoError(t, a.Run(context.Background()))
-	}()
-	defer a.Stop()
+	a := suite.newAllocator(s)
+	defer suite.startAllocator(a)()
 
 	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
 	defer cancel()
@@ -966,10 +1004,10 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 
 	// Confirm tasks have no IPs that overlap with the services VIPs on restart
 	for i := 0; i != numsvcstsks; i++ {
-		watchTask(t, s, taskWatch, false, hasNoIPOverlapTasks)
-		watchService(t, serviceWatch, false, hasNoIPOverlapServices)
+		watchTask(suite.T(), s, taskWatch, false, hasNoIPOverlapTasks)
+		watchService(suite.T(), serviceWatch, false, hasNoIPOverlapServices)
 	}
-	assert.Len(t, expectedIPs, 0)
+	suite.Len(expectedIPs, 0)
 }
 
 // TestAllocatorRestoreForUnallocatedNetwork tests allocator restart
@@ -978,15 +1016,15 @@ func TestAllocatorRestartNoEndpointSpec(t *testing.T) {
 // services and tasks that were preallocated are allocated correctly
 // followed by the allocation of unallocated networks prior to the
 // restart.
-func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
+func (suite *testSuite) TestAllocatorRestoreForUnallocatedNetwork() {
 	s := store.NewMemoryStore(nil)
-	assert.NotNil(t, s)
+	suite.NotNil(s)
 	defer s.Close()
 	// Create 3 services with 1 task each
 	numsvcstsks := 3
 	var n1 *api.Network
 	var n2 *api.Network
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress-nw-id",
@@ -1006,7 +1044,7 @@ func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, store.CreateNetwork(tx, in))
+		suite.NoError(store.CreateNetwork(tx, in))
 
 		n1 = &api.Network{
 			ID: "testID1",
@@ -1026,7 +1064,7 @@ func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
 			},
 			DriverState: &api.Driver{},
 		}
-		assert.NoError(t, store.CreateNetwork(tx, n1))
+		suite.NoError(store.CreateNetwork(tx, n1))
 
 		n2 = &api.Network{
 			// Intentionally named testID0 so that in restore this network
@@ -1038,7 +1076,7 @@ func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, store.CreateNetwork(tx, n2))
+		suite.NoError(store.CreateNetwork(tx, n2))
 
 		for i := 0; i != numsvcstsks; i++ {
 			svc := &api.Service{
@@ -1087,13 +1125,13 @@ func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
 					},
 				},
 			}
-			assert.NoError(t, store.CreateService(tx, svc))
+			suite.NoError(store.CreateService(tx, svc))
 		}
 		return nil
 	}))
 
 	for i := 0; i != numsvcstsks; i++ {
-		assert.NoError(t, s.Update(func(tx store.Tx) error {
+		suite.NoError(s.Update(func(tx store.Tx) error {
 			tsk := &api.Task{
 				ID: "testTaskID" + strconv.Itoa(i),
 				Status: api.TaskStatus{
@@ -1109,7 +1147,7 @@ func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
 				ServiceID:    "testServiceID" + strconv.Itoa(i),
 				DesiredState: api.TaskStateRunning,
 			}
-			assert.NoError(t, store.CreateTask(tx, tsk))
+			suite.NoError(store.CreateTask(tx, tsk))
 			return nil
 		}))
 	}
@@ -1128,12 +1166,12 @@ func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
 		assert.NotEqual(fakeT, len(service.Endpoint.VirtualIPs[0].Addr), 0)
 		assignedVIP := service.Endpoint.VirtualIPs[1].Addr
 		if assignedIPs[assignedVIP] {
-			t.Fatalf("service %s assigned duplicate IP %s", service.ID, assignedVIP)
+			suite.T().Fatalf("service %s assigned duplicate IP %s", service.ID, assignedVIP)
 		}
 		assignedIPs[assignedVIP] = true
 		ip, ok := expectedIPs[service.ID]
-		assert.True(t, ok)
-		assert.Equal(t, ip, assignedVIP)
+		suite.True(ok)
+		suite.Equal(ip, assignedVIP)
 		delete(expectedIPs, service.ID)
 		return true
 	}
@@ -1143,24 +1181,18 @@ func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
 		assert.NotEqual(fakeT, len(task.Networks[0].Addresses), 0)
 		assignedIP := task.Networks[1].Addresses[0]
 		if assignedIPs[assignedIP] {
-			t.Fatalf("task %s assigned duplicate IP %s", task.ID, assignedIP)
+			suite.T().Fatalf("task %s assigned duplicate IP %s", task.ID, assignedIP)
 		}
 		assignedIPs[assignedIP] = true
 		ip, ok := expectedIPs[task.ID]
-		assert.True(t, ok)
-		assert.Equal(t, ip, assignedIP)
+		suite.True(ok)
+		suite.Equal(ip, assignedIP)
 		delete(expectedIPs, task.ID)
 		return true
 	}
 
-	a, err := New(s, nil, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, a)
-	// Start allocator
-	go func() {
-		assert.NoError(t, a.Run(context.Background()))
-	}()
-	defer a.Stop()
+	a := suite.newAllocator(s)
+	defer suite.startAllocator(a)()
 
 	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{}, api.EventDeleteTask{})
 	defer cancel()
@@ -1170,19 +1202,17 @@ func TestAllocatorRestoreForUnallocatedNetwork(t *testing.T) {
 
 	// Confirm tasks have no IPs that overlap with the services VIPs on restart
 	for i := 0; i != numsvcstsks; i++ {
-		watchTask(t, s, taskWatch, false, hasNoIPOverlapTasks)
-		watchService(t, serviceWatch, false, hasNoIPOverlapServices)
+		watchTask(suite.T(), s, taskWatch, false, hasNoIPOverlapTasks)
+		watchService(suite.T(), serviceWatch, false, hasNoIPOverlapServices)
 	}
 }
 
-func TestNodeAllocator(t *testing.T) {
+func (suite *testSuite) TestNodeAllocator() {
 	s := store.NewMemoryStore(nil)
-	assert.NotNil(t, s)
+	suite.NotNil(s)
 	defer s.Close()
 
-	a, err := New(s, nil, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, a)
+	a := suite.newAllocator(s)
 
 	var node1FromStore *api.Node
 	node1 := &api.Node{
@@ -1190,7 +1220,7 @@ func TestNodeAllocator(t *testing.T) {
 	}
 
 	// Try adding some objects to store before allocator is started
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress",
@@ -1201,7 +1231,7 @@ func TestNodeAllocator(t *testing.T) {
 				Ingress: true,
 			},
 		}
-		assert.NoError(t, store.CreateNetwork(tx, in))
+		suite.NoError(store.CreateNetwork(tx, in))
 
 		n1 := &api.Network{
 			ID: "overlayID1",
@@ -1211,7 +1241,7 @@ func TestNodeAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, store.CreateNetwork(tx, n1))
+		suite.NoError(store.CreateNetwork(tx, n1))
 
 		// this network will never be used for any task
 		nUnused := &api.Network{
@@ -1222,9 +1252,9 @@ func TestNodeAllocator(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, store.CreateNetwork(tx, nUnused))
+		suite.NoError(store.CreateNetwork(tx, nUnused))
 
-		assert.NoError(t, store.CreateNode(tx, node1))
+		suite.NoError(store.CreateNode(tx, node1))
 
 		return nil
 	}))
@@ -1236,13 +1266,9 @@ func TestNodeAllocator(t *testing.T) {
 	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 
-	// Start allocator
-	go func() {
-		assert.NoError(t, a.Run(context.Background()))
-	}()
-	defer a.Stop()
+	defer suite.startAllocator(a)()
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		// create a task assigned to this node that has a network attachment on
 		// n1
 		t1 := &api.Task{
@@ -1262,24 +1288,24 @@ func TestNodeAllocator(t *testing.T) {
 	}))
 
 	// validate that the task is created
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchTask(suite.T(), s, taskWatch, false, isValidTask)
 
 	// Validate node has 2 LB IP address (1 for each network).
-	watchNetwork(t, netWatch, false, isValidNetwork)                                      // ingress
-	watchNetwork(t, netWatch, false, isValidNetwork)                                      // overlayID1
-	watchNetwork(t, netWatch, false, isValidNetwork)                                      // overlayIDUnused
-	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork)                                      // ingress
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork)                                      // overlayID1
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork)                                      // overlayIDUnused
+	watchNode(suite.T(), nodeWatch, false, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
 
 	// Add a node and validate it gets a LB ip only on ingress, as it has no
 	// tasks assigned.
 	node2 := &api.Node{
 		ID: "nodeID2",
 	}
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNode(tx, node2))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.CreateNode(tx, node2))
 		return nil
 	}))
-	watchNode(t, nodeWatch, false, isValidNode, node2, []string{"ingress"}) // node2
+	watchNode(suite.T(), nodeWatch, false, isValidNode, node2, []string{"ingress"}) // node2
 
 	// Add a network and validate that nothing has changed in the nodes
 	n2 := &api.Network{
@@ -1290,17 +1316,17 @@ func TestNodeAllocator(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNetwork(tx, n2))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.CreateNetwork(tx, n2))
 		return nil
 	}))
-	watchNetwork(t, netWatch, false, isValidNetwork) // overlayID2
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork) // overlayID2
 	// nothing should change, no updates
-	watchNode(t, nodeWatch, true, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
-	watchNode(t, nodeWatch, true, isValidNode, node2, []string{"ingress"})               // node2
+	watchNode(suite.T(), nodeWatch, true, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
+	watchNode(suite.T(), nodeWatch, true, isValidNode, node2, []string{"ingress"})               // node2
 
 	// add a task and validate that the node gets the network for the task
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		// create a task assigned to this node that has a network attachment on
 		// n1
 		t2 := &api.Task{
@@ -1319,15 +1345,15 @@ func TestNodeAllocator(t *testing.T) {
 		return store.CreateTask(tx, t2)
 	}))
 	// validate that the task is created
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchTask(suite.T(), s, taskWatch, false, isValidTask)
 
 	// validate that node2 gets a new attachment and node1 stays the same
-	watchNode(t, nodeWatch, false, isValidNode, node2, []string{"ingress", "overlayID2"}) // node2
-	watchNode(t, nodeWatch, true, isValidNode, node1, []string{"ingress", "overlayID1"})  // node1
+	watchNode(suite.T(), nodeWatch, false, isValidNode, node2, []string{"ingress", "overlayID2"}) // node2
+	watchNode(suite.T(), nodeWatch, true, isValidNode, node1, []string{"ingress", "overlayID1"})  // node1
 
 	// add another task with the same network to a node and validate that it
 	// still only has 1 attachment for that network
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		// create a task assigned to this node that has a network attachment on
 		// n1
 		t3 := &api.Task{
@@ -1347,45 +1373,45 @@ func TestNodeAllocator(t *testing.T) {
 	}))
 
 	// validate that the task is created
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchTask(suite.T(), s, taskWatch, false, isValidTask)
 
 	// validate that nothing changes
-	watchNode(t, nodeWatch, true, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
-	watchNode(t, nodeWatch, true, isValidNode, node2, []string{"ingress", "overlayID2"}) // node2
+	watchNode(suite.T(), nodeWatch, true, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
+	watchNode(suite.T(), nodeWatch, true, isValidNode, node2, []string{"ingress", "overlayID2"}) // node2
 
 	// now remove that task we just created, and validate that the node still
 	// has an attachment for the other task
 	// Remove a node and validate remaining node has 2 LB IP addresses
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteTask(tx, "task1"))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.DeleteTask(tx, "task1"))
 		return nil
 	}))
 
 	// validate that nothing changes
-	watchNode(t, nodeWatch, true, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
-	watchNode(t, nodeWatch, true, isValidNode, node2, []string{"ingress", "overlayID2"}) // node2
+	watchNode(suite.T(), nodeWatch, true, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
+	watchNode(suite.T(), nodeWatch, true, isValidNode, node2, []string{"ingress", "overlayID2"}) // node2
 
 	// now remove another task. this time the attachment on the node should be
 	// removed as well
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteTask(tx, "task2"))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.DeleteTask(tx, "task2"))
 		return nil
 	}))
 
-	watchNode(t, nodeWatch, false, isValidNode, node2, []string{"ingress"})              // node2
-	watchNode(t, nodeWatch, true, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
+	watchNode(suite.T(), nodeWatch, false, isValidNode, node2, []string{"ingress"})              // node2
+	watchNode(suite.T(), nodeWatch, true, isValidNode, node1, []string{"ingress", "overlayID1"}) // node1
 
 	// Remove a node and validate remaining node has 2 LB IP addresses
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteNode(tx, node2.ID))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.DeleteNode(tx, node2.ID))
 		return nil
 	}))
-	watchNode(t, nodeWatch, false, nil, nil, nil) // node2
+	watchNode(suite.T(), nodeWatch, false, nil, nil, nil) // node2
 	s.View(func(tx store.ReadTx) {
 		node1FromStore = store.GetNode(tx, node1.ID)
 	})
 
-	isValidNode(t, node1, node1FromStore, []string{"ingress", "overlayID1"})
+	isValidNode(suite.T(), node1, node1FromStore, []string{"ingress", "overlayID1"})
 
 	// Validate that a LB IP address is not allocated for node-local networks
 	p := &api.Network{
@@ -1400,29 +1426,27 @@ func TestNodeAllocator(t *testing.T) {
 			DriverConfig: &api.Driver{Name: "bridge"},
 		},
 	}
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNetwork(tx, p))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.CreateNetwork(tx, p))
 		return nil
 	}))
-	watchNetwork(t, netWatch, false, isValidNetwork) // bridge
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork) // bridge
 
 	s.View(func(tx store.ReadTx) {
 		node1FromStore = store.GetNode(tx, node1.ID)
 	})
 
-	isValidNode(t, node1, node1FromStore, []string{"ingress", "overlayID1"})
+	isValidNode(suite.T(), node1, node1FromStore, []string{"ingress", "overlayID1"})
 }
 
 // TestNodeAttachmentOnLeadershipChange tests that a Node which is only partly
 // allocated during a leadership change is correctly allocated afterward
-func TestNodeAttachmentOnLeadershipChange(t *testing.T) {
+func (suite *testSuite) TestNodeAttachmentOnLeadershipChange() {
 	s := store.NewMemoryStore(nil)
-	assert.NotNil(t, s)
+	suite.NotNil(s)
 	defer s.Close()
 
-	a, err := New(s, nil, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, a)
+	a := suite.newAllocator(s)
 
 	net1 := &api.Network{
 		ID: "ingress",
@@ -1470,12 +1494,12 @@ func TestNodeAttachmentOnLeadershipChange(t *testing.T) {
 	}
 
 	// before starting the allocator, populate with these
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		require.NoError(t, store.CreateNetwork(tx, net1))
-		require.NoError(t, store.CreateNetwork(tx, net2))
-		require.NoError(t, store.CreateNode(tx, node1))
-		require.NoError(t, store.CreateTask(tx, task1))
-		require.NoError(t, store.CreateTask(tx, task2))
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		require.NoError(suite.T(), store.CreateNetwork(tx, net1))
+		require.NoError(suite.T(), store.CreateNetwork(tx, net2))
+		require.NoError(suite.T(), store.CreateNode(tx, node1))
+		require.NoError(suite.T(), store.CreateTask(tx, task1))
+		require.NoError(suite.T(), store.CreateTask(tx, task2))
 		return nil
 	}))
 
@@ -1490,47 +1514,475 @@ func TestNodeAttachmentOnLeadershipChange(t *testing.T) {
 	taskWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
 
-	ctx, ctxCancel := context.WithCancel(context.Background())
-	go func() {
-		assert.NoError(t, a.Run(ctx))
-	}()
+	stop := suite.startAllocator(a)
 
 	// validate that everything gets allocated
-	watchNetwork(t, netWatch, false, isValidNetwork)
-	watchNetwork(t, netWatch, false, isValidNetwork)
-	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress"})
-	watchTask(t, s, taskWatch, false, isValidTask)
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork)
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork)
+	watchNode(suite.T(), nodeWatch, false, isValidNode, node1, []string{"ingress"})
+	watchTask(suite.T(), s, taskWatch, false, isValidTask)
 
 	// once everything is created, go ahead and stop the allocator
-	a.Stop()
-	ctxCancel()
+	stop()
 
 	// now update task2 to assign it to node1
 	s.Update(func(tx store.Tx) error {
 		task := store.GetTask(tx, task2.ID)
-		require.NotNil(t, task)
+		require.NotNil(suite.T(), task)
 		// make sure it has 1 network attachment
-		assert.Len(t, task.Networks, 1)
+		suite.Len(task.Networks, 1)
 		task.NodeID = node1.ID
-		require.NoError(t, store.UpdateTask(tx, task))
+		require.NoError(suite.T(), store.UpdateTask(tx, task))
 		return nil
 	})
 
 	// and now we'll start a new allocator.
-	a2, err := New(s, nil, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, a2)
-
-	ctx2, cancel2 := context.WithCancel(context.Background())
-	go func() {
-		assert.NoError(t, a2.Run(ctx2))
-	}()
-	defer a2.Stop()
-	defer cancel2()
+	a2 := suite.newAllocator(s)
+	defer suite.startAllocator(a2)()
 
 	// now we should see the node get allocated
-	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress"})
-	watchNode(t, nodeWatch, false, isValidNode, node1, []string{"ingress", "net2"})
+	watchNode(suite.T(), nodeWatch, false, isValidNode, node1, []string{"ingress"})
+	watchNode(suite.T(), nodeWatch, false, isValidNode, node1, []string{"ingress", "net2"})
+}
+
+func (suite *testSuite) TestAllocateServiceConflictingUserDefinedPorts() {
+	s := store.NewMemoryStore(nil)
+	suite.NotNil(s)
+	defer s.Close()
+
+	const svcID = "testID1"
+	// Try adding some objects to store before allocator is started
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		// populate ingress network
+		in := &api.Network{
+			ID: "ingress-nw-id",
+			Spec: api.NetworkSpec{
+				Annotations: api.Annotations{
+					Name: "default-ingress",
+				},
+				Ingress: true,
+			},
+			IPAM: &api.IPAMOptions{
+				Driver: &api.Driver{},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet:  "10.0.0.0/24",
+						Gateway: "10.0.0.1",
+					},
+				},
+			},
+			DriverState: &api.Driver{},
+		}
+		suite.NoError(store.CreateNetwork(tx, in))
+
+		s1 := &api.Service{
+			ID: svcID,
+			Spec: api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "service1",
+				},
+				Endpoint: &api.EndpointSpec{
+					Ports: []*api.PortConfig{
+						{
+							Name:          "some_tcp",
+							TargetPort:    1234,
+							PublishedPort: 1234,
+						},
+						{
+							Name:          "some_other_tcp",
+							TargetPort:    1234,
+							PublishedPort: 1234,
+						},
+					},
+				},
+			},
+		}
+		suite.NoError(store.CreateService(tx, s1))
+
+		return nil
+	}))
+
+	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+	defer cancel()
+
+	a := suite.newAllocator(s)
+	defer suite.startAllocator(a)()
+
+	// Port spec is invalid; service should not be updated
+	watchService(suite.T(), serviceWatch, true, func(_ assert.TestingT, service *api.Service) bool {
+		suite.T().Errorf("unexpected service update: %v", service)
+		return true
+	})
+
+	// Update the service to remove the conflicting port
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		s1 := store.GetService(tx, svcID)
+		if suite.NotNil(s1) {
+			s1.Spec.Endpoint.Ports[1].TargetPort = 1235
+			s1.Spec.Endpoint.Ports[1].PublishedPort = 1235
+			suite.NoError(store.UpdateService(tx, s1))
+		}
+		return nil
+	}))
+	watchService(suite.T(), serviceWatch, false, func(t assert.TestingT, service *api.Service) bool {
+		if assert.Equal(t, svcID, service.ID) && assert.NotNil(t, service.Endpoint) && assert.Len(t, service.Endpoint.Ports, 2) {
+			return assert.Equal(t, uint32(1235), service.Endpoint.Ports[1].PublishedPort)
+		}
+		return false
+	})
+}
+
+func (suite *testSuite) TestDeallocateServiceAllocate() {
+	s := store.NewMemoryStore(nil)
+	suite.NotNil(s)
+	defer s.Close()
+
+	newSvc := func(id string) *api.Service {
+		return &api.Service{
+			ID: id,
+			Spec: api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "service1",
+				},
+				Endpoint: &api.EndpointSpec{
+					Ports: []*api.PortConfig{
+						{
+							Name:          "some_tcp",
+							TargetPort:    1234,
+							PublishedPort: 1234,
+						},
+					},
+				},
+			},
+		}
+	}
+
+	// Try adding some objects to store before allocator is started
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		// populate ingress network
+		in := &api.Network{
+			ID: "ingress-nw-id",
+			Spec: api.NetworkSpec{
+				Annotations: api.Annotations{
+					Name: "default-ingress",
+				},
+				Ingress: true,
+			},
+			IPAM: &api.IPAMOptions{
+				Driver: &api.Driver{},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet:  "10.0.0.0/24",
+						Gateway: "10.0.0.1",
+					},
+				},
+			},
+			DriverState: &api.Driver{},
+		}
+		suite.NoError(store.CreateNetwork(tx, in))
+		suite.NoError(store.CreateService(tx, newSvc("testID1")))
+		return nil
+	}))
+
+	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+	defer cancel()
+
+	a := suite.newAllocator(s)
+	defer suite.startAllocator(a)()
+
+	isTestService := func(id string) func(t assert.TestingT, service *api.Service) bool {
+		return func(t assert.TestingT, service *api.Service) bool {
+			return assert.Equal(t, id, service.ID) &&
+				assert.Len(t, service.Endpoint.Ports, 1) &&
+				assert.Equal(t, uint32(1234), service.Endpoint.Ports[0].PublishedPort) &&
+				assert.Len(t, service.Endpoint.VirtualIPs, 1)
+		}
+	}
+	// Confirm service is allocated
+	watchService(suite.T(), serviceWatch, false, isTestService("testID1"))
+
+	// Deallocate the service and allocate a new one with the same port spec
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.DeleteService(tx, "testID1"))
+		suite.NoError(store.CreateService(tx, newSvc("testID2")))
+		return nil
+	}))
+	// Confirm new service is allocated
+	watchService(suite.T(), serviceWatch, false, isTestService("testID2"))
+}
+
+func (suite *testSuite) TestServiceAddRemovePorts() {
+	s := store.NewMemoryStore(nil)
+	suite.NotNil(s)
+	defer s.Close()
+
+	const svcID = "testID1"
+	// Try adding some objects to store before allocator is started
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		// populate ingress network
+		in := &api.Network{
+			ID: "ingress-nw-id",
+			Spec: api.NetworkSpec{
+				Annotations: api.Annotations{
+					Name: "default-ingress",
+				},
+				Ingress: true,
+			},
+			IPAM: &api.IPAMOptions{
+				Driver: &api.Driver{},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet:  "10.0.0.0/24",
+						Gateway: "10.0.0.1",
+					},
+				},
+			},
+			DriverState: &api.Driver{},
+		}
+		suite.NoError(store.CreateNetwork(tx, in))
+
+		s1 := &api.Service{
+			ID: svcID,
+			Spec: api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "service1",
+				},
+				Endpoint: &api.EndpointSpec{
+					Ports: []*api.PortConfig{
+						{
+							Name:          "some_tcp",
+							TargetPort:    1234,
+							PublishedPort: 1234,
+						},
+					},
+				},
+			},
+		}
+		suite.NoError(store.CreateService(tx, s1))
+
+		return nil
+	}))
+
+	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+	defer cancel()
+
+	a := suite.newAllocator(s)
+	defer suite.startAllocator(a)()
+
+	var probedVIP string
+	probeTestService := func(expectPorts ...uint32) func(t assert.TestingT, service *api.Service) bool {
+		return func(t assert.TestingT, service *api.Service) bool {
+			expectedVIPCount := 0
+			if len(expectPorts) > 0 {
+				expectedVIPCount = 1
+			}
+			if len(service.Endpoint.VirtualIPs) > 0 {
+				probedVIP = service.Endpoint.VirtualIPs[0].Addr
+			} else {
+				probedVIP = ""
+			}
+			if assert.Equal(t, svcID, service.ID) && assert.Len(t, service.Endpoint.Ports, len(expectPorts)) {
+				var published []uint32
+				for _, port := range service.Endpoint.Ports {
+					published = append(published, port.PublishedPort)
+				}
+				return assert.Equal(t, expectPorts, published) && assert.Len(t, service.Endpoint.VirtualIPs, expectedVIPCount)
+			}
+
+			return false
+		}
+	}
+	// Confirm service is allocated
+	watchService(suite.T(), serviceWatch, false, probeTestService(1234))
+	allocatedVIP := probedVIP
+
+	// Unpublish port
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		s1 := store.GetService(tx, svcID)
+		if suite.NotNil(s1) {
+			s1.Spec.Endpoint.Ports = nil
+			suite.NoError(store.UpdateService(tx, s1))
+		}
+		return nil
+	}))
+	// Wait for unpublishing to take effect
+	watchService(suite.T(), serviceWatch, false, probeTestService())
+
+	// Publish port again and ensure VIP is not the same that was deallocated.
+	// Since IP allocation is serial we should receive the next available IP.
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		s1 := store.GetService(tx, svcID)
+		if suite.NotNil(s1) {
+			s1.Spec.Endpoint.Ports = append(s1.Spec.Endpoint.Ports, &api.PortConfig{Name: "some_tcp",
+				TargetPort:    1234,
+				PublishedPort: 1234,
+			})
+			suite.NoError(store.UpdateService(tx, s1))
+		}
+		return nil
+	}))
+	watchService(suite.T(), serviceWatch, false, probeTestService(1234))
+	suite.NotEqual(allocatedVIP, probedVIP)
+}
+
+func (suite *testSuite) TestServiceUpdatePort() {
+	s := store.NewMemoryStore(nil)
+	suite.NotNil(s)
+	defer s.Close()
+
+	const svcID = "testID1"
+	// Try adding some objects to store before allocator is started
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		// populate ingress network
+		in := &api.Network{
+			ID: "ingress-nw-id",
+			Spec: api.NetworkSpec{
+				Annotations: api.Annotations{
+					Name: "default-ingress",
+				},
+				Ingress: true,
+			},
+			IPAM: &api.IPAMOptions{
+				Driver: &api.Driver{},
+				Configs: []*api.IPAMConfig{
+					{
+						Subnet:  "10.0.0.0/24",
+						Gateway: "10.0.0.1",
+					},
+				},
+			},
+			DriverState: &api.Driver{},
+		}
+		suite.NoError(store.CreateNetwork(tx, in))
+
+		s1 := &api.Service{
+			ID: svcID,
+			Spec: api.ServiceSpec{
+				Annotations: api.Annotations{
+					Name: "service1",
+				},
+				Endpoint: &api.EndpointSpec{
+					Ports: []*api.PortConfig{
+						{
+							Name:          "some_tcp",
+							TargetPort:    1234,
+							PublishedPort: 1234,
+						},
+						{
+							Name:       "some_other_tcp",
+							TargetPort: 1235,
+						},
+					},
+				},
+			},
+		}
+		suite.NoError(store.CreateService(tx, s1))
+
+		return nil
+	}))
+
+	serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+	defer cancel()
+
+	a := suite.newAllocator(s)
+	defer suite.startAllocator(a)()
+
+	watchService(suite.T(), serviceWatch, false, func(t assert.TestingT, service *api.Service) bool {
+		return assert.Equal(t, svcID, service.ID) && assert.Len(t, service.Endpoint.Ports, 2)
+	})
+
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		s1 := store.GetService(tx, svcID)
+		if suite.NotNil(s1) {
+			s1.Spec.Endpoint.Ports[1].PublishedPort = 1235
+			suite.NoError(store.UpdateService(tx, s1))
+		}
+		return nil
+	}))
+	watchService(suite.T(), serviceWatch, false, func(t assert.TestingT, service *api.Service) bool {
+		if assert.Equal(t, svcID, service.ID) && assert.Len(t, service.Endpoint.Ports, 2) {
+			return assert.Equal(t, uint32(1235), service.Endpoint.Ports[1].PublishedPort)
+		}
+		return false
+	})
+}
+
+func (suite *testSuite) TestServicePortAllocationIsRepeatable() {
+	alloc := func() []*api.PortConfig {
+		s := store.NewMemoryStore(nil)
+		suite.NotNil(s)
+		defer s.Close()
+
+		const svcID = "testID1"
+		// Try adding some objects to store before allocator is started
+		suite.NoError(s.Update(func(tx store.Tx) error {
+			// populate ingress network
+			in := &api.Network{
+				ID: "ingress-nw-id",
+				Spec: api.NetworkSpec{
+					Annotations: api.Annotations{
+						Name: "default-ingress",
+					},
+					Ingress: true,
+				},
+				IPAM: &api.IPAMOptions{
+					Driver: &api.Driver{},
+					Configs: []*api.IPAMConfig{
+						{
+							Subnet:  "10.0.0.0/24",
+							Gateway: "10.0.0.1",
+						},
+					},
+				},
+				DriverState: &api.Driver{},
+			}
+			suite.NoError(store.CreateNetwork(tx, in))
+
+			s1 := &api.Service{
+				ID: svcID,
+				Spec: api.ServiceSpec{
+					Annotations: api.Annotations{
+						Name: "service1",
+					},
+					Endpoint: &api.EndpointSpec{
+						Ports: []*api.PortConfig{
+							{
+								Name:          "some_tcp",
+								TargetPort:    1234,
+								PublishedPort: 1234,
+							},
+							{
+								Name:       "some_other_tcp",
+								TargetPort: 1235,
+							},
+						},
+					},
+				},
+			}
+			suite.NoError(store.CreateService(tx, s1))
+
+			return nil
+		}))
+
+		serviceWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateService{}, api.EventDeleteService{})
+		defer cancel()
+
+		a := suite.newAllocator(s)
+		defer suite.startAllocator(a)()
+
+		var probedPorts []*api.PortConfig
+		probeTestService := func(t assert.TestingT, service *api.Service) bool {
+			if assert.Equal(t, svcID, service.ID) && assert.Len(t, service.Endpoint.Ports, 2) {
+				probedPorts = service.Endpoint.Ports
+				return true
+			}
+			return false
+		}
+		watchService(suite.T(), serviceWatch, false, probeTestService)
+		return probedPorts
+	}
+
+	suite.Equal(alloc(), alloc())
 }
 
 func isValidNode(t assert.TestingT, originalNode, updatedNode *api.Node, networks []string) bool {

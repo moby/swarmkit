@@ -1,23 +1,18 @@
 package allocator
 
 import (
-	"context"
-	"testing"
-
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIPAMNotNil(t *testing.T) {
+func (suite *testSuite) TestIPAMNotNil() {
 	s := store.NewMemoryStore(nil)
-	assert.NotNil(t, s)
+	suite.NotNil(s)
 	defer s.Close()
 
-	a, err := New(s, nil, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, a)
+	a := suite.newAllocator(s)
 
 	// Predefined node-local network
 	p := &api.Network{
@@ -45,7 +40,7 @@ func TestIPAMNotNil(t *testing.T) {
 	}
 
 	// Try adding some objects to store before allocator is started
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	suite.NoError(s.Update(func(tx store.Tx) error {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress-nw-id",
@@ -56,13 +51,13 @@ func TestIPAMNotNil(t *testing.T) {
 				Ingress: true,
 			},
 		}
-		assert.NoError(t, store.CreateNetwork(tx, in))
+		suite.NoError(store.CreateNetwork(tx, in))
 
 		// Create the predefined node-local network with one service
-		assert.NoError(t, store.CreateNetwork(tx, p))
+		suite.NoError(store.CreateNetwork(tx, p))
 
 		// Create the the swarm level node-local network with one service
-		assert.NoError(t, store.CreateNetwork(tx, nln))
+		suite.NoError(store.CreateNetwork(tx, nln))
 
 		return nil
 	}))
@@ -70,16 +65,12 @@ func TestIPAMNotNil(t *testing.T) {
 	netWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
 	defer cancel()
 
-	// Start allocator
-	go func() {
-		assert.NoError(t, a.Run(context.Background()))
-	}()
-	defer a.Stop()
+	defer suite.startAllocator(a)()
 
 	// Now verify if we get network and tasks updated properly
-	watchNetwork(t, netWatch, false, func(t assert.TestingT, n *api.Network) bool { return true })
-	watchNetwork(t, netWatch, false, func(t assert.TestingT, n *api.Network) bool { return true })
-	watchNetwork(t, netWatch, false, func(t assert.TestingT, n *api.Network) bool { return true })
+	watchNetwork(suite.T(), netWatch, false, func(t assert.TestingT, n *api.Network) bool { return true })
+	watchNetwork(suite.T(), netWatch, false, func(t assert.TestingT, n *api.Network) bool { return true })
+	watchNetwork(suite.T(), netWatch, false, func(t assert.TestingT, n *api.Network) bool { return true })
 
 	// Verify no allocation was done for the node-local networks
 	var (
@@ -91,8 +82,8 @@ func TestIPAMNotNil(t *testing.T) {
 		sn = store.GetNetwork(tx, nln.ID)
 
 	})
-	assert.NotNil(t, ps)
-	assert.NotNil(t, sn)
-	assert.NotNil(t, ps.IPAM)
-	assert.NotNil(t, sn.IPAM)
+	suite.NotNil(ps)
+	suite.NotNil(sn)
+	suite.NotNil(ps.IPAM)
+	suite.NotNil(sn.IPAM)
 }

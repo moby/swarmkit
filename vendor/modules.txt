@@ -326,6 +326,7 @@ github.com/spf13/pflag
 ## explicit; go 1.20
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
+github.com/stretchr/testify/suite
 # github.com/weppos/publicsuffix-go v0.15.1-0.20210511084619-b1f36a2d6c0b
 ## explicit; go 1.11
 github.com/weppos/publicsuffix-go/publicsuffix
