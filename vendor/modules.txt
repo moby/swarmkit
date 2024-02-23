@@ -44,52 +44,12 @@ github.com/cloudflare/cfssl/signer/local
 # github.com/container-storage-interface/spec v1.2.0
 ## explicit
 github.com/container-storage-interface/spec/lib/go/csi
-# github.com/containerd/containerd v1.6.22
-## explicit; go 1.18
-github.com/containerd/containerd/log
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
 # github.com/distribution/reference v0.5.0
 ## explicit; go 1.20
 github.com/distribution/reference
-# github.com/docker/docker v24.0.0-rc.2.0.20230908212318-6ce5aa1cd5a4+incompatible
-## explicit
-github.com/docker/docker/errdefs
-github.com/docker/docker/libnetwork/bitmap
-github.com/docker/docker/libnetwork/discoverapi
-github.com/docker/docker/libnetwork/driverapi
-github.com/docker/docker/libnetwork/drivers/bridge/brmanager
-github.com/docker/docker/libnetwork/drivers/host
-github.com/docker/docker/libnetwork/drivers/ipvlan/ivmanager
-github.com/docker/docker/libnetwork/drivers/macvlan/mvmanager
-github.com/docker/docker/libnetwork/drivers/overlay/overlayutils
-github.com/docker/docker/libnetwork/drivers/overlay/ovmanager
-github.com/docker/docker/libnetwork/drivers/remote
-github.com/docker/docker/libnetwork/drivers/remote/api
-github.com/docker/docker/libnetwork/drvregistry
-github.com/docker/docker/libnetwork/ipam
-github.com/docker/docker/libnetwork/ipamapi
-github.com/docker/docker/libnetwork/ipams/builtin
-github.com/docker/docker/libnetwork/ipams/null
-github.com/docker/docker/libnetwork/ipams/remote
-github.com/docker/docker/libnetwork/ipams/remote/api
-github.com/docker/docker/libnetwork/ipams/windowsipam
-github.com/docker/docker/libnetwork/ipamutils
-github.com/docker/docker/libnetwork/ipbits
-github.com/docker/docker/libnetwork/netlabel
-github.com/docker/docker/libnetwork/scope
-github.com/docker/docker/libnetwork/types
-github.com/docker/docker/pkg/homedir
-github.com/docker/docker/pkg/ioutils
-github.com/docker/docker/pkg/plugingetter
-github.com/docker/docker/pkg/plugins
-github.com/docker/docker/pkg/plugins/transport
-github.com/docker/docker/pkg/rootless
-# github.com/docker/go-connections v0.4.1-0.20231110212414-fa09c952e3ea
-## explicit; go 1.18
-github.com/docker/go-connections/sockets
-github.com/docker/go-connections/tlsconfig
 # github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c
 ## explicit
 github.com/docker/go-events
@@ -180,9 +140,6 @@ github.com/hashicorp/golang-lru/simplelru
 # github.com/inconshreveable/mousetrap v1.1.0
 ## explicit; go 1.18
 github.com/inconshreveable/mousetrap
-# github.com/ishidawataru/sctp v0.0.0-20230406120618-7ff4192f6ff2
-## explicit; go 1.12
-github.com/ishidawataru/sctp
 # github.com/jmoiron/sqlx v1.3.3
 ## explicit; go 1.10
 github.com/jmoiron/sqlx/types
