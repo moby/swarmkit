@@ -12,7 +12,7 @@ PACKAGES = $(shell go list ./...)
 INTEGRATION_PACKAGE = $(shell go list ./integration)
 
 # Project binaries.
-COMMANDS=swarmd swarmctl swarm-bench swarm-rafttool protoc-gen-gogoswarm
+COMMANDS=swarm-bench protoc-gen-gogoswarm
 BINARIES=$(addprefix bin/,$(COMMANDS))
 
 GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
