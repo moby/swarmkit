@@ -14,15 +14,18 @@ INTEGRATION_PACKAGE = $(shell go list ./integration)
 # Project binaries.
 COMMANDS=swarm-bench protoc-gen-gogoswarm
 BINARIES=$(addprefix bin/,$(COMMANDS))
+SWARMD_COMMANDS=swarmd swarmctl swarm-rafttool
+SWARMD_BINARIES=$(addprefix swarmd/bin/,$(SWARMD_COMMANDS))
 
-GO_LDFLAGS=-ldflags "-X `go list ./version`.Version=$(VERSION)"
+VERSIONPKG := $(shell go list ./version)
+GO_LDFLAGS=-ldflags "-X $(VERSIONPKG).Version=$(VERSION)"
 GO_TESTFLAGS=--timeout=20m $(RACE)
 
 GOBIN=$(shell go env GOPATH)/bin
 
 .DEFAULT_GOAL = all
 .PHONY: all
-all: check binaries test integration-tests ## run check, build the binaries and run the tests
+all: check binaries test integration-tests swarmd-tests ## run check, build the binaries and run the tests
 
 .PHONY: ci
 ci: check binaries checkprotos coverage coverage-integration ## to be used by the CI
@@ -87,28 +90,37 @@ integration-tests: ## run integration tests
 	@echo "🐳 $@"
 	@go test -parallel 8 ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" ${INTEGRATION_PACKAGE}
 
+.PHONY: swarmd-tests
+swarmd-tests: ## run swarmd tests
+	@echo "🐳 $@"
+	@cd swarmd && go test -parallel 8 ${GO_TESTFLAGS} -tags "${DOCKER_BUILDTAGS}" ./...
+
 # Build a binary from a cmd.
 bin/%: cmd/% .FORCE
 	@echo "🐳 $@"
 	@go build -tags "${DOCKER_BUILDTAGS}" -o $@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ./$<
 
+swarmd/bin/%: swarmd/cmd/% .FORCE
+	@echo "🐳 $@"
+	@cd swarmd && go build -tags "${DOCKER_BUILDTAGS}" -o ../$@ ${GO_LDFLAGS}  ${GO_GCFLAGS} ../$<
+
 .PHONY: .FORCE
 .FORCE:
 
 .PHONY: binaries
-binaries: $(BINARIES) ## build binaries
+binaries: $(BINARIES) $(SWARMD_BINARIES) ## build binaries
 	@echo "🐳 $@"
 
 .PHONY: clean
 clean: ## clean up binaries
 	@echo "🐳 $@"
-	@rm -f $(BINARIES)
+	@rm -f $(BINARIES) $(SWARMD_BINARIES)
 
 .PHONY: install
-install: $(BINARIES) ## install binaries
+install: $(BINARIES) $(SWARMD_BINARIES) ## install binaries
 	@echo "🐳 $@"
 	@mkdir -p $(DESTDIR)/bin
-	@install $(BINARIES) $(DESTDIR)/bin
+	@install $(BINARIES) $(SWARMD_BINARIES) $(DESTDIR)/bin
 
 .PHONY: uninstall
 uninstall:

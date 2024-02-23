@@ -105,7 +105,7 @@ RUN apt-get install -y --no-install-recommends libgcc-10-dev libc6-dev
 RUN --mount=type=bind,target=. \
     --mount=type=cache,target=/root/.cache \
     --mount=from=golangci-lint,source=/usr/bin/golangci-lint,target=/usr/bin/golangci-lint \
-    golangci-lint run ./...
+    golangci-lint run ./... && cd swarmd && golangci-lint run ./...
 
 FROM gobase AS fmt-proto
 RUN --mount=type=bind,target=. \

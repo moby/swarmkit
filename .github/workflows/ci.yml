@@ -41,6 +41,7 @@ jobs:
         target:
           - coverage
           - coverage-integration
+          - swarmd-tests
     steps:
       -
         name: Checkout
@@ -62,6 +63,7 @@ jobs:
         run: |
           make IMAGE_NAME=$IMAGE_NAME ${{ matrix.target }}
       -
+        if: ${{ startsWith(matrix.target, 'coverage') }}
         name: Send to Codecov
         uses: codecov/codecov-action@v3
         with:
