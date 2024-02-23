@@ -6,10 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net"
-	"net/http"
-	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
@@ -18,8 +15,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/docker/docker/pkg/plugingetter"
-	"github.com/docker/docker/pkg/plugins"
 	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
@@ -27,6 +22,7 @@ import (
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/manager/drivers"
 	"github.com/moby/swarmkit/v2/manager/state/store"
+	"github.com/moby/swarmkit/v2/node/plugin"
 	"github.com/moby/swarmkit/v2/testutils"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
@@ -52,7 +48,6 @@ func (gd *grpcDispatcher) Close() {
 	}
 	gd.dispatcherServer.Stop()
 	gd.grpcServer.Stop()
-	gd.PluginGetter.Close()
 	gd.testCA.Stop()
 }
 
@@ -423,12 +418,9 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 		errSecretName:                {Err: "Error from driver"},
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc(drivers.SecretsProviderAPI, func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		body, err := io.ReadAll(r.Body)
+	var mux MockPluginClient
+	mux.HandleFunc(drivers.SecretsProviderAPI, func(body []byte) (interface{}, error) {
 		var request drivers.SecretsProviderRequest
-		assert.NoError(t, err)
 		assert.NoError(t, json.Unmarshal(body, &request))
 		response := responses[request.SecretName]
 		assert.Equal(t, serviceName, request.ServiceName)
@@ -438,14 +430,12 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 		assert.EqualValues(t, portConfig, request.ServiceEndpointSpec.Ports[0])
 		assert.EqualValues(t, serviceLabels, request.ServiceLabels)
 		assert.NotNil(t, response)
-		resp, err := json.Marshal(response)
-		assert.NoError(t, err)
-		w.Write(resp)
+		return response, nil
 	})
 
 	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
-	assert.NoError(t, gd.PluginGetter.SetupPlugin(secretDriver, mux))
+	assert.NoError(t, gd.PluginGetter.SetupPlugin(secretDriver, &mux))
 
 	expectedSessionID, nodeID := getSessionAndNodeID(t, gd.Clients[0])
 
@@ -2333,59 +2323,41 @@ func TestClusterUpdatesSendMessages(t *testing.T) {
 
 // mockPluginGetter enables mocking the server plugin getter with customized plugins
 type mockPluginGetter struct {
-	addr   string
-	server *httptest.Server
 	name   string
-	plugin plugingetter.CompatPlugin
+	plugin plugin.Plugin
 }
 
+var _ plugin.Getter = &mockPluginGetter{}
+
 // SetupPlugin setup a new plugin - the same plugin wil always return in all calls
-func (m *mockPluginGetter) SetupPlugin(name string, handler http.Handler) error {
-	m.server = httptest.NewServer(handler)
-	client, err := plugins.NewClient(m.server.URL, nil)
-	if err != nil {
-		return err
-	}
+func (m *mockPluginGetter) SetupPlugin(name string, client plugin.Client) error {
 	m.plugin = NewMockPlugin(m.name, client)
 	m.name = name
 	return nil
 }
 
-// Close closes the mock plugin getter
-func (m *mockPluginGetter) Close() {
-	if m.server == nil {
-		return
-	}
-	m.server.Close()
-}
-
-func (m *mockPluginGetter) Get(name, capability string, mode int) (plugingetter.CompatPlugin, error) {
+func (m *mockPluginGetter) Get(name, capability string) (plugin.Plugin, error) {
 	if name != m.name {
 		return nil, fmt.Errorf("plugin with name %s not defined", name)
 	}
 	return m.plugin, nil
 }
-func (m *mockPluginGetter) GetAllByCap(capability string) ([]plugingetter.CompatPlugin, error) {
-	return nil, nil
-}
-func (m *mockPluginGetter) GetAllManagedPluginsByCap(capability string) []plugingetter.CompatPlugin {
+func (m *mockPluginGetter) GetAllManagedPluginsByCap(capability string) []plugin.Plugin {
 	return nil
-}
-func (m *mockPluginGetter) Handle(capability string, callback func(string, *plugins.Client)) {
 }
 
 // MockPlugin mocks a v2 docker plugin
 type MockPlugin struct {
-	client *plugins.Client
+	client plugin.Client
 	name   string
 }
 
 // NewMockPlugin creates a new v2 plugin fake (returns the specified client and name for all calls)
-func NewMockPlugin(name string, client *plugins.Client) *MockPlugin {
+func NewMockPlugin(name string, client plugin.Client) *MockPlugin {
 	return &MockPlugin{name: name, client: client}
 }
 
-func (m *MockPlugin) Client() *plugins.Client {
+func (m *MockPlugin) Client() plugin.Client {
 	return m.client
 }
 func (m *MockPlugin) Name() string {
@@ -2394,10 +2366,39 @@ func (m *MockPlugin) Name() string {
 func (m *MockPlugin) ScopedPath(_ string) string {
 	return ""
 }
-func (m *MockPlugin) BasePath() string {
-	return ""
 
+type MockPluginHandlerFn func(argsJSON []byte) (interface{}, error)
+
+type MockPluginClient struct {
+	handlers map[string]MockPluginHandlerFn
 }
-func (m *MockPlugin) IsV1() bool {
-	return false
+
+func (mc *MockPluginClient) HandleFunc(method string, fn MockPluginHandlerFn) {
+	if mc.handlers == nil {
+		mc.handlers = make(map[string]MockPluginHandlerFn)
+	}
+	if _, ok := mc.handlers[method]; ok {
+		panic(fmt.Sprintf("handler for %s already exists", method))
+	}
+	mc.handlers[method] = fn
+}
+
+func (mc *MockPluginClient) Call(method string, args, ret interface{}) error {
+	fn, ok := mc.handlers[method]
+	if !ok {
+		return fmt.Errorf("no handler for %s", method)
+	}
+	jsonArgs, err := json.Marshal(args)
+	if err != nil {
+		return err
+	}
+	res, err := fn(jsonArgs)
+	if err != nil {
+		return err
+	}
+	jsonRes, err := json.Marshal(res)
+	if err != nil {
+		return fmt.Errorf("error marshalling response: %v", err)
+	}
+	return json.Unmarshal(jsonRes, ret)
 }

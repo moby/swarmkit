@@ -18,7 +18,7 @@ var _ = Describe("Manager", func() {
 
 	BeforeEach(func() {
 		pg = &testutils.FakePluginGetter{
-			Plugins: map[string]*testutils.FakeCompatPlugin{},
+			Plugins: map[string]*testutils.FakePlugin{},
 		}
 
 		pm = &pluginManager{
@@ -27,21 +27,21 @@ var _ = Describe("Manager", func() {
 			pg:                pg,
 		}
 
-		pg.Plugins["plug1"] = &testutils.FakeCompatPlugin{
+		pg.Plugins["plug1"] = &testutils.FakePlugin{
 			PluginName: "plug1",
 			PluginAddr: &net.UnixAddr{
 				Net:  "unix",
 				Name: "",
 			},
 		}
-		pg.Plugins["plug2"] = &testutils.FakeCompatPlugin{
+		pg.Plugins["plug2"] = &testutils.FakePlugin{
 			PluginName: "plug2",
 			PluginAddr: &net.UnixAddr{
 				Net:  "unix",
 				Name: "fail",
 			},
 		}
-		pg.Plugins["plug3"] = &testutils.FakeCompatPlugin{
+		pg.Plugins["plug3"] = &testutils.FakePlugin{
 			PluginName: "plug3",
 			PluginAddr: &net.UnixAddr{
 				Net:  "unix",

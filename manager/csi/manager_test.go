@@ -63,7 +63,7 @@ var _ = Describe("Manager", func() {
 			plugins: map[string]*fakePlugin{},
 		}
 		pluginGetter = &testutils.FakePluginGetter{
-			Plugins: map[string]*testutils.FakeCompatPlugin{},
+			Plugins: map[string]*testutils.FakePlugin{},
 		}
 
 		s = store.NewMemoryStore(nil)
@@ -108,14 +108,14 @@ var _ = Describe("Manager", func() {
 
 	When("starting up", func() {
 		BeforeEach(func() {
-			pluginGetter.Plugins["newPlugin"] = &testutils.FakeCompatPlugin{
+			pluginGetter.Plugins["newPlugin"] = &testutils.FakePlugin{
 				PluginName: "newPlugin",
 				PluginAddr: &net.UnixAddr{
 					Net:  "unix",
 					Name: "unix:///whatever.sock",
 				},
 			}
-			pluginGetter.Plugins["differentPlugin"] = &testutils.FakeCompatPlugin{
+			pluginGetter.Plugins["differentPlugin"] = &testutils.FakePlugin{
 				PluginName: "differentPlugin",
 				PluginAddr: &net.UnixAddr{
 					Net:  "unix",
@@ -233,14 +233,14 @@ var _ = Describe("Manager", func() {
 
 	When("a volume is created", func() {
 		BeforeEach(func() {
-			pluginGetter.Plugins["somePlugin"] = &testutils.FakeCompatPlugin{
+			pluginGetter.Plugins["somePlugin"] = &testutils.FakePlugin{
 				PluginName: "somePlugin",
 				PluginAddr: &net.UnixAddr{
 					Net:  "unix",
 					Name: "unix:///whatever.sock",
 				},
 			}
-			pluginGetter.Plugins["someOtherPlugin"] = &testutils.FakeCompatPlugin{
+			pluginGetter.Plugins["someOtherPlugin"] = &testutils.FakePlugin{
 				PluginName: "someOtherPlugin",
 				PluginAddr: &net.UnixAddr{
 					Net:  "unix",
@@ -297,14 +297,14 @@ var _ = Describe("Manager", func() {
 
 	Describe("managing node inventory", func() {
 		BeforeEach(func() {
-			pluginGetter.Plugins["newPlugin"] = &testutils.FakeCompatPlugin{
+			pluginGetter.Plugins["newPlugin"] = &testutils.FakePlugin{
 				PluginName: "newPlugin",
 				PluginAddr: &net.UnixAddr{
 					Net:  "unix",
 					Name: "unix:///whatever.sock",
 				},
 			}
-			pluginGetter.Plugins["differentPlugin"] = &testutils.FakeCompatPlugin{
+			pluginGetter.Plugins["differentPlugin"] = &testutils.FakePlugin{
 				PluginName: "differentPlugin",
 				PluginAddr: &net.UnixAddr{
 					Net:  "unix",
@@ -469,7 +469,7 @@ var _ = Describe("Manager", func() {
 			v1 *api.Volume
 		)
 		BeforeEach(func() {
-			pluginGetter.Plugins["plug1"] = &testutils.FakeCompatPlugin{
+			pluginGetter.Plugins["plug1"] = &testutils.FakePlugin{
 				PluginName: "plug1",
 				PluginAddr: &net.UnixAddr{
 					Net:  "unix",
@@ -666,7 +666,7 @@ var _ = Describe("Manager", func() {
 
 	Describe("removing a Volume", func() {
 		BeforeEach(func() {
-			pluginGetter.Plugins["plug"] = &testutils.FakeCompatPlugin{
+			pluginGetter.Plugins["plug"] = &testutils.FakePlugin{
 				PluginName: "plug",
 				PluginAddr: &net.UnixAddr{
 					Net:  "unix",

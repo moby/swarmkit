@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/docker/docker/pkg/plugingetter"
-
 	"github.com/moby/swarmkit/v2/api"
+	mobyplugin "github.com/moby/swarmkit/v2/node/plugin"
 )
 
 // plugin_fake_test.go contains code for faking node plugins in the context of
@@ -20,7 +19,7 @@ type fakeNodePlugin struct {
 
 // newFakeNodePlugin has the same signature as NewNodePlugin, allowing it to be
 // substituted in testing.
-func newFakeNodePlugin(name string, pc plugingetter.CompatPlugin, pa plugingetter.PluginAddr, secrets SecretGetter) NodePlugin {
+func newFakeNodePlugin(name string, pa mobyplugin.AddrPlugin, secrets SecretGetter) NodePlugin {
 	return &fakeNodePlugin{
 		name:   name,
 		socket: pa.Addr().String(),

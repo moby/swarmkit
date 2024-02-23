@@ -15,11 +15,11 @@ import (
 )
 
 func newVolumeClient(name string, nodeID string) *nodePlugin {
-	p := &testutils.FakeCompatPlugin{
+	p := &testutils.FakePlugin{
 		PluginName: name,
 		PluginAddr: &net.UnixAddr{},
 	}
-	n := newNodePlugin(name, p, p, nil)
+	n := newNodePlugin(name, p, nil)
 	n.staging = true
 
 	fakeNodeClient := newFakeNodeClient(true, nodeID)

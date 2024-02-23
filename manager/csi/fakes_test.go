@@ -10,8 +10,8 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"google.golang.org/grpc"
 
-	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/moby/swarmkit/v2/api"
+	mobyplugin "github.com/moby/swarmkit/v2/node/plugin"
 )
 
 const (
@@ -203,11 +203,11 @@ type fakePluginMaker struct {
 	plugins map[string]*fakePlugin
 }
 
-func (fpm *fakePluginMaker) newFakePlugin(pc plugingetter.CompatPlugin, pa plugingetter.PluginAddr, provider SecretProvider) Plugin {
+func (fpm *fakePluginMaker) newFakePlugin(pa mobyplugin.AddrPlugin, provider SecretProvider) Plugin {
 	fpm.Lock()
 	defer fpm.Unlock()
 	p := &fakePlugin{
-		name:               pc.Name(),
+		name:               pa.Name(),
 		socket:             pa.Addr().String(),
 		swarmToCSI:         map[string]string{},
 		volumesCreated:     map[string]*api.Volume{},
@@ -216,7 +216,7 @@ func (fpm *fakePluginMaker) newFakePlugin(pc plugingetter.CompatPlugin, pa plugi
 		volumesUnpublished: map[string][]string{},
 		removedIDs:         map[string]struct{}{},
 	}
-	fpm.plugins[pc.Name()] = p
+	fpm.plugins[pa.Name()] = p
 	return p
 }
 

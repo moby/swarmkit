@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/go-events"
 	gmetrics "github.com/docker/go-metrics"
 	gogotypes "github.com/gogo/protobuf/types"
@@ -45,6 +44,7 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/raft/transport"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/manager/watchapi"
+	"github.com/moby/swarmkit/v2/node/plugin"
 	"github.com/moby/swarmkit/v2/remotes"
 	"github.com/moby/swarmkit/v2/xnet"
 	"github.com/pkg/errors"
@@ -123,7 +123,7 @@ type Config struct {
 	Availability api.NodeSpec_Availability
 
 	// PluginGetter provides access to docker's plugin inventory.
-	PluginGetter plugingetter.PluginGetter
+	PluginGetter plugin.Getter
 
 	// FIPS is a boolean stating whether the node is FIPS enabled - if this is the
 	// first node in the cluster, this setting is used to set the cluster-wide mandatory
