@@ -5793,6 +5793,13 @@ file {
       type_name: ".docker.swarmkit.v1.ContainerSpec.Ulimit"
       json_name: "ulimits"
     }
+    field {
+      name: "privileged"
+      number: 30
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      json_name: "privileged"
+    }
     nested_type {
       name: "LabelsEntry"
       field {

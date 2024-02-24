@@ -76,5 +76,13 @@ func parseContainer(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		}
 	}
 
+	if flags.Changed("privileged") {
+		privileged, err := flags.GetBool("privileged")
+		if err != nil {
+			return err
+		}
+		spec.Task.GetContainer().Privileged = privileged
+	}
+
 	return nil
 }
