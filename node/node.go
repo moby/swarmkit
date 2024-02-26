@@ -15,7 +15,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/docker/pkg/plugingetter"
 	"github.com/docker/go-metrics"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/moby/swarmkit/v2/agent"
@@ -30,6 +29,7 @@ import (
 	"github.com/moby/swarmkit/v2/manager"
 	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 	"github.com/moby/swarmkit/v2/manager/encryption"
+	"github.com/moby/swarmkit/v2/node/plugin"
 	"github.com/moby/swarmkit/v2/remotes"
 	"github.com/moby/swarmkit/v2/xnet"
 	"github.com/pkg/errors"
@@ -134,7 +134,7 @@ type Config struct {
 	Availability api.NodeSpec_Availability
 
 	// PluginGetter provides access to docker's plugin inventory.
-	PluginGetter plugingetter.PluginGetter
+	PluginGetter plugin.Getter
 
 	// FIPS is a boolean stating whether the node is FIPS enabled
 	FIPS bool

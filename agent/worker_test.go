@@ -42,7 +42,7 @@ func TestWorkerAssign(t *testing.T) {
 	defer cleanup()
 
 	pg := &testutils.FakePluginGetter{
-		Plugins: map[string]*testutils.FakeCompatPlugin{
+		Plugins: map[string]*testutils.FakePlugin{
 			"plugin-1": {
 				PluginName: "plugin-1",
 				PluginAddr: &net.UnixAddr{},
@@ -268,7 +268,7 @@ func TestWorkerWait(t *testing.T) {
 	ctx := context.Background()
 
 	pg := &testutils.FakePluginGetter{
-		Plugins: map[string]*testutils.FakeCompatPlugin{
+		Plugins: map[string]*testutils.FakePlugin{
 			"plugin-1": {
 				PluginName: "plugin-1",
 				PluginAddr: &net.UnixAddr{},
@@ -416,7 +416,7 @@ func TestWorkerUpdate(t *testing.T) {
 	ctx := context.Background()
 
 	pg := &testutils.FakePluginGetter{
-		Plugins: map[string]*testutils.FakeCompatPlugin{
+		Plugins: map[string]*testutils.FakePlugin{
 			"plugin-1": {
 				PluginName: "plugin-1",
 				PluginAddr: &net.UnixAddr{},
