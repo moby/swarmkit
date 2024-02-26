@@ -372,18 +372,18 @@ func (ps *portSpace) allocate(p *api.PortConfig) (err error) {
 		// If it falls in the dynamic port range check out
 		// from dynamic port space first.
 		if p.PublishedPort >= dynamicPortStart && p.PublishedPort <= dynamicPortEnd {
-			if err = ps.dynamicPortSpace.GetSpecificID(uint64(p.PublishedPort)); err != nil {
+			if err = ps.dynamicPortSpace.GetSpecificID(uint(p.PublishedPort)); err != nil {
 				return err
 			}
 
 			defer func() {
 				if err != nil {
-					ps.dynamicPortSpace.Release(uint64(p.PublishedPort))
+					ps.dynamicPortSpace.Release(uint(p.PublishedPort))
 				}
 			}()
 		}
 
-		return ps.masterPortSpace.GetSpecificID(uint64(p.PublishedPort))
+		return ps.masterPortSpace.GetSpecificID(uint(p.PublishedPort))
 	}
 
 	// Check out an arbitrary port from dynamic port space.
@@ -408,8 +408,8 @@ func (ps *portSpace) allocate(p *api.PortConfig) (err error) {
 
 func (ps *portSpace) free(p *api.PortConfig) {
 	if p.PublishedPort >= dynamicPortStart && p.PublishedPort <= dynamicPortEnd {
-		ps.dynamicPortSpace.Release(uint64(p.PublishedPort))
+		ps.dynamicPortSpace.Release(uint(p.PublishedPort))
 	}
 
-	ps.masterPortSpace.Release(uint64(p.PublishedPort))
+	ps.masterPortSpace.Release(uint(p.PublishedPort))
 }

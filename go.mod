@@ -6,6 +6,7 @@ require (
 	code.cloudfoundry.org/clock v1.1.0
 	github.com/Microsoft/go-winio v0.6.1
 	github.com/akutz/memconn v0.1.0
+	github.com/bits-and-blooms/bitset v1.13.0
 	github.com/cloudflare/cfssl v1.6.4
 	github.com/container-storage-interface/spec v1.2.0
 	github.com/distribution/reference v0.5.0
