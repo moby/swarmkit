@@ -9,6 +9,7 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/cmd/swarmctl/common"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -31,7 +32,8 @@ var (
 			if err != nil {
 				return err
 			}
-			r, err := c.ListNetworks(common.Context(cmd), &api.ListNetworksRequest{})
+			r, err := c.ListNetworks(common.Context(cmd), &api.ListNetworksRequest{},
+				grpc.MaxCallRecvMsgSize(common.DefaultRecvSizeForListResponse))
 			if err != nil {
 				return err
 			}

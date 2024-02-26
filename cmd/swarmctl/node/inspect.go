@@ -78,6 +78,18 @@ func printNodeSummary(node *api.Node) {
 		}
 	}
 
+	fmt.Fprintln(w, "Node Attachment:\t")
+	printNetworkAttachment(w, node.Attachment)
+
+	fmt.Fprintln(w, "Network Attachments:\t")
+	if node.Attachments != nil && len(node.Attachments) > 0 {
+		for _, na := range node.Attachments {
+			printNetworkAttachment(w, na)
+		}
+	} else {
+		fmt.Fprintf(w, "  <NULL> \n")
+	}
+
 	if desc.Engine != nil {
 		fmt.Fprintln(w, "Plugins:\t")
 		var pluginTypes []string
@@ -164,6 +176,17 @@ var (
 		},
 	}
 )
+
+func printNetworkAttachment(w *tabwriter.Writer, na *api.NetworkAttachment) {
+	if na == nil {
+		fmt.Fprintf(w, "  <NULL> \n")
+		return
+	}
+	fmt.Fprintf(w, "  Network Name\t: %s\n", na.Network.Spec.Annotations.Name)
+	fmt.Fprintf(w, "    Network ID\t: %s\n", na.Network.ID)
+	fmt.Fprintf(w, "    Addresses\t: %s\n", na.Addresses)
+	fmt.Fprintf(w, "    Is Ingress?\t: %v\n", na.Network.Spec.Ingress)
+}
 
 func init() {
 	inspectCmd.Flags().BoolP("all", "a", false, "Show all tasks (default shows just running)")

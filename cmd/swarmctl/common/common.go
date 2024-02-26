@@ -3,6 +3,7 @@ package common
 import (
 	"context"
 	"crypto/tls"
+	"math"
 	"net"
 	"strings"
 	"time"
@@ -14,6 +15,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
+
+const DefaultRecvSizeForListResponse = math.MaxInt32
 
 // Dial establishes a connection and creates a client.
 // It infers connection parameters from CLI options.

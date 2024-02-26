@@ -30,6 +30,11 @@ var (
 				return err
 			}
 
+			ingress, err := flags.GetBool("ingress")
+			if err != nil {
+				return err
+			}
+
 			// Process driver configurations
 			var driver *api.Driver
 			if flags.Changed("driver") {
@@ -68,6 +73,7 @@ var (
 				},
 				DriverConfig: driver,
 				IPAM:         ipamOpts,
+				Ingress:      ingress,
 			}
 
 			c, err := common.Dial(cmd)
@@ -179,4 +185,5 @@ func init() {
 	createCmd.Flags().StringSlice("gateway", []string{}, "Gateway IP addresses for network segments")
 	createCmd.Flags().StringSlice("ip-range", []string{}, "IP ranges to allocate from within the subnets")
 	createCmd.Flags().StringSlice("opts", []string{}, "Network driver options")
+	createCmd.Flags().Bool("ingress", false, "Create ingress network")
 }
