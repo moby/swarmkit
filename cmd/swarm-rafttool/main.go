@@ -10,6 +10,8 @@ import (
 )
 
 var (
+	format string
+
 	mainCmd = &cobra.Command{
 		Use:   os.Args[0],
 		Short: "Tool to translate and decrypt the raft logs of a swarm manager",
@@ -45,6 +47,9 @@ var (
 	dumpWALCmd = &cobra.Command{
 		Use:   "dump-wal",
 		Short: "Display entries from the Raft log",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return validateFormatFlag(format)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			stateDir, err := cmd.Flags().GetString("state-dir")
 			if err != nil {
@@ -78,6 +83,9 @@ var (
 	dumpSnapshotCmd = &cobra.Command{
 		Use:   "dump-snapshot",
 		Short: "Display entries from the latest Raft snapshot",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return validateFormatFlag(format)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			stateDir, err := cmd.Flags().GetString("state-dir")
 			if err != nil {
@@ -101,6 +109,9 @@ var (
 	dumpObjectCmd = &cobra.Command{
 		Use:   "dump-object [type]",
 		Short: "Display an object from the Raft snapshot/WAL",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return validateFormatFlag(format)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 1 {
 				return errors.New("dump-object subcommand takes exactly 1 argument")
@@ -177,6 +188,15 @@ var (
 	}
 )
 
+func validateFormatFlag(format string) error {
+	switch format {
+	case "text", "json":
+		return nil
+	default:
+		return fmt.Errorf("invalid 'format' %s", format)
+	}
+}
+
 func init() {
 	mainCmd.PersistentFlags().StringP("state-dir", "d", defaults.StateDir, "State directory")
 	mainCmd.PersistentFlags().String("unlock-key", "", "Unlock key, if raft logs are encrypted")
@@ -191,13 +211,16 @@ func init() {
 	)
 
 	dumpSnapshotCmd.Flags().Bool("redact", false, "Redact the values of secrets, configs, and environment variables")
+	dumpSnapshotCmd.Flags().StringVar(&format, "format", "text", `Output format (text|json)`)
 
 	dumpWALCmd.Flags().Uint64("start", 0, "Start of index range to dump")
 	dumpWALCmd.Flags().Uint64("end", 0, "End of index range to dump")
 	dumpWALCmd.Flags().Bool("redact", false, "Redact the values of secrets, configs, and environment variables")
+	dumpWALCmd.Flags().StringVar(&format, "format", "text", `Output format (text|json)`)
 
 	dumpObjectCmd.Flags().String("id", "", "Look up object by ID")
 	dumpObjectCmd.Flags().String("name", "", "Look up object by name")
+	dumpObjectCmd.Flags().StringVar(&format, "format", "text", `Output format (text|json)`)
 }
 
 func main() {

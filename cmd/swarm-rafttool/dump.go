@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -83,19 +86,52 @@ func dumpWAL(swarmdir, unlockKey string, start, end uint64, redact bool) error {
 		return err
 	}
 
-	for _, ent := range walData.Entries {
+	prefix := ""
+	if format == "json" && len(walData.Entries) > 1 {
+		fmt.Println("[")
+		fmt.Print("    ")
+		prefix = "    "
+	}
+	for idx, ent := range walData.Entries {
 		if (start == 0 || ent.Index >= start) && (end == 0 || ent.Index <= end) {
-			fmt.Printf("Entry Index=%d, Term=%d, Type=%s:\n", ent.Index, ent.Term, ent.Type.String())
+			if format == "text" {
+				fmt.Printf("Entry Index=%d, Term=%d, Type=%s:\n", ent.Index, ent.Term, ent.Type.String())
+			}
 			switch ent.Type {
 			case raftpb.EntryConfChange:
+
 				cc := &raftpb.ConfChange{}
 				err := proto.Unmarshal(ent.Data, cc)
 				if err != nil {
 					return err
 				}
-
-				fmt.Println("Conf change type:", cc.Type.String())
-				fmt.Printf("Node ID: %x\n\n", cc.NodeID)
+				switch format {
+				case "text":
+					fmt.Println("Conf change type:", cc.Type.String())
+					fmt.Printf("Node ID: %x\n\n", cc.NodeID)
+					fmt.Println()
+				case "json":
+					bytesBuffer := new(bytes.Buffer)
+					b, err := json.MarshalIndent(struct {
+						Term  uint64
+						Index uint64
+						Type  raftpb.EntryType
+						Data  *raftpb.ConfChange
+					}{
+						Term:  ent.Term,
+						Index: ent.Index,
+						Type:  ent.Type,
+						Data:  cc,
+					}, prefix, "    ")
+					if err != nil {
+						return err
+					}
+					bytesBuffer.Write(b)
+					if idx < len(walData.Entries)-1 {
+						bytesBuffer.WriteString(",\n    ")
+					}
+					io.Copy(os.Stdout, bytesBuffer)
+				}
 
 			case raftpb.EntryNormal:
 				r := &api.InternalRaftRequest{}
@@ -136,12 +172,40 @@ func dumpWAL(swarmdir, unlockKey string, start, end uint64, redact bool) error {
 					}
 				}
 
-				if err := proto.MarshalText(os.Stdout, r); err != nil {
-					return err
+				switch format {
+				case "text":
+					if err := proto.MarshalText(os.Stdout, r); err != nil {
+						return err
+					}
+					fmt.Println()
+				case "json":
+					bytesBuffer := new(bytes.Buffer)
+					b, err := json.MarshalIndent(struct {
+						Term  uint64
+						Index uint64
+						Type  raftpb.EntryType
+						Data  *api.InternalRaftRequest
+					}{
+						Term:  ent.Term,
+						Index: ent.Index,
+						Type:  ent.Type,
+						Data:  r,
+					}, prefix, "    ")
+					if err != nil {
+						return err
+					}
+					bytesBuffer.Write(b)
+					if idx < len(walData.Entries)-1 {
+						bytesBuffer.WriteString(",\n    ")
+					}
+					io.Copy(os.Stdout, bytesBuffer)
 				}
-				fmt.Println()
 			}
 		}
+	}
+	if format == "json" && len(walData.Entries) > 1 {
+		fmt.Println()
+		fmt.Println("]")
 	}
 
 	return nil
@@ -164,18 +228,6 @@ func dumpSnapshot(swarmdir, unlockKey string, redact bool) error {
 	if s.Version != api.Snapshot_V0 {
 		return fmt.Errorf("unrecognized snapshot version %d", s.Version)
 	}
-
-	fmt.Println("Active members:")
-	for _, member := range s.Membership.Members {
-		fmt.Printf(" NodeID=%s, RaftID=%x, Addr=%s\n", member.NodeID, member.RaftID, member.Addr)
-	}
-	fmt.Println()
-
-	fmt.Println("Removed members:")
-	for _, member := range s.Membership.Removed {
-		fmt.Printf(" RaftID=%x\n", member)
-	}
-	fmt.Println()
 
 	if redact {
 		for _, cluster := range s.Store.Clusters {
@@ -219,11 +271,32 @@ func dumpSnapshot(swarmdir, unlockKey string, redact bool) error {
 		}
 	}
 
-	fmt.Println("Objects:")
-	if err := proto.MarshalText(os.Stdout, &s.Store); err != nil {
-		return err
+	switch format {
+	case "text":
+		fmt.Println("Active members:")
+		for _, member := range s.Membership.Members {
+			fmt.Printf(" NodeID=%s, RaftID=%x, Addr=%s\n", member.NodeID, member.RaftID, member.Addr)
+		}
+		fmt.Println()
+
+		fmt.Println("Removed members:")
+		for _, member := range s.Membership.Removed {
+			fmt.Printf(" RaftID=%x\n", member)
+		}
+		fmt.Println()
+
+		fmt.Println("Objects:")
+		if err := proto.MarshalText(os.Stdout, &s.Store); err != nil {
+			return err
+		}
+		fmt.Println()
+	case "json":
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "    ")
+		if err := enc.Encode(&s); err != nil {
+			return err
+		}
 	}
-	fmt.Println()
 
 	return nil
 }
@@ -452,11 +525,35 @@ func dumpObject(swarmdir, unlockKey, objType string, selector objSelector) error
 		return fmt.Errorf("no matching objects found")
 	}
 
-	for _, object := range objects {
-		if err := proto.MarshalText(os.Stdout, object); err != nil {
-			return err
+	prefix := ""
+	if format == "json" && len(objects) > 1 {
+		fmt.Println("[")
+		fmt.Print("    ")
+		prefix = "    "
+	}
+	for idx, object := range objects {
+		switch format {
+		case "text":
+			if err := proto.MarshalText(os.Stdout, object); err != nil {
+				return err
+			}
+			fmt.Println()
+		case "json":
+			bytesBuffer := new(bytes.Buffer)
+			b, err := json.MarshalIndent(object, prefix, "    ")
+			if err != nil {
+				return err
+			}
+			bytesBuffer.Write(b)
+			if idx < len(objects)-1 {
+				bytesBuffer.WriteString(",\n    ")
+			}
+			io.Copy(os.Stdout, bytesBuffer)
 		}
+	}
+	if format == "json" && len(objects) > 1 {
 		fmt.Println()
+		fmt.Println("]")
 	}
 
 	return nil
