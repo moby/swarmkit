@@ -1003,28 +1003,25 @@ func (a *Allocator) allocateNode(ctx context.Context, node *api.Node, existingAd
 			}
 		}
 
-		if lbAttachment != nil {
-			if nc.nwkAllocator.IsAttachmentAllocated(node, lbAttachment) {
-				continue
-			}
+		if existingAddressesOnly && (lbAttachment == nil || len(lbAttachment.Addresses) == 0) {
+			// we're restoring state, don't allocate new (or empty) attachments
+			continue
+		}
+
+		if nc.nwkAllocator.IsAttachmentAllocated(node, lbAttachment) {
+			// already allocated; we're done
+			continue
 		}
 
 		if lbAttachment == nil {
-			// if we're restoring state, we should not add an attachment here.
-			if existingAddressesOnly {
-				continue
-			}
+			// network was not yet allocated to the node, so create a new attachment
 			lbAttachment = &api.NetworkAttachment{}
 			node.Attachments = append(node.Attachments, lbAttachment)
 		}
 
-		if existingAddressesOnly && len(lbAttachment.Addresses) == 0 {
-			continue
-		}
-
 		lbAttachment.Network = network.Copy()
 		if err := a.netCtx.nwkAllocator.AllocateAttachment(node, lbAttachment); err != nil {
-			log.G(ctx).WithError(err).Errorf("Failed to allocate network resources for node %s", node.ID)
+			log.G(ctx).WithError(err).WithField("network.id", lbAttachment.Network.ID).Errorf("failed to allocate network resources for node %s", node.ID)
 			// TODO: Should we add a unallocatedNode and retry allocating resources like we do for network, tasks, services?
 			// right now, we will only retry allocating network resources for the node when the node is updated.
 			continue
@@ -1048,28 +1045,25 @@ func (a *Allocator) allocateNode(ctx context.Context, node *api.Node, existingAd
 	// wiki on github:
 	// https://github.com/golang/go/wiki/SliceTricks#filtering-without-allocating
 	attachments := node.Attachments[:0]
-	for _, attach := range node.Attachments {
-		if _, ok := nwIDs[attach.Network.ID]; ok {
+	for _, na := range node.Attachments {
+		if _, ok := nwIDs[na.Network.ID]; ok {
 			// attachment belongs to one of the networks, so keep it
-			attachments = append(attachments, attach)
-		} else {
-			// free the attachment and remove it from the node's attachments by
-			// re-slicing
-			if err := a.netCtx.nwkAllocator.DeallocateAttachment(node, attach); err != nil {
-				// if deallocation fails, there's nothing we can do besides log
-				// an error and keep going
-				log.G(ctx).WithError(err).Errorf(
-					"error deallocating attachment for network %v on node %v",
-					attach.Network.ID, node.ID,
-				)
-			}
-			// strictly speaking, nothing was allocated, but something was
-			// deallocated and that counts.
-			allocated = true
-			// also, set the somethingWasDeallocated flag so the allocator
-			// knows that it can now try again.
-			a.netCtx.somethingWasDeallocated = true
+			attachments = append(attachments, na)
+			continue
 		}
+
+		if err := a.netCtx.nwkAllocator.DeallocateAttachment(node, na); err != nil {
+			// failed to deallocate; there's nothing we can do besides log an error and keep going
+			log.G(ctx).WithError(err).WithField("network.id", na.Network.ID).Errorf("failed to deallocate network resources on node %s", node.ID)
+		}
+
+		// strictly speaking, nothing was allocated, but something was
+		// deallocated and that counts.
+		allocated = true
+
+		// also, set the somethingWasDeallocated flag so the allocator
+		// knows that it can now try again.
+		a.netCtx.somethingWasDeallocated = true
 	}
 	node.Attachments = attachments
 
