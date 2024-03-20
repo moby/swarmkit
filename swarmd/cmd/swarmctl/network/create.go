@@ -6,8 +6,8 @@ import (
 	"net"
 	"strings"
 
+	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/moby/swarmkit/v2/swarmd/cmd/swarmctl/common"
 	"github.com/spf13/cobra"
 )
 
