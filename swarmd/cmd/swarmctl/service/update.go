@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
+	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/service/flagparser"
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/moby/swarmkit/v2/swarmd/cmd/swarmctl/common"
-	"github.com/moby/swarmkit/v2/swarmd/cmd/swarmctl/service/flagparser"
 	"github.com/spf13/cobra"
 )
 

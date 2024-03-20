@@ -1,4 +1,4 @@
-module github.com/moby/swarmkit/v2/swarmd
+module github.com/moby/swarmkit/swarmd
 
 go 1.18
 
