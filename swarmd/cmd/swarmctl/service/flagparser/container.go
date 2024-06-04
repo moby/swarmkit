@@ -76,5 +76,15 @@ func parseContainer(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		}
 	}
 
+	if flags.Changed("oom-score-adj") {
+
+		oomScoreAdj, err := flags.GetInt64("oom-score-adj")
+		if err != nil {
+			return err
+		}
+
+		spec.Task.GetContainer().OomScoreAdj = oomScoreAdj
+	}
+
 	return nil
 }

@@ -5803,6 +5803,13 @@ file {
       type_name: ".docker.swarmkit.v1.ContainerSpec.Ulimit"
       json_name: "ulimits"
     }
+    field {
+      name: "oom_score_adj"
+      number: 30
+      label: LABEL_OPTIONAL
+      type: TYPE_INT64
+      json_name: "oomScoreAdj"
+    }
     nested_type {
       name: "LabelsEntry"
       field {
@@ -11689,6 +11696,21 @@ file {
     }
   }
   weak_dependency: 2
+  syntax: "proto3"
+}
+file {
+  name: "github.com/docker/swarmkit/api/test.proto"
+  package: "docker.swarmkit.v1"
+  message_type {
+    name: "TestService"
+    field {
+      name: "TestService"
+      number: 1
+      label: LABEL_OPTIONAL
+      type: TYPE_UINT64
+      json_name: "TestService"
+    }
+  }
   syntax: "proto3"
 }
 file {

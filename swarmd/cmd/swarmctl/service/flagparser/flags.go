@@ -50,6 +50,7 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.String("restart-delay", "5s", "delay between task restarts")
 	flags.Uint64("restart-max-attempts", 0, "maximum number of restart attempts (0 = unlimited)")
 	flags.String("restart-window", "0s", "time window to evaluate restart attempts (0 = unbound)")
+	flags.Int64("oom-score-adj", 0, "oom score adjustment (-1000 to 1000)")
 
 	flags.StringSlice("constraint", nil, "Placement constraint (e.g. node.labels.key==value)")
 
