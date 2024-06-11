@@ -11699,21 +11699,6 @@ file {
   syntax: "proto3"
 }
 file {
-  name: "github.com/docker/swarmkit/api/test.proto"
-  package: "docker.swarmkit.v1"
-  message_type {
-    name: "TestService"
-    field {
-      name: "TestService"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_UINT64
-      json_name: "TestService"
-    }
-  }
-  syntax: "proto3"
-}
-file {
   name: "github.com/docker/swarmkit/api/watch.proto"
   package: "docker.swarmkit.v1"
   dependency: "github.com/docker/swarmkit/api/specs.proto"

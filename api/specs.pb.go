@@ -874,8 +874,10 @@ type ContainerSpec struct {
 	CapabilityDrop []string `protobuf:"bytes,28,rep,name=capability_drop,json=capabilityDrop,proto3" json:"capability_drop,omitempty"`
 	// Ulimits defines the list of ulimits to set in the container. This option
 	// is equivalent to passing --ulimit to docker run.
-	Ulimits     []*ContainerSpec_Ulimit `protobuf:"bytes,29,rep,name=ulimits,proto3" json:"ulimits,omitempty"`
-	OomScoreAdj int64                   `protobuf:"varint,30,opt,name=oom_score_adj,json=oomScoreAdj,proto3" json:"oom_score_adj,omitempty"`
+	Ulimits []*ContainerSpec_Ulimit `protobuf:"bytes,29,rep,name=ulimits,proto3" json:"ulimits,omitempty"`
+	// OOmScoreAdj defines the relative value used for destroying a container during an OOM
+	// Values are between -1000 and 1000
+	OomScoreAdj int64 `protobuf:"varint,30,opt,name=oom_score_adj,json=oomScoreAdj,proto3" json:"oom_score_adj,omitempty"`
 }
 
 func (m *ContainerSpec) Reset()      { *m = ContainerSpec{} }

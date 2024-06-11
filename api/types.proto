@@ -80,7 +80,6 @@ message ResourceRequirements {
 	Resources limits = 1;
 	Resources reservations = 2;
 
-
 	// Amount of swap in bytes - can only be used together with a memory limit
 	// -1 means unlimited
 	// a null pointer indicates that the default behaviour of granting twice
