@@ -305,6 +305,14 @@ func (f *PlatformFilter) platformEqual(imgPlatform, nodePlatform api.Platform) b
 		nodePlatform.Architecture = "arm64"
 	}
 
+	// normalize "loongarch64" architectures to "loong64"
+	if imgPlatform.Architecture == "loongarch64" {
+	  imgPlatform.Architecture = "loong64"
+	}
+	if nodePlatform.Architecture == "loongarch64" {
+	  nodePlatform.Architecture = "loong64"
+	}
+
 	if (imgPlatform.Architecture == "" || imgPlatform.Architecture == nodePlatform.Architecture) && (imgPlatform.OS == "" || imgPlatform.OS == nodePlatform.OS) {
 		return true
 	}
