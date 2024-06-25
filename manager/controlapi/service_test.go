@@ -1493,9 +1493,17 @@ func TestListServiceStatuses(t *testing.T) {
 	)
 
 	// now test that listing service statuses actually works.
+	// Create a node to test output for down status
+	createNode(t, ts, "NODE0", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_DOWN)
+	// create a node for all other services
+	createNode(t, ts, "NODE1", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_READY)
+
+	// nodeDown will have a task "running" on a node with status down
+	nodeDown := createService(t, ts, "nodeDown", "image", 1)
 
 	// justRight will be converged
 	justRight := createService(t, ts, "justRight", "image", 3)
+
 	// notEnough will not have enough tasks in running
 	notEnough := createService(t, ts, "notEnough", "image", 7)
 
@@ -1565,7 +1573,7 @@ func TestListServiceStatuses(t *testing.T) {
 	globalJob := svcResp.Service
 
 	// now create some tasks. use a quick helper function for this
-	createTask := func(s *api.Service, actual api.TaskState, desired api.TaskState, opts ...func(*api.Service, *api.Task)) *api.Task {
+	createTask := func(s *api.Service, actual api.TaskState, desired api.TaskState, nodeID string, opts ...func(*api.Service, *api.Task)) *api.Task {
 		task := &api.Task{
 			ID:           identity.NewID(),
 			DesiredState: desired,
@@ -1574,6 +1582,7 @@ func TestListServiceStatuses(t *testing.T) {
 				State: actual,
 			},
 			ServiceID: s.ID,
+			NodeID:    nodeID,
 		}
 
 		for _, opt := range opts {
@@ -1601,67 +1610,70 @@ func TestListServiceStatuses(t *testing.T) {
 
 	// create 3 running tasks for justRight
 	for i := 0; i < 3; i++ {
-		createTask(justRight, running, running)
+		createTask(justRight, running, running, "NODE1")
 	}
 	// create 2 failed and 2 shutdown tasks
 	for i := 0; i < 2; i++ {
-		createTask(justRight, failed, shutdown)
-		createTask(justRight, shutdown, shutdown)
+		createTask(justRight, failed, shutdown, "NODE1")
+		createTask(justRight, shutdown, shutdown, "NODE1")
 	}
 
 	// create 4 tasks for notEnough
 	for i := 0; i < 4; i++ {
-		createTask(notEnough, running, running)
+		createTask(notEnough, running, running, "NODE1")
 	}
 	// create 3 tasks in new state
 	for i := 0; i < 3; i++ {
-		createTask(notEnough, newt, running)
+		createTask(notEnough, newt, running, "NODE1")
 	}
 	// create 1 failed and 1 shutdown task
-	createTask(notEnough, failed, shutdown)
-	createTask(notEnough, shutdown, shutdown)
+	createTask(notEnough, failed, shutdown, "NODE1")
+	createTask(notEnough, shutdown, shutdown, "NODE1")
 
 	// create 2 tasks out of 2 desired for global
 	for i := 0; i < 2; i++ {
-		createTask(global, running, running)
+		createTask(global, running, running, "NODE1")
 	}
 	// create 3 shutdown tasks for global
 	for i := 0; i < 3; i++ {
-		createTask(global, shutdown, shutdown)
+		createTask(global, shutdown, shutdown, "NODE1")
 	}
 
 	// create 4 out of 5 tasks for global2
 	for i := 0; i < 4; i++ {
-		createTask(global2, running, running)
+		createTask(global2, running, running, "NODE1")
 	}
-	createTask(global2, newt, running)
+	createTask(global2, newt, running, "NODE1")
 
 	// create 6 failed tasks
 	for i := 0; i < 6; i++ {
-		createTask(global2, failed, shutdown)
+		createTask(global2, failed, shutdown, "NODE1")
 	}
 
 	// create 4 out of 2 tasks. no shutdown or failed tasks.  this would be the
 	// case if you did a call immediately after updating the service, before
 	// the orchestrator had updated the task desired states
 	for i := 0; i < 4; i++ {
-		createTask(over, running, running)
+		createTask(over, running, running, "NODE1")
 	}
 
 	// create 2 running tasks for replicatedJob1
 	for i := 0; i < 2; i++ {
-		createTask(replicatedJob1, running, completed, withJobIteration)
+		createTask(replicatedJob1, running, completed, "NODE1", withJobIteration)
 	}
 
 	// create 4 completed tasks for replicatedJob1
 	for i := 0; i < 4; i++ {
-		createTask(replicatedJob1, completed, completed, withJobIteration)
+		createTask(replicatedJob1, completed, completed, "NODE1", withJobIteration)
 	}
 
 	// create 10 completed tasks for replicatedJob2
 	for i := 0; i < 10; i++ {
-		createTask(replicatedJob2, completed, completed, withJobIteration)
+		createTask(replicatedJob2, completed, completed, "NODE1", withJobIteration)
 	}
+
+	// create a task for nodeDown on NODE0
+	createTask(nodeDown, running, shutdown, "NODE0")
 
 	replicatedJob2Spec.Task.ForceUpdate++
 
@@ -1679,19 +1691,19 @@ func TestListServiceStatuses(t *testing.T) {
 	replicatedJob2 = updateResp.Service
 
 	// and create 1 tasks out of 2
-	createTask(replicatedJob2, running, completed, withJobIteration)
+	createTask(replicatedJob2, running, completed, "NODE1", withJobIteration)
 	// and 3 completed already
 	for i := 0; i < 3; i++ {
-		createTask(replicatedJob2, completed, completed, withJobIteration)
+		createTask(replicatedJob2, completed, completed, "NODE1", withJobIteration)
 	}
 
 	// create 5 running tasks for globalJob
 	for i := 0; i < 5; i++ {
-		createTask(globalJob, running, completed, withJobIteration)
+		createTask(globalJob, running, completed, "NODE1", withJobIteration)
 	}
 	// create 3 completed tasks
 	for i := 0; i < 3; i++ {
-		createTask(globalJob, completed, completed, withJobIteration)
+		createTask(globalJob, completed, completed, "NODE1", withJobIteration)
 	}
 
 	// now, create a service that has already been deleted, but has dangling
@@ -1703,8 +1715,8 @@ func TestListServiceStatuses(t *testing.T) {
 	}
 
 	for i := 0; i < 3; i++ {
-		createTask(gone, running, shutdown)
-		createTask(gone, shutdown, shutdown)
+		createTask(gone, running, shutdown, "NODE1")
+		createTask(gone, shutdown, shutdown, "NODE1")
 	}
 
 	// now list service statuses
@@ -1712,12 +1724,12 @@ func TestListServiceStatuses(t *testing.T) {
 		context.Background(),
 		&api.ListServiceStatusesRequest{Services: []string{
 			justRight.ID, notEnough.ID, global.ID, global2.ID,
-			replicatedJob1.ID, replicatedJob2.ID, globalJob.ID, over.ID, gone.ID,
+			replicatedJob1.ID, replicatedJob2.ID, globalJob.ID, over.ID, gone.ID, nodeDown.ID,
 		}},
 	)
 	assert.NoError(t, err, "error getting service statuses")
 	assert.NotNil(t, r, "service status response is nil")
-	assert.Len(t, r.Statuses, 9)
+	assert.Len(t, r.Statuses, 10)
 
 	expected := map[string]*api.ListServiceStatusesResponse_ServiceStatus{
 		"justRight": {
@@ -1767,6 +1779,11 @@ func TestListServiceStatuses(t *testing.T) {
 			ServiceID:    gone.ID,
 			DesiredTasks: 0,
 			RunningTasks: 3,
+		},
+		"nodeDown": {
+			ServiceID:    nodeDown.ID,
+			DesiredTasks: 1,
+			RunningTasks: 0,
 		},
 	}
 
