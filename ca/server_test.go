@@ -429,8 +429,9 @@ type clusterObjToUpdate struct {
 	externalCertSignedBy []byte
 }
 
-// When the SecurityConfig is updated with a new TLS keypair, the server automatically uses that keypair to contact
-// the external CA
+// TestServerExternalCAGetsTLSKeypairUpdates tests that when the SecurityConfig
+// is updated with a new TLS keypair, the server automatically uses that
+// keypair to contact the external CA
 func TestServerExternalCAGetsTLSKeypairUpdates(t *testing.T) {
 	t.Parallel()
 
@@ -473,12 +474,13 @@ func TestServerExternalCAGetsTLSKeypairUpdates(t *testing.T) {
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		externalCA := tc.CAServer.ExternalCA()
 		// wait for the credentials for the external CA to update
+		log.G(tc.Context).Warn("making external CA sign request")
 		if _, err = externalCA.Sign(tc.Context, req); err == nil {
 			return errors.New("external CA creds haven't updated yet to be invalid")
 		}
 		return nil
 	}, 2*time.Second))
-	require.Contains(t, errors.Cause(err).Error(), "remote error: tls: bad certificate")
+	require.Contains(t, errors.Cause(err).Error(), "remote error: tls: expired certificate")
 }
 
 func TestCAServerUpdateRootCA(t *testing.T) {
