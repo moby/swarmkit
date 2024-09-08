@@ -3,6 +3,7 @@ package csi
 import (
 	"context"
 	"fmt"
+	"net"
 	"strings"
 	"sync"
 
@@ -209,6 +210,7 @@ func (fpm *fakePluginMaker) newFakePlugin(pa mobyplugin.AddrPlugin, provider Sec
 	p := &fakePlugin{
 		name:               pa.Name(),
 		socket:             pa.Addr().String(),
+		addr:               pa.Addr(),
 		swarmToCSI:         map[string]string{},
 		volumesCreated:     map[string]*api.Volume{},
 		volumesDeleted:     []string{},
@@ -223,6 +225,7 @@ func (fpm *fakePluginMaker) newFakePlugin(pa mobyplugin.AddrPlugin, provider Sec
 type fakePlugin struct {
 	name       string
 	socket     string
+	addr       net.Addr
 	swarmToCSI map[string]string
 	// removedIDs is a set of node IDs for which RemoveNode has been called.
 	removedIDs map[string]struct{}
@@ -286,4 +289,8 @@ func (f *fakePlugin) AddNode(swarmID, csiID string) {
 
 func (f *fakePlugin) RemoveNode(swarmID string) {
 	f.removedIDs[swarmID] = struct{}{}
+}
+
+func (f *fakePlugin) Addr() net.Addr {
+	return f.addr
 }
