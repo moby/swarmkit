@@ -16,11 +16,12 @@ import (
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	gogotypes "github.com/gogo/protobuf/types"
+	"github.com/pkg/errors"
+	"golang.org/x/time/rate"
+
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
-	"github.com/pkg/errors"
-	"golang.org/x/time/rate"
 )
 
 // controller implements agent.Controller against docker's API.
@@ -594,6 +595,10 @@ func (e *exitError) ExitCode() int {
 }
 
 func (e *exitError) Cause() error {
+	return e.cause
+}
+
+func (e *exitError) Unwrap() error {
 	return e.cause
 }
 
