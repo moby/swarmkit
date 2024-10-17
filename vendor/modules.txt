@@ -9,12 +9,6 @@ github.com/Microsoft/go-winio/internal/fs
 github.com/Microsoft/go-winio/internal/socket
 github.com/Microsoft/go-winio/internal/stringbuffer
 github.com/Microsoft/go-winio/pkg/guid
-# github.com/akutz/gosync v0.1.0
-## explicit
-github.com/akutz/gosync
-# github.com/akutz/memconn v0.1.0
-## explicit
-github.com/akutz/memconn
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
@@ -221,18 +215,6 @@ github.com/prometheus/procfs/internal/util
 # github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
 ## explicit
 github.com/rcrowley/go-metrics
-# github.com/rexray/gocsi v1.2.2 => github.com/dperny/gocsi v1.2.3-pre
-## explicit; go 1.12
-github.com/rexray/gocsi
-github.com/rexray/gocsi/context
-github.com/rexray/gocsi/middleware/logging
-github.com/rexray/gocsi/middleware/requestid
-github.com/rexray/gocsi/middleware/serialvolume
-github.com/rexray/gocsi/middleware/serialvolume/types
-github.com/rexray/gocsi/middleware/specvalidator
-github.com/rexray/gocsi/mock/provider
-github.com/rexray/gocsi/mock/service
-github.com/rexray/gocsi/utils
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
@@ -490,4 +472,3 @@ k8s.io/klog/v2/internal/clock
 k8s.io/klog/v2/internal/dbg
 k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
-# github.com/rexray/gocsi => github.com/dperny/gocsi v1.2.3-pre
