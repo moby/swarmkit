@@ -5810,6 +5810,14 @@ file {
       type: TYPE_INT64
       json_name: "oomScoreAdj"
     }
+    field {
+      name: "Devices"
+      number: 31
+      label: LABEL_REPEATED
+      type: TYPE_MESSAGE
+      type_name: ".docker.swarmkit.v1.ContainerSpec.DeviceMapping"
+      json_name: "Devices"
+    }
     nested_type {
       name: "LabelsEntry"
       field {
@@ -5906,6 +5914,30 @@ file {
         label: LABEL_OPTIONAL
         type: TYPE_INT64
         json_name: "hard"
+      }
+    }
+    nested_type {
+      name: "DeviceMapping"
+      field {
+        name: "pathOnHost"
+        number: 1
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "pathOnHost"
+      }
+      field {
+        name: "pathInContainer"
+        number: 2
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "pathInContainer"
+      }
+      field {
+        name: "cgroupPermissions"
+        number: 3
+        label: LABEL_OPTIONAL
+        type: TYPE_STRING
+        json_name: "cgroupPermissions"
       }
     }
     enum_type {
