@@ -1110,6 +1110,156 @@ func TestMultiplePreferences(t *testing.T) {
 	t.Run("useSpecVersion=true", func(t *testing.T) { testMultiplePreferences(t, true) })
 }
 
+// TestMultiplePreferencesScaleUp is a regression test for an infinite loop
+// bug in the scheduler.
+func TestMultiplePreferencesScaleUp(t *testing.T) {
+	ctx := context.Background()
+	initialNodeSet := []*api.Node{
+		{
+			ID: "id11",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Labels: map[string]string{
+						"az":   "dc1",
+						"rack": "r1",
+					},
+				},
+			},
+		},
+		{
+			ID: "id12",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Labels: map[string]string{
+						"az":   "dc1",
+						"rack": "r2",
+					},
+				},
+			},
+		},
+		{
+			ID: "id21",
+			Status: api.NodeStatus{
+				State: api.NodeStatus_READY,
+			},
+			Spec: api.NodeSpec{
+				Annotations: api.Annotations{
+					Labels: map[string]string{
+						"az":   "dc2",
+						"rack": "r1",
+					},
+				},
+			},
+		},
+	}
+
+	taskTemplate1 := &api.Task{
+		DesiredState: api.TaskStateRunning,
+		ServiceID:    "service1",
+		// The service needs to have a spec version to be scheduled as a
+		// group, a necessary precondition for the scheduler
+		// infinite-loop bug.
+		SpecVersion: &api.Version{Index: 1},
+		Spec: api.TaskSpec{
+			Runtime: &api.TaskSpec_Container{
+				Container: &api.ContainerSpec{
+					Image: "v:1",
+				},
+			},
+			Placement: &api.Placement{
+				Preferences: []*api.PlacementPreference{
+					{
+						Preference: &api.PlacementPreference_Spread{
+							Spread: &api.SpreadOver{
+								SpreadDescriptor: "node.labels.az",
+							},
+						},
+					},
+					{
+						Preference: &api.PlacementPreference_Spread{
+							Spread: &api.SpreadOver{
+								SpreadDescriptor: "node.labels.rack",
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: api.TaskStatus{
+			State: api.TaskStatePending,
+		},
+	}
+
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	t1Instances := 2
+
+	err := s.Update(func(tx store.Tx) error {
+		// Prepoulate nodes
+		for _, n := range initialNodeSet {
+			assert.NoError(t, store.CreateNode(tx, n))
+		}
+
+		// Prepopulate tasks from template 1
+		for i := 0; i != t1Instances; i++ {
+			taskTemplate1.ID = fmt.Sprintf("t1id%d", i)
+			assert.NoError(t, store.CreateTask(tx, taskTemplate1))
+		}
+
+		// Populate some running tasks to simulate a service scaling scenario
+		for node, tasks := range map[string]int{
+			"id11": 3,
+			"id12": 1,
+			"id21": 3,
+		} {
+			for i := 0; i != tasks; i++ {
+				taskTemplate1.ID = fmt.Sprintf("t1running-%s-%d", node, i)
+				taskTemplate1.NodeID = node
+				taskTemplate1.Status.State = api.TaskStateRunning
+				assert.NoError(t, store.CreateTask(tx, taskTemplate1))
+			}
+		}
+		return nil
+	})
+	assert.NoError(t, err)
+
+	scheduler := New(s)
+
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
+	defer cancel()
+
+	go func() {
+		assert.NoError(t, scheduler.Run(ctx))
+	}()
+	defer scheduler.Stop()
+
+	t1Assignments := make(map[string]int)
+	totalAssignments := 0
+	for i := 0; i != t1Instances; i++ {
+		assignment := watchAssignment(t, watch)
+		if !strings.HasPrefix(assignment.ID, "t1") {
+			t.Fatal("got assignment for different kind of task")
+		}
+		t1Assignments[assignment.NodeID]++
+		totalAssignments++
+	}
+
+	t.Logf("t1Assignments: %#v", t1Assignments)
+	assert.Equal(t, t1Instances, totalAssignments)
+	// It would be valid for the scheduler either assign the tasks to id12,
+	// which balances r1 and r2 of dc1, or assign the tasks to id21, which
+	// balances dc1 and dc2.
+	assert.Equal(t, 2, t1Assignments["id12"]+t1Assignments["id21"])
+}
+
 func TestSchedulerNoReadyNodes(t *testing.T) {
 	ctx := context.Background()
 	initialTask := &api.Task{
@@ -2698,6 +2848,7 @@ func watchAssignmentFailure(t *testing.T, watch chan events.Event) *api.Task {
 }
 
 func watchAssignment(t *testing.T, watch chan events.Event) *api.Task {
+	t.Helper()
 	for {
 		select {
 		case event := <-watch:
