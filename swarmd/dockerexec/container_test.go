@@ -11,6 +11,7 @@ import (
 	"github.com/docker/go-units"
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVolumesAndBinds(t *testing.T) {
@@ -48,13 +49,10 @@ func TestVolumesAndBinds(t *testing.T) {
 			},
 		}
 
-		if vols := cfg.config().Volumes; len(vols) != 0 {
-			t.Fatalf("expected no anonymous volumes: %v", vols)
-		}
+		vols := cfg.config().Volumes
+		require.Emptyf(t, vols, "expected no anonymous volumes: %v", vols)
 		mounts := cfg.hostConfig().Mounts
-		if len(mounts) != 1 {
-			t.Fatalf("expected 1 mount: %v", mounts)
-		}
+		require.Lenf(t, mounts, 1, "expected 1 mount: %v", mounts)
 
 		if !reflect.DeepEqual(mounts[0], c.x) {
 			t.Log(c.explain)
@@ -97,9 +95,7 @@ func TestTmpfsOptions(t *testing.T) {
 		}
 
 		mountOpts, ok := cfg.hostConfig().Tmpfs["/kerfluffle"]
-		if !ok {
-			t.Fatalf("expected 1 mount, found none")
-		}
+		require.Truef(t, ok, "expected 1 mount, found none")
 
 		if mountOpts != c.x {
 			t.Log(c.explain)
@@ -135,9 +131,7 @@ func TestHealthcheck(t *testing.T) {
 		StartPeriod:   time.Minute,
 		StartInterval: time.Minute,
 	}
-	if !reflect.DeepEqual(config.Healthcheck, expected) {
-		t.Fatalf("expected %#v, got %#v", expected, config.Healthcheck)
-	}
+	require.Truef(t, reflect.DeepEqual(config.Healthcheck, expected), "expected %#v, got %#v", expected, config.Healthcheck)
 }
 
 func TestExtraHosts(t *testing.T) {
@@ -156,27 +150,19 @@ func TestExtraHosts(t *testing.T) {
 	}
 
 	hostConfig := c.hostConfig()
-	if len(hostConfig.ExtraHosts) != 3 {
-		t.Fatalf("expected 3 extra hosts: %v", hostConfig.ExtraHosts)
-	}
+	require.Lenf(t, hostConfig.ExtraHosts, 3, "expected 3 extra hosts: %v", hostConfig.ExtraHosts)
 
 	expected := "example.com:1.2.3.4"
 	actual := hostConfig.ExtraHosts[0]
-	if actual != expected {
-		t.Fatalf("expected %s, got %s", expected, actual)
-	}
+	require.Equalf(t, expected, actual, "expected %s, got %s", expected, actual)
 
 	expected = "example.org:5.6.7.8"
 	actual = hostConfig.ExtraHosts[1]
-	if actual != expected {
-		t.Fatalf("expected %s, got %s", expected, actual)
-	}
+	require.Equalf(t, expected, actual, "expected %s, got %s", expected, actual)
 
 	expected = "mylocal:127.0.0.1"
 	actual = hostConfig.ExtraHosts[2]
-	if actual != expected {
-		t.Fatalf("expected %s, got %s", expected, actual)
-	}
+	require.Equalf(t, expected, actual, "expected %s, got %s", expected, actual)
 }
 
 func TestPidLimit(t *testing.T) {
@@ -194,9 +180,7 @@ func TestPidLimit(t *testing.T) {
 	expected := int64(10)
 	actual := hostConfig.PidsLimit
 
-	if expected != *actual {
-		t.Fatalf("expected %d, got %d", expected, actual)
-	}
+	require.Equalf(t, expected, *actual, "expected %d, got %d", expected, actual)
 }
 
 func TestStopSignal(t *testing.T) {
@@ -212,9 +196,7 @@ func TestStopSignal(t *testing.T) {
 
 	expected := "SIGWINCH"
 	actual := c.config().StopSignal
-	if actual != expected {
-		t.Fatalf("expected %s, got %s", expected, actual)
-	}
+	require.Equalf(t, expected, actual, "expected %s, got %s", expected, actual)
 }
 
 func TestInit(t *testing.T) {
@@ -229,9 +211,7 @@ func TestInit(t *testing.T) {
 	}
 	var expected *bool
 	actual := c.hostConfig().Init
-	if actual != expected {
-		t.Fatalf("expected %v, got %v", expected, actual)
-	}
+	require.Samef(t, expected, actual, "expected %v, got %v", expected, actual)
 	c.task.Spec.GetContainer().Init = &gogotypes.BoolValue{
 		Value: true,
 	}
@@ -256,9 +236,7 @@ func TestIsolation(t *testing.T) {
 
 	expected := "hyperv"
 	actual := string(c.hostConfig().Isolation)
-	if actual != expected {
-		t.Fatalf("expected %s, got %s", expected, actual)
-	}
+	require.Equalf(t, expected, actual, "expected %s, got %s", expected, actual)
 }
 
 func TestCapabilityAdd(t *testing.T) {
@@ -276,9 +254,7 @@ func TestCapabilityAdd(t *testing.T) {
 
 	expected := strslice.StrSlice{"CAP_NET_RAW", "CAP_SYS_CHROOT"}
 	actual := c.hostConfig().CapAdd
-	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("expected %s, got %s", expected, actual)
-	}
+	require.Truef(t, reflect.DeepEqual(actual, expected), "expected %s, got %s", expected, actual)
 }
 
 func TestCapabilityDrop(t *testing.T) {
@@ -296,9 +272,7 @@ func TestCapabilityDrop(t *testing.T) {
 
 	expected := strslice.StrSlice{"CAP_KILL"}
 	actual := c.hostConfig().CapDrop
-	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("expected %s, got %s", expected, actual)
-	}
+	require.Truef(t, reflect.DeepEqual(actual, expected), "expected %s, got %s", expected, actual)
 }
 
 func TestUlimits(t *testing.T) {
@@ -328,7 +302,5 @@ func TestUlimits(t *testing.T) {
 		},
 	}
 	actual := c.resources().Ulimits
-	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("expected %v, got %v", expected, actual)
-	}
+	require.Truef(t, reflect.DeepEqual(actual, expected), "expected %v, got %v", expected, actual)
 }

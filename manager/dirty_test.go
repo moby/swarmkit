@@ -18,9 +18,9 @@ func TestIsStateDirty(t *testing.T) {
 	ctx := context.Background()
 
 	temp, err := os.CreateTemp("", "test-socket")
-	assert.NoError(t, err)
-	assert.NoError(t, temp.Close())
-	assert.NoError(t, os.Remove(temp.Name()))
+	require.NoError(t, err)
+	require.NoError(t, temp.Close())
+	require.NoError(t, os.Remove(temp.Name()))
 
 	defer os.RemoveAll(temp.Name())
 
@@ -30,7 +30,7 @@ func TestIsStateDirty(t *testing.T) {
 	defer tc.Stop()
 
 	managerSecurityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	stateDir := t.TempDir()
 	m, err := New(&Config{
@@ -42,7 +42,7 @@ func TestIsStateDirty(t *testing.T) {
 		UnlockKey:        []byte("kek"),
 		RootCAPaths:      tc.Paths.RootCA,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, m)
 
 	go m.Run(ctx)
@@ -50,7 +50,7 @@ func TestIsStateDirty(t *testing.T) {
 
 	// State should never be dirty just after creating the manager
 	isDirty, err := m.IsStateDirty()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.False(t, isDirty)
 
 	// Wait for cluster and node to be created.
@@ -60,21 +60,21 @@ func TestIsStateDirty(t *testing.T) {
 	<-watch
 
 	// Updating the node should not cause the state to become dirty
-	assert.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
+	require.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
 		node := store.GetNode(tx, m.config.SecurityConfig.ClientTLSCreds.NodeID())
 		require.NotNil(t, node)
 		node.Spec.Availability = api.NodeAvailabilityPause
 		return store.UpdateNode(tx, node)
 	}))
 	isDirty, err = m.IsStateDirty()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.False(t, isDirty)
 
 	// Adding a service should cause the state to become dirty
-	assert.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
+	require.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
 		return store.CreateService(tx, &api.Service{ID: "foo"})
 	}))
 	isDirty, err = m.IsStateDirty()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, isDirty)
 }

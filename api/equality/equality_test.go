@@ -51,7 +51,7 @@ func TestTasksEqualStable(t *testing.T) {
 		{tasks[4], false, "Tasks with different Spec are not equal"},
 	}
 	for _, test := range tests {
-		assert.Equal(t, TasksEqualStable(tasks[0], test.task), test.expected, test.failureText)
+		assert.Equal(t, test.expected, TasksEqualStable(tasks[0], test.task), test.failureText)
 	}
 }
 

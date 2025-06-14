@@ -20,16 +20,16 @@ func TestIsReplicatedJob(t *testing.T) {
 	// cannot be easily assigned to the same type
 
 	service.Spec.Mode = &api.ServiceSpec_ReplicatedJob{}
-	assert.Equal(t, IsReplicatedJob(service), true)
+	assert.True(t, IsReplicatedJob(service))
 
 	service.Spec.Mode = &api.ServiceSpec_GlobalJob{}
-	assert.Equal(t, IsReplicatedJob(service), false)
+	assert.False(t, IsReplicatedJob(service))
 
 	service.Spec.Mode = &api.ServiceSpec_Replicated{}
-	assert.Equal(t, IsReplicatedJob(service), false)
+	assert.False(t, IsReplicatedJob(service))
 
 	service.Spec.Mode = &api.ServiceSpec_Global{}
-	assert.Equal(t, IsReplicatedJob(service), false)
+	assert.False(t, IsReplicatedJob(service))
 }
 
 // TestIsGlobalJob tests that IsGlobalJob only returns true when the
@@ -48,14 +48,14 @@ func TestIsGlobalJob(t *testing.T) {
 	// cannot be easily assigned to the same type
 
 	service.Spec.Mode = &api.ServiceSpec_ReplicatedJob{}
-	assert.Equal(t, IsGlobalJob(service), false)
+	assert.False(t, IsGlobalJob(service))
 
 	service.Spec.Mode = &api.ServiceSpec_GlobalJob{}
-	assert.Equal(t, IsGlobalJob(service), true)
+	assert.True(t, IsGlobalJob(service))
 
 	service.Spec.Mode = &api.ServiceSpec_Replicated{}
-	assert.Equal(t, IsGlobalJob(service), false)
+	assert.False(t, IsGlobalJob(service))
 
 	service.Spec.Mode = &api.ServiceSpec_Global{}
-	assert.Equal(t, IsGlobalJob(service), false)
+	assert.False(t, IsGlobalJob(service))
 }

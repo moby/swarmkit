@@ -10,6 +10,7 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 )
 
@@ -53,7 +54,7 @@ func TestValidateSecretSpec(t *testing.T) {
 		strings.Repeat("a", 65),
 	} {
 		err := validateSecretSpec(createSecretSpec(badName, []byte("valid secret"), nil))
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	}
 
@@ -62,7 +63,7 @@ func TestValidateSecretSpec(t *testing.T) {
 		createSecretSpec("validName", nil, nil),
 	} {
 		err := validateSecretSpec(badSpec)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	}
 
@@ -78,7 +79,7 @@ func TestValidateSecretSpec(t *testing.T) {
 		strings.Repeat("a", 64),
 	} {
 		err := validateSecretSpec(createSecretSpec(goodName, []byte("valid secret"), nil))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	for _, good := range []*api.SecretSpec{
@@ -87,18 +88,18 @@ func TestValidateSecretSpec(t *testing.T) {
 		createSecretSpec("createName", make([]byte, 1), nil), // 1 byte
 	} {
 		err := validateSecretSpec(good)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// Ensure secret driver has a name
 	spec := createSecretSpec("secret-driver", make([]byte, 1), nil)
 	spec.Driver = &api.Driver{}
 	err := validateSecretSpec(spec)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	spec.Driver.Name = "secret-driver"
 	err = validateSecretSpec(spec)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestCreateSecret(t *testing.T) {
@@ -107,7 +108,7 @@ func TestCreateSecret(t *testing.T) {
 
 	// ---- creating a secret with an invalid spec fails, thus checking that CreateSecret validates the spec ----
 	_, err := ts.Client.CreateSecret(context.Background(), &api.CreateSecretRequest{Spec: createSecretSpec("", nil, nil)})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// ---- creating a secret with a valid spec succeeds, and returns a secret that reflects the secret in the store
@@ -117,7 +118,7 @@ func TestCreateSecret(t *testing.T) {
 	validSpecRequest := api.CreateSecretRequest{Spec: creationSpec}
 
 	resp, err := ts.Client.CreateSecret(context.Background(), &validSpecRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Secret)
 
@@ -134,7 +135,7 @@ func TestCreateSecret(t *testing.T) {
 
 	// ---- creating a secret with the same name, even if it's the exact same spec, fails due to a name conflict ----
 	_, err = ts.Client.CreateSecret(context.Background(), &validSpecRequest)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.AlreadyExists, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 }
 
@@ -144,12 +145,12 @@ func TestGetSecret(t *testing.T) {
 
 	// ---- getting a secret without providing an ID results in an InvalidArgument ----
 	_, err := ts.Client.GetSecret(context.Background(), &api.GetSecretRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// ---- getting a non-existent secret fails with NotFound ----
 	_, err = ts.Client.GetSecret(context.Background(), &api.GetSecretRequest{SecretID: "12345"})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// ---- getting an existing secret returns the secret with all the private data cleaned ----
@@ -157,10 +158,10 @@ func TestGetSecret(t *testing.T) {
 	err = ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateSecret(tx, secret)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resp, err := ts.Client.GetSecret(context.Background(), &api.GetSecretRequest{SecretID: secret.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Secret)
 
@@ -179,16 +180,16 @@ func TestUpdateSecret(t *testing.T) {
 	err := ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateSecret(tx, secret)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// updating a secret without providing an ID results in an InvalidArgument
 	_, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// getting a non-existent secret fails with NotFound
 	_, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{SecretID: "1234adsaa", SecretVersion: &api.Version{Index: 1}})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// updating an existing secret's data returns an error
@@ -219,7 +220,7 @@ func TestUpdateSecret(t *testing.T) {
 		Spec:          &secret.Spec,
 		SecretVersion: &secret.Meta.Version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Secret)
 
@@ -232,7 +233,7 @@ func TestUpdateSecret(t *testing.T) {
 		Spec:          &secret.Spec,
 		SecretVersion: &resp.Secret.Meta.Version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Secret)
 	assert.Nil(t, resp.Secret.Spec.Data)
@@ -246,7 +247,7 @@ func TestUpdateSecret(t *testing.T) {
 		Spec:          &secret.Spec,
 		SecretVersion: &resp.Secret.Meta.Version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Secret)
 	assert.Nil(t, resp.Secret.Spec.Data)
@@ -259,7 +260,7 @@ func TestRemoveUnusedSecret(t *testing.T) {
 
 	// removing a secret without providing an ID results in an InvalidArgument
 	_, err := ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// removing a secret that exists succeeds
@@ -267,15 +268,15 @@ func TestRemoveUnusedSecret(t *testing.T) {
 	err = ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateSecret(tx, secret)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resp, err := ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: secret.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, api.RemoveSecretResponse{}, *resp)
 
 	// ---- it was really removed because attempting to remove it again fails with a NotFound ----
 	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: secret.ID})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 }
@@ -288,10 +289,10 @@ func TestRemoveUsedSecret(t *testing.T) {
 	data := []byte("secret")
 	creationSpec := createSecretSpec("secretID1", data, nil)
 	resp, err := ts.Client.CreateSecret(context.Background(), &api.CreateSecretRequest{Spec: creationSpec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	creationSpec2 := createSecretSpec("secretID2", data, nil)
 	resp2, err := ts.Client.CreateSecret(context.Background(), &api.CreateSecretRequest{Spec: creationSpec2})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a service that uses a secret
 	service := createSpec("service1", "image", 1)
@@ -308,12 +309,12 @@ func TestRemoveUsedSecret(t *testing.T) {
 	}
 	service.Task.GetContainer().Secrets = secretRefs
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: service})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	service2 := createSpec("service2", "image", 1)
 	service2.Task.GetContainer().Secrets = secretRefs
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: service2})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// removing a secret that exists but is in use fails
 	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: resp.Secret.ID})
@@ -322,11 +323,11 @@ func TestRemoveUsedSecret(t *testing.T) {
 
 	// removing a secret that exists but is not in use succeeds
 	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: resp2.Secret.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// it was really removed because attempting to remove it again fails with a NotFound
 	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: resp2.Secret.ID})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 }
 
@@ -335,7 +336,7 @@ func TestListSecrets(t *testing.T) {
 
 	listSecrets := func(req *api.ListSecretsRequest) map[string]*api.Secret {
 		resp, err := s.Client.ListSecrets(context.Background(), req)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, resp)
 
 		byName := make(map[string]*api.Secret)
@@ -347,7 +348,7 @@ func TestListSecrets(t *testing.T) {
 
 	// ---- Listing secrets when there are no secrets returns an empty list but no error ----
 	result := listSecrets(&api.ListSecretsRequest{})
-	assert.Len(t, result, 0)
+	assert.Empty(t, result)
 
 	// ---- Create a bunch of secrets in the store so we can test filtering ----
 	allListableNames := []string{"aaa", "aab", "abc", "bbb", "bac", "bbc", "ccc", "cac", "cbc", "ddd"}
@@ -360,7 +361,7 @@ func TestListSecrets(t *testing.T) {
 		err := s.Store.Update(func(tx store.Tx) error {
 			return store.CreateSecret(tx, secret)
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		secretNamesToID[secretName] = secret.ID
 	}
 	// also add an internal secret to show that it's never returned
@@ -372,7 +373,7 @@ func TestListSecrets(t *testing.T) {
 	err := s.Store.Update(func(tx store.Tx) error {
 		return store.CreateSecret(tx, internalSecret)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	secretNamesToID["internal"] = internalSecret.ID
 
 	// ---- build up our list of expectations for what secrets get filtered ----

@@ -82,13 +82,13 @@ func TestCreateRootCASaveRootCA(t *testing.T) {
 	paths := ca.NewConfigPaths(tempBaseDir)
 
 	rootCA, err := ca.CreateRootCA("rootCN")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = ca.SaveRootCA(rootCA, paths.RootCA)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	perms, err := permbits.Stat(paths.RootCA.Cert)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.False(t, perms.GroupWrite())
 	assert.False(t, perms.OtherWrite())
 
@@ -97,19 +97,19 @@ func TestCreateRootCASaveRootCA(t *testing.T) {
 
 	// ensure that the cert that was written is already normalized
 	written, err := os.ReadFile(paths.RootCA.Cert)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, written, ca.NormalizePEMs(written))
 }
 
 func TestCreateRootCAExpiry(t *testing.T) {
 	rootCA, err := ca.CreateRootCA("rootCN")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Convert the certificate into an object to create a RootCA
 	parsedCert, err := helpers.ParseCertificatePEM(rootCA.Certs)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	duration, err := time.ParseDuration(ca.RootCAExpiration)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, time.Now().Add(duration).AddDate(0, -1, 0).Before(parsedCert.NotAfter))
 }
 
@@ -123,40 +123,40 @@ func TestGetLocalRootCA(t *testing.T) {
 
 	// Create the local Root CA to ensure that we can reload it correctly.
 	rootCA, err := ca.CreateRootCA("rootCN")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	s, err := rootCA.Signer()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = ca.SaveRootCA(rootCA, paths.RootCA)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// No private key here
 	rootCA2, err := ca.GetLocalRootCA(paths.RootCA)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, rootCA.Certs, rootCA2.Certs)
 	_, err = rootCA2.Signer()
 	assert.Equal(t, err, ca.ErrNoValidSigner)
 
 	// write private key and assert we can load it and sign
-	assert.NoError(t, os.WriteFile(paths.RootCA.Key, s.Key, os.FileMode(0o600)))
+	require.NoError(t, os.WriteFile(paths.RootCA.Key, s.Key, os.FileMode(0o600)))
 	rootCA3, err := ca.GetLocalRootCA(paths.RootCA)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, rootCA.Certs, rootCA3.Certs)
 	_, err = rootCA3.Signer()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Try with a private key that does not match the CA cert public key.
 	privKey, err := ecdsa.GenerateKey(elliptic.P256(), cryptorand.Reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	privKeyBytes, err := x509.MarshalECPrivateKey(privKey)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	privKeyPem := pem.EncodeToMemory(&pem.Block{
 		Type:  "EC PRIVATE KEY",
 		Bytes: privKeyBytes,
 	})
-	assert.NoError(t, os.WriteFile(paths.RootCA.Key, privKeyPem, os.FileMode(0o600)))
+	require.NoError(t, os.WriteFile(paths.RootCA.Key, privKeyPem, os.FileMode(0o600)))
 
 	_, err = ca.GetLocalRootCA(paths.RootCA)
-	assert.EqualError(t, err, "certificate key mismatch")
+	require.EqualError(t, err, "certificate key mismatch")
 }
 
 func TestGetLocalRootCAInvalidCert(t *testing.T) {
@@ -191,13 +191,13 @@ some random garbage\n
 
 func TestParseValidateAndSignCSR(t *testing.T) {
 	rootCA, err := ca.CreateRootCA("rootCN")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	csr, _, err := ca.GenerateNewCSR()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	signedCert, err := rootCA.ParseValidateAndSignCSR(csr, "CN", "OU", "ORG")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, signedCert)
 
 	assert.Len(t, checkLeafCert(t, signedCert, "rootCN", "CN", "OU", "ORG"), 1)
@@ -205,7 +205,7 @@ func TestParseValidateAndSignCSR(t *testing.T) {
 
 func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 	rootCA, err := ca.CreateRootCA("rootCN")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	req := &cfcsr.CertificateRequest{
 		Names: []cfcsr.Name{
@@ -221,10 +221,10 @@ func TestParseValidateAndSignMaliciousCSR(t *testing.T) {
 	}
 
 	csr, _, err := cfcsr.ParseRequest(req)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	signedCert, err := rootCA.ParseValidateAndSignCSR(csr, "CN", "OU", "ORG")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, signedCert)
 
 	assert.Len(t, checkLeafCert(t, signedCert, "rootCN", "CN", "OU", "ORG"), 1)
@@ -277,7 +277,7 @@ func TestGetRemoteCA(t *testing.T) {
 	downloadedRootCA, err = ca.GetRemoteCA(tc.Context, d, tc.ConnBroker)
 	require.NoError(t, err)
 	require.Equal(t, comboCertBundle, downloadedRootCA.Certs)
-	require.Equal(t, 2, len(downloadedRootCA.Pool.Subjects()))
+	require.Len(t, downloadedRootCA.Pool.Subjects(), 2)
 
 	for _, rootCA := range []ca.RootCA{tc.RootCA, otherRootCA} {
 		krw := ca.NewKeyReadWriter(paths.Node, nil, nil)
@@ -303,7 +303,7 @@ func TestGetRemoteCAInvalidHash(t *testing.T) {
 	defer tc.Stop()
 
 	_, err := ca.GetRemoteCA(tc.Context, "sha256:2d2f968475269f0dde5299427cf74348ee1d6115b95c6e3f283e5a4de8da445b", tc.ConnBroker)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 // returns the issuer as well as all the parsed certs returned from the request
@@ -503,23 +503,23 @@ func TestGetRemoteSignedCertificate(t *testing.T) {
 
 	// Create a new CSR to be signed
 	csr, _, err := ca.GenerateNewCSR()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	certs, err := ca.GetRemoteSignedCertificate(tc.Context, csr, tc.RootCA.Pool,
 		ca.CertificateRequestConfig{
 			Token:      tc.ManagerToken,
 			ConnBroker: tc.ConnBroker,
 		})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, certs)
 
 	// Test the expiration for a manager certificate
 	parsedCerts, err := helpers.ParseCertificatesPEM(certs)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, parsedCerts, 1)
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, -1).Before(parsedCerts[0].NotAfter))
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, 1).After(parsedCerts[0].NotAfter))
-	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.ManagerRole)
+	assert.Equal(t, ca.ManagerRole, parsedCerts[0].Subject.OrganizationalUnit[0])
 
 	// Test the expiration for an worker certificate
 	certs, err = ca.GetRemoteSignedCertificate(tc.Context, csr, tc.RootCA.Pool,
@@ -527,14 +527,14 @@ func TestGetRemoteSignedCertificate(t *testing.T) {
 			Token:      tc.WorkerToken,
 			ConnBroker: tc.ConnBroker,
 		})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, certs)
 	parsedCerts, err = helpers.ParseCertificatesPEM(certs)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, parsedCerts, 1)
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, -1).Before(parsedCerts[0].NotAfter))
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, 1).After(parsedCerts[0].NotAfter))
-	assert.Equal(t, parsedCerts[0].Subject.OrganizationalUnit[0], ca.WorkerRole)
+	assert.Equal(t, ca.WorkerRole, parsedCerts[0].Subject.OrganizationalUnit[0])
 }
 
 func TestGetRemoteSignedCertificateNodeInfo(t *testing.T) {
@@ -543,14 +543,14 @@ func TestGetRemoteSignedCertificateNodeInfo(t *testing.T) {
 
 	// Create a new CSR to be signed
 	csr, _, err := ca.GenerateNewCSR()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cert, err := ca.GetRemoteSignedCertificate(tc.Context, csr, tc.RootCA.Pool,
 		ca.CertificateRequestConfig{
 			Token:      tc.WorkerToken,
 			ConnBroker: tc.ConnBroker,
 		})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, cert)
 }
 
@@ -712,7 +712,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	case <-time.After(2500 * time.Millisecond):
 		// good, it's still polling so we can proceed with the test
 	}
-	require.True(t, atomic.LoadInt64(&fakeCAServer.nodeStatusCalled) > 1, "expected NodeCertificateStatus to have been polled more than once")
+	require.Greater(t, atomic.LoadInt64(&fakeCAServer.nodeStatusCalled), 1, "expected NodeCertificateStatus to have been polled more than once")
 
 	// Directly update the status of the store
 	err = tc.MemoryStore.Update(func(tx store.Tx) error {
@@ -742,7 +742,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	select {
 	case err = <-completed:
 		s, _ := status.FromError(err)
-		require.Equal(t, s.Code(), codes.DeadlineExceeded)
+		require.Equal(t, codes.DeadlineExceeded, s.Code())
 	case <-time.After(3 * time.Second):
 		require.FailNow(t, "GetRemoteSignedCertificate should have been canceled after 1 second, and it has been 3")
 	}
@@ -909,51 +909,51 @@ func TestNewRootCABundle(t *testing.T) {
 
 	// make one rootCA
 	firstRootCA, err := ca.CreateRootCA("rootCN1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// make a second root CA
 	secondRootCA, err := ca.CreateRootCA("rootCN2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	s, err := firstRootCA.Signer()
 	require.NoError(t, err)
 
 	// Overwrite the bytes of the second Root CA with the bundle, creating a valid 2 cert bundle
 	bundle := append(firstRootCA.Certs, secondRootCA.Certs...)
 	err = os.WriteFile(paths.RootCA.Cert, bundle, 0o644)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	newRootCA, err := ca.NewRootCA(bundle, firstRootCA.Certs, s.Key, ca.DefaultNodeCertExpiration, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, bundle, newRootCA.Certs)
-	assert.Equal(t, 2, len(newRootCA.Pool.Subjects()))
+	assert.Len(t, newRootCA.Pool.Subjects(), 2)
 
 	// If I use newRootCA's IssueAndSaveNewCertificates to sign certs, I'll get the correct CA in the chain
 	kw := ca.NewKeyReadWriter(paths.Node, nil, nil)
 	_, _, err = newRootCA.IssueAndSaveNewCertificates(kw, "CN", "OU", "ORG")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	certBytes, err := os.ReadFile(paths.Node.Cert)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, checkLeafCert(t, certBytes, "rootCN1", "CN", "OU", "ORG"), 1)
 }
 
 func TestNewRootCANonDefaultExpiry(t *testing.T) {
 	rootCA, err := ca.CreateRootCA("rootCN")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	s, err := rootCA.Signer()
 	require.NoError(t, err)
 
 	newRootCA, err := ca.NewRootCA(rootCA.Certs, rootCA.Certs, s.Key, 1*time.Hour, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create and sign a new CSR
 	csr, _, err := ca.GenerateNewCSR()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cert, err := newRootCA.ParseValidateAndSignCSR(csr, "CN", ca.ManagerRole, "ORG")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	parsedCerts, err := helpers.ParseCertificatesPEM(cert)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, parsedCerts, 1)
 	assert.True(t, time.Now().Add(time.Minute*59).Before(parsedCerts[0].NotAfter))
 	assert.True(t, time.Now().Add(time.Hour).Add(time.Minute).After(parsedCerts[0].NotAfter))
@@ -961,13 +961,13 @@ func TestNewRootCANonDefaultExpiry(t *testing.T) {
 	// Sign the same CSR again, this time with a 59 Minute expiration RootCA (under the 60 minute minimum).
 	// This should use the default of 3 months
 	newRootCA, err = ca.NewRootCA(rootCA.Certs, rootCA.Certs, s.Key, 59*time.Minute, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cert, err = newRootCA.ParseValidateAndSignCSR(csr, "CN", ca.ManagerRole, "ORG")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	parsedCerts, err = helpers.ParseCertificatesPEM(cert)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, parsedCerts, 1)
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, -1).Before(parsedCerts[0].NotAfter))
 	assert.True(t, time.Now().Add(ca.DefaultNodeCertExpiration).AddDate(0, 0, 1).After(parsedCerts[0].NotAfter))
@@ -1158,8 +1158,8 @@ func TestNewRootCAInvalidCertAndKeys(t *testing.T) {
 
 	for i, invalid := range invalids {
 		_, err := ca.NewRootCA(invalid.roots, invalid.cert, invalid.key, ca.DefaultNodeCertExpiration, invalid.intermediates)
-		require.Error(t, err, fmt.Sprintf("expected error containing: \"%s\", test case (%d)", invalid.errorStr, i))
-		require.Contains(t, err.Error(), invalid.errorStr, fmt.Sprintf("%d", i))
+		require.Error(t, err, "expected error containing: \"%s\", test case (%d)", invalid.errorStr, i)
+		require.Contains(t, err.Error(), invalid.errorStr, "%d", i)
 	}
 }
 
@@ -1217,7 +1217,7 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, parsedCerts, 2)
 			require.Len(t, chains, 1)
-			require.True(t, len(chains[0]) >= 2) // there are always at least 2 certs at minimum: the leaf and the root
+			require.GreaterOrEqual(t, len(chains[0]), 2) // there are always at least 2 certs at minimum: the leaf and the root
 			require.Equal(t, parsedCerts[0], chains[0][0])
 			require.Equal(t, parsedIntermediate.Raw, parsedCerts[1].Raw)
 
@@ -1402,7 +1402,7 @@ func TestValidateCertificateChain(t *testing.T) {
 		require.NotEmpty(t, chain)
 		for _, chain := range chains {
 			require.Equal(t, parsedCerts[0], chain[0]) // the leaf certs are equal
-			require.True(t, len(chain) >= 2)
+			require.GreaterOrEqual(t, len(chain), 2)
 		}
 	}
 }

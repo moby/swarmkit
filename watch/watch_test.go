@@ -106,45 +106,31 @@ func TestWatch(t *testing.T) {
 	q.Publish(testEvent{tags: []string{"t1", "t2"}, str: "foobar"})
 	q.Publish(testEvent{tags: []string{"t3"}, str: "baz"})
 
-	if (<-c1).(testEvent).str != "foo" {
-		t.Fatal(`expected "foo" on c1`)
-	}
+	require.Equal(t, "foo", (<-c1).(testEvent).str, `expected "foo" on c1`)
 
 	ev := (<-c1).(testEvent)
-	if ev.str != "foobar" {
-		t.Fatal(`expected "foobar" on c1`, ev)
-	}
-	if (<-c2).(testEvent).str != "bar" {
-		t.Fatal(`expected "bar" on c2`)
-	}
-	if (<-c2).(testEvent).str != "foobar" {
-		t.Fatal(`expected "foobar" on c2`)
-	}
+	require.Equal(t, "foobar", ev.str, `expected "foobar" on c1`, ev)
+	require.Equal(t, "bar", (<-c2).(testEvent).str, `expected "bar" on c2`)
+	require.Equal(t, "foobar", (<-c2).(testEvent).str, `expected "foobar" on c2`)
 
 	c1cancel()
 
 	select {
 	case _, ok := <-c1:
-		if ok {
-			t.Fatal("unexpected value on c1")
-		}
+		require.False(t, ok, "unexpected value on c1")
 	default:
 		// operation does not proceed after cancel
 	}
 
 	q.Publish(testEvent{tags: []string{"t1", "t2"}, str: "foobar"})
 
-	if (<-c2).(testEvent).str != "foobar" {
-		t.Fatal(`expected "foobar" on c2`)
-	}
+	require.Equal(t, "foobar", (<-c2).(testEvent).str, `expected "foobar" on c2`)
 
 	c2cancel()
 
 	select {
 	case _, ok := <-c2:
-		if ok {
-			t.Fatal("unexpected value on c2")
-		}
+		require.False(t, ok, "unexpected value on c2")
 	default:
 		// operation does not proceed after cancel
 	}

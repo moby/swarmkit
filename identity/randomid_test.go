@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"math/rand"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestGenerateGUID(t *testing.T) {
@@ -14,9 +16,7 @@ func TestGenerateGUID(t *testing.T) {
 
 		var i big.Int
 		_, ok := i.SetString(guid, randomIDBase)
-		if !ok {
-			t.Fatal("id should be base 36", i, guid)
-		}
+		require.True(t, ok, "id should be base 36", i, guid)
 
 		// To ensure that all identifiers are fixed length, we make sure they
 		// get padded out to 25 characters, which is the maximum for the base36
@@ -26,8 +26,6 @@ func TestGenerateGUID(t *testing.T) {
 		// was calculated from floor(log(2^128-1, 36)) + 1.
 		//
 		// See http://mathworld.wolfram.com/NumberLength.html for more information.
-		if len(guid) != maxRandomIDLength {
-			t.Fatalf("len(%s) != %v", guid, maxRandomIDLength)
-		}
+		require.Lenf(t, guid, maxRandomIDLength, "len(%s) != %v", guid, maxRandomIDLength)
 	}
 }

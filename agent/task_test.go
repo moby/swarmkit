@@ -9,6 +9,7 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const debugLevel = 5
@@ -70,22 +71,22 @@ func TestTaskManager(t *testing.T) {
 		select {
 		case <-acceptedWait:
 			task.DesiredState = api.TaskStateReady // proceed to ready
-			assert.NoError(t, tm.Update(ctx, task))
+			require.NoError(t, tm.Update(ctx, task))
 			acceptedWait = nil
 		case <-readyWait:
 			time.Sleep(time.Second)
 			task.DesiredState = api.TaskStateRunning // proceed to running.
-			assert.NoError(t, tm.Update(ctx, task))
+			require.NoError(t, tm.Update(ctx, task))
 			readyWait = nil
 		case <-shutdownWait:
-			assert.NoError(t, tm.Close())
+			require.NoError(t, tm.Close())
 			select {
 			case <-tm.closed:
 			default:
 				t.Fatal("not actually closed")
 			}
 
-			assert.NoError(t, tm.Close()) // hit a second time to make sure it behaves
+			require.NoError(t, tm.Close()) // hit a second time to make sure it behaves
 			assert.Equal(t, tm.Update(ctx, task), ErrClosed)
 
 			assert.Equal(t, map[string]int{
