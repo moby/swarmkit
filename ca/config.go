@@ -364,7 +364,7 @@ func GenerateJoinToken(rootCA *RootCA, fips bool) string {
 	var secretBytes [generatedSecretEntropyBytes]byte
 
 	if _, err := cryptorand.Read(secretBytes[:]); err != nil {
-		panic(fmt.Errorf("failed to read random bytes: %v", err))
+		panic(fmt.Errorf("failed to read random bytes: %w", err))
 	}
 
 	var nn, dgst big.Int
@@ -592,7 +592,8 @@ func RenewTLSConfigNow(ctx context.Context, s *SecurityConfig, connBroker *conne
 			ConnBroker:  connBroker,
 			Credentials: s.ClientTLSCreds,
 		})
-	if wrappedError, ok := err.(x509UnknownAuthError); ok {
+	var wrappedError x509UnknownAuthError
+	if errors.As(err, &wrappedError) {
 		var newErr error
 		tlsKeyPair, issuerInfo, newErr = updateRootThenUpdateCert(ctx, s, connBroker, rootPaths, wrappedError.failedLeafCert)
 		if newErr != nil {

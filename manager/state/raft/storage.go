@@ -235,11 +235,11 @@ func (n *Node) triggerSnapshot(ctx context.Context, raftConfig api.RaftConfig) {
 
 			if appliedIndex > raftConfig.LogEntriesForSlowFollowers {
 				err := n.raftStore.Compact(appliedIndex - raftConfig.LogEntriesForSlowFollowers)
-				if err != nil && err != raft.ErrCompacted {
+				if err != nil && !errors.Is(err, raft.ErrCompacted) {
 					log.G(ctx).WithError(err).Error("failed to compact snapshot")
 				}
 			}
-		} else if err != raft.ErrSnapOutOfDate {
+		} else if !errors.Is(err, raft.ErrSnapOutOfDate) {
 			log.G(ctx).WithError(err).Error("failed to create snapshot")
 		}
 	}(n.appliedIndex, n.snapshotMeta)

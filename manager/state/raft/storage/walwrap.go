@@ -171,7 +171,8 @@ func ReadRepairWAL(
 			if closeErr := reader.Close(); closeErr != nil {
 				return nil, WALData{}, closeErr
 			}
-			if _, ok := err.(encryption.ErrCannotDecrypt); ok {
+			var errCannotDecrypt encryption.ErrCannotDecrypt
+			if errors.As(err, &errCannotDecrypt) {
 				return nil, WALData{}, fmt.Errorf("failed to decrypt WAL: %w", err)
 			}
 			// we can only repair ErrUnexpectedEOF and we never repair twice.

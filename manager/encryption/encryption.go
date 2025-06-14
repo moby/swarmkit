@@ -3,6 +3,7 @@ package encryption
 import (
 	cryptorand "crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -38,7 +39,7 @@ type noopCrypter struct{}
 
 func (n noopCrypter) Decrypt(e api.MaybeEncryptedRecord) ([]byte, error) {
 	if e.Algorithm != n.Algorithm() {
-		return nil, fmt.Errorf("record is encrypted")
+		return nil, errors.New("record is encrypted")
 	}
 	return e.Data, nil
 }
@@ -134,7 +135,7 @@ func Decrypt(encryptd []byte, decrypter Decrypter) ([]byte, error) {
 // Encrypt turns a slice of bytes into a serialized MaybeEncryptedRecord slice of bytes
 func Encrypt(plaintext []byte, encrypter Encrypter) ([]byte, error) {
 	if encrypter == nil {
-		return nil, fmt.Errorf("no encrypter specified")
+		return nil, errors.New("no encrypter specified")
 	}
 
 	encryptedRecord, err := encrypter.Encrypt(plaintext)
@@ -182,11 +183,11 @@ func HumanReadableKey(key []byte) string {
 // said keys
 func ParseHumanReadableKey(key string) ([]byte, error) {
 	if !strings.HasPrefix(key, humanReadablePrefix) {
-		return nil, fmt.Errorf("invalid key string")
+		return nil, errors.New("invalid key string")
 	}
 	keyBytes, err := base64.RawStdEncoding.DecodeString(strings.TrimPrefix(key, humanReadablePrefix))
 	if err != nil {
-		return nil, fmt.Errorf("invalid key string")
+		return nil, errors.New("invalid key string")
 	}
 	return keyBytes, nil
 }

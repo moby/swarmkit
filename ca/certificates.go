@@ -275,7 +275,8 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 	// TODO(cyli): - right now we need the invalid certificate in order to determine whether or not we should
 	// download a new root, because we only want to do that in the case of workers.  When we have a single
 	// codepath for updating the root CAs for both managers and workers, this snippet can go.
-	if _, ok := err.(x509.UnknownAuthorityError); ok {
+	var unknownAuthorityError x509.UnknownAuthorityError
+	if errors.As(err, &unknownAuthorityError) {
 		if parsedCerts, parseErr := helpers.ParseCertificatesPEM(signedCert); parseErr == nil && len(parsedCerts) > 0 {
 			return nil, nil, x509UnknownAuthError{
 				error:          err,
@@ -595,7 +596,8 @@ func ValidateCertChain(rootPool *x509.CertPool, certs []byte, allowExpired bool)
 				return parsedCerts, chains, nil
 			}
 		}
-		if invalid, ok := err.(x509.CertificateInvalidError); ok && invalid.Reason == x509.Expired {
+		var invalid x509.CertificateInvalidError
+		if errors.As(err, &invalid) {
 			return nil, nil, errors.New("there is no time span for which all of the certificates, including a root, are valid")
 		}
 		return nil, nil, err

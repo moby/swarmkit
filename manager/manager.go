@@ -351,13 +351,15 @@ func (m *Manager) BindControl(addr string) error {
 	// exists. Try replacing the file.
 	if runtime.GOOS != "windows" {
 		unwrappedErr := err
-		if op, ok := unwrappedErr.(*net.OpError); ok {
+		op := &net.OpError{}
+		if errors.As(unwrappedErr, &op) {
 			unwrappedErr = op.Err
 		}
-		if sys, ok := unwrappedErr.(*os.SyscallError); ok {
+		sys := &os.SyscallError{}
+		if errors.As(unwrappedErr, &sys) {
 			unwrappedErr = sys.Err
 		}
-		if unwrappedErr == syscall.EADDRINUSE {
+		if errors.Is(unwrappedErr, syscall.EADDRINUSE) {
 			os.Remove(addr)
 			l, err = xnet.ListenLocal(addr)
 		}
@@ -804,7 +806,7 @@ func (m *Manager) watchForClusterChanges(ctx context.Context) error {
 		func(tx store.ReadTx) error {
 			cluster = store.GetCluster(tx, clusterID)
 			if cluster == nil {
-				return fmt.Errorf("unable to get current cluster")
+				return errors.New("unable to get current cluster")
 			}
 			return nil
 		},
@@ -844,18 +846,17 @@ func (m *Manager) getLeaderNodeID() string {
 	// the purposes of logging leadership changes, and should not be relied on
 	// for other purposes
 	leader, leaderErr := m.raftNode.Leader()
-	switch leaderErr {
-	case raft.ErrNoRaftMember:
+	switch {
+	case errors.Is(leaderErr, raft.ErrNoRaftMember):
 		// this is an unlikely case, but we have to handle it. this means this
 		// node is not a member of the raft quorum. this won't look very pretty
 		// in logs ("leadership changed from aslkdjfa to ErrNoRaftMember") but
 		// it also won't be very common
 		return "not yet part of a raft cluster"
-	case raft.ErrNoClusterLeader:
+	case errors.Is(leaderErr, raft.ErrNoClusterLeader):
 		return "no cluster leader"
 	default:
 		id, err := m.raftNode.GetNodeIDByRaftID(leader)
-		// the only possible error here is "ErrMemberUnknown"
 		if err != nil {
 			return "an unknown node"
 		}
@@ -979,7 +980,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		}
 		err := store.CreateCluster(tx, clusterObj)
 
-		if err != nil && (err != store.ErrExist || err != store.ErrNameConflict) {
+		if err != nil && (!errors.Is(err, store.ErrExist) || !errors.Is(err, store.ErrNameConflict)) {
 			log.G(ctx).WithError(err).Errorf("error creating cluster object")
 		}
 
@@ -1002,7 +1003,7 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		// in order to allow running services on the predefined docker
 		// networks like `bridge` and `host`.
 		for _, p := range m.config.networkProvider().PredefinedNetworks() {
-			if err := store.CreateNetwork(tx, newPredefinedNetwork(p.Name, p.Driver)); err != nil && err != store.ErrNameConflict {
+			if err := store.CreateNetwork(tx, newPredefinedNetwork(p.Name, p.Driver)); err != nil && !errors.Is(err, store.ErrNameConflict) {
 				log.G(ctx).WithError(err).Error("failed to create predefined network " + p.Name)
 			}
 		}

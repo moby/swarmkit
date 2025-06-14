@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -160,12 +161,12 @@ func (tm *taskManager) run(ctx context.Context) {
 			default:
 			}
 
-			switch err {
-			case exec.ErrTaskNoop:
+			switch {
+			case errors.Is(err, exec.ErrTaskNoop):
 				if !updated {
 					continue // wait till getting pumped via update.
 				}
-			case exec.ErrTaskRetry:
+			case errors.Is(err, exec.ErrTaskRetry):
 				// TODO(stevvooe): Add exponential backoff with random jitter
 				// here. For now, this backoff is enough to keep the task
 				// manager from running away with the CPU.
@@ -173,7 +174,7 @@ func (tm *taskManager) run(ctx context.Context) {
 					errs <- nil // repump this branch, with no err
 				})
 				continue
-			case nil, context.Canceled, context.DeadlineExceeded:
+			case err == nil, errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 				// no log in this case
 			default:
 				log.G(ctx).WithError(err).Error("task operation failed")

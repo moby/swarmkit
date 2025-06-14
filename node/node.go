@@ -814,7 +814,7 @@ func (n *Node) loadSecurityConfig(ctx context.Context, paths *ca.SecurityConfigP
 
 	// Check if we already have a valid certificates on disk.
 	rootCA, err := ca.GetLocalRootCA(paths.RootCA)
-	if err != nil && err != ca.ErrNoLocalRootCA {
+	if err != nil && !errors.Is(err, ca.ErrNoLocalRootCA) {
 		return nil, nil, err
 	}
 	if err == nil {
@@ -846,7 +846,7 @@ func (n *Node) loadSecurityConfig(ctx context.Context, paths *ca.SecurityConfigP
 				return nil, nil, err
 			}
 			log.G(ctx).Debug("generated CA key and certificate")
-		} else if err == ca.ErrNoLocalRootCA { // from previous error loading the root CA from disk
+		} else if errors.Is(err, ca.ErrNoLocalRootCA) { // from previous error loading the root CA from disk
 			// if we are attempting to join another cluster, which has a FIPS join token, and we are not FIPS, error
 			if n.config.JoinAddr != "" && isMandatoryFIPSClusterJoinToken(n.config.JoinToken) && !n.config.FIPS {
 				return nil, nil, ErrMandatoryFIPS

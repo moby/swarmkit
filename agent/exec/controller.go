@@ -308,13 +308,13 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 	// the following states may proceed past desired state.
 	switch status.State {
 	case api.TaskStatePreparing:
-		if err := ctlr.Prepare(ctx); err != nil && err != ErrTaskPrepared {
+		if err := ctlr.Prepare(ctx); err != nil && !errors.Is(err, ErrTaskPrepared) {
 			return fatal(err)
 		}
 
 		return transition(api.TaskStateReady, "prepared")
 	case api.TaskStateStarting:
-		if err := ctlr.Start(ctx); err != nil && err != ErrTaskStarted {
+		if err := ctlr.Start(ctx); err != nil && !errors.Is(err, ErrTaskStarted) {
 			return fatal(err)
 		}
 

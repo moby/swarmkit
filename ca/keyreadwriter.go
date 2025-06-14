@@ -386,7 +386,7 @@ func (k *KeyReadWriter) readKey() (*pem.Block, error) {
 	}
 
 	derBytes, err := k.keyFormatter.DecryptPEMBlock(keyBlock, k.kekData.KEK)
-	if err == keyutils.ErrFIPSUnsupportedKeyFormat {
+	if errors.Is(err, keyutils.ErrFIPSUnsupportedKeyFormat) {
 		return nil, err
 	} else if err != nil {
 		return nil, ErrInvalidKEK{Wrapped: err}

@@ -391,7 +391,7 @@ func (lb *LogBroker) PublishLogs(stream api.LogBroker_PublishLogsServer) (err er
 
 	for {
 		logMsg, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return stream.SendAndClose(&api.PublishLogsResponse{})
 		}
 		if err != nil {

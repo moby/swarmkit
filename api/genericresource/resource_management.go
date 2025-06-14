@@ -1,6 +1,7 @@
 package genericresource
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -15,7 +16,7 @@ func Claim(nodeAvailableResources, taskAssigned *[]*api.GenericResource,
 	for _, res := range taskReservations {
 		tr := res.GetDiscreteResourceSpec()
 		if tr == nil {
-			return fmt.Errorf("task should only hold Discrete type")
+			return errors.New("task should only hold Discrete type")
 		}
 
 		// Select the resources
@@ -86,7 +87,7 @@ func Reclaim(nodeAvailableResources *[]*api.GenericResource, taskAssigned, nodeR
 func reclaimResources(nodeAvailableResources *[]*api.GenericResource, taskAssigned []*api.GenericResource) error {
 	// The node could have been updated
 	if nodeAvailableResources == nil {
-		return fmt.Errorf("node no longer has any resources")
+		return errors.New("node no longer has any resources")
 	}
 
 	for _, res := range taskAssigned {

@@ -92,8 +92,8 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 	// allocated, before reading all network objects for allocation.
 	// If not found, it means it was removed by user, nothing to do here.
 	ingressNetwork, err := GetIngressNetwork(a.store)
-	switch err {
-	case nil:
+	switch {
+	case err == nil:
 		// Try to complete ingress network allocation before anything else so
 		// that the we can get the preferred subnet for ingress network.
 		nc.ingressNetwork = ingressNetwork
@@ -109,9 +109,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 				log.G(ctx).WithError(err).Error("failed committing allocation of ingress network during init")
 			}
 		}
-	case ErrNoIngress:
-		// Ingress network is not present in store, It means user removed it
-		// and did not create a new one.
+	case errors.Is(err, ErrNoIngress):
 	default:
 		return fmt.Errorf("failure while looking for ingress network during init: %w", err)
 	}
@@ -497,7 +495,7 @@ func (a *Allocator) deallocateNodes(ctx context.Context) error {
 		nodes, err = store.FindNodes(tx, store.All)
 	})
 	if err != nil {
-		return fmt.Errorf("error listing all nodes in store while trying to free network resources")
+		return errors.New("error listing all nodes in store while trying to free network resources")
 	}
 
 	for _, node := range nodes {
@@ -527,7 +525,7 @@ func (a *Allocator) deallocateNodeAttachments(ctx context.Context, nid string) e
 		nodes, err = store.FindNodes(tx, store.All)
 	})
 	if err != nil {
-		return fmt.Errorf("error listing all nodes in store while trying to free network resources")
+		return errors.New("error listing all nodes in store while trying to free network resources")
 	}
 
 	for _, node := range nodes {
@@ -777,7 +775,7 @@ func (a *Allocator) allocateTasks(ctx context.Context, existingAddressesOnly boo
 		err := a.allocateTask(ctx, t)
 		if err == nil {
 			allocatedTasks = append(allocatedTasks, t)
-		} else if err != errNoChanges {
+		} else if !errors.Is(err, errNoChanges) {
 			logger.WithError(err).Errorf("failed allocating task %s during init", t.ID)
 			nc.unallocatedTasks[t.ID] = t
 		}
@@ -1106,7 +1104,7 @@ func (a *Allocator) commitAllocatedNode(ctx context.Context, batch *store.Batch,
 	if err := batch.Update(func(tx store.Tx) error {
 		err := store.UpdateNode(tx, node)
 
-		if err == store.ErrSequenceConflict {
+		if errors.Is(err, store.ErrSequenceConflict) {
 			storeNode := store.GetNode(tx, node.ID)
 			storeNode.Attachments = node.Attachments
 			err = store.UpdateNode(tx, storeNode)
@@ -1175,7 +1173,7 @@ func (a *Allocator) allocateService(ctx context.Context, s *api.Service, existin
 		// network only if it is not already done.
 		if IsIngressNetworkNeeded(s) {
 			if nc.ingressNetwork == nil {
-				return fmt.Errorf("ingress network is missing")
+				return errors.New("ingress network is missing")
 			}
 			var found bool
 			for _, vip := range s.Endpoint.VirtualIPs {
@@ -1248,7 +1246,7 @@ func (a *Allocator) commitAllocatedService(ctx context.Context, batch *store.Bat
 	if err := batch.Update(func(tx store.Tx) error {
 		err := store.UpdateService(tx, s)
 
-		if err == store.ErrSequenceConflict {
+		if errors.Is(err, store.ErrSequenceConflict) {
 			storeService := store.GetService(tx, s.ID)
 			storeService.Endpoint = s.Endpoint
 			err = store.UpdateService(tx, storeService)
@@ -1375,7 +1373,7 @@ func (a *Allocator) commitAllocatedTask(ctx context.Context, batch *store.Batch,
 	retError := batch.Update(func(tx store.Tx) error {
 		err := store.UpdateTask(tx, t)
 
-		if err == store.ErrSequenceConflict {
+		if errors.Is(err, store.ErrSequenceConflict) {
 			storeTask := store.GetTask(tx, t.ID)
 			taskUpdateNetworks(storeTask, t.Networks)
 			taskUpdateEndpoint(storeTask, t.Endpoint)
@@ -1487,7 +1485,7 @@ func (a *Allocator) procTasksNetwork(ctx context.Context, onRetry bool) {
 
 		if err := a.allocateTask(ctx, t); err == nil {
 			allocatedTasks = append(allocatedTasks, t)
-		} else if err != errNoChanges {
+		} else if !errors.Is(err, errNoChanges) {
 			if quiet {
 				log.G(ctx).WithError(err).Debug("task allocation failure")
 			} else {

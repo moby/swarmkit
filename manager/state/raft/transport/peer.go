@@ -2,6 +2,7 @@ package transport
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -83,7 +84,7 @@ func (p *peer) send(m raftpb.Message) (err error) {
 		return p.ctx.Err()
 	default:
 		p.tr.config.ReportUnreachable(p.id)
-		return fmt.Errorf("peer is unreachable")
+		return errors.New("peer is unreachable")
 	}
 	return nil
 }

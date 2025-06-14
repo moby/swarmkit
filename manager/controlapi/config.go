@@ -3,6 +3,7 @@ package controlapi
 import (
 	"bytes"
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -161,15 +162,11 @@ func (s *Server) CreateConfig(ctx context.Context, request *api.CreateConfigRequ
 		return store.CreateConfig(tx, config)
 	})
 
-	switch err {
-	case store.ErrNameConflict:
+	switch {
+	case errors.Is(err, store.ErrNameConflict):
 		return nil, status.Errorf(codes.AlreadyExists, "config %s already exists", request.Spec.Annotations.Name)
-	case nil:
-		log.G(ctx).WithFields(log.Fields{
-			"config.Name": request.Spec.Annotations.Name,
-			"method":      "CreateConfig",
-		}).Debugf("config created")
-
+	case err == nil:
+		log.G(ctx).WithFields(log.Fields{"config.Name": request.Spec.Annotations.Name, "method": "CreateConfig"}).Debugf("config created")
 		return &api.CreateConfigResponse{Config: config}, nil
 	default:
 		return nil, err
@@ -217,15 +214,11 @@ func (s *Server) RemoveConfig(ctx context.Context, request *api.RemoveConfigRequ
 
 		return store.DeleteConfig(tx, request.ConfigID)
 	})
-	switch err {
-	case store.ErrNotExist:
+	switch {
+	case errors.Is(err, store.ErrNotExist):
 		return nil, status.Errorf(codes.NotFound, "config %s not found", request.ConfigID)
-	case nil:
-		log.G(ctx).WithFields(log.Fields{
-			"config.ID": request.ConfigID,
-			"method":    "RemoveConfig",
-		}).Debugf("config removed")
-
+	case err == nil:
+		log.G(ctx).WithFields(log.Fields{"config.ID": request.ConfigID, "method": "RemoveConfig"}).Debugf("config removed")
 		return &api.RemoveConfigResponse{}, nil
 	default:
 		return nil, err

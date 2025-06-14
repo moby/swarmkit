@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -107,10 +108,10 @@ func MigrateSnapshot(oldDir, newDir string, oldFactory, newFactory SnapFactory) 
 	// use temporary snapshot directory so initialization appears atomic
 	oldSnapshotter := oldFactory.New(oldDir)
 	snapshot, err := oldSnapshotter.Load()
-	switch err {
-	case snap.ErrNoSnapshot: // if there's no snapshot, the migration succeeded
+	switch {
+	case errors.Is(err, snap.ErrNoSnapshot): // if there's no snapshot, the migration succeeded
 		return nil
-	case nil:
+	case err == nil:
 		break
 	default:
 		return err

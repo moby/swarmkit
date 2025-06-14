@@ -388,7 +388,7 @@ func (n *Node) JoinAndStart(ctx context.Context) (err error) {
 	}()
 
 	loadAndStartErr := n.loadAndStart(ctx, n.opts.ForceNewCluster)
-	if loadAndStartErr != nil && loadAndStartErr != storage.ErrNoWAL {
+	if loadAndStartErr != nil && !errors.Is(loadAndStartErr, storage.ErrNoWAL) {
 		return loadAndStartErr
 	}
 
@@ -1342,7 +1342,7 @@ func (n *Node) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) error 
 
 	for {
 		recvdMsg, err = stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		} else if err != nil {
 			log.G(stream.Context()).WithError(err).Error("error while reading from stream")
@@ -1383,7 +1383,7 @@ func (n *Node) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) error 
 	}
 
 	// We should have the complete snapshot. Verify and process.
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		_, err = n.ProcessRaftMessage(stream.Context(), &api.ProcessRaftMessageRequest{Message: assembledMessage.Message})
 		if err == nil {
 			// Translate the response of ProcessRaftMessage() from
@@ -1514,7 +1514,7 @@ func (n *Node) LeaderConn(ctx context.Context) (*grpc.ClientConn, error) {
 	if err == nil {
 		return cc, nil
 	}
-	if err == raftselector.ErrIsLeader {
+	if errors.Is(err, raftselector.ErrIsLeader) {
 		return nil, err
 	}
 	if atomic.LoadUint32(&n.ticksWithNoLeader) > lostQuorumTimeout {
@@ -1530,7 +1530,7 @@ func (n *Node) LeaderConn(ctx context.Context) (*grpc.ClientConn, error) {
 			if err == nil {
 				return cc, nil
 			}
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return nil, err
 			}
 		case <-ctx.Done():
@@ -1579,7 +1579,7 @@ func (n *Node) registerNode(node *api.RaftMember) error {
 	err := n.cluster.AddMember(member)
 	if err != nil {
 		if rerr := n.transport.RemovePeer(node.RaftID); rerr != nil {
-			return fmt.Errorf("failed to remove peer after error %v: %w", err, rerr)
+			return fmt.Errorf("failed to remove peer after error %w: %w", err, rerr)
 		}
 		return err
 	}

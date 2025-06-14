@@ -3,6 +3,7 @@ package agent
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -517,7 +518,7 @@ func (a *Agent) UpdateTaskStatus(ctx context.Context, taskID string, status *api
 		go func() {
 			err := session.sendTaskStatus(ctx, taskID, status)
 			if err != nil {
-				if err == errTaskUnknown {
+				if errors.Is(err, errTaskUnknown) {
 					err = nil // dispatcher no longer cares about this task.
 				} else {
 					log.G(ctx).WithError(err).Error("closing session after fatal error")

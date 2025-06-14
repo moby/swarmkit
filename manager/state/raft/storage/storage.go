@@ -96,7 +96,7 @@ func (e *EncryptedRaftLogger) BootstrapFromDisk(ctx context.Context, oldEncrypti
 	// Create a snapshotter and load snapshot data
 	snapshotter = snapFactory.New(snapDir)
 	snapshot, err := snapshotter.Load()
-	if err != nil && err != snap.ErrNoSnapshot {
+	if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
 		return nil, WALData{}, err
 	}
 
@@ -184,7 +184,7 @@ func (e *EncryptedRaftLogger) RotateEncryptionKey(newKey []byte) {
 		// have a lock on writing to snapshots and WALs.
 		wrapped, ok := e.wal.(*wrappedWAL)
 		if !ok {
-			panic(fmt.Errorf("EncryptedRaftLogger's WAL is not a wrappedWAL"))
+			panic(errors.New("EncryptedRaftLogger's WAL is not a wrappedWAL"))
 		}
 
 		wrapped.encrypter, wrapped.decrypter = encryption.Defaults(newKey, e.FIPS)
@@ -323,7 +323,7 @@ func (e *EncryptedRaftLogger) SaveEntries(st raftpb.HardState, entries []raftpb.
 	defer e.encoderMu.RUnlock()
 
 	if e.wal == nil {
-		return fmt.Errorf("raft WAL has either been closed or has never been created")
+		return errors.New("raft WAL has either been closed or has never been created")
 	}
 	return e.wal.Save(st, entries)
 }

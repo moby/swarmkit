@@ -1,7 +1,7 @@
 package drivers
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/node/plugin"
@@ -20,10 +20,10 @@ func New(pluginGetter plugin.Getter) *DriverProvider {
 // NewSecretDriver creates a new driver for fetching secrets
 func (m *DriverProvider) NewSecretDriver(driver *api.Driver) (*SecretDriver, error) {
 	if m.pluginGetter == nil {
-		return nil, fmt.Errorf("plugin getter is nil")
+		return nil, errors.New("plugin getter is nil")
 	}
 	if driver == nil || driver.Name == "" {
-		return nil, fmt.Errorf("driver specification is nil")
+		return nil, errors.New("driver specification is nil")
 	}
 	// Search for the specified plugin
 	plugin, err := m.pluginGetter.Get(driver.Name, SecretsProviderCapability)

@@ -333,7 +333,7 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 			}).Debugf("new certificate entry added")
 			break
 		}
-		if err != store.ErrExist {
+		if !errors.Is(err, store.ErrExist) {
 			return nil, err
 		}
 		if i == maxRetries {
@@ -792,7 +792,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
 
 	// Try using the external CA first.
 	cert, err := externalCA.Sign(ctx, PrepareCSR(rawCSR, cn, ou, org))
-	if err == ErrNoExternalCAURLs {
+	if errors.Is(err, ErrNoExternalCAURLs) {
 		// No external CA servers configured. Try using the local CA.
 		cert, err = rootCA.ParseValidateAndSignCSR(rawCSR, cn, ou, org)
 	}
@@ -809,7 +809,8 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
 			return errors.New("failed to sign CSR")
 		}
 
-		if _, ok := err.(recoverableErr); ok {
+		var recoverableErr recoverableErr
+		if errors.As(err, &recoverableErr) {
 			// Return without changing the state of the certificate. We may
 			// retry signing it in the future.
 			return errors.New("failed to sign CSR")
@@ -866,7 +867,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
 			delete(s.pending, node.ID)
 			break
 		}
-		if err == store.ErrSequenceConflict {
+		if errors.Is(err, store.ErrSequenceConflict) {
 			continue
 		}
 

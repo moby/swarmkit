@@ -4,12 +4,12 @@ run:
 linters: 
   disable-all: true
   enable:
-    - misspell
+    - errorlint
     - gofmt
     - goimports
+    - govet
     - ineffassign
+    - misspell
     - revive
     - unconvert
     - unused
-    - govet
-

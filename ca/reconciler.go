@@ -166,7 +166,7 @@ func (r *rootRotationReconciler) runReconcilerLoop(ctx context.Context, loopRoot
 				return
 			}
 			log.G(r.ctx).WithError(err).Error("could not complete root rotation")
-			if err == errRootRotationChanged {
+			if errors.Is(err, errRootRotationChanged) {
 				// if the root rotation has changed, this loop will be cancelled anyway, so may as well abort early
 				return
 			}
@@ -249,7 +249,7 @@ func (r *rootRotationReconciler) batchUpdateNodes(toUpdate []*api.Node) error {
 		for _, n := range toUpdate {
 			if err := batch.Update(func(tx store.Tx) error {
 				return store.UpdateNode(tx, n)
-			}); err != nil && err != store.ErrSequenceConflict {
+			}); err != nil && !errors.Is(err, store.ErrSequenceConflict) {
 				log.G(r.ctx).WithError(err).Errorf("unable to update node %s to request a certificate rotation", n.ID)
 			}
 		}

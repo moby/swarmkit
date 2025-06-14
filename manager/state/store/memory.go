@@ -181,7 +181,7 @@ func (s *MemoryStore) Close() error {
 
 func fromArgs(args ...interface{}) ([]byte, error) {
 	if len(args) != 1 {
-		return nil, fmt.Errorf("must provide only a single argument")
+		return nil, errors.New("must provide only a single argument")
 	}
 	arg, ok := args[0].(string)
 	if !ok {
@@ -310,7 +310,7 @@ func (s *MemoryStore) ApplyStoreActions(actions []api.StoreAction) error {
 func applyStoreAction(tx Tx, sa api.StoreAction) error {
 	for _, os := range objectStorers {
 		err := os.ApplyStoreAction(tx, sa)
-		if err != errUnknownStoreAction {
+		if !errors.Is(err, errUnknownStoreAction) {
 			return err
 		}
 	}
