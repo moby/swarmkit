@@ -9,7 +9,6 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/pkg/errors"
 )
 
 // This package defines the interfaces and encryption package
@@ -140,12 +139,12 @@ func Encrypt(plaintext []byte, encrypter Encrypter) ([]byte, error) {
 
 	encryptedRecord, err := encrypter.Encrypt(plaintext)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to encrypt data")
+		return nil, fmt.Errorf("unable to encrypt data: %w", err)
 	}
 
 	data, err := proto.Marshal(encryptedRecord)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to marshal as MaybeEncryptedRecord")
+		return nil, fmt.Errorf("unable to marshal as MaybeEncryptedRecord: %w", err)
 	}
 
 	return data, nil
@@ -168,7 +167,7 @@ func GenerateSecretKey() []byte {
 	secretData := make([]byte, naclSecretboxKeySize)
 	if _, err := io.ReadFull(cryptorand.Reader, secretData); err != nil {
 		// panic if we can't read random data
-		panic(errors.Wrap(err, "failed to read random bytes"))
+		panic(fmt.Errorf("failed to read random bytes: %w", err))
 	}
 	return secretData
 }

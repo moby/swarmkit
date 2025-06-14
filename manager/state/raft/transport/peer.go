@@ -132,7 +132,7 @@ func (p *peer) address() string {
 func (p *peer) resolveAddr(ctx context.Context, id uint64) (string, error) {
 	resp, err := api.NewRaftClient(p.conn()).ResolveAddress(ctx, &api.ResolveAddressRequest{RaftID: id})
 	if err != nil {
-		return "", errors.Wrap(err, "failed to resolve address")
+		return "", fmt.Errorf("failed to resolve address: %w", err)
 	}
 	return resp.Addr, nil
 }
@@ -304,7 +304,7 @@ func (p *peer) sendProcessMessage(ctx context.Context, m raftpb.Message) error {
 func healthCheckConn(ctx context.Context, cc *grpc.ClientConn) error {
 	resp, err := api.NewHealthClient(cc).Check(ctx, &api.HealthCheckRequest{Service: "Raft"})
 	if err != nil {
-		return errors.Wrap(err, "failed to check health")
+		return fmt.Errorf("failed to check health: %w", err)
 	}
 	if resp.Status != api.HealthCheckResponse_SERVING {
 		return fmt.Errorf("health check returned status %s", resp.Status)
@@ -351,7 +351,7 @@ func (p *peer) drain() error {
 				return nil
 			}
 			if err := p.sendProcessMessage(ctx, m); err != nil {
-				return errors.Wrap(err, "send drain message")
+				return fmt.Errorf("send drain message: %w", err)
 			}
 		case <-ctx.Done():
 			return ctx.Err()

@@ -17,7 +17,6 @@ import (
 	cfsslerrors "github.com/cloudflare/cfssl/errors"
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/moby/swarmkit/v2/ca"
-	"github.com/pkg/errors"
 )
 
 var crossSignPolicy = config.SigningProfile{
@@ -56,7 +55,7 @@ func NewExternalSigningServer(rootCA ca.RootCA, basedir string) (*ExternalSignin
 	}
 	serverCert, _, err := rootCA.IssueAndSaveNewCertificates(ca.NewKeyReadWriter(serverPaths, nil, nil), serverCN, serverOU, "")
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to get TLS server certificate")
+		return nil, fmt.Errorf("unable to get TLS server certificate: %w", err)
 	}
 
 	serverTLSConfig := &tls.Config{
@@ -67,7 +66,7 @@ func NewExternalSigningServer(rootCA ca.RootCA, basedir string) (*ExternalSignin
 
 	tlsListener, err := tls.Listen("tcp", "localhost:0", serverTLSConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create TLS connection listener")
+		return nil, fmt.Errorf("unable to create TLS connection listener: %w", err)
 	}
 
 	assignedPort := tlsListener.Addr().(*net.TCPAddr).Port

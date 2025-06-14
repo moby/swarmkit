@@ -113,7 +113,7 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 		// Ingress network is not present in store, It means user removed it
 		// and did not create a new one.
 	default:
-		return errors.Wrap(err, "failure while looking for ingress network during init")
+		return fmt.Errorf("failure while looking for ingress network during init: %w", err)
 	}
 
 	// First, allocate (read it as restore) objects likes network,nodes,serives
@@ -369,7 +369,7 @@ func (a *Allocator) getAllocatedNetworks() ([]*api.Network, error) {
 	})
 
 	if err != nil {
-		return nil, errors.Wrap(err, "error listing all networks in store while trying to allocate during init")
+		return nil, fmt.Errorf("error listing all networks in store while trying to allocate during init: %w", err)
 	}
 
 	for _, n := range networks {
@@ -457,13 +457,13 @@ func (a *Allocator) allocateNodes(ctx context.Context, existingAddressesOnly boo
 		nodes, err = store.FindNodes(tx, store.All)
 	})
 	if err != nil {
-		return errors.Wrap(err, "error listing all nodes in store while trying to allocate network resources")
+		return fmt.Errorf("error listing all nodes in store while trying to allocate network resources: %w", err)
 	}
 
 	for _, node := range nodes {
 		networks, err := a.getNodeNetworks(node.ID)
 		if err != nil {
-			return errors.Wrap(err, "error getting all networks needed by node")
+			return fmt.Errorf("error getting all networks needed by node: %w", err)
 		}
 		isAllocated := a.allocateNode(ctx, node, existingAddressesOnly, networks)
 		if isAllocated {
@@ -601,7 +601,7 @@ func (a *Allocator) allocateNetworks(ctx context.Context, existingOnly bool) err
 		networks, err = store.FindNetworks(tx, store.All)
 	})
 	if err != nil {
-		return errors.Wrap(err, "error listing all networks in store while trying to allocate during init")
+		return fmt.Errorf("error listing all networks in store while trying to allocate during init: %w", err)
 	}
 
 	var allocatedNetworks []*api.Network
@@ -654,7 +654,7 @@ func (a *Allocator) allocateServices(ctx context.Context, existingAddressesOnly 
 		services, err = store.FindServices(tx, store.All)
 	})
 	if err != nil {
-		return errors.Wrap(err, "error listing all services in store while trying to allocate during init")
+		return fmt.Errorf("error listing all services in store while trying to allocate during init: %w", err)
 	}
 
 	var allocatedServices []*api.Service
@@ -720,7 +720,7 @@ func (a *Allocator) allocateTasks(ctx context.Context, existingAddressesOnly boo
 		tasks, err = store.FindTasks(tx, store.All)
 	})
 	if err != nil {
-		return errors.Wrap(err, "error listing all tasks in store while trying to allocate during init")
+		return fmt.Errorf("error listing all tasks in store while trying to allocate during init: %w", err)
 	}
 
 	logger := log.G(ctx).WithField("method", "(*Allocator).allocateTasks")

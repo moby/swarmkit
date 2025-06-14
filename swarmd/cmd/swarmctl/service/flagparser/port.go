@@ -56,7 +56,7 @@ func parsePortConfig(portConfig string) (string, api.PortConfig_Protocol, uint32
 	portSpec := parts[1]
 	protocol, port, err := parsePortSpec(portSpec)
 	if err != nil {
-		return "", protocol, 0, 0, errors.Wrap(err, "failed to parse port")
+		return "", protocol, 0, 0, fmt.Errorf("failed to parse port: %w", err)
 	}
 
 	if len(parts) > 2 {
@@ -65,7 +65,7 @@ func parsePortConfig(portConfig string) (string, api.PortConfig_Protocol, uint32
 		portSpec := parts[2]
 		nodeProtocol, swarmPort, err := parsePortSpec(portSpec)
 		if err != nil {
-			return "", protocol, 0, 0, errors.Wrap(err, "failed to parse node port")
+			return "", protocol, 0, 0, fmt.Errorf("failed to parse node port: %w", err)
 		}
 
 		if nodeProtocol != protocol {

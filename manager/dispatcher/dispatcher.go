@@ -426,7 +426,7 @@ func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
 		nodes, err = store.FindNodes(tx, store.All)
 	})
 	if err != nil {
-		return errors.Wrap(err, "failed to get list of nodes")
+		return fmt.Errorf("failed to get list of nodes: %w", err)
 	}
 	err = d.store.Batch(func(batch *store.Batch) error {
 		for _, n := range nodes {
@@ -544,7 +544,7 @@ func nodeIPFromContext(ctx context.Context) (string, error) {
 	}
 	addr, _, err := net.SplitHostPort(nodeInfo.RemoteAddr)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to get ip from addr:port")
+		return "", fmt.Errorf("unable to get ip from addr:port: %w", err)
 	}
 	return addr, nil
 }

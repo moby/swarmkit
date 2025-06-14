@@ -696,7 +696,7 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster, reconci
 		// Attempt to update our local RootCA with the new parameters
 		updatedRootCA, err := RootCAFromAPI(rCA, expiry)
 		if err != nil {
-			return errors.Wrap(err, "invalid Root CA object in cluster")
+			return fmt.Errorf("invalid Root CA object in cluster: %w", err)
 		}
 
 		s.localRootCA = &updatedRootCA

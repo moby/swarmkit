@@ -46,7 +46,7 @@ func (n *Node) readFromDisk(ctx context.Context) (*raftpb.Snapshot, storage.WALD
 		switch errors.Cause(err).(type) {
 		case nil:
 			if err = n.keyRotator.UpdateKeys(EncryptionKeys{CurrentDEK: keys.PendingDEK}); err != nil {
-				err = errors.Wrap(err, "previous key rotation was successful, but unable mark rotation as complete")
+				err = fmt.Errorf("previous key rotation was successful, but unable mark rotation as complete: %w", err)
 			}
 		case encryption.ErrCannotDecrypt:
 			snap, walData, err = n.raftLogger.BootstrapFromDisk(ctx, keys.CurrentDEK)
@@ -69,7 +69,7 @@ func (n *Node) loadAndStart(ctx context.Context, forceNewCluster bool) error {
 	// Read logs to fully catch up store
 	var raftNode api.RaftMember
 	if err := raftNode.Unmarshal(waldata.Metadata); err != nil {
-		return errors.Wrap(err, "failed to unmarshal WAL metadata")
+		return fmt.Errorf("failed to unmarshal WAL metadata: %w", err)
 	}
 	n.Config.ID = raftNode.RaftID
 
@@ -106,7 +106,7 @@ func (n *Node) loadAndStart(ctx context.Context, forceNewCluster bool) error {
 		if ent.Index <= st.Commit && ent.Type == raftpb.EntryConfChange {
 			var cc raftpb.ConfChange
 			if err := cc.Unmarshal(ent.Data); err != nil {
-				return errors.Wrap(err, "failed to unmarshal config change")
+				return fmt.Errorf("failed to unmarshal config change: %w", err)
 			}
 			if cc.Type == raftpb.ConfChangeRemoveNode {
 				n.cluster.RemoveMember(cc.NodeID)
@@ -136,7 +136,7 @@ func (n *Node) loadAndStart(ctx context.Context, forceNewCluster bool) error {
 			if ccEnt.Type == raftpb.EntryConfChange {
 				var cc raftpb.ConfChange
 				if err := cc.Unmarshal(ccEnt.Data); err != nil {
-					return errors.Wrap(err, "error unmarshalling force-new-cluster config change")
+					return fmt.Errorf("error unmarshalling force-new-cluster config change: %w", err)
 				}
 				if cc.Type == raftpb.ConfChangeRemoveNode {
 					n.cluster.RemoveMember(cc.NodeID)
@@ -174,7 +174,7 @@ func (n *Node) newRaftLogs(nodeID string) (raft.Peer, error) {
 	}
 	metadata, err := raftNode.Marshal()
 	if err != nil {
-		return raft.Peer{}, errors.Wrap(err, "error marshalling raft node")
+		return raft.Peer{}, fmt.Errorf("error marshalling raft node: %w", err)
 	}
 	if err := n.raftLogger.BootstrapNew(metadata); err != nil {
 		return raft.Peer{}, err

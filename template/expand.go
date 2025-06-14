@@ -27,17 +27,17 @@ func ExpandContainerSpec(n *api.NodeDescription, t *api.Task) (*api.ContainerSpe
 	var err error
 	container.Env, err = expandEnv(ctx, container.Env)
 	if err != nil {
-		return container, errors.Wrap(err, "expanding env failed")
+		return container, fmt.Errorf("expanding env failed: %w", err)
 	}
 
 	// For now, we only allow templating of string-based mount fields
 	container.Mounts, err = expandMounts(ctx, container.Mounts)
 	if err != nil {
-		return container, errors.Wrap(err, "expanding mounts failed")
+		return container, fmt.Errorf("expanding mounts failed: %w", err)
 	}
 
 	container.Hostname, err = ctx.Expand(container.Hostname)
-	return container, errors.Wrap(err, "expanding hostname failed")
+	return container, fmt.Errorf("expanding hostname failed: %w", err)
 }
 
 func expandMounts(ctx Context, mounts []api.Mount) ([]api.Mount, error) {
@@ -61,13 +61,13 @@ func expandMounts(ctx Context, mounts []api.Mount) ([]api.Mount, error) {
 		if mount.VolumeOptions != nil {
 			mount.VolumeOptions.Labels, err = expandMap(ctx, mount.VolumeOptions.Labels)
 			if err != nil {
-				return mounts, errors.Wrap(err, "expanding volume labels")
+				return mounts, fmt.Errorf("expanding volume labels: %w", err)
 			}
 
 			if mount.VolumeOptions.DriverConfig != nil {
 				mount.VolumeOptions.DriverConfig.Options, err = expandMap(ctx, mount.VolumeOptions.DriverConfig.Options)
 				if err != nil {
-					return mounts, errors.Wrap(err, "expanding volume driver config")
+					return mounts, fmt.Errorf("expanding volume driver config: %w", err)
 				}
 			}
 		}

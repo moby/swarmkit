@@ -3,6 +3,7 @@ package agent
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"math/rand"
 	"reflect"
 	"sync"
@@ -11,7 +12,6 @@ import (
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -467,7 +467,7 @@ func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMe
 		if !same {
 			a.keys = message.NetworkBootstrapKeys
 			if err := a.config.Executor.SetNetworkBootstrapKeys(a.keys); err != nil {
-				return errors.Wrap(err, "configuring network key failed")
+				return fmt.Errorf("configuring network key failed: %w", err)
 			}
 		}
 	}

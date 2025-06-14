@@ -54,7 +54,7 @@ func IssuerFromAPIRootCA(rootCA *api.RootCA) (*IssuerInfo, error) {
 	}
 	issuerCerts, err := helpers.ParseCertificatesPEM(wantedIssuer)
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid certificate in cluster root CA object")
+		return nil, fmt.Errorf("invalid certificate in cluster root CA object: %w", err)
 	}
 	if len(issuerCerts) == 0 {
 		return nil, errors.New("invalid certificate in cluster root CA object")
@@ -222,7 +222,7 @@ func (r *rootRotationReconciler) finishRootRotation(tx store.Tx, expectedRootCA 
 	updatedRootCA, err := NewRootCA(cluster.RootCA.RootRotation.CACert, signerCert, cluster.RootCA.RootRotation.CAKey,
 		DefaultNodeCertExpiration, nil)
 	if err != nil {
-		return errors.Wrap(err, "invalid cluster root rotation object")
+		return fmt.Errorf("invalid cluster root rotation object: %w", err)
 	}
 	cluster.RootCA = api.RootCA{
 		CACert:     cluster.RootCA.RootRotation.CACert,

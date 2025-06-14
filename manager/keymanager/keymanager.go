@@ -9,6 +9,7 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/binary"
+	"fmt"
 	"sync"
 	"time"
 
@@ -97,7 +98,7 @@ func (k *KeyManager) allocateKey(ctx context.Context, subsys string) *api.Encryp
 
 	_, err := cryptorand.Read(key)
 	if err != nil {
-		panic(errors.Wrap(err, "key generated failed"))
+		panic(fmt.Errorf("key generated failed: %w", err))
 	}
 	k.keyRing.lClock++
 

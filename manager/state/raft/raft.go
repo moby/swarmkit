@@ -413,7 +413,7 @@ func (n *Node) JoinAndStart(ctx context.Context) (err error) {
 	if loadAndStartErr == nil {
 		if n.opts.JoinAddr != "" && n.opts.ForceJoin {
 			if err := n.joinCluster(ctx); err != nil {
-				return errors.Wrap(err, "failed to rejoin cluster")
+				return fmt.Errorf("failed to rejoin cluster: %w", err)
 			}
 		}
 		n.campaignWhenAble = true
@@ -583,7 +583,7 @@ func (n *Node) Run(ctx context.Context) error {
 
 			// Save entries to storage
 			if err := n.saveToStorage(ctx, &raftConfig, rd.HardState, rd.Entries, rd.Snapshot); err != nil {
-				return errors.Wrap(err, "failed to save entries to storage")
+				return fmt.Errorf("failed to save entries to storage: %w", err)
 			}
 
 			// If the memory store lock has been held for too long,
@@ -1060,7 +1060,7 @@ func (n *Node) checkHealth(ctx context.Context, addr string, timeout time.Durati
 	healthClient := api.NewHealthClient(conn)
 	resp, err := healthClient.Check(ctx, &api.HealthCheckRequest{Service: "Raft"})
 	if err != nil {
-		return errors.Wrap(err, "could not connect to prospective new cluster member using its advertised address")
+		return fmt.Errorf("could not connect to prospective new cluster member using its advertised address: %w", err)
 	}
 	if resp.Status != api.HealthCheckResponse_SERVING {
 		return fmt.Errorf("health check returned status %s", resp.Status.String())
@@ -1239,7 +1239,7 @@ func (n *Node) TransferLeadership(ctx context.Context) error {
 
 	transferee, err := n.transport.LongestActive()
 	if err != nil {
-		return errors.Wrap(err, "failed to get longest-active member")
+		return fmt.Errorf("failed to get longest-active member: %w", err)
 	}
 	start := time.Now()
 	n.raftNode.TransferLeadership(ctx, n.Config.ID, transferee)
@@ -1502,7 +1502,7 @@ func (n *Node) getLeaderConn() (*grpc.ClientConn, error) {
 	}
 	conn, err := n.transport.PeerConn(leader)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get connection to leader")
+		return nil, fmt.Errorf("failed to get connection to leader: %w", err)
 	}
 	return conn, nil
 }
@@ -1646,7 +1646,7 @@ func (n *Node) ChangesBetween(from, to api.Version) ([]state.Change, error) {
 		r := &api.InternalRaftRequest{}
 		err := proto.Unmarshal(pb.Data, r)
 		if err != nil {
-			return nil, errors.Wrap(err, "error umarshalling internal raft request")
+			return nil, fmt.Errorf("error umarshalling internal raft request: %w", err)
 		}
 
 		if r.Action != nil {
@@ -1746,18 +1746,18 @@ func (n *Node) saveToStorage(
 
 	if !raft.IsEmptySnap(snapshot) {
 		if err := n.raftLogger.SaveSnapshot(snapshot); err != nil {
-			return errors.Wrap(err, "failed to save snapshot")
+			return fmt.Errorf("failed to save snapshot: %w", err)
 		}
 		if err := n.raftLogger.GC(snapshot.Metadata.Index, snapshot.Metadata.Term, raftConfig.KeepOldSnapshots); err != nil {
 			log.G(ctx).WithError(err).Error("unable to clean old snapshots and WALs")
 		}
 		if err = n.raftStore.ApplySnapshot(snapshot); err != nil {
-			return errors.Wrap(err, "failed to apply snapshot on raft node")
+			return fmt.Errorf("failed to apply snapshot on raft node: %w", err)
 		}
 	}
 
 	if err := n.raftLogger.SaveEntries(hardState, entries); err != nil {
-		return errors.Wrap(err, "failed to save raft log entries")
+		return fmt.Errorf("failed to save raft log entries: %w", err)
 	}
 
 	if len(entries) > 0 {
@@ -1768,7 +1768,7 @@ func (n *Node) saveToStorage(
 	}
 
 	if err = n.raftStore.Append(entries); err != nil {
-		return errors.Wrap(err, "failed to append raft log entries")
+		return fmt.Errorf("failed to append raft log entries: %w", err)
 	}
 
 	return nil

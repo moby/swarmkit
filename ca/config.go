@@ -173,7 +173,7 @@ func validateRootCAAndTLSCert(rootCA *RootCA, tlsKeyPair *tls.Certificate) error
 	for i, derBytes := range tlsKeyPair.Certificate {
 		parsed, err := x509.ParseCertificate(derBytes)
 		if err != nil {
-			return errors.Wrap(err, "could not validate new root certificates due to parse error")
+			return fmt.Errorf("could not validate new root certificates due to parse error: %w", err)
 		}
 		if i == 0 {
 			leafCert = parsed
@@ -189,7 +189,7 @@ func validateRootCAAndTLSCert(rootCA *RootCA, tlsKeyPair *tls.Certificate) error
 		Intermediates: intermediatePool,
 	}
 	if _, err := leafCert.Verify(opts); err != nil {
-		return errors.Wrap(err, "new root CA does not match existing TLS credentials")
+		return fmt.Errorf("new root CA does not match existing TLS credentials: %w", err)
 	}
 	return nil
 }
@@ -273,20 +273,20 @@ func (s *SecurityConfig) updateTLSCredentials(certificate *tls.Certificate, issu
 	certs := []tls.Certificate{*certificate}
 	clientConfig, err := NewClientTLSConfig(certs, s.rootCA.Pool, ManagerRole)
 	if err != nil {
-		return errors.Wrap(err, "failed to create a new client config using the new root CA")
+		return fmt.Errorf("failed to create a new client config using the new root CA: %w", err)
 	}
 
 	serverConfig, err := NewServerTLSConfig(certs, s.rootCA.Pool)
 	if err != nil {
-		return errors.Wrap(err, "failed to create a new server config using the new root CA")
+		return fmt.Errorf("failed to create a new server config using the new root CA: %w", err)
 	}
 
 	if err := s.ClientTLSCreds.loadNewTLSConfig(clientConfig); err != nil {
-		return errors.Wrap(err, "failed to update the client credentials")
+		return fmt.Errorf("failed to update the client credentials: %w", err)
 	}
 
 	if err := s.ServerTLSCreds.loadNewTLSConfig(serverConfig); err != nil {
-		return errors.Wrap(err, "failed to update the server TLS credentials")
+		return fmt.Errorf("failed to update the server TLS credentials: %w", err)
 	}
 
 	s.certificate = certificate

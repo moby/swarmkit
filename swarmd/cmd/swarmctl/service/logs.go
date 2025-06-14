@@ -55,7 +55,7 @@ var (
 				},
 			})
 			if err != nil {
-				return errors.Wrap(err, "failed to subscribe to logs")
+				return fmt.Errorf("failed to subscribe to logs: %w", err)
 			}
 
 			for {
@@ -64,7 +64,7 @@ var (
 					return nil
 				}
 				if err != nil {
-					return errors.Wrap(err, "failed receiving stream message")
+					return fmt.Errorf("failed receiving stream message: %w", err)
 				}
 
 				for _, msg := range log.Messages {

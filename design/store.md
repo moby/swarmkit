@@ -105,10 +105,10 @@ Here is an example of a batch operation:
 				node.Status.Message = `Node moved to "unknown" state due to leadership change in cluster`
 
 				if err := d.nodes.AddUnknown(node, expireFunc); err != nil {
-					return errors.Wrap(err, `adding node in "unknown" state to node store failed`)
+					return fmt.Errorf(err, `adding node in "unknown" state to node store failed`)
 				}
 				if err := store.UpdateNode(tx, node); err != nil {
-					return errors.Wrap(err, "update failed")
+					return fmt.Errorf(err, "update failed")
 				}
 				return nil
 			})

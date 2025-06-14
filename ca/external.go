@@ -115,7 +115,7 @@ func (eca *ExternalCA) Sign(ctx context.Context, req signer.SignRequest) (cert [
 
 	csrJSON, err := json.Marshal(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to JSON-encode CFSSL signing request")
+		return nil, fmt.Errorf("unable to JSON-encode CFSSL signing request: %w", err)
 	}
 
 	// Try each configured proxy URL. Return after the first success. If
@@ -187,14 +187,14 @@ func (eca *ExternalCA) CrossSignRootCA(ctx context.Context, rca RootCA) ([]byte,
 func makeExternalSignRequest(ctx context.Context, client *http.Client, url string, csrJSON []byte) (cert []byte, err error) {
 	resp, err := ctxhttp.Post(ctx, client, url, "application/json", bytes.NewReader(csrJSON))
 	if err != nil {
-		return nil, recoverableErr{err: errors.Wrap(err, "unable to perform certificate signing request")}
+		return nil, recoverableErr{err: fmt.Errorf("unable to perform certificate signing request: %w", err)}
 	}
 	defer resp.Body.Close()
 
 	b := io.LimitReader(resp.Body, CertificateMaxSize)
 	body, err := io.ReadAll(b)
 	if err != nil {
-		return nil, recoverableErr{err: errors.Wrap(err, "unable to read CSR response body")}
+		return nil, recoverableErr{err: fmt.Errorf("unable to read CSR response body: %w", err)}
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -204,7 +204,7 @@ func makeExternalSignRequest(ctx context.Context, client *http.Client, url strin
 	var apiResponse api.Response
 	if err := json.Unmarshal(body, &apiResponse); err != nil {
 		log.G(ctx).Debugf("unable to JSON-parse CFSSL API response body: %s", string(body))
-		return nil, recoverableErr{err: errors.Wrap(err, "unable to parse JSON response")}
+		return nil, recoverableErr{err: fmt.Errorf("unable to parse JSON response: %w", err)}
 	}
 
 	if !apiResponse.Success || apiResponse.Result == nil {

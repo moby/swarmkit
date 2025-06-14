@@ -18,15 +18,15 @@ func renewCerts(swarmdir, unlockKey string) error {
 	// it's expired - this will just obtain a new cert anyway.
 	krw, err := getKRW(swarmdir, unlockKey)
 	if err != nil {
-		return errors.Wrap(err, "could not load swarm certificate")
+		return fmt.Errorf("could not load swarm certificate: %w", err)
 	}
 	cert, _, err := krw.Read()
 	if err != nil {
-		return errors.Wrap(err, "could not read swarm certificate")
+		return fmt.Errorf("could not read swarm certificate: %w", err)
 	}
 	certificates, err := helpers.ParseCertificatesPEM(cert)
 	if err != nil {
-		return errors.Wrap(err, "could not parse node certificate")
+		return fmt.Errorf("could not parse node certificate: %w", err)
 	}
 	// We need to make sure when renewing that we provide the same CN (node ID),
 	// OU (role), and org (swarm cluster ID) when getting a new certificate
@@ -39,7 +39,7 @@ func renewCerts(swarmdir, unlockKey string) error {
 	// Load up the raft data on disk
 	walData, snapshot, err := loadData(swarmdir, unlockKey)
 	if err != nil {
-		return errors.Wrap(err, "could not load swarm data")
+		return fmt.Errorf("could not load swarm data: %w", err)
 	}
 	var cluster *api.Cluster
 
@@ -65,7 +65,7 @@ func renewCerts(swarmdir, unlockKey string) error {
 		r := &api.InternalRaftRequest{}
 		err := proto.Unmarshal(ent.Data, r)
 		if err != nil {
-			return errors.Wrap(err, "could not read WAL")
+			return fmt.Errorf("could not read WAL: %w", err)
 		}
 
 		for _, act := range r.Action {
@@ -93,7 +93,7 @@ func renewCerts(swarmdir, unlockKey string) error {
 	}
 	rootCA, err := ca.RootCAFromAPI(&cluster.RootCA, expiry)
 	if err != nil {
-		return errors.Wrap(err, "invalid CA info in raft logs; cannot renew certs")
+		return fmt.Errorf("invalid CA info in raft logs; cannot renew certs: %w", err)
 	}
 
 	_, _, err = rootCA.IssueAndSaveNewCertificates(krw, cn, ou, org)

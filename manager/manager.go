@@ -213,13 +213,13 @@ func (l *closeOnceListener) Close() error {
 func New(config *Config) (*Manager, error) {
 	err := os.MkdirAll(config.StateDir, 0o700)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create state directory")
+		return nil, fmt.Errorf("failed to create state directory: %w", err)
 	}
 
 	raftStateDir := filepath.Join(config.StateDir, "raft")
 	err = os.MkdirAll(raftStateDir, 0o700)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create raft state directory")
+		return nil, fmt.Errorf("failed to create raft state directory: %w", err)
 	}
 
 	raftCfg := raft.DefaultNodeConfig()
@@ -341,7 +341,7 @@ func (m *Manager) BindControl(addr string) error {
 	if runtime.GOOS != "windows" {
 		err := os.MkdirAll(filepath.Dir(addr), 0o700)
 		if err != nil {
-			return errors.Wrap(err, "failed to create socket directory")
+			return fmt.Errorf("failed to create socket directory: %w", err)
 		}
 	}
 
@@ -363,7 +363,7 @@ func (m *Manager) BindControl(addr string) error {
 		}
 	}
 	if err != nil {
-		return errors.Wrap(err, "failed to listen on control API address")
+		return fmt.Errorf("failed to listen on control API address: %w", err)
 	}
 
 	m.config.ControlAPI = addr
@@ -403,7 +403,7 @@ func (m *Manager) BindRemote(ctx context.Context, addrs RemoteAddrs) error {
 
 	l, err := net.Listen("tcp", addrs.ListenAddr)
 	if err != nil {
-		return errors.Wrap(err, "failed to listen on remote API address")
+		return fmt.Errorf("failed to listen on remote API address: %w", err)
 	}
 	if advertiseAddrPort == "0" {
 		advertiseAddr = l.Addr().String()
@@ -582,7 +582,7 @@ func (m *Manager) Run(parent context.Context) error {
 	if err := m.raftNode.JoinAndStart(ctx); err != nil {
 		// Don't block future calls to Stop.
 		close(m.started)
-		return errors.Wrap(err, "can't initialize raft node")
+		return fmt.Errorf("can't initialize raft node: %w", err)
 	}
 
 	localHealthServer.SetServingStatus("ControlAPI", api.HealthCheckResponse_SERVING)

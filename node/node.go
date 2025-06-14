@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"math"
 	"net"
 	"os"
@@ -1124,7 +1125,7 @@ func (n *Node) superviseManager(ctx context.Context, securityConfig *ca.Security
 		wasRemoved, err := n.runManager(ctx, securityConfig, rootPaths, ready, workerRole)
 		if err != nil {
 			waitRoleCancel()
-			return errors.Wrap(err, "manager stopped")
+			return fmt.Errorf("manager stopped: %w", err)
 		}
 
 		// If the manager stopped running and our role is still
