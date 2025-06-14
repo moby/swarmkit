@@ -12,7 +12,6 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/state/raft/membership"
-	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"google.golang.org/grpc/status"
@@ -46,7 +45,7 @@ type peer struct {
 func newPeer(id uint64, addr string, tr *Transport) (*peer, error) {
 	cc, err := tr.dial(addr)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create conn for %x with addr %s", id, addr)
+		return nil, fmt.Errorf("failed to create conn for %x with addr %s: %w", id, addr, err)
 	}
 	ctx, cancel := context.WithCancel(tr.ctx)
 	ctx = log.WithField(ctx, "peer_id", fmt.Sprintf("%x", id))

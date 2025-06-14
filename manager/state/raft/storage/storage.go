@@ -149,7 +149,7 @@ func (e *EncryptedRaftLogger) BootstrapNew(metadata []byte) error {
 
 	for _, dirpath := range []string{filepath.Dir(e.walDir()), e.snapDir()} {
 		if err := os.MkdirAll(dirpath, 0o700); err != nil {
-			return errors.Wrapf(err, "failed to create %s", dirpath)
+			return fmt.Errorf("failed to create %s: %w", dirpath, err)
 		}
 	}
 	var err error
@@ -270,7 +270,7 @@ func (e *EncryptedRaftLogger) GC(index uint64, term uint64, keepOldSnapshots uin
 	var snapTerm, snapIndex uint64
 	_, err = fmt.Sscanf(oldestSnapshot, "%016x-%016x.snap", &snapTerm, &snapIndex)
 	if err != nil {
-		return errors.Wrapf(err, "malformed snapshot filename %s", oldestSnapshot)
+		return fmt.Errorf("malformed snapshot filename %s: %w", oldestSnapshot, err)
 	}
 
 	wals, err := ListWALs(e.walDir())
@@ -285,7 +285,7 @@ func (e *EncryptedRaftLogger) GC(index uint64, term uint64, keepOldSnapshots uin
 		var walSeq, walIndex uint64
 		_, err = fmt.Sscanf(walName, "%016x-%016x.wal", &walSeq, &walIndex)
 		if err != nil {
-			return errors.Wrapf(err, "could not parse WAL name %s", walName)
+			return fmt.Errorf("could not parse WAL name %s: %w", walName, err)
 		}
 
 		if walIndex >= snapIndex {
@@ -305,12 +305,12 @@ func (e *EncryptedRaftLogger) GC(index uint64, term uint64, keepOldSnapshots uin
 		walPath := filepath.Join(e.walDir(), wals[i])
 		l, err := fileutil.TryLockFile(walPath, os.O_WRONLY, fileutil.PrivateFileMode)
 		if err != nil {
-			return errors.Wrapf(err, "could not lock old WAL file %s for removal", wals[i])
+			return fmt.Errorf("could not lock old WAL file %s for removal: %w", wals[i], err)
 		}
 		err = os.Remove(walPath)
 		l.Close()
 		if err != nil {
-			return errors.Wrapf(err, "error removing old WAL file %s", wals[i])
+			return fmt.Errorf("error removing old WAL file %s: %w", wals[i], err)
 		}
 	}
 

@@ -534,30 +534,30 @@ func ValidateCertChain(rootPool *x509.CertPool, certs []byte, allowExpired bool)
 		// Manual expiry validation because we want more information on which certificate in the chain is expired, and
 		// because this is an easier way to allow expired certs.
 		if now.Before(cert.NotBefore) {
-			return nil, nil, errors.Wrapf(
+			return nil, nil, fmt.Errorf(
+				"certificate (%d - %s) not valid before %s, and it is currently %s: %w",
+				i+1, cert.Subject.CommonName, cert.NotBefore.UTC().Format(time.RFC1123), now.Format(time.RFC1123),
 				x509.CertificateInvalidError{
 					Cert:   cert,
 					Reason: x509.Expired,
-				},
-				"certificate (%d - %s) not valid before %s, and it is currently %s",
-				i+1, cert.Subject.CommonName, cert.NotBefore.UTC().Format(time.RFC1123), now.Format(time.RFC1123))
+				})
 		}
 		if !allowExpired && now.After(cert.NotAfter) {
-			return nil, nil, errors.Wrapf(
+			return nil, nil, fmt.Errorf(
+				"certificate (%d - %s) not valid after %s, and it is currently %s: %w",
+				i+1, cert.Subject.CommonName, cert.NotAfter.UTC().Format(time.RFC1123), now.Format(time.RFC1123),
 				x509.CertificateInvalidError{
 					Cert:   cert,
 					Reason: x509.Expired,
-				},
-				"certificate (%d - %s) not valid after %s, and it is currently %s",
-				i+1, cert.Subject.CommonName, cert.NotAfter.UTC().Format(time.RFC1123), now.Format(time.RFC1123))
+				})
 		}
 
 		if i > 0 {
 			// check that the previous cert was signed by this cert
 			prevCert := parsedCerts[i-1]
 			if err := prevCert.CheckSignatureFrom(cert); err != nil {
-				return nil, nil, errors.Wrapf(err, "certificates do not form a chain: (%d - %s) is not signed by (%d - %s)",
-					i, prevCert.Subject.CommonName, i+1, cert.Subject.CommonName)
+				return nil, nil, fmt.Errorf("certificates do not form a chain: (%d - %s) is not signed by (%d - %s): %w",
+					i, prevCert.Subject.CommonName, i+1, cert.Subject.CommonName, err)
 			}
 
 			if intermediatePool == nil {

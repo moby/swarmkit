@@ -466,10 +466,10 @@ func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
 					}
 				}
 				if err := d.nodes.AddUnknown(node, expireFunc); err != nil {
-					return errors.Wrapf(err, `adding node %s in "unknown" state to node store failed`, nodeID)
+					return fmt.Errorf(`adding node %s in "unknown" state to node store failed: %w`, nodeID, err)
 				}
 				if err := store.UpdateNode(tx, node); err != nil {
-					return errors.Wrapf(err, "update for node %s failed", nodeID)
+					return fmt.Errorf("update for node %s failed: %w", nodeID, err)
 				}
 				return nil
 			})

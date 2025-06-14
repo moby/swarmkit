@@ -1579,7 +1579,7 @@ func (n *Node) registerNode(node *api.RaftMember) error {
 	err := n.cluster.AddMember(member)
 	if err != nil {
 		if rerr := n.transport.RemovePeer(node.RaftID); rerr != nil {
-			return errors.Wrapf(rerr, "failed to remove peer after error %v", err)
+			return fmt.Errorf("failed to remove peer after error %v: %w", err, rerr)
 		}
 		return err
 	}

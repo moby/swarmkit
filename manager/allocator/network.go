@@ -1089,14 +1089,14 @@ func (a *Allocator) reallocateNode(ctx context.Context, nodeID string) error {
 
 	networks, err := a.getNodeNetworks(node.ID)
 	if err != nil {
-		return errors.Wrapf(err, "error getting networks for node %v", nodeID)
+		return fmt.Errorf("error getting networks for node %v: %w", nodeID, err)
 	}
 	if a.allocateNode(ctx, node, false, networks) {
 		// if something was allocated, commit the node
 		if err := a.store.Batch(func(batch *store.Batch) error {
 			return a.commitAllocatedNode(ctx, batch, node)
 		}); err != nil {
-			return errors.Wrapf(err, "error committing allocation for node %v", nodeID)
+			return fmt.Errorf("error committing allocation for node %v: %w", nodeID, err)
 		}
 	}
 	return nil
@@ -1112,7 +1112,7 @@ func (a *Allocator) commitAllocatedNode(ctx context.Context, batch *store.Batch,
 			err = store.UpdateNode(tx, storeNode)
 		}
 
-		return errors.Wrapf(err, "failed updating state in store transaction for node %s", node.ID)
+		return fmt.Errorf("failed updating state in store transaction for node %s: %w", node.ID, err)
 	}); err != nil {
 		if err := a.deallocateNode(node); err != nil {
 			log.G(ctx).WithError(err).Errorf("failed rolling back allocation of node %s", node.ID)
@@ -1254,7 +1254,7 @@ func (a *Allocator) commitAllocatedService(ctx context.Context, batch *store.Bat
 			err = store.UpdateService(tx, storeService)
 		}
 
-		return errors.Wrapf(err, "failed updating state in store transaction for service %s", s.ID)
+		return fmt.Errorf("failed updating state in store transaction for service %s: %w", s.ID, err)
 	}); err != nil {
 		if err := a.netCtx.deallocateService(s); err != nil {
 			log.G(ctx).WithError(err).Errorf("failed rolling back allocation of service %s", s.ID)
@@ -1280,7 +1280,7 @@ func (a *Allocator) allocateNetwork(ctx context.Context, n *api.Network) error {
 func (a *Allocator) commitAllocatedNetwork(ctx context.Context, batch *store.Batch, n *api.Network) error {
 	if err := batch.Update(func(tx store.Tx) error {
 		if err := store.UpdateNetwork(tx, n); err != nil {
-			return errors.Wrapf(err, "failed updating state in store transaction for network %s", n.ID)
+			return fmt.Errorf("failed updating state in store transaction for network %s: %w", n.ID, err)
 		}
 		return nil
 	}); err != nil {
@@ -1385,7 +1385,7 @@ func (a *Allocator) commitAllocatedTask(ctx context.Context, batch *store.Batch,
 			err = store.UpdateTask(tx, storeTask)
 		}
 
-		return errors.Wrapf(err, "failed updating state in store transaction for task %s", t.ID)
+		return fmt.Errorf("failed updating state in store transaction for task %s: %w", t.ID, err)
 	})
 
 	if retError == nil {

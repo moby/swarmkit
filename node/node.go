@@ -825,7 +825,7 @@ func (n *Node) loadSecurityConfig(ctx context.Context, paths *ca.SecurityConfigP
 			if isInvalidKEK {
 				return nil, nil, ErrInvalidUnlockKey
 			} else if !os.IsNotExist(err) {
-				return nil, nil, errors.Wrapf(err, "error while loading TLS certificate in %s", paths.Node.Cert)
+				return nil, nil, fmt.Errorf("error while loading TLS certificate in %s: %w", paths.Node.Cert, err)
 			}
 		}
 	}

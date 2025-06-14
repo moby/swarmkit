@@ -50,12 +50,12 @@ func expandMounts(ctx Context, mounts []api.Mount) ([]api.Mount, error) {
 		var err error
 		mount.Source, err = ctx.Expand(mount.Source)
 		if err != nil {
-			return mounts, errors.Wrapf(err, "expanding mount source %q", mount.Source)
+			return mounts, fmt.Errorf("expanding mount source %q: %w", mount.Source, err)
 		}
 
 		mount.Target, err = ctx.Expand(mount.Target)
 		if err != nil {
-			return mounts, errors.Wrapf(err, "expanding mount target %q", mount.Target)
+			return mounts, fmt.Errorf("expanding mount target %q: %w", mount.Target, err)
 		}
 
 		if mount.VolumeOptions != nil {
@@ -87,7 +87,7 @@ func expandMap(ctx Context, m map[string]string) (map[string]string, error) {
 	for k, v := range m {
 		v, err = ctx.Expand(v)
 		if err != nil {
-			return m, errors.Wrapf(err, "expanding map entry %q=%q", k, v)
+			return m, fmt.Errorf("expanding map entry %q=%q: %w", k, v, err)
 		}
 
 		n[k] = v
@@ -107,7 +107,7 @@ func expandEnv(ctx Context, values []string) ([]string, error) {
 		if len(parts) > 1 {
 			expanded, err := ctx.Expand(parts[1])
 			if err != nil {
-				return values, errors.Wrapf(err, "expanding env %q", value)
+				return values, fmt.Errorf("expanding env %q: %w", value, err)
 			}
 
 			entry = fmt.Sprintf("%s=%s", entry, expanded)
