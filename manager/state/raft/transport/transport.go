@@ -4,6 +4,7 @@ package transport
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -15,7 +16,6 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"github.com/moby/swarmkit/v2/log"
-	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )

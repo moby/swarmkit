@@ -2,6 +2,7 @@ package raft
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/docker/go-metrics"
@@ -11,7 +12,6 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/raft/membership"
 	"github.com/moby/swarmkit/v2/manager/state/raft/storage"
 	"github.com/moby/swarmkit/v2/manager/state/store"
-	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
@@ -43,12 +43,13 @@ func (n *Node) readFromDisk(ctx context.Context) (*raftpb.Snapshot, storage.WALD
 	snap, walData, err := n.raftLogger.BootstrapFromDisk(ctx)
 
 	if keys.PendingDEK != nil {
-		switch errors.Cause(err).(type) {
-		case nil:
+		var ecd encryption.ErrCannotDecrypt
+		switch {
+		case err == nil:
 			if err = n.keyRotator.UpdateKeys(EncryptionKeys{CurrentDEK: keys.PendingDEK}); err != nil {
 				err = fmt.Errorf("previous key rotation was successful, but unable mark rotation as complete: %w", err)
 			}
-		case encryption.ErrCannotDecrypt:
+		case errors.As(err, &ecd):
 			snap, walData, err = n.raftLogger.BootstrapFromDisk(ctx, keys.CurrentDEK)
 		}
 	}

@@ -1,12 +1,12 @@
 package store
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	memdb "github.com/hashicorp/go-memdb"
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/pkg/errors"
 )
 
 const tableResource = "resource"

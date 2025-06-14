@@ -3,6 +3,7 @@ package integration
 import (
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -23,7 +24,6 @@ import (
 	"github.com/moby/swarmkit/v2/manager"
 	"github.com/moby/swarmkit/v2/node"
 	"github.com/moby/swarmkit/v2/testutils"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 

@@ -2,6 +2,7 @@ package exec
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/moby/swarmkit/v2/api/equality"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/protobuf/ptypes"
-	"github.com/pkg/errors"
 )
 
 // Controller controls execution of a task.
@@ -197,7 +197,7 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 			exitCode = ec.ExitCode()
 		}
 
-		if cause := errors.Cause(err); cause == context.DeadlineExceeded || cause == context.Canceled {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 			return retry()
 		}
 
@@ -355,6 +355,5 @@ func logStateChange(ctx context.Context, desired, previous, next api.TaskState) 
 }
 
 func contextDoneError(err error) bool {
-	cause := errors.Cause(err)
-	return cause == context.Canceled || cause == context.DeadlineExceeded
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }

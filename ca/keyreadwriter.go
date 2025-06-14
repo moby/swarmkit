@@ -3,6 +3,7 @@ package ca
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,7 +16,6 @@ import (
 	"github.com/moby/swarmkit/v2/ca/keyutils"
 	"github.com/moby/swarmkit/v2/ca/pkcs8"
 	"github.com/moby/swarmkit/v2/ioutils"
-	"github.com/pkg/errors"
 )
 
 const (

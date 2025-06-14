@@ -2,6 +2,7 @@ package template
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 	"text/template"
@@ -11,7 +12,6 @@ import (
 	"github.com/moby/swarmkit/v2/agent/secrets"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/naming"
-	"github.com/pkg/errors"
 )
 
 // Platform holds information about the underlying platform of the node

@@ -1,12 +1,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/cloudflare/cfssl/helpers"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
-	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 
 	"github.com/moby/swarmkit/v2/api"

@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -33,7 +34,6 @@ import (
 	"github.com/moby/swarmkit/v2/node/plugin"
 	"github.com/moby/swarmkit/v2/remotes"
 	"github.com/moby/swarmkit/v2/xnet"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	bolt "go.etcd.io/bbolt"
 	"google.golang.org/grpc"
@@ -520,10 +520,10 @@ func (n *Node) run(ctx context.Context) (err error) {
 	// And, finally, we park and wait for the node to close up. If we get any
 	// error other than context canceled, we return it.
 	wg.Wait()
-	if managerErr != nil && errors.Cause(managerErr) != context.Canceled {
+	if managerErr != nil && !errors.Is(managerErr, context.Canceled) {
 		return managerErr
 	}
-	if agentErr != nil && errors.Cause(agentErr) != context.Canceled {
+	if agentErr != nil && !errors.Is(agentErr, context.Canceled) {
 		return agentErr
 	}
 	// NOTE(dperny): we return err here, but the last time I can see err being
@@ -821,8 +821,8 @@ func (n *Node) loadSecurityConfig(ctx context.Context, paths *ca.SecurityConfigP
 		// if forcing a new cluster, we allow the certificates to be expired - a new set will be generated
 		securityConfig, cancel, err = ca.LoadSecurityConfig(ctx, rootCA, krw, n.config.ForceNewCluster)
 		if err != nil {
-			_, isInvalidKEK := errors.Cause(err).(ca.ErrInvalidKEK)
-			if isInvalidKEK {
+			var eie ca.ErrInvalidKEK
+			if errors.As(err, &eie) {
 				return nil, nil, ErrInvalidUnlockKey
 			} else if !os.IsNotExist(err) {
 				return nil, nil, fmt.Errorf("error while loading TLS certificate in %s: %w", paths.Node.Cert, err)
@@ -870,7 +870,8 @@ func (n *Node) loadSecurityConfig(ctx context.Context, paths *ca.SecurityConfigP
 				"node.id": securityConfig.ClientTLSCreds.NodeID(),
 			}).Debugf("loaded TLS certificate")
 		} else {
-			if _, ok := errors.Cause(err).(ca.ErrInvalidKEK); ok {
+			var eie ca.ErrInvalidKEK
+			if errors.As(err, &eie) {
 				return nil, nil, ErrInvalidUnlockKey
 			}
 			log.G(ctx).WithError(err).Debugf("no node credentials found in: %s", krw.Target())

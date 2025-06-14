@@ -1,12 +1,12 @@
 package template
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/pkg/errors"
 )
 
 // ExpandContainerSpec expands templated fields in the runtime using the task

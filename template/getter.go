@@ -1,11 +1,11 @@
 package template
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/pkg/errors"
 )
 
 type templatedSecretGetter struct {

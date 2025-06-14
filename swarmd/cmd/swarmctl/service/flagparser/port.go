@@ -1,12 +1,12 @@
 package flagparser
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 )
 

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -16,7 +17,6 @@ import (
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	gogotypes "github.com/gogo/protobuf/types"
-	"github.com/pkg/errors"
 	"golang.org/x/time/rate"
 
 	"github.com/moby/swarmkit/v2/agent/exec"

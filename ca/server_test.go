@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -20,7 +21,6 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/opencontainers/go-digest"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -478,7 +478,7 @@ func TestServerExternalCAGetsTLSKeypairUpdates(t *testing.T) {
 		}
 		return nil
 	}, 2*time.Second))
-	require.Contains(t, errors.Cause(err).Error(), "remote error: tls: bad certificate")
+	require.ErrorContains(t, err, "remote error: tls: bad certificate")
 }
 
 func TestCAServerUpdateRootCA(t *testing.T) {

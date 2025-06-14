@@ -5,6 +5,7 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -16,7 +17,6 @@ import (
 	cfconfig "github.com/cloudflare/cfssl/config"
 	events "github.com/docker/go-events"
 	"github.com/opencontainers/go-digest"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc/credentials"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -513,8 +513,8 @@ func (rootCA RootCA) CreateSecurityConfig(ctx context.Context, krw *KeyReadWrite
 
 	proposedRole := ManagerRole
 	tlsKeyPair, issuerInfo, err := rootCA.IssueAndSaveNewCertificates(krw, cn, proposedRole, org)
-	switch errors.Cause(err) {
-	case ErrNoValidSigner:
+	switch {
+	case errors.Is(err, ErrNoValidSigner):
 		config.RetryInterval = GetCertRetryInterval
 		// Request certificate issuance from a remote CA.
 		// Last argument is nil because at this point we don't have any valid TLS creds
@@ -523,7 +523,7 @@ func (rootCA RootCA) CreateSecurityConfig(ctx context.Context, krw *KeyReadWrite
 			log.G(ctx).WithError(err).Error("failed to request and save new certificate")
 			return nil, nil, err
 		}
-	case nil:
+	case err == nil:
 		log.G(ctx).WithFields(log.Fields{
 			"node.id":   cn,
 			"node.role": proposedRole,
