@@ -46,7 +46,7 @@ func TestCreateVolumeEmptyRequest(t *testing.T) {
 	defer ts.Stop()
 
 	_, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 }
 
@@ -62,7 +62,7 @@ func TestCreateVolumeNoName(t *testing.T) {
 		Spec: &v.Spec,
 	})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	assert.Contains(t, err.Error(), "name")
 }
@@ -79,7 +79,7 @@ func TestCreateVolumeNoDriver(t *testing.T) {
 		Spec: &v.Spec,
 	})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	assert.Contains(t, err.Error(), "driver")
 }
@@ -96,7 +96,7 @@ func TestCreateVolumeValid(t *testing.T) {
 		Spec: &v.Spec,
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Volume, "volume in response should not be nil")
 	assert.NotEmpty(t, resp.Volume.ID, "volume ID should not be empty")
@@ -150,7 +150,7 @@ func TestCreateVolumeValidateSecrets(t *testing.T) {
 	_, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
 		Spec: &v.Spec,
 	})
-	assert.Error(t, err, "expected creating a volume when a secret doesn't exist to fail")
+	require.Error(t, err, "expected creating a volume when a secret doesn't exist to fail")
 	assert.Contains(t, err.Error(), "secret")
 	assert.Contains(t, err.Error(), "someIDnotReal")
 	assert.Contains(t, err.Error(), "someOtherNotRealID")
@@ -165,7 +165,7 @@ func TestCreateVolumeValidateSecrets(t *testing.T) {
 	_, err = ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
 		Spec: &v.Spec,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // TestCreateVolumeInvalidAccessMode tests that CreateVolume enforces the
@@ -181,7 +181,7 @@ func TestCreateVolumeInvalidAccessMode(t *testing.T) {
 	_, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
 		Spec: &volume.Spec,
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "AccessMode must not be nil")
 
 	volume.Spec.AccessMode = &api.VolumeAccessMode{}
@@ -189,7 +189,7 @@ func TestCreateVolumeInvalidAccessMode(t *testing.T) {
 	_, err = ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
 		Spec: &volume.Spec,
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "either Mount or Block")
 }
 
@@ -205,7 +205,7 @@ func TestUpdateVolume(t *testing.T) {
 	err := ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateVolume(tx, volume)
 	})
-	assert.NoError(t, err, "creating volume in store returned an error")
+	require.NoError(t, err, "creating volume in store returned an error")
 
 	// we need to read the volume back out so we can get the current version
 	// just reuse the volume variable and store the latest copy in it.
@@ -225,7 +225,7 @@ func TestUpdateVolume(t *testing.T) {
 		Spec:          spec,
 	})
 
-	assert.NoError(t, err, "expected updating volume to return no error")
+	require.NoError(t, err, "expected updating volume to return no error")
 	require.NotNil(t, resp, "response was nil")
 	require.NotNil(t, resp.Volume, "response.Volume was nil")
 	require.Equal(t, resp.Volume.ID, volume.ID)
@@ -251,7 +251,7 @@ func TestUpdateVolumeMissingRequestComponents(t *testing.T) {
 		Spec:          &cannedVolume.Spec,
 		VolumeVersion: &api.Version{},
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	assert.Contains(t, err.Error(), "ID")
 
@@ -260,7 +260,7 @@ func TestUpdateVolumeMissingRequestComponents(t *testing.T) {
 		VolumeID:      cannedVolume.ID,
 		VolumeVersion: &api.Version{},
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	assert.Contains(t, err.Error(), "Spec")
 
@@ -269,7 +269,7 @@ func TestUpdateVolumeMissingRequestComponents(t *testing.T) {
 		VolumeID: cannedVolume.ID,
 		Spec:     &cannedVolume.Spec,
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	assert.Contains(t, err.Error(), "VolumeVersion")
 }
@@ -286,7 +286,7 @@ func TestUpdateVolumeNotFound(t *testing.T) {
 		VolumeVersion: &api.Version{},
 	})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 }
 
@@ -303,7 +303,7 @@ func TestUpdateVolumeOutOfSequence(t *testing.T) {
 	err := ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateVolume(tx, volume)
 	})
-	assert.NoError(t, err, "creating volume in store returned an error")
+	require.NoError(t, err, "creating volume in store returned an error")
 
 	spec := volume.Spec.Copy()
 	spec.Annotations.Labels = map[string]string{"foo": "bar"}
@@ -394,7 +394,7 @@ func TestUpdateVolumeInvalidFields(t *testing.T) {
 			err := ts.Store.Update(func(tx store.Tx) error {
 				return store.CreateVolume(tx, volume)
 			})
-			assert.NoError(t, err, "creating volume in store returned an error")
+			require.NoError(t, err, "creating volume in store returned an error")
 
 			// we need to read the volume back out so we can get the current version
 			// just reuse the volume variable and store the latest copy in it.
@@ -427,12 +427,12 @@ func TestGetVolume(t *testing.T) {
 	err := ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateVolume(tx, volume)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resp, err := ts.Client.GetVolume(context.Background(), &api.GetVolumeRequest{
 		VolumeID: volume.ID,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Volume)
 	require.Equal(t, resp.Volume, volume)
@@ -541,7 +541,7 @@ func TestListVolumesByGroup(t *testing.T) {
 		return nil
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for _, tc := range []struct {
 		name     string
@@ -623,7 +623,7 @@ func TestListVolumesByGroup(t *testing.T) {
 			resp, err := ts.Client.ListVolumes(context.Background(), &api.ListVolumesRequest{
 				Filters: tc.filters,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.NotNil(t, resp)
 			assert.ElementsMatch(t, resp.Volumes, tc.expected)
 		})
@@ -644,7 +644,7 @@ func TestRemoveVolume(t *testing.T) {
 		VolumeID: cannedVolume.ID,
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 
 	var v *api.Volume
@@ -676,7 +676,7 @@ func TestRemoveVolumeCreatedButNotInUse(t *testing.T) {
 		VolumeID: volume.ID,
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 
 	var v *api.Volume
@@ -711,7 +711,7 @@ func TestRemoveVolumeInUse(t *testing.T) {
 		VolumeID: volume.ID,
 	})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(
 		t, codes.FailedPrecondition, testutils.ErrorCode(err),
 		"expected code FailedPrecondition",
@@ -735,7 +735,7 @@ func TestRemoveVolumeNotFound(t *testing.T) {
 		VolumeID: "notReal",
 	})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(
 		t, codes.NotFound, testutils.ErrorCode(err),
 		"expected code NotFound",
@@ -767,7 +767,7 @@ func TestRemoveVolumeForce(t *testing.T) {
 		Force:    true,
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ts.Store.View(func(tx store.ReadTx) {
 		v := store.GetVolume(tx, volume.ID)

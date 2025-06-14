@@ -312,9 +312,7 @@ func stopDeallocator(t *testing.T, deallocator *Deallocator, ran chan error) {
 func waitForDeallocatorEvent(t *testing.T, deallocator *Deallocator, expectedUpdates bool) {
 	select {
 	case updates := <-deallocator.eventChan:
-		if updates != expectedUpdates {
-			t.Errorf("Expected updates %v VS actual %v", expectedUpdates, updates)
-		}
+		assert.Equalf(t, expectedUpdates, updates, "Expected updates %v VS actual %v", expectedUpdates, updates)
 		ensureNoDeallocatorEvent(t, deallocator)
 	case <-time.After(time.Second):
 		t.Fatal("Waited for too long for the deallocator to process new events")

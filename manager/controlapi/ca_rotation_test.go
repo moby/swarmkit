@@ -12,7 +12,6 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/ca/testutils"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -61,7 +60,7 @@ func getSecurityConfig(t *testing.T, localRootCA *ca.RootCA, cluster *api.Cluste
 	paths := ca.NewConfigPaths(tempdir)
 	secConfig, cancel, err := localRootCA.CreateSecurityConfig(context.Background(), ca.NewKeyReadWriter(paths.Node, nil, nil), ca.CertificateRequestConfig{})
 	require.NoError(t, err)
-	assert.NoError(t, cancel())
+	require.NoError(t, cancel())
 	return secConfig
 }
 

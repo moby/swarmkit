@@ -207,7 +207,7 @@ func TestTaskHistory(t *testing.T) {
 	assert.NotNil(t, s)
 	defer s.Close()
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	require.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
 			ID: identity.NewID(),
 			Spec: api.ClusterSpec{
@@ -253,24 +253,24 @@ func TestTaskHistory(t *testing.T) {
 				},
 			},
 		}
-		assert.NoError(t, store.CreateService(tx, j1))
+		require.NoError(t, store.CreateService(tx, j1))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Start the orchestrator.
 	testutils.EnsureRuns(func() {
-		assert.NoError(t, orchestrator.Run(ctx))
+		require.NoError(t, orchestrator.Run(ctx))
 	})
 	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, api.TaskStateNew, observedTask1.Status.State)
+	assert.Equal(t, "name1", observedTask1.ServiceAnnotations.Name)
 
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, api.TaskStateNew, observedTask2.Status.State)
+	assert.Equal(t, "name1", observedTask2.ServiceAnnotations.Name)
 
 	// Fail both tasks. They should both get restarted.
 	updatedTask1 := observedTask1.Copy()
@@ -280,8 +280,8 @@ func TestTaskHistory(t *testing.T) {
 	updatedTask2.Status.State = api.TaskStateFailed
 	updatedTask2.ServiceAnnotations = api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
-		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
+		require.NoError(t, store.UpdateTask(tx, updatedTask1))
+		require.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
 	})
 
@@ -292,13 +292,13 @@ func TestTaskHistory(t *testing.T) {
 
 	testutils.Expect(t, watch, api.EventUpdateTask{})
 	observedTask3 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, api.TaskStateNew, observedTask3.Status.State)
+	assert.Equal(t, "name1", observedTask3.ServiceAnnotations.Name)
 
 	testutils.Expect(t, watch, api.EventUpdateTask{})
 	observedTask4 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, api.TaskStateNew, observedTask4.Status.State)
+	assert.Equal(t, "name1", observedTask4.ServiceAnnotations.Name)
 
 	// Fail these replacement tasks. Since TaskHistory is set to 2, this
 	// should cause the oldest tasks for each instance to get deleted.
@@ -307,8 +307,8 @@ func TestTaskHistory(t *testing.T) {
 	updatedTask4 := observedTask4.Copy()
 	updatedTask4.Status.State = api.TaskStateFailed
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateTask(tx, updatedTask3))
-		assert.NoError(t, store.UpdateTask(tx, updatedTask4))
+		require.NoError(t, store.UpdateTask(tx, updatedTask3))
+		require.NoError(t, store.UpdateTask(tx, updatedTask4))
 		return nil
 	})
 
@@ -324,7 +324,7 @@ func TestTaskHistory(t *testing.T) {
 	s.View(func(tx store.ReadTx) {
 		foundTasks, err = store.FindTasks(tx, store.All)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, foundTasks, 4)
 }
 
@@ -338,7 +338,7 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 	assert.NotNil(t, s)
 	defer s.Close()
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	require.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
 			ID: identity.NewID(),
 			Spec: api.ClusterSpec{
@@ -388,22 +388,22 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 	// started. This should result in two tasks when the orchestrator
 	// starts up.
 	err := s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateService(tx, service1))
+		require.NoError(t, store.CreateService(tx, service1))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Start the orchestrator.
-	testutils.EnsureRuns(func() { assert.NoError(t, orchestrator.Run(ctx)) })
+	testutils.EnsureRuns(func() { require.NoError(t, orchestrator.Run(ctx)) })
 	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, api.TaskStateNew, observedTask1.Status.State)
+	assert.Equal(t, "name1", observedTask1.ServiceAnnotations.Name)
 
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, api.TaskStateNew, observedTask2.Status.State)
+	assert.Equal(t, "name1", observedTask2.ServiceAnnotations.Name)
 
 	// Set both tasks to RUNNING, so the service is successfully running
 	updatedTask1 := observedTask1.Copy()
@@ -413,8 +413,8 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 	updatedTask2.Status.State = api.TaskStateRunning
 	updatedTask2.ServiceAnnotations = api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
-		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
+		require.NoError(t, store.UpdateTask(tx, updatedTask1))
+		require.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
 	})
 
@@ -427,13 +427,13 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 	// statuses to be set to REMOVE.
 	service1.Spec.GetReplicated().Replicas = 1
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateService(tx, service1))
+		require.NoError(t, store.UpdateService(tx, service1))
 		return nil
 	})
 
 	observedTask3 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask3.DesiredState, api.TaskStateRemove)
-	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "original")
+	assert.Equal(t, api.TaskStateRemove, observedTask3.DesiredState)
+	assert.Equal(t, "original", observedTask3.ServiceAnnotations.Name)
 
 	testutils.Expect(t, watch, state.EventCommit{})
 
@@ -442,7 +442,7 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 	updatedTask3 := observedTask3.Copy()
 	updatedTask3.Status.State = api.TaskStateShutdown
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateTask(tx, updatedTask3))
+		require.NoError(t, store.UpdateTask(tx, updatedTask3))
 		return nil
 	})
 
@@ -455,7 +455,7 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 	s.View(func(tx store.ReadTx) {
 		foundTasks, err = store.FindTasks(tx, store.All)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, foundTasks, 1)
 }
 
@@ -469,7 +469,7 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	assert.NotNil(t, s)
 	defer s.Close()
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	require.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
 			ID: identity.NewID(),
 			Spec: api.ClusterSpec{
@@ -518,24 +518,24 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	// started. This should result in two tasks when the orchestrator
 	// starts up.
 	err := s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateService(tx, service1))
+		require.NoError(t, store.CreateService(tx, service1))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Start the orchestrator.
 	testutils.EnsureRuns(func() {
-		assert.NoError(t, orchestrator.Run(ctx))
+		require.NoError(t, orchestrator.Run(ctx))
 	})
 	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, api.TaskStateNew, observedTask1.Status.State)
+	assert.Equal(t, "name1", observedTask1.ServiceAnnotations.Name)
 
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, api.TaskStateNew, observedTask2.Status.State)
+	assert.Equal(t, "name1", observedTask2.ServiceAnnotations.Name)
 
 	// Set both tasks to RUNNING, so the service is successfully running
 	updatedTask1 := observedTask1.Copy()
@@ -545,8 +545,8 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	updatedTask2.Status.State = api.TaskStateRunning
 	updatedTask2.ServiceAnnotations = api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
-		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
+		require.NoError(t, store.UpdateTask(tx, updatedTask1))
+		require.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
 	})
 
@@ -557,16 +557,16 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 
 	// Delete the service. This should trigger both the task desired statuses to be set to REMOVE.
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteService(tx, service1.ID))
+		require.NoError(t, store.DeleteService(tx, service1.ID))
 		return nil
 	})
 
 	observedTask3 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask3.DesiredState, api.TaskStateRemove)
-	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "original")
+	assert.Equal(t, api.TaskStateRemove, observedTask3.DesiredState)
+	assert.Equal(t, "original", observedTask3.ServiceAnnotations.Name)
 	observedTask4 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask4.DesiredState, api.TaskStateRemove)
-	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "original")
+	assert.Equal(t, api.TaskStateRemove, observedTask4.DesiredState)
+	assert.Equal(t, "original", observedTask4.ServiceAnnotations.Name)
 
 	testutils.Expect(t, watch, state.EventCommit{})
 
@@ -577,8 +577,8 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	updatedTask4 := observedTask4.Copy()
 	updatedTask4.Status.State = api.TaskStateShutdown
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateTask(tx, updatedTask3))
-		assert.NoError(t, store.UpdateTask(tx, updatedTask4))
+		require.NoError(t, store.UpdateTask(tx, updatedTask3))
+		require.NoError(t, store.UpdateTask(tx, updatedTask4))
 		return nil
 	})
 
@@ -594,8 +594,8 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	s.View(func(tx store.ReadTx) {
 		foundTasks, err = store.FindTasks(tx, store.All)
 	})
-	assert.NoError(t, err)
-	assert.Len(t, foundTasks, 0)
+	require.NoError(t, err)
+	assert.Empty(t, foundTasks)
 }
 
 // TestServiceRemoveDeadTasks tests removal of dead tasks
@@ -606,7 +606,7 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	assert.NotNil(t, s)
 	defer s.Close()
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	require.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
 			ID: identity.NewID(),
 			Spec: api.ClusterSpec{
@@ -656,24 +656,24 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	// started. This should result in two tasks when the orchestrator
 	// starts up.
 	err := s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateService(tx, service1))
+		require.NoError(t, store.CreateService(tx, service1))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Start the orchestrator and the reaper.
 	testutils.EnsureRuns(func() {
-		assert.NoError(t, orchestrator.Run(ctx))
+		require.NoError(t, orchestrator.Run(ctx))
 	})
 	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, api.TaskStateNew, observedTask1.Status.State)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, "name1", observedTask1.ServiceAnnotations.Name)
 
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, api.TaskStateNew, observedTask2.Status.State)
-	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, "name1", observedTask2.ServiceAnnotations.Name)
 
 	// Set both task states to RUNNING.
 	updatedTask1 := observedTask1.Copy()
@@ -683,8 +683,8 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	updatedTask2.Status.State = api.TaskStateRunning
 	updatedTask2.ServiceAnnotations = api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
-		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
+		require.NoError(t, store.UpdateTask(tx, updatedTask1))
+		require.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
 	})
 	require.NoError(t, err)
@@ -704,8 +704,8 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	updatedTask4.Status.State = api.TaskStateCompleted
 	updatedTask4.ServiceAnnotations = api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateTask(tx, updatedTask3))
-		assert.NoError(t, store.UpdateTask(tx, updatedTask4))
+		require.NoError(t, store.UpdateTask(tx, updatedTask3))
+		require.NoError(t, store.UpdateTask(tx, updatedTask4))
 		return nil
 	})
 	require.NoError(t, err)
@@ -720,7 +720,7 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 
 	// Delete the service.
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteService(tx, service1.ID))
+		require.NoError(t, store.DeleteService(tx, service1.ID))
 		return nil
 	})
 
@@ -748,8 +748,8 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	s.View(func(tx store.ReadTx) {
 		foundTasks, err = store.FindTasks(tx, store.All)
 	})
-	assert.NoError(t, err)
-	assert.Len(t, foundTasks, 0)
+	require.NoError(t, err)
+	assert.Empty(t, foundTasks)
 }
 
 // TestTaskReaperBatching tests that the batching logic for the task reaper
@@ -767,10 +767,10 @@ func TestTaskReaperBatching(t *testing.T) {
 	)
 
 	// set up all of the test fixtures
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	require.NoError(t, s.Update(func(tx store.Tx) error {
 		// we need a cluster object, because we need to set the retention limit
 		// to a low value
-		assert.NoError(t, store.CreateCluster(tx, &api.Cluster{
+		require.NoError(t, store.CreateCluster(tx, &api.Cluster{
 			ID: identity.NewID(),
 			Spec: api.ClusterSpec{
 				Annotations: api.Annotations{
@@ -793,7 +793,7 @@ func TestTaskReaperBatching(t *testing.T) {
 		}
 		// we need to create all of the tasks used in this test, because we'll
 		// be using task update events to trigger reaper behavior.
-		assert.NoError(t, store.CreateTask(tx, task1))
+		require.NoError(t, store.CreateTask(tx, task1))
 
 		task2 = &api.Task{
 			ID:           "foo2",
@@ -804,7 +804,7 @@ func TestTaskReaperBatching(t *testing.T) {
 				State: api.TaskStateShutdown,
 			},
 		}
-		assert.NoError(t, store.CreateTask(tx, task2))
+		require.NoError(t, store.CreateTask(tx, task2))
 
 		tasks = make([]*api.Task, maxDirty+1)
 		for i := 0; i < maxDirty+1; i++ {
@@ -833,7 +833,7 @@ func TestTaskReaperBatching(t *testing.T) {
 				State: api.TaskStateShutdown,
 			},
 		}
-		assert.NoError(t, store.CreateTask(tx, task3))
+		require.NoError(t, store.CreateTask(tx, task3))
 		return nil
 	}))
 
@@ -854,7 +854,7 @@ func TestTaskReaperBatching(t *testing.T) {
 	}
 
 	// update task1 to die
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	require.NoError(t, s.Update(func(tx store.Tx) error {
 		task1.DesiredState = api.TaskStateRemove
 		return store.UpdateTask(tx, task1)
 	}))
@@ -875,7 +875,7 @@ func TestTaskReaperBatching(t *testing.T) {
 	}
 
 	// now make sure we'll tick again if we update another task to die
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	require.NoError(t, s.Update(func(tx store.Tx) error {
 		task2.DesiredState = api.TaskStateRemove
 		return store.UpdateTask(tx, task2)
 	}))
@@ -897,10 +897,10 @@ func TestTaskReaperBatching(t *testing.T) {
 	// waiting. we should easily within the batching interval be able to
 	// process all of these events, and should expect 1 tick immediately after
 	// and no more
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	require.NoError(t, s.Update(func(tx store.Tx) error {
 		for _, task := range tasks {
 			task.DesiredState = api.TaskStateRemove
-			assert.NoError(t, store.UpdateTask(tx, task))
+			require.NoError(t, store.UpdateTask(tx, task))
 		}
 		return nil
 	}))
@@ -925,7 +925,7 @@ func TestTaskReaperBatching(t *testing.T) {
 
 	// now before we wrap up, make sure the task reaper still works off the
 	// timer
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	require.NoError(t, s.Update(func(tx store.Tx) error {
 		task3.DesiredState = api.TaskStateRemove
 		return store.UpdateTask(tx, task3)
 	}))
@@ -952,7 +952,7 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 	assert.NotNil(t, s)
 	defer s.Close()
 
-	assert.NoError(t, s.Update(func(tx store.Tx) error {
+	require.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
 			ID: identity.NewID(),
 			Spec: api.ClusterSpec{
@@ -1002,27 +1002,27 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 	// started. This should result in one tasks when the orchestrator
 	// starts up.
 	err := s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateService(tx, service1))
+		require.NoError(t, store.CreateService(tx, service1))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Start the orchestrator.
 	testutils.EnsureRuns(func() {
-		assert.NoError(t, orchestrator.Run(ctx))
+		require.NoError(t, orchestrator.Run(ctx))
 	})
 	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, api.TaskStateNew, observedTask1.Status.State)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, "name1", observedTask1.ServiceAnnotations.Name)
 
 	// Set the task state to PENDING to simulate allocation.
 	updatedTask1 := observedTask1.Copy()
 	updatedTask1.Status.State = api.TaskStatePending
 	updatedTask1.ServiceAnnotations = api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
+		require.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
 	})
 	require.NoError(t, err)
@@ -1034,7 +1034,7 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 	service1.Spec.Task.ForceUpdate++
 	// This should shutdown the previous task and create a new one.
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.UpdateService(tx, service1))
+		require.NoError(t, store.UpdateService(tx, service1))
 		return nil
 	})
 	testutils.Expect(t, watch, api.EventUpdateService{})
@@ -1043,7 +1043,7 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 	// New task should be created and old task marked for SHUTDOWN.
 	observedTask1 = testutils.WatchTaskCreate(t, watch)
 	assert.Equal(t, api.TaskStateNew, observedTask1.Status.State)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, "name1", observedTask1.ServiceAnnotations.Name)
 
 	observedTask3 := testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, api.TaskStateShutdown, observedTask3.DesiredState)
@@ -1062,7 +1062,7 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 	s.View(func(tx store.ReadTx) {
 		foundTasks, err = store.FindTasks(tx, store.All)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, foundTasks, 1)
 }
 
@@ -1101,7 +1101,7 @@ func TestTick(t *testing.T) {
 	setupTaskReaperDirty(taskReaper)
 	// call tick directly and verify dirty set was cleaned up.
 	taskReaper.tick()
-	assert.Zero(t, len(taskReaper.dirty))
+	assert.Empty(t, taskReaper.dirty)
 
 	// Test # 2
 	// Verify that the dirty set it cleaned up
@@ -1153,11 +1153,11 @@ func TestTick(t *testing.T) {
 
 	// Create a service.
 	err := s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateService(tx, service1))
-		assert.NoError(t, store.CreateService(tx, service2))
+		require.NoError(t, store.CreateService(tx, service1))
+		require.NoError(t, store.CreateService(tx, service2))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Setup the dirty set with entries to
 	// verify that the dirty set it cleaned up
@@ -1166,7 +1166,7 @@ func TestTick(t *testing.T) {
 	taskReaper.taskHistory = 0
 	// call tick directly and verify dirty set was cleaned up.
 	taskReaper.tick()
-	assert.Zero(t, len(taskReaper.dirty))
+	assert.Empty(t, taskReaper.dirty)
 
 	// Test # 3
 	// Test that the tasks are cleanup when the total number of tasks
@@ -1201,11 +1201,11 @@ func TestTick(t *testing.T) {
 
 	// Create Tasks.
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, task1))
-		assert.NoError(t, store.CreateTask(tx, task2))
+		require.NoError(t, store.CreateTask(tx, task1))
+		require.NoError(t, store.CreateTask(tx, task2))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Set history to 1 to ensure that the tasks are not cleaned up yet.
 	// At the same time, we should be able to test that the dirty set was
@@ -1214,7 +1214,7 @@ func TestTick(t *testing.T) {
 	setupTaskReaperDirty(taskReaper)
 	// call tick directly and verify dirty set was cleaned up.
 	taskReaper.tick()
-	assert.Zero(t, len(taskReaper.dirty))
+	assert.Empty(t, taskReaper.dirty)
 
 	// Now test that tick() function cleans up the old tasks from the store.
 
@@ -1226,11 +1226,11 @@ func TestTick(t *testing.T) {
 	task2.DesiredState = api.TaskStateRunning
 	task2.ID = "id2task2"
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, task1))
-		assert.NoError(t, store.CreateTask(tx, task2))
+		require.NoError(t, store.CreateTask(tx, task1))
+		require.NoError(t, store.CreateTask(tx, task2))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	watch, cancel := state.Watch(s.WatchQueue() /*api.EventCreateTask{}, api.EventUpdateTask{}*/)
 	defer cancel()
@@ -1239,7 +1239,7 @@ func TestTick(t *testing.T) {
 	setupTaskReaperDirty(taskReaper)
 	// Call tick directly and verify dirty set was cleaned up.
 	taskReaper.tick()
-	assert.Zero(t, len(taskReaper.dirty))
+	assert.Empty(t, taskReaper.dirty)
 	// Task reaper should delete the task previously marked for SHUTDOWN.
 	deletedTask1 := testutils.WatchTaskDelete(t, watch)
 	assert.Equal(t, api.TaskStateShutdown, deletedTask1.Status.State)
@@ -1285,7 +1285,7 @@ func TestTickHistoryCleanup(t *testing.T) {
 	}
 
 	s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateService(tx, service1))
+		require.NoError(t, store.CreateService(tx, service1))
 		return nil
 	})
 
@@ -1317,14 +1317,14 @@ func TestTickHistoryCleanup(t *testing.T) {
 				},
 			}
 			s.Update(func(tx store.Tx) error {
-				assert.NoError(t, store.CreateTask(tx, task3))
+				require.NoError(t, store.CreateTask(tx, task3))
 				return nil
 			})
 		} else {
 			task.DesiredState = desiredState
 			task.Status.State = actualState
 			s.Update(func(tx store.Tx) error {
-				assert.NoError(t, store.UpdateTask(tx, task))
+				require.NoError(t, store.UpdateTask(tx, task))
 				return nil
 			})
 		}
@@ -1378,7 +1378,7 @@ func TestTickHistoryCleanup(t *testing.T) {
 		{desired: api.TaskStateShutdown, actual: api.TaskStateOrphaned, cleanedUp: true},
 	} {
 		testfunc(testcase.desired, testcase.actual)
-		assert.Zero(t, len(taskReaper.dirty))
+		assert.Empty(t, taskReaper.dirty)
 		if testcase.cleanedUp {
 			waitForTaskDelete(testcase.desired, testcase.actual)
 		}

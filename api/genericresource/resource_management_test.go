@@ -5,6 +5,7 @@ import (
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestClaimSingleDiscrete(t *testing.T) {
@@ -14,7 +15,7 @@ func TestClaimSingleDiscrete(t *testing.T) {
 	taskReservations = append(taskReservations, NewDiscrete("apple", 2))
 
 	err := Claim(&nodeRes, &taskAssigned, taskReservations)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, nodeRes, 1)
 	assert.Len(t, taskAssigned, 1)
@@ -36,7 +37,7 @@ func TestClaimMultipleDiscrete(t *testing.T) {
 	taskReservations = append(taskReservations, NewDiscrete("apple", 2))
 
 	err := Claim(&nodeRes, &taskAssigned, taskReservations)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, nodeRes, 3) // oranges isn't present anymore
 	assert.Len(t, taskAssigned, 2)
@@ -57,7 +58,7 @@ func TestClaimSingleStr(t *testing.T) {
 	taskReservations = append(taskReservations, NewDiscrete("apple", 2))
 
 	err := Claim(&nodeRes, &taskAssigned, taskReservations)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, nodeRes, 2)
 	assert.Len(t, taskAssigned, 2)
@@ -77,7 +78,7 @@ func TestClaimMultipleStr(t *testing.T) {
 	taskReservations = append(taskReservations, NewDiscrete("apple", 2))
 
 	err := Claim(&nodeRes, &taskAssigned, taskReservations)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, nodeRes, 6)
 	assert.Len(t, taskAssigned, 6)
@@ -99,13 +100,13 @@ func TestReclaimSingleDiscrete(t *testing.T) {
 	taskAssigned = append(taskAssigned, NewDiscrete("apple", 2))
 
 	err := reclaimResources(&nodeRes, taskAssigned)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, nodeRes, 1)
 	assert.Equal(t, int64(2), nodeRes[0].GetDiscreteResourceSpec().Value)
 
 	err = reclaimResources(&nodeRes, taskAssigned)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, nodeRes, 1)
 	assert.Equal(t, int64(4), nodeRes[0].GetDiscreteResourceSpec().Value)
@@ -122,7 +123,7 @@ func TestReclaimMultipleDiscrete(t *testing.T) {
 	taskAssigned = append(taskAssigned, NewDiscrete("apple", 2))
 
 	err := reclaimResources(&nodeRes, taskAssigned)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Len(t, nodeRes, 3)
 
@@ -143,7 +144,7 @@ func TestReclaimSingleStr(t *testing.T) {
 	taskAssigned := NewSet("apple", "red", "orange")
 
 	err := reclaimResources(&nodeRes, taskAssigned)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, nodeRes, 2)
 
 	for _, k := range []string{"red", "orange"} {
@@ -153,7 +154,7 @@ func TestReclaimSingleStr(t *testing.T) {
 	taskAssigned = NewSet("apple", "blue", "red")
 	err = reclaimResources(&nodeRes, taskAssigned)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, nodeRes, 4)
 
 	for _, k := range []string{"red", "orange", "blue", "red"} {
@@ -167,7 +168,7 @@ func TestReclaimMultipleStr(t *testing.T) {
 	taskAssigned = append(taskAssigned, NewSet("orange", "red", "orange")...)
 
 	err := reclaimResources(&nodeRes, taskAssigned)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, nodeRes, 5)
 
 	apples := GetResource("apple", nodeRes)
@@ -196,7 +197,7 @@ func TestReclaimResources(t *testing.T) {
 	taskAssigned = append(taskAssigned, NewDiscrete("coffe", 2))
 
 	err := reclaimResources(&nodeRes, taskAssigned)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, nodeRes, 12)
 
 	apples := GetResource("apple", nodeRes)
@@ -234,7 +235,7 @@ func TestSanitizeDiscrete(t *testing.T) {
 	nodeAvailableResources = append(nodeAvailableResources, NewDiscrete("orange", 4))
 
 	sanitize(nodeRes, &nodeAvailableResources)
-	assert.Len(t, nodeAvailableResources, 0)
+	assert.Empty(t, nodeAvailableResources)
 
 	nodeRes = append(nodeRes, NewDiscrete("orange", 6))
 	nodeAvailableResources = append(nodeAvailableResources, NewDiscrete("orange", 4))
@@ -273,7 +274,7 @@ func TestSanitizeStr(t *testing.T) {
 	nodeAvailableResources := NewSet("apple", "red", "orange", "blue")
 
 	sanitize(nodeRes, &nodeAvailableResources)
-	assert.Len(t, nodeAvailableResources, 0)
+	assert.Empty(t, nodeAvailableResources)
 
 	nodeAvailableResources = NewSet("apple", "red", "orange", "blue")
 	nodeRes = NewSet("apple", "red", "orange", "blue", "green")

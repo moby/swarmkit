@@ -25,7 +25,7 @@ func prepResource(t *testing.T, ts *testServer) *api.Resource {
 	}
 	// create an extension so we can create valid requests
 	extResp, err := ts.Client.CreateExtension(context.Background(), extensionReq)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, extResp)
 	assert.NotNil(t, extResp.Extension)
 
@@ -66,7 +66,7 @@ func TestCreateResource(t *testing.T) {
 
 	// create an extension so we can create valid requests
 	resp, err := ts.Client.CreateExtension(context.Background(), extensionReq)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Extension)
 
@@ -81,7 +81,7 @@ func TestCreateResource(t *testing.T) {
 		}
 
 		resp, err := ts.Client.CreateResource(context.Background(), req)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.NotNil(t, resp.Resource)
 		assert.NotEmpty(t, resp.Resource.ID)
@@ -139,7 +139,7 @@ func TestCreateResource(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := ts.Client.CreateResource(context.Background(), tc.req)
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Equal(t, tc.code, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 		})
 	}
@@ -220,7 +220,7 @@ func TestUpdateResourceValid(t *testing.T) {
 			require.NotNil(t, resp.Resource)
 			assert.Equal(t, resp.Resource.Payload, r.Payload)
 			assert.Equal(t, resp.Resource.Annotations, r.Annotations)
-			assert.Equal(t, resp.Resource.Kind, testExtName)
+			assert.Equal(t, testExtName, resp.Resource.Kind)
 		})
 	}
 }
@@ -277,7 +277,7 @@ func TestUpdateResourceInvalid(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := ts.Client.UpdateResource(context.Background(), tc.req)
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Equal(t, tc.code, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 		})
 	}
@@ -291,7 +291,7 @@ func TestGetResource(t *testing.T) {
 
 	// empty resource ID should fail with invalid argument
 	resp, err := ts.Client.GetResource(context.Background(), &api.GetResourceRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// id which does not exist should return NotFound
@@ -299,7 +299,7 @@ func TestGetResource(t *testing.T) {
 		context.Background(),
 		&api.GetResourceRequest{ResourceID: "notreal"},
 	)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// ID which exists should return the resource
@@ -321,7 +321,7 @@ func TestRemoveResource(t *testing.T) {
 
 	// empty resource ID should fail with invalid argument
 	resp, err := ts.Client.RemoveResource(context.Background(), &api.RemoveResourceRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	assert.Nil(t, resp)
 
@@ -330,7 +330,7 @@ func TestRemoveResource(t *testing.T) {
 		context.Background(),
 		&api.RemoveResourceRequest{ResourceID: "notreal"},
 	)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	assert.Nil(t, resp)
 
@@ -347,7 +347,7 @@ func TestRemoveResource(t *testing.T) {
 		context.Background(),
 		&api.RemoveResourceRequest{ResourceID: resource.ID},
 	)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	assert.Nil(t, resp)
 }
@@ -384,7 +384,7 @@ func TestListResources(t *testing.T) {
 
 	// listing when there is nothing returns an empty list but no error
 	result := listResources(&api.ListResourcesRequest{})
-	assert.Len(t, result, 0)
+	assert.Empty(t, result)
 
 	// create a bunch of resources to test filtering
 	allListableNames := []string{"aaa", "aab", "abc", "bbb", "bac", "bbc", "ccc", "cac", "cbc", "ddd"}

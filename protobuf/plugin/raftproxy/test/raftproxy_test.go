@@ -59,6 +59,6 @@ func TestSimpleRedirect(t *testing.T) {
 
 	client := NewRouteGuideClient(conn)
 	_, err = client.GetFeature(context.Background(), &Point{})
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.ResourceExhausted, testutils.ErrorCode(err))
 }

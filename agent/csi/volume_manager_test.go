@@ -9,6 +9,7 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/volumequeue"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -84,10 +85,10 @@ func TestTaskRestrictedVolumesProvider(t *testing.T) {
 
 			volume, err := volumesGetter.Get(testCase.volumeID)
 			if testCase.expectedErr != "" {
-				assert.Error(t, err, testCase.desc)
+				require.Error(t, err, testCase.desc)
 				assert.Equal(t, testCase.expectedErr, err.Error())
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.NotEmpty(t, volume)
 			}
 		})
