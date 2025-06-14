@@ -104,7 +104,7 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 	}
 	// if the final stream object contained an error, return it
 	if errMsg, ok := m["error"]; ok {
-		return errors.Errorf("%v", errMsg)
+		return fmt.Errorf("%v", errMsg)
 	}
 	return nil
 }

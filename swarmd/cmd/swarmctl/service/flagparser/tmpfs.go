@@ -1,6 +1,7 @@
 package flagparser
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"strconv"
@@ -27,11 +28,11 @@ func parseTmpfs(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			parts := strings.SplitN(tmpfs, ":", 2)
 
 			if len(parts) < 1 {
-				return errors.Errorf("invalid mount spec: %v", tmpfs)
+				return fmt.Errorf("invalid mount spec: %v", tmpfs)
 			}
 
 			if len(parts[0]) == 0 || !path.IsAbs(parts[0]) {
-				return errors.Errorf("invalid mount spec: %v", tmpfs)
+				return fmt.Errorf("invalid mount spec: %v", tmpfs)
 			}
 
 			m := api.Mount{
@@ -42,7 +43,7 @@ func parseTmpfs(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			if len(parts) == 2 {
 				if strings.Contains(parts[1], ":") {
 					// repeated colon is illegal
-					return errors.Errorf("invalid mount spec: %v", tmpfs)
+					return fmt.Errorf("invalid mount spec: %v", tmpfs)
 				}
 
 				// BUG(stevvooe): Cobra stringslice actually doesn't correctly
@@ -73,7 +74,7 @@ func parseTmpfs(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 							case 'k':
 								multiplier = 1 << 10
 							default:
-								return errors.Errorf("invalid size format: %v", flag)
+								return fmt.Errorf("invalid size format: %v", flag)
 							}
 
 							// reparse the meat

@@ -703,7 +703,7 @@ func ParseRole(apiRole api.NodeRole) (string, error) {
 	case api.NodeRoleWorker:
 		return WorkerRole, nil
 	default:
-		return "", errors.Errorf("failed to parse api role: %v", apiRole)
+		return "", fmt.Errorf("failed to parse api role: %v", apiRole)
 	}
 }
 
@@ -715,6 +715,6 @@ func FormatRole(role string) (api.NodeRole, error) {
 	case strings.ToLower(WorkerRole):
 		return api.NodeRoleWorker, nil
 	default:
-		return 0, errors.Errorf("failed to parse role: %s", role)
+		return 0, fmt.Errorf("failed to parse role: %s", role)
 	}
 }

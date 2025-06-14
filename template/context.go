@@ -132,7 +132,7 @@ func (ctx *PayloadContext) secretGetter(target string) (string, error) {
 		}
 	}
 
-	return "", errors.Errorf("secret target %s not found", target)
+	return "", fmt.Errorf("secret target %s not found", target)
 }
 
 func (ctx *PayloadContext) configGetter(target string) (string, error) {
@@ -156,7 +156,7 @@ func (ctx *PayloadContext) configGetter(target string) (string, error) {
 		}
 	}
 
-	return "", errors.Errorf("config target %s not found", target)
+	return "", fmt.Errorf("config target %s not found", target)
 }
 
 func (ctx *PayloadContext) envGetter(variable string) (string, error) {

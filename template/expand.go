@@ -18,7 +18,7 @@ import (
 func ExpandContainerSpec(n *api.NodeDescription, t *api.Task) (*api.ContainerSpec, error) {
 	container := t.Spec.GetContainer()
 	if container == nil {
-		return nil, errors.Errorf("task missing ContainerSpec to expand")
+		return nil, fmt.Errorf("task missing ContainerSpec to expand")
 	}
 
 	container = container.Copy()

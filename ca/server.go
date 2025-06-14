@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"crypto/x509"
+	"fmt"
 	"sync"
 	"time"
 
@@ -818,7 +819,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
 		err = s.store.Update(func(tx store.Tx) error {
 			node := store.GetNode(tx, nodeID)
 			if node == nil {
-				return errors.Errorf("node %s not found", nodeID)
+				return fmt.Errorf("node %s not found", nodeID)
 			}
 
 			node.Certificate.Status = api.IssuanceStatus{
@@ -851,7 +852,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
 			if err != nil {
 				node = store.GetNode(tx, nodeID)
 				if node == nil {
-					err = errors.Errorf("node %s does not exist", nodeID)
+					err = fmt.Errorf("node %s does not exist", nodeID)
 				}
 			}
 			return err

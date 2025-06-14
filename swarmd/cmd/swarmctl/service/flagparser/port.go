@@ -1,6 +1,7 @@
 package flagparser
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -89,7 +90,7 @@ func parsePortSpec(portSpec string) (api.PortConfig_Protocol, uint32, error) {
 		proto := parts[1]
 		protocol, ok := api.PortConfig_Protocol_value[strings.ToUpper(proto)]
 		if !ok {
-			return 0, 0, errors.Errorf("invalid protocol string: %s", proto)
+			return 0, 0, fmt.Errorf("invalid protocol string: %s", proto)
 		}
 
 		return api.PortConfig_Protocol(protocol), uint32(port), nil

@@ -1084,7 +1084,7 @@ func (a *Allocator) reallocateNode(ctx context.Context, nodeID string) error {
 		node = store.GetNode(tx, nodeID)
 	})
 	if node == nil {
-		return errors.Errorf("node %v cannot be found", nodeID)
+		return fmt.Errorf("node %v cannot be found", nodeID)
 	}
 
 	networks, err := a.getNodeNetworks(node.ID)

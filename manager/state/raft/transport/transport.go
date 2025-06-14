@@ -4,6 +4,7 @@ package transport
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"net"
 	"sync"
@@ -129,7 +130,7 @@ func (t *Transport) Send(m raftpb.Message) error {
 		return errors.New("transport stopped")
 	}
 	if t.config.IsIDRemoved(m.To) {
-		return errors.Errorf("refusing to send message %s to removed member %x", m.Type, m.To)
+		return fmt.Errorf("refusing to send message %s to removed member %x", m.Type, m.To)
 	}
 	p, ok := t.peers[m.To]
 	if !ok {
@@ -164,7 +165,7 @@ func (t *Transport) AddPeer(id uint64, addr string) error {
 		if ep.address() == addr {
 			return nil
 		}
-		return errors.Errorf("peer %x already added with addr %s", id, ep.addr)
+		return fmt.Errorf("peer %x already added with addr %s", id, ep.addr)
 	}
 	log.G(t.ctx).Debugf("transport: add peer %x with address %s", id, addr)
 	p, err := newPeer(id, addr, t)

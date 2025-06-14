@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -197,7 +198,7 @@ func makeExternalSignRequest(ctx context.Context, client *http.Client, url strin
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, recoverableErr{err: errors.Errorf("unexpected status code in CSR response: %d - %s", resp.StatusCode, string(body))}
+		return nil, recoverableErr{err: fmt.Errorf("unexpected status code in CSR response: %d - %s", resp.StatusCode, string(body))}
 	}
 
 	var apiResponse api.Response
@@ -208,7 +209,7 @@ func makeExternalSignRequest(ctx context.Context, client *http.Client, url strin
 
 	if !apiResponse.Success || apiResponse.Result == nil {
 		if len(apiResponse.Errors) > 0 {
-			return nil, errors.Errorf("response errors: %v", apiResponse.Errors)
+			return nil, fmt.Errorf("response errors: %v", apiResponse.Errors)
 		}
 
 		return nil, errors.New("certificate signing request failed")
@@ -216,12 +217,12 @@ func makeExternalSignRequest(ctx context.Context, client *http.Client, url strin
 
 	result, ok := apiResponse.Result.(map[string]interface{})
 	if !ok {
-		return nil, errors.Errorf("invalid result type: %T", apiResponse.Result)
+		return nil, fmt.Errorf("invalid result type: %T", apiResponse.Result)
 	}
 
 	certPEM, ok := result["certificate"].(string)
 	if !ok {
-		return nil, errors.Errorf("invalid result certificate field type: %T", result["certificate"])
+		return nil, fmt.Errorf("invalid result certificate field type: %T", result["certificate"])
 	}
 
 	return []byte(certPEM), nil

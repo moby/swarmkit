@@ -84,7 +84,7 @@ func (p *peer) send(m raftpb.Message) (err error) {
 		return p.ctx.Err()
 	default:
 		p.tr.config.ReportUnreachable(p.id)
-		return errors.Errorf("peer is unreachable")
+		return fmt.Errorf("peer is unreachable")
 	}
 	return nil
 }
@@ -307,7 +307,7 @@ func healthCheckConn(ctx context.Context, cc *grpc.ClientConn) error {
 		return errors.Wrap(err, "failed to check health")
 	}
 	if resp.Status != api.HealthCheckResponse_SERVING {
-		return errors.Errorf("health check returned status %s", resp.Status)
+		return fmt.Errorf("health check returned status %s", resp.Status)
 	}
 	return nil
 }

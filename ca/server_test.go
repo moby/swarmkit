@@ -1264,7 +1264,7 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 				return err
 			}
 			if !bytes.Equal(s.Key, rotationKey) {
-				return errors.Errorf("server %d's root CAs hasn't been updated yet", i)
+				return fmt.Errorf("server %d's root CAs hasn't been updated yet", i)
 			}
 		}
 		return nil

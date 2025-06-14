@@ -1304,7 +1304,7 @@ func (d *Dispatcher) markNodeNotReady(id string, state api.NodeStatus_State, mes
 	}
 
 	if rn := d.nodes.Delete(id); rn == nil {
-		return errors.Errorf("node %s is not found in local storage", id)
+		return fmt.Errorf("node %s is not found in local storage", id)
 	}
 	logLocal.Debugf("deleted node %s from node store", node.ID)
 

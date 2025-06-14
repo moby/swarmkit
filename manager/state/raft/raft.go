@@ -1096,7 +1096,7 @@ func (n *Node) addMember(ctx context.Context, addr string, raftID uint64, nodeID
 func (n *Node) updateNodeBlocking(ctx context.Context, id uint64, addr string) error {
 	m := n.cluster.GetMember(id)
 	if m == nil {
-		return errors.Errorf("member %x is not found for update", id)
+		return fmt.Errorf("member %x is not found for update", id)
 	}
 	node := api.RaftMember{
 		RaftID: m.RaftID,
