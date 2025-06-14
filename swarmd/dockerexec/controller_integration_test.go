@@ -10,6 +10,7 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/genericresource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -40,7 +41,7 @@ func TestControllerFlowIntegration(t *testing.T) {
 		engineapi.WithHost(dockerTestAddr),
 		engineapi.WithAPIVersionNegotiation(),
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, client)
 
 	available := genericresource.NewSet("apple", "blue", "red")
@@ -83,21 +84,20 @@ func TestControllerFlowIntegration(t *testing.T) {
 	})
 
 	ctlr, err := newController(client, nil, task, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, ctlr)
-	assert.NoError(t, ctlr.Prepare(ctx))
-	assert.NoError(t, ctlr.Start(ctx))
-	assert.NoError(t, ctlr.(exec.ControllerLogs).Logs(ctx, publisher, api.LogSubscriptionOptions{
+	require.NoError(t, ctlr.Prepare(ctx))
+	require.NoError(t, ctlr.Start(ctx))
+	require.NoError(t, ctlr.(exec.ControllerLogs).Logs(ctx, publisher, api.LogSubscriptionOptions{
 		Follow: true,
 	}))
-	assert.NoError(t, ctlr.Wait(ctx))
+	require.NoError(t, ctlr.Wait(ctx))
 	assert.True(t, receivedLogs)
-	assert.NoError(t, ctlr.Shutdown(ctx))
-	assert.NoError(t, ctlr.Remove(ctx))
-	assert.NoError(t, ctlr.Close())
+	require.NoError(t, ctlr.Shutdown(ctx))
+	require.NoError(t, ctlr.Remove(ctx))
+	require.NoError(t, ctlr.Close())
 
 	// NOTE(stevvooe): testify has no clue how to correctly do error equality.
-	if err := ctlr.Close(); err != exec.ErrControllerClosed {
-		t.Fatalf("expected controller to be closed: %v", err)
-	}
+	err = ctlr.Close()
+	require.Equalf(t, err, exec.ErrControllerClosed, "expected controller to be closed: %v", err)
 }

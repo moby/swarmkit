@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/moby/swarmkit/v2/api"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIsInTopology(t *testing.T) {
@@ -170,8 +171,6 @@ func TestIsInTopology(t *testing.T) {
 		},
 	} {
 		actual := IsInTopology(tc.top, tc.accessible)
-		if actual != tc.expected {
-			t.Errorf("Expected %v to lie within %v", tc.top, tc.accessible)
-		}
+		assert.Equalf(t, tc.expected, actual, "Expected %v to lie within %v", tc.top, tc.accessible)
 	}
 }

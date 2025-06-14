@@ -24,7 +24,7 @@ func TestForceRenewTLSConfig(t *testing.T) {
 
 	// Get a new managerConfig with a TLS cert that has 15 minutes to live
 	nodeConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	renewer := ca.NewTLSRenewer(nodeConfig, tc.ConnBroker, tc.Paths.RootCA)
 	updates := renewer.Start(ctx)
@@ -33,9 +33,9 @@ func TestForceRenewTLSConfig(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestForceRenewTLSConfig timed-out")
 	case certUpdate := <-updates:
-		assert.NoError(t, certUpdate.Err)
+		require.NoError(t, certUpdate.Err)
 		assert.NotNil(t, certUpdate)
-		assert.Equal(t, certUpdate.Role, ca.ManagerRole)
+		assert.Equal(t, ca.ManagerRole, certUpdate.Role)
 	}
 }
 
@@ -50,7 +50,7 @@ func TestForceRenewExpectedRole(t *testing.T) {
 
 	// Get a new managerConfig with a TLS cert that has 15 minutes to live
 	nodeConfig, err := tc.WriteNewNodeConfig(ca.ManagerRole)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	go func() {
 		time.Sleep(750 * time.Millisecond)
@@ -64,7 +64,7 @@ func TestForceRenewExpectedRole(t *testing.T) {
 
 			return store.UpdateNode(tx, node)
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}()
 
 	renewer := ca.NewTLSRenewer(nodeConfig, tc.ConnBroker, tc.Paths.RootCA)
@@ -76,7 +76,7 @@ func TestForceRenewExpectedRole(t *testing.T) {
 		case <-time.After(10 * time.Second):
 			t.Fatal("timed out")
 		case certUpdate := <-updates:
-			assert.NoError(t, certUpdate.Err)
+			require.NoError(t, certUpdate.Err)
 			assert.NotNil(t, certUpdate)
 			if certUpdate.Role == ca.WorkerRole {
 				return

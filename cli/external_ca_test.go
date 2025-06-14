@@ -5,6 +5,7 @@ import (
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseExternalCA(t *testing.T) {
@@ -22,7 +23,7 @@ func TestParseExternalCA(t *testing.T) {
 
 	for _, spec := range invalidSpecs {
 		_, err := parseExternalCA(spec)
-		assert.Error(t, err)
+		require.Error(t, err)
 	}
 
 	validSpecs := []struct {
@@ -41,7 +42,7 @@ func TestParseExternalCA(t *testing.T) {
 
 	for _, spec := range validSpecs {
 		parsed, err := parseExternalCA(spec.input)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, spec.expected, parsed)
 	}
 }

@@ -106,17 +106,17 @@ func TestRaftJoinTwice(t *testing.T) {
 	// Use gRPC instead of calling handler directly because of
 	// authorization check.
 	cc, err := dial(nodes[3], nodes[1].Address)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	raftClient := api.NewRaftMembershipClient(cc)
 	defer cc.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	_, err = raftClient.Join(ctx, &api.JoinRequest{Addr: l.Addr().String()})
 	cancel()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Propose a value and wait for it to propagate
 	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 	raftutils.CheckValue(t, clockSource, nodes[2], value)
 
 	// Restart node 2
@@ -187,7 +187,7 @@ func TestRaftLeaderDown(t *testing.T) {
 
 	// Propose a value
 	value, err := raftutils.ProposeValue(t, leaderNode, DefaultProposalTime)
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
 	raftutils.CheckValue(t, clockSource, leaderNode, value)
@@ -212,7 +212,7 @@ func TestRaftFollowerDown(t *testing.T) {
 
 	// Propose a value
 	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
 	raftutils.CheckValue(t, clockSource, nodes[1], value)
@@ -230,7 +230,7 @@ func TestRaftLogReplication(t *testing.T) {
 
 	// Propose a value
 	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	// All nodes should have the value in the physical store
 	raftutils.CheckValue(t, clockSource, nodes[1], value)
@@ -254,7 +254,7 @@ func TestRaftWedgedManager(t *testing.T) {
 
 	// Propose a value
 	_, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	doneCh := make(chan struct{})
 	defer close(doneCh)
@@ -267,7 +267,7 @@ func TestRaftWedgedManager(t *testing.T) {
 		})
 	}()
 
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		if nodes[1].Config.ID == nodes[1].Leader() {
 			return errors.New("leader has not changed")
 		}
@@ -285,7 +285,7 @@ func TestRaftLogReplicationWithoutLeader(t *testing.T) {
 
 	// Propose a value
 	_, err := raftutils.ProposeValue(t, nodes[2], DefaultProposalTime)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// No value should be replicated in the store in the absence of the leader
 	raftutils.CheckNoValue(t, clockSource, nodes[2])
@@ -309,7 +309,7 @@ func TestRaftQuorumFailure(t *testing.T) {
 
 	// Propose a value
 	_, err := raftutils.ProposeValue(t, nodes[1], ShortProposalTime)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// The value should not be replicated, we have no majority
 	raftutils.CheckNoValue(t, clockSource, nodes[2])
@@ -344,7 +344,7 @@ func TestRaftQuorumRecovery(t *testing.T) {
 
 	// Propose a value
 	value, err := raftutils.ProposeValue(t, raftutils.Leader(nodes), DefaultProposalTime)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for _, node := range nodes {
 		raftutils.CheckValue(t, clockSource, node, value)
@@ -364,13 +364,13 @@ func TestRaftFollowerLeave(t *testing.T) {
 	// Use gRPC instead of calling handler directly because of
 	// authorization check.
 	cc, err := dial(nodes[1], nodes[1].Address)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	raftClient := api.NewRaftMembershipClient(cc)
 	defer cc.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[5].Config.ID}})
 	cancel()
-	assert.NoError(t, err, "error sending message to leave the raft")
+	require.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
 	raftutils.ShutdownNode(nodes[5])
@@ -380,7 +380,7 @@ func TestRaftFollowerLeave(t *testing.T) {
 
 	// Propose a value
 	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	// Value should be replicated on every node
 	raftutils.CheckValue(t, clockSource, nodes[1], value)
@@ -409,13 +409,13 @@ func TestRaftLeaderLeave(t *testing.T) {
 	// Use gRPC instead of calling handler directly because of
 	// authorization check.
 	cc, err := dial(nodes[1], nodes[1].Address)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	raftClient := api.NewRaftMembershipClient(cc)
 	defer cc.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[1].Config.ID}})
 	cancel()
-	assert.NoError(t, err, "error sending message to leave the raft")
+	require.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
 	newCluster := map[uint64]*raftutils.TestNode{
@@ -452,7 +452,7 @@ func TestRaftLeaderLeave(t *testing.T) {
 
 	// Propose a value
 	value, err := raftutils.ProposeValue(t, leaderNode, DefaultProposalTime)
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on all remaining nodes
 	raftutils.CheckValue(t, clockSource, leaderNode, value)
@@ -473,7 +473,7 @@ func TestRaftNewNodeGetsData(t *testing.T) {
 
 	// Propose a value
 	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	// Add a new node
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
@@ -500,7 +500,7 @@ func TestChangesBetween(t *testing.T) {
 	values := make([]*api.Node, 10)
 	for i, nodeID := range nodeIDs {
 		value, err := raftutils.ProposeValue(t, node, DefaultProposalTime, nodeID)
-		assert.NoError(t, err, "failed to propose value")
+		require.NoError(t, err, "failed to propose value")
 		values[i] = value
 	}
 
@@ -532,31 +532,31 @@ func TestChangesBetween(t *testing.T) {
 
 	// Satisfiable requests
 	changes, err := node.ChangesBetween(versionAdd(startVersion, -1), *startVersion)
-	assert.NoError(t, err)
-	assert.Len(t, changes, 0)
+	require.NoError(t, err)
+	assert.Empty(t, changes)
 
 	changes, err = node.ChangesBetween(*startVersion, versionAdd(startVersion, 1))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.Len(t, changes, 1)
 	assert.Equal(t, expectedChanges(*startVersion, values[:1]), changes)
 
 	changes, err = node.ChangesBetween(*startVersion, versionAdd(startVersion, 10))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.Len(t, changes, 10)
 	assert.Equal(t, expectedChanges(*startVersion, values), changes)
 
 	changes, err = node.ChangesBetween(versionAdd(startVersion, 2), versionAdd(startVersion, 6))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.Len(t, changes, 4)
 	assert.Equal(t, expectedChanges(versionAdd(startVersion, 2), values[2:6]), changes)
 
 	// Unsatisfiable requests
 	_, err = node.ChangesBetween(versionAdd(startVersion, -1), versionAdd(startVersion, 11))
-	assert.Error(t, err)
+	require.Error(t, err)
 	_, err = node.ChangesBetween(versionAdd(startVersion, 11), versionAdd(startVersion, 11))
-	assert.Error(t, err)
+	require.Error(t, err)
 	_, err = node.ChangesBetween(versionAdd(startVersion, 11), versionAdd(startVersion, 15))
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestRaftRejoin(t *testing.T) {
@@ -571,7 +571,7 @@ func TestRaftRejoin(t *testing.T) {
 	values := make([]*api.Node, 2)
 	var err error
 	values[0], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, ids[0])
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	// The value should be replicated on node 3
 	raftutils.CheckValue(t, clockSource, nodes[3], values[0])
@@ -583,7 +583,7 @@ func TestRaftRejoin(t *testing.T) {
 
 	// Propose another value
 	values[1], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, ids[1])
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	// Nodes 1 and 2 should have the new value
 	raftutils.CheckValuesOnNodes(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, ids, values)
@@ -604,7 +604,7 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 	values := make([]*api.Node, 2)
 	var err error
 	values[0], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, "id1")
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	// Stop all nodes
 	for _, node := range nodes {
@@ -627,10 +627,10 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 
 	// Propose another value
 	values[1], err = raftutils.ProposeValue(t, raftutils.Leader(nodes), DefaultProposalTime, "id2")
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	for _, node := range nodes {
-		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+		require.NoError(t, testutils.PollFunc(clockSource, func() error {
 			var err error
 			node.MemoryStore().View(func(tx store.ReadTx) {
 				var allNodes []*api.Node
@@ -704,7 +704,7 @@ func TestRaftForceNewCluster(t *testing.T) {
 	values := make([]*api.Node, 2)
 	var err error
 	values[0], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, "id1")
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	// The memberlist should contain 3 members on each node
 	for i := 1; i <= 3; i++ {
@@ -740,10 +740,10 @@ func TestRaftForceNewCluster(t *testing.T) {
 
 	// Propose another value
 	values[1], err = raftutils.ProposeValue(t, raftutils.Leader(nodes), DefaultProposalTime, "id2")
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	for _, node := range nodes {
-		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+		require.NoError(t, testutils.PollFunc(clockSource, func() error {
 			var err error
 			node.MemoryStore().View(func(tx store.ReadTx) {
 				var allNodes []*api.Node
@@ -802,7 +802,7 @@ func TestRaftUnreachableNode(t *testing.T) {
 
 	// Propose a value
 	value, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime)
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	// All nodes should have the value in the physical store
 	raftutils.CheckValue(t, clockSource, nodes[1], value)
@@ -822,7 +822,7 @@ func TestRaftJoinWithIncorrectAddress(t *testing.T) {
 	defer raftutils.CleanupNonRunningNode(n)
 
 	err := n.JoinAndStart(context.Background())
-	assert.NotNil(t, err)
+	require.Error(t, err)
 	assert.Contains(t, testutils.ErrorDesc(err), "could not connect to prospective new cluster member using its advertised address")
 
 	// Check if first node still has only itself registered in the memberlist
@@ -856,7 +856,7 @@ func TestStress(t *testing.T) {
 				if err == nil {
 					pIDs = append(pIDs, id)
 					// if propose successfully, at least there are 3 running nodes
-					assert.True(t, nup >= 3)
+					assert.GreaterOrEqual(t, nup, 3)
 					// only leader can propose value
 					assert.True(t, leader == i || leader == -1)
 					// update leader
@@ -915,7 +915,7 @@ func TestStress(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, nodes)
 	id := strconv.Itoa(1000)
 	val, err := raftutils.ProposeValue(t, raftutils.Leader(nodes), DefaultProposalTime, id)
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 	pIDs = append(pIDs, id)
 
 	// increase clock to make cluster stable
@@ -959,24 +959,24 @@ func TestStreamRaftMessage(t *testing.T) {
 	defer raftutils.TeardownCluster(nodes)
 
 	cc, err := dial(nodes[1], nodes[1].Address)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	stream, err := api.NewRaftClient(cc).StreamRaftMessage(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = stream.Send(&api.StreamRaftMessageRequest{Message: raftutils.NewSnapshotMessage(2, 1, transport.GRPCMaxMsgSize/2)})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = stream.CloseAndRecv()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	stream, err = api.NewRaftClient(cc).StreamRaftMessage(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	msg := raftutils.NewSnapshotMessage(2, 1, transport.GRPCMaxMsgSize)
 
 	raftMsg := &api.StreamRaftMessageRequest{Message: msg}
 	err = stream.Send(raftMsg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, err = stream.CloseAndRecv()
 	errStr := fmt.Sprintf("grpc: received message larger than max (%d vs. %d)", raftMsg.Size(), transport.GRPCMaxMsgSize)
@@ -987,16 +987,16 @@ func TestStreamRaftMessage(t *testing.T) {
 	// Sending multiple snap messages with different indexes
 	// should return an error.
 	stream, err = api.NewRaftClient(cc).StreamRaftMessage(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	msg = raftutils.NewSnapshotMessage(2, 1, 10)
 	raftMsg = &api.StreamRaftMessageRequest{Message: msg}
 	err = stream.Send(raftMsg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	msg = raftutils.NewSnapshotMessage(2, 1, 10)
 	msg.Index++
 	raftMsg = &api.StreamRaftMessageRequest{Message: msg}
 	err = stream.Send(raftMsg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = stream.CloseAndRecv()
 	s, _ = status.FromError(err)
 	assert.Equal(t, codes.InvalidArgument, s.Code())
@@ -1005,15 +1005,15 @@ func TestStreamRaftMessage(t *testing.T) {
 
 	// Sending multiple of type != MsgSnap should return an error.
 	stream, err = api.NewRaftClient(cc).StreamRaftMessage(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	msg = raftutils.NewSnapshotMessage(2, 1, 10)
 	msg.Type = raftpb.MsgApp
 	raftMsg = &api.StreamRaftMessageRequest{Message: msg}
 	err = stream.Send(raftMsg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// Send same message again.
 	err = stream.Send(raftMsg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = stream.CloseAndRecv()
 	s, _ = status.FromError(err)
 	assert.Equal(t, codes.InvalidArgument, s.Code())
@@ -1040,14 +1040,14 @@ func TestGetNodeIDByRaftID(t *testing.T) {
 	// now go and get the nodeID of every raftID
 	for _, id := range raftIDs {
 		nodeid, err := nodes[1].GetNodeIDByRaftID(id)
-		assert.NoError(t, err, "raft ID %v should give us a node ID", id)
+		require.NoError(t, err, "raft ID %v should give us a node ID", id)
 		// now go through the member manually list and make sure this is
 		// correct
 		for _, member := range members {
-			assert.True(t,
+			assert.Equal(t,
 				// either both should match, or both should not match. if they
 				// are different, then there is an error
-				(member.RaftID == id) == (member.NodeID == nodeid),
+				(member.RaftID == id), (member.NodeID == nodeid),
 				"member with id %v has node id %v, but we expected member with id %v to have node id %v",
 				member.RaftID, member.NodeID, id, nodeid,
 			)

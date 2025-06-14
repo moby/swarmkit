@@ -25,16 +25,16 @@ func TestWatch(t *testing.T) {
 			},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Should receive an initial message that indicates the watch is ready
 	msg, err := watch.Recv()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, &api.WatchMessage{}, msg)
 
 	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	msg, err = watch.Recv()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, api.WatchActionKindCreate, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
 	assert.Equal(t, "id1", msg.Events[0].Object.GetNode().ID)
@@ -77,16 +77,16 @@ func TestWatch(t *testing.T) {
 			},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Should receive an initial message that indicates the watch is ready
 	msg, err = watch.Recv()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, &api.WatchMessage{}, msg)
 
 	createNode(t, ts, "id2", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	msg, err = watch.Recv()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, api.WatchActionKindCreate, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
 	assert.Equal(t, "id2", msg.Events[0].Object.GetNode().ID)
@@ -109,7 +109,7 @@ func TestWatch(t *testing.T) {
 	err = ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateNode(tx, node)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Shouldn't be seen either - hostname doesn't match filter
 	node = &api.Node{
@@ -129,7 +129,7 @@ func TestWatch(t *testing.T) {
 	err = ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateNode(tx, node)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// This one should be seen
 	node = &api.Node{
@@ -149,10 +149,10 @@ func TestWatch(t *testing.T) {
 	err = ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateNode(tx, node)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	msg, err = watch.Recv()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, api.WatchActionKindCreate, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
 	assert.Equal(t, "id6", msg.Events[0].Object.GetNode().ID)
@@ -175,16 +175,16 @@ func TestWatchMultipleActions(t *testing.T) {
 			},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Should receive an initial message that indicates the watch is ready
 	msg, err := watch.Recv()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, &api.WatchMessage{}, msg)
 
 	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	msg, err = watch.Recv()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, api.WatchActionKindCreate, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
 	assert.Equal(t, "id1", msg.Events[0].Object.GetNode().ID)
@@ -196,15 +196,15 @@ func TestWatchMultipleActions(t *testing.T) {
 		node.Role = api.NodeRoleWorker
 		return store.UpdateNode(tx, node)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Delete should be seen
 	err = ts.Store.Update(func(tx store.Tx) error {
 		return store.DeleteNode(tx, "id1")
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	msg, err = watch.Recv()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, api.WatchActionKindRemove, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
 	assert.Equal(t, "id1", msg.Events[0].Object.GetNode().ID)
@@ -228,11 +228,11 @@ func TestWatchIncludeOldObject(t *testing.T) {
 		},
 		IncludeOldObject: true,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Should receive an initial message that indicates the watch is ready
 	msg, err := watch.Recv()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, &api.WatchMessage{}, msg)
 
 	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
@@ -243,10 +243,10 @@ func TestWatchIncludeOldObject(t *testing.T) {
 		node.Role = api.NodeRoleWorker
 		return store.UpdateNode(tx, node)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	msg, err = watch.Recv()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, api.WatchActionKindUpdate, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
 	assert.Equal(t, "id1", msg.Events[0].Object.GetNode().ID)
@@ -277,15 +277,15 @@ func TestWatchResumeFrom(t *testing.T) {
 		},
 		ResumeFrom: &node2.Meta.Version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Should receive an initial message that indicates the watch is ready
 	msg, err := watch.Recv()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, &api.WatchMessage{}, msg)
 
 	msg, err = watch.Recv()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, api.WatchActionKindCreate, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
 	assert.Equal(t, "id2", msg.Events[0].Object.GetNode().ID)
@@ -295,7 +295,7 @@ func TestWatchResumeFrom(t *testing.T) {
 	node3 := createNode(t, ts, "id3", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 
 	msg, err = watch.Recv()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, api.WatchActionKindCreate, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
 	assert.Equal(t, "id3", msg.Events[0].Object.GetNode().ID)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTemplateContext(t *testing.T) {
@@ -188,9 +189,7 @@ func TestTemplateContext(t *testing.T) {
 				if testcase.Err == nil {
 					t.Fatalf("unexpected error: %v", err)
 				} else {
-					if err != testcase.Err {
-						t.Fatalf("unexpected error: %v != %v", err, testcase.Err)
-					}
+					require.Equalf(t, err, testcase.Err, "unexpected error: %v != %v", err, testcase.Err)
 				}
 			}
 

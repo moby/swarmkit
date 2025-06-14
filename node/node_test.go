@@ -566,9 +566,7 @@ func TestCertRenewals(t *testing.T) {
 
 	nodeCert, err := os.ReadFile(paths.Node.Cert)
 	require.NoError(t, err)
-	if !bytes.Equal(currentNodeCert, nodeCert) {
-		t.Fatal("Certificate should not have been renewed")
-	}
+	require.True(t, bytes.Equal(currentNodeCert, nodeCert), "Certificate should not have been renewed")
 
 	// Fake an update from the dispatcher. When DesiredRole doesn't match
 	// the current role, a cert renewal should be triggered.

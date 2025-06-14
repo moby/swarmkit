@@ -5,6 +5,7 @@ import (
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReconcilePortConfigs(t *testing.T) {
@@ -200,7 +201,7 @@ func TestAllocateServicePorts(t *testing.T) {
 	}
 
 	err := pa.serviceAllocatePorts(s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Service has a published port 10001 in ServiceSpec
 	s = &api.Service{
@@ -229,7 +230,7 @@ func TestAllocateServicePorts(t *testing.T) {
 	}
 
 	err = pa.serviceAllocatePorts(s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Service has a published port 10001 in ServiceSpec
 	// which is already allocated on host
@@ -260,7 +261,7 @@ func TestAllocateServicePorts(t *testing.T) {
 
 	// port allocated already, got an error
 	err = pa.serviceAllocatePorts(s)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestHostPublishPortsNeedUpdate(t *testing.T) {
@@ -894,7 +895,7 @@ func TestAllocate(t *testing.T) {
 
 	// first consume 30000 in dynamicPortSpace
 	err := pSpace.allocate(pConfig)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	pConfig = &api.PortConfig{
 		Name:          "test1",
@@ -905,7 +906,7 @@ func TestAllocate(t *testing.T) {
 
 	// consume 30000 again in dynamicPortSpace, got an error
 	err = pSpace.allocate(pConfig)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	pConfig = &api.PortConfig{
 		Name:          "test2",
@@ -916,7 +917,7 @@ func TestAllocate(t *testing.T) {
 
 	// consume 10000 in masterPortSpace, got no error
 	err = pSpace.allocate(pConfig)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	pConfig = &api.PortConfig{
 		Name:          "test3",
@@ -927,5 +928,5 @@ func TestAllocate(t *testing.T) {
 
 	// consume 10000 again in masterPortSpace, got an error
 	err = pSpace.allocate(pConfig)
-	assert.Error(t, err)
+	require.Error(t, err)
 }

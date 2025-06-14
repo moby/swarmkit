@@ -15,6 +15,7 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	stateutils "github.com/moby/swarmkit/v2/manager/state/testutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type testServer struct {
@@ -42,7 +43,7 @@ func newTestServer(t *testing.T) *testServer {
 	tc := cautils.NewTestCA(t)
 	securityConfig, err := tc.NewNodeConfig(ca.ManagerRole)
 	tc.Stop()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ts.Store = store.NewMemoryStore(&stateutils.MockProposer{})
 	assert.NotNil(t, ts.Store)
@@ -51,14 +52,14 @@ func newTestServer(t *testing.T) *testServer {
 	assert.NotNil(t, ts.Server)
 
 	temp, err := os.CreateTemp("", "test-socket")
-	assert.NoError(t, err)
-	assert.NoError(t, temp.Close())
-	assert.NoError(t, os.Remove(temp.Name()))
+	require.NoError(t, err)
+	require.NoError(t, temp.Close())
+	require.NoError(t, os.Remove(temp.Name()))
 
 	ts.tempUnixSocket = temp.Name()
 
 	lis, err := net.Listen("unix", temp.Name())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ts.grpcServer = grpc.NewServer()
 	api.RegisterControlServer(ts.grpcServer, ts.Server)
@@ -72,7 +73,7 @@ func newTestServer(t *testing.T) *testServer {
 		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
 			return net.DialTimeout("unix", addr, timeout)
 		}))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	ts.clientConn = conn
 
 	ts.Client = api.NewControlClient(conn)

@@ -35,14 +35,14 @@ func TestRaftSnapshot(t *testing.T) {
 	var err error
 	for i, nodeID := range nodeIDs[:3] {
 		values[i], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeID)
-		assert.NoError(t, err, "failed to propose value")
+		require.NoError(t, err, "failed to propose value")
 	}
 
 	// None of the nodes should have snapshot files yet
 	for _, node := range nodes {
 		dirents, err := os.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
-		assert.NoError(t, err)
-		assert.Len(t, dirents, 0)
+		require.NoError(t, err)
+		assert.Empty(t, dirents)
 	}
 
 	// Check all nodes have all the data.
@@ -54,11 +54,11 @@ func TestRaftSnapshot(t *testing.T) {
 
 	// Propose a 4th value
 	values[3], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[3])
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	// All nodes should now have a snapshot file
 	for nodeID, node := range nodes {
-		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+		require.NoError(t, testutils.PollFunc(clockSource, func() error {
 			dirents, err := os.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
 			if err != nil {
 				return err
@@ -75,7 +75,7 @@ func TestRaftSnapshot(t *testing.T) {
 	raftutils.AddRaftNode(t, clockSource, nodes, tc)
 
 	// It should get a copy of the snapshot
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		dirents, err := os.ReadDir(filepath.Join(nodes[4].StateDir, "snap-v3-encrypted"))
 		if err != nil {
 			return err
@@ -106,12 +106,12 @@ func TestRaftSnapshot(t *testing.T) {
 	// Propose more values to provoke a second snapshot
 	for i := 4; i != len(nodeIDs); i++ {
 		values[i], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[i])
-		assert.NoError(t, err, "failed to propose value")
+		require.NoError(t, err, "failed to propose value")
 	}
 
 	// All nodes should have a snapshot under a *different* name
 	for nodeID, node := range nodes {
-		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+		require.NoError(t, testutils.PollFunc(clockSource, func() error {
 			dirents, err := os.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
 			if err != nil {
 				return err
@@ -144,7 +144,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	var err error
 	for i, nodeID := range nodeIDs[:3] {
 		values[i], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeID)
-		assert.NoError(t, err, "failed to propose value")
+		require.NoError(t, err, "failed to propose value")
 	}
 
 	// Take down node 3
@@ -153,13 +153,13 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Propose a 4th value before the snapshot
 	values[3], err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[3])
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	// Remaining nodes shouldn't have snapshot files yet
 	for _, node := range []*raftutils.TestNode{nodes[1], nodes[2]} {
 		dirents, err := os.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
-		assert.NoError(t, err)
-		assert.Len(t, dirents, 0)
+		require.NoError(t, err)
+		assert.Empty(t, dirents)
 	}
 
 	// Add a node to the cluster before the snapshot. This is the event
@@ -169,7 +169,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 
 	// Remaining nodes should now have a snapshot file
 	for nodeIdx, node := range []*raftutils.TestNode{nodes[1], nodes[2]} {
-		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+		require.NoError(t, testutils.PollFunc(clockSource, func() error {
 			dirents, err := os.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
 			if err != nil {
 				return err
@@ -191,7 +191,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2], 4: nodes[4], 5: nodes[5]})
 
 	// New node should get a copy of the snapshot
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		dirents, err := os.ReadDir(filepath.Join(nodes[5].StateDir, "snap-v3-encrypted"))
 		if err != nil {
 			return err
@@ -203,7 +203,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 	}))
 
 	dirents, err := os.ReadDir(filepath.Join(nodes[5].StateDir, "snap-v3-encrypted"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, dirents, 1)
 	raftutils.CheckValuesOnNodes(t, clockSource, map[uint64]*raftutils.TestNode{1: nodes[1], 2: nodes[2]}, nodeIDs[:5], values[:5])
 
@@ -264,7 +264,7 @@ func TestRaftSnapshotForceNewCluster(t *testing.T) {
 	// Propose 3 values.
 	for _, nodeID := range nodeIDs[:3] {
 		_, err := raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeID)
-		assert.NoError(t, err, "failed to propose value")
+		require.NoError(t, err, "failed to propose value")
 	}
 
 	// Remove one of the original nodes
@@ -272,13 +272,13 @@ func TestRaftSnapshotForceNewCluster(t *testing.T) {
 	// Use gRPC instead of calling handler directly because of
 	// authorization check.
 	cc, err := dial(nodes[1], nodes[1].Address)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	raftClient := api.NewRaftMembershipClient(cc)
 	defer cc.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[2].Config.ID}})
 	cancel()
-	assert.NoError(t, err, "error sending message to leave the raft")
+	require.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
 
 	raftutils.ShutdownNode(nodes[2])
@@ -287,17 +287,17 @@ func TestRaftSnapshotForceNewCluster(t *testing.T) {
 	// Nodes shouldn't have snapshot files yet
 	for _, node := range nodes {
 		dirents, err := os.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
-		assert.NoError(t, err)
-		assert.Len(t, dirents, 0)
+		require.NoError(t, err)
+		assert.Empty(t, dirents)
 	}
 
 	// Trigger a snapshot, with a 4th proposal
 	_, err = raftutils.ProposeValue(t, nodes[1], DefaultProposalTime, nodeIDs[3])
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	// Nodes should now have a snapshot file
 	for nodeIdx, node := range nodes {
-		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+		require.NoError(t, testutils.PollFunc(clockSource, func() error {
 			dirents, err := os.ReadDir(filepath.Join(node.StateDir, "snap-v3-encrypted"))
 			if err != nil {
 				return err
@@ -341,14 +341,14 @@ func TestGCWAL(t *testing.T) {
 
 	for i := 0; i != proposals; i++ {
 		_, err := proposeLargeValue(t, nodes[1], DefaultProposalTime, fmt.Sprintf("id%d", i))
-		assert.NoError(t, err, "failed to propose value")
+		require.NoError(t, err, "failed to propose value")
 	}
 
 	time.Sleep(250 * time.Millisecond)
 
 	// Snapshot should have been triggered just as the WAL rotated, so
 	// both WAL files should be preserved
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		dirents, err := os.ReadDir(filepath.Join(nodes[1].StateDir, "snap-v3-encrypted"))
 		if err != nil {
 			return err
@@ -382,13 +382,13 @@ func TestGCWAL(t *testing.T) {
 
 	for i := 0; i != proposals; i++ {
 		_, err := proposeLargeValue(t, nodes[1], DefaultProposalTime, fmt.Sprintf("id%d", i))
-		assert.NoError(t, err, "failed to propose value")
+		require.NoError(t, err, "failed to propose value")
 	}
 
 	time.Sleep(250 * time.Millisecond)
 
 	// This time only one WAL file should be saved.
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		dirents, err := os.ReadDir(filepath.Join(nodes[1].StateDir, "snap-v3-encrypted"))
 		if err != nil {
 			return err
@@ -431,7 +431,7 @@ func TestGCWAL(t *testing.T) {
 
 	// Is the data intact after restart?
 	for _, node := range nodes {
-		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+		require.NoError(t, testutils.PollFunc(clockSource, func() error {
 			var err error
 			node.MemoryStore().View(func(tx store.ReadTx) {
 				var allNodes []*api.Node
@@ -450,10 +450,10 @@ func TestGCWAL(t *testing.T) {
 
 	// It should still be possible to propose values
 	_, err := raftutils.ProposeValue(t, raftutils.Leader(nodes), DefaultProposalTime, "newnode")
-	assert.NoError(t, err, "failed to propose value")
+	require.NoError(t, err, "failed to propose value")
 
 	for _, node := range nodes {
-		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+		require.NoError(t, testutils.PollFunc(clockSource, func() error {
 			var err error
 			node.MemoryStore().View(func(tx store.ReadTx) {
 				var allNodes []*api.Node
@@ -506,7 +506,7 @@ func proposeLargeValue(t *testing.T, raftNode *raftutils.TestNode, time time.Dur
 
 	err := raftNode.ProposeValue(ctx, storeActions, func() {
 		err := raftNode.MemoryStore().ApplyStoreActions(storeActions)
-		assert.NoError(t, err, "error applying actions")
+		require.NoError(t, err, "error applying actions")
 	})
 	cancel()
 	if err != nil {

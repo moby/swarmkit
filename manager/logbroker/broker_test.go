@@ -36,9 +36,7 @@ func TestLogBrokerLogs(t *testing.T) {
 	)
 
 	subStream, err := brokerClient.ListenSubscriptions(ctx, &api.ListenSubscriptionsRequest{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	stream, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
 		Options: &api.LogSubscriptionOptions{
@@ -48,14 +46,10 @@ func TestLogBrokerLogs(t *testing.T) {
 			NodeIDs: []string{agentSecurity.ServerTLSCreds.NodeID()},
 		},
 	})
-	if err != nil {
-		t.Fatalf("error subscribing: %v", err)
-	}
+	require.NoErrorf(t, err, "error subscribing: %v", err)
 
 	subscription, err := subStream.Recv()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// spread some services across nodes with a bunch of tasks.
 	const (
@@ -435,9 +429,9 @@ func TestLogBrokerNoFollow(t *testing.T) {
 
 	// Get the subscriptions from the agents.
 	subscription1 := ensureSubscription(t, agent1subscriptions)
-	require.Equal(t, subscription1.Selector.ServiceIDs[0], "service")
+	require.Equal(t, "service", subscription1.Selector.ServiceIDs[0])
 	subscription2 := ensureSubscription(t, agent2subscriptions)
-	require.Equal(t, subscription2.Selector.ServiceIDs[0], "service")
+	require.Equal(t, "service", subscription2.Selector.ServiceIDs[0])
 
 	require.Equal(t, subscription1.ID, subscription2.ID)
 
@@ -553,7 +547,7 @@ func TestLogBrokerNoFollowMissingNode(t *testing.T) {
 
 	// Grab the subscription and publish a log message from the connected agent.
 	subscription := ensureSubscription(t, agentSubscriptions)
-	require.Equal(t, subscription.Selector.ServiceIDs[0], "service")
+	require.Equal(t, "service", subscription.Selector.ServiceIDs[0])
 	publisher, err := agent.PublishLogs(ctx)
 	require.NoError(t, err)
 	require.NoError(t,
@@ -680,9 +674,9 @@ func TestLogBrokerNoFollowDisconnect(t *testing.T) {
 
 	// Get the subscriptions from the agents.
 	subscription1 := ensureSubscription(t, agent1subscriptions)
-	require.Equal(t, subscription1.Selector.ServiceIDs[0], "service")
+	require.Equal(t, "service", subscription1.Selector.ServiceIDs[0])
 	subscription2 := ensureSubscription(t, agent2subscriptions)
-	require.Equal(t, subscription2.Selector.ServiceIDs[0], "service")
+	require.Equal(t, "service", subscription2.Selector.ServiceIDs[0])
 
 	require.Equal(t, subscription1.ID, subscription2.ID)
 
@@ -726,9 +720,7 @@ func testLogBrokerEnv(t *testing.T) (context.Context, *testutils.TestCA, *LogBro
 
 	// Log Server
 	logListener, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatalf("error setting up listener: %v", err)
-	}
+	require.NoErrorf(t, err, "error setting up listener: %v", err)
 	logServer := grpc.NewServer()
 	api.RegisterLogsServer(logServer, broker)
 
@@ -742,14 +734,10 @@ func testLogBrokerEnv(t *testing.T) (context.Context, *testutils.TestCA, *LogBro
 
 	// Log Broker
 	brokerListener, err := net.Listen("tcp", "localhost:0")
-	if err != nil {
-		t.Fatalf("error setting up listener: %v", err)
-	}
+	require.NoErrorf(t, err, "error setting up listener: %v", err)
 
 	securityConfig, err := tca.NewNodeConfig(ca.ManagerRole)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	serverOpts := []grpc.ServerOption{grpc.Creds(securityConfig.ServerTLSCreds)}
 	brokerServer := grpc.NewServer(serverOpts...)
 
@@ -786,9 +774,7 @@ func testLogBrokerEnv(t *testing.T) (context.Context, *testutils.TestCA, *LogBro
 func testLogClient(t *testing.T, addr string) (api.LogsClient, func()) {
 	// Log client
 	logCc, err := grpc.Dial(addr, grpc.WithInsecure())
-	if err != nil {
-		t.Fatalf("error dialing local server: %v", err)
-	}
+	require.NoErrorf(t, err, "error dialing local server: %v", err)
 	return api.NewLogsClient(logCc), func() {
 		logCc.Close()
 	}
@@ -796,15 +782,11 @@ func testLogClient(t *testing.T, addr string) (api.LogsClient, func()) {
 
 func testBrokerClient(t *testing.T, tca *testutils.TestCA, addr string) (api.LogBrokerClient, *ca.SecurityConfig, func()) {
 	securityConfig, err := tca.NewNodeConfig(ca.WorkerRole)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	opts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second), grpc.WithTransportCredentials(securityConfig.ClientTLSCreds)}
 	cc, err := grpc.Dial(addr, opts...)
-	if err != nil {
-		t.Fatalf("error dialing local server: %v", err)
-	}
+	require.NoErrorf(t, err, "error dialing local server: %v", err)
 
 	return api.NewLogBrokerClient(cc), securityConfig, func() {
 		cc.Close()

@@ -10,6 +10,7 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 )
 
@@ -53,7 +54,7 @@ func TestValidateConfigSpec(t *testing.T) {
 		strings.Repeat("a", 65),
 	} {
 		err := validateConfigSpec(createConfigSpec(badName, []byte("valid config"), nil))
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	}
 
@@ -62,7 +63,7 @@ func TestValidateConfigSpec(t *testing.T) {
 		createConfigSpec("validName", nil, nil),
 	} {
 		err := validateConfigSpec(badSpec)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	}
 
@@ -78,7 +79,7 @@ func TestValidateConfigSpec(t *testing.T) {
 		strings.Repeat("a", 64),
 	} {
 		err := validateConfigSpec(createConfigSpec(goodName, []byte("valid config"), nil))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	for _, good := range []*api.ConfigSpec{
@@ -87,7 +88,7 @@ func TestValidateConfigSpec(t *testing.T) {
 		createConfigSpec("createName", make([]byte, 1), nil), // 1 byte
 	} {
 		err := validateConfigSpec(good)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -97,7 +98,7 @@ func TestCreateConfig(t *testing.T) {
 
 	// ---- creating a config with an invalid spec fails, thus checking that CreateConfig validates the spec ----
 	_, err := ts.Client.CreateConfig(context.Background(), &api.CreateConfigRequest{Spec: createConfigSpec("", nil, nil)})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// ---- creating a config with a valid spec succeeds, and returns a config that reflects the config in the store
@@ -107,7 +108,7 @@ func TestCreateConfig(t *testing.T) {
 	validSpecRequest := api.CreateConfigRequest{Spec: creationSpec}
 
 	resp, err := ts.Client.CreateConfig(context.Background(), &validSpecRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Config)
 	assert.Equal(t, *creationSpec, resp.Config.Spec)
@@ -122,7 +123,7 @@ func TestCreateConfig(t *testing.T) {
 
 	// ---- creating a config with the same name, even if it's the exact same spec, fails due to a name conflict ----
 	_, err = ts.Client.CreateConfig(context.Background(), &validSpecRequest)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.AlreadyExists, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 }
 
@@ -132,12 +133,12 @@ func TestGetConfig(t *testing.T) {
 
 	// ---- getting a config without providing an ID results in an InvalidArgument ----
 	_, err := ts.Client.GetConfig(context.Background(), &api.GetConfigRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// ---- getting a non-existent config fails with NotFound ----
 	_, err = ts.Client.GetConfig(context.Background(), &api.GetConfigRequest{ConfigID: "12345"})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// ---- getting an existing config returns the config ----
@@ -145,10 +146,10 @@ func TestGetConfig(t *testing.T) {
 	err = ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateConfig(tx, config)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resp, err := ts.Client.GetConfig(context.Background(), &api.GetConfigRequest{ConfigID: config.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Config)
 	assert.Equal(t, config, resp.Config)
@@ -163,16 +164,16 @@ func TestUpdateConfig(t *testing.T) {
 	err := ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateConfig(tx, config)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// updating a config without providing an ID results in an InvalidArgument
 	_, err = ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// getting a non-existent config fails with NotFound
 	_, err = ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{ConfigID: "1234adsaa", ConfigVersion: &api.Version{Index: 1}})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// updating an existing config's data returns an error
@@ -203,7 +204,7 @@ func TestUpdateConfig(t *testing.T) {
 		Spec:          &config.Spec,
 		ConfigVersion: &config.Meta.Version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Config)
 
@@ -216,7 +217,7 @@ func TestUpdateConfig(t *testing.T) {
 		Spec:          &config.Spec,
 		ConfigVersion: &resp.Config.Meta.Version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Config)
 	assert.Equal(t, []byte("data"), resp.Config.Spec.Data)
@@ -230,7 +231,7 @@ func TestUpdateConfig(t *testing.T) {
 		Spec:          &config.Spec,
 		ConfigVersion: &resp.Config.Meta.Version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Config)
 	assert.Equal(t, []byte("data"), resp.Config.Spec.Data)
@@ -243,7 +244,7 @@ func TestRemoveUnusedConfig(t *testing.T) {
 
 	// removing a config without providing an ID results in an InvalidArgument
 	_, err := ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// removing a config that exists succeeds
@@ -251,15 +252,15 @@ func TestRemoveUnusedConfig(t *testing.T) {
 	err = ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateConfig(tx, config)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resp, err := ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigID: config.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, api.RemoveConfigResponse{}, *resp)
 
 	// ---- it was really removed because attempting to remove it again fails with a NotFound ----
 	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigID: config.ID})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 }
@@ -272,10 +273,10 @@ func TestRemoveUsedConfig(t *testing.T) {
 	data := []byte("config")
 	creationSpec := createConfigSpec("configID1", data, nil)
 	resp, err := ts.Client.CreateConfig(context.Background(), &api.CreateConfigRequest{Spec: creationSpec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	creationSpec2 := createConfigSpec("configID2", data, nil)
 	resp2, err := ts.Client.CreateConfig(context.Background(), &api.CreateConfigRequest{Spec: creationSpec2})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a service that uses a config
 	service := createSpec("service1", "image", 1)
@@ -292,12 +293,12 @@ func TestRemoveUsedConfig(t *testing.T) {
 	}
 	service.Task.GetContainer().Configs = configRefs
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: service})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	service2 := createSpec("service2", "image", 1)
 	service2.Task.GetContainer().Configs = configRefs
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: service2})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// removing a config that exists but is in use fails
 	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigID: resp.Config.ID})
@@ -306,11 +307,11 @@ func TestRemoveUsedConfig(t *testing.T) {
 
 	// removing a config that exists but is not in use succeeds
 	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigID: resp2.Config.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// it was really removed because attempting to remove it again fails with a NotFound
 	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigID: resp2.Config.ID})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 }
 
@@ -319,7 +320,7 @@ func TestListConfigs(t *testing.T) {
 
 	listConfigs := func(req *api.ListConfigsRequest) map[string]*api.Config {
 		resp, err := s.Client.ListConfigs(context.Background(), req)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, resp)
 
 		byName := make(map[string]*api.Config)
@@ -331,7 +332,7 @@ func TestListConfigs(t *testing.T) {
 
 	// ---- Listing configs when there are no configs returns an empty list but no error ----
 	result := listConfigs(&api.ListConfigsRequest{})
-	assert.Len(t, result, 0)
+	assert.Empty(t, result)
 
 	// ---- Create a bunch of configs in the store so we can test filtering ----
 	allListableNames := []string{"aaa", "aab", "abc", "bbb", "bac", "bbc", "ccc", "cac", "cbc", "ddd"}
@@ -344,7 +345,7 @@ func TestListConfigs(t *testing.T) {
 		err := s.Store.Update(func(tx store.Tx) error {
 			return store.CreateConfig(tx, config)
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		configNamesToID[configName] = config.ID
 	}
 
