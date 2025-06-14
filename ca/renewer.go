@@ -2,13 +2,13 @@ package ca
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
 	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/connectionbroker"
 	"github.com/moby/swarmkit/v2/log"
-	"github.com/pkg/errors"
 )
 
 // RenewTLSExponentialBackoff sets the exponential backoff when trying to renew TLS certificates that have expired

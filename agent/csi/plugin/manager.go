@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -57,7 +58,7 @@ func (pm *pluginManager) Get(name string) (NodePlugin, error) {
 
 	plugin, err := pm.getPlugin(name)
 	if err != nil {
-		return nil, fmt.Errorf("cannot get plugin %v: %v", name, err)
+		return nil, fmt.Errorf("cannot get plugin %v: %w", name, err)
 	}
 
 	return plugin, nil
@@ -110,7 +111,7 @@ func (pm *pluginManager) getPlugin(name string) (NodePlugin, error) {
 
 	pa, ok := pc.(plugin.AddrPlugin)
 	if !ok {
-		return nil, fmt.Errorf("plugin does not implement PluginAddr interface")
+		return nil, errors.New("plugin does not implement PluginAddr interface")
 	}
 
 	p := pm.newNodePluginFunc(name, pa, pm.secrets)

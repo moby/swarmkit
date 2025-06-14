@@ -5,11 +5,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"errors"
 	"net"
 	"strings"
 	"sync"
 
-	"github.com/pkg/errors"
 	"google.golang.org/grpc/credentials"
 )
 

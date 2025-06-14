@@ -1,7 +1,7 @@
 package drivers
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/naming"
@@ -32,10 +32,10 @@ func NewSecretDriver(plugin plugin.Plugin) *SecretDriver {
 // the driver returns an error in the payload.
 func (d *SecretDriver) Get(spec *api.SecretSpec, task *api.Task) ([]byte, bool, error) {
 	if spec == nil {
-		return nil, false, fmt.Errorf("secret spec is nil")
+		return nil, false, errors.New("secret spec is nil")
 	}
 	if task == nil {
-		return nil, false, fmt.Errorf("task is nil")
+		return nil, false, errors.New("task is nil")
 	}
 
 	var secretResp SecretsProviderResponse
@@ -80,7 +80,7 @@ func (d *SecretDriver) Get(spec *api.SecretSpec, task *api.Task) ([]byte, bool, 
 		return nil, false, err
 	}
 	if secretResp.Err != "" {
-		return nil, secretResp.DoNotReuse, fmt.Errorf(secretResp.Err)
+		return nil, secretResp.DoNotReuse, errors.New(secretResp.Err)
 	}
 	// Assign the secret value
 	return secretResp.Value, secretResp.DoNotReuse, nil

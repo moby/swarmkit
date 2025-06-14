@@ -2,6 +2,7 @@ package queue
 
 import (
 	"container/list"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -11,7 +12,7 @@ import (
 
 // ErrQueueFull is returned by a Write operation when that Write causes the
 // queue to reach its size limit.
-var ErrQueueFull = fmt.Errorf("queue closed due to size limit")
+var ErrQueueFull = errors.New("queue closed due to size limit")
 
 // LimitQueue accepts all messages into a queue for asynchronous consumption by
 // a sink until an upper limit of messages is reached. When that limit is

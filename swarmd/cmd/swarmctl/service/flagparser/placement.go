@@ -1,7 +1,7 @@
 package flagparser
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/pflag"
@@ -21,7 +21,7 @@ func parsePlacement(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 
 	if flags.Changed("replicas-max-per-node") {
 		if spec.GetReplicated() == nil {
-			return fmt.Errorf("--replicas-max-per-node can only be specified in --mode replicated")
+			return errors.New("--replicas-max-per-node can only be specified in --mode replicated")
 		}
 		maxReplicas, err := flags.GetUint64("replicas-max-per-node")
 		if err != nil {

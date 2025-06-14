@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/encryption"
-	"github.com/pkg/errors"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -84,7 +84,7 @@ func (e *EncryptedRaftLogger) BootstrapFromDisk(ctx context.Context, oldEncrypti
 	}
 	// ensure the new directory exists
 	if err := os.MkdirAll(snapDir, 0o700); err != nil {
-		return nil, WALData{}, errors.Wrap(err, "failed to create snapshot directory")
+		return nil, WALData{}, fmt.Errorf("failed to create snapshot directory: %w", err)
 	}
 
 	var (
@@ -96,7 +96,7 @@ func (e *EncryptedRaftLogger) BootstrapFromDisk(ctx context.Context, oldEncrypti
 	// Create a snapshotter and load snapshot data
 	snapshotter = snapFactory.New(snapDir)
 	snapshot, err := snapshotter.Load()
-	if err != nil && err != snap.ErrNoSnapshot {
+	if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
 		return nil, WALData{}, err
 	}
 
@@ -149,14 +149,14 @@ func (e *EncryptedRaftLogger) BootstrapNew(metadata []byte) error {
 
 	for _, dirpath := range []string{filepath.Dir(e.walDir()), e.snapDir()} {
 		if err := os.MkdirAll(dirpath, 0o700); err != nil {
-			return errors.Wrapf(err, "failed to create %s", dirpath)
+			return fmt.Errorf("failed to create %s: %w", dirpath, err)
 		}
 	}
 	var err error
 	// the wal directory must not already exist upon creation
 	e.wal, err = walFactory.Create(e.walDir(), metadata)
 	if err != nil {
-		return errors.Wrap(err, "failed to create WAL")
+		return fmt.Errorf("failed to create WAL: %w", err)
 	}
 
 	e.snapshotter = NewSnapFactory(encrypter, decrypter).New(e.snapDir())
@@ -184,7 +184,7 @@ func (e *EncryptedRaftLogger) RotateEncryptionKey(newKey []byte) {
 		// have a lock on writing to snapshots and WALs.
 		wrapped, ok := e.wal.(*wrappedWAL)
 		if !ok {
-			panic(fmt.Errorf("EncryptedRaftLogger's WAL is not a wrappedWAL"))
+			panic(errors.New("EncryptedRaftLogger's WAL is not a wrappedWAL"))
 		}
 
 		wrapped.encrypter, wrapped.decrypter = encryption.Defaults(newKey, e.FIPS)
@@ -270,7 +270,7 @@ func (e *EncryptedRaftLogger) GC(index uint64, term uint64, keepOldSnapshots uin
 	var snapTerm, snapIndex uint64
 	_, err = fmt.Sscanf(oldestSnapshot, "%016x-%016x.snap", &snapTerm, &snapIndex)
 	if err != nil {
-		return errors.Wrapf(err, "malformed snapshot filename %s", oldestSnapshot)
+		return fmt.Errorf("malformed snapshot filename %s: %w", oldestSnapshot, err)
 	}
 
 	wals, err := ListWALs(e.walDir())
@@ -285,7 +285,7 @@ func (e *EncryptedRaftLogger) GC(index uint64, term uint64, keepOldSnapshots uin
 		var walSeq, walIndex uint64
 		_, err = fmt.Sscanf(walName, "%016x-%016x.wal", &walSeq, &walIndex)
 		if err != nil {
-			return errors.Wrapf(err, "could not parse WAL name %s", walName)
+			return fmt.Errorf("could not parse WAL name %s: %w", walName, err)
 		}
 
 		if walIndex >= snapIndex {
@@ -305,12 +305,12 @@ func (e *EncryptedRaftLogger) GC(index uint64, term uint64, keepOldSnapshots uin
 		walPath := filepath.Join(e.walDir(), wals[i])
 		l, err := fileutil.TryLockFile(walPath, os.O_WRONLY, fileutil.PrivateFileMode)
 		if err != nil {
-			return errors.Wrapf(err, "could not lock old WAL file %s for removal", wals[i])
+			return fmt.Errorf("could not lock old WAL file %s for removal: %w", wals[i], err)
 		}
 		err = os.Remove(walPath)
 		l.Close()
 		if err != nil {
-			return errors.Wrapf(err, "error removing old WAL file %s", wals[i])
+			return fmt.Errorf("error removing old WAL file %s: %w", wals[i], err)
 		}
 	}
 
@@ -323,7 +323,7 @@ func (e *EncryptedRaftLogger) SaveEntries(st raftpb.HardState, entries []raftpb.
 	defer e.encoderMu.RUnlock()
 
 	if e.wal == nil {
-		return fmt.Errorf("raft WAL has either been closed or has never been created")
+		return errors.New("raft WAL has either been closed or has never been created")
 	}
 	return e.wal.Save(st, entries)
 }

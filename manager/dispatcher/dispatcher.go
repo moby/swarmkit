@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -20,7 +21,6 @@ import (
 	"github.com/moby/swarmkit/v2/protobuf/ptypes"
 	"github.com/moby/swarmkit/v2/remotes"
 	"github.com/moby/swarmkit/v2/watch"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -426,7 +426,7 @@ func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
 		nodes, err = store.FindNodes(tx, store.All)
 	})
 	if err != nil {
-		return errors.Wrap(err, "failed to get list of nodes")
+		return fmt.Errorf("failed to get list of nodes: %w", err)
 	}
 	err = d.store.Batch(func(batch *store.Batch) error {
 		for _, n := range nodes {
@@ -466,10 +466,10 @@ func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
 					}
 				}
 				if err := d.nodes.AddUnknown(node, expireFunc); err != nil {
-					return errors.Wrapf(err, `adding node %s in "unknown" state to node store failed`, nodeID)
+					return fmt.Errorf(`adding node %s in "unknown" state to node store failed: %w`, nodeID, err)
 				}
 				if err := store.UpdateNode(tx, node); err != nil {
-					return errors.Wrapf(err, "update for node %s failed", nodeID)
+					return fmt.Errorf("update for node %s failed: %w", nodeID, err)
 				}
 				return nil
 			})
@@ -544,7 +544,7 @@ func nodeIPFromContext(ctx context.Context) (string, error) {
 	}
 	addr, _, err := net.SplitHostPort(nodeInfo.RemoteAddr)
 	if err != nil {
-		return "", errors.Wrap(err, "unable to get ip from addr:port")
+		return "", fmt.Errorf("unable to get ip from addr:port: %w", err)
 	}
 	return addr, nil
 }
@@ -1304,7 +1304,7 @@ func (d *Dispatcher) markNodeNotReady(id string, state api.NodeStatus_State, mes
 	}
 
 	if rn := d.nodes.Delete(id); rn == nil {
-		return errors.Errorf("node %s is not found in local storage", id)
+		return fmt.Errorf("node %s is not found in local storage", id)
 	}
 	logLocal.Debugf("deleted node %s from node store", node.ID)
 

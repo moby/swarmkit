@@ -59,7 +59,7 @@ func loadData(swarmdir, unlockKey string) (*storage.WALData, *raftpb.Snapshot, e
 
 	var walsnap walpb.Snapshot
 	snapshot, err := snapFactory.New(snapDir).Load()
-	if err != nil && err != snap.ErrNoSnapshot {
+	if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
 		return nil, nil, err
 	}
 	if snapshot != nil {
@@ -449,7 +449,7 @@ func dumpObject(swarmdir, unlockKey, objType string, selector objSelector) error
 	}
 
 	if len(objects) == 0 {
-		return fmt.Errorf("no matching objects found")
+		return errors.New("no matching objects found")
 	}
 
 	for _, object := range objects {

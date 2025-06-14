@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/moby/swarmkit/v2/manager/encryption"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
@@ -74,7 +73,8 @@ func TestBootstrapFromDisk(t *testing.T) {
 			EncryptionKey: []byte(key),
 		}
 		_, _, err := logger.BootstrapFromDisk(context.Background())
-		require.IsType(t, encryption.ErrCannotDecrypt{}, errors.Cause(err))
+		var ecd encryption.ErrCannotDecrypt
+		require.ErrorAs(t, err, &ecd)
 	}
 
 	// but we can if we combine the two keys, we can bootstrap just fine

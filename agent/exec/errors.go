@@ -1,6 +1,6 @@
 package exec
 
-import "github.com/pkg/errors"
+import "errors"
 
 var (
 	// ErrRuntimeUnsupported encountered when a task requires a runtime
