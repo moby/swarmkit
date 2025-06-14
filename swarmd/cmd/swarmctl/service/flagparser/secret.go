@@ -1,6 +1,7 @@
 package flagparser
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -16,14 +17,14 @@ func parseSecretString(secretString string) (secretName, presentName string, err
 	secretName = strings.TrimSpace(tokens[0])
 
 	if secretName == "" {
-		err = fmt.Errorf("invalid secret name provided")
+		err = errors.New("invalid secret name provided")
 		return
 	}
 
 	if len(tokens) > 1 {
 		presentName = strings.TrimSpace(tokens[1])
 		if presentName == "" {
-			err = fmt.Errorf("invalid presentation name provided")
+			err = errors.New("invalid presentation name provided")
 			return
 		}
 	} else {

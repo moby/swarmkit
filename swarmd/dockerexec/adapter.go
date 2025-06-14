@@ -286,7 +286,7 @@ func (c *containerAdapter) logs(ctx context.Context, options api.LogSubscription
 		// See protobuf documentation for details of how this works.
 		apiOptions.Tail = fmt.Sprint(-options.Tail - 1)
 	} else if options.Tail > 0 {
-		return nil, fmt.Errorf("tail relative to start of logs not supported via docker API")
+		return nil, errors.New("tail relative to start of logs not supported via docker API")
 	}
 
 	if len(options.Streams) == 0 {

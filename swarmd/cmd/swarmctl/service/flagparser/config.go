@@ -1,6 +1,7 @@
 package flagparser
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -16,14 +17,14 @@ func parseConfigString(configString string) (configName, presentName string, err
 	configName = strings.TrimSpace(tokens[0])
 
 	if configName == "" {
-		err = fmt.Errorf("invalid config name provided")
+		err = errors.New("invalid config name provided")
 		return
 	}
 
 	if len(tokens) > 1 {
 		presentName = strings.TrimSpace(tokens[1])
 		if presentName == "" {
-			err = fmt.Errorf("invalid presentation name provided")
+			err = errors.New("invalid presentation name provided")
 			return
 		}
 	} else {

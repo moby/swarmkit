@@ -488,7 +488,7 @@ func (r *controller) Logs(ctx context.Context, publisher exec.LogPublisher, opti
 		// so, message header is 8 bytes, treat as uint64, pull stream off MSB
 		var header uint64
 		if err := binary.Read(brd, binary.BigEndian, &header); err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				return nil
 			}
 
