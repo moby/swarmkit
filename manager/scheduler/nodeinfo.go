@@ -7,6 +7,7 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/genericresource"
 	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/manager/scheduler/common"
 )
 
 // hostPortSpec specifies a used host port.
@@ -126,7 +127,6 @@ func (nodeInfo *NodeInfo) addTask(t *api.Task) bool {
 
 	reservations := taskReservations(t.Spec)
 	resources := nodeInfo.AvailableResources
-
 	resources.MemoryBytes -= reservations.MemoryBytes
 	resources.NanoCPUs -= reservations.NanoCPUs
 
@@ -218,4 +218,37 @@ func (nodeInfo *NodeInfo) countRecentFailures(now time.Time, t *api.Task) int {
 	}
 
 	return recentFailureCount
+}
+
+// ToCommon converts the internal NodeInfo to common.NodeInfo
+func (nodeInfo *NodeInfo) ToCommon() common.NodeInfo {
+	return common.NodeInfo{
+		Node:               nodeInfo.Node,
+		Tasks:              nodeInfo.Tasks,
+		AvailableResources: nodeInfo.AvailableResources,
+	}
+}
+
+// FromCommon converts a common.NodeInfo to the internal NodeInfo
+func FromCommon(commonInfo common.NodeInfo) NodeInfo {
+	nodeInfo := NodeInfo{
+		Node:                      commonInfo.Node,
+		Tasks:                     commonInfo.Tasks,
+		AvailableResources:        commonInfo.AvailableResources,
+		ActiveTasksCount:          0,
+		ActiveTasksCountByService: make(map[string]int),
+		usedHostPorts:             make(map[hostPortSpec]struct{}),
+		recentFailures:            make(map[versionedService][]time.Time),
+		lastCleanup:               time.Now(),
+	}
+
+	// Count active tasks
+	for _, t := range commonInfo.Tasks {
+		if t.DesiredState <= api.TaskStateCompleted {
+			nodeInfo.ActiveTasksCount++
+			nodeInfo.ActiveTasksCountByService[t.ServiceID]++
+		}
+	}
+
+	return nodeInfo
 }
