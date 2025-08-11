@@ -20,13 +20,17 @@ type Server struct {
 	raft           *raft.Node
 	securityConfig *ca.SecurityConfig
 	netvalidator   networkallocator.DriverValidator
+	viewhooks      ViewResponseMutator
 	dr             *drivers.DriverProvider
 }
 
 // NewServer creates a Cluster API server.
-func NewServer(store *store.MemoryStore, raft *raft.Node, securityConfig *ca.SecurityConfig, nv networkallocator.DriverValidator, dr *drivers.DriverProvider) *Server {
+func NewServer(store *store.MemoryStore, raft *raft.Node, securityConfig *ca.SecurityConfig, nv networkallocator.DriverValidator, vrm ViewResponseMutator, dr *drivers.DriverProvider) *Server {
 	if nv == nil {
 		nv = networkallocator.InertProvider{}
+	}
+	if vrm == nil {
+		vrm = NoopViewResponseMutator{}
 	}
 	return &Server{
 		store:          store,
@@ -34,5 +38,6 @@ func NewServer(store *store.MemoryStore, raft *raft.Node, securityConfig *ca.Sec
 		raft:           raft,
 		securityConfig: securityConfig,
 		netvalidator:   nv,
+		viewhooks:      vrm,
 	}
 }
