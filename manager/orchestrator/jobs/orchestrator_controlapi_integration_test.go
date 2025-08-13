@@ -54,7 +54,7 @@ var _ = Describe("Integration between the controlapi and jobs orchestrator", fun
 		// but it's unexported. in any case, re-writing it in ginkgo isn't
 		// unwarranted.
 		s = store.NewMemoryStore(&stateutils.MockProposer{})
-		server = controlapi.NewServer(s, nil, nil, nil, nil)
+		server = controlapi.NewServer(s, nil, nil, nil, nil, nil)
 
 		// we need a temporary unix socket to server on
 		temp, err := os.CreateTemp("", "test-socket")

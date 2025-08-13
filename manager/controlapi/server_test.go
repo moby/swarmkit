@@ -47,7 +47,7 @@ func newTestServer(t *testing.T) *testServer {
 	ts.Store = store.NewMemoryStore(&stateutils.MockProposer{})
 	assert.NotNil(t, ts.Store)
 
-	ts.Server = NewServer(ts.Store, nil, securityConfig, nil, nil)
+	ts.Server = NewServer(ts.Store, nil, securityConfig, nil, nil, nil)
 	assert.NotNil(t, ts.Server)
 
 	temp, err := os.CreateTemp("", "test-socket")
