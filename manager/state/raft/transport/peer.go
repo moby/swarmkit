@@ -2,6 +2,7 @@ package transport
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -12,7 +13,6 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/state/raft/membership"
-	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"google.golang.org/grpc/status"
@@ -46,7 +46,7 @@ type peer struct {
 func newPeer(id uint64, addr string, tr *Transport) (*peer, error) {
 	cc, err := tr.dial(addr)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create conn for %x with addr %s", id, addr)
+		return nil, fmt.Errorf("failed to create conn for %x with addr %s: %w", id, addr, err)
 	}
 	ctx, cancel := context.WithCancel(tr.ctx)
 	ctx = log.WithField(ctx, "peer_id", fmt.Sprintf("%x", id))
@@ -84,7 +84,7 @@ func (p *peer) send(m raftpb.Message) (err error) {
 		return p.ctx.Err()
 	default:
 		p.tr.config.ReportUnreachable(p.id)
-		return errors.Errorf("peer is unreachable")
+		return errors.New("peer is unreachable")
 	}
 	return nil
 }
@@ -132,7 +132,7 @@ func (p *peer) address() string {
 func (p *peer) resolveAddr(ctx context.Context, id uint64) (string, error) {
 	resp, err := api.NewRaftClient(p.conn()).ResolveAddress(ctx, &api.ResolveAddressRequest{RaftID: id})
 	if err != nil {
-		return "", errors.Wrap(err, "failed to resolve address")
+		return "", fmt.Errorf("failed to resolve address: %w", err)
 	}
 	return resp.Addr, nil
 }
@@ -304,10 +304,10 @@ func (p *peer) sendProcessMessage(ctx context.Context, m raftpb.Message) error {
 func healthCheckConn(ctx context.Context, cc *grpc.ClientConn) error {
 	resp, err := api.NewHealthClient(cc).Check(ctx, &api.HealthCheckRequest{Service: "Raft"})
 	if err != nil {
-		return errors.Wrap(err, "failed to check health")
+		return fmt.Errorf("failed to check health: %w", err)
 	}
 	if resp.Status != api.HealthCheckResponse_SERVING {
-		return errors.Errorf("health check returned status %s", resp.Status)
+		return fmt.Errorf("health check returned status %s", resp.Status)
 	}
 	return nil
 }
@@ -351,7 +351,7 @@ func (p *peer) drain() error {
 				return nil
 			}
 			if err := p.sendProcessMessage(ctx, m); err != nil {
-				return errors.Wrap(err, "send drain message")
+				return fmt.Errorf("send drain message: %w", err)
 			}
 		case <-ctx.Done():
 			return ctx.Err()

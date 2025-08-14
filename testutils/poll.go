@@ -1,10 +1,10 @@
 package testutils
 
 import (
+	"fmt"
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
-	"github.com/pkg/errors"
 )
 
 // PollFuncWithTimeout is used to periodically execute a check function, it
@@ -25,7 +25,7 @@ func PollFuncWithTimeout(clockSource *fakeclock.FakeClock, f func() error, timeo
 		}
 		select {
 		case <-timer.C:
-			return errors.Wrap(err, "polling failed")
+			return fmt.Errorf("polling failed: %w", err)
 		case <-time.After(50 * time.Millisecond):
 		}
 	}

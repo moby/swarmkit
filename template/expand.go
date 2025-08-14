@@ -1,12 +1,12 @@
 package template
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/pkg/errors"
 )
 
 // ExpandContainerSpec expands templated fields in the runtime using the task
@@ -18,7 +18,7 @@ import (
 func ExpandContainerSpec(n *api.NodeDescription, t *api.Task) (*api.ContainerSpec, error) {
 	container := t.Spec.GetContainer()
 	if container == nil {
-		return nil, errors.Errorf("task missing ContainerSpec to expand")
+		return nil, errors.New("task missing ContainerSpec to expand")
 	}
 
 	container = container.Copy()
@@ -27,17 +27,17 @@ func ExpandContainerSpec(n *api.NodeDescription, t *api.Task) (*api.ContainerSpe
 	var err error
 	container.Env, err = expandEnv(ctx, container.Env)
 	if err != nil {
-		return container, errors.Wrap(err, "expanding env failed")
+		return container, fmt.Errorf("expanding env failed: %w", err)
 	}
 
 	// For now, we only allow templating of string-based mount fields
 	container.Mounts, err = expandMounts(ctx, container.Mounts)
 	if err != nil {
-		return container, errors.Wrap(err, "expanding mounts failed")
+		return container, fmt.Errorf("expanding mounts failed: %w", err)
 	}
 
 	container.Hostname, err = ctx.Expand(container.Hostname)
-	return container, errors.Wrap(err, "expanding hostname failed")
+	return container, fmt.Errorf("expanding hostname failed: %w", err)
 }
 
 func expandMounts(ctx Context, mounts []api.Mount) ([]api.Mount, error) {
@@ -50,24 +50,24 @@ func expandMounts(ctx Context, mounts []api.Mount) ([]api.Mount, error) {
 		var err error
 		mount.Source, err = ctx.Expand(mount.Source)
 		if err != nil {
-			return mounts, errors.Wrapf(err, "expanding mount source %q", mount.Source)
+			return mounts, fmt.Errorf("expanding mount source %q: %w", mount.Source, err)
 		}
 
 		mount.Target, err = ctx.Expand(mount.Target)
 		if err != nil {
-			return mounts, errors.Wrapf(err, "expanding mount target %q", mount.Target)
+			return mounts, fmt.Errorf("expanding mount target %q: %w", mount.Target, err)
 		}
 
 		if mount.VolumeOptions != nil {
 			mount.VolumeOptions.Labels, err = expandMap(ctx, mount.VolumeOptions.Labels)
 			if err != nil {
-				return mounts, errors.Wrap(err, "expanding volume labels")
+				return mounts, fmt.Errorf("expanding volume labels: %w", err)
 			}
 
 			if mount.VolumeOptions.DriverConfig != nil {
 				mount.VolumeOptions.DriverConfig.Options, err = expandMap(ctx, mount.VolumeOptions.DriverConfig.Options)
 				if err != nil {
-					return mounts, errors.Wrap(err, "expanding volume driver config")
+					return mounts, fmt.Errorf("expanding volume driver config: %w", err)
 				}
 			}
 		}
@@ -87,7 +87,7 @@ func expandMap(ctx Context, m map[string]string) (map[string]string, error) {
 	for k, v := range m {
 		v, err = ctx.Expand(v)
 		if err != nil {
-			return m, errors.Wrapf(err, "expanding map entry %q=%q", k, v)
+			return m, fmt.Errorf("expanding map entry %q=%q: %w", k, v, err)
 		}
 
 		n[k] = v
@@ -107,7 +107,7 @@ func expandEnv(ctx Context, values []string) ([]string, error) {
 		if len(parts) > 1 {
 			expanded, err := ctx.Expand(parts[1])
 			if err != nil {
-				return values, errors.Wrapf(err, "expanding env %q", value)
+				return values, fmt.Errorf("expanding env %q: %w", value, err)
 			}
 
 			entry = fmt.Sprintf("%s=%s", entry, expanded)

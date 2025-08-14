@@ -1,7 +1,7 @@
 package flagparser
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/pflag"
@@ -32,7 +32,7 @@ func parseMode(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 
 	if flags.Changed("replicas") {
 		if spec.GetReplicated() == nil {
-			return fmt.Errorf("--replicas can only be specified in --mode replicated")
+			return errors.New("--replicas can only be specified in --mode replicated")
 		}
 		replicas, err := flags.GetUint64("replicas")
 		if err != nil {

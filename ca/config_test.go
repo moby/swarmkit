@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"net"
 	"os"
 	"path/filepath"
@@ -25,7 +26,6 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -236,11 +236,13 @@ func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 
 	_, _, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
 	require.Error(t, err)
-	require.IsType(t, x509.CertificateInvalidError{}, errors.Cause(err))
+	var cie1 x509.CertificateInvalidError
+	require.ErrorAs(t, err, &cie1)
 
 	_, _, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, true)
 	require.Error(t, err)
-	require.IsType(t, x509.CertificateInvalidError{}, errors.Cause(err))
+	var cie2 x509.CertificateInvalidError
+	require.ErrorAs(t, err, &cie2)
 
 	// a cert that is expired is not valid if expiry is not allowed
 	invalidCert = cautils.ReDateCert(t, certBytes, tc.RootCA.Certs, s.Key, now.Add(-2*time.Minute), now.Add(-1*time.Minute))
@@ -248,7 +250,8 @@ func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 
 	_, _, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
 	require.Error(t, err)
-	require.IsType(t, x509.CertificateInvalidError{}, errors.Cause(err))
+	var cie3 x509.CertificateInvalidError
+	require.ErrorAs(t, err, &cie3)
 
 	// but it is valid if expiry is allowed
 	_, cancel, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, true)
@@ -798,7 +801,8 @@ func TestRenewTLSConfigUpdatesRootNonUnknownAuthError(t *testing.T) {
 
 	err = ca.RenewTLSConfigNow(tc.Context, secConfig, fakeCAServer.getConnBroker(), tc.Paths.RootCA)
 	require.Error(t, err)
-	require.IsType(t, x509.CertificateInvalidError{}, errors.Cause(err))
+	var cie x509.CertificateInvalidError
+	require.ErrorAs(t, err, &cie)
 	require.NoError(t, <-signErr)
 }
 

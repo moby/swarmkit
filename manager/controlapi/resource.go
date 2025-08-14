@@ -2,6 +2,7 @@ package controlapi
 
 import (
 	"context"
+	"errors"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -39,20 +40,13 @@ func (s *Server) CreateResource(ctx context.Context, request *api.CreateResource
 		return store.CreateResource(tx, r)
 	})
 
-	switch err {
-	case store.ErrNoKind:
+	switch {
+	case errors.Is(err, store.ErrNoKind):
 		return nil, status.Errorf(codes.InvalidArgument, "Kind %v is not registered", r.Kind)
-	case store.ErrNameConflict:
-		return nil, status.Errorf(
-			codes.AlreadyExists,
-			"A resource with name %v already exists",
-			r.Annotations.Name,
-		)
-	case nil:
-		log.G(ctx).WithFields(log.Fields{
-			"resource.Name": r.Annotations.Name,
-			"method":        "CreateResource",
-		}).Debugf("resource created")
+	case errors.Is(err, store.ErrNameConflict):
+		return nil, status.Errorf(codes.AlreadyExists, "A resource with name %v already exists", r.Annotations.Name)
+	case err == nil:
+		log.G(ctx).WithFields(log.Fields{"resource.Name": r.Annotations.Name, "method": "CreateResource"}).Debugf("resource created")
 		return &api.CreateResourceResponse{Resource: r}, nil
 	default:
 		return nil, err
@@ -91,10 +85,10 @@ func (s *Server) RemoveResource(ctx context.Context, request *api.RemoveResource
 	err := s.store.Update(func(tx store.Tx) error {
 		return store.DeleteResource(tx, request.ResourceID)
 	})
-	switch err {
-	case store.ErrNotExist:
+	switch {
+	case errors.Is(err, store.ErrNotExist):
 		return nil, status.Errorf(codes.NotFound, "resource %s not found", request.ResourceID)
-	case nil:
+	case err == nil:
 		return &api.RemoveResourceResponse{}, nil
 	default:
 		return nil, err
@@ -212,13 +206,11 @@ func (s *Server) UpdateResource(ctx context.Context, request *api.UpdateResource
 
 		return store.UpdateResource(tx, r)
 	})
-	switch err {
-	case store.ErrSequenceConflict:
+	switch {
+	case errors.Is(err, store.ErrSequenceConflict):
 		return nil, status.Errorf(codes.InvalidArgument, "update out of sequence")
-	case nil:
-		return &api.UpdateResourceResponse{
-			Resource: r,
-		}, nil
+	case err == nil:
+		return &api.UpdateResourceResponse{Resource: r}, nil
 	default:
 		return nil, err
 	}

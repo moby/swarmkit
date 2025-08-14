@@ -3,13 +3,13 @@ package encryption
 import (
 	cryptorand "crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/pkg/errors"
 )
 
 // This package defines the interfaces and encryption package
@@ -39,7 +39,7 @@ type noopCrypter struct{}
 
 func (n noopCrypter) Decrypt(e api.MaybeEncryptedRecord) ([]byte, error) {
 	if e.Algorithm != n.Algorithm() {
-		return nil, fmt.Errorf("record is encrypted")
+		return nil, errors.New("record is encrypted")
 	}
 	return e.Data, nil
 }
@@ -135,17 +135,17 @@ func Decrypt(encryptd []byte, decrypter Decrypter) ([]byte, error) {
 // Encrypt turns a slice of bytes into a serialized MaybeEncryptedRecord slice of bytes
 func Encrypt(plaintext []byte, encrypter Encrypter) ([]byte, error) {
 	if encrypter == nil {
-		return nil, fmt.Errorf("no encrypter specified")
+		return nil, errors.New("no encrypter specified")
 	}
 
 	encryptedRecord, err := encrypter.Encrypt(plaintext)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to encrypt data")
+		return nil, fmt.Errorf("unable to encrypt data: %w", err)
 	}
 
 	data, err := proto.Marshal(encryptedRecord)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to marshal as MaybeEncryptedRecord")
+		return nil, fmt.Errorf("unable to marshal as MaybeEncryptedRecord: %w", err)
 	}
 
 	return data, nil
@@ -168,7 +168,7 @@ func GenerateSecretKey() []byte {
 	secretData := make([]byte, naclSecretboxKeySize)
 	if _, err := io.ReadFull(cryptorand.Reader, secretData); err != nil {
 		// panic if we can't read random data
-		panic(errors.Wrap(err, "failed to read random bytes"))
+		panic(fmt.Errorf("failed to read random bytes: %w", err))
 	}
 	return secretData
 }
@@ -183,11 +183,11 @@ func HumanReadableKey(key []byte) string {
 // said keys
 func ParseHumanReadableKey(key string) ([]byte, error) {
 	if !strings.HasPrefix(key, humanReadablePrefix) {
-		return nil, fmt.Errorf("invalid key string")
+		return nil, errors.New("invalid key string")
 	}
 	keyBytes, err := base64.RawStdEncoding.DecodeString(strings.TrimPrefix(key, humanReadablePrefix))
 	if err != nil {
-		return nil, fmt.Errorf("invalid key string")
+		return nil, errors.New("invalid key string")
 	}
 	return keyBytes, nil
 }

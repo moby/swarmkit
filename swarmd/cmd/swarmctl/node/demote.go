@@ -1,6 +1,7 @@
 package node
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -13,7 +14,7 @@ var (
 		Short: "Demote a node from a manager to a worker",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := changeNodeRole(cmd, args, api.NodeRoleWorker); err != nil {
-				if err == errNoChange {
+				if errors.Is(err, errNoChange) {
 					return fmt.Errorf("Node %s is already a worker", args[0])
 				}
 				return err

@@ -2,6 +2,7 @@ package encryption
 
 import (
 	cryptorand "crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 
@@ -54,7 +55,7 @@ func (n NACLSecretbox) Encrypt(data []byte) (*api.MaybeEncryptedRecord, error) {
 // Decrypt decrypts a MaybeEncryptedRecord and returns some bytes
 func (n NACLSecretbox) Decrypt(record api.MaybeEncryptedRecord) ([]byte, error) {
 	if record.Algorithm != n.Algorithm() {
-		return nil, fmt.Errorf("not a NACL secretbox record")
+		return nil, errors.New("not a NACL secretbox record")
 	}
 	if len(record.Nonce) != naclSecretboxNonceSize {
 		return nil, fmt.Errorf("invalid nonce size for NACL secretbox: require 24, got %d", len(record.Nonce))
