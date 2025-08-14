@@ -11,7 +11,6 @@ import (
 	"github.com/moby/swarmkit/v2/ca/keyutils"
 	"github.com/moby/swarmkit/v2/ca/pkcs8"
 	"github.com/moby/swarmkit/v2/ca/testutils"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -337,7 +336,7 @@ func TestTwoPhaseReadWrite(t *testing.T) {
 
 	// remove the directory, to simulate it failing to write the first time
 	err = os.RemoveAll(path.Node.Cert)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	readCert, readKey, err := krw.Read()
 	require.NoError(t, err)
 	require.Equal(t, cert2, readCert)

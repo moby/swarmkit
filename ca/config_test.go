@@ -55,7 +55,7 @@ func testDownloadRootCASuccess(t *testing.T, fips bool) {
 	require.True(t, strings.HasPrefix(token, prefix))
 
 	// Remove the CA cert
-	assert.NoError(t, os.RemoveAll(tc.Paths.RootCA.Cert))
+	require.NoError(t, os.RemoveAll(tc.Paths.RootCA.Cert))
 
 	rootCA, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, token, tc.ConnBroker)
 	require.NoError(t, err)
@@ -66,7 +66,7 @@ func testDownloadRootCASuccess(t *testing.T, fips bool) {
 	require.Equal(t, tc.RootCA.Certs, rootCA.Certs)
 
 	// Remove the CA cert
-	assert.NoError(t, os.RemoveAll(tc.Paths.RootCA.Cert))
+	require.NoError(t, os.RemoveAll(tc.Paths.RootCA.Cert))
 
 	// downloading without a join token also succeeds
 	rootCA, err = ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, "", tc.ConnBroker)
@@ -83,7 +83,7 @@ func TestDownloadRootCAWrongCAHash(t *testing.T) {
 	defer tc.Stop()
 
 	// Remove the CA cert
-	assert.NoError(t, os.RemoveAll(tc.Paths.RootCA.Cert))
+	require.NoError(t, os.RemoveAll(tc.Paths.RootCA.Cert))
 
 	// invalid token
 	for _, invalid := range []string{
@@ -114,14 +114,14 @@ func TestCreateSecurityConfigEmptyDir(t *testing.T) {
 	}
 	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
-	assert.NoError(t, tc.CAServer.Stop())
+	require.NoError(t, tc.CAServer.Stop())
 
 	// Remove all the contents from the temp dir and try again with a new node
 	for _, org := range []string{
 		"",
 		"my_org",
 	} {
-		assert.NoError(t, os.RemoveAll(tc.TempDir))
+		require.NoError(t, os.RemoveAll(tc.TempDir))
 		krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 		nodeConfig, cancel, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
 			ca.CertificateRequestConfig{
@@ -129,8 +129,8 @@ func TestCreateSecurityConfigEmptyDir(t *testing.T) {
 				ConnBroker:   tc.ConnBroker,
 				Organization: org,
 			})
-		assert.NoError(t, err)
-		assert.NoError(t, cancel())
+		require.NoError(t, err)
+		require.NoError(t, cancel())
 		assert.NotNil(t, nodeConfig)
 		assert.NotNil(t, nodeConfig.ClientTLSCreds)
 		assert.NotNil(t, nodeConfig.ServerTLSCreds)
@@ -140,7 +140,7 @@ func TestCreateSecurityConfigEmptyDir(t *testing.T) {
 		}
 
 		root, err := helpers.ParseCertificatePEM(tc.RootCA.Certs)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		issuerInfo := nodeConfig.IssuerInfo()
 		assert.NotNil(t, issuerInfo)
@@ -155,7 +155,7 @@ func TestCreateSecurityConfigNoCerts(t *testing.T) {
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 	root, err := helpers.ParseCertificatePEM(tc.RootCA.Certs)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	validateNodeConfig := func(rootCA *ca.RootCA) {
 		nodeConfig, cancel, err := rootCA.CreateSecurityConfig(tc.Context, krw,
@@ -163,8 +163,8 @@ func TestCreateSecurityConfigNoCerts(t *testing.T) {
 				Token:      tc.WorkerToken,
 				ConnBroker: tc.ConnBroker,
 			})
-		assert.NoError(t, err)
-		assert.NoError(t, cancel())
+		require.NoError(t, err)
+		require.NoError(t, cancel())
 		assert.NotNil(t, nodeConfig)
 		assert.NotNil(t, nodeConfig.ClientTLSCreds)
 		assert.NotNil(t, nodeConfig.ServerTLSCreds)
@@ -181,14 +181,14 @@ func TestCreateSecurityConfigNoCerts(t *testing.T) {
 
 	// Remove only the node certificates form the directory, and attest that we get
 	// new certificates that are locally signed
-	assert.NoError(t, os.RemoveAll(tc.Paths.Node.Cert))
+	require.NoError(t, os.RemoveAll(tc.Paths.Node.Cert))
 	validateNodeConfig(&tc.RootCA)
 
 	// Remove only the node certificates form the directory, get a new rootCA, and attest that we get
 	// new certificates that are issued by the remote CA
-	assert.NoError(t, os.RemoveAll(tc.Paths.Node.Cert))
+	require.NoError(t, os.RemoveAll(tc.Paths.Node.Cert))
 	rootCA, err := ca.GetLocalRootCA(tc.Paths.RootCA)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	validateNodeConfig(&rootCA)
 }
 
@@ -210,7 +210,7 @@ func testGRPCConnection(t *testing.T, secConfig *ca.SecurityConfig) {
 	}
 	conn, err := grpc.Dial(l.Addr().String(), dialOpts...)
 	require.NoError(t, err)
-	assert.NoError(t, conn.Close())
+	require.NoError(t, conn.Close())
 }
 
 func TestLoadSecurityConfigExpiredCert(t *testing.T) {
@@ -253,7 +253,7 @@ func TestLoadSecurityConfigExpiredCert(t *testing.T) {
 	// but it is valid if expiry is allowed
 	_, cancel, err := ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, true)
 	require.NoError(t, err)
-	assert.NoError(t, cancel())
+	require.NoError(t, cancel())
 }
 
 func TestLoadSecurityConfigInvalidCert(t *testing.T) {
@@ -267,12 +267,12 @@ func TestLoadSecurityConfigInvalidCert(t *testing.T) {
 	err := os.WriteFile(tc.Paths.Node.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
 some random garbage\n
 -----END CERTIFICATE-----`), 0o644)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 
 	_, _, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestLoadSecurityConfigInvalidKey(t *testing.T) {
@@ -286,12 +286,12 @@ func TestLoadSecurityConfigInvalidKey(t *testing.T) {
 	err := os.WriteFile(tc.Paths.Node.Key, []byte(`-----BEGIN PRIVATE KEY-----\n
 some random garbage\n
 -----END PRIVATE KEY-----`), 0o644)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 
 	_, _, err = ca.LoadSecurityConfig(tc.Context, tc.RootCA, krw, false)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestLoadSecurityConfigIncorrectPassphrase(t *testing.T) {
@@ -442,7 +442,7 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	secConfig, cancel, err := rootCA.CreateSecurityConfig(tc.Context,
 		ca.NewKeyReadWriter(configPaths.Node, nil, nil), ca.CertificateRequestConfig{})
 	require.NoError(t, err)
-	assert.NoError(t, cancel())
+	require.NoError(t, cancel())
 	// update the server TLS to require certificates, otherwise this will all pass
 	// even if the root pools aren't updated
 	secConfig.ServerTLSCreds.Config().ClientAuth = tls.RequireAndVerifyClientCert
@@ -497,7 +497,7 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 		grpc.WithTransportCredentials(tcConfig.ClientTLSCreds),
 	)
 	require.NoError(t, err)
-	assert.NoError(t, conn.Close())
+	require.NoError(t, conn.Close())
 
 	conn, err = grpc.Dial(
 		tc.Addr,
@@ -506,7 +506,7 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 		grpc.WithTransportCredentials(secConfig.ClientTLSCreds),
 	)
 	require.NoError(t, err)
-	assert.NoError(t, conn.Close())
+	require.NoError(t, conn.Close())
 
 	// make sure any generated certs after updating contain the intermediate
 	krw := ca.NewKeyReadWriter(configPaths.Node, nil, nil)
@@ -554,7 +554,7 @@ func TestSecurityConfigUpdateRootCAUpdateConsistentWithTLSCertificates(t *testin
 
 	secConfig, cancel, err := ca.NewSecurityConfig(&rootCA, krw, tlsKeyPair, issuerInfo)
 	require.NoError(t, err)
-	assert.NoError(t, cancel())
+	require.NoError(t, cancel())
 
 	// can't update the root CA to one that doesn't match the tls certs
 	require.Error(t, secConfig.UpdateRootCA(&otherRootCA))
@@ -863,7 +863,7 @@ func writeAlmostExpiringCertToDisk(t *testing.T, tc *cautils.TestCA, cn, ou, org
 	// Because of the default backdate of 5 minutes, this issues certificates
 	// valid for 1 minute.
 	newRootCA, err := ca.NewRootCA(tc.RootCA.Certs, s.Cert, s.Key, ca.DefaultNodeCertExpiration, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	newSigner, err := newRootCA.Signer()
 	require.NoError(t, err)
 	newSigner.SetPolicy(&cfconfig.Signing{
@@ -876,7 +876,7 @@ func writeAlmostExpiringCertToDisk(t *testing.T, tc *cautils.TestCA, cn, ou, org
 	// Issue a new certificate with the same details as the current config, but with 1 min expiration time, and
 	// overwrite the existing cert on disk
 	_, _, err = newRootCA.IssueAndSaveNewCertificates(ca.NewKeyReadWriter(tc.Paths.Node, nil, nil), cn, ou, org)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestRenewTLSConfigWorker(t *testing.T) {
@@ -891,7 +891,7 @@ func TestRenewTLSConfigWorker(t *testing.T) {
 	// Get a new nodeConfig with a TLS cert that has the default Cert duration, but overwrite
 	// the cert on disk with one that expires in 1 minute
 	nodeConfig, err := tc.WriteNewNodeConfig(ca.WorkerRole)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	c := nodeConfig.ClientTLSCreds
 	writeAlmostExpiringCertToDisk(t, tc, c.NodeID(), c.Role(), c.Organization())
 
@@ -901,13 +901,13 @@ func TestRenewTLSConfigWorker(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestRenewTLSConfig timed-out")
 	case certUpdate := <-updates:
-		assert.NoError(t, certUpdate.Err)
+		require.NoError(t, certUpdate.Err)
 		assert.NotNil(t, certUpdate)
 		assert.Equal(t, ca.WorkerRole, certUpdate.Role)
 	}
 
 	root, err := helpers.ParseCertificatePEM(tc.RootCA.Certs)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	issuerInfo := nodeConfig.IssuerInfo()
 	assert.NotNil(t, issuerInfo)
@@ -927,7 +927,7 @@ func TestRenewTLSConfigManager(t *testing.T) {
 	// Get a new nodeConfig with a TLS cert that has the default Cert duration, but overwrite
 	// the cert on disk with one that expires in 1 minute
 	nodeConfig, err := tc.WriteNewNodeConfig(ca.WorkerRole)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	c := nodeConfig.ClientTLSCreds
 	writeAlmostExpiringCertToDisk(t, tc, c.NodeID(), c.Role(), c.Organization())
 
@@ -937,13 +937,13 @@ func TestRenewTLSConfigManager(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestRenewTLSConfig timed-out")
 	case certUpdate := <-updates:
-		assert.NoError(t, certUpdate.Err)
+		require.NoError(t, certUpdate.Err)
 		assert.NotNil(t, certUpdate)
 		assert.Equal(t, ca.WorkerRole, certUpdate.Role)
 	}
 
 	root, err := helpers.ParseCertificatePEM(tc.RootCA.Certs)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	issuerInfo := nodeConfig.IssuerInfo()
 	assert.NotNil(t, issuerInfo)
@@ -963,7 +963,7 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 	// Get a new nodeConfig with a TLS cert that has the default Cert duration, but overwrite
 	// the cert on disk with one that expires in 1 minute
 	nodeConfig, err := tc.WriteNewNodeConfig(ca.WorkerRole)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	c := nodeConfig.ClientTLSCreds
 	writeAlmostExpiringCertToDisk(t, tc, c.NodeID(), c.Role(), c.Organization())
 
@@ -973,7 +973,7 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 		assert.NotNil(t, node)
 		return store.DeleteNode(tx, nodeConfig.ClientTLSCreds.NodeID())
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	renewer := ca.NewTLSRenewer(nodeConfig, tc.ConnBroker, tc.Paths.RootCA)
 	updates := renewer.Start(ctx)
@@ -981,7 +981,7 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestRenewTLSConfig timed-out")
 	case certUpdate := <-updates:
-		assert.Error(t, certUpdate.Err)
+		require.Error(t, certUpdate.Err)
 		assert.Contains(t, certUpdate.Err.Error(), "not found when attempting to renew certificate")
 	}
 }

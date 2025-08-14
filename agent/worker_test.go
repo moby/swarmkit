@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"errors"
 	"net"
 	"testing"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -224,14 +224,14 @@ func TestWorkerAssign(t *testing.T) {
 		// TODO(stevvooe): There are a few more states here we need to get
 		// covered to ensure correct during code changes.
 	} {
-		assert.NoError(t, worker.Assign(ctx, testcase.changeSet))
+		require.NoError(t, worker.Assign(ctx, testcase.changeSet))
 
 		var (
 			tasks    []*api.Task
 			assigned []*api.Task
 		)
 
-		assert.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
+		require.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
 			return WalkTasks(tx, func(task *api.Task) error {
 				tasks = append(tasks, task)
 				if TaskAssigned(tx, task.ID) {
@@ -245,18 +245,18 @@ func TestWorkerAssign(t *testing.T) {
 		assert.Equal(t, testcase.expectedAssigned, assigned)
 		for _, secret := range testcase.expectedSecrets {
 			secret, err := executor.Secrets().Get(secret.ID)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.NotNil(t, secret)
 		}
 		for _, config := range testcase.expectedConfigs {
 			config, err := executor.Configs().Get(config.ID)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.NotNil(t, config)
 		}
 		for _, volume := range testcase.expectedVolumes {
 			_, err := executor.Volumes().Get(volume.VolumeID)
-			assert.Error(t, err)
-			assert.True(t, errors.Is(err, exec.ErrDependencyNotReady))
+			require.Error(t, err)
+			assert.ErrorIs(t, err, exec.ErrDependencyNotReady)
 		}
 	}
 }
@@ -360,9 +360,9 @@ func TestWorkerWait(t *testing.T) {
 		tasks    []*api.Task
 		assigned []*api.Task
 	)
-	assert.NoError(t, worker.Assign(ctx, changeSet))
+	require.NoError(t, worker.Assign(ctx, changeSet))
 
-	assert.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
+	require.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
 		return WalkTasks(tx, func(task *api.Task) error {
 			tasks = append(tasks, task)
 			if TaskAssigned(tx, task.ID) {
@@ -376,29 +376,28 @@ func TestWorkerWait(t *testing.T) {
 	assert.Equal(t, expectedAssigned, assigned)
 	for _, secret := range expectedSecrets {
 		secret, err := executor.Secrets().Get(secret.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, secret)
 	}
 	for _, config := range expectedConfigs {
 		config, err := executor.Configs().Get(config.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, config)
 	}
 	for _, volume := range expectedVolumes {
 		_, err := executor.Volumes().Get(volume.VolumeID)
-		assert.Error(t, err)
-		assert.True(t, errors.Is(err, exec.ErrDependencyNotReady))
+		require.ErrorIs(t, err, exec.ErrDependencyNotReady)
 	}
 
 	err := worker.Assign(ctx, nil)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	err = worker.Wait(ctx)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	assigned = assigned[:0]
 
-	assert.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
+	require.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
 		return WalkTasks(tx, func(task *api.Task) error {
 			if TaskAssigned(tx, task.ID) {
 				assigned = append(assigned, task)
@@ -406,7 +405,7 @@ func TestWorkerWait(t *testing.T) {
 			return nil
 		})
 	}))
-	assert.Equal(t, len(assigned), 0)
+	assert.Empty(t, assigned)
 }
 
 func TestWorkerUpdate(t *testing.T) {
@@ -443,7 +442,7 @@ func TestWorkerUpdate(t *testing.T) {
 	worker.Listen(ctx, reporter)
 
 	// create existing task/secret/config/volume
-	assert.NoError(t, worker.Assign(ctx, []*api.AssignmentChange{
+	require.NoError(t, worker.Assign(ctx, []*api.AssignmentChange{
 		{
 			Assignment: &api.Assignment{
 				Item: &api.Assignment_Task{
@@ -734,13 +733,13 @@ func TestWorkerUpdate(t *testing.T) {
 			},
 		},
 	} {
-		assert.NoError(t, worker.Update(ctx, testcase.changeSet))
+		require.NoError(t, worker.Update(ctx, testcase.changeSet))
 
 		var (
 			tasks    []*api.Task
 			assigned []*api.Task
 		)
-		assert.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
+		require.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
 			return WalkTasks(tx, func(task *api.Task) error {
 				tasks = append(tasks, task)
 				if TaskAssigned(tx, task.ID) {
@@ -754,19 +753,19 @@ func TestWorkerUpdate(t *testing.T) {
 		assert.Equal(t, testcase.expectedAssigned, assigned)
 		for _, secret := range testcase.expectedSecrets {
 			secret, err := executor.Secrets().Get(secret.ID)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.NotNil(t, secret)
 		}
 		for _, config := range testcase.expectedConfigs {
 			config, err := executor.Configs().Get(config.ID)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.NotNil(t, config)
 		}
 		for _, volume := range testcase.expectedVolumes {
 			_, err := executor.Volumes().Get(volume.VolumeID)
 			// volumes should not be ready yet, so we expect an error.
-			assert.Error(t, err)
-			assert.True(t, errors.Is(err, exec.ErrDependencyNotReady), "error: %v", err)
+			require.Error(t, err)
+			assert.ErrorIs(t, err, exec.ErrDependencyNotReady, "error: %v", err)
 		}
 	}
 }

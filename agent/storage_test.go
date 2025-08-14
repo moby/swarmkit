@@ -10,6 +10,7 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -17,8 +18,8 @@ func TestStorageInit(t *testing.T) {
 	db, cleanup := storageTestEnv(t)
 	defer cleanup()
 
-	assert.NoError(t, InitDB(db)) // ensure idempotence.
-	assert.NoError(t, db.View(func(tx *bolt.Tx) error {
+	require.NoError(t, InitDB(db)) // ensure idempotence.
+	require.NoError(t, db.View(func(tx *bolt.Tx) error {
 		bkt := tx.Bucket(bucketKeyStorageVersion)
 		assert.NotNil(t, bkt)
 
@@ -35,9 +36,9 @@ func TestStoragePutGet(t *testing.T) {
 
 	tasks := genTasks(20)
 
-	assert.NoError(t, db.Update(func(tx *bolt.Tx) error {
+	require.NoError(t, db.Update(func(tx *bolt.Tx) error {
 		for i, task := range tasks {
-			assert.NoError(t, PutTask(tx, task))
+			require.NoError(t, PutTask(tx, task))
 			// remove status to make comparison work
 			tasks[i].Status = api.TaskStatus{}
 		}
@@ -45,10 +46,10 @@ func TestStoragePutGet(t *testing.T) {
 		return nil
 	}))
 
-	assert.NoError(t, db.View(func(tx *bolt.Tx) error {
+	require.NoError(t, db.View(func(tx *bolt.Tx) error {
 		for _, task := range tasks {
 			retrieved, err := GetTask(tx, task.ID)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, task, retrieved)
 		}
 
@@ -63,24 +64,24 @@ func TestStoragePutGetStatusAssigned(t *testing.T) {
 	tasks := genTasks(20)
 
 	// set task, status and assignment for all tasks.
-	assert.NoError(t, db.Update(func(tx *bolt.Tx) error {
+	require.NoError(t, db.Update(func(tx *bolt.Tx) error {
 		for _, task := range tasks {
-			assert.NoError(t, PutTask(tx, task))
-			assert.NoError(t, PutTaskStatus(tx, task.ID, &task.Status))
-			assert.NoError(t, SetTaskAssignment(tx, task.ID, true))
+			require.NoError(t, PutTask(tx, task))
+			require.NoError(t, PutTaskStatus(tx, task.ID, &task.Status))
+			require.NoError(t, SetTaskAssignment(tx, task.ID, true))
 		}
 
 		return nil
 	}))
 
-	assert.NoError(t, db.View(func(tx *bolt.Tx) error {
+	require.NoError(t, db.View(func(tx *bolt.Tx) error {
 		for _, task := range tasks {
 			status, err := GetTaskStatus(tx, task.ID)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, &task.Status, status)
 
 			retrieved, err := GetTask(tx, task.ID)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			task.Status = api.TaskStatus{}
 			assert.Equal(t, task, retrieved)
@@ -92,27 +93,27 @@ func TestStoragePutGetStatusAssigned(t *testing.T) {
 	}))
 
 	// set evens to unassigned and updates all states plus one
-	assert.NoError(t, db.Update(func(tx *bolt.Tx) error {
+	require.NoError(t, db.Update(func(tx *bolt.Tx) error {
 		for i, task := range tasks {
 			task.Status.State++
-			assert.NoError(t, PutTaskStatus(tx, task.ID, &task.Status))
+			require.NoError(t, PutTaskStatus(tx, task.ID, &task.Status))
 
 			if i%2 == 0 {
-				assert.NoError(t, SetTaskAssignment(tx, task.ID, false))
+				require.NoError(t, SetTaskAssignment(tx, task.ID, false))
 			}
 		}
 
 		return nil
 	}))
 
-	assert.NoError(t, db.View(func(tx *bolt.Tx) error {
+	require.NoError(t, db.View(func(tx *bolt.Tx) error {
 		for i, task := range tasks {
 			status, err := GetTaskStatus(tx, task.ID)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, &task.Status, status)
 
 			retrieved, err := GetTask(tx, task.ID)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			task.Status = api.TaskStatus{}
 			assert.Equal(t, task, retrieved)
@@ -178,13 +179,13 @@ func storageTestEnv(t *testing.T) (*bolt.DB, func()) {
 	var cleanup []func()
 	dir := t.TempDir()
 	dbpath := filepath.Join(dir, "tasks.db")
-	assert.NoError(t, os.MkdirAll(dir, 0o777))
+	require.NoError(t, os.MkdirAll(dir, 0o777))
 
 	db, err := bolt.Open(dbpath, 0666, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cleanup = append(cleanup, func() { db.Close() })
 
-	assert.NoError(t, InitDB(db))
+	require.NoError(t, InitDB(db))
 	return db, func() {
 		// iterate in reverse so it works like defer
 		for i := len(cleanup) - 1; i >= 0; i-- {

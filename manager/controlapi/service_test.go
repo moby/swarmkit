@@ -89,7 +89,7 @@ func createSecret(t *testing.T, ts *testServer, secretName, target string) *api.
 	err := ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateSecret(tx, secret)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return &api.SecretReference{
 		SecretName: secret.Spec.Annotations.Name,
@@ -121,7 +121,7 @@ func createConfig(t *testing.T, ts *testServer, configName, target string) *api.
 	err := ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateConfig(tx, config)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return &api.ConfigReference{
 		ConfigName: config.Spec.Annotations.Name,
@@ -147,20 +147,20 @@ func createServiceSpecWithConfigs(serviceName string, configRefs ...*api.ConfigR
 func createService(t *testing.T, ts *testServer, name, image string, instances uint64) *api.Service {
 	spec := createSpec(name, image, instances)
 	r, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return r.Service
 }
 
 func createGenericService(t *testing.T, ts *testServer, name, runtime string) *api.Service {
 	spec := createGenericSpec(name, runtime)
 	r, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return r.Service
 }
 
 func getIngressTargetID(t *testing.T, ts *testServer) string {
 	rsp, err := ts.Client.ListNetworks(context.Background(), &api.ListNetworksRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	for _, n := range rsp.Networks {
 		if n.Spec.Ingress {
 			return n.ID
@@ -183,12 +183,12 @@ func TestValidateResources(t *testing.T) {
 
 	for _, b := range bad {
 		err := validateResources(b)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	}
 
 	for _, g := range good {
-		assert.NoError(t, validateResources(g))
+		require.NoError(t, validateResources(g))
 	}
 }
 
@@ -203,12 +203,12 @@ func TestValidateResourceRequirements(t *testing.T) {
 	}
 	for _, b := range bad {
 		err := validateResourceRequirements(b)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	}
 
 	for _, g := range good {
-		assert.NoError(t, validateResourceRequirements(g))
+		require.NoError(t, validateResourceRequirements(g))
 	}
 }
 
@@ -237,13 +237,13 @@ func TestValidateMode(t *testing.T) {
 
 	for _, b := range bad {
 		err := validateMode(b)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	}
 
 	for _, g := range good {
 		err := validateMode(g)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -296,7 +296,7 @@ func TestValidateTaskSpec(t *testing.T) {
 		},
 	} {
 		err := validateTaskSpec(bad.s)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, bad.c, testutils.ErrorCode(err))
 	}
 
@@ -306,7 +306,7 @@ func TestValidateTaskSpec(t *testing.T) {
 		createSpecWithHostnameTemplate("service", "{{.Service.Name}}-{{.Task.Slot}}").Task,
 	} {
 		err := validateTaskSpec(good)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -375,7 +375,7 @@ func TestValidateContainerSpec(t *testing.T) {
 		},
 	} {
 		err := validateContainerSpec(bad.spec)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, bad.c, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	}
 
@@ -409,7 +409,7 @@ func TestValidateContainerSpec(t *testing.T) {
 
 	for _, good := range []api.TaskSpec{good1} {
 		err := validateContainerSpec(good)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -446,7 +446,7 @@ func TestValidateServiceSpec(t *testing.T) {
 		},
 	} {
 		err := validateServiceSpec(bad.spec)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, bad.c, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	}
 
@@ -454,7 +454,7 @@ func TestValidateServiceSpec(t *testing.T) {
 		createSpec("name", "image", 1),
 	} {
 		err := validateServiceSpec(good)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -465,7 +465,7 @@ func TestValidateServiceSpecJobsDifference(t *testing.T) {
 	// correctly formed spec should be valid
 	cannedSpec := createSpec("name", "image", 1)
 	err := validateServiceSpec(cannedSpec)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Replicated job should not be allowed to have update config
 	specReplicatedJobUpdate := cannedSpec.Copy()
@@ -474,12 +474,12 @@ func TestValidateServiceSpecJobsDifference(t *testing.T) {
 	}
 	specReplicatedJobUpdate.Update = &api.UpdateConfig{}
 	err = validateServiceSpec(specReplicatedJobUpdate)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	specReplicatedJobNoUpdate := specReplicatedJobUpdate.Copy()
 	specReplicatedJobNoUpdate.Update = nil
 	err = validateServiceSpec(specReplicatedJobNoUpdate)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Global job should not be allowed to have update config
 	specGlobalJobUpdate := cannedSpec.Copy()
@@ -488,12 +488,12 @@ func TestValidateServiceSpecJobsDifference(t *testing.T) {
 	}
 	specGlobalJobUpdate.Update = &api.UpdateConfig{}
 	err = validateServiceSpec(specGlobalJobUpdate)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	specGlobalJobNoUpdate := specGlobalJobUpdate.Copy()
 	specGlobalJobNoUpdate.Update = nil
 	err = validateServiceSpec(specReplicatedJobNoUpdate)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Replicated service should be allowed to have update config, which should
 	// be verified for correctness
@@ -502,12 +502,12 @@ func TestValidateServiceSpecJobsDifference(t *testing.T) {
 		Delay: -1 * time.Second,
 	}
 	err = validateServiceSpec(replicatedServiceBrokenUpdate)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	replicatedServiceCorrectUpdate := replicatedServiceBrokenUpdate.Copy()
 	replicatedServiceCorrectUpdate.Update.Delay = time.Second
 	err = validateServiceSpec(replicatedServiceCorrectUpdate)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Global service should be allowed to have update config, which should be
 	// verified for correctness
@@ -516,7 +516,7 @@ func TestValidateServiceSpecJobsDifference(t *testing.T) {
 		Global: &api.GlobalService{},
 	}
 	err = validateServiceSpec(globalServiceBrokenUpdate)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	globalServiceCorrectUpdate := globalServiceBrokenUpdate.Copy()
 	globalServiceCorrectUpdate.Update.Delay = time.Second
@@ -544,12 +544,12 @@ func TestValidateRestartPolicy(t *testing.T) {
 
 	for _, b := range bad {
 		err := validateRestartPolicy(b)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	}
 
 	for _, g := range good {
-		assert.NoError(t, validateRestartPolicy(g))
+		require.NoError(t, validateRestartPolicy(g))
 	}
 }
 
@@ -571,12 +571,12 @@ func TestValidateUpdate(t *testing.T) {
 
 	for _, b := range bad {
 		err := validateUpdate(b)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	}
 
 	for _, g := range good {
-		assert.NoError(t, validateUpdate(g))
+		require.NoError(t, validateUpdate(g))
 	}
 }
 
@@ -584,12 +584,12 @@ func TestCreateService(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 	_, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	spec := createSpec("name", "image", 1)
 	r, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, r.Service.ID)
 
 	// test port conflicts
@@ -598,7 +598,7 @@ func TestCreateService(t *testing.T) {
 		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, r.Service.ID)
 
 	spec2 := createSpec("name3", "image", 1)
@@ -606,7 +606,7 @@ func TestCreateService(t *testing.T) {
 		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	// test no port conflicts when no publish port is specified
@@ -615,14 +615,14 @@ func TestCreateService(t *testing.T) {
 		{TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec3})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, r.Service.ID)
 	spec4 := createSpec("name5", "image", 1)
 	spec4.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
 		{TargetPort: uint32(9001), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec4})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// ensure no port conflict when different protocols are used
 	spec = createSpec("name6", "image", 1)
@@ -630,7 +630,7 @@ func TestCreateService(t *testing.T) {
 		{PublishedPort: uint32(9100), TargetPort: uint32(9100), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, r.Service.ID)
 
 	spec2 = createSpec("name7", "image", 1)
@@ -638,7 +638,7 @@ func TestCreateService(t *testing.T) {
 		{PublishedPort: uint32(9100), TargetPort: uint32(9100), Protocol: api.PortConfig_Protocol(api.ProtocolUDP)},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// ensure no port conflict when host ports overlap
 	spec = createSpec("name8", "image", 1)
@@ -646,7 +646,7 @@ func TestCreateService(t *testing.T) {
 		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9101), TargetPort: uint32(9101), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, r.Service.ID)
 
 	spec2 = createSpec("name9", "image", 1)
@@ -654,7 +654,7 @@ func TestCreateService(t *testing.T) {
 		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9101), TargetPort: uint32(9101), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// ensure port conflict when host ports overlaps with ingress port (host port first)
 	spec = createSpec("name10", "image", 1)
@@ -662,7 +662,7 @@ func TestCreateService(t *testing.T) {
 		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9102), TargetPort: uint32(9102), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, r.Service.ID)
 
 	spec2 = createSpec("name11", "image", 1)
@@ -670,7 +670,7 @@ func TestCreateService(t *testing.T) {
 		{PublishMode: api.PublishModeIngress, PublishedPort: uint32(9102), TargetPort: uint32(9102), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	// ensure port conflict when host ports overlaps with ingress port (ingress port first)
@@ -679,7 +679,7 @@ func TestCreateService(t *testing.T) {
 		{PublishMode: api.PublishModeIngress, PublishedPort: uint32(9103), TargetPort: uint32(9103), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, r.Service.ID)
 
 	spec2 = createSpec("name13", "image", 1)
@@ -687,22 +687,22 @@ func TestCreateService(t *testing.T) {
 		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9103), TargetPort: uint32(9103), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	// ingress network cannot be attached explicitly
 	spec = createSpec("name14", "image", 1)
 	spec.Task.Networks = []*api.NetworkAttachmentConfig{{Target: getIngressTargetID(t, ts)}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	spec = createSpec("notunique", "image", 1)
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.AlreadyExists, testutils.ErrorCode(err))
 
 	// Make sure the error contains "name conflicts with an existing object" for
@@ -754,7 +754,7 @@ func TestSecretValidation(t *testing.T) {
 
 	serviceSpec = createServiceSpecWithSecrets("service4", secretRef2, secretRef5)
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// test secret References with invalid filenames
 	secretRefBlank := createSecret(t, ts, "", "")
@@ -773,7 +773,7 @@ func TestSecretValidation(t *testing.T) {
 
 		serviceSpec = createServiceSpecWithSecrets(fmt.Sprintf("valid%v", i), secretRef)
 		_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// test secret target conflicts on update
@@ -782,7 +782,7 @@ func TestSecretValidation(t *testing.T) {
 	serviceSpec2 := serviceSpec1.Copy()
 	serviceSpec2.Task.GetContainer().Secrets = nil
 	rs, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec2})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Attempt to update to the originally intended (conflicting) spec
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
@@ -837,7 +837,7 @@ func TestConfigValidation(t *testing.T) {
 
 	serviceSpec = createServiceSpecWithConfigs("service4", configRef2, configRef5)
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test config References with valid filenames
 	// TODO(aaronl): Should some of these be disallowed? How can we deal
@@ -848,7 +848,7 @@ func TestConfigValidation(t *testing.T) {
 
 		serviceSpec = createServiceSpecWithConfigs(fmt.Sprintf("valid%v", i), configRef)
 		_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// test config references with RuntimeTarget
@@ -867,7 +867,7 @@ func TestConfigValidation(t *testing.T) {
 	_, err = ts.Client.CreateService(
 		context.Background(), &api.CreateServiceRequest{Spec: serviceSpec},
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// test CredentialSpec without ConfigReference
 	serviceSpec = createSpec("missingruntimetarget", "imagemissingruntimetarget", 1)
@@ -882,7 +882,7 @@ func TestConfigValidation(t *testing.T) {
 		context.Background(), &api.CreateServiceRequest{Spec: serviceSpec},
 	)
 	t.Logf("error when missing configreference: %v", err)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// test config target conflicts on update
 	serviceSpec1 := createServiceSpecWithConfigs("service5", configRef2, configRef3)
@@ -890,7 +890,7 @@ func TestConfigValidation(t *testing.T) {
 	serviceSpec2 := serviceSpec1.Copy()
 	serviceSpec2.Task.GetContainer().Configs = nil
 	rs, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: serviceSpec2})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Attempt to update to the originally intended (conflicting) spec
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
@@ -905,16 +905,16 @@ func TestGetService(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 	_, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	_, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: "invalid"})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
 	service := createService(t, ts, "name", "image", 1)
 	r, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	service.Meta.Version = r.Service.Meta.Version
 	assert.Equal(t, service, r.Service)
 }
@@ -925,27 +925,27 @@ func TestUpdateService(t *testing.T) {
 	service := createService(t, ts, "name", "image", 1)
 
 	_, err := ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: "invalid", Spec: &service.Spec, ServiceVersion: &api.Version{}})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
 	// No update options.
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: &service.Spec})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: &service.Spec, ServiceVersion: &service.Meta.Version})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, service.Spec.Annotations.Name, r.Service.Spec.Annotations.Name)
 	mode, ok := r.Service.Spec.GetMode().(*api.ServiceSpec_Replicated)
-	assert.Equal(t, ok, true)
-	assert.True(t, mode.Replicated.Replicas == 1)
+	assert.True(t, ok)
+	assert.Equal(t, 1, mode.Replicated.Replicas)
 
 	mode.Replicated.Replicas = 42
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
@@ -953,18 +953,18 @@ func TestUpdateService(t *testing.T) {
 		Spec:           &r.Service.Spec,
 		ServiceVersion: &r.Service.Meta.Version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, service.Spec.Annotations.Name, r.Service.Spec.Annotations.Name)
 	mode, ok = r.Service.Spec.GetMode().(*api.ServiceSpec_Replicated)
-	assert.Equal(t, ok, true)
-	assert.True(t, mode.Replicated.Replicas == 42)
+	assert.True(t, ok)
+	assert.Equal(t, 42, mode.Replicated.Replicas)
 
 	// mode change not allowed
 	r, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	r.Service.Spec.Mode = &api.ServiceSpec_Global{
 		Global: &api.GlobalService{},
 	}
@@ -973,12 +973,12 @@ func TestUpdateService(t *testing.T) {
 		Spec:           &r.Service.Spec,
 		ServiceVersion: &r.Service.Meta.Version,
 	})
-	assert.Error(t, err)
-	assert.True(t, strings.Contains(err.Error(), errModeChangeNotAllowed.Error()))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), errModeChangeNotAllowed.Error())
 
 	// Versioning.
 	r, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	version := &r.Service.Meta.Version
 
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
@@ -986,7 +986,7 @@ func TestUpdateService(t *testing.T) {
 		Spec:           &r.Service.Spec,
 		ServiceVersion: version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Perform an update with the "old" version.
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
@@ -994,7 +994,7 @@ func TestUpdateService(t *testing.T) {
 		Spec:           &r.Service.Spec,
 		ServiceVersion: version,
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// Attempt to update service name; renaming is not implemented
 	r.Service.Spec.Annotations.Name = "newname"
@@ -1003,7 +1003,7 @@ func TestUpdateService(t *testing.T) {
 		Spec:           &r.Service.Spec,
 		ServiceVersion: version,
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.Unimplemented, testutils.ErrorCode(err))
 
 	// test port conflicts
@@ -1012,11 +1012,11 @@ func TestUpdateService(t *testing.T) {
 		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	spec3 := createSpec("name3", "image", 1)
 	rs, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec3})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	spec3.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
@@ -1026,7 +1026,7 @@ func TestUpdateService(t *testing.T) {
 		Spec:           spec3,
 		ServiceVersion: &rs.Service.Meta.Version,
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	spec3.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
 		{PublishedPort: uint32(9001), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
@@ -1036,19 +1036,19 @@ func TestUpdateService(t *testing.T) {
 		Spec:           spec3,
 		ServiceVersion: &rs.Service.Meta.Version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// ingress network cannot be attached explicitly
 	spec4 := createSpec("name4", "image", 1)
 	rs, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec4})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	spec4.Task.Networks = []*api.NetworkAttachmentConfig{{Target: getIngressTargetID(t, ts)}}
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      rs.Service.ID,
 		Spec:           spec4,
 		ServiceVersion: &rs.Service.Meta.Version,
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 }
 
@@ -1062,10 +1062,10 @@ func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 		},
 	}
 	cr, err := ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ur, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: cr.Service.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	service := ur.Service
 
 	service.Spec.Networks[0].Target = "net30"
@@ -1075,8 +1075,8 @@ func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 		Spec:           &service.Spec,
 		ServiceVersion: &service.Meta.Version,
 	})
-	assert.Error(t, err)
-	assert.True(t, strings.Contains(err.Error(), errNetworkUpdateNotSupported.Error()))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), errNetworkUpdateNotSupported.Error())
 
 	// Changes to TaskSpec.Networks are allowed
 	spec = createSpec("name2", "image", 1)
@@ -1086,10 +1086,10 @@ func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 		},
 	}
 	cr, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ur, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: cr.Service.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	service = ur.Service
 
 	service.Spec.Task.Networks[0].Target = "net30"
@@ -1099,7 +1099,7 @@ func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 		Spec:           &service.Spec,
 		ServiceVersion: &service.Meta.Version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Migrate networks from ServiceSpec.Networks to TaskSpec.Networks
 	spec = createSpec("name3", "image", 1)
@@ -1109,10 +1109,10 @@ func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 		},
 	}
 	cr, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ur, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: cr.Service.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	service = ur.Service
 
 	service.Spec.Task.Networks = spec.Networks
@@ -1123,19 +1123,19 @@ func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 		Spec:           &service.Spec,
 		ServiceVersion: &service.Meta.Version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestRemoveService(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 	_, err := ts.Client.RemoveService(context.Background(), &api.RemoveServiceRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	service := createService(t, ts, "name", "image", 1)
 	r, err := ts.Client.RemoveService(context.Background(), &api.RemoveServiceRequest{ServiceID: service.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, r)
 }
 
@@ -1225,21 +1225,21 @@ func TestValidateEndpointSpec(t *testing.T) {
 	}
 
 	err := validateEndpointSpec(endPointSpec1)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	err = validateEndpointSpec(endPointSpec2)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = validateEndpointSpec(endPointSpec3)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	err = validateEndpointSpec(endPointSpec4)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = validateEndpointSpec(endPointSpec5)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestServiceEndpointSpecUpdate(t *testing.T) {
@@ -1273,7 +1273,7 @@ func TestServiceEndpointSpecUpdate(t *testing.T) {
 
 	r, err := ts.Client.CreateService(context.Background(),
 		&api.CreateServiceRequest{Spec: spec})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, r)
 
 	// Update the service with duplicate ports
@@ -1283,7 +1283,7 @@ func TestServiceEndpointSpecUpdate(t *testing.T) {
 	})
 	_, err = ts.Client.UpdateService(context.Background(),
 		&api.UpdateServiceRequest{Spec: spec})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 }
 
@@ -1291,21 +1291,21 @@ func TestListServices(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 	r, err := ts.Client.ListServices(context.Background(), &api.ListServicesRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, r.Services)
 
 	s1 := createService(t, ts, "name1", "image", 1)
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Services))
+	require.NoError(t, err)
+	assert.Len(t, r.Services, 1)
 
 	createService(t, ts, "name2", "image", 1)
 	s3 := createGenericService(t, ts, "name3", "my-runtime")
 
 	// List all.
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{})
-	assert.NoError(t, err)
-	assert.Equal(t, 3, len(r.Services))
+	require.NoError(t, err)
+	assert.Len(t, r.Services, 3)
 
 	// List by runtime.
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
@@ -1313,16 +1313,16 @@ func TestListServices(t *testing.T) {
 			Runtimes: []string{"container"},
 		},
 	})
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(r.Services))
+	require.NoError(t, err)
+	assert.Len(t, r.Services, 2)
 
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
 		Filters: &api.ListServicesRequest_Filters{
 			Runtimes: []string{"my-runtime"},
 		},
 	})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Services))
+	require.NoError(t, err)
+	assert.Len(t, r.Services, 1)
 	assert.Equal(t, s3.ID, r.Services[0].ID)
 
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
@@ -1330,7 +1330,7 @@ func TestListServices(t *testing.T) {
 			Runtimes: []string{"invalid"},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, r.Services)
 
 	// List with an ID prefix.
@@ -1339,8 +1339,8 @@ func TestListServices(t *testing.T) {
 			IDPrefixes: []string{s1.ID[0:4]},
 		},
 	})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Services))
+	require.NoError(t, err)
+	assert.Len(t, r.Services, 1)
 	assert.Equal(t, s1.ID, r.Services[0].ID)
 
 	// List with simple filter.
@@ -1349,8 +1349,8 @@ func TestListServices(t *testing.T) {
 			NamePrefixes: []string{"name1"},
 		},
 	})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Services))
+	require.NoError(t, err)
+	assert.Len(t, r.Services, 1)
 
 	// List with union filter.
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
@@ -1358,24 +1358,24 @@ func TestListServices(t *testing.T) {
 			NamePrefixes: []string{"name1", "name2"},
 		},
 	})
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(r.Services))
+	require.NoError(t, err)
+	assert.Len(t, r.Services, 2)
 
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
 		Filters: &api.ListServicesRequest_Filters{
 			NamePrefixes: []string{"name1", "name2", "name4"},
 		},
 	})
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(r.Services))
+	require.NoError(t, err)
+	assert.Len(t, r.Services, 2)
 
 	r, err = ts.Client.ListServices(context.Background(), &api.ListServicesRequest{
 		Filters: &api.ListServicesRequest_Filters{
 			NamePrefixes: []string{"name4"},
 		},
 	})
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(r.Services))
+	require.NoError(t, err)
+	assert.Empty(t, r.Services)
 
 	// List with filter intersection.
 	r, err = ts.Client.ListServices(context.Background(),
@@ -1386,8 +1386,8 @@ func TestListServices(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Services))
+	require.NoError(t, err)
+	assert.Len(t, r.Services, 1)
 
 	r, err = ts.Client.ListServices(context.Background(),
 		&api.ListServicesRequest{
@@ -1397,8 +1397,8 @@ func TestListServices(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(r.Services))
+	require.NoError(t, err)
+	assert.Empty(t, r.Services)
 
 	r, err = ts.Client.ListServices(context.Background(),
 		&api.ListServicesRequest{
@@ -1408,8 +1408,8 @@ func TestListServices(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Services))
+	require.NoError(t, err)
+	assert.Len(t, r.Services, 1)
 
 	// List filter by label.
 	r, err = ts.Client.ListServices(context.Background(),
@@ -1421,8 +1421,8 @@ func TestListServices(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, len(r.Services))
+	require.NoError(t, err)
+	assert.Len(t, r.Services, 3)
 
 	// Value-less label.
 	r, err = ts.Client.ListServices(context.Background(),
@@ -1434,8 +1434,8 @@ func TestListServices(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, len(r.Services))
+	require.NoError(t, err)
+	assert.Len(t, r.Services, 3)
 
 	// Label intersection.
 	r, err = ts.Client.ListServices(context.Background(),
@@ -1448,8 +1448,8 @@ func TestListServices(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Services))
+	require.NoError(t, err)
+	assert.Len(t, r.Services, 1)
 
 	r, err = ts.Client.ListServices(context.Background(),
 		&api.ListServicesRequest{
@@ -1461,8 +1461,8 @@ func TestListServices(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(r.Services))
+	require.NoError(t, err)
+	assert.Empty(t, r.Services)
 }
 
 func TestListServiceStatuses(t *testing.T) {
@@ -1474,7 +1474,7 @@ func TestListServiceStatuses(t *testing.T) {
 		context.Background(),
 		&api.ListServiceStatusesRequest{},
 	)
-	assert.NoError(t, err, "error when listing no services against an empty store")
+	require.NoError(t, err, "error when listing no services against an empty store")
 	assert.NotNil(t, r, "response against an empty store was nil")
 	assert.Empty(t, r.Statuses, "response statuses was not empty")
 
@@ -1484,12 +1484,11 @@ func TestListServiceStatuses(t *testing.T) {
 		context.Background(),
 		&api.ListServiceStatusesRequest{Services: []string{"foo"}},
 	)
-	assert.NoError(t, err, "error listing services that do not exist")
+	require.NoError(t, err, "error listing services that do not exist")
 	assert.NotNil(t, r, "response for nonexistant services was nil")
 	assert.Len(t, r.Statuses, 1, "expected 1 status")
 	assert.Equal(
-		t, r.Statuses[0],
-		&api.ListServiceStatusesResponse_ServiceStatus{ServiceID: "foo"},
+		t, &api.ListServiceStatusesResponse_ServiceStatus{ServiceID: "foo"}, r.Statuses[0],
 	)
 
 	// now test that listing service statuses actually works.
@@ -1506,7 +1505,7 @@ func TestListServiceStatuses(t *testing.T) {
 	svcResp, svcErr := ts.Client.CreateService(
 		context.Background(), &api.CreateServiceRequest{Spec: globalSpec},
 	)
-	assert.NoError(t, svcErr)
+	require.NoError(t, svcErr)
 
 	// global will have the right number of tasks
 	global := svcResp.Service
@@ -1517,7 +1516,7 @@ func TestListServiceStatuses(t *testing.T) {
 	svcResp, svcErr = ts.Client.CreateService(
 		context.Background(), &api.CreateServiceRequest{Spec: global2Spec},
 	)
-	assert.NoError(t, svcErr)
+	require.NoError(t, svcErr)
 
 	// global2 will not have enough tasks
 	global2 := svcResp.Service
@@ -1537,7 +1536,7 @@ func TestListServiceStatuses(t *testing.T) {
 	svcResp, svcErr = ts.Client.CreateService(
 		context.Background(), &api.CreateServiceRequest{Spec: replicatedJob1Spec},
 	)
-	assert.NoError(t, svcErr)
+	require.NoError(t, svcErr)
 	assert.NotNil(t, svcResp)
 	replicatedJob1 := svcResp.Service
 
@@ -1548,7 +1547,7 @@ func TestListServiceStatuses(t *testing.T) {
 	svcResp, svcErr = ts.Client.CreateService(
 		context.Background(), &api.CreateServiceRequest{Spec: replicatedJob2Spec},
 	)
-	assert.NoError(t, svcErr)
+	require.NoError(t, svcErr)
 	assert.NotNil(t, svcResp)
 	replicatedJob2 := svcResp.Service
 
@@ -1560,7 +1559,7 @@ func TestListServiceStatuses(t *testing.T) {
 	svcResp, svcErr = ts.Client.CreateService(
 		context.Background(), &api.CreateServiceRequest{Spec: globalJobSpec},
 	)
-	assert.NoError(t, svcErr)
+	require.NoError(t, svcErr)
 	assert.NotNil(t, svcResp)
 	globalJob := svcResp.Service
 
@@ -1583,7 +1582,7 @@ func TestListServiceStatuses(t *testing.T) {
 		err := ts.Store.Update(func(tx store.Tx) error {
 			return store.CreateTask(tx, task)
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return task
 	}
 
@@ -1674,7 +1673,7 @@ func TestListServiceStatuses(t *testing.T) {
 			Spec:           replicatedJob2Spec,
 		},
 	)
-	assert.NoError(t, updateErr)
+	require.NoError(t, updateErr)
 	assert.NotNil(t, updateResp)
 	replicatedJob2 = updateResp.Service
 
@@ -1715,7 +1714,7 @@ func TestListServiceStatuses(t *testing.T) {
 			replicatedJob1.ID, replicatedJob2.ID, globalJob.ID, over.ID, gone.ID,
 		}},
 	)
-	assert.NoError(t, err, "error getting service statuses")
+	require.NoError(t, err, "error getting service statuses")
 	assert.NotNil(t, r, "service status response is nil")
 	assert.Len(t, r.Statuses, 9)
 
@@ -1786,9 +1785,7 @@ func TestListServiceStatuses(t *testing.T) {
 				break
 			}
 		}
-		if !found {
-			t.Errorf("did not find status for %v in response", name)
-		}
+		assert.Truef(t, found, "did not find status for %v in response", name)
 	}
 }
 
@@ -1837,14 +1834,14 @@ func TestJobService(t *testing.T) {
 	require.NotNil(t, resp.Service.JobStatus, "expected JobStatus to not be nil")
 	// and ensure that JobStatus.JobIteration is set to 0, which is the default
 	require.Equal(
-		t, resp.Service.JobStatus.JobIteration.Index, uint64(0),
+		t, uint64(0), resp.Service.JobStatus.JobIteration.Index,
 		"expected JobIteration for new replicated job to be 0",
 	)
 	require.NotNil(t, resp.Service.JobStatus.LastExecution)
-	assert.True(t, resp.Service.JobStatus.LastExecution.Compare(before) >= 0,
+	assert.GreaterOrEqual(t, resp.Service.JobStatus.LastExecution.Compare(before), 0,
 		"expected %v to be after %v", resp.Service.JobStatus.LastExecution, before,
 	)
-	assert.True(t, resp.Service.JobStatus.LastExecution.Compare(after) <= 0,
+	assert.LessOrEqual(t, resp.Service.JobStatus.LastExecution.Compare(after), 0,
 		"expected %v to be before %v", resp.Service.JobStatus.LastExecution, after,
 	)
 
@@ -1867,14 +1864,14 @@ func TestJobService(t *testing.T) {
 	require.NotNil(t, gresp.Service)
 	require.NotNil(t, gresp.Service.JobStatus)
 	require.Equal(
-		t, gresp.Service.JobStatus.JobIteration.Index, uint64(0),
+		t, uint64(0), gresp.Service.JobStatus.JobIteration.Index,
 		"expected JobIteration for new global job to be 0",
 	)
 	require.NotNil(t, gresp.Service.JobStatus.LastExecution)
-	assert.True(t, gresp.Service.JobStatus.LastExecution.Compare(before) >= 0,
+	assert.GreaterOrEqual(t, gresp.Service.JobStatus.LastExecution.Compare(before), 0,
 		"expected %v to be after %v", gresp.Service.JobStatus.LastExecution, before,
 	)
-	assert.True(t, gresp.Service.JobStatus.LastExecution.Compare(after) <= 0,
+	assert.LessOrEqual(t, gresp.Service.JobStatus.LastExecution.Compare(after), 0,
 		"expected %v to be before %v", gresp.Service.JobStatus.LastExecution, after,
 	)
 
@@ -1896,14 +1893,14 @@ func TestJobService(t *testing.T) {
 	require.NotNil(t, uresp.Service.JobStatus)
 	// updating the service should bump the JobStatus.JobIteration.Index by 1
 	require.Equal(
-		t, uresp.Service.JobStatus.JobIteration.Index, uint64(1),
+		t, uint64(1), uresp.Service.JobStatus.JobIteration.Index,
 		"expected JobIteration for updated replicated job to be 1",
 	)
 	require.NotNil(t, uresp.Service.JobStatus.LastExecution)
-	assert.True(t, uresp.Service.JobStatus.LastExecution.Compare(before) >= 0,
+	assert.GreaterOrEqual(t, uresp.Service.JobStatus.LastExecution.Compare(before), 0,
 		"expected %v to be after %v", uresp.Service.JobStatus.LastExecution, before,
 	)
-	assert.True(t, uresp.Service.JobStatus.LastExecution.Compare(after) <= 0,
+	assert.LessOrEqual(t, uresp.Service.JobStatus.LastExecution.Compare(after), 0,
 		"expected %v to be before %v", uresp.Service.JobStatus.LastExecution, after,
 	)
 
@@ -1924,14 +1921,14 @@ func TestJobService(t *testing.T) {
 	require.NotNil(t, guresp.Service)
 	require.NotNil(t, guresp.Service.JobStatus)
 	require.Equal(
-		t, guresp.Service.JobStatus.JobIteration.Index, uint64(1),
+		t, uint64(1), guresp.Service.JobStatus.JobIteration.Index,
 		"expected JobIteration for updated replicated job to be 1",
 	)
 	require.NotNil(t, guresp.Service.JobStatus.LastExecution)
-	assert.True(t, guresp.Service.JobStatus.LastExecution.Compare(before) >= 0,
+	assert.GreaterOrEqual(t, guresp.Service.JobStatus.LastExecution.Compare(before), 0,
 		"expected %v to be after %v", guresp.Service.JobStatus.LastExecution, before,
 	)
-	assert.True(t, guresp.Service.JobStatus.LastExecution.Compare(after) <= 0,
+	assert.LessOrEqual(t, guresp.Service.JobStatus.LastExecution.Compare(after), 0,
 		"expected %v to be before %v", guresp.Service.JobStatus.LastExecution, after,
 	)
 }
@@ -1946,7 +1943,7 @@ func TestServiceValidateJob(t *testing.T) {
 	}
 
 	err := validateJob(bad)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	good := []*api.ServiceSpec{
@@ -1962,6 +1959,6 @@ func TestServiceValidateJob(t *testing.T) {
 
 	for _, g := range good {
 		err := validateJob(g)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/moby/swarmkit/v2/api"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTreeTaskCountConsistency(t *testing.T) {
@@ -113,10 +114,8 @@ func TestTreeTaskCountConsistency(t *testing.T) {
 		}
 
 		// Verify parent's task count equals sum of children
-		if dt.tasks != childrenSum {
-			t.Errorf("Parent task count (%d) does not equal sum of children (%d)",
-				dt.tasks, childrenSum)
-		}
+		assert.Equalf(t, dt.tasks, childrenSum, "Parent task count (%d) does not equal sum of children (%d)",
+			dt.tasks, childrenSum)
 
 		return dt.tasks
 	}
@@ -125,39 +124,26 @@ func TestTreeTaskCountConsistency(t *testing.T) {
 	verifyTaskCounts(t, &tree)
 
 	// Verify specific expected values
-	if tree.tasks != 12 { // Total tasks: 3 + 2 + 4 + 2 + 1 = 12
-		t.Errorf("Expected root to have 12 tasks, got %d", tree.tasks)
-	}
+	// Total tasks: 3 + 2 + 4 + 2 + 1 = 12
+	assert.Equalf(t, 12, tree.tasks, "Expected root to have 12 tasks, got %d", tree.tasks)
 
 	dc1Tasks := tree.next["dc1"].tasks
-	if dc1Tasks != 5 { // dc1 tasks: 3 + 2 = 5
-		t.Errorf("Expected dc1 to have 5 tasks, got %d", dc1Tasks)
-	}
+	// dc1 tasks: 3 + 2 = 5
+	assert.Equalf(t, 5, dc1Tasks, "Expected dc1 to have 5 tasks, got %d", dc1Tasks)
 	dc1r1Tasks := tree.next["dc1"].next["r1"].tasks
-	if dc1r1Tasks != 3 {
-		t.Errorf("Expected dc1 r1 to have 3 tasks, got %d", dc1r1Tasks)
-	}
+	assert.Equalf(t, 3, dc1r1Tasks, "Expected dc1 r1 to have 3 tasks, got %d", dc1r1Tasks)
 	dc1r2Tasks := tree.next["dc1"].next["r2"].tasks
-	if dc1r2Tasks != 2 {
-		t.Errorf("Expected dc1 r1 to have 2 tasks, got %d", dc1r2Tasks)
-	}
+	assert.Equalf(t, 2, dc1r2Tasks, "Expected dc1 r1 to have 2 tasks, got %d", dc1r2Tasks)
 
 	dc2Tasks := tree.next["dc2"].tasks
-	if dc2Tasks != 4 { // dc2 tasks: 4
-		t.Errorf("Expected dc2 to have 4 tasks, got %d", dc2Tasks)
-	}
+	// dc2 tasks: 4
+	assert.Equalf(t, 4, dc2Tasks, "Expected dc2 to have 4 tasks, got %d", dc2Tasks)
 	dc2r2Tasks := tree.next["dc2"].next["r2"].tasks
-	if dc2r2Tasks != 4 {
-		t.Errorf("Expected dc1 r1 to have 4 tasks, got %d", dc1r2Tasks)
-	}
+	assert.Equalf(t, 4, dc2r2Tasks, "Expected dc1 r1 to have 4 tasks, got %d", dc1r2Tasks)
 
 	otherTasks := tree.next[""].tasks
-	if otherTasks != 3 {
-		t.Errorf("Expected others to have 3 tasks, got %d", otherTasks)
-	}
+	assert.Equalf(t, 3, otherTasks, "Expected others to have 3 tasks, got %d", otherTasks)
 	subOtherTasks := tree.next[""].next[""].tasks
-	if subOtherTasks != 3 {
-		t.Errorf("Expected sub-others to have 3 tasks, got %d", subOtherTasks)
-	}
+	assert.Equalf(t, 3, subOtherTasks, "Expected sub-others to have 3 tasks, got %d", subOtherTasks)
 
 }

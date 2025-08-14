@@ -11,6 +11,7 @@ import (
 	"time"
 
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/stretchr/testify/require"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -53,7 +54,7 @@ func TestControllerPrepare(t *testing.T) {
 		panic("unexpected call to ContainerCreate")
 	}
 
-	assert.NoError(t, ctlr.Prepare(ctx))
+	require.NoError(t, ctlr.Prepare(ctx))
 }
 
 func TestControllerPrepareAlreadyPrepared(t *testing.T) {
@@ -90,9 +91,8 @@ func TestControllerPrepareAlreadyPrepared(t *testing.T) {
 	}
 
 	// ensure idempotence
-	if err := ctlr.Prepare(ctx); err != exec.ErrTaskPrepared {
-		t.Fatalf("expected error %v, got %v", exec.ErrTaskPrepared, err)
-	}
+	err := ctlr.Prepare(ctx)
+	require.Equalf(t, err, exec.ErrTaskPrepared, "expected error %v, got %v", exec.ErrTaskPrepared, err)
 }
 
 func TestControllerStart(t *testing.T) {
@@ -124,7 +124,7 @@ func TestControllerStart(t *testing.T) {
 		panic("unexpected call of ContainerStart")
 	}
 
-	assert.NoError(t, ctlr.Start(ctx))
+	require.NoError(t, ctlr.Start(ctx))
 }
 
 func TestControllerStartAlreadyStarted(t *testing.T) {
@@ -149,9 +149,8 @@ func TestControllerStartAlreadyStarted(t *testing.T) {
 	}
 
 	// ensure idempotence
-	if err := ctlr.Start(ctx); err != exec.ErrTaskStarted {
-		t.Fatalf("expected error %v, got %v", exec.ErrTaskPrepared, err)
-	}
+	err := ctlr.Start(ctx)
+	require.Equalf(t, err, exec.ErrTaskStarted, "expected error %v, got %v", exec.ErrTaskPrepared, err)
 }
 
 func TestControllerWait(t *testing.T) {
@@ -194,7 +193,7 @@ func TestControllerWait(t *testing.T) {
 		panic("unexpected call of Events")
 	}
 
-	assert.NoError(t, ctlr.Wait(ctx))
+	require.NoError(t, ctlr.Wait(ctx))
 }
 
 func TestControllerWaitUnhealthy(t *testing.T) {
@@ -287,9 +286,7 @@ func TestControllerWaitExitError(t *testing.T) {
 
 func checkExitError(t *testing.T, expectedCode int, err error) {
 	ec, ok := err.(exec.ExitCoder)
-	if !ok {
-		t.Fatalf("expected an exit error, got: %v", err)
-	}
+	require.Truef(t, ok, "expected an exit error, got: %v", err)
 
 	assert.Equal(t, expectedCode, ec.ExitCode())
 }
@@ -316,7 +313,7 @@ func TestControllerWaitExitedClean(t *testing.T) {
 	}
 
 	err := ctlr.Wait(ctx)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 func TestControllerWaitExitedError(t *testing.T) {
@@ -362,7 +359,7 @@ func TestControllerShutdown(t *testing.T) {
 		panic("unexpected call of ContainerStop")
 	}
 
-	assert.NoError(t, ctlr.Shutdown(ctx))
+	require.NoError(t, ctlr.Shutdown(ctx))
 }
 
 func TestControllerTerminate(t *testing.T) {
@@ -380,7 +377,7 @@ func TestControllerTerminate(t *testing.T) {
 		panic("unexpected call of ContainerKill")
 	}
 
-	assert.NoError(t, ctlr.Terminate(ctx))
+	require.NoError(t, ctlr.Terminate(ctx))
 }
 
 func TestControllerRemove(t *testing.T) {
@@ -409,7 +406,7 @@ func TestControllerRemove(t *testing.T) {
 		panic("unexpected call of ContainerRemove")
 	}
 
-	assert.NoError(t, ctlr.Remove(ctx))
+	require.NoError(t, ctlr.Remove(ctx))
 }
 
 func genTestControllerEnv(t *testing.T, task *api.Task) (context.Context, *StubAPIClient, exec.Controller, *containerConfig, func()) {
@@ -423,10 +420,10 @@ func genTestControllerEnv(t *testing.T, task *api.Task) (context.Context, *StubA
 
 	client := NewStubAPIClient()
 	ctlr, err := newController(client, testNodeDescription, task, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	config, err := newContainerConfig(testNodeDescription, task)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, config)
 
 	ctx := context.Background()

@@ -9,6 +9,7 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDrain(t *testing.T) {
@@ -192,19 +193,19 @@ func TestDrain(t *testing.T) {
 
 	err := s.Update(func(tx store.Tx) error {
 		// Prepopulate service
-		assert.NoError(t, store.CreateService(tx, initialService))
+		require.NoError(t, store.CreateService(tx, initialService))
 		// Prepoulate nodes
 		for _, n := range initialNodeSet {
-			assert.NoError(t, store.CreateNode(tx, n))
+			require.NoError(t, store.CreateNode(tx, n))
 		}
 
 		// Prepopulate tasks
 		for _, task := range initialTaskSet {
-			assert.NoError(t, store.CreateTask(tx, task))
+			require.NoError(t, store.CreateTask(tx, task))
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
@@ -213,7 +214,7 @@ func TestDrain(t *testing.T) {
 	defer orchestrator.Stop()
 
 	go func() {
-		assert.NoError(t, orchestrator.Run(ctx))
+		require.NoError(t, orchestrator.Run(ctx))
 	}()
 
 	// id2 and id5 should be killed immediately
@@ -230,10 +231,10 @@ func TestDrain(t *testing.T) {
 		task := initialTaskSet[2].Copy()
 		task.ID = "newtask"
 		task.NodeID = "id2"
-		assert.NoError(t, store.CreateTask(tx, task))
+		require.NoError(t, store.CreateTask(tx, task))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	deletion3 := testutils.WatchShutdownTask(t, watch)
 	assert.Equal(t, "newtask", deletion3.ID)
@@ -243,10 +244,10 @@ func TestDrain(t *testing.T) {
 	err = s.Update(func(tx store.Tx) error {
 		n := initialNodeSet[3].Copy()
 		n.Spec.Availability = api.NodeAvailabilityDrain
-		assert.NoError(t, store.UpdateNode(tx, n))
+		require.NoError(t, store.UpdateNode(tx, n))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	deletion4 := testutils.WatchShutdownTask(t, watch)
 	assert.Equal(t, "id4", deletion4.ID)
@@ -254,10 +255,10 @@ func TestDrain(t *testing.T) {
 
 	// Delete node id1
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteNode(tx, "id1"))
+		require.NoError(t, store.DeleteNode(tx, "id1"))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	deletion5 := testutils.WatchShutdownTask(t, watch)
 	assert.Equal(t, "id1", deletion5.ID)

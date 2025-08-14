@@ -281,9 +281,9 @@ func TestTemplatedSecret(t *testing.T) {
 		expandedSecret, err := templatedDependencies.Secrets().Get("templatedsecret")
 
 		if testCase.expectedErr != "" {
-			assert.EqualError(t, err, testCase.expectedErr)
+			require.EqualError(t, err, testCase.expectedErr)
 		} else {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.NotNil(t, expandedSecret)
 			assert.Equal(t, testCase.expected, string(expandedSecret.Spec.Data), testCase.desc)
 		}
@@ -562,11 +562,11 @@ func TestTemplatedConfig(t *testing.T) {
 		expandedConfig2, sensitive, err2 := templatedDependencies.Configs().(TemplatedConfigGetter).GetAndFlagSecretData("templatedconfig")
 
 		if testCase.expectedErr != "" {
-			assert.EqualError(t, err1, testCase.expectedErr)
-			assert.EqualError(t, err2, testCase.expectedErr)
+			require.EqualError(t, err1, testCase.expectedErr)
+			require.EqualError(t, err2, testCase.expectedErr)
 		} else {
-			assert.NoError(t, err1)
-			assert.NoError(t, err2)
+			require.NoError(t, err1)
+			require.NoError(t, err2)
 			require.NotNil(t, expandedConfig1)
 			require.NotNil(t, expandedConfig2)
 			assert.Equal(t, testCase.expected, string(expandedConfig1.Spec.Data), testCase.desc)

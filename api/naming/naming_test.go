@@ -54,7 +54,7 @@ func TestTaskNaming(t *testing.T) {
 		t.Run(testcase.Name, func(t *testing.T) {
 			t.Parallel()
 			name := Task(testcase.Task)
-			assert.Equal(t, name, testcase.Expected)
+			assert.Equal(t, testcase.Expected, name)
 		})
 	}
 }

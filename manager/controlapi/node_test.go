@@ -33,7 +33,7 @@ func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, memb
 	err := ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateNode(tx, node)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return node
 }
 
@@ -42,16 +42,16 @@ func TestGetNode(t *testing.T) {
 	defer ts.Stop()
 
 	_, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	_, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: "invalid"})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
 	node := createNode(t, ts, "id", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: node.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, node.ID, r.Node.ID)
 }
 
@@ -60,19 +60,19 @@ func TestListNodes(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 	r, err := ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, r.Nodes)
 
 	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Nodes))
+	require.NoError(t, err)
+	assert.Len(t, r.Nodes, 1)
 
 	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipPending, api.NodeStatus_READY)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
-	assert.NoError(t, err)
-	assert.Equal(t, 3, len(r.Nodes))
+	require.NoError(t, err)
+	assert.Len(t, r.Nodes, 3)
 
 	// List by role.
 	r, err = ts.Client.ListNodes(context.Background(),
@@ -82,8 +82,8 @@ func TestListNodes(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Nodes))
+	require.NoError(t, err)
+	assert.Len(t, r.Nodes, 1)
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
@@ -91,8 +91,8 @@ func TestListNodes(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(r.Nodes))
+	require.NoError(t, err)
+	assert.Len(t, r.Nodes, 2)
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
@@ -100,8 +100,8 @@ func TestListNodes(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, len(r.Nodes))
+	require.NoError(t, err)
+	assert.Len(t, r.Nodes, 3)
 
 	// List by membership.
 	r, err = ts.Client.ListNodes(context.Background(),
@@ -111,8 +111,8 @@ func TestListNodes(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(r.Nodes))
+	require.NoError(t, err)
+	assert.Len(t, r.Nodes, 2)
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
@@ -120,8 +120,8 @@ func TestListNodes(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Nodes))
+	require.NoError(t, err)
+	assert.Len(t, r.Nodes, 1)
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
@@ -129,8 +129,8 @@ func TestListNodes(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, len(r.Nodes))
+	require.NoError(t, err)
+	assert.Len(t, r.Nodes, 3)
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
@@ -139,8 +139,8 @@ func TestListNodes(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Nodes))
+	require.NoError(t, err)
+	assert.Len(t, r.Nodes, 1)
 }
 
 func TestListNodesWithLabelFilter(t *testing.T) {
@@ -243,7 +243,7 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 	r, err := ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
 		Filters: &api.ListNodesRequest_Filters{},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Nodes, 3)
 
 	t.Log("list nodes with allcommon=engine engine label filter")
@@ -252,7 +252,7 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 			Labels: map[string]string{"allcommon": "engine"},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Nodes, 3)
 
 	t.Log("list nodes with allcommon=node engine label filter")
@@ -262,8 +262,8 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 		},
 	})
 	// nothing should be returned; allcommon=engine on engine labels
-	assert.NoError(t, err)
-	assert.Len(t, r.Nodes, 0)
+	require.NoError(t, err)
+	assert.Empty(t, r.Nodes)
 
 	t.Log("list nodes with allcommon=node node filter")
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
@@ -271,7 +271,7 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 			NodeLabels: map[string]string{"allcommon": "node"},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Nodes, 3)
 
 	t.Log("list nodes with allcommon=engine node filter")
@@ -280,8 +280,8 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 			NodeLabels: map[string]string{"allcommon": "engine"},
 		},
 	})
-	assert.NoError(t, err)
-	assert.Len(t, r.Nodes, 0)
+	require.NoError(t, err)
+	assert.Empty(t, r.Nodes)
 
 	t.Log("list nodes with nodelabel1=shouldmatch node filter")
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{
@@ -290,7 +290,7 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 		},
 	})
 	// should only return the first 2 nodes
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Nodes, 2)
 	assert.Contains(t, r.Nodes, nodes[0])
 	assert.Contains(t, r.Nodes, nodes[1])
@@ -302,7 +302,7 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 		},
 	})
 	// should only return the first 2 nodes
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Nodes, 2)
 	assert.Contains(t, r.Nodes, nodes[0])
 	assert.Contains(t, r.Nodes, nodes[1])
@@ -317,7 +317,7 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 		},
 	})
 	// should only return the first node
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Nodes, 1)
 	assert.Contains(t, r.Nodes, nodes[0])
 
@@ -331,7 +331,7 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 		},
 	})
 	// should only return the first node
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Nodes, 1)
 	assert.Contains(t, r.Nodes, nodes[0])
 
@@ -348,7 +348,7 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 			},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Nodes, 2)
 	assert.Contains(t, r.Nodes, nodes[0])
 	assert.Contains(t, r.Nodes, nodes[2])
@@ -371,18 +371,18 @@ func TestRemoveNodes(t *testing.T) {
 	})
 
 	r, err := ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, r.Nodes)
 
 	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Nodes, 1)
 
 	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipPending, api.NodeStatus_UNKNOWN)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Nodes, 3)
 
 	// Attempt to remove a ready node without force
@@ -392,7 +392,7 @@ func TestRemoveNodes(t *testing.T) {
 			Force:  false,
 		},
 	)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
@@ -401,7 +401,7 @@ func TestRemoveNodes(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Nodes, 3)
 
 	// Attempt to remove a ready node with force
@@ -411,7 +411,7 @@ func TestRemoveNodes(t *testing.T) {
 			Force:  true,
 		},
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
@@ -420,11 +420,11 @@ func TestRemoveNodes(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Nodes, 2)
 
 	clusterResp, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.Len(t, clusterResp.Clusters, 1)
 	require.Len(t, clusterResp.Clusters[0].BlacklistedCertificates, 1)
 	_, ok := clusterResp.Clusters[0].BlacklistedCertificates["id2"]
@@ -437,7 +437,7 @@ func TestRemoveNodes(t *testing.T) {
 			Force:  false,
 		},
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
@@ -446,7 +446,7 @@ func TestRemoveNodes(t *testing.T) {
 			},
 		},
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Nodes, 1)
 }
 
@@ -477,10 +477,10 @@ func TestListManagerNodes(t *testing.T) {
 	defer raftutils.TeardownCluster(nodes)
 
 	// Create a node object for each of the managers
-	assert.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNode(tx, &api.Node{ID: nodes[1].SecurityConfig.ClientTLSCreds.NodeID()}))
-		assert.NoError(t, store.CreateNode(tx, &api.Node{ID: nodes[2].SecurityConfig.ClientTLSCreds.NodeID()}))
-		assert.NoError(t, store.CreateNode(tx, &api.Node{ID: nodes[3].SecurityConfig.ClientTLSCreds.NodeID()}))
+	require.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
+		require.NoError(t, store.CreateNode(tx, &api.Node{ID: nodes[1].SecurityConfig.ClientTLSCreds.NodeID()}))
+		require.NoError(t, store.CreateNode(tx, &api.Node{ID: nodes[2].SecurityConfig.ClientTLSCreds.NodeID()}))
+		require.NoError(t, store.CreateNode(tx, &api.Node{ID: nodes[3].SecurityConfig.ClientTLSCreds.NodeID()}))
 		return nil
 	}))
 
@@ -490,7 +490,7 @@ func TestListManagerNodes(t *testing.T) {
 
 	// There should be 3 reachable managers listed
 	r, err := ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, r)
 	managers := getMap(t, r.Nodes)
 	assert.Len(t, ts.Server.raft.GetMemberlist(), 3)
@@ -516,15 +516,15 @@ func TestListManagerNodes(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Add node entries for these
-	assert.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNode(tx, &api.Node{ID: nodes[4].SecurityConfig.ClientTLSCreds.NodeID()}))
-		assert.NoError(t, store.CreateNode(tx, &api.Node{ID: nodes[5].SecurityConfig.ClientTLSCreds.NodeID()}))
+	require.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
+		require.NoError(t, store.CreateNode(tx, &api.Node{ID: nodes[4].SecurityConfig.ClientTLSCreds.NodeID()}))
+		require.NoError(t, store.CreateNode(tx, &api.Node{ID: nodes[5].SecurityConfig.ClientTLSCreds.NodeID()}))
 		return nil
 	}))
 
 	// There should be 5 reachable managers listed
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, r)
 	managers = getMap(t, r.Nodes)
 	assert.Len(t, ts.Server.raft.GetMemberlist(), 5)
@@ -540,7 +540,7 @@ func TestListManagerNodes(t *testing.T) {
 	nodes[5].ShutdownRaft()
 
 	// Node 4 and Node 5 should be listed as Unreachable
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 		if err != nil {
 			return err
@@ -570,7 +570,7 @@ func TestListManagerNodes(t *testing.T) {
 
 	assert.Len(t, ts.Server.raft.GetMemberlist(), 5)
 	// All the nodes should be reachable again
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 		if err != nil {
 			return err
@@ -609,7 +609,7 @@ func TestListManagerNodes(t *testing.T) {
 	ts.Server.raft = leaderNode.Node
 
 	// Node 1 should not be the leader anymore
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 		if err != nil {
 			return err
@@ -675,12 +675,12 @@ func TestUpdateNode(t *testing.T) {
 		},
 		NodeVersion: &api.Version{},
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
 	// Create a node object for the manager
-	assert.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNode(tx, &api.Node{
+	require.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
+		require.NoError(t, store.CreateNode(tx, &api.Node{
 			ID: nodes[1].SecurityConfig.ClientTLSCreds.NodeID(),
 			Spec: api.NodeSpec{
 				Membership: api.NodeMembershipAccepted,
@@ -691,22 +691,22 @@ func TestUpdateNode(t *testing.T) {
 	}))
 
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: "invalid", Spec: &api.NodeSpec{}, NodeVersion: &api.Version{}})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
 	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodeID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	if !assert.NotNil(t, r) {
 		assert.FailNow(t, "got unexpected nil response from GetNode")
 	}
 	assert.NotNil(t, r.Node)
 
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	spec := r.Node.Spec.Copy()
@@ -715,7 +715,7 @@ func TestUpdateNode(t *testing.T) {
 		NodeID: nodeID,
 		Spec:   spec,
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
@@ -723,10 +723,10 @@ func TestUpdateNode(t *testing.T) {
 		Spec:        spec,
 		NodeVersion: &r.Node.Meta.Version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodeID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	if !assert.NotNil(t, r) {
 		assert.FailNow(t, "got unexpected nil response from GetNode")
 	}
@@ -736,11 +736,11 @@ func TestUpdateNode(t *testing.T) {
 
 	version := &r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, NodeVersion: version})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Perform an update with the "old" version.
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, NodeVersion: version})
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func testUpdateNodeDemote(t *testing.T) {
@@ -757,8 +757,8 @@ func testUpdateNodeDemote(t *testing.T) {
 	ts.Server.store = nodes[1].MemoryStore()
 
 	// Create a node object for each of the managers
-	assert.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNode(tx, &api.Node{
+	require.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
+		require.NoError(t, store.CreateNode(tx, &api.Node{
 			ID: nodes[1].SecurityConfig.ClientTLSCreds.NodeID(),
 			Spec: api.NodeSpec{
 				DesiredRole: api.NodeRoleManager,
@@ -766,7 +766,7 @@ func testUpdateNodeDemote(t *testing.T) {
 			},
 			Role: api.NodeRoleManager,
 		}))
-		assert.NoError(t, store.CreateNode(tx, &api.Node{
+		require.NoError(t, store.CreateNode(tx, &api.Node{
 			ID: nodes[2].SecurityConfig.ClientTLSCreds.NodeID(),
 			Spec: api.NodeSpec{
 				DesiredRole: api.NodeRoleManager,
@@ -774,7 +774,7 @@ func testUpdateNodeDemote(t *testing.T) {
 			},
 			Role: api.NodeRoleManager,
 		}))
-		assert.NoError(t, store.CreateNode(tx, &api.Node{
+		require.NoError(t, store.CreateNode(tx, &api.Node{
 			ID: nodes[3].SecurityConfig.ClientTLSCreds.NodeID(),
 			Spec: api.NodeSpec{
 				DesiredRole: api.NodeRoleManager,
@@ -790,7 +790,7 @@ func testUpdateNodeDemote(t *testing.T) {
 	nodes[3].ShutdownRaft()
 
 	// Node 3 should be listed as Unreachable
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		members := nodes[1].GetMemberlist()
 		if len(members) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(members))
@@ -803,7 +803,7 @@ func testUpdateNodeDemote(t *testing.T) {
 
 	// Try to demote Node 2, this should fail because of the quorum safeguard
 	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodes[2].SecurityConfig.ClientTLSCreds.NodeID()})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	spec := r.Node.Spec.Copy()
 	spec.DesiredRole = api.NodeRoleWorker
 	version := &r.Node.Meta.Version
@@ -812,7 +812,7 @@ func testUpdateNodeDemote(t *testing.T) {
 		Spec:        spec,
 		NodeVersion: version,
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.FailedPrecondition, testutils.ErrorCode(err))
 
 	// Restart Node 3
@@ -820,7 +820,7 @@ func testUpdateNodeDemote(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, nodes)
 
 	// Node 3 should be listed as Reachable
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		members := nodes[1].GetMemberlist()
 		if len(members) != 3 {
 			return fmt.Errorf("expected 3 nodes, got %d", len(members))
@@ -836,7 +836,7 @@ func testUpdateNodeDemote(t *testing.T) {
 
 	// Try to demote Node 3, this should succeed
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodes[3].SecurityConfig.ClientTLSCreds.NodeID()})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	spec = r.Node.Spec.Copy()
 	spec.DesiredRole = api.NodeRoleWorker
 	version = &r.Node.Meta.Version
@@ -845,7 +845,7 @@ func testUpdateNodeDemote(t *testing.T) {
 		Spec:        spec,
 		NodeVersion: version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	newCluster := map[uint64]*raftutils.TestNode{
 		1: nodes[1],
@@ -857,7 +857,7 @@ func testUpdateNodeDemote(t *testing.T) {
 	raftutils.WaitForCluster(t, clockSource, newCluster)
 
 	// Server should list 2 members
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		members := nodes[1].GetMemberlist()
 		if len(members) != 2 {
 			return fmt.Errorf("expected 2 nodes, got %d", len(members))
@@ -873,7 +873,7 @@ func testUpdateNodeDemote(t *testing.T) {
 
 	// Try to demote a Node and scale down to 1
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: demoteNode.SecurityConfig.ClientTLSCreds.NodeID()})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	spec = r.Node.Spec.Copy()
 	spec.DesiredRole = api.NodeRoleWorker
 	version = &r.Node.Meta.Version
@@ -882,7 +882,7 @@ func testUpdateNodeDemote(t *testing.T) {
 		Spec:        spec,
 		NodeVersion: version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ts.Server.raft.RemoveMember(context.Background(), raftMember.RaftID)
 
@@ -896,7 +896,7 @@ func testUpdateNodeDemote(t *testing.T) {
 
 	raftutils.WaitForCluster(t, clockSource, newCluster)
 
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		members := lastNode.GetMemberlist()
 		if len(members) != 1 {
 			return fmt.Errorf("expected 1 node, got %d", len(members))
@@ -906,7 +906,7 @@ func testUpdateNodeDemote(t *testing.T) {
 
 	// Make sure we can't demote the last manager.
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	spec = r.Node.Spec.Copy()
 	spec.DesiredRole = api.NodeRoleWorker
 	version = &r.Node.Meta.Version
@@ -915,12 +915,12 @@ func testUpdateNodeDemote(t *testing.T) {
 		Spec:        spec,
 		NodeVersion: version,
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.FailedPrecondition, testutils.ErrorCode(err))
 
 	// Propose a change in the spec and check if the remaining node can still process updates
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	spec = r.Node.Spec.Copy()
 	spec.Availability = api.NodeAvailabilityDrain
 	version = &r.Node.Meta.Version
@@ -929,12 +929,12 @@ func testUpdateNodeDemote(t *testing.T) {
 		Spec:        spec,
 		NodeVersion: version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Get node information and check that the availability is set to drain
 	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
-	assert.NoError(t, err)
-	assert.Equal(t, r.Node.Spec.Availability, api.NodeAvailabilityDrain)
+	require.NoError(t, err)
+	assert.Equal(t, api.NodeAvailabilityDrain, r.Node.Spec.Availability)
 }
 
 func TestUpdateNodeDemote(t *testing.T) {
@@ -962,20 +962,20 @@ func TestOrphanNodeTasks(t *testing.T) {
 
 	// make sure before we start that our server is in a good (empty) state
 	r, err := ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, r.Nodes)
 
 	// create a manager
 	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Nodes, 1)
 
 	// create a worker. put it in the DOWN state, which is the state it will be
 	// in to remove it anyway
 	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_DOWN)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Nodes, 2)
 
 	// create a network we can "attach" to
@@ -1122,9 +1122,9 @@ func TestOrphanNodeTasks(t *testing.T) {
 		for _, task := range tasks {
 			require.NotNil(t, task)
 			if task.ID == "task1" || task.ID == "task3" {
-				require.Equal(t, task.Status.State, api.TaskStateOrphaned)
+				require.Equal(t, api.TaskStateOrphaned, task.Status.State)
 			} else {
-				require.NotEqual(t, task.Status.State, api.TaskStateOrphaned)
+				require.NotEqual(t, api.TaskStateOrphaned, task.Status.State)
 			}
 		}
 	})

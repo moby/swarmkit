@@ -424,49 +424,49 @@ func populateTestStore(t *testing.T, s *MemoryStore,
 	err := s.Update(func(tx Tx) error {
 		// Prepoulate clusters
 		for _, c := range clusters {
-			assert.NoError(t, CreateCluster(tx, c))
+			require.NoError(t, CreateCluster(tx, c))
 		}
 
 		// Prepoulate nodes
 		for _, n := range nodes {
-			assert.NoError(t, CreateNode(tx, n))
+			require.NoError(t, CreateNode(tx, n))
 		}
 
 		// Prepopulate services
 		for _, s := range services {
-			assert.NoError(t, CreateService(tx, s))
+			require.NoError(t, CreateService(tx, s))
 		}
 		// Prepopulate tasks
 		for _, task := range tasks {
-			assert.NoError(t, CreateTask(tx, task))
+			require.NoError(t, CreateTask(tx, task))
 		}
 		// Prepopulate networks
 		for _, n := range networks {
-			assert.NoError(t, CreateNetwork(tx, n))
+			require.NoError(t, CreateNetwork(tx, n))
 		}
 		// Prepopulate configs
 		for _, c := range configs {
-			assert.NoError(t, CreateConfig(tx, c))
+			require.NoError(t, CreateConfig(tx, c))
 		}
 		// Prepopulate secrets
 		for _, s := range secrets {
-			assert.NoError(t, CreateSecret(tx, s))
+			require.NoError(t, CreateSecret(tx, s))
 		}
 		// Prepopulate extensions
 		for _, c := range extensions {
-			assert.NoError(t, CreateExtension(tx, c))
+			require.NoError(t, CreateExtension(tx, c))
 		}
 		// Prepopulate resources
 		for _, s := range resources {
-			assert.NoError(t, CreateResource(tx, s))
+			require.NoError(t, CreateResource(tx, s))
 		}
 		// Prepopulate volumes
 		for _, v := range volumes {
-			assert.NoError(t, CreateVolume(tx, v))
+			require.NoError(t, CreateVolume(tx, v))
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestStoreNode(t *testing.T) {
@@ -475,7 +475,7 @@ func TestStoreNode(t *testing.T) {
 
 	s.View(func(readTx ReadTx) {
 		allNodes, err := FindNodes(readTx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, allNodes)
 	})
 
@@ -483,13 +483,13 @@ func TestStoreNode(t *testing.T) {
 
 	err := s.Update(func(tx Tx) error {
 		allNodes, err := FindNodes(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, allNodes, len(nodeSet))
 
-		assert.Error(t, CreateNode(tx, nodeSet[0]), "duplicate IDs must be rejected")
+		require.Error(t, CreateNode(tx, nodeSet[0]), "duplicate IDs must be rejected")
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	s.View(func(readTx ReadTx) {
 		assert.Equal(t, nodeSet[0], GetNode(readTx, "id1"))
@@ -497,36 +497,36 @@ func TestStoreNode(t *testing.T) {
 		assert.Equal(t, nodeSet[2], GetNode(readTx, "id3"))
 
 		foundNodes, err := FindNodes(readTx, ByName("name1"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
 		foundNodes, err = FindNodes(readTx, ByName("name2"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundNodes, 2)
 		foundNodes, err = FindNodes(readTx, Or(ByName("name1"), ByName("name2")))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundNodes, 3)
 		foundNodes, err = FindNodes(readTx, ByName("invalid"))
-		assert.NoError(t, err)
-		assert.Len(t, foundNodes, 0)
+		require.NoError(t, err)
+		assert.Empty(t, foundNodes)
 
 		foundNodes, err = FindNodes(readTx, ByIDPrefix("id"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundNodes, 3)
 
 		foundNodes, err = FindNodes(readTx, ByRole(api.NodeRoleManager))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
 
 		foundNodes, err = FindNodes(readTx, ByRole(api.NodeRoleWorker))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundNodes, 2)
 
 		foundNodes, err = FindNodes(readTx, ByMembership(api.NodeMembershipPending))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
 
 		foundNodes, err = FindNodes(readTx, ByMembership(api.NodeMembershipAccepted))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundNodes, 2)
 	})
 
@@ -539,32 +539,32 @@ func TestStoreNode(t *testing.T) {
 	}
 	err = s.Update(func(tx Tx) error {
 		assert.NotEqual(t, update, GetNode(tx, "id3"))
-		assert.NoError(t, UpdateNode(tx, update))
+		require.NoError(t, UpdateNode(tx, update))
 		assert.Equal(t, update, GetNode(tx, "id3"))
 
 		foundNodes, err := FindNodes(tx, ByName("name2"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
 		foundNodes, err = FindNodes(tx, ByName("name3"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
 
 		invalidUpdate := *nodeSet[0]
 		invalidUpdate.ID = "invalid"
-		assert.Error(t, UpdateNode(tx, &invalidUpdate), "invalid IDs should be rejected")
+		require.Error(t, UpdateNode(tx, &invalidUpdate), "invalid IDs should be rejected")
 
 		// Delete
 		assert.NotNil(t, GetNode(tx, "id1"))
-		assert.NoError(t, DeleteNode(tx, "id1"))
+		require.NoError(t, DeleteNode(tx, "id1"))
 		assert.Nil(t, GetNode(tx, "id1"))
 		foundNodes, err = FindNodes(tx, ByName("name1"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, foundNodes)
 
 		assert.Equal(t, DeleteNode(tx, "nonexistent"), ErrNotExist)
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestStoreService(t *testing.T) {
@@ -573,7 +573,7 @@ func TestStoreService(t *testing.T) {
 
 	s.View(func(readTx ReadTx) {
 		allServices, err := FindServices(readTx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, allServices)
 	})
 
@@ -611,7 +611,7 @@ func TestStoreService(t *testing.T) {
 			}), ErrNameConflict, "duplicate check should be case insensitive")
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	s.View(func(readTx ReadTx) {
 		assert.Equal(t, serviceSet[0], GetService(readTx, "id1"))
@@ -619,23 +619,23 @@ func TestStoreService(t *testing.T) {
 		assert.Equal(t, serviceSet[2], GetService(readTx, "id3"))
 
 		foundServices, err := FindServices(readTx, ByNamePrefix("name1"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundServices, 1)
 		foundServices, err = FindServices(readTx, ByNamePrefix("NAME1"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundServices, 1)
 		foundServices, err = FindServices(readTx, ByNamePrefix("invalid"))
-		assert.NoError(t, err)
-		assert.Len(t, foundServices, 0)
+		require.NoError(t, err)
+		assert.Empty(t, foundServices)
 		foundServices, err = FindServices(readTx, Or(ByNamePrefix("name1"), ByNamePrefix("name2")))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundServices, 2)
 		foundServices, err = FindServices(readTx, Or(ByNamePrefix("name1"), ByNamePrefix("name2"), ByNamePrefix("name4")))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundServices, 2)
 
 		foundServices, err = FindServices(readTx, ByIDPrefix("id"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundServices, 3)
 	})
 
@@ -648,7 +648,7 @@ func TestStoreService(t *testing.T) {
 		}
 
 		assert.NotEqual(t, update, GetService(tx, update.ID))
-		assert.NoError(t, UpdateService(tx, update))
+		require.NoError(t, UpdateService(tx, update))
 		assert.Equal(t, update, GetService(tx, update.ID))
 
 		// Name conflict.
@@ -662,43 +662,43 @@ func TestStoreService(t *testing.T) {
 		// Name change.
 		update = GetService(tx, update.ID)
 		foundServices, err := FindServices(tx, ByNamePrefix("name1"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundServices, 1)
 		foundServices, err = FindServices(tx, ByNamePrefix("name4"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, foundServices)
 
 		update.Spec.Annotations.Name = "name4"
-		assert.NoError(t, UpdateService(tx, update))
+		require.NoError(t, UpdateService(tx, update))
 		foundServices, err = FindServices(tx, ByNamePrefix("name1"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, foundServices)
 		foundServices, err = FindServices(tx, ByNamePrefix("name4"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundServices, 1)
 
 		// Invalid update.
 		invalidUpdate := serviceSet[0].Copy()
 		invalidUpdate.ID = "invalid"
-		assert.Error(t, UpdateService(tx, invalidUpdate), "invalid IDs should be rejected")
+		require.Error(t, UpdateService(tx, invalidUpdate), "invalid IDs should be rejected")
 
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Delete
 	err = s.Update(func(tx Tx) error {
 		assert.NotNil(t, GetService(tx, "id1"))
-		assert.NoError(t, DeleteService(tx, "id1"))
+		require.NoError(t, DeleteService(tx, "id1"))
 		assert.Nil(t, GetService(tx, "id1"))
 		foundServices, err := FindServices(tx, ByNamePrefix("name1"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, foundServices)
 
 		assert.Equal(t, DeleteService(tx, "nonexistent"), ErrNotExist)
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestStoreNetwork(t *testing.T) {
@@ -707,7 +707,7 @@ func TestStoreNetwork(t *testing.T) {
 
 	s.View(func(readTx ReadTx) {
 		allNetworks, err := FindNetworks(readTx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, allNetworks)
 	})
 
@@ -715,13 +715,13 @@ func TestStoreNetwork(t *testing.T) {
 
 	err := s.Update(func(tx Tx) error {
 		allNetworks, err := FindNetworks(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, allNetworks, len(networkSet))
 
-		assert.Error(t, CreateNetwork(tx, networkSet[0]), "duplicate IDs must be rejected")
+		require.Error(t, CreateNetwork(tx, networkSet[0]), "duplicate IDs must be rejected")
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	s.View(func(readTx ReadTx) {
 		assert.Equal(t, networkSet[0], GetNetwork(readTx, "id1"))
@@ -729,30 +729,30 @@ func TestStoreNetwork(t *testing.T) {
 		assert.Equal(t, networkSet[2], GetNetwork(readTx, "id3"))
 
 		foundNetworks, err := FindNetworks(readTx, ByName("name1"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundNetworks, 1)
 		foundNetworks, err = FindNetworks(readTx, ByName("name2"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundNetworks, 1)
 		foundNetworks, err = FindNetworks(readTx, ByName("invalid"))
-		assert.NoError(t, err)
-		assert.Len(t, foundNetworks, 0)
+		require.NoError(t, err)
+		assert.Empty(t, foundNetworks)
 	})
 
 	err = s.Update(func(tx Tx) error {
 		// Delete
 		assert.NotNil(t, GetNetwork(tx, "id1"))
-		assert.NoError(t, DeleteNetwork(tx, "id1"))
+		require.NoError(t, DeleteNetwork(tx, "id1"))
 		assert.Nil(t, GetNetwork(tx, "id1"))
 		foundNetworks, err := FindNetworks(tx, ByName("name1"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, foundNetworks)
 
 		assert.Equal(t, DeleteNetwork(tx, "nonexistent"), ErrNotExist)
 		return nil
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestStoreTask(t *testing.T) {
@@ -761,7 +761,7 @@ func TestStoreTask(t *testing.T) {
 
 	s.View(func(tx ReadTx) {
 		allTasks, err := FindTasks(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, allTasks)
 	})
 
@@ -769,13 +769,13 @@ func TestStoreTask(t *testing.T) {
 
 	err := s.Update(func(tx Tx) error {
 		allTasks, err := FindTasks(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, allTasks, len(taskSet))
 
-		assert.Error(t, CreateTask(tx, taskSet[0]), "duplicate IDs must be rejected")
+		require.Error(t, CreateTask(tx, taskSet[0]), "duplicate IDs must be rejected")
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	s.View(func(readTx ReadTx) {
 		assert.Equal(t, taskSet[0], GetTask(readTx, "id1"))
@@ -783,43 +783,43 @@ func TestStoreTask(t *testing.T) {
 		assert.Equal(t, taskSet[2], GetTask(readTx, "id3"))
 
 		foundTasks, err := FindTasks(readTx, ByNamePrefix("name1"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
 		foundTasks, err = FindTasks(readTx, ByNamePrefix("name2"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundTasks, 2)
 		foundTasks, err = FindTasks(readTx, ByNamePrefix("invalid"))
-		assert.NoError(t, err)
-		assert.Len(t, foundTasks, 0)
+		require.NoError(t, err)
+		assert.Empty(t, foundTasks)
 
 		foundTasks, err = FindTasks(readTx, ByNodeID(nodeSet[0].ID))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
 		assert.Equal(t, foundTasks[0], taskSet[0])
 		foundTasks, err = FindTasks(readTx, ByNodeID("invalid"))
-		assert.NoError(t, err)
-		assert.Len(t, foundTasks, 0)
+		require.NoError(t, err)
+		assert.Empty(t, foundTasks)
 
 		foundTasks, err = FindTasks(readTx, ByServiceID(serviceSet[0].ID))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
 		assert.Equal(t, foundTasks[0], taskSet[1])
 		foundTasks, err = FindTasks(readTx, ByServiceID("invalid"))
-		assert.NoError(t, err)
-		assert.Len(t, foundTasks, 0)
+		require.NoError(t, err)
+		assert.Empty(t, foundTasks)
 
 		foundTasks, err = FindTasks(readTx, ByDesiredState(api.TaskStateRunning))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundTasks, 2)
-		assert.Equal(t, foundTasks[0].DesiredState, api.TaskStateRunning)
-		assert.Equal(t, foundTasks[0].DesiredState, api.TaskStateRunning)
+		assert.Equal(t, api.TaskStateRunning, foundTasks[0].DesiredState)
+		assert.Equal(t, api.TaskStateRunning, foundTasks[0].DesiredState)
 		foundTasks, err = FindTasks(readTx, ByDesiredState(api.TaskStateShutdown))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
 		assert.Equal(t, foundTasks[0], taskSet[2])
 		foundTasks, err = FindTasks(readTx, ByDesiredState(api.TaskStatePending))
-		assert.NoError(t, err)
-		assert.Len(t, foundTasks, 0)
+		require.NoError(t, err)
+		assert.Empty(t, foundTasks)
 	})
 
 	// Update.
@@ -834,32 +834,32 @@ func TestStoreTask(t *testing.T) {
 	}
 	err = s.Update(func(tx Tx) error {
 		assert.NotEqual(t, update, GetTask(tx, "id3"))
-		assert.NoError(t, UpdateTask(tx, update))
+		require.NoError(t, UpdateTask(tx, update))
 		assert.Equal(t, update, GetTask(tx, "id3"))
 
 		foundTasks, err := FindTasks(tx, ByNamePrefix("name2"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
 		foundTasks, err = FindTasks(tx, ByNamePrefix("name3"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
 
 		invalidUpdate := *taskSet[0]
 		invalidUpdate.ID = "invalid"
-		assert.Error(t, UpdateTask(tx, &invalidUpdate), "invalid IDs should be rejected")
+		require.Error(t, UpdateTask(tx, &invalidUpdate), "invalid IDs should be rejected")
 
 		// Delete
 		assert.NotNil(t, GetTask(tx, "id1"))
-		assert.NoError(t, DeleteTask(tx, "id1"))
+		require.NoError(t, DeleteTask(tx, "id1"))
 		assert.Nil(t, GetTask(tx, "id1"))
 		foundTasks, err = FindTasks(tx, ByNamePrefix("name1"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, foundTasks)
 
 		assert.Equal(t, DeleteTask(tx, "nonexistent"), ErrNotExist)
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestStoreSnapshot(t *testing.T) {
@@ -921,7 +921,7 @@ func TestStoreSnapshot(t *testing.T) {
 	// Fork
 	watcher, cancel, err := ViewAndWatch(s1, copyToS2)
 	defer cancel()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	s2.View(func(tx2 ReadTx) {
 		assert.Equal(t, nodeSet[0], GetNode(tx2, "id1"))
@@ -948,12 +948,12 @@ func TestStoreSnapshot(t *testing.T) {
 	}
 
 	err = s1.Update(func(tx1 Tx) error {
-		assert.NoError(t, CreateNode(tx1, createNode))
+		require.NoError(t, CreateNode(tx1, createNode))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.NoError(t, Apply(s2, <-watcher))
+	require.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
 	s2.View(func(tx2 ReadTx) {
@@ -971,12 +971,12 @@ func TestStoreSnapshot(t *testing.T) {
 	}
 
 	err = s1.Update(func(tx1 Tx) error {
-		assert.NoError(t, UpdateNode(tx1, updateNode))
+		require.NoError(t, UpdateNode(tx1, updateNode))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.NoError(t, Apply(s2, <-watcher))
+	require.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
 	s2.View(func(tx2 ReadTx) {
@@ -985,12 +985,12 @@ func TestStoreSnapshot(t *testing.T) {
 
 	err = s1.Update(func(tx1 Tx) error {
 		// Delete node
-		assert.NoError(t, DeleteNode(tx1, "id1"))
+		require.NoError(t, DeleteNode(tx1, "id1"))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.NoError(t, Apply(s2, <-watcher))
+	require.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
 	s2.View(func(tx2 ReadTx) {
@@ -1008,12 +1008,12 @@ func TestStoreSnapshot(t *testing.T) {
 	}
 
 	err = s1.Update(func(tx1 Tx) error {
-		assert.NoError(t, CreateService(tx1, createService))
+		require.NoError(t, CreateService(tx1, createService))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.NoError(t, Apply(s2, <-watcher))
+	require.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
 	s2.View(func(tx2 ReadTx) {
@@ -1025,12 +1025,12 @@ func TestStoreSnapshot(t *testing.T) {
 	updateService.Spec.Annotations.Name = "new-name"
 	err = s1.Update(func(tx1 Tx) error {
 		assert.NotEqual(t, updateService, GetService(tx1, updateService.ID))
-		assert.NoError(t, UpdateService(tx1, updateService))
+		require.NoError(t, UpdateService(tx1, updateService))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.NoError(t, Apply(s2, <-watcher))
+	require.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
 	s2.View(func(tx2 ReadTx) {
@@ -1039,12 +1039,12 @@ func TestStoreSnapshot(t *testing.T) {
 
 	err = s1.Update(func(tx1 Tx) error {
 		// Delete service
-		assert.NoError(t, DeleteService(tx1, "id1"))
+		require.NoError(t, DeleteService(tx1, "id1"))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.NoError(t, Apply(s2, <-watcher))
+	require.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
 	s2.View(func(tx2 ReadTx) {
@@ -1060,12 +1060,12 @@ func TestStoreSnapshot(t *testing.T) {
 	}
 
 	err = s1.Update(func(tx1 Tx) error {
-		assert.NoError(t, CreateTask(tx1, createTask))
+		require.NoError(t, CreateTask(tx1, createTask))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.NoError(t, Apply(s2, <-watcher))
+	require.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
 	s2.View(func(tx2 ReadTx) {
@@ -1081,11 +1081,11 @@ func TestStoreSnapshot(t *testing.T) {
 	}
 
 	err = s1.Update(func(tx1 Tx) error {
-		assert.NoError(t, UpdateTask(tx1, updateTask))
+		require.NoError(t, UpdateTask(tx1, updateTask))
 		return nil
 	})
-	assert.NoError(t, err)
-	assert.NoError(t, Apply(s2, <-watcher))
+	require.NoError(t, err)
+	require.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
 	s2.View(func(tx2 ReadTx) {
@@ -1094,11 +1094,11 @@ func TestStoreSnapshot(t *testing.T) {
 
 	err = s1.Update(func(tx1 Tx) error {
 		// Delete task
-		assert.NoError(t, DeleteTask(tx1, "id1"))
+		require.NoError(t, DeleteTask(tx1, "id1"))
 		return nil
 	})
-	assert.NoError(t, err)
-	assert.NoError(t, Apply(s2, <-watcher))
+	require.NoError(t, err)
+	require.NoError(t, Apply(s2, <-watcher))
 	<-watcher // consume commit event
 
 	s2.View(func(tx2 ReadTx) {
@@ -1115,7 +1115,7 @@ func TestCustomIndex(t *testing.T) {
 	// Add a custom index entry to each node
 	err := s.Update(func(tx Tx) error {
 		allNodes, err := FindNodes(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, allNodes, len(nodeSet))
 
 		for _, n := range allNodes {
@@ -1124,18 +1124,18 @@ func TestCustomIndex(t *testing.T) {
 				n.Spec.Annotations.Indices = []api.IndexEntry{
 					{Key: "nodesbefore", Val: "id1"},
 				}
-				assert.NoError(t, UpdateNode(tx, n))
+				require.NoError(t, UpdateNode(tx, n))
 			case "id3":
 				n.Spec.Annotations.Indices = []api.IndexEntry{
 					{Key: "nodesbefore", Val: "id1"},
 					{Key: "nodesbefore", Val: "id2"},
 				}
-				assert.NoError(t, UpdateNode(tx, n))
+				require.NoError(t, UpdateNode(tx, n))
 			}
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	s.View(func(readTx ReadTx) {
 		foundNodes, err := FindNodes(readTx, ByCustom("", "nodesbefore", "id2"))
@@ -1149,7 +1149,7 @@ func TestCustomIndex(t *testing.T) {
 
 		foundNodes, err = FindNodes(readTx, ByCustom("", "nodesbefore", "id3"))
 		require.NoError(t, err)
-		require.Len(t, foundNodes, 0)
+		require.Empty(t, foundNodes)
 
 		foundNodes, err = FindNodes(readTx, ByCustomPrefix("", "nodesbefore", "id"))
 		require.NoError(t, err)
@@ -1157,7 +1157,7 @@ func TestCustomIndex(t *testing.T) {
 
 		foundNodes, err = FindNodes(readTx, ByCustomPrefix("", "nodesbefore", "id6"))
 		require.NoError(t, err)
-		require.Len(t, foundNodes, 0)
+		require.Empty(t, foundNodes)
 	})
 }
 
@@ -1174,10 +1174,10 @@ func TestFailedTransaction(t *testing.T) {
 			},
 		}
 
-		assert.NoError(t, CreateNode(tx, n))
+		require.NoError(t, CreateNode(tx, n))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a second node, but then roll back the transaction
 	err = s.Update(func(tx Tx) error {
@@ -1188,21 +1188,21 @@ func TestFailedTransaction(t *testing.T) {
 			},
 		}
 
-		assert.NoError(t, CreateNode(tx, n))
+		require.NoError(t, CreateNode(tx, n))
 		return errors.New("rollback")
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	s.View(func(tx ReadTx) {
 		foundNodes, err := FindNodes(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
 		foundNodes, err = FindNodes(tx, ByName("name1"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
 		foundNodes, err = FindNodes(tx, ByName("name2"))
-		assert.NoError(t, err)
-		assert.Len(t, foundNodes, 0)
+		require.NoError(t, err)
+		assert.Empty(t, foundNodes)
 	})
 }
 
@@ -1225,19 +1225,19 @@ func TestVersion(t *testing.T) {
 		},
 	}
 	err := s.Update(func(tx Tx) error {
-		assert.NoError(t, CreateNode(tx, n))
+		require.NoError(t, CreateNode(tx, n))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Update the node using an object fetched from the store.
 	n.Spec.Annotations.Name = "name2"
 	err = s.Update(func(tx Tx) error {
-		assert.NoError(t, UpdateNode(tx, n))
+		require.NoError(t, UpdateNode(tx, n))
 		retrievedNode = GetNode(tx, n.ID)
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Make sure the store is updating our local copy with the version.
 	assert.Equal(t, n.Meta.Version, retrievedNode.Meta.Version)
@@ -1245,11 +1245,11 @@ func TestVersion(t *testing.T) {
 	// Try again, this time using the retrieved node.
 	retrievedNode.Spec.Annotations.Name = "name2"
 	err = s.Update(func(tx Tx) error {
-		assert.NoError(t, UpdateNode(tx, retrievedNode))
+		require.NoError(t, UpdateNode(tx, retrievedNode))
 		retrievedNode2 = GetNode(tx, n.ID)
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Try to update retrievedNode again. This should fail because it was
 	// already used to perform an update.
@@ -1258,16 +1258,16 @@ func TestVersion(t *testing.T) {
 		assert.Equal(t, ErrSequenceConflict, UpdateNode(tx, n))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// But using retrievedNode2 should work, since it has the latest
 	// sequence information.
 	retrievedNode2.Spec.Annotations.Name = "name3"
 	err = s.Update(func(tx Tx) error {
-		assert.NoError(t, UpdateNode(tx, retrievedNode2))
+		require.NoError(t, UpdateNode(tx, retrievedNode2))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestTimestamps(t *testing.T) {
@@ -1289,10 +1289,10 @@ func TestTimestamps(t *testing.T) {
 		},
 	}
 	err := s.Update(func(tx Tx) error {
-		assert.NoError(t, CreateNode(tx, n))
+		require.NoError(t, CreateNode(tx, n))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Make sure our local copy got updated.
 	assert.NotZero(t, n.Meta.CreatedAt)
@@ -1310,11 +1310,11 @@ func TestTimestamps(t *testing.T) {
 	// Make an update.
 	retrievedNode.Spec.Annotations.Name = "name2"
 	err = s.Update(func(tx Tx) error {
-		assert.NoError(t, UpdateNode(tx, retrievedNode))
+		require.NoError(t, UpdateNode(tx, retrievedNode))
 		updatedNode = GetNode(tx, n.ID)
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Ensure `CreatedAt` is the same after the update and `UpdatedAt` got updated.
 	assert.Equal(t, updatedNode.Meta.CreatedAt, n.Meta.CreatedAt)
@@ -1341,45 +1341,39 @@ func TestBatch(t *testing.T) {
 			}
 
 			batch.Update(func(tx Tx) error {
-				assert.NoError(t, CreateNode(tx, n))
+				require.NoError(t, CreateNode(tx, n))
 				return nil
 			})
 		}
 
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for i := 0; i != MaxChangesPerTransaction; i++ {
 		event := <-watch
-		if _, ok := event.(api.EventCreateNode); !ok {
-			t.Fatalf("expected EventCreateNode; got %#v", event)
-		}
+		_, ok := event.(api.EventCreateNode)
+		require.Truef(t, ok, "expected EventCreateNode; got %#v", event)
 	}
 	event := <-watch
-	if _, ok := event.(state.EventCommit); !ok {
-		t.Fatalf("expected EventCommit; got %#v", event)
-	}
+	_, ok := event.(state.EventCommit)
+	require.Truef(t, ok, "expected EventCommit; got %#v", event)
 	for i := 0; i != MaxChangesPerTransaction; i++ {
 		event := <-watch
-		if _, ok := event.(api.EventCreateNode); !ok {
-			t.Fatalf("expected EventCreateNode; got %#v", event)
-		}
+		_, ok := event.(api.EventCreateNode)
+		require.Truef(t, ok, "expected EventCreateNode; got %#v", event)
 	}
 	event = <-watch
-	if _, ok := event.(state.EventCommit); !ok {
-		t.Fatalf("expected EventCommit; got %#v", event)
-	}
+	_, ok = event.(state.EventCommit)
+	require.Truef(t, ok, "expected EventCommit; got %#v", event)
 	for i := 0; i != 5; i++ {
 		event := <-watch
-		if _, ok := event.(api.EventCreateNode); !ok {
-			t.Fatalf("expected EventCreateNode; got %#v", event)
-		}
+		_, ok := event.(api.EventCreateNode)
+		require.Truef(t, ok, "expected EventCreateNode; got %#v", event)
 	}
 	event = <-watch
-	if _, ok := event.(state.EventCommit); !ok {
-		t.Fatalf("expected EventCommit; got %#v", event)
-	}
+	_, ok = event.(state.EventCommit)
+	require.Truef(t, ok, "expected EventCommit; got %#v", event)
 }
 
 func TestBatchFailure(t *testing.T) {
@@ -1402,7 +1396,7 @@ func TestBatchFailure(t *testing.T) {
 			}
 
 			batch.Update(func(tx Tx) error {
-				assert.NoError(t, CreateNode(tx, n))
+				require.NoError(t, CreateNode(tx, n))
 				return nil
 			})
 			if i == MaxChangesPerTransaction+8 {
@@ -1410,18 +1404,16 @@ func TestBatchFailure(t *testing.T) {
 			}
 		}
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	for i := 0; i != MaxChangesPerTransaction; i++ {
 		event := <-watch
-		if _, ok := event.(api.EventCreateNode); !ok {
-			t.Fatalf("expected EventCreateNode; got %#v", event)
-		}
+		_, ok := event.(api.EventCreateNode)
+		require.Truef(t, ok, "expected EventCreateNode; got %#v", event)
 	}
 	event := <-watch
-	if _, ok := event.(state.EventCommit); !ok {
-		t.Fatalf("expected EventCommit; got %#v", event)
-	}
+	_, ok := event.(state.EventCommit)
+	require.Truef(t, ok, "expected EventCommit; got %#v", event)
 
 	// Shouldn't be anything after the first transaction
 	select {
@@ -1441,7 +1433,7 @@ func TestStoreSaveRestore(t *testing.T) {
 	s1.View(func(tx ReadTx) {
 		var err error
 		snapshot, err = s1.Save(tx)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	s2 := NewMemoryStore(nil)
@@ -1487,78 +1479,78 @@ func TestStoreSaveRestore(t *testing.T) {
 	watcher, cancel, err := ViewAndWatch(s2, func(ReadTx) error {
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer cancel()
 
 	err = s2.Restore(snapshot)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// s2 should end up looking just like s1
 	s2.View(func(tx ReadTx) {
 		allClusters, err := FindClusters(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, allClusters, len(clusterSet))
 		for i := range allClusters {
 			assert.Equal(t, allClusters[i], clusterSet[i])
 		}
 
 		allTasks, err := FindTasks(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, allTasks, len(taskSet))
 		for i := range allTasks {
 			assert.Equal(t, allTasks[i], taskSet[i])
 		}
 
 		allNodes, err := FindNodes(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, allNodes, len(nodeSet))
 		for i := range allNodes {
 			assert.Equal(t, allNodes[i], nodeSet[i])
 		}
 
 		allNetworks, err := FindNetworks(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, allNetworks, len(networkSet))
 		for i := range allNetworks {
 			assert.Equal(t, allNetworks[i], networkSet[i])
 		}
 
 		allServices, err := FindServices(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, allServices, len(serviceSet))
 		for i := range allServices {
 			assert.Equal(t, allServices[i], serviceSet[i])
 		}
 
 		allConfigs, err := FindConfigs(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, allConfigs, len(configSet))
 		for i := range allConfigs {
 			assert.Equal(t, allConfigs[i], configSet[i])
 		}
 
 		allSecrets, err := FindSecrets(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, allSecrets, len(secretSet))
 		for i := range allSecrets {
 			assert.Equal(t, allSecrets[i], secretSet[i])
 		}
 
 		allExtensions, err := FindExtensions(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, allExtensions, len(extensionSet))
 		for i := range allExtensions {
 			assert.Equal(t, allExtensions[i], extensionSet[i])
 		}
 
 		allResources, err := FindResources(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, allResources, len(resourceSet))
 		for i := range allResources {
 			assert.Equal(t, allResources[i], resourceSet[i])
 		}
 		allVolumes, err := FindVolumes(tx, All)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Len(t, allVolumes, len(volumeSet))
 		for i := range allVolumes {
 			assert.Equal(t, allVolumes[i], volumeSet[i])
@@ -1702,7 +1694,7 @@ waitForAllEvents:
 	}
 
 	assertHasSameIDs := func(changes []api.StoreObject, expected ...api.StoreObject) {
-		assert.Equal(t, len(expected), len(changes))
+		assert.Len(t, changes, len(expected))
 		expectedIDs := make(map[string]struct{})
 		for _, s := range expected {
 			expectedIDs[s.GetID()] = struct{}{}
@@ -1820,21 +1812,21 @@ func TestWatchFrom(t *testing.T) {
 			}
 
 			batch.Update(func(tx Tx) error {
-				assert.NoError(t, CreateNode(tx, node))
+				require.NoError(t, CreateNode(tx, node))
 				return nil
 			})
 			batch.Update(func(tx Tx) error {
-				assert.NoError(t, CreateService(tx, service))
+				require.NoError(t, CreateService(tx, service))
 				return nil
 			})
 			return nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// Try to watch from an invalid index
 	_, _, err := WatchFrom(s, &api.Version{Index: 5000})
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	watch1, cancel1, err := WatchFrom(s, &api.Version{Index: 10}, api.EventCreateNode{}, state.EventCommit{})
 	require.NoError(t, err)
@@ -1844,9 +1836,7 @@ func TestWatchFrom(t *testing.T) {
 		select {
 		case event := <-watch1:
 			nodeEvent, ok := event.(api.EventCreateNode)
-			if !ok {
-				t.Fatal("wrong event type - expected node create")
-			}
+			require.True(t, ok, "wrong event type - expected node create")
 
 			if i == 0 {
 				assert.Equal(t, "id3", nodeEvent.Node.ID)
@@ -1858,9 +1848,8 @@ func TestWatchFrom(t *testing.T) {
 		}
 		select {
 		case event := <-watch1:
-			if _, ok := event.(state.EventCommit); !ok {
-				t.Fatal("wrong event type - expected commit")
-			}
+			_, ok := event.(state.EventCommit)
+			require.True(t, ok, "wrong event type - expected commit")
 		case <-time.After(time.Second):
 			t.Fatal("timed out waiting for event")
 		}
@@ -1873,24 +1862,21 @@ func TestWatchFrom(t *testing.T) {
 	select {
 	case event := <-watch2:
 		serviceEvent, ok := event.(api.EventCreateService)
-		if !ok {
-			t.Fatal("wrong event type - expected service create")
-		}
+		require.True(t, ok, "wrong event type - expected service create")
 		assert.Equal(t, "id4", serviceEvent.Service.ID)
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for event")
 	}
 	select {
 	case event := <-watch2:
-		if _, ok := event.(state.EventCommit); !ok {
-			t.Fatal("wrong event type - expected commit")
-		}
+		_, ok := event.(state.EventCommit)
+		require.True(t, ok, "wrong event type - expected commit")
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for event")
 	}
 
 	// Create some new objects and make sure they show up in the watches.
-	assert.NoError(t, s.Update(func(tx Tx) error {
+	require.NoError(t, s.Update(func(tx Tx) error {
 		node := &api.Node{
 			ID: "newnode",
 			Spec: api.NodeSpec{
@@ -1909,26 +1895,23 @@ func TestWatchFrom(t *testing.T) {
 			},
 		}
 
-		assert.NoError(t, CreateNode(tx, node))
-		assert.NoError(t, CreateService(tx, service))
+		require.NoError(t, CreateNode(tx, node))
+		require.NoError(t, CreateService(tx, service))
 		return nil
 	}))
 
 	select {
 	case event := <-watch1:
 		nodeEvent, ok := event.(api.EventCreateNode)
-		if !ok {
-			t.Fatalf("wrong event type - expected node create, got %T", event)
-		}
+		require.Truef(t, ok, "wrong event type - expected node create, got %T", event)
 		assert.Equal(t, "newnode", nodeEvent.Node.ID)
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for event")
 	}
 	select {
 	case event := <-watch1:
-		if _, ok := event.(state.EventCommit); !ok {
-			t.Fatal("wrong event type - expected commit")
-		}
+		_, ok := event.(state.EventCommit)
+		require.True(t, ok, "wrong event type - expected commit")
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for event")
 	}
@@ -1936,23 +1919,20 @@ func TestWatchFrom(t *testing.T) {
 	select {
 	case event := <-watch2:
 		serviceEvent, ok := event.(api.EventCreateService)
-		if !ok {
-			t.Fatalf("wrong event type - expected service create, got %T", event)
-		}
+		require.Truef(t, ok, "wrong event type - expected service create, got %T", event)
 		assert.Equal(t, "newservice", serviceEvent.Service.ID)
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for event")
 	}
 	select {
 	case event := <-watch2:
-		if _, ok := event.(state.EventCommit); !ok {
-			t.Fatal("wrong event type - expected commit")
-		}
+		_, ok := event.(state.EventCommit)
+		require.True(t, ok, "wrong event type - expected commit")
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for event")
 	}
 
-	assert.NoError(t, s.Update(func(tx Tx) error {
+	require.NoError(t, s.Update(func(tx Tx) error {
 		node := &api.Node{
 			ID: "newnode2",
 			Spec: api.NodeSpec{
@@ -1962,34 +1942,30 @@ func TestWatchFrom(t *testing.T) {
 			},
 		}
 
-		assert.NoError(t, CreateNode(tx, node))
+		require.NoError(t, CreateNode(tx, node))
 		return nil
 	}))
 
 	select {
 	case event := <-watch1:
 		nodeEvent, ok := event.(api.EventCreateNode)
-		if !ok {
-			t.Fatalf("wrong event type - expected node create, got %T", event)
-		}
+		require.Truef(t, ok, "wrong event type - expected node create, got %T", event)
 		assert.Equal(t, "newnode2", nodeEvent.Node.ID)
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for event")
 	}
 	select {
 	case event := <-watch1:
-		if _, ok := event.(state.EventCommit); !ok {
-			t.Fatal("wrong event type - expected commit")
-		}
+		_, ok := event.(state.EventCommit)
+		require.True(t, ok, "wrong event type - expected commit")
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for event")
 	}
 
 	select {
 	case event := <-watch2:
-		if _, ok := event.(state.EventCommit); !ok {
-			t.Fatal("wrong event type - expected commit")
-		}
+		_, ok := event.(state.EventCommit)
+		require.True(t, ok, "wrong event type - expected commit")
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for event")
 	}

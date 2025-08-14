@@ -98,11 +98,11 @@ func TestTaskRestrictedSecretsProvider(t *testing.T) {
 		(secretsGetter.(*taskRestrictedSecretsProvider)).secretIDs = testCase.secretIDs
 		secret, err := secretsGetter.Get(testCase.secretIDToGet)
 		if testCase.expectedErr != "" {
-			assert.Error(t, err, testCase.desc)
+			require.Error(t, err, testCase.desc)
 			assert.Equal(t, testCase.expectedErr, err.Error(), testCase.desc)
 		} else {
 			t.Logf("secretIDs=%v", testCase.secretIDs)
-			assert.NoError(t, err, testCase.desc)
+			require.NoError(t, err, testCase.desc)
 			require.NotNil(t, secret, testCase.desc)
 			require.NotNil(t, secret.Spec, testCase.desc)
 			require.NotNil(t, secret.Spec.Data, testCase.desc)

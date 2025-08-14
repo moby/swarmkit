@@ -94,13 +94,12 @@ func TestAgentStartStop(t *testing.T) {
 	defer cancel()
 
 	assert.Equal(t, errAgentNotStarted, agent.Stop(ctx))
-	assert.NoError(t, agent.Start(ctx))
+	require.NoError(t, agent.Start(ctx))
 
-	if err := agent.Start(ctx); err != errAgentStarted {
-		t.Fatalf("expected agent started error: %v", err)
-	}
+	err = agent.Start(ctx)
+	require.Equalf(t, err, errAgentStarted, "expected agent started error: %v", err)
 
-	assert.NoError(t, agent.Stop(ctx))
+	require.NoError(t, agent.Stop(ctx))
 }
 
 func TestHandleSessionMessageNetworkManagerChanges(t *testing.T) {
@@ -429,9 +428,9 @@ func TestAgentExitsBasedOnSessionTracker(t *testing.T) {
 	}
 
 	establishedSessions, errCounter, closeClounter := tracker.Stats()
-	require.Equal(t, establishedSessions, 0)
-	require.Equal(t, errCounter, 3)
-	require.Equal(t, closeClounter, 3)
+	require.Equal(t, 0, establishedSessions)
+	require.Equal(t, 3, errCounter)
+	require.Equal(t, 3, closeClounter)
 	currSession, closedSessions := tester.dispatcher.GetSessions()
 	require.Nil(t, currSession)
 	require.Len(t, closedSessions, 3)
@@ -461,11 +460,11 @@ func TestAgentRegistersSessionsWithSessionTracker(t *testing.T) {
 		}
 		return nil
 	}, 3*time.Millisecond))
-	require.Equal(t, errCounter, 0)
-	require.Equal(t, closeCounter, 0)
+	require.Equal(t, 0, errCounter)
+	require.Equal(t, 0, closeCounter)
 	currSession, closedSessions := tester.dispatcher.GetSessions()
 	require.NotNil(t, currSession)
-	require.Len(t, closedSessions, 0)
+	require.Empty(t, closedSessions)
 }
 
 type agentTester struct {

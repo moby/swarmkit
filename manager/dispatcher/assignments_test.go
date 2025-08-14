@@ -104,7 +104,7 @@ func TestAssignVolume(t *testing.T) {
 	m := as.message()
 
 	// the Volume will not yet be assigned, because it is not ready.
-	assert.Len(t, m.Changes, 0)
+	assert.Empty(t, m.Changes)
 
 	var (
 		nv *api.Volume
@@ -138,8 +138,8 @@ func TestAssignVolume(t *testing.T) {
 	var foundSecret1, foundSecret2 bool
 	for _, change := range m.Changes {
 		if vol, ok := change.Assignment.Item.(*api.Assignment_Volume); ok {
-			assert.Equal(t, change.Action, api.AssignmentChange_AssignmentActionUpdate)
-			assert.Equal(t, vol.Volume, &api.VolumeAssignment{
+			assert.Equal(t, api.AssignmentChange_AssignmentActionUpdate, change.Action)
+			assert.Equal(t, &api.VolumeAssignment{
 				ID:       "volume1",
 				VolumeID: "volumeID1",
 				Driver: &api.Driver{
@@ -151,7 +151,7 @@ func TestAssignVolume(t *testing.T) {
 					{Key: "secretKey1", Secret: "secret1"},
 					{Key: "secretKey2", Secret: "secret2"},
 				},
-			})
+			}, vol.Volume)
 		} else {
 			secretAssignment := change.Assignment.Item.(*api.Assignment_Secret)
 			// we don't need to test correctness of the assignment content,
@@ -167,7 +167,7 @@ func TestAssignVolume(t *testing.T) {
 		}
 
 		// every one of these should be an Update change
-		assert.Equal(t, change.Action, api.AssignmentChange_AssignmentActionUpdate)
+		assert.Equal(t, api.AssignmentChange_AssignmentActionUpdate, change.Action)
 	}
 
 	assert.True(t, foundSecret1)
@@ -194,10 +194,10 @@ func TestAssignVolume(t *testing.T) {
 	m = as.message()
 	assert.Len(t, m.Changes, 1)
 
-	assert.Equal(t, m.Changes[0].Action, api.AssignmentChange_AssignmentActionRemove)
+	assert.Equal(t, api.AssignmentChange_AssignmentActionRemove, m.Changes[0].Action)
 	v, ok := m.Changes[0].Assignment.Item.(*api.Assignment_Volume)
 	assert.True(t, ok)
-	assert.Equal(t, v.Volume, &api.VolumeAssignment{
+	assert.Equal(t, &api.VolumeAssignment{
 		ID:       "volume1",
 		VolumeID: "volumeID1",
 		Driver: &api.Driver{
@@ -209,7 +209,7 @@ func TestAssignVolume(t *testing.T) {
 			{Key: "secretKey1", Secret: "secret1"},
 			{Key: "secretKey2", Secret: "secret2"},
 		},
-	})
+	}, v.Volume)
 
 	// now update the volume again, this time, to acknowledge its removal on
 	// the node.
@@ -234,7 +234,7 @@ func TestAssignVolume(t *testing.T) {
 	foundSecret2 = false
 
 	for _, change := range m.Changes {
-		assert.Equal(t, change.Action, api.AssignmentChange_AssignmentActionRemove)
+		assert.Equal(t, api.AssignmentChange_AssignmentActionRemove, change.Action)
 		s, ok := change.Assignment.Item.(*api.Assignment_Secret)
 		assert.True(t, ok)
 		switch s.Secret.ID {

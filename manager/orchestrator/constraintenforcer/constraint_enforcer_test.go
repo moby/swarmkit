@@ -129,16 +129,16 @@ func TestConstraintEnforcer(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		// Prepoulate nodes
 		for _, n := range nodes {
-			assert.NoError(t, store.CreateNode(tx, n))
+			require.NoError(t, store.CreateNode(tx, n))
 		}
 
 		// Prepopulate tasks
 		for _, task := range tasks {
-			assert.NoError(t, store.CreateTask(tx, task))
+			require.NoError(t, store.CreateTask(tx, task))
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
 	defer cancel()
@@ -156,14 +156,12 @@ func TestConstraintEnforcer(t *testing.T) {
 	// Change node id1 to a manager
 	err = s.Update(func(tx store.Tx) error {
 		node := store.GetNode(tx, "id1")
-		if node == nil {
-			t.Fatal("could not get node id1")
-		}
+		require.NotNil(t, node, "could not get node id1")
 		node.Role = api.NodeRoleManager
-		assert.NoError(t, store.UpdateNode(tx, node))
+		require.NoError(t, store.UpdateNode(tx, node))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// since we've changed the node from a worker to a manager, this task
 	// should now shut down
@@ -174,14 +172,12 @@ func TestConstraintEnforcer(t *testing.T) {
 	// Change resources on node id2
 	err = s.Update(func(tx store.Tx) error {
 		node := store.GetNode(tx, "id2")
-		if node == nil {
-			t.Fatal("could not get node id2")
-		}
+		require.NotNil(t, node, "could not get node id2")
 		node.Description.Resources.MemoryBytes = 5e8
-		assert.NoError(t, store.UpdateNode(tx, node))
+		require.NoError(t, store.UpdateNode(tx, node))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	shutdown3 := testutils.WatchTaskUpdate(t, watch)
 	assert.Equal(t, "id4", shutdown3.ID)

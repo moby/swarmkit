@@ -40,7 +40,7 @@ func (suite *testSuite) TestIPAMNotNil() {
 	}
 
 	// Try adding some objects to store before allocator is started
-	suite.NoError(s.Update(func(tx store.Tx) error {
+	suite.Require().NoError(s.Update(func(tx store.Tx) error {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress-nw-id",
@@ -51,13 +51,13 @@ func (suite *testSuite) TestIPAMNotNil() {
 				Ingress: true,
 			},
 		}
-		suite.NoError(store.CreateNetwork(tx, in))
+		suite.Require().NoError(store.CreateNetwork(tx, in))
 
 		// Create the predefined node-local network with one service
-		suite.NoError(store.CreateNetwork(tx, p))
+		suite.Require().NoError(store.CreateNetwork(tx, p))
 
 		// Create the the swarm level node-local network with one service
-		suite.NoError(store.CreateNetwork(tx, nln))
+		suite.Require().NoError(store.CreateNetwork(tx, nln))
 
 		return nil
 	}))

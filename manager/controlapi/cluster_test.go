@@ -55,7 +55,7 @@ func createClusterObj(id, name string, policy api.AcceptancePolicy, rootCA *ca.R
 
 func createCluster(t *testing.T, ts *testServer, id, name string, policy api.AcceptancePolicy, rootCA *ca.RootCA) *api.Cluster {
 	cluster := createClusterObj(id, name, policy, rootCA)
-	assert.NoError(t, ts.Store.Update(func(tx store.Tx) error {
+	require.NoError(t, ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateCluster(tx, cluster)
 	}))
 	return cluster
@@ -112,7 +112,7 @@ func TestValidateClusterSpec(t *testing.T) {
 		},
 	} {
 		err := validateClusterSpec(bad.spec)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, bad.c, grpcutils.ErrorCode(err))
 	}
 
@@ -120,7 +120,7 @@ func TestValidateClusterSpec(t *testing.T) {
 		createClusterSpec(store.DefaultClusterName),
 	} {
 		err := validateClusterSpec(good)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 }
@@ -129,16 +129,16 @@ func TestGetCluster(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 	_, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpcutils.ErrorCode(err))
 
 	_, err = ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: "invalid"})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpcutils.ErrorCode(err))
 
 	cluster := createCluster(t, ts, "name", "name", api.AcceptancePolicy{}, ts.Server.securityConfig.RootCA())
 	r, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: cluster.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cluster.Meta.Version = r.Cluster.Meta.Version
 	// Only public fields should be available
 	assert.Equal(t, cluster.ID, r.Cluster.ID)
@@ -155,17 +155,17 @@ func TestGetClusterWithSecret(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 	_, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpcutils.ErrorCode(err))
 
 	_, err = ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: "invalid"})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpcutils.ErrorCode(err))
 
 	policy := api.AcceptancePolicy{Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{{Secret: &api.AcceptancePolicy_RoleAdmissionPolicy_Secret{Data: []byte("secret")}}}}
 	cluster := createCluster(t, ts, "name", "name", policy, ts.Server.securityConfig.RootCA())
 	r, err := ts.Client.GetCluster(context.Background(), &api.GetClusterRequest{ClusterID: cluster.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cluster.Meta.Version = r.Cluster.Meta.Version
 	assert.NotEqual(t, cluster, r.Cluster)
 	assert.NotContains(t, r.Cluster.String(), "secret")
@@ -179,30 +179,30 @@ func TestUpdateCluster(t *testing.T) {
 	cluster := createCluster(t, ts, "name", store.DefaultClusterName, api.AcceptancePolicy{}, ts.Server.securityConfig.RootCA())
 
 	_, err := ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpcutils.ErrorCode(err))
 
 	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{ClusterID: "invalid", Spec: &cluster.Spec, ClusterVersion: &api.Version{}})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, grpcutils.ErrorCode(err))
 
 	// No update options.
 	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{ClusterID: cluster.ID, Spec: &cluster.Spec})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, grpcutils.ErrorCode(err))
 
 	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{ClusterID: cluster.ID, Spec: &cluster.Spec, ClusterVersion: &cluster.Meta.Version})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{
 		Filters: &api.ListClustersRequest_Filters{
 			NamePrefixes: []string{store.DefaultClusterName},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Clusters, 1)
 	assert.Equal(t, cluster.Spec.Annotations.Name, r.Clusters[0].Spec.Annotations.Name)
-	assert.Len(t, r.Clusters[0].Spec.AcceptancePolicy.Policies, 0)
+	assert.Empty(t, r.Clusters[0].Spec.AcceptancePolicy.Policies)
 
 	r.Clusters[0].Spec.AcceptancePolicy = api.AcceptancePolicy{Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{{Secret: &api.AcceptancePolicy_RoleAdmissionPolicy_Secret{Alg: "bcrypt", Data: []byte("secret")}}}}
 	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
@@ -210,14 +210,14 @@ func TestUpdateCluster(t *testing.T) {
 		Spec:           &r.Clusters[0].Spec,
 		ClusterVersion: &r.Clusters[0].Meta.Version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{
 		Filters: &api.ListClustersRequest_Filters{
 			NamePrefixes: []string{store.DefaultClusterName},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Clusters, 1)
 	assert.Equal(t, cluster.Spec.Annotations.Name, r.Clusters[0].Spec.Annotations.Name)
 	assert.Len(t, r.Clusters[0].Spec.AcceptancePolicy.Policies, 1)
@@ -228,13 +228,13 @@ func TestUpdateCluster(t *testing.T) {
 		Spec:           &r.Clusters[0].Spec,
 		ClusterVersion: &r.Clusters[0].Meta.Version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotContains(t, returnedCluster.String(), "secret")
 	assert.NotContains(t, returnedCluster.String(), "PRIVATE")
 	assert.NotNil(t, returnedCluster.Cluster.Spec.AcceptancePolicy.Policies[0].Secret.Data)
 
 	// Versioning.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	version := &returnedCluster.Cluster.Meta.Version
 
 	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
@@ -242,7 +242,7 @@ func TestUpdateCluster(t *testing.T) {
 		Spec:           &r.Clusters[0].Spec,
 		ClusterVersion: version,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Perform an update with the "old" version.
 	_, err = ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
@@ -250,7 +250,7 @@ func TestUpdateCluster(t *testing.T) {
 		Spec:           &r.Clusters[0].Spec,
 		ClusterVersion: version,
 	})
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestUpdateClusterRotateToken(t *testing.T) {
@@ -264,7 +264,7 @@ func TestUpdateClusterRotateToken(t *testing.T) {
 		},
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Clusters, 1)
 	workerToken := r.Clusters[0].RootCA.JoinTokens.Worker
 	managerToken := r.Clusters[0].RootCA.JoinTokens.Manager
@@ -278,14 +278,14 @@ func TestUpdateClusterRotateToken(t *testing.T) {
 			WorkerJoinToken: true,
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{
 		Filters: &api.ListClustersRequest_Filters{
 			NamePrefixes: []string{store.DefaultClusterName},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Clusters, 1)
 	assert.NotEqual(t, workerToken, r.Clusters[0].RootCA.JoinTokens.Worker)
 	assert.Equal(t, managerToken, r.Clusters[0].RootCA.JoinTokens.Manager)
@@ -300,14 +300,14 @@ func TestUpdateClusterRotateToken(t *testing.T) {
 			ManagerJoinToken: true,
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{
 		Filters: &api.ListClustersRequest_Filters{
 			NamePrefixes: []string{store.DefaultClusterName},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Clusters, 1)
 	assert.Equal(t, workerToken, r.Clusters[0].RootCA.JoinTokens.Worker)
 	assert.NotEqual(t, managerToken, r.Clusters[0].RootCA.JoinTokens.Manager)
@@ -323,14 +323,14 @@ func TestUpdateClusterRotateToken(t *testing.T) {
 			ManagerJoinToken: true,
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{
 		Filters: &api.ListClustersRequest_Filters{
 			NamePrefixes: []string{store.DefaultClusterName},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, r.Clusters, 1)
 	assert.NotEqual(t, workerToken, r.Clusters[0].RootCA.JoinTokens.Worker)
 	assert.NotEqual(t, managerToken, r.Clusters[0].RootCA.JoinTokens.Manager)
@@ -497,10 +497,10 @@ func TestUpdateClusterRootRotation(t *testing.T) {
 
 		// check that all keys are redacted, and that the spec signing cert is also redacted (not because
 		// the cert is a secret, but because that makes it easier to get-and-update)
-		require.Len(t, c.RootCA.CAKey, 0)
-		require.Len(t, c.RootCA.RootRotation.CAKey, 0)
-		require.Len(t, c.Spec.CAConfig.SigningCAKey, 0)
-		require.Len(t, c.Spec.CAConfig.SigningCACert, 0)
+		require.Empty(t, c.RootCA.CAKey)
+		require.Empty(t, c.RootCA.RootRotation.CAKey)
+		require.Empty(t, c.Spec.CAConfig.SigningCAKey)
+		require.Empty(t, c.Spec.CAConfig.SigningCACert)
 
 		return c
 	}
@@ -538,40 +538,40 @@ func TestListClusters(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 	r, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, r.Clusters)
 
 	createCluster(t, ts, "id1", "name1", api.AcceptancePolicy{}, ts.Server.securityConfig.RootCA())
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Clusters))
+	require.NoError(t, err)
+	assert.Len(t, r.Clusters, 1)
 
 	createCluster(t, ts, "id2", "name2", api.AcceptancePolicy{}, ts.Server.securityConfig.RootCA())
 	createCluster(t, ts, "id3", "name3", api.AcceptancePolicy{}, ts.Server.securityConfig.RootCA())
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
-	assert.NoError(t, err)
-	assert.Equal(t, 3, len(r.Clusters))
+	require.NoError(t, err)
+	assert.Len(t, r.Clusters, 3)
 }
 
 func TestListClustersWithSecrets(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 	r, err := ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, r.Clusters)
 
 	policy := api.AcceptancePolicy{Policies: []*api.AcceptancePolicy_RoleAdmissionPolicy{{Secret: &api.AcceptancePolicy_RoleAdmissionPolicy_Secret{Alg: "bcrypt", Data: []byte("secret")}}}}
 
 	createCluster(t, ts, "id1", "name1", policy, ts.Server.securityConfig.RootCA())
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(r.Clusters))
+	require.NoError(t, err)
+	assert.Len(t, r.Clusters, 1)
 
 	createCluster(t, ts, "id2", "name2", policy, ts.Server.securityConfig.RootCA())
 	createCluster(t, ts, "id3", "name3", policy, ts.Server.securityConfig.RootCA())
 	r, err = ts.Client.ListClusters(context.Background(), &api.ListClustersRequest{})
-	assert.NoError(t, err)
-	assert.Equal(t, 3, len(r.Clusters))
+	require.NoError(t, err)
+	assert.Len(t, r.Clusters, 3)
 	for _, cluster := range r.Clusters {
 		assert.NotContains(t, cluster.String(), policy.Policies[0].Secret)
 		assert.NotContains(t, cluster.String(), "PRIVATE")
