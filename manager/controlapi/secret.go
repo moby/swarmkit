@@ -3,6 +3,7 @@ package controlapi
 import (
 	"context"
 	"crypto/subtle"
+	"fmt"
 	"strings"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -158,6 +159,9 @@ func (s *Server) CreateSecret(ctx context.Context, request *api.CreateSecretRequ
 	}
 
 	if request.Spec.Driver != nil { // Check that the requested driver is valid
+		if s.dr == nil {
+			return nil, fmt.Errorf("plugin getter is nil")
+		}
 		if _, err := s.dr.NewSecretDriver(request.Spec.Driver); err != nil {
 			return nil, err
 		}

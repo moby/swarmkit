@@ -26,9 +26,9 @@ func (m *DriverProvider) NewSecretDriver(driver *api.Driver) (*SecretDriver, err
 		return nil, fmt.Errorf("driver specification is nil")
 	}
 	// Search for the specified plugin
-	plugin, err := m.pluginGetter.Get(driver.Name, SecretsProviderCapability)
+	p, err := m.pluginGetter.Get(driver.Name, SecretsProviderCapability)
 	if err != nil {
 		return nil, err
 	}
-	return NewSecretDriver(plugin), nil
+	return NewSecretDriver(p), nil
 }

@@ -230,6 +230,10 @@ func (s *Server) UpdateNode(ctx context.Context, request *api.UpdateNodeRequest)
 				return status.Errorf(codes.FailedPrecondition, "attempting to demote the last manager of the swarm")
 			}
 
+			if s.raft == nil {
+				return status.Errorf(codes.FailedPrecondition, "node %s is a manager but cannot access node information from the raft memberlist", request.NodeID)
+			}
+
 			// Check for node in memberlist
 			if member = s.raft.GetMemberByNodeID(request.NodeID); member == nil {
 				return status.Errorf(codes.NotFound, "can't find manager in raft memberlist")

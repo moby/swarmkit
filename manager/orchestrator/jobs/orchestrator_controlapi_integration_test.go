@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"github.com/moby/swarmkit/v2/ca"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -54,7 +55,11 @@ var _ = Describe("Integration between the controlapi and jobs orchestrator", fun
 		// but it's unexported. in any case, re-writing it in ginkgo isn't
 		// unwarranted.
 		s = store.NewMemoryStore(&stateutils.MockProposer{})
-		server = controlapi.NewServer(s, nil, nil, nil, nil, nil)
+		var err error
+		server, err = controlapi.New(
+			controlapi.WithMemoryStore(s),
+			controlapi.WithSecurityConfig(&ca.SecurityConfig{}),
+		)
 
 		// we need a temporary unix socket to server on
 		temp, err := os.CreateTemp("", "test-socket")
