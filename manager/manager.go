@@ -472,7 +472,8 @@ func (m *Manager) Run(parent context.Context) error {
 		return err
 	}
 
-	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode, m.config.SecurityConfig, m.config.networkProvider(), m, drivers.New(m.config.PluginGetter))
+	baseControlAPI := controlapi.NewServer(m.raftNode.MemoryStore(), m.raftNode, m.config.SecurityConfig, m.config.networkProvider(), drivers.New(m.config.PluginGetter))
+	baseControlAPI.NetworkHooks = m
 	baseResourceAPI := resourceapi.New(m.raftNode.MemoryStore())
 	healthServer := health.NewHealthServer()
 	localHealthServer := health.NewHealthServer()
