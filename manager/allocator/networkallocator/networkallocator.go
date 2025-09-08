@@ -98,12 +98,16 @@ type OnGetNetworker interface {
 	// response. The modified network object will not be persisted to the
 	// store. Errors returned will be bubbled up to the Control API client.
 	//
+	// The appdataTypeURL and appdata parameters are set to the TypeUrl and
+	// value, respectively, of the appdata field in the ListNetworks or
+	// GetNetwork Control API request.
+	//
 	// The network may not have been allocated at the time of the call.
 	// Calling OnGetNetwork with an unallocated network should not be an
 	// error.
 	//
 	// This method may be called concurrently from multiple goroutines.
-	OnGetNetwork(context.Context, *api.Network) error
+	OnGetNetwork(ctx context.Context, network *api.Network, appdataTypeURL string, appdata []byte) error
 }
 
 // Config is used to store network related cluster config in the Manager.
