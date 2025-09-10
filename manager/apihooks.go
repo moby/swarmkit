@@ -16,17 +16,17 @@ func (m *Manager) networkAllocator() networkallocator.NetworkAllocator {
 	return m.allocator.NetworkAllocator()
 }
 
-func (m *Manager) OnGetNetwork(ctx context.Context, n *api.Network) error {
+func (m *Manager) OnGetNetwork(ctx context.Context, n *api.Network, appdataTypeURL string, appdata []byte) error {
 	if nwh, ok := m.networkAllocator().(networkallocator.OnGetNetworker); ok {
-		return nwh.OnGetNetwork(ctx, n)
+		return nwh.OnGetNetwork(ctx, n, appdataTypeURL, appdata)
 	}
 	return nil
 }
 
-func (m *Manager) OnListNetworks(ctx context.Context, networks []*api.Network) error {
+func (m *Manager) OnListNetworks(ctx context.Context, networks []*api.Network, appdataTypeURL string, appdata []byte) error {
 	if nwh, ok := m.networkAllocator().(networkallocator.OnGetNetworker); ok {
 		for _, n := range networks {
-			if err := nwh.OnGetNetwork(ctx, n); err != nil {
+			if err := nwh.OnGetNetwork(ctx, n, appdataTypeURL, appdata); err != nil {
 				return err
 			}
 		}
