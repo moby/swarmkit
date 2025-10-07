@@ -464,14 +464,14 @@ func TestSecurityConfigUpdateRootCA(t *testing.T) {
 	require.Error(t, err)
 	err = <-actualErrChan
 	require.Error(t, err)
-	require.IsType(t, x509.UnknownAuthorityError{}, err)
+	require.ErrorAs(t, err, &x509.UnknownAuthorityError{})
 
 	_, actualErrChan, err = tlsGRPCDial(tc.Context, l.Addr().String(), tcConfig.ClientTLSCreds)
 	defer close(actualErrChan)
 	require.Error(t, err)
 	err = <-actualErrChan
 	require.Error(t, err)
-	require.IsType(t, x509.UnknownAuthorityError{}, err)
+	require.ErrorAs(t, err, &x509.UnknownAuthorityError{})
 
 	// update the root CA on the "original security config to support both the old root
 	// and the "new root" (the testing CA root).  Also make sure this root CA has an
@@ -640,7 +640,7 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 		default:
 			crossSigneds[i], err = cas[i-1].CrossSignCACertificate(certs[i])
 			require.NoError(t, err)
-			cas[i], err = ca.NewRootCA(certs[i-1], certs[i], keys[i], ca.DefaultNodeCertExpiration, crossSigneds[i])
+			cas[i], err = ca.NewRootCA(certs[i-1], crossSigneds[i], keys[i], ca.DefaultNodeCertExpiration, crossSigneds[i])
 			require.NoError(t, err)
 		}
 	}
@@ -652,7 +652,7 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 		CACert: certs[0],
 		CAKey:  keys[0],
 		RootRotation: &api.RootRotation{
-			CACert:            certs[1],
+			CACert:            crossSigneds[1],
 			CAKey:             keys[1],
 			CrossSignedCACert: crossSigneds[1],
 		},
