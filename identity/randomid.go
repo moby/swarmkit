@@ -45,7 +45,7 @@ func NewID() string {
 	var p [randomIDEntropyBytes]byte
 
 	if _, err := io.ReadFull(idReader, p[:]); err != nil {
-		panic(fmt.Errorf("failed to read random bytes: %v", err))
+		panic(fmt.Errorf("failed to read random bytes: %w", err))
 	}
 
 	p[0] |= 0x80 // set high bit to avoid the need for padding

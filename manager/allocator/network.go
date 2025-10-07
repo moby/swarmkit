@@ -2,6 +2,7 @@ package allocator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/protobuf/ptypes"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -92,8 +92,8 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 	// allocated, before reading all network objects for allocation.
 	// If not found, it means it was removed by user, nothing to do here.
 	ingressNetwork, err := GetIngressNetwork(a.store)
-	switch err {
-	case nil:
+	switch {
+	case err == nil:
 		// Try to complete ingress network allocation before anything else so
 		// that the we can get the preferred subnet for ingress network.
 		nc.ingressNetwork = ingressNetwork
@@ -109,11 +109,9 @@ func (a *Allocator) doNetworkInit(ctx context.Context) (err error) {
 				log.G(ctx).WithError(err).Error("failed committing allocation of ingress network during init")
 			}
 		}
-	case ErrNoIngress:
-		// Ingress network is not present in store, It means user removed it
-		// and did not create a new one.
+	case errors.Is(err, ErrNoIngress):
 	default:
-		return errors.Wrap(err, "failure while looking for ingress network during init")
+		return fmt.Errorf("failure while looking for ingress network during init: %w", err)
 	}
 
 	// First, allocate (read it as restore) objects likes network,nodes,serives
@@ -369,7 +367,7 @@ func (a *Allocator) getAllocatedNetworks() ([]*api.Network, error) {
 	})
 
 	if err != nil {
-		return nil, errors.Wrap(err, "error listing all networks in store while trying to allocate during init")
+		return nil, fmt.Errorf("error listing all networks in store while trying to allocate during init: %w", err)
 	}
 
 	for _, n := range networks {
@@ -457,13 +455,13 @@ func (a *Allocator) allocateNodes(ctx context.Context, existingAddressesOnly boo
 		nodes, err = store.FindNodes(tx, store.All)
 	})
 	if err != nil {
-		return errors.Wrap(err, "error listing all nodes in store while trying to allocate network resources")
+		return fmt.Errorf("error listing all nodes in store while trying to allocate network resources: %w", err)
 	}
 
 	for _, node := range nodes {
 		networks, err := a.getNodeNetworks(node.ID)
 		if err != nil {
-			return errors.Wrap(err, "error getting all networks needed by node")
+			return fmt.Errorf("error getting all networks needed by node: %w", err)
 		}
 		isAllocated := a.allocateNode(ctx, node, existingAddressesOnly, networks)
 		if isAllocated {
@@ -497,7 +495,7 @@ func (a *Allocator) deallocateNodes(ctx context.Context) error {
 		nodes, err = store.FindNodes(tx, store.All)
 	})
 	if err != nil {
-		return fmt.Errorf("error listing all nodes in store while trying to free network resources")
+		return errors.New("error listing all nodes in store while trying to free network resources")
 	}
 
 	for _, node := range nodes {
@@ -527,7 +525,7 @@ func (a *Allocator) deallocateNodeAttachments(ctx context.Context, nid string) e
 		nodes, err = store.FindNodes(tx, store.All)
 	})
 	if err != nil {
-		return fmt.Errorf("error listing all nodes in store while trying to free network resources")
+		return errors.New("error listing all nodes in store while trying to free network resources")
 	}
 
 	for _, node := range nodes {
@@ -601,7 +599,7 @@ func (a *Allocator) allocateNetworks(ctx context.Context, existingOnly bool) err
 		networks, err = store.FindNetworks(tx, store.All)
 	})
 	if err != nil {
-		return errors.Wrap(err, "error listing all networks in store while trying to allocate during init")
+		return fmt.Errorf("error listing all networks in store while trying to allocate during init: %w", err)
 	}
 
 	var allocatedNetworks []*api.Network
@@ -654,7 +652,7 @@ func (a *Allocator) allocateServices(ctx context.Context, existingAddressesOnly 
 		services, err = store.FindServices(tx, store.All)
 	})
 	if err != nil {
-		return errors.Wrap(err, "error listing all services in store while trying to allocate during init")
+		return fmt.Errorf("error listing all services in store while trying to allocate during init: %w", err)
 	}
 
 	var allocatedServices []*api.Service
@@ -720,7 +718,7 @@ func (a *Allocator) allocateTasks(ctx context.Context, existingAddressesOnly boo
 		tasks, err = store.FindTasks(tx, store.All)
 	})
 	if err != nil {
-		return errors.Wrap(err, "error listing all tasks in store while trying to allocate during init")
+		return fmt.Errorf("error listing all tasks in store while trying to allocate during init: %w", err)
 	}
 
 	logger := log.G(ctx).WithField("method", "(*Allocator).allocateTasks")
@@ -777,7 +775,7 @@ func (a *Allocator) allocateTasks(ctx context.Context, existingAddressesOnly boo
 		err := a.allocateTask(ctx, t)
 		if err == nil {
 			allocatedTasks = append(allocatedTasks, t)
-		} else if err != errNoChanges {
+		} else if !errors.Is(err, errNoChanges) {
 			logger.WithError(err).Errorf("failed allocating task %s during init", t.ID)
 			nc.unallocatedTasks[t.ID] = t
 		}
@@ -1084,19 +1082,19 @@ func (a *Allocator) reallocateNode(ctx context.Context, nodeID string) error {
 		node = store.GetNode(tx, nodeID)
 	})
 	if node == nil {
-		return errors.Errorf("node %v cannot be found", nodeID)
+		return fmt.Errorf("node %v cannot be found", nodeID)
 	}
 
 	networks, err := a.getNodeNetworks(node.ID)
 	if err != nil {
-		return errors.Wrapf(err, "error getting networks for node %v", nodeID)
+		return fmt.Errorf("error getting networks for node %v: %w", nodeID, err)
 	}
 	if a.allocateNode(ctx, node, false, networks) {
 		// if something was allocated, commit the node
 		if err := a.store.Batch(func(batch *store.Batch) error {
 			return a.commitAllocatedNode(ctx, batch, node)
 		}); err != nil {
-			return errors.Wrapf(err, "error committing allocation for node %v", nodeID)
+			return fmt.Errorf("error committing allocation for node %v: %w", nodeID, err)
 		}
 	}
 	return nil
@@ -1106,13 +1104,13 @@ func (a *Allocator) commitAllocatedNode(ctx context.Context, batch *store.Batch,
 	if err := batch.Update(func(tx store.Tx) error {
 		err := store.UpdateNode(tx, node)
 
-		if err == store.ErrSequenceConflict {
+		if errors.Is(err, store.ErrSequenceConflict) {
 			storeNode := store.GetNode(tx, node.ID)
 			storeNode.Attachments = node.Attachments
 			err = store.UpdateNode(tx, storeNode)
 		}
 
-		return errors.Wrapf(err, "failed updating state in store transaction for node %s", node.ID)
+		return fmt.Errorf("failed updating state in store transaction for node %s: %w", node.ID, err)
 	}); err != nil {
 		if err := a.deallocateNode(node); err != nil {
 			log.G(ctx).WithError(err).Errorf("failed rolling back allocation of node %s", node.ID)
@@ -1175,7 +1173,7 @@ func (a *Allocator) allocateService(ctx context.Context, s *api.Service, existin
 		// network only if it is not already done.
 		if IsIngressNetworkNeeded(s) {
 			if nc.ingressNetwork == nil {
-				return fmt.Errorf("ingress network is missing")
+				return errors.New("ingress network is missing")
 			}
 			var found bool
 			for _, vip := range s.Endpoint.VirtualIPs {
@@ -1248,13 +1246,13 @@ func (a *Allocator) commitAllocatedService(ctx context.Context, batch *store.Bat
 	if err := batch.Update(func(tx store.Tx) error {
 		err := store.UpdateService(tx, s)
 
-		if err == store.ErrSequenceConflict {
+		if errors.Is(err, store.ErrSequenceConflict) {
 			storeService := store.GetService(tx, s.ID)
 			storeService.Endpoint = s.Endpoint
 			err = store.UpdateService(tx, storeService)
 		}
 
-		return errors.Wrapf(err, "failed updating state in store transaction for service %s", s.ID)
+		return fmt.Errorf("failed updating state in store transaction for service %s: %w", s.ID, err)
 	}); err != nil {
 		if err := a.netCtx.deallocateService(s); err != nil {
 			log.G(ctx).WithError(err).Errorf("failed rolling back allocation of service %s", s.ID)
@@ -1280,7 +1278,7 @@ func (a *Allocator) allocateNetwork(ctx context.Context, n *api.Network) error {
 func (a *Allocator) commitAllocatedNetwork(ctx context.Context, batch *store.Batch, n *api.Network) error {
 	if err := batch.Update(func(tx store.Tx) error {
 		if err := store.UpdateNetwork(tx, n); err != nil {
-			return errors.Wrapf(err, "failed updating state in store transaction for network %s", n.ID)
+			return fmt.Errorf("failed updating state in store transaction for network %s: %w", n.ID, err)
 		}
 		return nil
 	}); err != nil {
@@ -1375,7 +1373,7 @@ func (a *Allocator) commitAllocatedTask(ctx context.Context, batch *store.Batch,
 	retError := batch.Update(func(tx store.Tx) error {
 		err := store.UpdateTask(tx, t)
 
-		if err == store.ErrSequenceConflict {
+		if errors.Is(err, store.ErrSequenceConflict) {
 			storeTask := store.GetTask(tx, t.ID)
 			taskUpdateNetworks(storeTask, t.Networks)
 			taskUpdateEndpoint(storeTask, t.Endpoint)
@@ -1385,7 +1383,7 @@ func (a *Allocator) commitAllocatedTask(ctx context.Context, batch *store.Batch,
 			err = store.UpdateTask(tx, storeTask)
 		}
 
-		return errors.Wrapf(err, "failed updating state in store transaction for task %s", t.ID)
+		return fmt.Errorf("failed updating state in store transaction for task %s: %w", t.ID, err)
 	})
 
 	if retError == nil {
@@ -1487,7 +1485,7 @@ func (a *Allocator) procTasksNetwork(ctx context.Context, onRetry bool) {
 
 		if err := a.allocateTask(ctx, t); err == nil {
 			allocatedTasks = append(allocatedTasks, t)
-		} else if err != errNoChanges {
+		} else if !errors.Is(err, errNoChanges) {
 			if quiet {
 				log.G(ctx).WithError(err).Debug("task allocation failure")
 			} else {

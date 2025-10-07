@@ -9,13 +9,14 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/state/store"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -97,7 +98,7 @@ func (k *KeyManager) allocateKey(ctx context.Context, subsys string) *api.Encryp
 
 	_, err := cryptorand.Read(key)
 	if err != nil {
-		panic(errors.Wrap(err, "key generated failed"))
+		panic(fmt.Errorf("key generated failed: %w", err))
 	}
 	k.keyRing.lClock++
 

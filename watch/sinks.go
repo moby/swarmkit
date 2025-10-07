@@ -1,14 +1,14 @@
 package watch
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	events "github.com/docker/go-events"
 )
 
 // ErrSinkTimeout is returned from the Write method when a sink times out.
-var ErrSinkTimeout = fmt.Errorf("timeout exceeded, tearing down sink")
+var ErrSinkTimeout = errors.New("timeout exceeded, tearing down sink")
 
 // timeoutSink is a sink that wraps another sink with a timeout. If the
 // embedded sink fails to complete a Write operation within the specified
@@ -52,7 +52,7 @@ type dropErrClosed struct {
 
 func (s dropErrClosed) Write(event events.Event) error {
 	err := s.sink.Write(event)
-	if err == events.ErrSinkClosed {
+	if errors.Is(err, events.ErrSinkClosed) {
 		return nil
 	}
 	return err

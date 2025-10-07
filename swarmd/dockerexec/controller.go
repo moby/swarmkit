@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -16,7 +17,6 @@ import (
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	gogotypes "github.com/gogo/protobuf/types"
-	"github.com/pkg/errors"
 	"golang.org/x/time/rate"
 
 	"github.com/moby/swarmkit/v2/agent/exec"
@@ -181,7 +181,7 @@ func (r *controller) Start(ctx context.Context) error {
 	}
 
 	if err := r.adapter.start(ctx); err != nil {
-		return errors.Wrap(err, "starting container failed")
+		return fmt.Errorf("starting container failed: %w", err)
 	}
 
 	// no health check
@@ -219,7 +219,7 @@ func (r *controller) Start(ctx context.Context) error {
 			case "die": // exit on terminal events
 				ctnr, err := r.adapter.inspect(ctx)
 				if err != nil {
-					return errors.Wrap(err, "die event received")
+					return fmt.Errorf("die event received: %w", err)
 				}
 
 				return makeExitError(ctnr)
@@ -232,7 +232,7 @@ func (r *controller) Start(ctx context.Context) error {
 				// in this case, we stop the container and report unhealthy status
 				// TODO(runshenzhu): double check if it can cause a dead lock issue here
 				if err := r.Shutdown(ctx); err != nil {
-					return errors.Wrap(err, "unhealthy container shutdown failed")
+					return fmt.Errorf("unhealthy container shutdown failed: %w", err)
 				}
 				return ErrContainerUnhealthy
 
@@ -262,7 +262,7 @@ func (r *controller) Wait(ctx context.Context) error {
 	// check the initial state and report that.
 	ctnr, err := r.adapter.inspect(ctx)
 	if err != nil {
-		return errors.Wrap(err, "inspecting container failed")
+		return fmt.Errorf("inspecting container failed: %w", err)
 	}
 
 	switch ctnr.State.Status {
@@ -291,7 +291,7 @@ func (r *controller) Wait(ctx context.Context) error {
 			case "die": // exit on terminal events
 				ctnr, err := r.adapter.inspect(ctx)
 				if err != nil {
-					return errors.Wrap(err, "die event received")
+					return fmt.Errorf("die event received: %w", err)
 				}
 
 				return makeExitError(ctnr)
@@ -304,7 +304,7 @@ func (r *controller) Wait(ctx context.Context) error {
 				// in this case, we stop the container and report unhealthy status
 				// TODO(runshenzhu): double check if it can cause a dead lock issue here
 				if err := r.Shutdown(ctx); err != nil {
-					return errors.Wrap(err, "unhealthy container shutdown failed")
+					return fmt.Errorf("unhealthy container shutdown failed: %w", err)
 				}
 				return ErrContainerUnhealthy
 			}
@@ -423,7 +423,7 @@ func (r *controller) waitReady(pctx context.Context) error {
 	ctnr, err := r.adapter.inspect(ctx)
 	if err != nil {
 		if !isUnknownContainer(err) {
-			return errors.Wrap(err, "inspect container failed")
+			return fmt.Errorf("inspect container failed: %w", err)
 		}
 	} else {
 		switch ctnr.State.Status {
@@ -463,12 +463,12 @@ func (r *controller) Logs(ctx context.Context, publisher exec.LogPublisher, opti
 	}
 
 	if err := r.waitReady(ctx); err != nil {
-		return errors.Wrap(err, "container not ready for logs")
+		return fmt.Errorf("container not ready for logs: %w", err)
 	}
 
 	rc, err := r.adapter.logs(ctx, options)
 	if err != nil {
-		return errors.Wrap(err, "failed getting container logs")
+		return fmt.Errorf("failed getting container logs: %w", err)
 	}
 	defer rc.Close()
 
@@ -488,24 +488,24 @@ func (r *controller) Logs(ctx context.Context, publisher exec.LogPublisher, opti
 		// so, message header is 8 bytes, treat as uint64, pull stream off MSB
 		var header uint64
 		if err := binary.Read(brd, binary.BigEndian, &header); err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				return nil
 			}
 
-			return errors.Wrap(err, "failed reading log header")
+			return fmt.Errorf("failed reading log header: %w", err)
 		}
 
 		stream, size := (header>>(7<<3))&0xFF, header & ^(uint64(0xFF)<<(7<<3))
 
 		// limit here to decrease allocation back pressure.
 		if err := limiter.WaitN(ctx, int(size)); err != nil {
-			return errors.Wrap(err, "failed rate limiter")
+			return fmt.Errorf("failed rate limiter: %w", err)
 		}
 
 		buf := make([]byte, size)
 		_, err := io.ReadFull(brd, buf)
 		if err != nil {
-			return errors.Wrap(err, "failed reading buffer")
+			return fmt.Errorf("failed reading buffer: %w", err)
 		}
 
 		// Timestamp is RFC3339Nano with 1 space after. Lop, parse, publish
@@ -516,12 +516,12 @@ func (r *controller) Logs(ctx context.Context, publisher exec.LogPublisher, opti
 
 		ts, err := time.Parse(time.RFC3339Nano, string(parts[0]))
 		if err != nil {
-			return errors.Wrap(err, "failed to parse timestamp")
+			return fmt.Errorf("failed to parse timestamp: %w", err)
 		}
 
 		tsp, err := gogotypes.TimestampProto(ts)
 		if err != nil {
-			return errors.Wrap(err, "failed to convert timestamp")
+			return fmt.Errorf("failed to convert timestamp: %w", err)
 		}
 
 		if err := publisher.Publish(ctx, api.LogMessage{
@@ -531,7 +531,7 @@ func (r *controller) Logs(ctx context.Context, publisher exec.LogPublisher, opti
 
 			Data: parts[1],
 		}); err != nil {
-			return errors.Wrap(err, "failed to publish log message")
+			return fmt.Errorf("failed to publish log message: %w", err)
 		}
 	}
 }

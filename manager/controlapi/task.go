@@ -2,6 +2,7 @@ package controlapi
 
 import (
 	"context"
+	"errors"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/naming"
@@ -44,7 +45,7 @@ func (s *Server) RemoveTask(ctx context.Context, request *api.RemoveTaskRequest)
 		return store.DeleteTask(tx, request.TaskID)
 	})
 	if err != nil {
-		if err == store.ErrNotExist {
+		if errors.Is(err, store.ErrNotExist) {
 			return nil, status.Errorf(codes.NotFound, "task %s not found", request.TaskID)
 		}
 		return nil, err

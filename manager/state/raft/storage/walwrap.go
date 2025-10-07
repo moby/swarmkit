@@ -2,6 +2,8 @@ package storage
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,7 +12,6 @@ import (
 
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/encryption"
-	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
@@ -164,14 +165,15 @@ func ReadRepairWAL(
 	repaired := false
 	for {
 		if reader, err = factory.Open(walDir, walsnap); err != nil {
-			return nil, WALData{}, errors.Wrap(err, "failed to open WAL")
+			return nil, WALData{}, fmt.Errorf("failed to open WAL: %w", err)
 		}
 		if metadata, st, ents, err = reader.ReadAll(); err != nil {
 			if closeErr := reader.Close(); closeErr != nil {
 				return nil, WALData{}, closeErr
 			}
-			if _, ok := err.(encryption.ErrCannotDecrypt); ok {
-				return nil, WALData{}, errors.Wrap(err, "failed to decrypt WAL")
+			var errCannotDecrypt encryption.ErrCannotDecrypt
+			if errors.As(err, &errCannotDecrypt) {
+				return nil, WALData{}, fmt.Errorf("failed to decrypt WAL: %w", err)
 			}
 			// we can only repair ErrUnexpectedEOF and we never repair twice.
 			if repaired || !errors.Is(err, io.ErrUnexpectedEOF) {
@@ -179,10 +181,10 @@ func ReadRepairWAL(
 				// some (last) of the files cannot be recovered? ("best effort" recovery?)
 				// Or should an informative error be produced to help the user (which could
 				// mean: remove the last file?). See TestReadRepairWAL for more details.
-				return nil, WALData{}, errors.Wrap(err, "irreparable WAL error")
+				return nil, WALData{}, fmt.Errorf("irreparable WAL error: %w", err)
 			}
 			if !wal.Repair(nil, walDir) {
-				return nil, WALData{}, errors.Wrap(err, "WAL error cannot be repaired")
+				return nil, WALData{}, fmt.Errorf("WAL error cannot be repaired: %w", err)
 			}
 			log.G(ctx).WithError(err).Info("repaired WAL error")
 			repaired = true
@@ -207,28 +209,28 @@ func MigrateWALs(ctx context.Context, oldDir, newDir string, oldFactory, newFact
 	oldReader.Close()
 
 	if err := os.MkdirAll(filepath.Dir(newDir), 0o700); err != nil {
-		return errors.Wrap(err, "could not create parent directory")
+		return fmt.Errorf("could not create parent directory: %w", err)
 	}
 
 	// keep temporary wal directory so WAL initialization appears atomic
 	tmpdirpath := filepath.Clean(newDir) + ".tmp"
 	if err := os.RemoveAll(tmpdirpath); err != nil {
-		return errors.Wrap(err, "could not remove temporary WAL directory")
+		return fmt.Errorf("could not remove temporary WAL directory: %w", err)
 	}
 	defer os.RemoveAll(tmpdirpath)
 
 	tmpWAL, err := newFactory.Create(tmpdirpath, waldata.Metadata)
 	if err != nil {
-		return errors.Wrap(err, "could not create new WAL in temporary WAL directory")
+		return fmt.Errorf("could not create new WAL in temporary WAL directory: %w", err)
 	}
 	defer tmpWAL.Close()
 
 	if err := tmpWAL.SaveSnapshot(snapshot); err != nil {
-		return errors.Wrap(err, "could not write WAL snapshot in temporary directory")
+		return fmt.Errorf("could not write WAL snapshot in temporary directory: %w", err)
 	}
 
 	if err := tmpWAL.Save(waldata.HardState, waldata.Entries); err != nil {
-		return errors.Wrap(err, "could not migrate WALs to temporary directory")
+		return fmt.Errorf("could not migrate WALs to temporary directory: %w", err)
 	}
 	if err := tmpWAL.Close(); err != nil {
 		return err

@@ -5,6 +5,8 @@ import (
 	"context"
 	"crypto/subtle"
 	"crypto/x509"
+	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -14,7 +16,6 @@ import (
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/state/store"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -332,7 +333,7 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 			}).Debugf("new certificate entry added")
 			break
 		}
-		if err != store.ErrExist {
+		if !errors.Is(err, store.ErrExist) {
 			return nil, err
 		}
 		if i == maxRetries {
@@ -695,7 +696,7 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster, reconci
 		// Attempt to update our local RootCA with the new parameters
 		updatedRootCA, err := RootCAFromAPI(rCA, expiry)
 		if err != nil {
-			return errors.Wrap(err, "invalid Root CA object in cluster")
+			return fmt.Errorf("invalid Root CA object in cluster: %w", err)
 		}
 
 		s.localRootCA = &updatedRootCA
@@ -791,7 +792,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
 
 	// Try using the external CA first.
 	cert, err := externalCA.Sign(ctx, PrepareCSR(rawCSR, cn, ou, org))
-	if err == ErrNoExternalCAURLs {
+	if errors.Is(err, ErrNoExternalCAURLs) {
 		// No external CA servers configured. Try using the local CA.
 		cert, err = rootCA.ParseValidateAndSignCSR(rawCSR, cn, ou, org)
 	}
@@ -808,7 +809,8 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
 			return errors.New("failed to sign CSR")
 		}
 
-		if _, ok := err.(recoverableErr); ok {
+		var recoverableErr recoverableErr
+		if errors.As(err, &recoverableErr) {
 			// Return without changing the state of the certificate. We may
 			// retry signing it in the future.
 			return errors.New("failed to sign CSR")
@@ -818,7 +820,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
 		err = s.store.Update(func(tx store.Tx) error {
 			node := store.GetNode(tx, nodeID)
 			if node == nil {
-				return errors.Errorf("node %s not found", nodeID)
+				return fmt.Errorf("node %s not found", nodeID)
 			}
 
 			node.Certificate.Status = api.IssuanceStatus{
@@ -851,7 +853,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
 			if err != nil {
 				node = store.GetNode(tx, nodeID)
 				if node == nil {
-					err = errors.Errorf("node %s does not exist", nodeID)
+					err = fmt.Errorf("node %s does not exist", nodeID)
 				}
 			}
 			return err
@@ -865,7 +867,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
 			delete(s.pending, node.ID)
 			break
 		}
-		if err == store.ErrSequenceConflict {
+		if errors.Is(err, store.ErrSequenceConflict) {
 			continue
 		}
 

@@ -1,13 +1,14 @@
 package storage
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/moby/swarmkit/v2/manager/encryption"
-	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 )
@@ -107,10 +108,10 @@ func MigrateSnapshot(oldDir, newDir string, oldFactory, newFactory SnapFactory) 
 	// use temporary snapshot directory so initialization appears atomic
 	oldSnapshotter := oldFactory.New(oldDir)
 	snapshot, err := oldSnapshotter.Load()
-	switch err {
-	case snap.ErrNoSnapshot: // if there's no snapshot, the migration succeeded
+	switch {
+	case errors.Is(err, snap.ErrNoSnapshot): // if there's no snapshot, the migration succeeded
 		return nil
-	case nil:
+	case err == nil:
 		break
 	default:
 		return err
@@ -118,10 +119,10 @@ func MigrateSnapshot(oldDir, newDir string, oldFactory, newFactory SnapFactory) 
 
 	tmpdirpath := filepath.Clean(newDir) + ".tmp"
 	if err := os.RemoveAll(tmpdirpath); err != nil {
-		return errors.Wrap(err, "could not remove temporary snapshot directory")
+		return fmt.Errorf("could not remove temporary snapshot directory: %w", err)
 	}
 	if err := os.MkdirAll(tmpdirpath, 0o700); err != nil {
-		return errors.Wrap(err, "could not create temporary snapshot directory")
+		return fmt.Errorf("could not create temporary snapshot directory: %w", err)
 	}
 	tmpSnapshotter := newFactory.New(tmpdirpath)
 

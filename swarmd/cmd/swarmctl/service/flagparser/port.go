@@ -1,11 +1,12 @@
 package flagparser
 
 import (
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 )
 
@@ -55,7 +56,7 @@ func parsePortConfig(portConfig string) (string, api.PortConfig_Protocol, uint32
 	portSpec := parts[1]
 	protocol, port, err := parsePortSpec(portSpec)
 	if err != nil {
-		return "", protocol, 0, 0, errors.Wrap(err, "failed to parse port")
+		return "", protocol, 0, 0, fmt.Errorf("failed to parse port: %w", err)
 	}
 
 	if len(parts) > 2 {
@@ -64,7 +65,7 @@ func parsePortConfig(portConfig string) (string, api.PortConfig_Protocol, uint32
 		portSpec := parts[2]
 		nodeProtocol, swarmPort, err := parsePortSpec(portSpec)
 		if err != nil {
-			return "", protocol, 0, 0, errors.Wrap(err, "failed to parse node port")
+			return "", protocol, 0, 0, fmt.Errorf("failed to parse node port: %w", err)
 		}
 
 		if nodeProtocol != protocol {
@@ -89,7 +90,7 @@ func parsePortSpec(portSpec string) (api.PortConfig_Protocol, uint32, error) {
 		proto := parts[1]
 		protocol, ok := api.PortConfig_Protocol_value[strings.ToUpper(proto)]
 		if !ok {
-			return 0, 0, errors.Errorf("invalid protocol string: %s", proto)
+			return 0, 0, fmt.Errorf("invalid protocol string: %s", proto)
 		}
 
 		return api.PortConfig_Protocol(protocol), uint32(port), nil

@@ -1,11 +1,12 @@
 package store
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	memdb "github.com/hashicorp/go-memdb"
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/pkg/errors"
 )
 
 const tableResource = "resource"
@@ -92,7 +93,7 @@ func confirmExtension(tx Tx, r *api.Resource) error {
 	// There must be an extension corresponding to the Kind field.
 	extensions, err := FindExtensions(tx, ByName(r.Kind))
 	if err != nil {
-		return errors.Wrap(err, "failed to query extensions")
+		return fmt.Errorf("failed to query extensions: %w", err)
 	}
 	if len(extensions) == 0 {
 		return ErrNoKind

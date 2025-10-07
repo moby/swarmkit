@@ -9,6 +9,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -19,7 +21,6 @@ import (
 	"github.com/cloudflare/cfssl/csr"
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/moby/swarmkit/v2/log"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context/ctxhttp"
 )
 
@@ -114,7 +115,7 @@ func (eca *ExternalCA) Sign(ctx context.Context, req signer.SignRequest) (cert [
 
 	csrJSON, err := json.Marshal(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to JSON-encode CFSSL signing request")
+		return nil, fmt.Errorf("unable to JSON-encode CFSSL signing request: %w", err)
 	}
 
 	// Try each configured proxy URL. Return after the first success. If
@@ -186,29 +187,29 @@ func (eca *ExternalCA) CrossSignRootCA(ctx context.Context, rca RootCA) ([]byte,
 func makeExternalSignRequest(ctx context.Context, client *http.Client, url string, csrJSON []byte) (cert []byte, err error) {
 	resp, err := ctxhttp.Post(ctx, client, url, "application/json", bytes.NewReader(csrJSON))
 	if err != nil {
-		return nil, recoverableErr{err: errors.Wrap(err, "unable to perform certificate signing request")}
+		return nil, recoverableErr{err: fmt.Errorf("unable to perform certificate signing request: %w", err)}
 	}
 	defer resp.Body.Close()
 
 	b := io.LimitReader(resp.Body, CertificateMaxSize)
 	body, err := io.ReadAll(b)
 	if err != nil {
-		return nil, recoverableErr{err: errors.Wrap(err, "unable to read CSR response body")}
+		return nil, recoverableErr{err: fmt.Errorf("unable to read CSR response body: %w", err)}
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, recoverableErr{err: errors.Errorf("unexpected status code in CSR response: %d - %s", resp.StatusCode, string(body))}
+		return nil, recoverableErr{err: fmt.Errorf("unexpected status code in CSR response: %d - %s", resp.StatusCode, string(body))}
 	}
 
 	var apiResponse api.Response
 	if err := json.Unmarshal(body, &apiResponse); err != nil {
 		log.G(ctx).Debugf("unable to JSON-parse CFSSL API response body: %s", string(body))
-		return nil, recoverableErr{err: errors.Wrap(err, "unable to parse JSON response")}
+		return nil, recoverableErr{err: fmt.Errorf("unable to parse JSON response: %w", err)}
 	}
 
 	if !apiResponse.Success || apiResponse.Result == nil {
 		if len(apiResponse.Errors) > 0 {
-			return nil, errors.Errorf("response errors: %v", apiResponse.Errors)
+			return nil, fmt.Errorf("response errors: %v", apiResponse.Errors)
 		}
 
 		return nil, errors.New("certificate signing request failed")
@@ -216,12 +217,12 @@ func makeExternalSignRequest(ctx context.Context, client *http.Client, url strin
 
 	result, ok := apiResponse.Result.(map[string]interface{})
 	if !ok {
-		return nil, errors.Errorf("invalid result type: %T", apiResponse.Result)
+		return nil, fmt.Errorf("invalid result type: %T", apiResponse.Result)
 	}
 
 	certPEM, ok := result["certificate"].(string)
 	if !ok {
-		return nil, errors.Errorf("invalid result certificate field type: %T", result["certificate"])
+		return nil, fmt.Errorf("invalid result certificate field type: %T", result["certificate"])
 	}
 
 	return []byte(certPEM), nil

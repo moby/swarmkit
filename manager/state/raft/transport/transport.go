@@ -4,6 +4,8 @@ package transport
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"math"
 	"net"
 	"sync"
@@ -14,7 +16,6 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"github.com/moby/swarmkit/v2/log"
-	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
@@ -129,7 +130,7 @@ func (t *Transport) Send(m raftpb.Message) error {
 		return errors.New("transport stopped")
 	}
 	if t.config.IsIDRemoved(m.To) {
-		return errors.Errorf("refusing to send message %s to removed member %x", m.Type, m.To)
+		return fmt.Errorf("refusing to send message %s to removed member %x", m.Type, m.To)
 	}
 	p, ok := t.peers[m.To]
 	if !ok {
@@ -146,7 +147,7 @@ func (t *Transport) Send(m raftpb.Message) error {
 		return nil
 	}
 	if err := p.send(m); err != nil {
-		return errors.Wrapf(err, "failed to send message %x to %x", m.Type, m.To)
+		return fmt.Errorf("failed to send message %x to %x: %w", m.Type, m.To, err)
 	}
 	return nil
 }
@@ -164,12 +165,12 @@ func (t *Transport) AddPeer(id uint64, addr string) error {
 		if ep.address() == addr {
 			return nil
 		}
-		return errors.Errorf("peer %x already added with addr %s", id, ep.addr)
+		return fmt.Errorf("peer %x already added with addr %s", id, ep.addr)
 	}
 	log.G(t.ctx).Debugf("transport: add peer %x with address %s", id, addr)
 	p, err := newPeer(id, addr, t)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create peer %x with addr %s", id, addr)
+		return fmt.Errorf("failed to create peer %x with addr %s: %w", id, addr, err)
 	}
 	t.peers[id] = p
 	return nil
@@ -402,11 +403,11 @@ func (t *Transport) resolvePeer(ctx context.Context, id uint64) (*peer, error) {
 func (t *Transport) sendUnknownMessage(ctx context.Context, m raftpb.Message) error {
 	p, err := t.resolvePeer(ctx, m.To)
 	if err != nil {
-		return errors.Wrapf(err, "failed to resolve peer")
+		return fmt.Errorf("failed to resolve peer: %w", err)
 	}
 	defer p.cancel()
 	if err := p.sendProcessMessage(ctx, m); err != nil {
-		return errors.Wrapf(err, "failed to send message")
+		return fmt.Errorf("failed to send message: %w", err)
 	}
 	return nil
 }

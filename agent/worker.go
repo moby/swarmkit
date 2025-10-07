@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/moby/swarmkit/v2/agent/exec"
@@ -239,7 +240,7 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 		}
 
 		if mgr, ok := w.taskManagers[task.ID]; ok {
-			if err := mgr.Update(ctx, task); err != nil && err != ErrClosed {
+			if err := mgr.Update(ctx, task); err != nil && !errors.Is(err, ErrClosed) {
 				log.G(ctx).WithError(err).Error("failed updating assigned task")
 			}
 		} else {
@@ -247,7 +248,7 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 			// storage and replace it with our status, if we have it.
 			status, err := GetTaskStatus(tx, task.ID)
 			if err != nil {
-				if err != errTaskUnknown {
+				if !errors.Is(err, errTaskUnknown) {
 					return err
 				}
 
@@ -569,7 +570,7 @@ func (w *worker) updateTaskStatus(ctx context.Context, tx *bolt.Tx, taskID strin
 		// dance of too-tightly-coupled concurrent parts, fixing tht race is
 		// fraught with hazards. instead, we'll recognize that it can occur,
 		// log the error, and then ignore it.
-		if err == errTaskUnknown {
+		if errors.Is(err, errTaskUnknown) {
 			// log at info level. debug logging in docker is already really
 			// verbose, so many people disable it. the race that causes this
 			// behavior should be very rare, but if it occurs, we should know

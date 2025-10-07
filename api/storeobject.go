@@ -75,7 +75,7 @@ func customIndexer(kind string, annotations *Annotations) (bool, [][]byte, error
 
 func fromArgs(args ...interface{}) ([]byte, error) {
 	if len(args) != 1 {
-		return nil, fmt.Errorf("must provide only a single argument")
+		return nil, errors.New("must provide only a single argument")
 	}
 	arg, ok := args[0].(string)
 	if !ok {

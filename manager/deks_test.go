@@ -10,7 +10,6 @@ import (
 	"github.com/moby/swarmkit/v2/ca"
 	cautils "github.com/moby/swarmkit/v2/ca/testutils"
 	"github.com/moby/swarmkit/v2/manager/state/raft"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -512,12 +511,14 @@ O0T3aXuZGYNyh//KqAoA3erCmh6HauMz84Y=
 
 	krw := ca.NewKeyReadWriter(path.Node, wrongKEK, RaftDEKData{})
 	_, _, err = krw.Read()
-	require.IsType(t, ca.ErrInvalidKEK{}, errors.Cause(err))
+	var eik1 ca.ErrInvalidKEK
+	require.ErrorAs(t, err, &eik1)
 
 	krw = ca.NewKeyReadWriter(path.Node, falsePositiveKEK, RaftDEKData{})
 	_, _, err = krw.Read()
 	require.Error(t, err)
-	require.IsType(t, ca.ErrInvalidKEK{}, errors.Cause(err))
+	var eik2 ca.ErrInvalidKEK
+	require.ErrorAs(t, err, &eik2)
 
 	krw = ca.NewKeyReadWriter(path.Node, realKEK, RaftDEKData{})
 	_, _, err = krw.Read()

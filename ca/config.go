@@ -5,6 +5,7 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"math/big"
 	"math/rand"
@@ -17,7 +18,6 @@ import (
 	cfconfig "github.com/cloudflare/cfssl/config"
 	events "github.com/docker/go-events"
 	"github.com/opencontainers/go-digest"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc/credentials"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -185,7 +185,7 @@ func validateRootCAAndTLSCert(rootCA *RootCA, tlsKeyPair *tls.Certificate) error
 	for i, derBytes := range tlsKeyPair.Certificate {
 		parsed, err := x509.ParseCertificate(derBytes)
 		if err != nil {
-			return errors.Wrap(err, "could not validate new root certificates due to parse error")
+			return fmt.Errorf("could not validate new root certificates due to parse error: %w", err)
 		}
 		if i == 0 {
 			leafCert = parsed
@@ -201,7 +201,7 @@ func validateRootCAAndTLSCert(rootCA *RootCA, tlsKeyPair *tls.Certificate) error
 		Intermediates: intermediatePool,
 	}
 	if _, err := leafCert.Verify(opts); err != nil {
-		return errors.Wrap(err, "new root CA does not match existing TLS credentials")
+		return fmt.Errorf("new root CA does not match existing TLS credentials: %w", err)
 	}
 	return nil
 }
@@ -285,20 +285,20 @@ func (s *SecurityConfig) updateTLSCredentials(certificate *tls.Certificate, issu
 	certs := []tls.Certificate{*certificate}
 	clientConfig, err := NewClientTLSConfig(certs, s.rootCA.Pool, ManagerRole)
 	if err != nil {
-		return errors.Wrap(err, "failed to create a new client config using the new root CA")
+		return fmt.Errorf("failed to create a new client config using the new root CA: %w", err)
 	}
 
 	serverConfig, err := NewServerTLSConfig(certs, s.rootCA.Pool)
 	if err != nil {
-		return errors.Wrap(err, "failed to create a new server config using the new root CA")
+		return fmt.Errorf("failed to create a new server config using the new root CA: %w", err)
 	}
 
 	if err := s.ClientTLSCreds.loadNewTLSConfig(clientConfig); err != nil {
-		return errors.Wrap(err, "failed to update the client credentials")
+		return fmt.Errorf("failed to update the client credentials: %w", err)
 	}
 
 	if err := s.ServerTLSCreds.loadNewTLSConfig(serverConfig); err != nil {
-		return errors.Wrap(err, "failed to update the server TLS credentials")
+		return fmt.Errorf("failed to update the server TLS credentials: %w", err)
 	}
 
 	s.certificate = certificate
@@ -376,7 +376,7 @@ func GenerateJoinToken(rootCA *RootCA, fips bool) string {
 	var secretBytes [generatedSecretEntropyBytes]byte
 
 	if _, err := cryptorand.Read(secretBytes[:]); err != nil {
-		panic(fmt.Errorf("failed to read random bytes: %v", err))
+		panic(fmt.Errorf("failed to read random bytes: %w", err))
 	}
 
 	var nn, dgst big.Int
@@ -525,8 +525,8 @@ func (rootCA RootCA) CreateSecurityConfig(ctx context.Context, krw *KeyReadWrite
 
 	proposedRole := ManagerRole
 	tlsKeyPair, issuerInfo, err := rootCA.IssueAndSaveNewCertificates(krw, cn, proposedRole, org)
-	switch errors.Cause(err) {
-	case ErrNoValidSigner:
+	switch {
+	case errors.Is(err, ErrNoValidSigner):
 		config.RetryInterval = GetCertRetryInterval
 		// Request certificate issuance from a remote CA.
 		// Last argument is nil because at this point we don't have any valid TLS creds
@@ -535,7 +535,7 @@ func (rootCA RootCA) CreateSecurityConfig(ctx context.Context, krw *KeyReadWrite
 			log.G(ctx).WithError(err).Error("failed to request and save new certificate")
 			return nil, nil, err
 		}
-	case nil:
+	case err == nil:
 		log.G(ctx).WithFields(log.Fields{
 			"node.id":   cn,
 			"node.role": proposedRole,
@@ -604,7 +604,8 @@ func RenewTLSConfigNow(ctx context.Context, s *SecurityConfig, connBroker *conne
 			ConnBroker:  connBroker,
 			Credentials: s.ClientTLSCreds,
 		})
-	if wrappedError, ok := err.(x509UnknownAuthError); ok {
+	var wrappedError x509UnknownAuthError
+	if errors.As(err, &wrappedError) {
 		var newErr error
 		tlsKeyPair, issuerInfo, newErr = updateRootThenUpdateCert(ctx, s, connBroker, rootPaths, wrappedError.failedLeafCert)
 		if newErr != nil {
@@ -717,7 +718,7 @@ func ParseRole(apiRole api.NodeRole) (string, error) {
 	case api.NodeRoleWorker:
 		return WorkerRole, nil
 	default:
-		return "", errors.Errorf("failed to parse api role: %v", apiRole)
+		return "", fmt.Errorf("failed to parse api role: %v", apiRole)
 	}
 }
 
@@ -729,6 +730,6 @@ func FormatRole(role string) (api.NodeRole, error) {
 	case strings.ToLower(WorkerRole):
 		return api.NodeRoleWorker, nil
 	default:
-		return 0, errors.Errorf("failed to parse role: %s", role)
+		return 0, fmt.Errorf("failed to parse role: %s", role)
 	}
 }
