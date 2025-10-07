@@ -40,6 +40,7 @@ import (
 	"github.com/moby/swarmkit/v2/manager/orchestrator/volumeenforcer"
 	"github.com/moby/swarmkit/v2/manager/resourceapi"
 	"github.com/moby/swarmkit/v2/manager/scheduler"
+	"github.com/moby/swarmkit/v2/manager/scheduler/common"
 	"github.com/moby/swarmkit/v2/manager/state/raft"
 	"github.com/moby/swarmkit/v2/manager/state/raft/transport"
 	"github.com/moby/swarmkit/v2/manager/state/store"
