@@ -34,7 +34,7 @@ func TestUpdatePortsInHostPublishMode(t *testing.T) {
 	}
 	updatePortsInHostPublishMode(&service)
 
-	assert.Equal(t, len(service.Endpoint.Ports), 1)
-	assert.Equal(t, service.Endpoint.Ports[0].PublishedPort, uint32(10000))
-	assert.Equal(t, service.Endpoint.Spec.Ports[0].PublishedPort, uint32(10000))
+	assert.Len(t, service.Endpoint.Ports, 1)
+	assert.Equal(t, uint32(10000), service.Endpoint.Ports[0].PublishedPort)
+	assert.Equal(t, uint32(10000), service.Endpoint.Spec.Ports[0].PublishedPort)
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -18,7 +19,7 @@ func TestCreateExtension(t *testing.T) {
 
 	// ---- CreateExtensionRequest with no Annotations fails ----
 	_, err := ts.Client.CreateExtension(context.Background(), &api.CreateExtensionRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// --- With no name also fails
@@ -30,7 +31,7 @@ func TestCreateExtension(t *testing.T) {
 			},
 		},
 	)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	extensionName := "extension1"
@@ -38,7 +39,7 @@ func TestCreateExtension(t *testing.T) {
 	validRequest := api.CreateExtensionRequest{Annotations: &api.Annotations{Name: extensionName}}
 
 	resp, err := ts.Client.CreateExtension(context.Background(), &validRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 
 	// for sanity, check that the stored extension still has the extension data
@@ -51,7 +52,7 @@ func TestCreateExtension(t *testing.T) {
 
 	// ---- creating an extension with the same name, even if it's the exact same spec, fails due to a name conflict ----
 	_, err = ts.Client.CreateExtension(context.Background(), &validRequest)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.AlreadyExists, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// creating an extension with an empty string as a name fails
@@ -64,7 +65,7 @@ func TestCreateExtension(t *testing.T) {
 	_, err = ts.Client.CreateExtension(
 		context.Background(), &hasNoName,
 	)
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 }
 
@@ -74,23 +75,23 @@ func TestGetExtension(t *testing.T) {
 
 	// ---- getting an extension without providing an ID results in an InvalidArgument ----
 	_, err := ts.Client.GetExtension(context.Background(), &api.GetExtensionRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// ---- getting a non-existent extension fails with NotFound ----
 	_, err = ts.Client.GetExtension(context.Background(), &api.GetExtensionRequest{ExtensionID: "12345"})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// ---- getting an existing extension returns the extension ----
 	extensionName := "extension1"
 	validRequest := api.CreateExtensionRequest{Annotations: &api.Annotations{Name: extensionName}}
 	resp, err := ts.Client.CreateExtension(context.Background(), &validRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 
 	resp1, err := ts.Client.GetExtension(context.Background(), &api.GetExtensionRequest{ExtensionID: resp.Extension.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp1)
 	assert.NotNil(t, resp1)
 	assert.Equal(t, validRequest.Annotations.Name, resp1.Extension.Annotations.Name)
@@ -103,23 +104,23 @@ func TestRemoveUnreferencedExtension(t *testing.T) {
 
 	// removing an extension without providing an ID results in an InvalidArgument
 	_, err := ts.Client.RemoveExtension(context.Background(), &api.RemoveExtensionRequest{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// removing an extension that exists succeeds
 	extensionName := "extension1"
 	validRequest := api.CreateExtensionRequest{Annotations: &api.Annotations{Name: extensionName}}
 	resp, err := ts.Client.CreateExtension(context.Background(), &validRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 
 	resp1, err := ts.Client.RemoveExtension(context.Background(), &api.RemoveExtensionRequest{ExtensionID: resp.Extension.ID})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, api.RemoveExtensionResponse{}, *resp1)
 
 	// ---- verify the extension was really removed because attempting to remove it again fails with a NotFound ----
 	_, err = ts.Client.RemoveExtension(context.Background(), &api.RemoveExtensionRequest{ExtensionID: resp.Extension.ID})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 }

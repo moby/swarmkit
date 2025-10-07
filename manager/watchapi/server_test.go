@@ -53,14 +53,14 @@ func newTestServer(t *testing.T) *testServer {
 	require.NoError(t, ts.Server.Start(context.Background()))
 
 	temp, err := os.CreateTemp("", "test-socket")
-	assert.NoError(t, err)
-	assert.NoError(t, temp.Close())
-	assert.NoError(t, os.Remove(temp.Name()))
+	require.NoError(t, err)
+	require.NoError(t, temp.Close())
+	require.NoError(t, os.Remove(temp.Name()))
 
 	ts.tempUnixSocket = temp.Name()
 
 	lis, err := net.Listen("unix", temp.Name())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ts.grpcServer = grpc.NewServer()
 	api.RegisterWatchServer(ts.grpcServer, ts.Server)
@@ -74,7 +74,7 @@ func newTestServer(t *testing.T) *testServer {
 		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
 			return net.DialTimeout("unix", addr, timeout)
 		}))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	ts.clientConn = conn
 
 	ts.Client = api.NewWatchClient(conn)
@@ -96,7 +96,7 @@ func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, memb
 	err := ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateNode(tx, node)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return node
 }
 

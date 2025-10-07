@@ -21,7 +21,6 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	etcdraft "go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
@@ -99,7 +98,7 @@ func WaitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[ui
 
 // WaitForPeerNumber waits until peers in cluster converge to specified number
 func WaitForPeerNumber(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[uint64]*TestNode, count int) {
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		for _, n := range nodes {
 			if len(n.GetMemberlist()) != count {
 				return errors.New("unexpected number of members")
@@ -336,7 +335,7 @@ func NewInitNode(t *testing.T, tc *cautils.TestCA, raftConfig *api.RaftConfig, o
 	<-leadershipCh
 
 	if raftConfig != nil {
-		assert.NoError(t, n.MemoryStore().Update(func(tx store.Tx) error {
+		require.NoError(t, n.MemoryStore().Update(func(tx store.Tx) error {
 			return store.CreateCluster(tx, &api.Cluster{
 				ID: identity.NewID(),
 				Spec: api.ClusterSpec{
@@ -531,7 +530,7 @@ func ProposeValue(t *testing.T, raftNode *TestNode, time time.Duration, nodeID .
 
 	err := raftNode.ProposeValue(ctx, storeActions, func() {
 		err := raftNode.MemoryStore().ApplyStoreActions(storeActions)
-		assert.NoError(t, err, "error applying actions")
+		require.NoError(t, err, "error applying actions")
 	})
 	cancel()
 	if err != nil {
@@ -543,7 +542,7 @@ func ProposeValue(t *testing.T, raftNode *TestNode, time time.Duration, nodeID .
 
 // CheckValue checks that the value has been propagated between raft members
 func CheckValue(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *TestNode, createdNode *api.Node) {
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		var err error
 		raftNode.MemoryStore().View(func(tx store.ReadTx) {
 			var allNodes []*api.Node
@@ -566,7 +565,7 @@ func CheckValue(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *TestNo
 // CheckNoValue checks that there is no value replicated on nodes, generally
 // used to test the absence of a leader
 func CheckNoValue(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *TestNode) {
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		var err error
 		raftNode.MemoryStore().View(func(tx store.ReadTx) {
 			var allNodes []*api.Node
@@ -588,7 +587,7 @@ func CheckNoValue(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *Test
 func CheckValuesOnNodes(t *testing.T, clockSource *fakeclock.FakeClock, checkNodes map[uint64]*TestNode, ids []string, values []*api.Node) {
 	iteration := 0
 	for checkNodeID, node := range checkNodes {
-		assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+		require.NoError(t, testutils.PollFunc(clockSource, func() error {
 			var err error
 			node.MemoryStore().View(func(tx store.ReadTx) {
 				var allNodes []*api.Node
@@ -622,7 +621,7 @@ func CheckValuesOnNodes(t *testing.T, clockSource *fakeclock.FakeClock, checkNod
 func GetAllValuesOnNode(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *TestNode) ([]string, []*api.Node) {
 	ids := []string{}
 	values := []*api.Node{}
-	assert.NoError(t, testutils.PollFunc(clockSource, func() error {
+	require.NoError(t, testutils.PollFunc(clockSource, func() error {
 		var err error
 		raftNode.MemoryStore().View(func(tx store.ReadTx) {
 			var allNodes []*api.Node

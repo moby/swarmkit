@@ -11,6 +11,7 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestResolve(t *testing.T) {
@@ -21,14 +22,14 @@ func TestResolve(t *testing.T) {
 	)
 
 	_, status, err := Resolve(ctx, task, executor)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, api.TaskStateAccepted, status.State)
 	assert.Equal(t, "accepted", status.Message)
 
 	task.Status = *status
 	// now, we get no status update.
 	_, status, err = Resolve(ctx, task, executor)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, task.Status, *status)
 
 	// now test an error causing rejection
@@ -56,7 +57,7 @@ func TestResolve(t *testing.T) {
 	task.Status = *status
 	executor.err = nil
 	_, status, err = Resolve(ctx, task, executor)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, task.Status, *status)
 }
 
@@ -138,7 +139,7 @@ func TestPrepareFailure(t *testing.T) {
 	)
 	defer func() {
 		finish()
-		assert.Equal(t, ctlr.calls["Prepare"], 1)
+		assert.Equal(t, 1, ctlr.calls["Prepare"])
 	}()
 	ctlr.PrepareFn = func(_ context.Context) error {
 		return errors.New("test error")
@@ -461,22 +462,20 @@ func checkDo(ctx context.Context, t *testing.T, task *api.Task, ctlr Controller,
 	if len(expectedErr) > 0 {
 		assert.Equal(t, expectedErr[0], err)
 	} else {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// if the status and task.Status are different, make sure new timestamp is greater
 	if task.Status.Timestamp != nil {
 		// crazy timestamp validation follows
 		previous, err := gogotypes.TimestampFromProto(task.Status.Timestamp)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 
 		current, err := gogotypes.TimestampFromProto(status.Timestamp)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 
-		if current.Before(previous) {
-			// ensure that the timestamp always proceeds forward
-			t.Fatalf("timestamp must proceed forward: %v < %v", current, previous)
-		}
+		// ensure that the timestamp always proceeds forward
+		require.Falsef(t, current.Before(previous), "timestamp must proceed forward: %v < %v", current, previous)
 	}
 
 	copy := status.Copy()

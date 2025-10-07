@@ -536,7 +536,7 @@ func TestRestartLeader(t *testing.T) {
 			if node.ID == origLeaderID {
 				continue
 			}
-			require.False(t, node.Status.State == api.NodeStatus_DOWN, "nodes shouldn't go to down")
+			require.NotEqual(t, api.NodeStatus_DOWN, node.Status.State, "nodes shouldn't go to down")
 			if node.Status.State != api.NodeStatus_READY {
 				return errors.Errorf("node %s is still not ready", node.ID)
 			}

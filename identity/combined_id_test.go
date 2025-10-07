@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestCombineTwoIDs(t *testing.T) {
@@ -13,7 +15,5 @@ func TestCombineTwoIDs(t *testing.T) {
 	combinedID := CombineTwoIDs(id1, id2)
 
 	expected := fmt.Sprintf("%s.%s", id1, id2)
-	if combinedID != expected {
-		t.Fatalf("%s != %s", combinedID, expected)
-	}
+	require.Equalf(t, expected, combinedID, "%s != %s", combinedID, expected)
 }

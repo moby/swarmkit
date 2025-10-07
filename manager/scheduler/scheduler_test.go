@@ -99,16 +99,16 @@ func TestScheduler(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		// Prepopulate nodes
 		for _, n := range initialNodeSet {
-			assert.NoError(t, store.CreateNode(tx, n))
+			require.NoError(t, store.CreateNode(tx, n))
 		}
 
 		// Prepopulate tasks
 		for _, task := range initialTaskSet {
-			assert.NoError(t, store.CreateTask(tx, task))
+			require.NoError(t, store.CreateTask(tx, task))
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -116,7 +116,7 @@ func TestScheduler(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
@@ -136,16 +136,16 @@ func TestScheduler(t *testing.T) {
 		// Update each node to make sure this doesn't mess up the
 		// scheduler's state.
 		for _, n := range initialNodeSet {
-			assert.NoError(t, store.UpdateNode(tx, n))
+			require.NoError(t, store.UpdateNode(tx, n))
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = s.Update(func(tx store.Tx) error {
 		// Delete the task associated with node 1 so it's now the most lightly
 		// loaded node.
-		assert.NoError(t, store.DeleteTask(tx, "id1"))
+		require.NoError(t, store.DeleteTask(tx, "id1"))
 
 		// Create a new task. It should get assigned to id1.
 		t4 := &api.Task{
@@ -158,10 +158,10 @@ func TestScheduler(t *testing.T) {
 				State: api.TaskStatePending,
 			},
 		}
-		assert.NoError(t, store.CreateTask(tx, t4))
+		require.NoError(t, store.CreateTask(tx, t4))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assignment3 := watchAssignment(t, watch)
 	assert.Equal(t, "id1", assignment3.NodeID)
@@ -181,10 +181,10 @@ func TestScheduler(t *testing.T) {
 				State: api.TaskStatePending,
 			},
 		}
-		assert.NoError(t, store.UpdateTask(tx, t4))
+		require.NoError(t, store.UpdateTask(tx, t4))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assignment4 := watchAssignment(t, watch)
 	assert.Equal(t, "id1", assignment4.NodeID)
@@ -203,8 +203,8 @@ func TestScheduler(t *testing.T) {
 				State: api.NodeStatus_DOWN,
 			},
 		}
-		assert.NoError(t, store.CreateNode(tx, node))
-		assert.NoError(t, store.DeleteNode(tx, node.ID))
+		require.NoError(t, store.CreateNode(tx, node))
+		require.NoError(t, store.DeleteNode(tx, node.ID))
 
 		// Create an unassigned task.
 		task := &api.Task{
@@ -217,10 +217,10 @@ func TestScheduler(t *testing.T) {
 				State: api.TaskStatePending,
 			},
 		}
-		assert.NoError(t, store.CreateTask(tx, task))
+		require.NoError(t, store.CreateTask(tx, task))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assignmentRemovedNode := watchAssignment(t, watch)
 	assert.NotEqual(t, "removednode", assignmentRemovedNode.NodeID)
@@ -239,7 +239,7 @@ func TestScheduler(t *testing.T) {
 				State: api.NodeStatus_READY,
 			},
 		}
-		assert.NoError(t, store.CreateNode(tx, n4))
+		require.NoError(t, store.CreateNode(tx, n4))
 
 		// Create an unassigned task.
 		t5 := &api.Task{
@@ -252,10 +252,10 @@ func TestScheduler(t *testing.T) {
 				State: api.TaskStatePending,
 			},
 		}
-		assert.NoError(t, store.CreateTask(tx, t5))
+		require.NoError(t, store.CreateTask(tx, t5))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assignment5 := watchAssignment(t, watch)
 	assert.Equal(t, "id4", assignment5.NodeID)
@@ -274,7 +274,7 @@ func TestScheduler(t *testing.T) {
 				State: api.NodeStatus_DOWN,
 			},
 		}
-		assert.NoError(t, store.CreateNode(tx, n5))
+		require.NoError(t, store.CreateNode(tx, n5))
 
 		// Create an unassigned task.
 		t6 := &api.Task{
@@ -287,10 +287,10 @@ func TestScheduler(t *testing.T) {
 				State: api.TaskStatePending,
 			},
 		}
-		assert.NoError(t, store.CreateTask(tx, t6))
+		require.NoError(t, store.CreateTask(tx, t6))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assignment6 := watchAssignment(t, watch)
 	assert.NotEqual(t, "id5", assignment6.NodeID)
@@ -308,7 +308,7 @@ func TestScheduler(t *testing.T) {
 				State: api.NodeStatus_READY,
 			},
 		}
-		assert.NoError(t, store.UpdateNode(tx, n5))
+		require.NoError(t, store.UpdateNode(tx, n5))
 
 		// Create an unassigned task. Should be assigned to the
 		// now-ready node.
@@ -322,10 +322,10 @@ func TestScheduler(t *testing.T) {
 				State: api.TaskStatePending,
 			},
 		}
-		assert.NoError(t, store.CreateTask(tx, t7))
+		require.NoError(t, store.CreateTask(tx, t7))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assignment7 := watchAssignment(t, watch)
 	assert.Equal(t, "id5", assignment7.NodeID)
@@ -344,9 +344,9 @@ func TestScheduler(t *testing.T) {
 				State: api.NodeStatus_READY,
 			},
 		}
-		assert.NoError(t, store.CreateNode(tx, n6))
+		require.NoError(t, store.CreateNode(tx, n6))
 		n6.Status.State = api.NodeStatus_DOWN
-		assert.NoError(t, store.UpdateNode(tx, n6))
+		require.NoError(t, store.UpdateNode(tx, n6))
 
 		// Create an unassigned task.
 		t8 := &api.Task{
@@ -359,10 +359,10 @@ func TestScheduler(t *testing.T) {
 				State: api.TaskStatePending,
 			},
 		}
-		assert.NoError(t, store.CreateTask(tx, t8))
+		require.NoError(t, store.CreateTask(tx, t8))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assignment8 := watchAssignment(t, watch)
 	assert.NotEqual(t, "id6", assignment8.NodeID)
@@ -447,17 +447,17 @@ func testHA(t *testing.T, useSpecVersion bool) {
 	err := s.Update(func(tx store.Tx) error {
 		// Prepopulate nodes
 		for _, n := range initialNodeSet {
-			assert.NoError(t, store.CreateNode(tx, n))
+			require.NoError(t, store.CreateNode(tx, n))
 		}
 
 		// Prepopulate tasks from template 1
 		for i := 0; i != t1Instances; i++ {
 			taskTemplate1.ID = fmt.Sprintf("t1id%d", i)
-			assert.NoError(t, store.CreateTask(tx, taskTemplate1))
+			require.NoError(t, store.CreateTask(tx, taskTemplate1))
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -465,16 +465,14 @@ func testHA(t *testing.T, useSpecVersion bool) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
 	t1Assignments := make(map[string]int)
 	for i := 0; i != t1Instances; i++ {
 		assignment := watchAssignment(t, watch)
-		if !strings.HasPrefix(assignment.ID, "t1") {
-			t.Fatal("got assignment for different kind of task")
-		}
+		require.True(t, strings.HasPrefix(assignment.ID, "t1"), "got assignment for different kind of task")
 		t1Assignments[assignment.NodeID]++
 	}
 
@@ -502,18 +500,16 @@ func testHA(t *testing.T, useSpecVersion bool) {
 	err = s.Update(func(tx store.Tx) error {
 		for i := 0; i != t2Instances; i++ {
 			taskTemplate2.ID = fmt.Sprintf("t2id%d", i)
-			assert.NoError(t, store.CreateTask(tx, taskTemplate2))
+			require.NoError(t, store.CreateTask(tx, taskTemplate2))
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	t2Assignments := make(map[string]int)
 	for i := 0; i != t2Instances; i++ {
 		assignment := watchAssignment(t, watch)
-		if !strings.HasPrefix(assignment.ID, "t2") {
-			t.Fatal("got assignment for different kind of task")
-		}
+		require.True(t, strings.HasPrefix(assignment.ID, "t2"), "got assignment for different kind of task")
 		t2Assignments[assignment.NodeID]++
 	}
 
@@ -528,22 +524,18 @@ func testHA(t *testing.T, useSpecVersion bool) {
 	err = s.Update(func(tx store.Tx) error {
 		for i := t1Instances; i != t1Instances+3; i++ {
 			taskTemplate1.ID = fmt.Sprintf("t1id%d", i)
-			assert.NoError(t, store.CreateTask(tx, taskTemplate1))
+			require.NoError(t, store.CreateTask(tx, taskTemplate1))
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var sharedNodes [2]string
 
 	for i := 0; i != 3; i++ {
 		assignment := watchAssignment(t, watch)
-		if !strings.HasPrefix(assignment.ID, "t1") {
-			t.Fatal("got assignment for different kind of task")
-		}
-		if t1Assignments[assignment.NodeID] == 5 {
-			t.Fatal("more than one new task assigned to the same node")
-		}
+		require.True(t, strings.HasPrefix(assignment.ID, "t1"), "got assignment for different kind of task")
+		require.NotEqual(t, 5, t1Assignments[assignment.NodeID], "more than one new task assigned to the same node")
 		t1Assignments[assignment.NodeID]++
 
 		if t2Assignments[assignment.NodeID] != 0 {
@@ -580,34 +572,28 @@ func testHA(t *testing.T, useSpecVersion bool) {
 	// has 5 service1 tasks.
 	err = s.Update(func(tx store.Tx) error {
 		taskTemplate2.ID = "t2id4"
-		assert.NoError(t, store.CreateTask(tx, taskTemplate2))
+		require.NoError(t, store.CreateTask(tx, taskTemplate2))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assignment := watchAssignment(t, watch)
-	if assignment.ID != "t2id4" {
-		t.Fatal("got assignment for different task")
-	}
+	require.Equal(t, "t2id4", assignment.ID, "got assignment for different task")
 
-	if t2Assignments[assignment.NodeID] != 0 {
-		t.Fatal("was scheduled on a node that already has a service2 task")
-	}
-	if t1Assignments[assignment.NodeID] == 5 {
-		t.Fatal("was scheduled on the node that has the most service1 tasks")
-	}
+	require.Equal(t, 0, t2Assignments[assignment.NodeID], "was scheduled on a node that already has a service2 task")
+	require.NotEqual(t, 5, t1Assignments[assignment.NodeID], "was scheduled on the node that has the most service1 tasks")
 	t2Assignments[assignment.NodeID]++
 
 	// Remove all tasks on node id1.
 	err = s.Update(func(tx store.Tx) error {
 		tasks, err := store.FindTasks(tx, store.ByNodeID("id1"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		for _, task := range tasks {
-			assert.NoError(t, store.DeleteTask(tx, task.ID))
+			require.NoError(t, store.DeleteTask(tx, task.ID))
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	t1Assignments["id1"] = 0
 	t2Assignments["id1"] = 0
@@ -628,11 +614,11 @@ func testHA(t *testing.T, useSpecVersion bool) {
 			tasksMap[taskTemplate2.ID] = taskTemplate2.Copy()
 		}
 		for _, task := range tasksMap {
-			assert.NoError(t, store.CreateTask(tx, task))
+			require.NoError(t, store.CreateTask(tx, task))
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for i := 0; i != 4+2; i++ {
 		assignment := watchAssignment(t, watch)
@@ -761,17 +747,17 @@ func testPreferences(t *testing.T, useSpecVersion bool) {
 	err := s.Update(func(tx store.Tx) error {
 		// Prepoulate nodes
 		for _, n := range initialNodeSet {
-			assert.NoError(t, store.CreateNode(tx, n))
+			require.NoError(t, store.CreateNode(tx, n))
 		}
 
 		// Prepopulate tasks from template 1
 		for i := 0; i != t1Instances; i++ {
 			taskTemplate1.ID = fmt.Sprintf("t1id%d", i)
-			assert.NoError(t, store.CreateTask(tx, taskTemplate1))
+			require.NoError(t, store.CreateTask(tx, taskTemplate1))
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -779,16 +765,14 @@ func testPreferences(t *testing.T, useSpecVersion bool) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
 	t1Assignments := make(map[string]int)
 	for i := 0; i != t1Instances; i++ {
 		assignment := watchAssignment(t, watch)
-		if !strings.HasPrefix(assignment.ID, "t1") {
-			t.Fatal("got assignment for different kind of task")
-		}
+		require.True(t, strings.HasPrefix(assignment.ID, "t1"), "got assignment for different kind of task")
 		t1Assignments[assignment.NodeID]++
 	}
 
@@ -1025,17 +1009,17 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 	err := s.Update(func(tx store.Tx) error {
 		// Prepoulate nodes
 		for _, n := range initialNodeSet {
-			assert.NoError(t, store.CreateNode(tx, n))
+			require.NoError(t, store.CreateNode(tx, n))
 		}
 
 		// Prepopulate tasks from template 1
 		for i := 0; i != t1Instances; i++ {
 			taskTemplate1.ID = fmt.Sprintf("t1id%d", i)
-			assert.NoError(t, store.CreateTask(tx, taskTemplate1))
+			require.NoError(t, store.CreateTask(tx, taskTemplate1))
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -1043,16 +1027,14 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
 	t1Assignments := make(map[string]int)
 	for i := 0; i != t1Instances; i++ {
 		assignment := watchAssignment(t, watch)
-		if !strings.HasPrefix(assignment.ID, "t1") {
-			t.Fatal("got assignment for different kind of task")
-		}
+		require.True(t, strings.HasPrefix(assignment.ID, "t1"), "got assignment for different kind of task")
 		t1Assignments[assignment.NodeID]++
 	}
 
@@ -1205,13 +1187,13 @@ func TestMultiplePreferencesScaleUp(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		// Prepoulate nodes
 		for _, n := range initialNodeSet {
-			assert.NoError(t, store.CreateNode(tx, n))
+			require.NoError(t, store.CreateNode(tx, n))
 		}
 
 		// Prepopulate tasks from template 1
 		for i := 0; i != t1Instances; i++ {
 			taskTemplate1.ID = fmt.Sprintf("t1id%d", i)
-			assert.NoError(t, store.CreateTask(tx, taskTemplate1))
+			require.NoError(t, store.CreateTask(tx, taskTemplate1))
 		}
 
 		// Populate some running tasks to simulate a service scaling scenario
@@ -1224,12 +1206,12 @@ func TestMultiplePreferencesScaleUp(t *testing.T) {
 				taskTemplate1.ID = fmt.Sprintf("t1running-%s-%d", node, i)
 				taskTemplate1.NodeID = node
 				taskTemplate1.Status.State = api.TaskStateRunning
-				assert.NoError(t, store.CreateTask(tx, taskTemplate1))
+				require.NoError(t, store.CreateTask(tx, taskTemplate1))
 			}
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -1237,7 +1219,7 @@ func TestMultiplePreferencesScaleUp(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
@@ -1245,9 +1227,7 @@ func TestMultiplePreferencesScaleUp(t *testing.T) {
 	totalAssignments := 0
 	for i := 0; i != t1Instances; i++ {
 		assignment := watchAssignment(t, watch)
-		if !strings.HasPrefix(assignment.ID, "t1") {
-			t.Fatal("got assignment for different kind of task")
-		}
+		require.True(t, strings.HasPrefix(assignment.ID, "t1"), "got assignment for different kind of task")
 		t1Assignments[assignment.NodeID]++
 		totalAssignments++
 	}
@@ -1280,11 +1260,11 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 
 	err := s.Update(func(tx store.Tx) error {
 		// Add initial service and task
-		assert.NoError(t, store.CreateService(tx, &api.Service{ID: "serviceID1"}))
-		assert.NoError(t, store.CreateTask(tx, initialTask))
+		require.NoError(t, store.CreateService(tx, &api.Service{ID: "serviceID1"}))
+		require.NoError(t, store.CreateTask(tx, initialTask))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -1292,7 +1272,7 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
@@ -1313,10 +1293,10 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 				State: api.NodeStatus_READY,
 			},
 		}
-		assert.NoError(t, store.CreateNode(tx, node))
+		require.NoError(t, store.CreateNode(tx, node))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assignment := watchAssignment(t, watch)
 	assert.Equal(t, "newnode", assignment.NodeID)
@@ -1378,23 +1358,23 @@ func TestSchedulerFaultyNode(t *testing.T) {
 
 	err := s.Update(func(tx store.Tx) error {
 		// Add initial nodes, and one task of each type assigned to node id1
-		assert.NoError(t, store.CreateNode(tx, node1))
-		assert.NoError(t, store.CreateNode(tx, node2))
+		require.NoError(t, store.CreateNode(tx, node1))
+		require.NoError(t, store.CreateNode(tx, node2))
 
 		task1 := replicatedTaskTemplate.Copy()
 		task1.ID = "id1"
 		task1.NodeID = "id1"
 		task1.Status.State = api.TaskStateRunning
-		assert.NoError(t, store.CreateTask(tx, task1))
+		require.NoError(t, store.CreateTask(tx, task1))
 
 		task2 := preassignedTaskTemplate.Copy()
 		task2.ID = "id2"
 		task2.NodeID = "id1"
 		task2.Status.State = api.TaskStateRunning
-		assert.NoError(t, store.CreateTask(tx, task2))
+		require.NoError(t, store.CreateTask(tx, task2))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -1402,7 +1382,7 @@ func TestSchedulerFaultyNode(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
@@ -1412,10 +1392,10 @@ func TestSchedulerFaultyNode(t *testing.T) {
 		newReplicatedTask.ID = identity.NewID()
 
 		err = s.Update(func(tx store.Tx) error {
-			assert.NoError(t, store.CreateTask(tx, newReplicatedTask))
+			require.NoError(t, store.CreateTask(tx, newReplicatedTask))
 			return nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		assignment := watchAssignment(t, watch)
 		assert.Equal(t, newReplicatedTask.ID, assignment.ID)
@@ -1431,7 +1411,7 @@ func TestSchedulerFaultyNode(t *testing.T) {
 		}
 
 		node2Info, err := scheduler.nodeSet.nodeInfo("id2")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		expectedNode2Failures := i
 		if i > 5 {
 			expectedNode2Failures = 5
@@ -1439,7 +1419,7 @@ func TestSchedulerFaultyNode(t *testing.T) {
 		assert.Len(t, node2Info.recentFailures[versionedService{serviceID: "service1"}], expectedNode2Failures)
 
 		node1Info, err := scheduler.nodeSet.nodeInfo("id1")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		expectedNode1Failures := i - 5
 		if i < 5 {
@@ -1451,10 +1431,10 @@ func TestSchedulerFaultyNode(t *testing.T) {
 		newPreassignedTask.ID = identity.NewID()
 
 		err = s.Update(func(tx store.Tx) error {
-			assert.NoError(t, store.CreateTask(tx, newPreassignedTask))
+			require.NoError(t, store.CreateTask(tx, newPreassignedTask))
 			return nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		assignment = watchAssignment(t, watch)
 		assert.Equal(t, newPreassignedTask.ID, assignment.ID)
@@ -1465,23 +1445,23 @@ func TestSchedulerFaultyNode(t *testing.T) {
 		// The service associated with the preassigned task will not be
 		// marked as
 		nodeInfo, err := scheduler.nodeSet.nodeInfo("id1")
-		assert.NoError(t, err)
-		assert.Len(t, nodeInfo.recentFailures[versionedService{serviceID: "service2"}], 0)
+		require.NoError(t, err)
+		assert.Empty(t, nodeInfo.recentFailures[versionedService{serviceID: "service2"}])
 
 		err = s.Update(func(tx store.Tx) error {
 			newReplicatedTask := store.GetTask(tx, newReplicatedTask.ID)
 			require.NotNil(t, newReplicatedTask)
 			newReplicatedTask.Status.State = api.TaskStateFailed
-			assert.NoError(t, store.UpdateTask(tx, newReplicatedTask))
+			require.NoError(t, store.UpdateTask(tx, newReplicatedTask))
 
 			newPreassignedTask := store.GetTask(tx, newPreassignedTask.ID)
 			require.NotNil(t, newPreassignedTask)
 			newPreassignedTask.Status.State = api.TaskStateFailed
-			assert.NoError(t, store.UpdateTask(tx, newPreassignedTask))
+			require.NoError(t, store.UpdateTask(tx, newPreassignedTask))
 
 			return nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -1530,17 +1510,17 @@ func TestSchedulerFaultyNodeSpecVersion(t *testing.T) {
 
 	err := s.Update(func(tx store.Tx) error {
 		// Add initial nodes, and one task assigned to node id1
-		assert.NoError(t, store.CreateNode(tx, node1))
-		assert.NoError(t, store.CreateNode(tx, node2))
+		require.NoError(t, store.CreateNode(tx, node1))
+		require.NoError(t, store.CreateNode(tx, node2))
 
 		task1 := taskTemplate.Copy()
 		task1.ID = "id1"
 		task1.NodeID = "id1"
 		task1.Status.State = api.TaskStateRunning
-		assert.NoError(t, store.CreateTask(tx, task1))
+		require.NoError(t, store.CreateTask(tx, task1))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -1548,7 +1528,7 @@ func TestSchedulerFaultyNodeSpecVersion(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
@@ -1564,10 +1544,10 @@ func TestSchedulerFaultyNodeSpecVersion(t *testing.T) {
 		}
 
 		err = s.Update(func(tx store.Tx) error {
-			assert.NoError(t, store.CreateTask(tx, newTask))
+			require.NoError(t, store.CreateTask(tx, newTask))
 			return nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		assignment := watchAssignment(t, watch)
 		assert.Equal(t, newTask.ID, assignment.ID)
@@ -1585,9 +1565,9 @@ func TestSchedulerFaultyNodeSpecVersion(t *testing.T) {
 		}
 
 		node1Info, err := scheduler.nodeSet.nodeInfo("id1")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		node2Info, err := scheduler.nodeSet.nodeInfo("id2")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		expectedNode1Spec1Failures := 0
 		expectedNode1Spec2Failures := 0
 		expectedNode2Spec1Failures := i
@@ -1610,10 +1590,10 @@ func TestSchedulerFaultyNodeSpecVersion(t *testing.T) {
 			newTask := store.GetTask(tx, newTask.ID)
 			require.NotNil(t, newTask)
 			newTask.Status.State = api.TaskStateFailed
-			assert.NoError(t, store.UpdateTask(tx, newTask))
+			require.NoError(t, store.UpdateTask(tx, newTask))
 			return nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -1722,14 +1702,14 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 
 	err := s.Update(func(tx store.Tx) error {
 		// Add initial node, service and task
-		assert.NoError(t, store.CreateService(tx, initialService))
-		assert.NoError(t, store.CreateTask(tx, initialTask))
-		assert.NoError(t, store.CreateNode(tx, underprovisionedNode))
-		assert.NoError(t, store.CreateNode(tx, nonready1))
-		assert.NoError(t, store.CreateNode(tx, nonready2))
+		require.NoError(t, store.CreateService(tx, initialService))
+		require.NoError(t, store.CreateTask(tx, initialTask))
+		require.NoError(t, store.CreateNode(tx, underprovisionedNode))
+		require.NoError(t, store.CreateNode(tx, nonready1))
+		require.NoError(t, store.CreateNode(tx, nonready2))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -1737,7 +1717,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
@@ -1768,10 +1748,10 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 				State: api.NodeStatus_READY,
 			},
 		}
-		assert.NoError(t, store.CreateNode(tx, node))
+		require.NoError(t, store.CreateNode(tx, node))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assignment := watchAssignment(t, watch)
 	assert.Equal(t, "bignode", assignment.NodeID)
@@ -1850,46 +1830,46 @@ func TestSchedulerResourceConstraintHA(t *testing.T) {
 
 	err := s.Update(func(tx store.Tx) error {
 		// Add initial node and task
-		assert.NoError(t, store.CreateNode(tx, node1))
-		assert.NoError(t, store.CreateNode(tx, node2))
+		require.NoError(t, store.CreateNode(tx, node1))
+		require.NoError(t, store.CreateNode(tx, node2))
 
 		// preassigned tasks
 		task1 := taskTemplate.Copy()
 		task1.ID = "id1"
 		task1.NodeID = "id1"
 		task1.Status.State = api.TaskStateRunning
-		assert.NoError(t, store.CreateTask(tx, task1))
+		require.NoError(t, store.CreateTask(tx, task1))
 
 		task2 := taskTemplate.Copy()
 		task2.ID = "id2"
 		task2.NodeID = "id2"
 		task2.Status.State = api.TaskStateRunning
-		assert.NoError(t, store.CreateTask(tx, task2))
+		require.NoError(t, store.CreateTask(tx, task2))
 
 		task3 := taskTemplate.Copy()
 		task3.ID = "id3"
 		task3.NodeID = "id2"
 		task3.Status.State = api.TaskStateRunning
-		assert.NoError(t, store.CreateTask(tx, task3))
+		require.NoError(t, store.CreateTask(tx, task3))
 
 		task4 := taskTemplate.Copy()
 		task4.ID = "id4"
 		task4.NodeID = "id2"
 		task4.Status.State = api.TaskStateRunning
-		assert.NoError(t, store.CreateTask(tx, task4))
+		require.NoError(t, store.CreateTask(tx, task4))
 
 		// tasks to assign
 		task5 := taskTemplate.Copy()
 		task5.ID = "id5"
-		assert.NoError(t, store.CreateTask(tx, task5))
+		require.NoError(t, store.CreateTask(tx, task5))
 
 		task6 := taskTemplate.Copy()
 		task6.ID = "id6"
-		assert.NoError(t, store.CreateTask(tx, task6))
+		require.NoError(t, store.CreateTask(tx, task6))
 
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -1897,7 +1877,7 @@ func TestSchedulerResourceConstraintHA(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
@@ -1978,12 +1958,12 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 
 	err := s.Update(func(tx store.Tx) error {
 		// Add initial node, service and task
-		assert.NoError(t, store.CreateService(tx, bigService))
-		assert.NoError(t, store.CreateNode(tx, node))
-		assert.NoError(t, store.CreateTask(tx, bigTask1))
+		require.NoError(t, store.CreateService(tx, bigService))
+		require.NoError(t, store.CreateNode(tx, node))
+		require.NoError(t, store.CreateTask(tx, bigTask1))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -1991,7 +1971,7 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
@@ -2005,7 +1985,7 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 		// resource constraints.
 		return store.CreateTask(tx, bigTask2)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	failure := watchAssignmentFailure(t, watch)
 	assert.Equal(t, "no suitable node (insufficient resources on 1 node)", failure.Status.Err)
@@ -2016,7 +1996,7 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 		updatedTask.Status.State = api.TaskStateShutdown
 		return store.UpdateTask(tx, updatedTask)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// With the first task no longer consuming resources, the second
 	// one can be scheduled.
@@ -2081,11 +2061,11 @@ func TestSchedulerPreexistingDeadTask(t *testing.T) {
 
 	err := s.Update(func(tx store.Tx) error {
 		// Add initial node and task
-		assert.NoError(t, store.CreateNode(tx, node))
-		assert.NoError(t, store.CreateTask(tx, deadTask))
+		require.NoError(t, store.CreateNode(tx, node))
+		require.NoError(t, store.CreateTask(tx, deadTask))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -2093,7 +2073,7 @@ func TestSchedulerPreexistingDeadTask(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
@@ -2102,7 +2082,7 @@ func TestSchedulerPreexistingDeadTask(t *testing.T) {
 		// using the resources is past the running state.
 		return store.CreateTask(tx, bigTask2)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assignment := watchAssignment(t, watch)
 	assert.Equal(t, "id2", assignment.ID)
@@ -2281,14 +2261,14 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 
 	err := s.Update(func(tx store.Tx) error {
 		// Add initial task, service and nodes to the store
-		assert.NoError(t, store.CreateService(tx, service1))
-		assert.NoError(t, store.CreateTask(tx, task1))
-		assert.NoError(t, store.CreateNode(tx, node1))
-		assert.NoError(t, store.CreateNode(tx, node2))
-		assert.NoError(t, store.CreateNode(tx, node3))
+		require.NoError(t, store.CreateService(tx, service1))
+		require.NoError(t, store.CreateTask(tx, task1))
+		require.NoError(t, store.CreateNode(tx, node1))
+		require.NoError(t, store.CreateNode(tx, node2))
+		require.NoError(t, store.CreateNode(tx, node3))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -2296,7 +2276,7 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
@@ -2306,37 +2286,37 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 
 	// add task2
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, task2))
+		require.NoError(t, store.CreateTask(tx, task2))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	failure := watchAssignmentFailure(t, watch)
 	assert.Equal(t, "no suitable node (unsupported platform on 3 nodes)", failure.Status.Err)
 
 	// add task3
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, task3))
+		require.NoError(t, store.CreateTask(tx, task3))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assignment2 := watchAssignment(t, watch)
 	assert.Regexp(t, assignment2.NodeID, "(node2|node3)")
 
 	// add task4
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, task4))
+		require.NoError(t, store.CreateTask(tx, task4))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assignment3 := watchAssignment(t, watch)
 	assert.Equal(t, "node1", assignment3.NodeID)
 
 	// add task5
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, task5))
+		require.NoError(t, store.CreateTask(tx, task5))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assignment4 := watchAssignment(t, watch)
 	assert.Regexp(t, assignment4.NodeID, "(node1|node2)")
 }
@@ -2395,12 +2375,12 @@ func TestSchedulerUnassignedMap(t *testing.T) {
 
 	err := s.Update(func(tx store.Tx) error {
 		// Add initial task, service and nodes to the store
-		assert.NoError(t, store.CreateService(tx, service1))
-		assert.NoError(t, store.CreateTask(tx, task1))
-		assert.NoError(t, store.CreateNode(tx, node1))
+		require.NoError(t, store.CreateService(tx, service1))
+		require.NoError(t, store.CreateTask(tx, task1))
+		require.NoError(t, store.CreateNode(tx, node1))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 	scheduler.unassignedTasks["id1"] = task1
@@ -2411,10 +2391,10 @@ func TestSchedulerUnassignedMap(t *testing.T) {
 
 	// delete the service of an unassigned task
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteService(tx, service1.ID))
+		require.NoError(t, store.DeleteService(tx, service1.ID))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler.tick(ctx)
 	// task1 is removed from the unassigned map
@@ -2491,16 +2471,16 @@ func TestPreassignedTasks(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		// Prepopulate nodes
 		for _, n := range initialNodeSet {
-			assert.NoError(t, store.CreateNode(tx, n))
+			require.NoError(t, store.CreateNode(tx, n))
 		}
 
 		// Prepopulate tasks
 		for _, task := range initialTaskSet {
-			assert.NoError(t, store.CreateTask(tx, task))
+			require.NoError(t, store.CreateTask(tx, task))
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -2508,13 +2488,13 @@ func TestPreassignedTasks(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 
 	//preassigned tasks would be processed first
 	assignment1 := watchAssignment(t, watch)
 	// task2 and task3 are preassigned to node1
-	assert.Equal(t, assignment1.NodeID, "node1")
+	assert.Equal(t, "node1", assignment1.NodeID)
 	assert.Regexp(t, assignment1.ID, "(task2|task3)")
 
 	assignment2 := watchAssignment(t, watch)
@@ -2526,8 +2506,8 @@ func TestPreassignedTasks(t *testing.T) {
 
 	// task1 would be assigned to node2 because node1 has 2 tasks already
 	assignment3 := watchAssignment(t, watch)
-	assert.Equal(t, assignment3.ID, "task1")
-	assert.Equal(t, assignment3.NodeID, "node2")
+	assert.Equal(t, "task1", assignment3.ID)
+	assert.Equal(t, "node2", assignment3.NodeID)
 }
 
 func TestIgnoreTasks(t *testing.T) {
@@ -2590,16 +2570,16 @@ func TestIgnoreTasks(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		// Prepopulate nodes
 		for _, n := range initialNodeSet {
-			assert.NoError(t, store.CreateNode(tx, n))
+			require.NoError(t, store.CreateNode(tx, n))
 		}
 
 		// Prepopulate tasks
 		for _, task := range initialTaskSet {
-			assert.NoError(t, store.CreateTask(tx, task))
+			require.NoError(t, store.CreateTask(tx, task))
 		}
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -2607,15 +2587,15 @@ func TestIgnoreTasks(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 
 	// task1 is the only task that gets assigned since other two tasks
 	// are ignored by the scheduler.
 	// Normally task2/task3 should get assigned first since its a preassigned task.
 	assignment3 := watchAssignment(t, watch)
-	assert.Equal(t, assignment3.ID, "task1")
-	assert.Equal(t, assignment3.NodeID, "node1")
+	assert.Equal(t, "task1", assignment3.ID)
+	assert.Equal(t, "node1", assignment3.NodeID)
 }
 
 // TestNoStuckTask tests that a task which is cannot be scheduled (because of
@@ -2702,13 +2682,13 @@ func TestUnscheduleableTask(t *testing.T) {
 	defer s.Close()
 
 	err := s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateService(tx, service1))
-		assert.NoError(t, store.CreateTask(tx, task1))
-		assert.NoError(t, store.CreateTask(tx, task2))
-		assert.NoError(t, store.CreateNode(tx, node))
+		require.NoError(t, store.CreateService(tx, service1))
+		require.NoError(t, store.CreateTask(tx, task1))
+		require.NoError(t, store.CreateTask(tx, task2))
+		require.NoError(t, store.CreateNode(tx, node))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -2716,7 +2696,7 @@ func TestUnscheduleableTask(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
@@ -2794,19 +2774,19 @@ watchAttempt:
 		// in the test where the old task might be marked freed, allowing the
 		// failed task to progress. We want to handle the case where this does
 		// not happen
-		assert.NoError(t, store.UpdateTask(tx, assigned))
+		require.NoError(t, store.UpdateTask(tx, assigned))
 
 		failed.DesiredState = api.TaskStateShutdown
-		assert.NoError(t, store.UpdateTask(tx, failed))
+		require.NoError(t, store.UpdateTask(tx, failed))
 
-		assert.NoError(t, store.CreateTask(tx, task1Update))
+		require.NoError(t, store.CreateTask(tx, task1Update))
 
-		assert.NoError(t, store.UpdateService(tx, service1))
+		require.NoError(t, store.UpdateService(tx, service1))
 
 		return nil
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// because the failed task is still currently under the purview of the
 	// scheduler, the scheduler should shut it down.
@@ -3203,12 +3183,12 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 
 	// Add initial node, service and task
 	err := s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateService(tx, s1))
-		assert.NoError(t, store.CreateTask(tx, t1))
-		assert.NoError(t, store.CreateNode(tx, n1))
+		require.NoError(t, store.CreateService(tx, s1))
+		require.NoError(t, store.CreateTask(tx, t1))
+		require.NoError(t, store.CreateNode(tx, n1))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -3216,123 +3196,123 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
 	// t1 should get assigned
 	assignment := watchAssignment(t, watch)
-	assert.Equal(t, assignment.NodeID, "node1_ID")
+	assert.Equal(t, "node1_ID", assignment.NodeID)
 
 	// Create t0; it should get assigned because the plugin filter shouldn't
 	// be enabled for tasks that have bind mounts
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, t0))
+		require.NoError(t, store.CreateTask(tx, t0))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assignment0 := watchAssignment(t, watch)
-	assert.Equal(t, assignment0.ID, "task0_ID")
-	assert.Equal(t, assignment0.NodeID, "node1_ID")
+	assert.Equal(t, "task0_ID", assignment0.ID)
+	assert.Equal(t, "node1_ID", assignment0.NodeID)
 
 	// Create t2; it should stay in the pending state because there is
 	// no node that with volume plugin `plugin2`
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, t2))
+		require.NoError(t, store.CreateTask(tx, t2))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	failure := watchAssignmentFailure(t, watch)
 	assert.Equal(t, "no suitable node (missing plugin on 1 node)", failure.Status.Err)
 
 	// Now add the second node
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNode(tx, n2))
+		require.NoError(t, store.CreateNode(tx, n2))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check that t2 has been assigned
 	assignment1 := watchAssignment(t, watch)
-	assert.Equal(t, assignment1.ID, "task2_ID")
-	assert.Equal(t, assignment1.NodeID, "node2_ID")
+	assert.Equal(t, "task2_ID", assignment1.ID)
+	assert.Equal(t, "node2_ID", assignment1.NodeID)
 
 	// Create t3; it should stay in the pending state because there is
 	// no node that with network plugin `plugin1`
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, t3))
+		require.NoError(t, store.CreateTask(tx, t3))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	failure = watchAssignmentFailure(t, watch)
 	assert.Equal(t, "no suitable node (missing plugin on 2 nodes)", failure.Status.Err)
 
 	// Now add the node3
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNode(tx, n3))
+		require.NoError(t, store.CreateNode(tx, n3))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check that t3 has been assigned
 	assignment2 := watchAssignment(t, watch)
-	assert.Equal(t, assignment2.ID, "task3_ID")
-	assert.Equal(t, assignment2.NodeID, "node3_ID")
+	assert.Equal(t, "task3_ID", assignment2.ID)
+	assert.Equal(t, "node3_ID", assignment2.NodeID)
 
 	// Create t4; it should stay in the pending state because there is
 	// no node that with log plugin `plugin1`
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, t4))
+		require.NoError(t, store.CreateTask(tx, t4))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// check that t4 has been assigned
 	failure2 := watchAssignmentFailure(t, watch)
 	assert.Equal(t, "no suitable node (missing plugin on 3 nodes)", failure2.Status.Err)
 
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNode(tx, n4))
+		require.NoError(t, store.CreateNode(tx, n4))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check that t4 has been assigned
 	assignment3 := watchAssignment(t, watch)
-	assert.Equal(t, assignment3.ID, "task4_ID")
-	assert.Equal(t, assignment3.NodeID, "node4_ID")
+	assert.Equal(t, "task4_ID", assignment3.ID)
+	assert.Equal(t, "node4_ID", assignment3.NodeID)
 
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, t5))
+		require.NoError(t, store.CreateTask(tx, t5))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assignment4 := watchAssignment(t, watch)
-	assert.Equal(t, assignment4.ID, "task5_ID")
-	assert.Equal(t, assignment4.NodeID, "node4_ID")
+	assert.Equal(t, "task5_ID", assignment4.ID)
+	assert.Equal(t, "node4_ID", assignment4.NodeID)
 
 	// check that t6 gets assigned to some node
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, t6))
+		require.NoError(t, store.CreateTask(tx, t6))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assignment5 := watchAssignment(t, watch)
-	assert.Equal(t, assignment5.ID, "task6_ID")
-	assert.NotEqual(t, assignment5.NodeID, "")
+	assert.Equal(t, "task6_ID", assignment5.ID)
+	assert.NotEmpty(t, assignment5.NodeID)
 
 	// check that t7 gets assigned to some node
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, t7))
+		require.NoError(t, store.CreateTask(tx, t7))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assignment6 := watchAssignment(t, watch)
-	assert.Equal(t, assignment6.ID, "task7_ID")
-	assert.NotEqual(t, assignment6.NodeID, "")
+	assert.Equal(t, "task7_ID", assignment6.ID)
+	assert.NotEmpty(t, assignment6.NodeID)
 }
 
 func BenchmarkScheduler1kNodes1kTasks(b *testing.B) {
@@ -3583,12 +3563,12 @@ func TestSchedulerHostPort(t *testing.T) {
 
 	err := s.Update(func(tx store.Tx) error {
 		// Add initial node, service and task
-		assert.NoError(t, store.CreateService(tx, service1))
-		assert.NoError(t, store.CreateTask(tx, task1))
-		assert.NoError(t, store.CreateTask(tx, task2))
+		require.NoError(t, store.CreateService(tx, service1))
+		require.NoError(t, store.CreateTask(tx, task1))
+		require.NoError(t, store.CreateTask(tx, task2))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -3596,7 +3576,7 @@ func TestSchedulerHostPort(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
@@ -3606,23 +3586,23 @@ func TestSchedulerHostPort(t *testing.T) {
 
 	err = s.Update(func(tx store.Tx) error {
 		// Add initial node and task
-		assert.NoError(t, store.CreateNode(tx, node1))
-		assert.NoError(t, store.CreateNode(tx, node2))
+		require.NoError(t, store.CreateNode(tx, node1))
+		require.NoError(t, store.CreateNode(tx, node2))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Tasks 1 and 2 should be assigned to different nodes.
 	assignment1 := watchAssignment(t, watch)
 	assignment2 := watchAssignment(t, watch)
-	assert.True(t, assignment1 != assignment2)
+	assert.NotSame(t, assignment1, assignment2)
 
 	// Task 3 should not be schedulable.
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, task3))
+		require.NoError(t, store.CreateTask(tx, task3))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	failure := watchAssignmentFailure(t, watch)
 	assert.Equal(t, "no suitable node (host-mode port already in use on 2 nodes)", failure.Status.Err)
@@ -3719,12 +3699,12 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 
 	err := s.Update(func(tx store.Tx) error {
 		// Add initial node, service and task
-		assert.NoError(t, store.CreateService(tx, service1))
-		assert.NoError(t, store.CreateTask(tx, task1))
-		assert.NoError(t, store.CreateTask(tx, task2))
+		require.NoError(t, store.CreateService(tx, service1))
+		require.NoError(t, store.CreateTask(tx, task1))
+		require.NoError(t, store.CreateTask(tx, task2))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	scheduler := New(s)
 
@@ -3732,7 +3712,7 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 	defer cancel()
 
 	go func() {
-		assert.NoError(t, scheduler.Run(ctx))
+		require.NoError(t, scheduler.Run(ctx))
 	}()
 	defer scheduler.Stop()
 
@@ -3742,23 +3722,23 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 
 	err = s.Update(func(tx store.Tx) error {
 		// Add initial node and task
-		assert.NoError(t, store.CreateNode(tx, node1))
-		assert.NoError(t, store.CreateNode(tx, node2))
+		require.NoError(t, store.CreateNode(tx, node1))
+		require.NoError(t, store.CreateNode(tx, node2))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Tasks 1 and 2 should be assigned to different nodes.
 	assignment1 := watchAssignment(t, watch)
 	assignment2 := watchAssignment(t, watch)
-	assert.True(t, assignment1 != assignment2)
+	assert.NotSame(t, assignment1, assignment2)
 
 	// Task 3 should not be schedulable.
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, task3))
+		require.NoError(t, store.CreateTask(tx, task3))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	failure := watchAssignmentFailure(t, watch)
 	assert.Equal(t, "no suitable node (max replicas per node limit exceed)", failure.Status.Err)
@@ -3776,10 +3756,10 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 		},
 	}
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNode(tx, node3))
+		require.NoError(t, store.CreateNode(tx, node3))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create four more tasks to node 1
 	task4 := &api.Task{
@@ -3863,19 +3843,19 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 		},
 	}
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, task4))
-		assert.NoError(t, store.CreateTask(tx, task5))
-		assert.NoError(t, store.CreateTask(tx, task6))
+		require.NoError(t, store.CreateTask(tx, task4))
+		require.NoError(t, store.CreateTask(tx, task5))
+		require.NoError(t, store.CreateTask(tx, task6))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Task 7 should not be schedulable.
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateTask(tx, task7))
+		require.NoError(t, store.CreateTask(tx, task7))
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	failure = watchAssignmentFailure(t, watch)
 	assert.Equal(t, "no suitable node (scheduling constraints not satisfied on 3 nodes)", failure.Status.Err)

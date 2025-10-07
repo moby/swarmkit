@@ -6,12 +6,13 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 )
 
 func TestValidateAnnotations(t *testing.T) {
 	err := validateAnnotations(api.Annotations{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	for _, good := range []api.Annotations{
@@ -22,7 +23,7 @@ func TestValidateAnnotations(t *testing.T) {
 		{Name: "n--d"},
 	} {
 		err := validateAnnotations(good)
-		assert.NoError(t, err, "string: "+good.Name)
+		require.NoError(t, err, "string: "+good.Name)
 	}
 
 	for _, bad := range []api.Annotations{
@@ -35,6 +36,6 @@ func TestValidateAnnotations(t *testing.T) {
 		{Name: "////"},
 	} {
 		err := validateAnnotations(bad)
-		assert.Error(t, err, "string: "+bad.Name)
+		require.Error(t, err, "string: "+bad.Name)
 	}
 }

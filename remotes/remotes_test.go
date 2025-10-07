@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/moby/swarmkit/v2/api"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRemotesSimple(t *testing.T) {
@@ -15,33 +16,25 @@ func TestRemotesSimple(t *testing.T) {
 	seen := make(map[api.Peer]int)
 	for i := 0; i < len(peers)*10; i++ {
 		next, err := remotes.Select()
-		if err != nil {
-			t.Fatalf("error selecting remote: %v", err)
-		}
+		require.NoErrorf(t, err, "error selecting remote: %v", err)
 
-		if _, ok := index[next]; !ok {
-			t.Fatalf("unexpected remote returned: %q", next)
-		}
+		_, ok := index[next]
+		require.Truef(t, ok, "unexpected remote returned: %q", next)
 		seen[next]++
 	}
 
 	for _, peer := range peers {
-		if _, ok := seen[peer]; !ok {
-			t.Fatalf("%q not returned after several selection attempts", peer)
-		}
+		_, ok := seen[peer]
+		require.Truef(t, ok, "%q not returned after several selection attempts", peer)
 	}
 
 	weights := remotes.Weights()
 	var value int
 	for peer := range seen {
 		weight, ok := weights[peer]
-		if !ok {
-			t.Fatalf("unexpected remote returned: %v", peer)
-		}
+		require.Truef(t, ok, "unexpected remote returned: %v", peer)
 
-		if weight <= 0 {
-			t.Fatalf("weight should not be zero or less: %v (%v)", weight, remotes.Weights())
-		}
+		require.Positivef(t, weight, "weight should not be zero or less: %v (%v)", weight, remotes.Weights())
 
 		if value == 0 {
 			// sets benchmark weight, they should all be the same
@@ -49,9 +42,7 @@ func TestRemotesSimple(t *testing.T) {
 			continue
 		}
 
-		if weight != value {
-			t.Fatalf("all weights should be same %q: %v != %v, %v", peer, weight, value, weights)
-		}
+		require.Equalf(t, weight, value, "all weights should be same %q: %v != %v, %v", peer, weight, value, weights)
 	}
 }
 
@@ -59,9 +50,7 @@ func TestRemotesEmpty(t *testing.T) {
 	remotes := NewRemotes()
 
 	_, err := remotes.Select()
-	if err != errRemotesUnavailable {
-		t.Fatalf("unexpected return from Select: %v", err)
-	}
+	require.Equalf(t, err, errRemotesUnavailable, "unexpected return from Select: %v", err)
 
 }
 
@@ -72,32 +61,21 @@ func TestRemotesExclude(t *testing.T) {
 
 	// exclude all
 	_, err := remotes.Select(excludes...)
-	if err != errRemotesUnavailable {
-		t.Fatal("select an excluded peer")
-	}
+	require.Equal(t, err, errRemotesUnavailable, "select an excluded peer")
 
 	// exclude one peer
 	for i := 0; i < len(peers)*10; i++ {
 		next, err := remotes.Select(excludes[0])
-		if err != nil {
-			t.Fatalf("error selecting remote: %v", err)
-		}
+		require.NoErrorf(t, err, "error selecting remote: %v", err)
 
-		if next == peers[0] {
-			t.Fatal("select an excluded peer")
-		}
+		require.NotEqual(t, next, peers[0], "select an excluded peer")
 	}
 
 	// exclude 2 peers
 	for i := 0; i < len(peers)*10; i++ {
 		next, err := remotes.Select(excludes[1:]...)
-		if err != nil {
-			t.Fatalf("error selecting remote: %v", err)
-		}
-
-		if next != peers[0] {
-			t.Fatalf("select an excluded peer: %v", next)
-		}
+		require.NoErrorf(t, err, "error selecting remote: %v", err)
+		require.Equalf(t, next, peers[0], "select an excluded peer: %v", next)
 	}
 }
 
@@ -109,36 +87,26 @@ func TestRemotesConvergence(t *testing.T) {
 	remotes.Observe(api.Peer{Addr: "one"}, DefaultObservationWeight)
 
 	// zero weighted against 1
-	if float64(remotes.Weights()[api.Peer{Addr: "one"}]) < remoteWeightSmoothingFactor {
-		t.Fatalf("unexpected weight: %v < %v", remotes.Weights()[api.Peer{Addr: "one"}], remoteWeightSmoothingFactor)
-	}
+	require.GreaterOrEqualf(t, float64(remotes.Weights()[api.Peer{Addr: "one"}]), remoteWeightSmoothingFactor, "unexpected weight: %v < %v", remotes.Weights()[api.Peer{Addr: "one"}], remoteWeightSmoothingFactor)
 
 	// crank it up
 	for i := 0; i < 10; i++ {
 		remotes.Observe(api.Peer{Addr: "one"}, DefaultObservationWeight)
 	}
 
-	if float64(remotes.Weights()[api.Peer{Addr: "one"}]) < remoteWeightSmoothingFactor {
-		t.Fatalf("did not converge towards 1: %v < %v", remotes.Weights()[api.Peer{Addr: "one"}], remoteWeightSmoothingFactor)
-	}
+	require.GreaterOrEqualf(t, float64(remotes.Weights()[api.Peer{Addr: "one"}]), remoteWeightSmoothingFactor, "did not converge towards 1: %v < %v", remotes.Weights()[api.Peer{Addr: "one"}], remoteWeightSmoothingFactor)
 
-	if remotes.Weights()[api.Peer{Addr: "one"}] > remoteWeightMax {
-		t.Fatalf("should never go over towards %v: %v > %v", remoteWeightMax, remotes.Weights()[api.Peer{Addr: "one"}], 1.0)
-	}
+	require.LessOrEqualf(t, remotes.Weights()[api.Peer{Addr: "one"}], remoteWeightMax, "should never go over towards %v: %v > %v", remoteWeightMax, remotes.Weights()[api.Peer{Addr: "one"}], 1.0)
 
 	// provided a poor review
 	remotes.Observe(api.Peer{Addr: "one"}, -DefaultObservationWeight)
 
-	if remotes.Weights()[api.Peer{Addr: "one"}] > 0 {
-		t.Fatalf("should be below zero: %v", remotes.Weights()[api.Peer{Addr: "one"}])
-	}
+	require.LessOrEqualf(t, remotes.Weights()[api.Peer{Addr: "one"}], 0, "should be below zero: %v", remotes.Weights()[api.Peer{Addr: "one"}])
 
 	// The remote should be heavily downweighted but not completely to -1
 	expected := (-remoteWeightSmoothingFactor + (1 - remoteWeightSmoothingFactor))
 	epsilon := -1e-5
-	if float64(remotes.Weights()[api.Peer{Addr: "one"}]) < expected+epsilon {
-		t.Fatalf("weight should not drop so quickly: %v < %v", remotes.Weights()[api.Peer{Addr: "one"}], expected)
-	}
+	require.GreaterOrEqualf(t, float64(remotes.Weights()[api.Peer{Addr: "one"}]), expected+epsilon, "weight should not drop so quickly: %v < %v", remotes.Weights()[api.Peer{Addr: "one"}], expected)
 }
 
 func TestRemotesZeroWeights(t *testing.T) {
@@ -151,17 +119,14 @@ func TestRemotesZeroWeights(t *testing.T) {
 	seen := map[api.Peer]struct{}{}
 	for i := 0; i < 1000; i++ {
 		peer, err := remotes.Select()
-		if err != nil {
-			t.Fatalf("unexpected error from Select: %v", err)
-		}
+		require.NoErrorf(t, err, "unexpected error from Select: %v", err)
 
 		seen[peer] = struct{}{}
 	}
 
 	for peer := range remotes.Weights() {
-		if _, ok := seen[peer]; !ok {
-			t.Fatalf("remote not returned after several tries: %v (seen: %v)", peer, seen)
-		}
+		_, ok := seen[peer]
+		require.Truef(t, ok, "remote not returned after several tries: %v (seen: %v)", peer, seen)
 	}
 
 	// Pump up number 3!
@@ -171,9 +136,7 @@ func TestRemotesZeroWeights(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		// basically, we expect the same one to return
 		peer, err := remotes.Select()
-		if err != nil {
-			t.Fatalf("unexpected error from Select: %v", err)
-		}
+		require.NoErrorf(t, err, "unexpected error from Select: %v", err)
 
 		count[peer]++
 
@@ -205,26 +168,21 @@ func TestRemotesLargeRanges(t *testing.T) {
 	seen := make(map[api.Peer]int)
 	for i := 0; i < len(peers)*remoteWeightMax*4; i++ {
 		next, err := remotes.Select()
-		if err != nil {
-			t.Fatalf("error selecting remote: %v", err)
-		}
+		require.NoErrorf(t, err, "error selecting remote: %v", err)
 
-		if _, ok := index[next]; !ok {
-			t.Fatalf("unexpected remote returned: %q", next)
-		}
+		_, ok := index[next]
+		require.Truef(t, ok, "unexpected remote returned: %q", next)
 		seen[next]++
 	}
 
 	for _, peer := range peers {
-		if _, ok := seen[peer]; !ok {
-			t.Fatalf("%q not returned after several selection attempts, %v", peer, remotes)
-		}
+		_, ok := seen[peer]
+		require.Truef(t, ok, "%q not returned after several selection attempts, %v", peer, remotes)
 	}
 
 	for peer := range seen {
-		if _, ok := index[peer]; !ok {
-			t.Fatalf("unexpected remote returned: %v", peer)
-		}
+		_, ok := index[peer]
+		require.Truef(t, ok, "unexpected remote returned: %v", peer)
 	}
 }
 
@@ -248,18 +206,14 @@ func TestRemotesDownweight(t *testing.T) {
 
 	for i := 0; i < samples; i++ {
 		p, err := remotes.Select()
-		if err != nil {
-			t.Fatalf("error selecting remote: %v", err)
-		}
+		require.NoErrorf(t, err, "error selecting remote: %v", err)
 		if p == peers[0] {
 			chosen++
 		}
 	}
 	ratio := float32(chosen) / float32(samples)
 	t.Logf("ratio: %f", ratio)
-	if ratio > 0.001 {
-		t.Fatalf("downweighted peer is chosen too often, ratio: %f", ratio)
-	}
+	require.LessOrEqualf(t, ratio, 0.001, "downweighted peer is chosen too often, ratio: %f", ratio)
 }
 
 // TestRemotesPractical ensures that under a single poor observation, such as
@@ -274,9 +228,7 @@ func TestRemotesPractical(t *testing.T) {
 	// set a baseline, where selections should be even
 	for i := 0; i < selections; i++ {
 		peer, err := remotes.Select()
-		if err != nil {
-			t.Fatalf("error selecting peer: %v", err)
-		}
+		require.NoErrorf(t, err, "error selecting peer: %v", err)
 
 		remotes.Observe(peer, DefaultObservationWeight)
 		seen[peer]++
@@ -296,9 +248,7 @@ func TestRemotesPractical(t *testing.T) {
 	seen = map[api.Peer]int{} // result
 	for i := 0; i < selections; i++ {
 		peer, err := remotes.Select()
-		if err != nil {
-			t.Fatalf("error selecting peer: %v", err)
-		}
+		require.NoErrorf(t, err, "error selecting peer: %v", err)
 
 		seen[peer]++
 	}
@@ -312,9 +262,7 @@ func TestRemotesPractical(t *testing.T) {
 			// we have an *extremely* low probability of selecting this node
 			// (like 0.005%) once. Selecting this more than a few times will
 			// fail the test.
-			if count > 3 {
-				t.Fatalf("downweighted peer should not be selected, selected %v times", count)
-			}
+			require.LessOrEqualf(t, count, 3, "downweighted peer should not be selected, selected %v times", count)
 		}
 
 		if !(count >= low && count <= high) {

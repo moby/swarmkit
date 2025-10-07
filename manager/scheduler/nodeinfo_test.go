@@ -83,7 +83,7 @@ func TestRemoveTask(t *testing.T) {
 	assert.Equal(t, cpuLeft, nodeAvailableResources.NanoCPUs)
 	assert.Equal(t, memoryLeft, nodeAvailableResources.MemoryBytes)
 
-	assert.Equal(t, 4, len(nodeAvailableResources.Generic))
+	assert.Len(t, nodeAvailableResources.Generic, 4)
 
 	apples := genericresource.GetResource("apple", nodeAvailableResources.Generic)
 	oranges := genericresource.GetResource("orange", nodeAvailableResources.Generic)
