@@ -685,7 +685,7 @@ func (suite *testSuite) TestNoDuplicateIPs() {
 	defer cancel()
 
 	assignedIPs := make(map[string]string)
-	hasUniqueIP := func(fakeT assert.TestingT, s *store.MemoryStore, task *api.Task) bool {
+	hasUniqueIP := func(_ assert.TestingT, _ *store.MemoryStore, task *api.Task) bool {
 		if len(task.Networks) == 0 {
 			panic("missing networks")
 		}
@@ -834,7 +834,7 @@ func (suite *testSuite) TestAllocatorRestoreForDuplicateIPs() {
 		return true
 	}
 
-	hasNoIPOverlapTasks := func(fakeT assert.TestingT, s *store.MemoryStore, task *api.Task) bool {
+	hasNoIPOverlapTasks := func(fakeT assert.TestingT, _ *store.MemoryStore, task *api.Task) bool {
 		assert.NotEqual(fakeT, len(task.Networks), 0)
 		assert.NotEqual(fakeT, len(task.Networks[0].Addresses), 0)
 
@@ -978,7 +978,7 @@ func (suite *testSuite) TestAllocatorRestartNoEndpointSpec() {
 		return true
 	}
 
-	hasNoIPOverlapTasks := func(fakeT assert.TestingT, s *store.MemoryStore, task *api.Task) bool {
+	hasNoIPOverlapTasks := func(fakeT assert.TestingT, _ *store.MemoryStore, task *api.Task) bool {
 		assert.NotEqual(fakeT, len(task.Networks), 0)
 		assert.NotEqual(fakeT, len(task.Networks[0].Addresses), 0)
 		assignedIP := task.Networks[0].Addresses[0]
@@ -1176,7 +1176,7 @@ func (suite *testSuite) TestAllocatorRestoreForUnallocatedNetwork() {
 		return true
 	}
 
-	hasNoIPOverlapTasks := func(fakeT assert.TestingT, s *store.MemoryStore, task *api.Task) bool {
+	hasNoIPOverlapTasks := func(fakeT assert.TestingT, _ *store.MemoryStore, task *api.Task) bool {
 		assert.NotEqual(fakeT, len(task.Networks), 0)
 		assert.NotEqual(fakeT, len(task.Networks[0].Addresses), 0)
 		assignedIP := task.Networks[1].Addresses[0]
@@ -2056,7 +2056,7 @@ func isValidSubnet(t assert.TestingT, subnet string) bool {
 
 type mockTester struct{}
 
-func (m mockTester) Errorf(format string, args ...interface{}) {
+func (m mockTester) Errorf(_ string, _ ...interface{}) {
 }
 
 // Returns a timeout given whether we should expect a timeout:  In the case where we do expect a timeout,

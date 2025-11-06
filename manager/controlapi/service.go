@@ -724,7 +724,7 @@ func (s *Server) checkConfigExistence(tx store.Tx, spec *api.ServiceSpec) error 
 // - Returns `Unimplemented` if the ServiceSpec references unimplemented features.
 // - Returns `AlreadyExists` if the ServiceID conflicts.
 // - Returns an error if the creation fails.
-func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRequest) (*api.CreateServiceResponse, error) {
+func (s *Server) CreateService(_ context.Context, request *api.CreateServiceRequest) (*api.CreateServiceResponse, error) {
 	if err := validateServiceSpec(request.Spec); err != nil {
 		return nil, err
 	}
@@ -787,7 +787,7 @@ func (s *Server) CreateService(ctx context.Context, request *api.CreateServiceRe
 // GetService returns a Service given a ServiceID.
 // - Returns `InvalidArgument` if ServiceID is not provided.
 // - Returns `NotFound` if the Service is not found.
-func (s *Server) GetService(ctx context.Context, request *api.GetServiceRequest) (*api.GetServiceResponse, error) {
+func (s *Server) GetService(_ context.Context, request *api.GetServiceRequest) (*api.GetServiceResponse, error) {
 	if request.ServiceID == "" {
 		return nil, status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
@@ -814,7 +814,7 @@ func (s *Server) GetService(ctx context.Context, request *api.GetServiceRequest)
 // - Returns `InvalidArgument` if the ServiceSpec is malformed.
 // - Returns `Unimplemented` if the ServiceSpec references unimplemented features.
 // - Returns an error if the update fails.
-func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRequest) (*api.UpdateServiceResponse, error) {
+func (s *Server) UpdateService(_ context.Context, request *api.UpdateServiceRequest) (*api.UpdateServiceResponse, error) {
 	if request.ServiceID == "" || request.ServiceVersion == nil {
 		return nil, status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
@@ -940,7 +940,7 @@ func (s *Server) UpdateService(ctx context.Context, request *api.UpdateServiceRe
 // - Returns `InvalidArgument` if ServiceID is not provided.
 // - Returns `NotFound` if the Service is not found.
 // - Returns an error if the deletion fails.
-func (s *Server) RemoveService(ctx context.Context, request *api.RemoveServiceRequest) (*api.RemoveServiceResponse, error) {
+func (s *Server) RemoveService(_ context.Context, request *api.RemoveServiceRequest) (*api.RemoveServiceResponse, error) {
 	if request.ServiceID == "" {
 		return nil, status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
@@ -977,7 +977,7 @@ func filterServices(candidates []*api.Service, filters ...func(*api.Service) boo
 }
 
 // ListServices returns a list of all services.
-func (s *Server) ListServices(ctx context.Context, request *api.ListServicesRequest) (*api.ListServicesResponse, error) {
+func (s *Server) ListServices(_ context.Context, request *api.ListServicesRequest) (*api.ListServicesResponse, error) {
 	var (
 		services []*api.Service
 		err      error
@@ -1044,7 +1044,7 @@ func (s *Server) ListServices(ctx context.Context, request *api.ListServicesRequ
 // client to avoid having to calculate this value by listing all Tasks.  If any
 // service requested does not exist, it will be returned but with empty status
 // values.
-func (s *Server) ListServiceStatuses(ctx context.Context, req *api.ListServiceStatusesRequest) (*api.ListServiceStatusesResponse, error) {
+func (s *Server) ListServiceStatuses(_ context.Context, req *api.ListServiceStatusesRequest) (*api.ListServiceStatusesResponse, error) {
 	resp := &api.ListServiceStatusesResponse{}
 	if req == nil {
 		return resp, nil

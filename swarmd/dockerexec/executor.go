@@ -123,7 +123,7 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 	return description, nil
 }
 
-func (e *executor) Configure(ctx context.Context, node *api.Node) error {
+func (e *executor) Configure(_ context.Context, _ *api.Node) error {
 	return nil
 }
 

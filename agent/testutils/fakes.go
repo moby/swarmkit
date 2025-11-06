@@ -26,7 +26,7 @@ type TestExecutor struct {
 }
 
 // Describe just returns empty NodeDescription.
-func (e *TestExecutor) Describe(ctx context.Context) (*api.NodeDescription, error) {
+func (e *TestExecutor) Describe(_ context.Context) (*api.NodeDescription, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.desc == nil {
@@ -36,7 +36,7 @@ func (e *TestExecutor) Describe(ctx context.Context) (*api.NodeDescription, erro
 }
 
 // Configure does nothing.
-func (e *TestExecutor) Configure(ctx context.Context, node *api.Node) error {
+func (e *TestExecutor) Configure(_ context.Context, _ *api.Node) error {
 	return nil
 }
 
@@ -46,7 +46,7 @@ func (e *TestExecutor) SetNetworkBootstrapKeys([]*api.EncryptionKey) error {
 }
 
 // Controller returns TestController.
-func (e *TestExecutor) Controller(t *api.Task) (exec.Controller, error) {
+func (e *TestExecutor) Controller(_ *api.Task) (exec.Controller, error) {
 	return &TestController{
 		ch: make(chan struct{}),
 	}, nil
@@ -66,17 +66,17 @@ type TestController struct {
 }
 
 // Update does nothing.
-func (t *TestController) Update(ctx context.Context, task *api.Task) error {
+func (t *TestController) Update(_ context.Context, _ *api.Task) error {
 	return nil
 }
 
 // Prepare does nothing.
-func (t *TestController) Prepare(ctx context.Context) error {
+func (t *TestController) Prepare(_ context.Context) error {
 	return nil
 }
 
 // Start does nothing.
-func (t *TestController) Start(ctx context.Context) error {
+func (t *TestController) Start(_ context.Context) error {
 	return nil
 }
 
@@ -90,7 +90,7 @@ func (t *TestController) Wait(ctx context.Context) error {
 }
 
 // Shutdown closes internal channel
-func (t *TestController) Shutdown(ctx context.Context) error {
+func (t *TestController) Shutdown(_ context.Context) error {
 	t.closeOnce.Do(func() {
 		close(t.ch)
 	})
@@ -98,7 +98,7 @@ func (t *TestController) Shutdown(ctx context.Context) error {
 }
 
 // Terminate closes internal channel if it wasn't closed before.
-func (t *TestController) Terminate(ctx context.Context) error {
+func (t *TestController) Terminate(_ context.Context) error {
 	t.closeOnce.Do(func() {
 		close(t.ch)
 	})
@@ -106,7 +106,7 @@ func (t *TestController) Terminate(ctx context.Context) error {
 }
 
 // Remove does nothing.
-func (t *TestController) Remove(ctx context.Context) error {
+func (t *TestController) Remove(_ context.Context) error {
 	return nil
 }
 

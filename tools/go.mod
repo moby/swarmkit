@@ -1,6 +1,6 @@
 module github.com/moby/swarmkit/v2/tools
 
-go 1.17
+go 1.21.0
 
 require github.com/containerd/protobuild v0.1.1-0.20211025221430-7e5ee24bc1f7
 

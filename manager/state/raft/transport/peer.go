@@ -152,7 +152,7 @@ func raftMessagePayloadSize(m *raftpb.Message) int {
 // Split a large raft message into smaller messages.
 // Currently this means splitting the []Snapshot.Data into chunks whose size
 // is dictacted by MaxRaftMsgSize.
-func splitSnapshotData(ctx context.Context, m *raftpb.Message) []api.StreamRaftMessageRequest {
+func splitSnapshotData(_ context.Context, m *raftpb.Message) []api.StreamRaftMessageRequest {
 	var messages []api.StreamRaftMessageRequest
 	if m.Type != raftpb.MsgSnap {
 		return messages
