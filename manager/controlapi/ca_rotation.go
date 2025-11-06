@@ -241,7 +241,7 @@ func validateCAConfig(ctx context.Context, securityConfig *ca.SecurityConfig, cl
 		if cluster.RootCA.LastForcedRotation != newConfig.ForceRotate {
 			newRootCA, err := ca.CreateRootCA(ca.DefaultRootCN)
 			if err != nil {
-				return nil, status.Errorf(codes.Internal, err.Error())
+				return nil, status.Error(codes.Internal, err.Error())
 			}
 			return newRootRotationObject(ctx, securityConfig, &cluster.RootCA, newRootCA, oldCertExtCAs, newConfig.ForceRotate)
 		}
@@ -265,7 +265,7 @@ func validateCAConfig(ctx context.Context, securityConfig *ca.SecurityConfig, cl
 	}
 	newRootCA, err := ca.NewRootCA(newConfig.SigningCACert, signingCert, newConfig.SigningCAKey, ca.DefaultNodeCertExpiration, nil)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if len(newRootCA.Pool.Subjects()) != 1 {

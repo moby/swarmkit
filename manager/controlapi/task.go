@@ -16,7 +16,7 @@ import (
 // - Returns `NotFound` if the Task is not found.
 func (s *Server) GetTask(_ context.Context, request *api.GetTaskRequest) (*api.GetTaskResponse, error) {
 	if request.TaskID == "" {
-		return nil, status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		return nil, status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
 	var task *api.Task
@@ -37,7 +37,7 @@ func (s *Server) GetTask(_ context.Context, request *api.GetTaskRequest) (*api.G
 // - Returns an error if the deletion fails.
 func (s *Server) RemoveTask(_ context.Context, request *api.RemoveTaskRequest) (*api.RemoveTaskResponse, error) {
 	if request.TaskID == "" {
-		return nil, status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		return nil, status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
 	err := s.store.Update(func(tx store.Tx) error {

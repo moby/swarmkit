@@ -15,7 +15,7 @@ import (
 
 func validateNodeSpec(spec *api.NodeSpec) error {
 	if spec == nil {
-		return status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		return status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 	return nil
 }
@@ -25,7 +25,7 @@ func validateNodeSpec(spec *api.NodeSpec) error {
 // - Returns `NotFound` if the Node is not found.
 func (s *Server) GetNode(_ context.Context, request *api.GetNodeRequest) (*api.GetNodeResponse, error) {
 	if request.NodeID == "" {
-		return nil, status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		return nil, status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
 	var node *api.Node
@@ -202,7 +202,7 @@ func (s *Server) ListNodes(_ context.Context, request *api.ListNodesRequest) (*a
 // - Returns an error if the update fails.
 func (s *Server) UpdateNode(_ context.Context, request *api.UpdateNodeRequest) (*api.UpdateNodeResponse, error) {
 	if request.NodeID == "" || request.NodeVersion == nil {
-		return nil, status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		return nil, status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 	if err := validateNodeSpec(request.Spec); err != nil {
 		return nil, err
@@ -293,7 +293,7 @@ func orphanNodeTasks(tx store.Tx, nodeID string) error {
 // - Returns an error if the delete fails.
 func (s *Server) RemoveNode(_ context.Context, request *api.RemoveNodeRequest) (*api.RemoveNodeResponse, error) {
 	if request.NodeID == "" {
-		return nil, status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		return nil, status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
 	err := s.store.Update(func(tx store.Tx) error {
