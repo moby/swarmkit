@@ -11,4 +11,4 @@ require (
 )
 
 // match ../go.mod
-replace github.com/golang/protobuf => github.com/golang/protobuf v1.5.2
+replace github.com/golang/protobuf => github.com/golang/protobuf v1.5.3
