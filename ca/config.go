@@ -9,7 +9,6 @@ import (
 	"math/big"
 	"math/rand"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -661,7 +660,7 @@ func NewServerTLSConfig(certs []tls.Certificate, rootCAPool *x509.CertPool) (*tl
 		RootCAs:                  rootCAPool,
 		ClientCAs:                rootCAPool,
 		PreferServerCipherSuites: true,
-		CipherSuites:             slices.Clone(strongTLSCiphers),
+		CipherSuites:             append([]uint16(nil), strongTLSCiphers...),
 		MinVersion:               tls.VersionTLS12,
 		NextProtos:               alpnProtoStr,
 	}, nil
@@ -678,7 +677,7 @@ func NewClientTLSConfig(certs []tls.Certificate, rootCAPool *x509.CertPool, serv
 		ServerName:   serverName,
 		Certificates: certs,
 		RootCAs:      rootCAPool,
-		CipherSuites: slices.Clone(strongTLSCiphers),
+		CipherSuites: append([]uint16(nil), strongTLSCiphers...),
 		MinVersion:   tls.VersionTLS12,
 	}, nil
 }

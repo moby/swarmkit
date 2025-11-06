@@ -104,8 +104,17 @@ ARG DEBIAN_FRONTEND
 RUN apt-get install -y --no-install-recommends libgcc-10-dev libc6-dev
 RUN --mount=type=bind,target=. \
     --mount=type=cache,target=/root/.cache \
-    --mount=from=golangci-lint,source=/usr/bin/golangci-lint,target=/usr/bin/golangci-lint \
-    golangci-lint run ./... && cd swarmd && golangci-lint run ./...
+    --mount=from=golangci-lint,source=/usr/bin/golangci-lint,target=/usr/bin/golangci-lint <<EOT
+  set -e
+  config=$(pwd)/.golangci.yml
+  for dir in . swarmd; do
+    (
+      set -x
+      cd $dir
+      golangci-lint run --config "$config" ./...
+    )
+  done
+EOT
 
 FROM gobase AS fmt-proto
 RUN --mount=type=bind,target=. \
