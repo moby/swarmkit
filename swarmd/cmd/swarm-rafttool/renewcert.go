@@ -7,7 +7,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
-	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/raft/v3/raftpb"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"

@@ -12,9 +12,9 @@ import (
 	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/moby/swarmkit/v2/manager/state/raft/storage"
 	"github.com/moby/swarmkit/v2/manager/state/store"
-	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/wal/walpb"
+	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 func loadData(swarmdir, unlockKey string) (*storage.WALData, *raftpb.Snapshot, error) {
