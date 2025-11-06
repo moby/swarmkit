@@ -1988,7 +1988,7 @@ func (n *Node) applyAddNode(cc raftpb.ConfChange) error {
 
 // applyUpdateNode is called when we receive a ConfChange from a member in the
 // raft cluster which update the address of an existing node.
-func (n *Node) applyUpdateNode(ctx context.Context, cc raftpb.ConfChange) error {
+func (n *Node) applyUpdateNode(_ context.Context, cc raftpb.ConfChange) error {
 	newMember := &api.RaftMember{}
 	err := proto.Unmarshal(cc.Context, newMember)
 	if err != nil {

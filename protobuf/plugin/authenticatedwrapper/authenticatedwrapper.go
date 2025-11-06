@@ -193,5 +193,5 @@ func (g *authenticatedWrapperGen) Generate(file *generator.FileDescriptor) {
 	g.gen.P()
 }
 
-func (g *authenticatedWrapperGen) GenerateImports(file *generator.FileDescriptor) {
+func (g *authenticatedWrapperGen) GenerateImports(_ *generator.FileDescriptor) {
 }

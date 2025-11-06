@@ -137,7 +137,7 @@ func (d *deepCopyGen) genMsgDeepCopy(m *generator.Descriptor) {
 	d.P()
 }
 
-func (d *deepCopyGen) genMap(m *generator.Descriptor, f *descriptor.FieldDescriptorProto) bool {
+func (d *deepCopyGen) genMap(_ *generator.Descriptor, f *descriptor.FieldDescriptorProto) bool {
 	fName := generator.CamelCase(*f.Name)
 	if gogoproto.IsCustomName(f) {
 		fName = gogoproto.GetCustomName(f)

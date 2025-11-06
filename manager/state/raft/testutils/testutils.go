@@ -404,7 +404,7 @@ func NewJoinNode(t *testing.T, clockSource *fakeclock.FakeClock, join string, tc
 }
 
 // CopyNode returns a copy of a node
-func CopyNode(t *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNode, forceNewCluster bool, kr *SimpleKeyRotator) (*TestNode, context.Context) {
+func CopyNode(_ *testing.T, clockSource *fakeclock.FakeClock, oldNode *TestNode, forceNewCluster bool, kr *SimpleKeyRotator) (*TestNode, context.Context) {
 	wrappedListener := RecycleWrappedListener(oldNode.Listener)
 	securityConfig := oldNode.SecurityConfig
 	serverOpts := []grpc.ServerOption{grpc.Creds(securityConfig.ServerTLSCreds)}

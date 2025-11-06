@@ -16,7 +16,7 @@ type MockProposer struct {
 
 // ProposeValue propagates a value. In this mock implementation, it just stores
 // the value locally.
-func (mp *MockProposer) ProposeValue(ctx context.Context, storeAction []api.StoreAction, cb func()) error {
+func (mp *MockProposer) ProposeValue(_ context.Context, storeAction []api.StoreAction, cb func()) error {
 	mp.index += 3
 	mp.changes = append(mp.changes,
 		state.Change{

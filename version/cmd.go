@@ -12,7 +12,7 @@ var (
 	Cmd = &cobra.Command{
 		Use:   "version",
 		Short: "Print version number of swarm",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			if len(args) != 0 {
 				return errors.New("version command takes no arguments")
 			}

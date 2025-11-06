@@ -45,7 +45,7 @@ var (
 	dumpWALCmd = &cobra.Command{
 		Use:   "dump-wal",
 		Short: "Display entries from the Raft log",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			stateDir, err := cmd.Flags().GetString("state-dir")
 			if err != nil {
 				return err
@@ -78,7 +78,7 @@ var (
 	dumpSnapshotCmd = &cobra.Command{
 		Use:   "dump-snapshot",
 		Short: "Display entries from the latest Raft snapshot",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			stateDir, err := cmd.Flags().GetString("state-dir")
 			if err != nil {
 				return err
@@ -143,7 +143,7 @@ var (
 	downgradeKeyCmd = &cobra.Command{
 		Use:   "downgrade-key",
 		Short: "Downgrade swarm node key from PKCS8 to PKCS1",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			stateDir, err := cmd.Flags().GetString("state-dir")
 			if err != nil {
 				return err
@@ -161,7 +161,7 @@ var (
 	renewCertsCmd = &cobra.Command{
 		Use:   "renew-certs",
 		Short: "Renew expired manager cert",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			stateDir, err := cmd.Flags().GetString("state-dir")
 			if err != nil {
 				return err

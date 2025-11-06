@@ -49,7 +49,7 @@ func DialConn(cmd *cobra.Command) (*grpc.ClientConn, error) {
 }
 
 // Context returns a request context based on CLI arguments.
-func Context(cmd *cobra.Command) context.Context {
+func Context(_ *cobra.Command) context.Context {
 	// TODO(aluzzardi): Actually create a context.
 	return context.TODO()
 }

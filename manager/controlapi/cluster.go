@@ -77,7 +77,7 @@ func validateClusterSpec(spec *api.ClusterSpec) error {
 // GetCluster returns a Cluster given a ClusterID.
 // - Returns `InvalidArgument` if ClusterID is not provided.
 // - Returns `NotFound` if the Cluster is not found.
-func (s *Server) GetCluster(ctx context.Context, request *api.GetClusterRequest) (*api.GetClusterResponse, error) {
+func (s *Server) GetCluster(_ context.Context, request *api.GetClusterRequest) (*api.GetClusterResponse, error) {
 	if request.ClusterID == "" {
 		return nil, status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
 	}
@@ -203,7 +203,7 @@ func filterClusters(candidates []*api.Cluster, filters ...func(*api.Cluster) boo
 }
 
 // ListClusters returns a list of all clusters.
-func (s *Server) ListClusters(ctx context.Context, request *api.ListClustersRequest) (*api.ListClustersResponse, error) {
+func (s *Server) ListClusters(_ context.Context, request *api.ListClustersRequest) (*api.ListClustersResponse, error) {
 	var (
 		clusters []*api.Cluster
 		err      error

@@ -13,7 +13,7 @@ var (
 	mainCmd = &cobra.Command{
 		Use:   os.Args[0],
 		Short: "Benchmark swarm",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := context.Background()
 			count, err := cmd.Flags().GetUint64("count")
 			if err != nil {
