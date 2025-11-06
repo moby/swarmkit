@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 
-ARG GO_VERSION=1.18.9
+ARG GO_VERSION=1.21
 ARG PROTOC_VERSION=3.11.4
-ARG GOLANGCI_LINT_VERSION=v1.50.1
+ARG GOLANGCI_LINT_VERSION=v1.57.2
 ARG DEBIAN_FRONTEND=noninteractive
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS gobase
@@ -126,7 +126,7 @@ ENV GO111MODULE=on
 # install the dependencies from `make setup`
 # we only copy `direct.mk` to avoid busting the cache too easily
 COPY direct.mk .
-COPY tools .
+COPY tools ./tools
 RUN make --file=direct.mk setup
 # now we can copy the rest
 COPY . .
