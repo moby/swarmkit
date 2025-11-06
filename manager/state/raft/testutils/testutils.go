@@ -9,9 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/grpc"
-
 	"code.cloudfoundry.org/clock/fakeclock"
+	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	cautils "github.com/moby/swarmkit/v2/ca/testutils"
@@ -25,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	etcdraft "go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"google.golang.org/grpc"
 )
 
 // TestNode represents a raft test node
@@ -44,6 +44,38 @@ type TestNode struct {
 func (n *TestNode) Leader() uint64 {
 	id, _ := n.Node.Leader()
 	return id
+}
+
+func (n *TestNode) Status() etcdraft.Status {
+	return n.Node.Status()
+}
+
+func (n *TestNode) Run(ctx context.Context) {
+	n.Node.Run(ctx)
+}
+
+func (n *TestNode) Done() <-chan struct{} {
+	return n.Node.Done()
+}
+
+func (n *TestNode) ProposeValue(ctx context.Context, actions []api.StoreAction, cb func()) error {
+	return n.Node.ProposeValue(ctx, actions, cb)
+}
+
+func (n *TestNode) MemoryStore() *store.MemoryStore {
+	return n.Node.MemoryStore()
+}
+
+func (n *TestNode) ReadyForProposals() bool {
+	return n.Node.ReadyForProposals()
+}
+
+func (n *TestNode) GetMemberlist() map[uint64]*api.RaftMember {
+	return n.Node.GetMemberlist()
+}
+
+func (n *TestNode) SubscribeLeadership() (q chan events.Event, cancel func()) {
+	return n.Node.SubscribeLeadership()
 }
 
 // AdvanceTicks advances the raft state machine fake clock
@@ -66,7 +98,7 @@ func WaitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[ui
 				prev = new(etcdraft.Status)
 				*prev = n.Status()
 				for _, n2 := range nodes {
-					if n2.Config.ID == prev.Lead {
+					if n2.Node.Config.ID == prev.Lead {
 						leadNode = n2
 						continue nodeLoop
 					}
@@ -76,7 +108,7 @@ func WaitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[ui
 			cur := n.Status()
 
 			for _, n2 := range nodes {
-				if n2.Config.ID == cur.Lead {
+				if n2.Node.Config.ID == cur.Lead {
 					if cur.Lead != prev.Lead || cur.Term != prev.Term || cur.Applied != prev.Applied {
 						return errors.New("state does not match on all nodes")
 					}
@@ -496,7 +528,7 @@ func CleanupNonRunningNode(node *TestNode) {
 // belonging to the same cluster
 func Leader(nodes map[uint64]*TestNode) *TestNode {
 	for _, n := range nodes {
-		if n.Config.ID == n.Leader() {
+		if n.Node.Config.ID == n.Leader() {
 			return n
 		}
 	}
