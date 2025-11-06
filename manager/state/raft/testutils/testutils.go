@@ -23,8 +23,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	etcdraft "go.etcd.io/etcd/raft/v3"
-	"go.etcd.io/etcd/raft/v3/raftpb"
+	etcdraft "go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 // TestNode represents a raft test node
@@ -654,7 +654,7 @@ func NewSnapshotMessage(from, to uint64, size int) *raftpb.Message {
 		Type: raftpb.MsgSnap,
 		From: from,
 		To:   to,
-		Snapshot: raftpb.Snapshot{
+		Snapshot: &raftpb.Snapshot{
 			Data: data,
 			// Include the snapshot size in the Index field for testing.
 			Metadata: raftpb.SnapshotMetadata{
