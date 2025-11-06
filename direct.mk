@@ -42,7 +42,7 @@ version/version.go:
 setup: ## install dependencies
 	@echo "🐳 $@"
 	# install golangci-lint to ./bin/golangci-lint
-	@curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/v1.57.2/install.sh | sh -s v1.57.2
+	@curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/v2.1.5/install.sh | sh -s v2.1.5
 	@(cd ./tools ; GO111MODULE=on go install github.com/containerd/protobuild)
 
 .PHONY: generate

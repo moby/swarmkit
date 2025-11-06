@@ -91,7 +91,7 @@ func (r *mockRaft) RemovePeer(id uint64) error {
 
 func (r *mockRaft) ProcessRaftMessage(ctx context.Context, req *api.ProcessRaftMessageRequest) (*api.ProcessRaftMessageResponse, error) {
 	if r.removed[req.Message.From] {
-		return nil, status.Errorf(codes.NotFound, "%s", membership.ErrMemberRemoved.Error())
+		return nil, status.Error(codes.NotFound, membership.ErrMemberRemoved.Error())
 	}
 	r.processedMessages <- req.Message
 	return &api.ProcessRaftMessageResponse{}, nil
@@ -100,7 +100,7 @@ func (r *mockRaft) ProcessRaftMessage(ctx context.Context, req *api.ProcessRaftM
 // StreamRaftMessage is the mock server endpoint for streaming messages of type StreamRaftMessageRequest.
 func (r *mockRaft) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) error {
 	if r.forceErrorStream {
-		return status.Errorf(codes.Unimplemented, "streaming not supported")
+		return status.Error(codes.Unimplemented, "streaming not supported")
 	}
 	var recvdMsg, assembledMessage *api.StreamRaftMessageRequest
 	var err error
@@ -114,7 +114,7 @@ func (r *mockRaft) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) er
 		}
 
 		if r.removed[recvdMsg.Message.From] {
-			return status.Errorf(codes.NotFound, "%s", membership.ErrMemberRemoved.Error())
+			return status.Error(codes.NotFound, membership.ErrMemberRemoved.Error())
 		}
 
 		if assembledMessage == nil {

@@ -51,7 +51,7 @@ func (s *Server) GetSecret(_ context.Context, request *api.GetSecretRequest) (*a
 // - Returns an error if the update fails.
 func (s *Server) UpdateSecret(ctx context.Context, request *api.UpdateSecretRequest) (*api.UpdateSecretResponse, error) {
 	if request.SecretID == "" || request.SecretVersion == nil {
-		return nil, status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		return nil, status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 	var secret *api.Secret
 	err := s.store.Update(func(tx store.Tx) error {
@@ -242,7 +242,7 @@ func (s *Server) RemoveSecret(ctx context.Context, request *api.RemoveSecretRequ
 
 func validateSecretSpec(spec *api.SecretSpec) error {
 	if spec == nil {
-		return status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		return status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 	if err := validateConfigOrSecretAnnotations(spec.Annotations); err != nil {
 		return err
@@ -256,7 +256,7 @@ func validateSecretSpec(spec *api.SecretSpec) error {
 		return nil
 	}
 	if err := validation.ValidateSecretPayload(spec.Data); err != nil {
-		return status.Errorf(codes.InvalidArgument, "%s", err.Error())
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 	return nil
 }

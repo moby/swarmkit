@@ -70,7 +70,7 @@ func (s *Server) validateIPAM(ipam *api.IPAMOptions) error {
 
 func (s *Server) validateNetworkSpec(spec *api.NetworkSpec) error {
 	if spec == nil {
-		return status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		return status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
 	if spec.Attachable && spec.Ingress {
@@ -138,7 +138,7 @@ func (s *Server) CreateNetwork(_ context.Context, request *api.CreateNetworkRequ
 // - Returns `NotFound` if the Network is not found.
 func (s *Server) GetNetwork(ctx context.Context, request *api.GetNetworkRequest) (*api.GetNetworkResponse, error) {
 	if request.NetworkID == "" {
-		return nil, status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		return nil, status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
 	var n *api.Network
@@ -162,7 +162,7 @@ func (s *Server) GetNetwork(ctx context.Context, request *api.GetNetworkRequest)
 // - Returns an error if the deletion fails.
 func (s *Server) RemoveNetwork(_ context.Context, request *api.RemoveNetworkRequest) (*api.RemoveNetworkResponse, error) {
 	if request.NetworkID == "" {
-		return nil, status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		return nil, status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
 	var (

@@ -1,21 +1,60 @@
+version: "2"
+
 run:
   tests: false
   timeout: 10m
 
 linters: 
-  disable-all: true
+  default: none
   enable:
     - misspell
-    - gofmt
-    - goimports
     - ineffassign
     - revive
     - unconvert
     - unused
     - govet
+  settings:
+    govet:
+      enable:
+        - nilness
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - revive
+        text: stutters
+      - linters:
+          - revive
+        text: empty-block
+      - linters:
+          - revive
+        text: superfluous-else
+      - linters:
+          - revive
+        text: unused-parameter
+      - linters:
+          - revive
+        text: redefines-builtin-id
+      - linters:
+          - revive
+        text: if-return
+    paths:
+      - .*\.pb\.go$
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - .*\.pb\.go$
 
 issues:
-  exclude-files:
-    - ".*\\.pb\\.go$"
   max-issues-per-linter: 0
   max-same-issues: 0

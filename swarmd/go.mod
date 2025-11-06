@@ -1,6 +1,6 @@
 module github.com/moby/swarmkit/swarmd
 
-go 1.21.0
+go 1.23.0
 
 require (
 	github.com/cloudflare/cfssl v1.6.4

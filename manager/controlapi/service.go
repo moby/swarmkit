@@ -147,7 +147,7 @@ func validateContainerSpec(taskSpec api.TaskSpec) error {
 		LogDriver: taskSpec.LogDriver,
 	})
 	if err != nil {
-		return status.Errorf(codes.InvalidArgument, err.Error())
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if err := validateImage(container.Image); err != nil {
@@ -526,7 +526,7 @@ func validateJob(spec *api.ServiceSpec) error {
 
 func validateServiceSpec(spec *api.ServiceSpec) error {
 	if spec == nil {
-		return status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		return status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 	if err := validateAnnotations(spec.Annotations); err != nil {
 		return err
@@ -789,7 +789,7 @@ func (s *Server) CreateService(_ context.Context, request *api.CreateServiceRequ
 // - Returns `NotFound` if the Service is not found.
 func (s *Server) GetService(_ context.Context, request *api.GetServiceRequest) (*api.GetServiceResponse, error) {
 	if request.ServiceID == "" {
-		return nil, status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		return nil, status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
 	var service *api.Service
@@ -816,7 +816,7 @@ func (s *Server) GetService(_ context.Context, request *api.GetServiceRequest) (
 // - Returns an error if the update fails.
 func (s *Server) UpdateService(_ context.Context, request *api.UpdateServiceRequest) (*api.UpdateServiceResponse, error) {
 	if request.ServiceID == "" || request.ServiceVersion == nil {
-		return nil, status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		return nil, status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 	if err := validateServiceSpec(request.Spec); err != nil {
 		return nil, err
@@ -853,7 +853,7 @@ func (s *Server) UpdateService(_ context.Context, request *api.UpdateServiceRequ
 		if (len(request.Spec.Networks) != 0 || len(service.Spec.Networks) != 0) &&
 			!reflect.DeepEqual(request.Spec.Networks, service.Spec.Networks) &&
 			reflect.DeepEqual(request.Spec.Task.Networks, service.Spec.Task.Networks) {
-			return status.Errorf(codes.Unimplemented, errNetworkUpdateNotSupported.Error())
+			return status.Error(codes.Unimplemented, errNetworkUpdateNotSupported.Error())
 		}
 
 		// Check to see if all the secrets being added exist as objects
@@ -872,11 +872,11 @@ func (s *Server) UpdateService(_ context.Context, request *api.UpdateServiceRequ
 		// with service mode change (comparing current config with previous config).
 		// proper way to change service mode is to delete and re-add.
 		if reflect.TypeOf(service.Spec.Mode) != reflect.TypeOf(request.Spec.Mode) {
-			return status.Errorf(codes.Unimplemented, errModeChangeNotAllowed.Error())
+			return status.Error(codes.Unimplemented, errModeChangeNotAllowed.Error())
 		}
 
 		if service.Spec.Annotations.Name != request.Spec.Annotations.Name {
-			return status.Errorf(codes.Unimplemented, errRenameNotSupported.Error())
+			return status.Error(codes.Unimplemented, errRenameNotSupported.Error())
 		}
 
 		service.Meta.Version = *request.ServiceVersion
@@ -942,7 +942,7 @@ func (s *Server) UpdateService(_ context.Context, request *api.UpdateServiceRequ
 // - Returns an error if the deletion fails.
 func (s *Server) RemoveService(_ context.Context, request *api.RemoveServiceRequest) (*api.RemoveServiceResponse, error) {
 	if request.ServiceID == "" {
-		return nil, status.Errorf(codes.InvalidArgument, errInvalidArgument.Error())
+		return nil, status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
 
 	err := s.store.Update(func(tx store.Tx) error {
@@ -1000,7 +1000,7 @@ func (s *Server) ListServices(_ context.Context, request *api.ListServicesReques
 	if err != nil {
 		switch err {
 		case store.ErrInvalidFindBy:
-			return nil, status.Errorf(codes.InvalidArgument, err.Error())
+			return nil, status.Error(codes.InvalidArgument, err.Error())
 		default:
 			return nil, err
 		}

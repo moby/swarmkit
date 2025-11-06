@@ -147,7 +147,7 @@ func (s *Server) GetUnlockKey(_ context.Context, _ *api.GetUnlockKeyRequest) (*a
 // NodeCertificateStatus returns the current issuance status of an issuance request identified by the nodeID
 func (s *Server) NodeCertificateStatus(ctx context.Context, request *api.NodeCertificateStatusRequest) (*api.NodeCertificateStatusResponse, error) {
 	if request.NodeID == "" {
-		return nil, status.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
+		return nil, status.Error(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
 	serverCtx, err := s.isRunningLocked()
@@ -178,7 +178,7 @@ func (s *Server) NodeCertificateStatus(ctx context.Context, request *api.NodeCer
 
 	// This node ID doesn't exist
 	if node == nil {
-		return nil, status.Errorf(codes.NotFound, codes.NotFound.String())
+		return nil, status.Error(codes.NotFound, codes.NotFound.String())
 	}
 
 	log.G(ctx).WithFields(log.Fields{
@@ -234,7 +234,7 @@ func (s *Server) NodeCertificateStatus(ctx context.Context, request *api.NodeCer
 func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNodeCertificateRequest) (*api.IssueNodeCertificateResponse, error) {
 	// First, let's see if the remote node is presenting a non-empty CSR
 	if len(request.CSR) == 0 {
-		return nil, status.Errorf(codes.InvalidArgument, codes.InvalidArgument.String())
+		return nil, status.Error(codes.InvalidArgument, codes.InvalidArgument.String())
 	}
 
 	if err := s.isReadyLocked(); err != nil {
