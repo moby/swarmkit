@@ -22,7 +22,7 @@ func newSnapshotMessage(from uint64, to uint64) raftpb.Message {
 		Type: raftpb.MsgSnap,
 		From: from,
 		To:   to,
-		Snapshot: raftpb.Snapshot{
+		Snapshot: &raftpb.Snapshot{
 			Data: data,
 			// Include the snapshot size in the Index field for testing.
 			Metadata: raftpb.SnapshotMetadata{

@@ -261,7 +261,7 @@ func TestReadRepairWAL(t *testing.T) {
 	require.Equal(t, metadata, waldata.Metadata)
 	require.NoError(t, ogWAL.Close())
 
-	// Also run with a file beyond repair.
+	// Also run with a file beyond repair (<3.6.0)
 	tempdir = createWithWAL(t, OriginalWAL, metadata, snapshot, entries)
 	files, err = os.ReadDir(tempdir)
 	require.NoError(t, err)
@@ -269,7 +269,8 @@ func TestReadRepairWAL(t *testing.T) {
 	require.NoError(t, os.Truncate(filepath.Join(tempdir, files[0].Name()), 200))
 
 	_, _, err = ReadRepairWAL(context.Background(), tempdir, snapshot, OriginalWAL)
-	require.ErrorContains(t, err, "[wal] max entry size limit exceeded")
+	// in etcd 3.6+ this is reported repairable as well
+	require.NoError(t, err)
 }
 
 func TestMigrateWALs(t *testing.T) {
