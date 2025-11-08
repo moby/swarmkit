@@ -49,10 +49,9 @@ RUN --mount=type=bind,target=.,rw \
     make bin/protoc-gen-gogoswarm && mv bin/protoc-gen-gogoswarm /usr/local/bin/
 
 FROM gobase AS protobuild
-RUN --mount=type=bind,source=tools,target=. \
-    --mount=target=/go/pkg/mod,type=cache \
+RUN --mount=type=bind,target=. \
     --mount=type=cache,target=/root/.cache \
-    go install -mod=mod github.com/containerd/protobuild
+    go install tool github.com/containerd/protobuild
 
 FROM gobase AS generate-base
 ARG DEBIAN_FRONTEND
@@ -126,7 +125,7 @@ ENV GO111MODULE=on
 # install the dependencies from `make setup`
 # we only copy `direct.mk` to avoid busting the cache too easily
 COPY direct.mk .
-COPY tools ./tools
+COPY go.* .
 RUN make --file=direct.mk setup
 # now we can copy the rest
 COPY . .
