@@ -11,10 +11,12 @@ import (
 	"go.etcd.io/raft/v3/raftpb"
 )
 
+const testSnapSize = 1 << 20 // 1 MB
+
 // Build a snapshot message where each byte in the data is of the value (index % sizeof(byte))
 func newSnapshotMessage(from uint64, to uint64) raftpb.Message {
-	data := make([]byte, GRPCMaxMsgSize)
-	for i := 0; i < GRPCMaxMsgSize; i++ {
+	data := make([]byte, testSnapSize)
+	for i := 0; i < testSnapSize; i++ {
 		data[i] = byte(i % (1 << 8))
 	}
 

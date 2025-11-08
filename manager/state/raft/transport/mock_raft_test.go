@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net"
+	"slices"
 	"time"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -130,7 +131,7 @@ func (r *mockRaft) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) er
 		}
 
 		// Append received snapshot chunk to the chunk that was already received.
-		assembledMessage.Message.Snapshot.Data = append(assembledMessage.Message.Snapshot.Data, recvdMsg.Message.Snapshot.Data...)
+		assembledMessage.Message.Snapshot.Data = slices.Concat(assembledMessage.Message.Snapshot.Data, recvdMsg.Message.Snapshot.Data)
 	}
 
 	// We should have the complete snapshot. Verify and process.
