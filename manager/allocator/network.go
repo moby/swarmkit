@@ -255,7 +255,6 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			return a.commitAllocatedService(ctx, batch, s)
 		}); err != nil {
 			log.G(ctx).WithError(err).Errorf("Failed to commit allocation during update for service %s", s.ID)
-			nc.unallocatedServices[s.ID] = s
 		} else {
 			delete(nc.unallocatedServices, s.ID)
 		}
@@ -1245,6 +1244,7 @@ func (nc *networkContext) deallocateService(s *api.Service) error {
 }
 
 func (a *Allocator) commitAllocatedService(ctx context.Context, batch *store.Batch, s *api.Service) error {
+	nc := a.netCtx
 	if err := batch.Update(func(tx store.Tx) error {
 		err := store.UpdateService(tx, s)
 
@@ -1258,6 +1258,10 @@ func (a *Allocator) commitAllocatedService(ctx context.Context, batch *store.Bat
 	}); err != nil {
 		if err := a.netCtx.deallocateService(s); err != nil {
 			log.G(ctx).WithError(err).Errorf("failed rolling back allocation of service %s", s.ID)
+		} else {
+			// The allocation of service has been rolled back successfully,
+			// so we add this service to the nc.unallocatedServices.
+			nc.unallocatedServices[s.ID] = s
 		}
 
 		return err
@@ -1278,6 +1282,7 @@ func (a *Allocator) allocateNetwork(_ context.Context, n *api.Network) error {
 }
 
 func (a *Allocator) commitAllocatedNetwork(ctx context.Context, batch *store.Batch, n *api.Network) error {
+	nc := a.netCtx
 	if err := batch.Update(func(tx store.Tx) error {
 		if err := store.UpdateNetwork(tx, n); err != nil {
 			return errors.Wrapf(err, "failed updating state in store transaction for network %s", n.ID)
@@ -1286,6 +1291,10 @@ func (a *Allocator) commitAllocatedNetwork(ctx context.Context, batch *store.Bat
 	}); err != nil {
 		if err := a.netCtx.nwkAllocator.Deallocate(n); err != nil {
 			log.G(ctx).WithError(err).Errorf("failed rolling back allocation of network %s", n.ID)
+		} else {
+			// The allocation of network has been rolled back successfully,
+			// so we add this network to the nc.unallocatedNetworks.
+			nc.unallocatedNetworks[n.ID] = n
 		}
 
 		return err
