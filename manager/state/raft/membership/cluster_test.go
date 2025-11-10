@@ -19,7 +19,7 @@ import (
 	raftutils "github.com/moby/swarmkit/v2/manager/state/raft/testutils"
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/assert"
-	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 var tc *cautils.TestCA

@@ -4,14 +4,15 @@ import (
 	"context"
 	"io"
 	"net"
+	"slices"
 	"time"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/health"
 	"github.com/moby/swarmkit/v2/manager/state/raft/membership"
-	"go.etcd.io/etcd/raft/v3"
-	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -130,7 +131,7 @@ func (r *mockRaft) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) er
 		}
 
 		// Append received snapshot chunk to the chunk that was already received.
-		assembledMessage.Message.Snapshot.Data = append(assembledMessage.Message.Snapshot.Data, recvdMsg.Message.Snapshot.Data...)
+		assembledMessage.Message.Snapshot.Data = slices.Concat(assembledMessage.Message.Snapshot.Data, recvdMsg.Message.Snapshot.Data)
 	}
 
 	// We should have the complete snapshot. Verify and process.

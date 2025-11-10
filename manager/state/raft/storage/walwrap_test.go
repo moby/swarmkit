@@ -12,8 +12,8 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/stretchr/testify/require"
-	"go.etcd.io/etcd/raft/v3/raftpb"
-	"go.etcd.io/etcd/server/v3/wal/walpb"
+	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 var _ WALFactory = walCryptor{}
@@ -261,7 +261,7 @@ func TestReadRepairWAL(t *testing.T) {
 	require.Equal(t, metadata, waldata.Metadata)
 	require.NoError(t, ogWAL.Close())
 
-	// Also run with a file beyond repair.
+	// Also run with a file beyond repair (<3.6.0)
 	tempdir = createWithWAL(t, OriginalWAL, metadata, snapshot, entries)
 	files, err = os.ReadDir(tempdir)
 	require.NoError(t, err)
@@ -269,7 +269,8 @@ func TestReadRepairWAL(t *testing.T) {
 	require.NoError(t, os.Truncate(filepath.Join(tempdir, files[0].Name()), 200))
 
 	_, _, err = ReadRepairWAL(context.Background(), tempdir, snapshot, OriginalWAL)
-	require.ErrorContains(t, err, "wal: max entry size limit exceeded")
+	// in etcd 3.6+ this is reported repairable as well
+	require.NoError(t, err)
 }
 
 func TestMigrateWALs(t *testing.T) {

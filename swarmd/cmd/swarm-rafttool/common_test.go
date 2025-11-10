@@ -14,8 +14,8 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/raft/storage"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	"go.etcd.io/etcd/raft/v3/raftpb"
-	"go.etcd.io/etcd/server/v3/wal/walpb"
+	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 // writeFakeRaftData writes the given snapshot and some generated WAL data to given "snap" and "wal" directories

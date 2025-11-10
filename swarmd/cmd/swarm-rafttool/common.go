@@ -12,7 +12,7 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/raft/storage"
 	"github.com/moby/swarmkit/v2/node"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	"go.etcd.io/etcd/server/v3/wal/walpb"
+	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 )
 
 func certPaths(swarmdir string) *ca.SecurityConfigPaths {

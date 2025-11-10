@@ -7,14 +7,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.etcd.io/etcd/raft/v3"
-	"go.etcd.io/etcd/raft/v3/raftpb"
+	"go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
 )
+
+const testSnapSize = 1 << 20 // 1 MB
 
 // Build a snapshot message where each byte in the data is of the value (index % sizeof(byte))
 func newSnapshotMessage(from uint64, to uint64) raftpb.Message {
-	data := make([]byte, GRPCMaxMsgSize)
-	for i := 0; i < GRPCMaxMsgSize; i++ {
+	data := make([]byte, testSnapSize)
+	for i := 0; i < testSnapSize; i++ {
 		data[i] = byte(i % (1 << 8))
 	}
 
@@ -22,7 +24,7 @@ func newSnapshotMessage(from uint64, to uint64) raftpb.Message {
 		Type: raftpb.MsgSnap,
 		From: from,
 		To:   to,
-		Snapshot: raftpb.Snapshot{
+		Snapshot: &raftpb.Snapshot{
 			Data: data,
 			// Include the snapshot size in the Index field for testing.
 			Metadata: raftpb.SnapshotMetadata{

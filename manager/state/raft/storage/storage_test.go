@@ -9,8 +9,8 @@ import (
 	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
-	"go.etcd.io/etcd/raft/v3/raftpb"
-	"go.etcd.io/etcd/server/v3/wal/walpb"
+	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 func TestBootstrapFromDisk(t *testing.T) {
