@@ -98,5 +98,4 @@ require (
 	k8s.io/klog/v2 v2.90.1 // indirect
 )
 
-// FIXME: temporary replace to integrate etcd update changes until upstream PR is merged.
-replace github.com/moby/swarmkit/v2 => github.com/crazy-max/swarmkit/v2 v2.0.0-20251107095914-13c89465ab39 // etcd-update
+replace github.com/moby/swarmkit/v2 => ../
