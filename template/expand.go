@@ -9,6 +9,43 @@ import (
 	"github.com/pkg/errors"
 )
 
+func ExpandTaskSpec(t *api.Task) (*api.TaskSpec, error) {
+	spec := t.Spec.Copy()
+	if spec == nil {
+		return nil, errors.Errorf("task mising Spec to expand")
+	}
+
+	ctx := NewControlContext(t)
+
+	var err error
+	spec.Placement.Constraints, err = expandPlacement(ctx, spec.Placement.Constraints)
+
+	return spec, errors.Wrap(err, "expanding placement failed")
+}
+
+func expandPlacement(ctx Context, values []string) ([]string, error) {
+	var result []string
+	for _, value := range values {
+		var (
+			parts = strings.SplitN(value, "=", 2)
+			entry = parts[0]
+		)
+
+		if len(parts) > 1 {
+			expanded, err := ctx.Expand(parts[1])
+			if err != nil {
+				return values, errors.Wrapf(err, "expanding placement %q", value)
+			}
+
+			entry = fmt.Sprintf("%s=%s", entry, expanded)
+		}
+
+		result = append(result, entry)
+	}
+
+	return result, nil
+}
+
 // ExpandContainerSpec expands templated fields in the runtime using the task
 // state and the node where it is scheduled to run.
 // Templating is all evaluated on the agent-side, before execution.

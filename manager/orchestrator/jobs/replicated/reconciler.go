@@ -3,6 +3,7 @@ package replicated
 import (
 	"context"
 	"fmt"
+	"github.com/moby/swarmkit/v2/template"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/orchestrator"
@@ -216,6 +217,13 @@ func (r *Reconciler) ReconcileService(id string) error {
 				}
 
 				task := orchestrator.NewTask(cluster, service, slot, "")
+
+				newSpec, err := template.ExpandTaskSpec(task)
+				if err != nil {
+					return err
+				}
+				task.Spec = *newSpec
+
 				// when we create the task, we also need to set the
 				// JobIteration.
 				task.JobIteration = &api.Version{Index: jobVersion}
