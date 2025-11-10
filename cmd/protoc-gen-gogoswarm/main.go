@@ -24,7 +24,6 @@ func main() {
 		vanity.TurnOnSizerAll,
 		vanity.TurnOffGoUnrecognizedAll,
 		vanity.TurnOffGoUnkeyedAll,
-		vanity.TurnOffGoUnrecognizedAll,
 		vanity.TurnOffGoSizecacheAll,
 		CustomNameID,
 	} {
