@@ -2,25 +2,23 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/genericresource"
 	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/manager/scheduler/common"
+	"github.com/moby/swarmkit/v2/manager/scheduler/pluginscheduler"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/protobuf/ptypes"
 )
 
 const (
-	// monitorFailures is the lookback period for counting failures of
-	// a task to determine if a node is faulty for a particular service.
 	monitorFailures = 5 * time.Minute
-
-	// maxFailures is the number of failures within monitorFailures that
-	// triggers downweighting of a node in the sorting function.
-	maxFailures = 5
+	maxFailures     = 5
 )
 
 type schedulingDecision struct {
@@ -30,30 +28,28 @@ type schedulingDecision struct {
 
 // Scheduler assigns tasks to nodes.
 type Scheduler struct {
-	store           *store.MemoryStore
-	unassignedTasks map[string]*api.Task
-	// pendingPreassignedTasks already have NodeID, need resource validation
+	PlacementPluginName     string
+	placementPlugins        map[string]common.PluginInterface
+	pluginScheduler         common.PluginScheduler
+	store                   *store.MemoryStore
+	unassignedTasks         map[string]*api.Task
 	pendingPreassignedTasks map[string]*api.Task
-	// preassignedTasks tracks tasks that were preassigned, including those
-	// past the pending state.
-	preassignedTasks map[string]struct{}
-	nodeSet          nodeSet
-	allTasks         map[string]*api.Task
-	pipeline         *Pipeline
-	volumes          *volumeSet
-
-	// stopOnce is a sync.Once used to ensure that Stop is idempotent
-	stopOnce sync.Once
-	// stopChan signals to the state machine to stop running
-	stopChan chan struct{}
-	// doneChan is closed when the state machine terminates
-	doneChan chan struct{}
+	preassignedTasks        map[string]struct{}
+	nodeSet                 nodeSet
+	allTasks                map[string]*api.Task
+	pipeline                *Pipeline
+	volumes                 *volumeSet
+	stopOnce                sync.Once
+	stopChan                chan struct{}
+	doneChan                chan struct{}
 }
 
 // New creates a new scheduler.
-func New(store *store.MemoryStore) *Scheduler {
+func New(store *store.MemoryStore, plugins map[string]common.PluginInterface, pluginScheduler common.PluginScheduler) *Scheduler {
 	return &Scheduler{
 		store:                   store,
+		placementPlugins:        plugins,
+		pluginScheduler:         pluginScheduler,
 		unassignedTasks:         make(map[string]*api.Task),
 		pendingPreassignedTasks: make(map[string]*api.Task),
 		preassignedTasks:        make(map[string]struct{}),
@@ -124,6 +120,16 @@ func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
 	return s.buildNodeSet(tx, tasksByNode)
 }
 
+// Ensure all pending, unassigned tasks are enqueued for scheduling.
+// This helps guarantee that after a service update, all tasks that should be scheduled are actually enqueued.
+func (s *Scheduler) ensurePendingTasksEnqueued() {
+	for _, t := range s.allTasks {
+		if t.Status.State == api.TaskStatePending && t.NodeID == "" {
+			s.unassignedTasks[t.ID] = t
+		}
+	}
+}
+
 // Run is the scheduler event loop.
 func (s *Scheduler) Run(pctx context.Context) error {
 	ctx := log.WithModule(pctx, "scheduler")
@@ -142,6 +148,9 @@ func (s *Scheduler) Run(pctx context.Context) error {
 	// do this before other tasks because preassigned tasks like
 	// global service should start before other tasks
 	s.processPreassignedTasks(ctx)
+
+	// Ensure all pending tasks are enqueued for scheduling.
+	s.ensurePendingTasksEnqueued()
 
 	// Queue all unassigned tasks before processing changes.
 	s.tick(ctx)
@@ -642,6 +651,11 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 	return
 }
 
+// UnassignedTasksCount returns the number of unassigned tasks currently in the scheduler.
+func (s *Scheduler) UnassignedTasksCount() int {
+	return len(s.unassignedTasks)
+}
+
 // taskFitNode checks if a node has enough resources to accommodate a task.
 func (s *Scheduler) taskFitNode(_ context.Context, t *api.Task, nodeID string) *api.Task {
 	nodeInfo, err := s.nodeSet.nodeInfo(nodeID)
@@ -708,8 +722,8 @@ func (s *Scheduler) scheduleTaskGroup(ctx context.Context, taskGroup map[string]
 	nodeLess := func(a *NodeInfo, b *NodeInfo) bool {
 		// If either node has at least maxFailures recent failures,
 		// that's the deciding factor.
-		recentFailuresA := a.countRecentFailures(now, t)
-		recentFailuresB := b.countRecentFailures(now, t)
+		recentFailuresA := a.TaskFailures.CountRecentFailures(now, t)
+		recentFailuresB := b.TaskFailures.CountRecentFailures(now, t)
 
 		if recentFailuresA >= maxFailures || recentFailuresB >= maxFailures {
 			if recentFailuresA > recentFailuresB {
@@ -820,7 +834,6 @@ func (s *Scheduler) scheduleNTasksOnSubtree(ctx context.Context, n int, taskGrou
 			}
 		}
 	}
-
 	return tasksScheduled
 }
 
@@ -842,35 +855,26 @@ func (s *Scheduler) scheduleNTasksOnSubtree(ctx context.Context, n int, taskGrou
 //   - nodeLess is a simple comparator that chooses which of two nodes would be
 //     preferable to schedule on.
 func (s *Scheduler) scheduleNTasksOnNodes(ctx context.Context, n int, taskGroup map[string]*api.Task, nodes []NodeInfo, schedulingDecisions map[string]schedulingDecision, nodeLess func(a *NodeInfo, b *NodeInfo) bool) int {
+	if len(nodes) == 0 {
+		return 0
+	}
 	tasksScheduled := 0
-	failedConstraints := make(map[int]bool) // key is index in nodes slice
+	failedConstraints := make(map[int]bool)
 	nodeIter := 0
 	nodeCount := len(nodes)
 	for taskID, t := range taskGroup {
-		// Skip tasks which were already scheduled because they ended
-		// up in two groups at once.
 		if _, exists := schedulingDecisions[taskID]; exists {
 			continue
 		}
-
 		node := &nodes[nodeIter%nodeCount]
-		// before doing all of the updating logic, get the volume attachments
-		// for the task on this node. this should always succeed, because we
-		// should already have filtered nodes based on volume availability, but
-		// just in case we missed something and it doesn't, we have an error
-		// case.
 		attachments, err := s.volumes.chooseTaskVolumes(t, node)
 		if err != nil {
-			// TODO(dperny) if there's an error, then what? i'm frankly not
-			// sure.
 			log.G(ctx).WithField("task.id", t.ID).WithError(err).Error("could not find task volumes")
 		}
-
-		log.G(ctx).WithField("task.id", t.ID).Debugf("assigning to node %s", node.ID)
-		// she turned me into a newT!
+		log.G(ctx).WithField("task.id", t.ID).Debugf("assigning to node %s", node.Node().ID)
 		newT := *t
 		newT.Volumes = attachments
-		newT.NodeID = node.ID
+		newT.NodeID = node.Node().ID
 		s.volumes.reserveTaskVolumes(&newT)
 		newT.Status = api.TaskStatus{
 			State:     api.TaskStateAssigned,
@@ -879,11 +883,7 @@ func (s *Scheduler) scheduleNTasksOnNodes(ctx context.Context, n int, taskGroup 
 		}
 		s.allTasks[t.ID] = &newT
 
-		// in each iteration of this loop, the node we choose will always be
-		// one which meets constraints. at the end of each iteration, we
-		// re-process nodes, allowing us to remove nodes which no longer meet
-		// resource constraints.
-		nodeInfo, err := s.nodeSet.nodeInfo(node.ID)
+		nodeInfo, err := s.nodeSet.nodeInfo(node.Node().ID)
 		if err == nil && nodeInfo.addTask(&newT) {
 			s.nodeSet.updateNode(nodeInfo)
 			nodes[nodeIter%nodeCount] = nodeInfo
@@ -897,15 +897,11 @@ func (s *Scheduler) scheduleNTasksOnNodes(ctx context.Context, n int, taskGroup 
 		}
 
 		if nodeIter+1 < nodeCount {
-			// First pass fills the nodes until they have the same
-			// number of tasks from this service.
 			nextNode := nodes[(nodeIter+1)%nodeCount]
 			if nodeLess(&nextNode, &nodeInfo) {
 				nodeIter++
 			}
 		} else {
-			// In later passes, we just assign one task at a time
-			// to each node that still meets the constraints.
 			nodeIter++
 		}
 
@@ -914,12 +910,10 @@ func (s *Scheduler) scheduleNTasksOnNodes(ctx context.Context, n int, taskGroup 
 			failedConstraints[nodeIter%nodeCount] = true
 			nodeIter++
 			if nodeIter-origNodeIter == nodeCount {
-				// None of the nodes meet the constraints anymore.
 				return tasksScheduled
 			}
 		}
 	}
-
 	return tasksScheduled
 }
 
@@ -987,4 +981,31 @@ func (s *Scheduler) buildNodeSet(tx store.ReadTx, tasksByNode map[string]map[str
 	}
 
 	return nil
+}
+
+func (s *Scheduler) selectNodesForTask(task *api.Task, nodes []NodeInfo) ([]NodeInfo, error) {
+	if s.PlacementPluginName != "" {
+		if plug, ok := s.placementPlugins[s.PlacementPluginName]; ok {
+			if plug == nil {
+				return nil, fmt.Errorf("placement plugin %q not initialized", s.PlacementPluginName)
+			}
+
+			// Convert internal NodeInfo to common.NodeInfo
+			commonNodes := make([]common.NodeInfo, len(nodes))
+			for i, n := range nodes {
+				commonNodes[i] = n.ToCommon()
+			}
+
+			result, err := plug.Schedule(task, commonNodes)
+			if err != nil {
+				return nil, err
+			}
+
+			// Convert back to internal NodeInfo
+			resultNodes := make([]NodeInfo, 1)
+			resultNodes[0] = FromCommon(result)
+			return resultNodes, nil
+		}
+	}
+	return nodes, nil
 }
