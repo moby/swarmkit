@@ -1,0 +1,108 @@
+$ make all$ make setup$ swarmd -d /tmp/node-1 --listen-control-api /tmp/node-1/swarm.sock --hostname node-1$ export SWARM_SOCKET=/tmp/node-1/swarm.sock  
+$ swarmctl cluster inspect default  
+ID          : 87d2ecpg12dfonxp3g562fru1
+Name        : default
+Orchestration settings:
+  Task history entries: 5
+Dispatcher settings:
+  Dispatcher heartbeat period: 5s
+Certificate Authority settings:
+  Certificate Validity Duration: 2160h0m0s
+  Join Tokens:
+    Worker: SWMTKN-1-3vi7ajem0jed8guusgvyl98nfg18ibg4pclify6wzac6ucrhg3-0117z3s2ytr6egmmnlr6gd37n
+    Manager: SWMTKN-1-3vi7ajem0jed8guusgvyl98nfg18ibg4pclify6wzac6ucrhg3-d1ohk84br3ph0njyexw0wdagx$ swarmd -d /tmp/node-2 --hostname node-2 --join-addr 127.0.0.1:4242 --join-token <Worker Token>
+$ swarmd -d /tmp/node-3 --hostname node-3 --join-addr 127.0.0.1:4242 --join-token <Worker Token>$ swarmd -d /tmp/node-4 --hostname node-4 --join-addr 127.0.0.1:4242 --join-token <Manager Token> --listen-control-api /tmp/node-4/swarm.sock --listen-remote-api 127.0.0.1:4245$ export SWARM_SOCKET=/tmp/node-1/swarm.sock
+$ swarmctl node ls
+ID                         Name    Membership  Status  Availability  Manager Status
+--                         ----    ----------  ------  ------------  --------------
+3x12fpoi36eujbdkgdnbvbi6r  node-2  ACCEPTED    READY   ACTIVE
+4spl3tyipofoa2iwqgabsdcve  node-1  ACCEPTED    READY   ACTIVE        REACHABLE *
+dknwk1uqxhnyyujq66ho0h54t  node-3  ACCEPTED    READY   ACTIVE
+zw3rwfawdasdewfq66ho34eaw  node-4  ACCEPTED    READY   ACTIVE        REACHABLE
+
+$ swarmctl service create --name redis --image redis:3.0.5
+08ecg7vc7cbf9k57qs722n2le$ swarmctl service ls
+ID                         Name   Image        Replicas
+--                         ----   -----        --------
+08ecg7vc7cbf9k57qs722n2le  redis  redis:3.0.5  1/1$ swarmctl service inspect redis
+ID                : 08ecg7vc7cbf9k57qs722n2le
+Name              : redis
+Replicas          : 1/1
+Template
+ Container
+  Image           : redis:3.0.5
+
+Task ID                      Service    Slot    Image          Desired State    Last State                Node
+-------                      -------    ----    -----          -------------    ----------                ----
+0xk1ir8wr85lbs8sqg0ug03vr    redis      1       redis:3.0.5    RUNNING          RUNNING 1 minutes ago    node-1$ swarmctl service update redis --replicas 6
+08ecg7vc7cbf9k57qs722n2le
+
+$ swarmctl service inspect redis
+ID                : 08ecg7vc7cbf9k57qs722n2le
+Name              : redis
+Replicas          : 6/6
+Template
+ Container
+  Image           : redis:3.0.5
+
+Task ID                      Service    Slot    Image          Desired State    Last State                Node
+-------                      -------    ----    -----          -------------    ----------                ----
+0xk1ir8wr85lbs8sqg0ug03vr    redis      1       redis:3.0.5    RUNNING          RUNNING 3 minutes ago    node-1
+25m48y9fevrnh77til1d09vqq    redis      2       redis:3.0.5    RUNNING          RUNNING 28 seconds ago    node-3
+42vwc8z93c884anjgpkiatnx6    redis      3       redis:3.0.5    RUNNING          RUNNING 28 seconds ago    node-2
+d41f3wnf9dex3mk6jfqp4tdjw    redis      4       redis:3.0.5    RUNNING          RUNNING 28 seconds ago    node-2
+66lefnooz63met6yfrsk6myvg    redis      5       redis:3.0.5    RUNNING          RUNNING 28 seconds ago    node-1
+3a2sawtoyk19wqhmtuiq7z9pt    redis      6       redis:3.0.5    RUNNING          RUNNING 28 seconds ago    node-3$ swarmctl service update redis --image redis:3.0.6
+08ecg7vc7cbf9k57qs722n2le
+
+$ swarmctl service inspect redis
+ID                   : 08ecg7vc7cbf9k57qs722n2le
+Name                 : redis
+Replicas             : 6/6
+Update Status
+ State               : COMPLETED
+ Started             : 3 minutes ago
+ Completed           : 1 minute ago
+ Message             : update completed
+Template
+ Container
+  Image              : redis:3.0.6
+
+Task ID                      Service    Slot    Image          Desired State    Last State              Node
+-------                      -------    ----    -----          -------------    ----------              ----
+0udsjss61lmwz52pke5hd107g    redis      1       redis:3.0.6    RUNNING          RUNNING 1 minute ago    node-3
+b8o394v840thk10tamfqlwztb    redis      2       redis:3.0.6    RUNNING          RUNNING 1 minute ago    node-1
+efw7j66xqpoj3cn3zjkdrwff7    redis      3       redis:3.0.6    RUNNING          RUNNING 1 minute ago    node-3
+8ajeipzvxucs3776e4z8gemey    redis      4       redis:3.0.6    RUNNING          RUNNING 1 minute ago    node-2
+f05f2lbqzk9fh4kstwpulygvu    redis      5       redis:3.0.6    RUNNING          RUNNING 1 minute ago    node-2
+7sbpoy82deq7hu3q9cnucfin6    redis      6       redis:3.0.6    RUNNING          RUNNING 1 minute ago    node-1$ swarmctl service update redis --image redis:3.0.7 --update-parallelism 2 --update-delay 10s
+$ watch -n1 "swarmctl service inspect redis"  # watch the update$ swarmctl node drain node-1
+
+$ swarmctl node ls
+ID                         Name    Membership  Status  Availability  Manager Status
+--                         ----    ----------  ------  ------------  --------------
+3x12fpoi36eujbdkgdnbvbi6r  node-2  ACCEPTED    READY   ACTIVE
+4spl3tyipofoa2iwqgabsdcve  node-1  ACCEPTED    READY   DRAIN         REACHABLE *
+dknwk1uqxhnyyujq66ho0h54t  node-3  ACCEPTED    READY   ACTIVE
+
+$ swarmctl service inspect redis
+ID                   : 08ecg7vc7cbf9k57qs722n2le
+Name                 : redis
+Replicas             : 6/6
+Update Status
+ State               : COMPLETED
+ Started             : 2 minutes ago
+ Completed           : 1 minute ago
+ Message             : update completed
+Template
+ Container
+  Image              : redis:3.0.7
+
+Task ID                      Service    Slot    Image          Desired State    Last State                Node
+-------                      -------    ----    -----          -------------    ----------                ----
+8uy2fy8dqbwmlvw5iya802tj0    redis      1       redis:3.0.7    RUNNING          RUNNING 23 seconds ago    node-2
+7h9lgvidypcr7q1k3lfgohb42    redis      2       redis:3.0.7    RUNNING          RUNNING 2 minutes ago     node-3
+ae4dl0chk3gtwm1100t5yeged    redis      3       redis:3.0.7    RUNNING          RUNNING 23 seconds ago    node-3
+9fz7fxbg0igypstwliyameobs    redis      4       redis:3.0.7    RUNNING          RUNNING 2 minutes ago     node-3
+drzndxnjz3c8iujdewzaplgr6    redis      5       redis:3.0.7    RUNNING          RUNNING 23 seconds ago    node-2
+7rcgciqhs4239quraw7evttyf    redis      6       redis:3.0.7    RUNNING          RUNNING 2 minutes ago     node-2
