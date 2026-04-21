@@ -463,28 +463,53 @@ func (vm *Manager) deleteVolume(ctx context.Context, v *api.Volume) error {
 // leak. It's acceptable for now because we expect neither exceptionally long
 // lived managers nor exceptionally high plugin churn.
 func (vm *Manager) getPlugin(name string) (Plugin, error) {
-	// if the plugin already exists, we can just return it.
-	if p, ok := vm.plugins[name]; ok {
-		return p, nil
-	}
+        // normalize driver name by stripping any tag (e.g. ":latest")
+        canon := name
+        if i := strings.IndexRune(name, ':'); i >= 0 {
+                canon = name[:i]
+        }
 
-	// otherwise, we need to load the plugin.
-	pc, err := vm.pg.Get(name, DockerCSIPluginCap)
-	if err != nil {
-		return nil, err
-	}
+        // Fast path: exact key or canonical key already loaded
+        if p, ok := vm.plugins[name]; ok {
+                return p, nil
+        }
+        if p, ok := vm.plugins[canon]; ok {
+                // also alias the original name to it for future lookups
+                vm.plugins[name] = p
+                return p, nil
+        }
 
-	if pc == nil {
-		return nil, errors.New("driver \"" + name + "\" not found")
-	}
+        // Try plugin getter with full name first
+        pc, err := vm.pg.Get(name, DockerCSIPluginCap)
+        if err != nil {
+                // retry using canonical name if different
+                if canon != name {
+                        pc2, err2 := vm.pg.Get(canon, DockerCSIPluginCap)
+                        if err2 == nil && pc2 != nil {
+                                pc = pc2
+                        }
+                }
+                if pc == nil {
+                        return nil, err
+                }
+        }
 
-	pa, ok := pc.(mobyplugin.AddrPlugin)
-	if !ok {
-		return nil, errors.New("plugin for driver \"" + name + "\" does not implement PluginAddr")
-	}
+        if pc == nil {
+                return nil, errors.New("driver \"" + name + "\" not found")
+        }
 
-	p := vm.newPlugin(pa, vm.provider)
-	vm.plugins[name] = p
+        pa, ok := pc.(mobyplugin.AddrPlugin)
+        if !ok {
+                return nil, errors.New("plugin for driver \"" + name + "\" does not implement PluginAddr")
+        }
 
-	return p, nil
+        // create plugin instance once
+        p := vm.newPlugin(pa, vm.provider)
+
+        // store under canonical, plugin-reported, and requested names
+        vm.plugins[canon] = p
+        vm.plugins[pa.Name()] = p
+        vm.plugins[name] = p
+
+        return p, nil
 }
