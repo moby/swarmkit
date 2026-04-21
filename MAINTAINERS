@@ -23,6 +23,22 @@
 			"yongtang"
 		]
 
+	[Org.Curators]
+
+	# The curators help ensure that incoming issues and pull requests are properly triaged and
+	# that our various contribution and reviewing processes are respected. With their knowledge of
+	# the repository activity, they can also guide contributors to relevant material or
+	# discussions.
+	#
+	# They are neither code nor docs reviewers, so they are never expected to merge. They can
+	# however:
+	# - close an issue or pull request when it's an exact duplicate
+	# - close an issue or pull request when it's inappropriate or off-topic
+
+		people = [
+			"smerkviladze"
+		]
+
 [people]
 
 # A reference list of all people associated with the project.
@@ -80,6 +96,11 @@
 	Name = "Misty Stanley-Jones"
 	Email = "misty@docker.com"
 	GitHub = "mistyhacks"
+
+	[people.smerkviladze]
+	Name = "Sopho Merkviladze"
+	Email = "smerkviladze@mirantis.com"
+	GitHub = "smerkviladze"
 
 	[people.stevvooe]
 	Name = "Stephen Day"
