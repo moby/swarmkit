@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
 	"github.com/moby/swarmkit/v2/api"
-	"google.golang.org/protobuf/types/known/durationpb"
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/ca/testutils"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 func createClusterSpec(name string) *api.ClusterSpec {

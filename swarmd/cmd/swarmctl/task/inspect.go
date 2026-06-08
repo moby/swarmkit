@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 	"text/tabwriter"
+	"time"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/cobra"
@@ -19,7 +19,7 @@ func printTaskStatus(w io.Writer, t *api.Task) {
 	fmt.Fprintf(w, "  Desired State\t: %s\n", t.DesiredState.String())
 	fmt.Fprintf(w, "  Last State\t: %s\n", t.Status.State.String())
 	if t.Status.Timestamp != nil {
-		fmt.Fprintf(w, "  Timestamp\t: %s\n", gogotypes.TimestampString(t.Status.Timestamp))
+		fmt.Fprintf(w, "  Timestamp\t: %s\n", t.Status.Timestamp.AsTime().Format(time.RFC3339))
 	}
 	if t.Status.Message != "" {
 		fmt.Fprintf(w, "  Message\t: %s\n", t.Status.Message)

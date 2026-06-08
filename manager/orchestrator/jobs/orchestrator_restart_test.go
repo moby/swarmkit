@@ -11,8 +11,8 @@ import (
 	"github.com/docker/go-events"
 
 	"github.com/moby/swarmkit/v2/api"
-	"google.golang.org/protobuf/types/known/durationpb"
 	"github.com/moby/swarmkit/v2/manager/state/store"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 // passEventsUntil is a helper method that calls handleEvent on all events from

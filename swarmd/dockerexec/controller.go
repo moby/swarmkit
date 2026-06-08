@@ -15,9 +15,9 @@ import (
 	"github.com/docker/docker/api/types/events"
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"golang.org/x/time/rate"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
@@ -476,7 +476,7 @@ func (r *controller) Logs(ctx context.Context, publisher exec.LogPublisher, opti
 		// use a rate limiter to keep things under control but also provides some
 		// ability coalesce messages.
 		limiter = rate.NewLimiter(rate.Every(time.Second), 10<<20) // 10 MB/s
-		msgctx  = api.LogContext{
+		msgctx  = &api.LogContext{
 			NodeID:    r.task.NodeID,
 			ServiceID: r.task.ServiceID,
 			TaskID:    r.task.ID,
@@ -519,14 +519,9 @@ func (r *controller) Logs(ctx context.Context, publisher exec.LogPublisher, opti
 			return errors.Wrap(err, "failed to parse timestamp")
 		}
 
-		tsp, err := gogotypes.TimestampProto(ts)
-		if err != nil {
-			return errors.Wrap(err, "failed to convert timestamp")
-		}
-
 		if err := publisher.Publish(ctx, api.LogMessage{
 			Context:   msgctx,
-			Timestamp: tsp,
+			Timestamp: timestamppb.New(ts),
 			Stream:    api.LogStream(stream),
 
 			Data: parts[1],

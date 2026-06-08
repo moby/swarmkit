@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
-	gogotypes "github.com/gogo/protobuf/types"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // PrintHeader prints a nice little header.
@@ -29,13 +29,9 @@ func FprintfIfNotEmpty(w io.Writer, format string, v any) {
 }
 
 // TimestampAgo returns a relative time string from a timestamp (e.g. "12 seconds ago").
-func TimestampAgo(ts *gogotypes.Timestamp) string {
+func TimestampAgo(ts *timestamppb.Timestamp) string {
 	if ts == nil {
 		return ""
 	}
-	t, err := gogotypes.TimestampFromProto(ts)
-	if err != nil {
-		panic(err)
-	}
-	return humanize.Time(t)
+	return humanize.Time(ts.AsTime())
 }

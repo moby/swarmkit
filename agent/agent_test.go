@@ -13,8 +13,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/protobuf/proto"
 
 	events "github.com/docker/go-events"
 	agentutils "github.com/moby/swarmkit/v2/agent/testutils"

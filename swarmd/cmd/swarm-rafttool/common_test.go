@@ -16,6 +16,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 // writeFakeRaftData writes the given snapshot and some generated WAL data to given "snap" and "wal" directories
@@ -27,26 +28,26 @@ func writeFakeRaftData(t *testing.T, stateDir string, snapshot *raftpb.Snapshot,
 
 	wsn := walpb.Snapshot{}
 	if snapshot != nil {
-		require.NoError(t, sf.New(snapDir).SaveSnap(*snapshot))
+		require.NoError(t, sf.New(snapDir).SaveSnap(snapshot))
 
 		wsn.Index = snapshot.Metadata.Index
 		wsn.Term = snapshot.Metadata.Term
-		wsn.ConfState = &snapshot.Metadata.ConfState
+		wsn.ConfState = snapshot.Metadata.ConfState
 	}
 
-	var entries []raftpb.Entry
-	for i := wsn.Index + 1; i < wsn.Index+6; i++ {
-		entries = append(entries, raftpb.Entry{
-			Term:  wsn.Term + 1,
-			Index: i,
+	var entries []*raftpb.Entry
+	for i := wsn.GetIndex() + 1; i < wsn.GetIndex()+6; i++ {
+		entries = append(entries, &raftpb.Entry{
+			Term:  proto.Uint64(wsn.GetTerm() + 1),
+			Index: proto.Uint64(i),
 			Data:  fmt.Appendf(nil, "v3Entry %d", i),
 		})
 	}
 
 	walWriter, err := wf.Create(walDir, []byte("v3metadata"))
 	require.NoError(t, err)
-	require.NoError(t, walWriter.SaveSnapshot(wsn))
-	require.NoError(t, walWriter.Save(raftpb.HardState{}, entries))
+	require.NoError(t, walWriter.SaveSnapshot(&wsn))
+	require.NoError(t, walWriter.Save(&raftpb.HardState{}, entries))
 	require.NoError(t, walWriter.Close())
 }
 
@@ -67,9 +68,10 @@ func TestDecrypt(t *testing.T) {
 	// create the encrypted v3 directory
 	origSnapshot := raftpb.Snapshot{
 		Data: []byte("snapshot"),
-		Metadata: raftpb.SnapshotMetadata{
-			Index: 1,
-			Term:  1,
+		Metadata: &raftpb.SnapshotMetadata{
+			Index:     proto.Uint64(1),
+			Term:      proto.Uint64(1),
+			ConfState: &raftpb.ConfState{},
 		},
 	}
 	e, d := encryption.Defaults(dek, false)
@@ -89,10 +91,10 @@ func TestDecrypt(t *testing.T) {
 	snapshot, err := storage.OriginalSnap.New(filepath.Join(outdir, "snap-decrypted")).Load()
 	require.NoError(t, err)
 	require.NotNil(t, snapshot)
-	require.Equal(t, origSnapshot, *snapshot)
+	require.True(t, proto.Equal(&origSnapshot, snapshot))
 
 	// The wals are readable by the regular wal
-	walreader, err := storage.OriginalWAL.Open(filepath.Join(outdir, "wal-decrypted"), walpb.Snapshot{Index: 1, Term: 1})
+	walreader, err := storage.OriginalWAL.Open(filepath.Join(outdir, "wal-decrypted"), &walpb.Snapshot{Index: proto.Uint64(1), Term: proto.Uint64(1)})
 	require.NoError(t, err)
 	metadata, _, entries, err := walreader.ReadAll()
 	require.NoError(t, err)

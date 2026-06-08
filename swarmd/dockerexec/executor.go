@@ -39,10 +39,14 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 		return nil, err
 	}
 
-	plugins := map[api.PluginDescription]struct{}{}
+	type pluginKey struct {
+		Type string
+		Name string
+	}
+	plugins := map[pluginKey]struct{}{}
 	addPlugins := func(typ string, names []string) {
 		for _, name := range names {
-			plugins[api.PluginDescription{
+			plugins[pluginKey{
 				Type: typ,
 				Name: name,
 			}] = struct{}{}
@@ -71,7 +75,7 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 					} else if typ.Capability == "networkdriver" {
 						plgnTyp = "Network"
 					}
-					plugins[api.PluginDescription{
+					plugins[pluginKey{
 						Type: plgnTyp,
 						Name: plgn.Name,
 					}] = struct{}{}
@@ -80,9 +84,12 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 		}
 	}
 
-	pluginFields := make([]api.PluginDescription, 0, len(plugins))
+	pluginFields := make([]*api.PluginDescription, 0, len(plugins))
 	for k := range plugins {
-		pluginFields = append(pluginFields, k)
+		pluginFields = append(pluginFields, &api.PluginDescription{
+			Type: k.Type,
+			Name: k.Name,
+		})
 	}
 	sort.Sort(sortedPlugins(pluginFields))
 
@@ -149,7 +156,7 @@ func (e *executor) Secrets() exec.SecretsManager {
 	return e.secrets
 }
 
-type sortedPlugins []api.PluginDescription
+type sortedPlugins []*api.PluginDescription
 
 func (sp sortedPlugins) Len() int { return len(sp) }
 

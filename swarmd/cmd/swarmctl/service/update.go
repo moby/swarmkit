@@ -3,12 +3,12 @@ package service
 import (
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/service/flagparser"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -61,13 +61,13 @@ var (
 				return err
 			}
 
-			if reflect.DeepEqual(spec, &service.Spec) {
+			if proto.Equal(spec, service.Spec) {
 				return errors.New("no changes detected")
 			}
 
 			r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{
 				ServiceID:      service.ID,
-				ServiceVersion: &service.Meta.Version,
+				ServiceVersion: service.Meta.Version,
 				Spec:           spec,
 			})
 			if err != nil {

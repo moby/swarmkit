@@ -10,7 +10,6 @@ import (
 	"text/tabwriter"
 
 	"github.com/dustin/go-humanize"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/task"
 	"github.com/moby/swarmkit/v2/api"
@@ -36,14 +35,12 @@ func printServiceSummary(service *api.Service, running int) {
 	if service.UpdateStatus != nil {
 		fmt.Fprintln(w, "Update Status\t")
 		fmt.Fprintln(w, " State\t:", service.UpdateStatus.State)
-		started, err := gogotypes.TimestampFromProto(service.UpdateStatus.StartedAt)
-		if err == nil {
-			fmt.Fprintln(w, " Started\t:", humanize.Time(started))
+		if service.UpdateStatus.StartedAt != nil {
+			fmt.Fprintln(w, " Started\t:", humanize.Time(service.UpdateStatus.StartedAt.AsTime()))
 		}
 		if service.UpdateStatus.State == api.UpdateStatus_COMPLETED {
-			completed, err := gogotypes.TimestampFromProto(service.UpdateStatus.CompletedAt)
-			if err == nil {
-				fmt.Fprintln(w, " Completed\t:", humanize.Time(completed))
+			if service.UpdateStatus.CompletedAt != nil {
+				fmt.Fprintln(w, " Completed\t:", humanize.Time(service.UpdateStatus.CompletedAt.AsTime()))
 			}
 		}
 		fmt.Fprintln(w, " Message\t:", service.UpdateStatus.Message)

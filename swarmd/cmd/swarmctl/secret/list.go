@@ -8,7 +8,6 @@ import (
 	"text/tabwriter"
 
 	"github.com/dustin/go-humanize"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/cobra"
@@ -19,14 +18,8 @@ type secretSorter []*api.Secret
 func (k secretSorter) Len() int      { return len(k) }
 func (k secretSorter) Swap(i, j int) { k[i], k[j] = k[j], k[i] }
 func (k secretSorter) Less(i, j int) bool {
-	iTime, err := gogotypes.TimestampFromProto(k[i].Meta.CreatedAt)
-	if err != nil {
-		panic(err)
-	}
-	jTime, err := gogotypes.TimestampFromProto(k[j].Meta.CreatedAt)
-	if err != nil {
-		panic(err)
-	}
+	iTime := k[i].Meta.CreatedAt.AsTime()
+	jTime := k[j].Meta.CreatedAt.AsTime()
 	return jTime.Before(iTime)
 }
 
@@ -65,10 +58,6 @@ var (
 				}()
 				common.PrintHeader(w, "ID", "Name", "Driver", "Created")
 				output = func(s *api.Secret) {
-					created, err := gogotypes.TimestampFromProto(s.Meta.CreatedAt)
-					if err != nil {
-						panic(err)
-					}
 					var driver string
 					if s.Spec.Driver != nil {
 						driver = s.Spec.Driver.Name
@@ -78,7 +67,7 @@ var (
 						s.ID,
 						s.Spec.Annotations.Name,
 						driver,
-						humanize.Time(created),
+						humanize.Time(s.Meta.CreatedAt.AsTime()),
 					)
 				}
 

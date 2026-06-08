@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/pflag"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
@@ -46,7 +46,7 @@ func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			return err
 		}
 
-		spec.Task.Restart.Delay = gogotypes.DurationProto(delayDuration)
+		spec.Task.Restart.Delay = durationpb.New(delayDuration)
 	}
 
 	if flags.Changed("restart-max-attempts") {
@@ -69,7 +69,7 @@ func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			return err
 		}
 
-		spec.Task.Restart.Window = gogotypes.DurationProto(windowDelay)
+		spec.Task.Restart.Window = durationpb.New(windowDelay)
 	}
 
 	return nil

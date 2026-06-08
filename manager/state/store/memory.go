@@ -14,11 +14,11 @@ import (
 	"github.com/docker/go-events"
 	"github.com/docker/go-metrics"
 	memdb "github.com/hashicorp/go-memdb"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/watch"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -438,7 +438,7 @@ func (batch *Batch) Update(cb func(Tx) error) error {
 		if err != nil {
 			return err
 		}
-		batch.transactionSizeEstimate += int(proto.Size(&sa))
+		batch.transactionSizeEstimate += proto.Size(&sa)
 		batch.changelistLen++
 	}
 

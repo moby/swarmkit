@@ -3,14 +3,14 @@ package controlapi
 import (
 	"context"
 	"crypto/x509"
-	"time"
 	"encoding/pem"
 	"slices"
+	"time"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state/raft/membership"
-	"github.com/moby/swarmkit/v2/protobuf/ptypes"
 	"github.com/moby/swarmkit/v2/manager/state/store"
+	"github.com/moby/swarmkit/v2/protobuf/ptypes"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

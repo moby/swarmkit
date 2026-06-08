@@ -4,15 +4,16 @@ package test
 
 import (
 	context "context"
+	io "io"
+	strings "strings"
+	time "time"
+
 	raftselector "github.com/moby/swarmkit/v2/manager/raftselector"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	metadata "google.golang.org/grpc/metadata"
 	peer "google.golang.org/grpc/peer"
 	status "google.golang.org/grpc/status"
-	io "io"
-	strings "strings"
-	time "time"
 )
 
 type raftProxyRouteGuideServer struct {

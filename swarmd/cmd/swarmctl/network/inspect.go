@@ -47,7 +47,7 @@ func printNetworkSummary(network *api.Network) {
 		_ = w.Flush()
 	}()
 
-	spec := &network.Spec
+	spec := network.Spec
 	common.FprintfIfNotEmpty(w, "ID\t: %s\n", network.ID)
 	common.FprintfIfNotEmpty(w, "Name\t: %s\n", spec.Annotations.Name)
 

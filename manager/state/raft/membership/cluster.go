@@ -5,10 +5,10 @@ import (
 	"maps"
 	"sync"
 
-	"google.golang.org/protobuf/proto"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/watch"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 var (

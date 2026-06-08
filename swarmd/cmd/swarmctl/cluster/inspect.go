@@ -7,7 +7,6 @@ import (
 	"sort"
 	"text/tabwriter"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/cobra"
@@ -22,20 +21,16 @@ func printClusterSummary(cluster *api.Cluster) {
 	fmt.Fprintln(w, "Orchestration settings:")
 	fmt.Fprintf(w, "  Task history entries: %d\n", cluster.Spec.Orchestration.TaskHistoryRetentionLimit)
 
-	heartbeatPeriod, err := gogotypes.DurationFromProto(cluster.Spec.Dispatcher.HeartbeatPeriod)
-	if err == nil {
+	if cluster.Spec.Dispatcher.HeartbeatPeriod != nil {
+		heartbeatPeriod := cluster.Spec.Dispatcher.HeartbeatPeriod.AsDuration()
 		fmt.Fprintln(w, "Dispatcher settings:")
 		fmt.Fprintf(w, "  Dispatcher heartbeat period: %s\n", heartbeatPeriod.String())
 	}
 
 	fmt.Fprintln(w, "Certificate Authority settings:")
 	if cluster.Spec.CAConfig.NodeCertExpiry != nil {
-		clusterDuration, err := gogotypes.DurationFromProto(cluster.Spec.CAConfig.NodeCertExpiry)
-		if err != nil {
-			fmt.Fprintln(w, "  Certificate Validity Duration: [ERROR PARSING DURATION]")
-		} else {
-			fmt.Fprintf(w, "  Certificate Validity Duration: %s\n", clusterDuration.String())
-		}
+		clusterDuration := cluster.Spec.CAConfig.NodeCertExpiry.AsDuration()
+		fmt.Fprintf(w, "  Certificate Validity Duration: %s\n", clusterDuration.String())
 	}
 	if len(cluster.Spec.CAConfig.ExternalCAs) > 0 {
 		fmt.Fprintln(w, "  External CAs:")

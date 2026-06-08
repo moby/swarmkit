@@ -7,9 +7,9 @@ import (
 	"io"
 	"strings"
 
-	"google.golang.org/protobuf/proto"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 // This package defines the interfaces and encryption package

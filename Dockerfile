@@ -4,7 +4,9 @@ ARG GO_VERSION=1.26
 ARG BASE_DEBIAN_DISTRO="bookworm"
 ARG GOLANG_IMAGE="golang:${GO_VERSION}-${BASE_DEBIAN_DISTRO}"
 
-ARG PROTOC_VERSION=3.14.0
+ARG PROTOC_VERSION=21.12
+ARG PROTOC_GEN_GO_VERSION=v1.36.11
+ARG PROTOC_GEN_GO_GRPC_VERSION=v1.6.2
 ARG GOLANGCI_LINT_VERSION=v2.12.2
 
 # gobase
@@ -45,16 +47,6 @@ RUN --mount=type=bind,target=.,rw \
   fi
 EOT
 
-FROM gobase AS protoc-gen-gogoswarm
-RUN --mount=type=bind,target=.,rw \
-    --mount=type=cache,target=/root/.cache \
-    make bin/protoc-gen-gogoswarm && mv bin/protoc-gen-gogoswarm /usr/local/bin/
-
-FROM gobase AS protobuild
-RUN --mount=type=bind,target=. \
-    --mount=type=cache,target=/root/.cache \
-    go install tool github.com/containerd/protobuild
-
 FROM gobase AS generate-base
 RUN apt-get --no-install-recommends install -y unzip
 ARG PROTOC_VERSION
@@ -66,17 +58,25 @@ RUN <<EOT
   wget -q https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-${TARGETOS}-${arch}.zip
   unzip protoc-${PROTOC_VERSION}-${TARGETOS}-${arch}.zip -d /usr/local
 EOT
+# Install the standard protobuf Go plugins (protoc-gen-goswarm and
+# proto-name-fix are built from this repo by `make protos`).
+ARG PROTOC_GEN_GO_VERSION
+ARG PROTOC_GEN_GO_GRPC_VERSION
+RUN --mount=type=cache,target=/root/.cache \
+    --mount=type=cache,target=/go/pkg/mod <<EOT
+  set -e
+  go install google.golang.org/protobuf/cmd/protoc-gen-go@${PROTOC_GEN_GO_VERSION}
+  go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@${PROTOC_GEN_GO_GRPC_VERSION}
+EOT
 
 FROM generate-base AS generate-build
 RUN --mount=type=bind,target=.,rw \
-    --mount=from=packages,source=/tmp/packages,target=/tmp/packages \
-    --mount=from=protobuild,source=/go/bin/protobuild,target=/usr/bin/protobuild \
-    --mount=from=protoc-gen-gogoswarm,source=/usr/local/bin/protoc-gen-gogoswarm,target=/usr/bin/protoc-gen-gogoswarm <<EOT
+    --mount=type=cache,target=/root/.cache \
+    --mount=type=cache,target=/go/pkg/mod <<EOT
   set -ex
-  protobuild $(cat /tmp/packages/packages)
-  go generate -mod=vendor -x $(cat /tmp/packages/packages)
+  make protos
   mkdir /out
-  git ls-files -m --others -- ':!vendor' '**/*.pb.go' | tar -cf - --files-from - | tar -C /out -xf -
+  git ls-files -m --others -- ':!vendor' '**/*.pb.go' '**/*.pb.*.go' | tar -cf - --files-from - | tar -C /out -xf -
 EOT
 
 FROM scratch AS generate-update
@@ -90,7 +90,7 @@ RUN --mount=type=bind,target=.,rw \
   if [ "$(ls -A /generated)" ]; then
     cp -rf /generated/* .
   fi
-  diff=$(git status --porcelain -- ':!vendor' '**/*.pb.go')
+  diff=$(git status --porcelain -- ':!vendor' '**/*.pb.go' '**/*.pb.*.go')
   if [ -n "$diff" ]; then
     echo >&2 'ERROR: The result of "go generate" differs. Please update with "make generate"'
     echo "$diff"
@@ -100,9 +100,10 @@ EOT
 
 FROM golangci/golangci-lint:${GOLANGCI_LINT_VERSION} AS golangci-lint
 FROM gobase AS lint
-RUN apt-get install -y --no-install-recommends libgcc-11-dev libc6-dev
+RUN apt-get install -y --no-install-recommends libgcc-12-dev libc6-dev
 RUN --mount=type=bind,target=. \
     --mount=type=cache,target=/root/.cache \
+    --mount=type=cache,target=/go/pkg/mod \
     --mount=from=golangci-lint,source=/usr/bin/golangci-lint,target=/usr/bin/golangci-lint <<EOT
   set -e
   config=$(pwd)/.golangci.yml

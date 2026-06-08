@@ -48,7 +48,7 @@ var createCmd = &cobra.Command{
 		}
 
 		spec := &api.ConfigSpec{
-			Annotations: api.Annotations{Name: args[0]},
+			Annotations: &api.Annotations{Name: args[0]},
 			Data:        configData,
 		}
 

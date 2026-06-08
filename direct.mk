@@ -43,9 +43,9 @@ setup: ## install dependencies
 	@echo "🐳 $@"
 	# install golangci-lint to ./bin/golangci-lint
 	@curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/v2.1.5/install.sh | sh -s v2.1.5
-	# install standard protobuf code generators
-	@go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+	# install standard protobuf code generators (pinned for reproducible codegen)
+	@go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
+	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.2
 
 .PHONY: generate
 generate: protos

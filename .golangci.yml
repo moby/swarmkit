@@ -17,6 +17,14 @@ linters:
     govet:
       enable:
         - nilness
+      disable:
+        # google.golang.org/protobuf messages embed protoimpl.MessageState
+        # (which contains a sync.Mutex), so copylocks fires wherever a proto
+        # message is passed or ranged over by value. SwarmKit's APIs do this
+        # in many places (e.g. the Remotes/Proposer interfaces, state.Change).
+        # Pointerizing all of them is a large, separate refactor; until then
+        # copylocks is disabled to avoid a wall of false-positive-ish findings.
+        - copylocks
   exclusions:
     generated: lax
     presets:

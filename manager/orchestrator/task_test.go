@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strconv"
 	"testing"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/moby/swarmkit/v2/api"

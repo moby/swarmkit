@@ -6,17 +6,18 @@ import (
 	"strings"
 	"testing"
 	"time"
+
 	"github.com/moby/swarmkit/v2/api"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
-	"google.golang.org/protobuf/types/known/durationpb"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func createGenericSpec(name, runtime string) *api.ServiceSpec {
@@ -353,7 +354,7 @@ func TestValidateContainerSpec(t *testing.T) {
 					Test:          []string{"curl 127.0.0.1:3000"},
 					Interval:      durationpb.New(time.Duration(-1 * time.Second)), // invalid negative duration
 					Timeout:       durationpb.New(time.Duration(-1 * time.Second)), // invalid negative duration
-					Retries:       -1,                                                       // invalid negative integer
+					Retries:       -1,                                              // invalid negative integer
 					StartPeriod:   durationpb.New(time.Duration(-1 * time.Second)), // invalid negative duration
 					StartInterval: durationpb.New(time.Duration(-1 * time.Second)), // invalid negative duration
 				},

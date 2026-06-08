@@ -1,9 +1,9 @@
 package agent
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/moby/swarmkit/v2/api"
 	bolt "go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 )
 
 // Layout:

@@ -19,10 +19,10 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
-	"google.golang.org/protobuf/types/known/durationpb"
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 const tenSecond = 10
@@ -450,9 +450,10 @@ func genTask(t *testing.T) *api.Task {
 	)
 
 	return &api.Task{
-		ID:        identity.NewID(),
-		ServiceID: serviceID,
-		NodeID:    nodeID,
+		ID:                 identity.NewID(),
+		ServiceID:          serviceID,
+		NodeID:             nodeID,
+		ServiceAnnotations: &api.Annotations{},
 		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{

@@ -25,7 +25,7 @@ func parseNpipe(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			if len(parts) != 2 {
 				return fmt.Errorf("npipe format %q not supported", npipe)
 			}
-			container.Mounts = append(container.Mounts, api.Mount{
+			container.Mounts = append(container.Mounts, &api.Mount{
 				Type:   api.MountTypeNamedPipe,
 				Source: parts[0],
 				Target: parts[1],

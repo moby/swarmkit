@@ -53,7 +53,7 @@ var createCmd = &cobra.Command{
 		}
 
 		spec := &api.SecretSpec{
-			Annotations: api.Annotations{Name: args[0]},
+			Annotations: &api.Annotations{Name: args[0]},
 			Data:        secretData,
 		}
 		if driver != "" {

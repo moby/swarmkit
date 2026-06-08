@@ -12,7 +12,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	engineapi "github.com/docker/docker/client"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
@@ -217,8 +216,7 @@ func (c *containerAdapter) shutdown(ctx context.Context) error {
 	stopgraceSeconds := 10
 	spec := c.container.spec()
 	if spec.StopGracePeriod != nil {
-		stopgraceFromProto, _ := gogotypes.DurationFromProto(spec.StopGracePeriod)
-		stopgraceSeconds = int(stopgraceFromProto.Seconds())
+		stopgraceSeconds = int(spec.StopGracePeriod.AsDuration().Seconds())
 	}
 	return c.client.ContainerStop(ctx, c.container.name(), container.StopOptions{Timeout: &stopgraceSeconds})
 }
@@ -250,7 +248,7 @@ func (c *containerAdapter) createVolumes(ctx context.Context) error {
 			continue
 		}
 
-		req := c.container.volumeCreateRequest(&mount)
+		req := c.container.volumeCreateRequest(mount)
 		if _, err := c.client.VolumeCreate(ctx, *req); err != nil {
 			// TODO(amitshukla): Today, volume create through the engine api does not return an error
 			// when the named volume with the same parameters already exists.
@@ -275,10 +273,7 @@ func (c *containerAdapter) logs(ctx context.Context, options api.LogSubscription
 	}
 
 	if options.Since != nil {
-		since, err := gogotypes.TimestampFromProto(options.Since)
-		if err != nil {
-			return nil, err
-		}
+		since := options.Since.AsTime()
 		apiOptions.Since = fmt.Sprintf("%d.%09d", since.Unix(), int64(since.Nanosecond()))
 	}
 

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
+	"time"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/cobra"
@@ -25,7 +25,7 @@ func printConfigSummary(config *api.Config) {
 		}
 	}
 
-	common.FprintfIfNotEmpty(w, "Created\t: %s\n", gogotypes.TimestampString(config.Meta.CreatedAt))
+	common.FprintfIfNotEmpty(w, "Created\t: %s\n", config.Meta.CreatedAt.AsTime().Format(time.RFC3339))
 
 	fmt.Print(w, "Payload:\n\n")
 	fmt.Println(w, config.Spec.Data)

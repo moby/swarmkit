@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -34,7 +34,7 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 	if err != nil {
 		return err
 	}
-	spec := &node.Spec
+	spec := node.Spec
 
 	if spec.Availability == availability {
 		return errNoChange
@@ -44,7 +44,7 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 
 	_, err = c.UpdateNode(common.Context(cmd), &api.UpdateNodeRequest{
 		NodeID:      node.ID,
-		NodeVersion: &node.Meta.Version,
+		NodeVersion: node.Meta.Version,
 		Spec:        spec,
 	})
 
@@ -68,7 +68,7 @@ func changeNodeRole(cmd *cobra.Command, args []string, role api.NodeRole) error 
 	if err != nil {
 		return err
 	}
-	spec := &node.Spec
+	spec := node.Spec
 
 	if spec.DesiredRole == role {
 		return errNoChange
@@ -78,7 +78,7 @@ func changeNodeRole(cmd *cobra.Command, args []string, role api.NodeRole) error 
 
 	_, err = c.UpdateNode(common.Context(cmd), &api.UpdateNodeRequest{
 		NodeID:      node.ID,
-		NodeVersion: &node.Meta.Version,
+		NodeVersion: node.Meta.Version,
 		Spec:        spec,
 	})
 
@@ -151,13 +151,13 @@ func updateNode(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if reflect.DeepEqual(spec, &node.Spec) {
+	if proto.Equal(spec, node.Spec) {
 		return errNoChange
 	}
 
 	_, err = c.UpdateNode(common.Context(cmd), &api.UpdateNodeRequest{
 		NodeID:      node.ID,
-		NodeVersion: &node.Meta.Version,
+		NodeVersion: node.Meta.Version,
 		Spec:        spec,
 	})
 
