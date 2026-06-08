@@ -6,8 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/docker/docker/api/types/filters"
-	engineapi "github.com/docker/docker/client"
+	engineapi "github.com/moby/moby/client"
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/agent/secrets"
 	"github.com/moby/swarmkit/v2/api"
@@ -34,10 +33,11 @@ func NewExecutor(client engineapi.APIClient, genericResources []*api.GenericReso
 
 // Describe returns the underlying node description from the docker client.
 func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
-	info, err := e.client.Info(ctx)
+	res, err := e.client.Info(ctx, engineapi.InfoOptions{})
 	if err != nil {
 		return nil, err
 	}
+	info := res.Info
 
 	plugins := map[api.PluginDescription]struct{}{}
 	addPlugins := func(typ string, names []string) {
@@ -57,12 +57,12 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 	addPlugins("Authorization", info.Plugins.Authorization)
 
 	// retrieve v2 plugins
-	v2plugins, err := e.client.PluginList(ctx, filters.NewArgs())
+	v2plugins, err := e.client.PluginList(ctx, engineapi.PluginListOptions{})
 	if err != nil {
 		log.L.WithError(err).Warning("PluginList operation failed")
 	} else {
 		// add v2 plugins to 'plugins'
-		for _, plgn := range v2plugins {
+		for _, plgn := range v2plugins.Items {
 			for _, typ := range plgn.Config.Interface.Types {
 				if typ.Prefix == "docker" && plgn.Enabled {
 					plgnTyp := typ.Capability

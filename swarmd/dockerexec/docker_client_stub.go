@@ -6,12 +6,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/events"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 )
 
 // StubAPIClient implements the client.APIClient interface, but allows
@@ -19,14 +15,14 @@ import (
 type StubAPIClient struct {
 	client.APIClient
 	calls              map[string]int
-	ContainerCreateFn  func(_ context.Context, config *container.Config, hostConfig *container.HostConfig, networking *network.NetworkingConfig, platform *v1.Platform, containerName string) (container.CreateResponse, error)
-	ContainerInspectFn func(_ context.Context, containerID string) (types.ContainerJSON, error)
+	ContainerCreateFn  func(_ context.Context, options client.ContainerCreateOptions) (client.ContainerCreateResult, error)
+	ContainerInspectFn func(_ context.Context, containerID string) (container.InspectResponse, error)
 	ContainerKillFn    func(_ context.Context, containerID, signal string) error
-	ContainerRemoveFn  func(_ context.Context, containerID string, options types.ContainerRemoveOptions) error
-	ContainerStartFn   func(_ context.Context, containerID string, options types.ContainerStartOptions) error
-	ContainerStopFn    func(_ context.Context, containerID string, options container.StopOptions) error
-	ImagePullFn        func(_ context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error)
-	EventsFn           func(_ context.Context, options types.EventsOptions) (<-chan events.Message, <-chan error)
+	ContainerRemoveFn  func(_ context.Context, containerID string, options client.ContainerRemoveOptions) error
+	ContainerStartFn   func(_ context.Context, containerID string, options client.ContainerStartOptions) error
+	ContainerStopFn    func(_ context.Context, containerID string, options client.ContainerStopOptions) error
+	ImagePullFn        func(_ context.Context, refStr string, options client.ImagePullOptions) (io.ReadCloser, error)
+	EventsFn           func(_ context.Context, options client.EventsListOptions) client.EventsResult
 }
 
 // NewStubAPIClient returns an initialized StubAPIClient
@@ -51,49 +47,62 @@ func (sa *StubAPIClient) called() {
 }
 
 // ContainerCreate is part of the APIClient interface
-func (sa *StubAPIClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networking *network.NetworkingConfig, platform *v1.Platform, containerName string) (container.CreateResponse, error) {
+func (sa *StubAPIClient) ContainerCreate(ctx context.Context, options client.ContainerCreateOptions) (client.ContainerCreateResult, error) {
 	sa.called()
-	return sa.ContainerCreateFn(ctx, config, hostConfig, networking, platform, containerName)
+	return sa.ContainerCreateFn(ctx, options)
 }
 
 // ContainerInspect is part of the APIClient interface
-func (sa *StubAPIClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
+func (sa *StubAPIClient) ContainerInspect(ctx context.Context, containerID string, _ client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
 	sa.called()
-	return sa.ContainerInspectFn(ctx, containerID)
+	c, err := sa.ContainerInspectFn(ctx, containerID)
+	if err != nil {
+		return client.ContainerInspectResult{}, err
+	}
+	return client.ContainerInspectResult{Container: c}, nil
 }
 
 // ContainerKill is part of the APIClient interface
-func (sa *StubAPIClient) ContainerKill(ctx context.Context, containerID, signal string) error {
+func (sa *StubAPIClient) ContainerKill(ctx context.Context, containerID string, options client.ContainerKillOptions) (client.ContainerKillResult, error) {
 	sa.called()
-	return sa.ContainerKillFn(ctx, containerID, signal)
+	return client.ContainerKillResult{}, sa.ContainerKillFn(ctx, containerID, options.Signal)
 }
 
 // ContainerRemove is part of the APIClient interface
-func (sa *StubAPIClient) ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error {
+func (sa *StubAPIClient) ContainerRemove(ctx context.Context, containerID string, options client.ContainerRemoveOptions) (client.ContainerRemoveResult, error) {
 	sa.called()
-	return sa.ContainerRemoveFn(ctx, containerID, options)
+	return client.ContainerRemoveResult{}, sa.ContainerRemoveFn(ctx, containerID, options)
 }
 
 // ContainerStart is part of the APIClient interface
-func (sa *StubAPIClient) ContainerStart(ctx context.Context, containerID string, options types.ContainerStartOptions) error {
+func (sa *StubAPIClient) ContainerStart(ctx context.Context, containerID string, options client.ContainerStartOptions) (client.ContainerStartResult, error) {
 	sa.called()
-	return sa.ContainerStartFn(ctx, containerID, options)
+	return client.ContainerStartResult{}, sa.ContainerStartFn(ctx, containerID, options)
 }
 
 // ContainerStop is part of the APIClient interface
-func (sa *StubAPIClient) ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error {
+func (sa *StubAPIClient) ContainerStop(ctx context.Context, containerID string, options client.ContainerStopOptions) (client.ContainerStopResult, error) {
 	sa.called()
-	return sa.ContainerStopFn(ctx, containerID, options)
+	return client.ContainerStopResult{}, sa.ContainerStopFn(ctx, containerID, options)
 }
 
+type fakeStreamResult struct {
+	io.ReadCloser
+	client.ImagePullResponse
+}
+
+func (e fakeStreamResult) Read(p []byte) (int, error) { return e.ReadCloser.Read(p) }
+func (e fakeStreamResult) Close() error               { return e.ReadCloser.Close() }
+
 // ImagePull is part of the APIClient interface
-func (sa *StubAPIClient) ImagePull(ctx context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error) {
+func (sa *StubAPIClient) ImagePull(ctx context.Context, refStr string, options client.ImagePullOptions) (client.ImagePullResponse, error) {
 	sa.called()
-	return sa.ImagePullFn(ctx, refStr, options)
+	res, err := sa.ImagePullFn(ctx, refStr, options)
+	return fakeStreamResult{ReadCloser: res}, err
 }
 
 // Events is part of the APIClient interface
-func (sa *StubAPIClient) Events(ctx context.Context, options types.EventsOptions) (<-chan events.Message, <-chan error) {
+func (sa *StubAPIClient) Events(ctx context.Context, options client.EventsListOptions) client.EventsResult {
 	sa.called()
 	return sa.EventsFn(ctx, options)
 }
