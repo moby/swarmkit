@@ -57,9 +57,9 @@ generate: protos
 # separately with protoc-gen-go only — it must not receive the swarmkit codegen
 # plugins (deepcopy/storeobject/raftproxy/authwrapper).
 PROTO_SRCS = $(wildcard api/*.proto)
-# Include paths: project root, system protobuf includes, vendor for etcd raft proto,
-# and internal stubs that satisfy gogoproto imports in vendored .proto files.
-PROTO_INCLUDES = -I. -I/usr/local/include -Ivendor -Iinternal/protoc-stubs
+# Include paths: project root, system protobuf includes, and vendor (for the
+# etcd raftpb proto that api/raft.proto imports).
+PROTO_INCLUDES = -I. -I/usr/local/include -Ivendor
 
 # Map well-known types, our plugin, and API protos to the correct Go packages.
 # These -M flags are passed to protoc-gen-go, protoc-gen-go-grpc, and protoc-gen-goswarm.
@@ -82,8 +82,7 @@ _PROTO_M = \
 	Mapi/resource.proto=github.com/moby/swarmkit/v2/api \
 	Mapi/snapshot.proto=github.com/moby/swarmkit/v2/api \
 	Mapi/logbroker.proto=github.com/moby/swarmkit/v2/api \
-	Mgo.etcd.io/raft/v3/raftpb/raft.proto=go.etcd.io/raft/v3/raftpb \
-	Mgogoproto/gogo.proto=github.com/gogo/protobuf/gogoproto
+	Mgo.etcd.io/raft/v3/raftpb/raft.proto=go.etcd.io/raft/v3/raftpb
 
 PROTO_M_FLAGS = $(addprefix --go_opt=,$(_PROTO_M)) \
 	$(addprefix --go-grpc_opt=,$(_PROTO_M)) --go-grpc_opt=require_unimplemented_servers=false \

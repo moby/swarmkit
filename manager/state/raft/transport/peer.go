@@ -29,7 +29,7 @@ type peer struct {
 
 	tr *Transport
 
-	msgc chan raftpb.Message
+	msgc chan *raftpb.Message
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -58,14 +58,14 @@ func newPeer(id uint64, addr string, tr *Transport) (*peer, error) {
 		tr:     tr,
 		ctx:    ctx,
 		cancel: cancel,
-		msgc:   make(chan raftpb.Message, 4096),
+		msgc:   make(chan *raftpb.Message, 4096),
 		done:   make(chan struct{}),
 	}
 	go p.run(ctx)
 	return p, nil
 }
 
-func (p *peer) send(m raftpb.Message) (err error) {
+func (p *peer) send(m *raftpb.Message) (err error) {
 	p.mu.Lock()
 	defer func() {
 		if err != nil {
@@ -155,7 +155,7 @@ func raftMessagePayloadSize(m *raftpb.Message) int {
 // is dictacted by MaxRaftMsgSize.
 func splitSnapshotData(_ context.Context, m *raftpb.Message) []api.StreamRaftMessageRequest {
 	var messages []api.StreamRaftMessageRequest
-	if m.Type != raftpb.MsgSnap {
+	if m.GetType() != raftpb.MsgSnap {
 		return messages
 	}
 
@@ -169,19 +169,35 @@ func splitSnapshotData(_ context.Context, m *raftpb.Message) []api.StreamRaftMes
 	for snapDataIndex := 0; snapDataIndex < size; {
 		chunkSize := min(size-snapDataIndex, payloadSize)
 
-		raftMsg := *m
-		// Clone Snapshot so that re-slicing Snapshot.Data below
-		// does not mutate m.Snapshot.Data through the shared pointer.
-		snap := *m.Snapshot
-		raftMsg.Snapshot = &snap
-
-		// sub-slice for this snapshot chunk.
-		raftMsg.Snapshot.Data = m.Snapshot.Data[snapDataIndex : snapDataIndex+chunkSize]
+		// Each chunk carries m's header verbatim but needs its own Snapshot:
+		// Message.Snapshot is a pointer now, so reusing m.Snapshot would make
+		// every chunk alias (and overwrite) the same Data sub-slice. The header
+		// fields are immutable pointers/slices, so sharing them is safe; only
+		// Snapshot is allocated fresh, with a Data sub-slice into the original.
+		raftMsg := &raftpb.Message{
+			Type:       m.Type,
+			To:         m.To,
+			From:       m.From,
+			Term:       m.Term,
+			LogTerm:    m.LogTerm,
+			Index:      m.Index,
+			Entries:    m.Entries,
+			Commit:     m.Commit,
+			Vote:       m.Vote,
+			Reject:     m.Reject,
+			RejectHint: m.RejectHint,
+			Context:    m.Context,
+			Responses:  m.Responses,
+			Snapshot: &raftpb.Snapshot{
+				Data:     m.Snapshot.Data[snapDataIndex : snapDataIndex+chunkSize],
+				Metadata: m.Snapshot.Metadata,
+			},
+		}
 
 		snapDataIndex += chunkSize
 
 		// add message to the list of messages to be sent.
-		msg := api.StreamRaftMessageRequest{Message: &raftMsg}
+		msg := api.StreamRaftMessageRequest{Message: raftMsg}
 		messages = append(messages, msg)
 	}
 
@@ -194,10 +210,10 @@ func splitSnapshotData(_ context.Context, m *raftpb.Message) []api.StreamRaftMes
 // and size larger than MaxRaftMsgSize.
 func needsSplitting(m *raftpb.Message) bool {
 	raftMsg := api.ProcessRaftMessageRequest{Message: m}
-	return m.Type == raftpb.MsgSnap && int(proto.Size(&raftMsg)) > GRPCMaxMsgSize
+	return m.GetType() == raftpb.MsgSnap && int(proto.Size(&raftMsg)) > GRPCMaxMsgSize
 }
 
-func (p *peer) sendProcessMessage(ctx context.Context, m raftpb.Message) error {
+func (p *peer) sendProcessMessage(ctx context.Context, m *raftpb.Message) error {
 	// These lines used to be in the code, but they've been removed. I'm
 	// leaving them in in a comment just in case they cause some unforeseen
 	// breakage later, to show why they were removed.
@@ -244,10 +260,10 @@ func (p *peer) sendProcessMessage(ctx context.Context, m raftpb.Message) error {
 		// Split the message if needed.
 		// Currently only supported for MsgSnap.
 		var msgs []api.StreamRaftMessageRequest
-		if needsSplitting(&m) {
-			msgs = splitSnapshotData(ctx, &m)
+		if needsSplitting(m) {
+			msgs = splitSnapshotData(ctx, m)
 		} else {
-			raftMsg := api.StreamRaftMessageRequest{Message: &m}
+			raftMsg := api.StreamRaftMessageRequest{Message: m}
 			msgs = append(msgs, raftMsg)
 		}
 
@@ -281,7 +297,7 @@ func (p *peer) sendProcessMessage(ctx context.Context, m raftpb.Message) error {
 	s, _ := status.FromError(err)
 	if s.Code() == codes.Unimplemented {
 		log.G(ctx).Info("sending message to raft peer using ProcessRaftMessage()")
-		_, err = api.NewRaftClient(p.conn()).ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Message: &m})
+		_, err = api.NewRaftClient(p.conn()).ProcessRaftMessage(ctx, &api.ProcessRaftMessageRequest{Message: m})
 	}
 
 	// Handle errors.
@@ -289,15 +305,15 @@ func (p *peer) sendProcessMessage(ctx context.Context, m raftpb.Message) error {
 	if s.Code() == codes.NotFound && s.Message() == membership.ErrMemberRemoved.Error() {
 		p.tr.config.NodeRemoved()
 	}
-	if m.Type == raftpb.MsgSnap {
+	if m.GetType() == raftpb.MsgSnap {
 		if err != nil {
-			p.tr.config.ReportSnapshot(m.To, raft.SnapshotFailure)
+			p.tr.config.ReportSnapshot(m.GetTo(), raft.SnapshotFailure)
 		} else {
-			p.tr.config.ReportSnapshot(m.To, raft.SnapshotFinish)
+			p.tr.config.ReportSnapshot(m.GetTo(), raft.SnapshotFinish)
 		}
 	}
 	if err != nil {
-		p.tr.config.ReportUnreachable(m.To)
+		p.tr.config.ReportUnreachable(m.GetTo())
 		return err
 	}
 	return nil
@@ -421,7 +437,7 @@ func (p *peer) run(ctx context.Context) {
 			// or timed out for correct raft work.
 			err := p.sendProcessMessage(context.Background(), m)
 			if err != nil {
-				log.G(ctx).WithError(err).Debugf("failed to send message %s", m.Type)
+				log.G(ctx).WithError(err).Debugf("failed to send message %s", m.GetType())
 				p.setInactive()
 				if err := p.handleAddressChange(ctx); err != nil {
 					log.G(ctx).WithError(err).Error("failed to change address after failure")

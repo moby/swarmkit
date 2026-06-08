@@ -182,24 +182,25 @@ func (c *Cluster) Clear() {
 
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is valid.
-func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
+func (c *Cluster) ValidateConfigurationChange(cc *raftpb.ConfChange) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if c.removed[cc.NodeID] {
+	nodeID := cc.GetNodeId()
+	if c.removed[nodeID] {
 		return ErrIDRemoved
 	}
-	switch cc.Type {
+	switch cc.GetType() {
 	case raftpb.ConfChangeAddNode:
-		if c.members[cc.NodeID] != nil {
+		if c.members[nodeID] != nil {
 			return ErrIDExists
 		}
 	case raftpb.ConfChangeRemoveNode:
-		if c.members[cc.NodeID] == nil {
+		if c.members[nodeID] == nil {
 			return ErrIDNotFound
 		}
 	case raftpb.ConfChangeUpdateNode:
-		if c.members[cc.NodeID] == nil {
+		if c.members[nodeID] == nil {
 			return ErrIDNotFound
 		}
 	default:

@@ -110,7 +110,7 @@ func WaitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[ui
 
 			for _, n2 := range nodes {
 				if n2.Node.Config.ID == cur.Lead {
-					if cur.Lead != prev.Lead || cur.Term != prev.Term || cur.Applied != prev.Applied {
+					if cur.Lead != prev.Lead || cur.HardState.GetTerm() != prev.HardState.GetTerm() || cur.Applied != prev.Applied {
 						return errors.New("state does not match on all nodes")
 					}
 					continue nodeLoop
@@ -684,14 +684,14 @@ func NewSnapshotMessage(from, to uint64, size int) *raftpb.Message {
 	}
 
 	return &raftpb.Message{
-		Type: raftpb.MsgSnap,
-		From: from,
-		To:   to,
+		Type: raftpb.MsgSnap.Enum(),
+		From: proto.Uint64(from),
+		To:   proto.Uint64(to),
 		Snapshot: &raftpb.Snapshot{
 			Data: data,
 			// Include the snapshot size in the Index field for testing.
-			Metadata: raftpb.SnapshotMetadata{
-				Index: uint64(len(data)),
+			Metadata: &raftpb.SnapshotMetadata{
+				Index: proto.Uint64(uint64(len(data))),
 			},
 		},
 	}
@@ -706,5 +706,5 @@ func VerifySnapshot(raftMsg *raftpb.Message) bool {
 		}
 	}
 
-	return len(raftMsg.Snapshot.Data) == int(raftMsg.Snapshot.Metadata.Index)
+	return len(raftMsg.Snapshot.Data) == int(raftMsg.Snapshot.Metadata.GetIndex())
 }

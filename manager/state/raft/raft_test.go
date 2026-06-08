@@ -1030,7 +1030,7 @@ func TestStreamRaftMessage(t *testing.T) {
 	err = stream.Send(raftMsg)
 	assert.NoError(t, err)
 	msg = raftutils.NewSnapshotMessage(2, 1, 10)
-	msg.Index++
+	msg.Index = proto.Uint64(msg.GetIndex() + 1)
 	raftMsg = &api.StreamRaftMessageRequest{Message: msg}
 	err = stream.Send(raftMsg)
 	assert.NoError(t, err)
@@ -1044,7 +1044,7 @@ func TestStreamRaftMessage(t *testing.T) {
 	stream, err = api.NewRaftClient(cc).StreamRaftMessage(ctx)
 	assert.NoError(t, err)
 	msg = raftutils.NewSnapshotMessage(2, 1, 10)
-	msg.Type = raftpb.MsgApp
+	msg.Type = raftpb.MsgApp.Enum()
 	raftMsg = &api.StreamRaftMessageRequest{Message: msg}
 	err = stream.Send(raftMsg)
 	assert.NoError(t, err)
