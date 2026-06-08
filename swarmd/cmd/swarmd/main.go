@@ -10,8 +10,8 @@ import (
 	"os"
 	"os/signal"
 
-	engineapi "github.com/docker/docker/client"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	engineapi "github.com/moby/moby/client"
 	"github.com/moby/swarmkit/swarmd/dockerexec"
 	"github.com/moby/swarmkit/swarmd/internal/defaults"
 	"github.com/moby/swarmkit/v2/api"
@@ -171,7 +171,7 @@ var (
 				return err
 			}
 
-			client, err := engineapi.NewClientWithOpts(
+			client, err := engineapi.New(
 				engineapi.WithHost(engineAddr),
 			)
 			if err != nil {

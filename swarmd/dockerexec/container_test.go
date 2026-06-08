@@ -5,11 +5,10 @@ import (
 	"testing"
 	"time"
 
-	enginecontainer "github.com/docker/docker/api/types/container"
-	enginemount "github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/go-units"
 	gogotypes "github.com/gogo/protobuf/types"
+	enginecontainer "github.com/moby/moby/api/types/container"
+	enginemount "github.com/moby/moby/api/types/mount"
 	"github.com/moby/swarmkit/v2/api"
 )
 
@@ -274,7 +273,7 @@ func TestCapabilityAdd(t *testing.T) {
 		},
 	}
 
-	expected := strslice.StrSlice{"CAP_NET_RAW", "CAP_SYS_CHROOT"}
+	expected := []string{"CAP_NET_RAW", "CAP_SYS_CHROOT"}
 	actual := c.hostConfig().CapAdd
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("expected %s, got %s", expected, actual)
@@ -294,7 +293,7 @@ func TestCapabilityDrop(t *testing.T) {
 		},
 	}
 
-	expected := strslice.StrSlice{"CAP_KILL"}
+	expected := []string{"CAP_KILL"}
 	actual := c.hostConfig().CapDrop
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("expected %s, got %s", expected, actual)

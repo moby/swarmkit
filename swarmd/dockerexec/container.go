@@ -5,20 +5,18 @@ import (
 	"fmt"
 	"maps"
 	"net"
+	"net/netip"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	enginecontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/events"
-	"github.com/docker/docker/api/types/filters"
-	enginemount "github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/volume"
-	"github.com/docker/go-connections/nat"
 	"github.com/docker/go-units"
 	gogotypes "github.com/gogo/protobuf/types"
+	enginecontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/events"
+	enginemount "github.com/moby/moby/api/types/mount"
+	"github.com/moby/moby/api/types/network"
+	engineapi "github.com/moby/moby/client"
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/genericresource"
@@ -94,12 +92,13 @@ func (c *containerConfig) image() string {
 	return c.spec().Image
 }
 
-func portSpec(port uint32, protocol api.PortConfig_Protocol) nat.Port {
-	return nat.Port(fmt.Sprintf("%d/%s", port, strings.ToLower(protocol.String())))
+func portSpec(port uint32, protocol api.PortConfig_Protocol) network.Port {
+	p, _ := network.ParsePort(fmt.Sprintf("%d/%s", port, strings.ToLower(protocol.String())))
+	return p
 }
 
-func (c *containerConfig) portBindings() nat.PortMap {
-	portBindings := nat.PortMap{}
+func (c *containerConfig) portBindings() network.PortMap {
+	portBindings := network.PortMap{}
 	if c.task.Endpoint == nil {
 		return portBindings
 	}
@@ -110,7 +109,7 @@ func (c *containerConfig) portBindings() nat.PortMap {
 		}
 
 		port := portSpec(portConfig.TargetPort, portConfig.Protocol)
-		binding := []nat.PortBinding{
+		binding := []network.PortBinding{
 			{},
 		}
 
@@ -126,17 +125,18 @@ func (c *containerConfig) portBindings() nat.PortMap {
 func (c *containerConfig) isolation() enginecontainer.Isolation {
 	switch c.spec().Isolation {
 	case api.ContainerIsolationDefault:
-		return enginecontainer.Isolation("default")
+		return "default"
 	case api.ContainerIsolationHyperV:
-		return enginecontainer.Isolation("hyperv")
+		return "hyperv"
 	case api.ContainerIsolationProcess:
-		return enginecontainer.Isolation("process")
+		return "process"
+	default:
+		return ""
 	}
-	return enginecontainer.Isolation("")
 }
 
-func (c *containerConfig) exposedPorts() map[nat.Port]struct{} {
-	exposedPorts := make(map[nat.Port]struct{})
+func (c *containerConfig) exposedPorts() network.PortSet {
+	exposedPorts := make(network.PortSet)
 	if c.task.Endpoint == nil {
 		return exposedPorts
 	}
@@ -412,7 +412,7 @@ func getMountMask(m *api.Mount) string {
 }
 
 // This handles the case of volumes that are defined inside a service Mount
-func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *volume.CreateOptions {
+func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *engineapi.VolumeCreateOptions {
 	var (
 		driverName string
 		driverOpts map[string]string
@@ -426,7 +426,7 @@ func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *volume.CreateOp
 	}
 
 	// FIXME: do we need the ClusterVolumeSpec here?
-	return &volume.CreateOptions{
+	return &engineapi.VolumeCreateOptions{
 		Name:       mount.Source,
 		Driver:     driverName,
 		DriverOpts: driverOpts,
@@ -498,20 +498,20 @@ func (c *containerConfig) virtualIP(networkID string) string {
 func (c *containerConfig) networkingConfig() *network.NetworkingConfig {
 	epConfig := make(map[string]*network.EndpointSettings)
 	for _, na := range c.task.Networks {
-		var ipv4, ipv6 string
+		var ipv4, ipv6 netip.Addr
 		for _, addr := range na.Addresses {
-			ip, _, err := net.ParseCIDR(addr)
+			prefix, err := netip.ParsePrefix(addr)
 			if err != nil {
 				continue
 			}
 
-			if ip.To4() != nil {
-				ipv4 = ip.String()
+			ip := prefix.Addr()
+			if ip.Is4() {
+				ipv4 = ip
 				continue
 			}
-
-			if ip.To16() != nil {
-				ipv6 = ip.String()
+			if ip.Is6() {
+				ipv6 = ip
 			}
 		}
 
@@ -541,39 +541,48 @@ func (c *containerConfig) networks() []string {
 	return networks
 }
 
-func (c *containerConfig) networkCreateOptions(name string) (types.NetworkCreate, error) {
+func (c *containerConfig) networkCreateOptions(name string) (engineapi.NetworkCreateOptions, error) {
 	na, ok := c.networksAttachments[name]
 	if !ok {
-		return types.NetworkCreate{}, errors.New("container: unknown network referenced")
+		return engineapi.NetworkCreateOptions{}, errors.New("container: unknown network referenced")
 	}
 
-	options := types.NetworkCreate{
+	options := engineapi.NetworkCreateOptions{
 		Driver: na.Network.DriverState.Name,
 		IPAM: &network.IPAM{
 			Driver: na.Network.IPAM.Driver.Name,
 		},
-		Options:        na.Network.DriverState.Options,
-		CheckDuplicate: true,
+		Options: na.Network.DriverState.Options,
 	}
 
 	for _, ic := range na.Network.IPAM.Configs {
-		c := network.IPAMConfig{
-			Subnet:  ic.Subnet,
-			IPRange: ic.Range,
-			Gateway: ic.Gateway,
+		sn, err := netip.ParsePrefix(ic.Subnet)
+		if err != nil {
+			continue
 		}
-		options.IPAM.Config = append(options.IPAM.Config, c)
+		r, err := netip.ParsePrefix(ic.Range)
+		if err != nil {
+			continue
+		}
+		gw, err := netip.ParseAddr(ic.Gateway)
+		if err != nil {
+			continue
+		}
+		options.IPAM.Config = append(options.IPAM.Config, network.IPAMConfig{
+			Subnet:  sn,
+			IPRange: r,
+			Gateway: gw,
+		})
 	}
 
 	return options, nil
 }
 
-func (c containerConfig) eventFilter() filters.Args {
-	filter := filters.NewArgs()
-	filter.Add("type", string(events.ContainerEventType))
-	filter.Add("name", c.name())
-	filter.Add("label", fmt.Sprintf("%v.task.id=%v", systemLabelPrefix, c.task.ID))
-	return filter
+func (c containerConfig) eventFilter() engineapi.Filters {
+	return make(engineapi.Filters).
+		Add("type", string(events.ContainerEventType)).
+		Add("name", c.name()).
+		Add("label", fmt.Sprintf("%v.task.id=%v", systemLabelPrefix, c.task.ID))
 }
 
 func (c *containerConfig) init() *bool {
