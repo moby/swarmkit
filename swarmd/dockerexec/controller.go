@@ -8,14 +8,13 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/events"
-	engineapi "github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
 	gogotypes "github.com/gogo/protobuf/types"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/events"
+	"github.com/moby/moby/api/types/network"
+	engineapi "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"golang.org/x/time/rate"
 
@@ -602,7 +601,7 @@ func (e *exitError) Unwrap() error {
 	return e.cause
 }
 
-func makeExitError(ctnr types.ContainerJSON) error {
+func makeExitError(ctnr container.InspectResponse) error {
 	if ctnr.State.ExitCode != 0 {
 		var cause error
 		if ctnr.State.Error != "" {
@@ -621,7 +620,7 @@ func makeExitError(ctnr types.ContainerJSON) error {
 
 }
 
-func parseContainerStatus(ctnr types.ContainerJSON) (*api.ContainerStatus, error) {
+func parseContainerStatus(ctnr container.InspectResponse) (*api.ContainerStatus, error) {
 	status := &api.ContainerStatus{
 		ContainerID: ctnr.ID,
 		PID:         int32(ctnr.State.Pid),
@@ -631,7 +630,7 @@ func parseContainerStatus(ctnr types.ContainerJSON) (*api.ContainerStatus, error
 	return status, nil
 }
 
-func parsePortStatus(ctnr types.ContainerJSON) (*api.PortStatus, error) {
+func parsePortStatus(ctnr container.InspectResponse) (*api.PortStatus, error) {
 	status := &api.PortStatus{}
 
 	if ctnr.NetworkSettings != nil && len(ctnr.NetworkSettings.Ports) > 0 {
@@ -645,30 +644,26 @@ func parsePortStatus(ctnr types.ContainerJSON) (*api.PortStatus, error) {
 	return status, nil
 }
 
-func parsePortMap(portMap nat.PortMap) ([]*api.PortConfig, error) {
+func parsePortMap(portMap network.PortMap) ([]*api.PortConfig, error) {
 	exposedPorts := make([]*api.PortConfig, 0, len(portMap))
 
 	for portProtocol, mapping := range portMap {
-		parts := strings.SplitN(string(portProtocol), "/", 2)
-		if len(parts) != 2 {
+		if !portProtocol.IsValid() {
 			return nil, fmt.Errorf("invalid port mapping: %s", portProtocol)
 		}
 
-		port, err := strconv.ParseUint(parts[0], 10, 16)
-		if err != nil {
-			return nil, err
-		}
+		port := portProtocol.Num()
 
 		var protocol api.PortConfig_Protocol
-		switch strings.ToLower(parts[1]) {
-		case "tcp":
+		switch portProtocol.Proto() {
+		case network.TCP:
 			protocol = api.ProtocolTCP
-		case "udp":
+		case network.UDP:
 			protocol = api.ProtocolUDP
-		case "sctp":
+		case network.SCTP:
 			protocol = api.ProtocolSCTP
 		default:
-			return nil, fmt.Errorf("invalid protocol: %s", parts[1])
+			return nil, fmt.Errorf("invalid protocol: %s", portProtocol.Proto())
 		}
 
 		for _, binding := range mapping {

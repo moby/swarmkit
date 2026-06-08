@@ -5,11 +5,10 @@ import (
 	"testing"
 	"time"
 
-	enginecontainer "github.com/docker/docker/api/types/container"
-	enginemount "github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/go-units"
 	gogotypes "github.com/gogo/protobuf/types"
+	enginecontainer "github.com/moby/moby/api/types/container"
+	enginemount "github.com/moby/moby/api/types/mount"
 	"github.com/moby/swarmkit/v2/api"
 )
 
@@ -274,7 +273,7 @@ func TestCapabilityAdd(t *testing.T) {
 		},
 	}
 
-	expected := strslice.StrSlice{"CAP_NET_RAW", "CAP_SYS_CHROOT"}
+	expected := []string{"CAP_NET_RAW", "CAP_SYS_CHROOT"}
 	actual := c.hostConfig().CapAdd
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("expected %s, got %s", expected, actual)
@@ -294,7 +293,7 @@ func TestCapabilityDrop(t *testing.T) {
 		},
 	}
 
-	expected := strslice.StrSlice{"CAP_KILL"}
+	expected := []string{"CAP_KILL"}
 	actual := c.hostConfig().CapDrop
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("expected %s, got %s", expected, actual)
@@ -330,5 +329,91 @@ func TestUlimits(t *testing.T) {
 	actual := c.resources().Ulimits
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("expected %v, got %v", expected, actual)
+	}
+}
+
+func TestNetworkCreateOptions(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  api.IPAMConfig
+		wantErr bool
+	}{
+		{
+			name: "all fields",
+			config: api.IPAMConfig{
+				Subnet:  "172.20.0.0/16",
+				Range:   "172.20.1.0/24",
+				Gateway: "172.20.0.1",
+			},
+		},
+		{
+			name: "subnet only",
+			config: api.IPAMConfig{
+				Subnet: "172.20.0.0/16",
+			},
+		},
+		{
+			name: "invalid subnet",
+			config: api.IPAMConfig{
+				Subnet: "invalid",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid range",
+			config: api.IPAMConfig{
+				Range: "invalid",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid gateway",
+			config: api.IPAMConfig{
+				Gateway: "invalid",
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			c := containerConfig{
+				networksAttachments: map[string]*api.NetworkAttachment{
+					"test": {
+						Network: &api.Network{
+							IPAM: &api.IPAMOptions{
+								Configs: []*api.IPAMConfig{&tc.config},
+							},
+						},
+					},
+				},
+			}
+
+			opts, err := c.networkCreateOptions("test")
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected an error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if len(opts.IPAM.Config) != 1 {
+				t.Fatalf("expected one IPAM config, got %d", len(opts.IPAM.Config))
+			}
+
+			got := opts.IPAM.Config[0]
+			if got.Subnet.IsValid() != (tc.config.Subnet != "") {
+				t.Errorf("unexpected subnet: %v", got.Subnet)
+			}
+			if got.IPRange.IsValid() != (tc.config.Range != "") {
+				t.Errorf("unexpected range: %v", got.IPRange)
+			}
+			if got.Gateway.IsValid() != (tc.config.Gateway != "") {
+				t.Errorf("unexpected gateway: %v", got.Gateway)
+			}
+		})
 	}
 }

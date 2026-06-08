@@ -5,7 +5,7 @@ import (
 	"flag"
 	"testing"
 
-	engineapi "github.com/docker/docker/client"
+	engineapi "github.com/moby/moby/client"
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/genericresource"
@@ -36,10 +36,7 @@ func TestControllerFlowIntegration(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	client, err := engineapi.NewClientWithOpts(
-		engineapi.WithHost(dockerTestAddr),
-		engineapi.WithAPIVersionNegotiation(),
-	)
+	client, err := engineapi.New(engineapi.WithHost(dockerTestAddr))
 	assert.NoError(t, err)
 	assert.NotNil(t, client)
 
