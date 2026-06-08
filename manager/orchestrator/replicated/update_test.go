@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/testutils"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -119,11 +119,11 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	err := s.Update(func(tx store.Tx) error {
 		s1 := &api.Service{
 			ID: "id1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Image: "image1",
@@ -141,21 +141,21 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 				Update: &api.UpdateConfig{
 					FailureAction:   api.UpdateConfig_ROLLBACK,
 					Parallelism:     1,
-					Delay:           10 * time.Millisecond,
+					Delay:           durationpb.New(10 * time.Millisecond),
 					MaxFailureRatio: 0.4,
 				},
 				Rollback: &api.UpdateConfig{
 					FailureAction:   rollbackFailureAction,
 					Parallelism:     1,
-					Delay:           10 * time.Millisecond,
+					Delay:           durationpb.New(10 * time.Millisecond),
 					MaxFailureRatio: 0.4,
 				},
 			},
 		}
 
 		if setMonitor {
-			s1.Spec.Update.Monitor = gogotypes.DurationProto(500 * time.Millisecond)
-			s1.Spec.Rollback.Monitor = gogotypes.DurationProto(500 * time.Millisecond)
+			s1.Spec.Update.Monitor = durationpb.New(500 * time.Millisecond)
+			s1.Spec.Rollback.Monitor = durationpb.New(500 * time.Millisecond)
 		}
 		if useSpecVersion {
 			s1.SpecVersion = &api.Version{

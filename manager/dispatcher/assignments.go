@@ -82,7 +82,7 @@ func assignSecret(a *assignmentSet, readTx store.ReadTx, mapKey typeAndID, t *ap
 				Secret: secret,
 			},
 		},
-		Action: api.AssignmentChange_AssignmentActionUpdate,
+		Action: api.AssignmentActionUpdate,
 	}
 }
 
@@ -102,14 +102,14 @@ func assignConfig(a *assignmentSet, readTx store.ReadTx, mapKey typeAndID) {
 				Config: config,
 			},
 		},
-		Action: api.AssignmentChange_AssignmentActionUpdate,
+		Action: api.AssignmentActionUpdate,
 	}
 }
 
 func (a *assignmentSet) addTaskDependencies(readTx store.ReadTx, t *api.Task) {
 	// first, we go through all ResourceReferences, which give us the necessary
 	// information about which secrets and configs are in use.
-	for _, resourceRef := range t.Spec.ResourceReferences {
+	for _, resourceRef := range t.GetSpec().GetResourceReferences() {
 		mapKey := typeAndID{objType: resourceRef.ResourceType, id: resourceRef.ResourceID}
 		// if there are no tasks using this dependency yet, then we can assign
 		// it.
@@ -176,7 +176,7 @@ func (a *assignmentSet) releaseDependency(mapKey typeAndID, assignment *api.Assi
 	delete(a.tasksUsingDependency, mapKey)
 	a.changes[mapKey] = &api.AssignmentChange{
 		Assignment: assignment,
-		Action:     api.AssignmentChange_AssignmentActionRemove,
+		Action:     api.AssignmentActionRemove,
 	}
 	return true
 }
@@ -186,7 +186,7 @@ func (a *assignmentSet) releaseDependency(mapKey typeAndID, assignment *api.Assi
 func (a *assignmentSet) releaseTaskDependencies(_ store.ReadTx, t *api.Task) bool {
 	var modified bool
 
-	for _, resourceRef := range t.Spec.ResourceReferences {
+	for _, resourceRef := range t.GetSpec().GetResourceReferences() {
 		var assignment *api.Assignment
 		switch resourceRef.ResourceType {
 		case api.ResourceType_SECRET:
@@ -292,7 +292,7 @@ func (a *assignmentSet) addOrUpdateTask(readTx store.ReadTx, t *api.Task) bool {
 				Task: t,
 			},
 		},
-		Action: api.AssignmentChange_AssignmentActionUpdate,
+		Action: api.AssignmentActionUpdate,
 	}
 	return true
 }
@@ -367,9 +367,9 @@ func (a *assignmentSet) addOrUpdateVolume(readTx store.ReadTx, v *api.Volume) bo
 	// has a volume published; for example, the node may be restarting, and
 	// the in-memory store does not have knowledge of the volume.
 	if publishStatus.State == api.VolumePublishStatus_PENDING_NODE_UNPUBLISH {
-		assignmentChange.Action = api.AssignmentChange_AssignmentActionRemove
+		assignmentChange.Action = api.AssignmentActionRemove
 	} else {
-		assignmentChange.Action = api.AssignmentChange_AssignmentActionUpdate
+		assignmentChange.Action = api.AssignmentActionUpdate
 	}
 	a.changes[volumeKey] = assignmentChange
 	a.volumesMap[v.ID] = publishStatus
@@ -414,7 +414,7 @@ func (a *assignmentSet) removeTask(readTx store.ReadTx, t *api.Task) bool {
 				Task: &api.Task{ID: t.ID},
 			},
 		},
-		Action: api.AssignmentChange_AssignmentActionRemove,
+		Action: api.AssignmentActionRemove,
 	}
 
 	delete(a.tasksMap, t.ID)
@@ -448,14 +448,14 @@ func (a *assignmentSet) secret(readTx store.ReadTx, task *api.Task, secretID str
 	if secret == nil {
 		return nil, false, fmt.Errorf("secret not found")
 	}
-	if secret.Spec.Driver == nil {
+	if secret.GetSpec().GetDriver() == nil {
 		return secret, false, nil
 	}
 	d, err := a.dp.NewSecretDriver(secret.Spec.Driver)
 	if err != nil {
 		return nil, false, err
 	}
-	value, doNotReuse, err := d.Get(&secret.Spec, task)
+	value, doNotReuse, err := d.Get(secret.Spec, task)
 	if err != nil {
 		return nil, false, err
 	}
@@ -463,6 +463,9 @@ func (a *assignmentSet) secret(readTx store.ReadTx, task *api.Task, secretID str
 		return nil, false, err
 	}
 	// Assign the secret
+	if secret.Spec == nil {
+		secret.Spec = &api.SecretSpec{}
+	}
 	secret.Spec.Data = value
 	return secret, doNotReuse, nil
 }

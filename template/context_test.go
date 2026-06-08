@@ -20,13 +20,13 @@ func TestTemplateContext(t *testing.T) {
 		{
 			Test: "Identity",
 			Task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Env: []string{
 								"NOTOUCH=dont",
 							},
-							Mounts: []api.Mount{
+							Mounts: []*api.Mount{
 								{
 									Target: "foo",
 									Source: "bar",
@@ -42,7 +42,7 @@ func TestTemplateContext(t *testing.T) {
 				Env: []string{
 					"NOTOUCH=dont",
 				},
-				Mounts: []api.Mount{
+				Mounts: []*api.Mount{
 					{
 						Target: "foo",
 						Source: "bar",
@@ -53,7 +53,7 @@ func TestTemplateContext(t *testing.T) {
 		{
 			Test: "Env",
 			Task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Labels: map[string]string{
@@ -94,10 +94,10 @@ func TestTemplateContext(t *testing.T) {
 		{
 			Test: "Mount",
 			Task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
-							Mounts: []api.Mount{
+							Mounts: []*api.Mount{
 								{
 									Source: "bar-{{.Node.ID}}-{{.Task.Name}}",
 									Target: "foo-{{.Service.ID}}-{{.Service.Name}}",
@@ -114,7 +114,7 @@ func TestTemplateContext(t *testing.T) {
 			NodeDescription: modifyNode(func(n *api.NodeDescription) {
 			}),
 			Expected: &api.ContainerSpec{
-				Mounts: []api.Mount{
+				Mounts: []*api.Mount{
 					{
 						Source: "bar-nodeID-serviceName.10.taskID",
 						Target: "foo-serviceID-serviceName",
@@ -129,7 +129,7 @@ func TestTemplateContext(t *testing.T) {
 		{
 			Test: "Hostname",
 			Task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Hostname: "myhost-{{.Task.Slot}}",
@@ -146,7 +146,7 @@ func TestTemplateContext(t *testing.T) {
 		{
 			Test: "Node hostname",
 			Task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Hostname: "myservice-{{.Node.Hostname}}",
@@ -164,7 +164,7 @@ func TestTemplateContext(t *testing.T) {
 		{
 			Test: "Node architecture",
 			Task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Hostname: "{{.Node.Hostname}}-{{.Node.Platform.OS}}-{{.Node.Platform.Architecture}}",
@@ -196,7 +196,7 @@ func TestTemplateContext(t *testing.T) {
 
 			assert.Equal(t, testcase.Expected, spec)
 
-			for k, v := range testcase.Task.Annotations.Labels {
+			for k, v := range testcase.Task.Annotations.GetLabels() {
 				// make sure that that task.annotations.labels didn't make an appearance.
 				visitAllTemplatedFields(spec, func(s string) {
 					if strings.Contains(s, k) || strings.Contains(s, v) {
@@ -216,7 +216,7 @@ func modifyTask(fn func(t *api.Task)) *api.Task {
 		ServiceID: "serviceID",
 		NodeID:    "nodeID",
 		Slot:      10,
-		Annotations: api.Annotations{
+		Annotations: &api.Annotations{
 			Labels: map[string]string{
 				// SUBTLE(stevvooe): Task labels ARE NOT templated. These are
 				// reserved for the system and templated is not really needed.
@@ -226,7 +226,7 @@ func modifyTask(fn func(t *api.Task)) *api.Task {
 				"com.example.TaskLabelThreeKey": "task-label-three-value",
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "serviceName",
 			Labels: map[string]string{
 				"ServiceLabelOneKey":               "service-label-one-value",

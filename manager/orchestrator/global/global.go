@@ -194,7 +194,7 @@ func (g *Orchestrator) FixTask(ctx context.Context, batch *store.Batch, t *api.T
 	}
 
 	// restart a task if it fails
-	if t.Status.State > api.TaskStateRunning {
+	if t.GetStatus().GetState() > api.TaskStateRunning {
 		g.restartTasks[t.ID] = struct{}{}
 	}
 }
@@ -211,7 +211,7 @@ func (g *Orchestrator) handleTaskChange(_ context.Context, t *api.Task) {
 	}
 
 	// if a task has passed running, restart it
-	if t.Status.State > api.TaskStateRunning {
+	if t.GetStatus().GetState() > api.TaskStateRunning {
 		g.restartTasks[t.ID] = struct{}{}
 	}
 }
@@ -312,7 +312,7 @@ func (g *Orchestrator) reconcileServices(ctx context.Context, serviceIDs []strin
 					continue
 				}
 
-				if node.Spec.Availability == api.NodeAvailabilityPause {
+				if node.GetSpec().GetAvailability() == api.NodeAvailabilityPause {
 					// the node is paused, so we won't add or update
 					// any tasks
 					continue
@@ -351,7 +351,7 @@ func (g *Orchestrator) reconcileServices(ctx context.Context, serviceIDs []strin
 
 // updateNode updates g.nodes based on the current node value
 func (g *Orchestrator) updateNode(node *api.Node) {
-	if node.Spec.Availability == api.NodeAvailabilityDrain || node.Status.State == api.NodeStatus_DOWN {
+	if node.GetSpec().GetAvailability() == api.NodeAvailabilityDrain || node.GetStatus().GetState() == api.NodeStatus_DOWN {
 		delete(g.nodes, node.ID)
 	} else {
 		g.nodes[node.ID] = node
@@ -362,8 +362,8 @@ func (g *Orchestrator) updateNode(node *api.Node) {
 func (g *Orchestrator) updateService(service *api.Service) {
 	var constraints []constraint.Constraint
 
-	if service.Spec.Task.Placement != nil && len(service.Spec.Task.Placement.Constraints) != 0 {
-		constraints, _ = constraint.Parse(service.Spec.Task.Placement.Constraints)
+	if service.GetSpec().GetTask().GetPlacement() != nil && len(service.GetSpec().GetTask().GetPlacement().GetConstraints()) != 0 {
+		constraints, _ = constraint.Parse(service.GetSpec().GetTask().GetPlacement().GetConstraints())
 	}
 
 	g.globalServices[service.ID] = globalService{
@@ -374,19 +374,19 @@ func (g *Orchestrator) updateService(service *api.Service) {
 
 // reconcileOneNode checks all global services on one node
 func (g *Orchestrator) reconcileOneNode(ctx context.Context, node *api.Node) {
-	if node.Spec.Availability == api.NodeAvailabilityDrain {
+	if node.GetSpec().GetAvailability() == api.NodeAvailabilityDrain {
 		log.G(ctx).Debugf("global orchestrator: node %s in drain state, shutting down its tasks", node.ID)
 		g.foreachTaskFromNode(ctx, node, g.shutdownTask)
 		return
 	}
 
-	if node.Status.State == api.NodeStatus_DOWN {
+	if node.GetStatus().GetState() == api.NodeStatus_DOWN {
 		log.G(ctx).Debugf("global orchestrator: node %s is down, shutting down its tasks", node.ID)
 		g.foreachTaskFromNode(ctx, node, g.shutdownTask)
 		return
 	}
 
-	if node.Spec.Availability == api.NodeAvailabilityPause {
+	if node.GetSpec().GetAvailability() == api.NodeAvailabilityPause {
 		// the node is paused, so we won't add or update tasks
 		return
 	}
@@ -509,7 +509,7 @@ func (g *Orchestrator) tickTasks(ctx context.Context) {
 					return nil
 				}
 
-				if node.Spec.Availability == api.NodeAvailabilityPause ||
+				if node.GetSpec().GetAvailability() == api.NodeAvailabilityPause ||
 					!constraint.NodeMatches(serviceEntry.constraints, node) {
 					t.DesiredState = api.TaskStateShutdown
 					return store.UpdateTask(tx, t)

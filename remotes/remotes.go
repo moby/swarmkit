@@ -17,11 +17,30 @@ var errRemotesUnavailable = fmt.Errorf("no remote hosts provided")
 // that will balance well under repeated observations.
 const DefaultObservationWeight = 10
 
+// PeerKey is a comparable key derived from api.Peer fields.
+// api.Peer cannot be used as a map key after the protobuf migration because
+// protoimpl.MessageState (embedded in all proto messages) is not comparable.
+type PeerKey struct {
+	NodeID string
+	Addr   string
+}
+
+// ToPeerKey converts an api.Peer to a comparable PeerKey.
+func ToPeerKey(p api.Peer) PeerKey {
+	return PeerKey{NodeID: p.NodeID, Addr: p.Addr}
+}
+
+// FromPeerKey converts a PeerKey back to an api.Peer.
+func FromPeerKey(k PeerKey) api.Peer {
+	return api.Peer{NodeID: k.NodeID, Addr: k.Addr}
+}
+
 // Remotes keeps track of remote addresses by weight, informed by
 // observations.
 type Remotes interface {
-	// Weight returns the remotes with their current weights.
-	Weights() map[api.Peer]int
+	// Weights returns the remotes with their current weights.
+	// The map key is PeerKey (a comparable struct) since api.Peer is not comparable.
+	Weights() map[PeerKey]int
 
 	// Select a remote from the set of available remotes with optionally
 	// excluding ID or address.
@@ -47,7 +66,7 @@ type Remotes interface {
 // Entries provided are heavily weighted initially.
 func NewRemotes(peers ...api.Peer) Remotes {
 	mwr := &remotesWeightedRandom{
-		remotes: make(map[api.Peer]int),
+		remotes: make(map[PeerKey]int),
 	}
 
 	for _, peer := range peers {
@@ -58,7 +77,7 @@ func NewRemotes(peers ...api.Peer) Remotes {
 }
 
 type remotesWeightedRandom struct {
-	remotes map[api.Peer]int
+	remotes map[PeerKey]int
 	mu      sync.Mutex
 
 	// workspace to avoid reallocation. these get lazily allocated when
@@ -67,7 +86,7 @@ type remotesWeightedRandom struct {
 	peers []api.Peer
 }
 
-func (mwr *remotesWeightedRandom) Weights() map[api.Peer]int {
+func (mwr *remotesWeightedRandom) Weights() map[PeerKey]int {
 	mwr.mu.Lock()
 	defer mwr.mu.Unlock()
 	return maps.Clone(mwr.remotes)
@@ -101,9 +120,9 @@ func (mwr *remotesWeightedRandom) Select(excludes ...string) (api.Peer, error) {
 	cum := 0.0
 	// calculate CDF over weights
 Loop:
-	for peer, weight := range mwr.remotes {
+	for k, weight := range mwr.remotes {
 		for _, exclude := range excludes {
-			if peer.NodeID == exclude || peer.Addr == exclude {
+			if k.NodeID == exclude || k.Addr == exclude {
 				// if this peer is excluded, ignore it by continuing the loop to label Loop
 				continue Loop
 			}
@@ -115,7 +134,7 @@ Loop:
 
 		cum += float64(weight) + bias
 		mwr.cdf = append(mwr.cdf, cum)
-		mwr.peers = append(mwr.peers, peer)
+		mwr.peers = append(mwr.peers, FromPeerKey(k))
 	}
 
 	if len(mwr.peers) == 0 {
@@ -132,18 +151,19 @@ func (mwr *remotesWeightedRandom) Observe(peer api.Peer, weight int) {
 	mwr.mu.Lock()
 	defer mwr.mu.Unlock()
 
-	mwr.observe(peer, float64(weight))
+	mwr.observe(ToPeerKey(peer), float64(weight))
 }
 
 func (mwr *remotesWeightedRandom) ObserveIfExists(peer api.Peer, weight int) {
 	mwr.mu.Lock()
 	defer mwr.mu.Unlock()
 
-	if _, ok := mwr.remotes[peer]; !ok {
+	k := ToPeerKey(peer)
+	if _, ok := mwr.remotes[k]; !ok {
 		return
 	}
 
-	mwr.observe(peer, float64(weight))
+	mwr.observe(k, float64(weight))
 }
 
 func (mwr *remotesWeightedRandom) Remove(addrs ...api.Peer) {
@@ -151,7 +171,7 @@ func (mwr *remotesWeightedRandom) Remove(addrs ...api.Peer) {
 	defer mwr.mu.Unlock()
 
 	for _, addr := range addrs {
-		delete(mwr.remotes, addr)
+		delete(mwr.remotes, ToPeerKey(addr))
 	}
 }
 
@@ -174,7 +194,7 @@ func clip(x float64) float64 {
 	return math.Max(math.Min(remoteWeightMax, x), -remoteWeightMax)
 }
 
-func (mwr *remotesWeightedRandom) observe(peer api.Peer, weight float64) {
+func (mwr *remotesWeightedRandom) observe(k PeerKey, weight float64) {
 
 	// While we have a decent, ad-hoc approach here to weight subsequent
 	// observations, we may want to look into applying forward decay:
@@ -185,7 +205,7 @@ func (mwr *remotesWeightedRandom) observe(peer api.Peer, weight float64) {
 
 	// makes the math easier to read below
 	var (
-		w0 = float64(mwr.remotes[peer])
+		w0 = float64(mwr.remotes[k])
 		w1 = clip(weight)
 	)
 	const α = remoteWeightSmoothingFactor
@@ -194,5 +214,5 @@ func (mwr *remotesWeightedRandom) observe(peer api.Peer, weight float64) {
 	// value.
 	wn := clip(α*w1 + (1-α)*w0)
 
-	mwr.remotes[peer] = int(math.Ceil(wn))
+	mwr.remotes[k] = int(math.Ceil(wn))
 }

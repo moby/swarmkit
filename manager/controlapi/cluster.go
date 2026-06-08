@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/log"
@@ -36,11 +35,8 @@ func validateClusterSpec(spec *api.ClusterSpec) error {
 	}
 
 	// Validate that expiry time being provided is valid, and over our minimum
-	if spec.CAConfig.NodeCertExpiry != nil {
-		expiry, err := gogotypes.DurationFromProto(spec.CAConfig.NodeCertExpiry)
-		if err != nil {
-			return status.Error(codes.InvalidArgument, errInvalidArgument.Error())
-		}
+	if spec.GetCAConfig().GetNodeCertExpiry() != nil {
+		expiry := spec.CAConfig.NodeCertExpiry.AsDuration()
 		if expiry < ca.MinNodeCertExpiration {
 			return status.Errorf(codes.InvalidArgument, "minimum certificate expiry time is: %s", ca.MinNodeCertExpiration)
 		}
@@ -48,7 +44,7 @@ func validateClusterSpec(spec *api.ClusterSpec) error {
 
 	// Validate that AcceptancePolicies only include Secrets that are bcrypted
 	// TODO(diogo): Add a global list of acceptance algorithms. We only support bcrypt for now.
-	if len(spec.AcceptancePolicy.Policies) > 0 {
+	if len(spec.GetAcceptancePolicy().GetPolicies()) > 0 {
 		for _, policy := range spec.AcceptancePolicy.Policies {
 			if policy.Secret != nil && strings.ToLower(policy.Secret.Alg) != "bcrypt" {
 				return status.Errorf(codes.InvalidArgument, "hashing algorithm is not supported: %s", policy.Secret.Alg)
@@ -57,17 +53,14 @@ func validateClusterSpec(spec *api.ClusterSpec) error {
 	}
 
 	// Validate that heartbeatPeriod time being provided is valid
-	if spec.Dispatcher.HeartbeatPeriod != nil {
-		heartbeatPeriod, err := gogotypes.DurationFromProto(spec.Dispatcher.HeartbeatPeriod)
-		if err != nil {
-			return status.Error(codes.InvalidArgument, errInvalidArgument.Error())
-		}
+	if spec.GetDispatcher().GetHeartbeatPeriod() != nil {
+		heartbeatPeriod := spec.Dispatcher.HeartbeatPeriod.AsDuration()
 		if heartbeatPeriod < 0 {
 			return status.Errorf(codes.InvalidArgument, "heartbeat time period cannot be a negative duration")
 		}
 	}
 
-	if spec.Annotations.Name != store.DefaultClusterName {
+	if spec.GetAnnotations().GetName() != store.DefaultClusterName {
 		return status.Errorf(codes.InvalidArgument, "modification of cluster name is not allowed")
 	}
 
@@ -119,22 +112,25 @@ func (s *Server) UpdateCluster(ctx context.Context, request *api.UpdateClusterRe
 		}
 		// This ensures that we have the current rootCA with which to generate tokens (expiration doesn't matter
 		// for generating the tokens)
-		rootCA, err := ca.RootCAFromAPI(&cluster.RootCA, ca.DefaultNodeCertExpiration)
+		rootCA, err := ca.RootCAFromAPI(cluster.RootCA, ca.DefaultNodeCertExpiration)
 		if err != nil {
 			log.G(ctx).WithField(
 				"method", "(*controlapi.Server).UpdateCluster").WithError(err).Error("invalid cluster root CA")
 			return status.Errorf(codes.Internal, "error loading cluster rootCA for update")
 		}
 
-		cluster.Meta.Version = *request.ClusterVersion
-		cluster.Spec = *request.Spec.Copy()
+		cluster.Meta.Version = request.ClusterVersion
+		cluster.Spec = request.Spec.Copy()
 
 		expireBlacklistedCerts(cluster)
 
-		if request.Rotation.WorkerJoinToken {
+		if cluster.RootCA.JoinTokens == nil {
+			cluster.RootCA.JoinTokens = &api.JoinTokens{}
+		}
+		if request.GetRotation().GetWorkerJoinToken() {
 			cluster.RootCA.JoinTokens.Worker = ca.GenerateJoinToken(&rootCA, cluster.FIPS)
 		}
-		if request.Rotation.ManagerJoinToken {
+		if request.GetRotation().GetManagerJoinToken() {
 			cluster.RootCA.JoinTokens.Manager = ca.GenerateJoinToken(&rootCA, cluster.FIPS)
 		}
 
@@ -142,13 +138,13 @@ func (s *Server) UpdateCluster(ctx context.Context, request *api.UpdateClusterRe
 		if err != nil {
 			return err
 		}
-		cluster.RootCA = *updatedRootCA
+		cluster.RootCA = updatedRootCA
 
 		var unlockKeys []*api.EncryptionKey
 		var managerKey *api.EncryptionKey
 		for _, eKey := range cluster.UnlockKeys {
 			if eKey.Subsystem == ca.ManagerRole {
-				if !cluster.Spec.EncryptionConfig.AutoLockManagers {
+				if !cluster.Spec.GetEncryptionConfig().GetAutoLockManagers() {
 					continue
 				}
 				managerKey = eKey
@@ -157,14 +153,14 @@ func (s *Server) UpdateCluster(ctx context.Context, request *api.UpdateClusterRe
 		}
 
 		switch {
-		case !cluster.Spec.EncryptionConfig.AutoLockManagers:
+		case !cluster.Spec.GetEncryptionConfig().GetAutoLockManagers():
 			break
 		case managerKey == nil:
 			unlockKeys = append(unlockKeys, &api.EncryptionKey{
 				Subsystem: ca.ManagerRole,
 				Key:       encryption.GenerateSecretKey(),
 			})
-		case request.Rotation.ManagerUnlockKey:
+		case request.GetRotation().GetManagerUnlockKey():
 			managerKey.Key = encryption.GenerateSecretKey()
 		}
 		cluster.UnlockKeys = unlockKeys
@@ -256,23 +252,36 @@ func redactClusters(clusters []*api.Cluster) []*api.Cluster {
 		// Copy all the mandatory fields
 		// Do not copy secret keys
 		redactedSpec := cluster.Spec.Copy()
-		redactedSpec.CAConfig.SigningCAKey = nil
-		// the cert is not a secret, but if API users get the cluster spec and then update,
-		// then because the cert is included but not the key, the user can get update errors
-		// or unintended consequences (such as telling swarm to forget about the key so long
-		// as there is a corresponding external CA)
-		redactedSpec.CAConfig.SigningCACert = nil
+		// Redact acceptance policy secret data to avoid leaking sensitive values
+		if redactedSpec.AcceptancePolicy != nil {
+			for _, policy := range redactedSpec.AcceptancePolicy.Policies {
+				if policy.Secret != nil {
+					policy.Secret.Data = nil
+				}
+			}
+		}
+		if redactedSpec.CAConfig != nil {
+			redactedSpec.CAConfig.SigningCAKey = nil
+			// the cert is not a secret, but if API users get the cluster spec and then update,
+			// then because the cert is included but not the key, the user can get update errors
+			// or unintended consequences (such as telling swarm to forget about the key so long
+			// as there is a corresponding external CA)
+			redactedSpec.CAConfig.SigningCACert = nil
+		}
 
-		redactedRootCA := cluster.RootCA.Copy()
-		redactedRootCA.CAKey = nil
-		if r := redactedRootCA.RootRotation; r != nil {
-			r.CAKey = nil
+		var redactedRootCA *api.RootCA
+		if cluster.RootCA != nil {
+			redactedRootCA = cluster.RootCA.Copy()
+			redactedRootCA.CAKey = nil
+			if r := redactedRootCA.RootRotation; r != nil {
+				r.CAKey = nil
+			}
 		}
 		newCluster := &api.Cluster{
 			ID:                      cluster.ID,
 			Meta:                    cluster.Meta,
-			Spec:                    *redactedSpec,
-			RootCA:                  *redactedRootCA,
+			Spec:                    redactedSpec,
+			RootCA:                  redactedRootCA,
 			BlacklistedCertificates: cluster.BlacklistedCertificates,
 			DefaultAddressPool:      cluster.DefaultAddressPool,
 			SubnetSize:              cluster.SubnetSize,
@@ -301,8 +310,8 @@ func expireBlacklistedCerts(cluster *api.Cluster) {
 			continue
 		}
 
-		expiry, err := gogotypes.TimestampFromProto(blacklistedCert.Expiry)
-		if err == nil && nowMinusGrace.After(expiry) {
+		expiry := blacklistedCert.Expiry.AsTime()
+		if nowMinusGrace.After(expiry) {
 			delete(cluster.BlacklistedCertificates, cn)
 		}
 	}

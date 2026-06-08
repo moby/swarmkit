@@ -20,13 +20,13 @@ func (is slotsByRunningState) Less(i, j int) bool {
 	jRunning := false
 
 	for _, ii := range is[i] {
-		if ii.Status.State == api.TaskStateRunning {
+		if ii.GetStatus().GetState() == api.TaskStateRunning {
 			iRunning = true
 			break
 		}
 	}
 	for _, ij := range is[j] {
-		if ij.Status.State == api.TaskStateRunning {
+		if ij.GetStatus().GetState() == api.TaskStateRunning {
 			jRunning = true
 			break
 		}

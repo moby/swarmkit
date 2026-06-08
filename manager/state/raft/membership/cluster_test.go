@@ -18,6 +18,7 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/raft/membership"
 	raftutils "github.com/moby/swarmkit/v2/manager/state/raft/testutils"
 	"github.com/moby/swarmkit/v2/testutils"
+	"google.golang.org/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/raft/v3/raftpb"
 )
@@ -195,22 +196,22 @@ func TestValidateConfigurationChange(t *testing.T) {
 	cls := newTestCluster(members, removed)
 
 	m := &api.RaftMember{RaftID: 1}
-	existingMember, err := m.Marshal()
+	existingMember, err := proto.Marshal(m)
 	assert.NoError(t, err)
 	assert.NotNil(t, existingMember)
 
 	m = &api.RaftMember{RaftID: 7}
-	newMember, err := m.Marshal()
+	newMember, err := proto.Marshal(m)
 	assert.NoError(t, err)
 	assert.NotNil(t, newMember)
 
 	m = &api.RaftMember{RaftID: 4}
-	removedMember, err := m.Marshal()
+	removedMember, err := proto.Marshal(m)
 	assert.NoError(t, err)
 	assert.NotNil(t, removedMember)
 
 	n := &api.Node{}
-	node, err := n.Marshal()
+	node, err := proto.Marshal(n)
 	assert.NoError(t, err)
 	assert.NotNil(t, node)
 

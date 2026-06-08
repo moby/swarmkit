@@ -10,6 +10,7 @@ import (
 	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ SnapFactory = snapCryptor{}
@@ -41,10 +42,10 @@ func getSnapshotFile(t *testing.T, tempdir string) string {
 func TestSnapshotterLoadNotEncryptedSnapshot(t *testing.T) {
 	tempdir := t.TempDir()
 	ogSnap := OriginalSnap.New(tempdir)
-	r := api.MaybeEncryptedRecord{
+	r := &api.MaybeEncryptedRecord{
 		Data: fakeSnapshotData.Data,
 	}
-	data, err := r.Marshal()
+	data, err := proto.Marshal(r)
 	require.NoError(t, err)
 
 	emptyEncryptionFakeData := fakeSnapshotData
@@ -64,11 +65,11 @@ func TestSnapshotterLoadNotEncryptedSnapshot(t *testing.T) {
 func TestSnapshotterLoadNoDecrypter(t *testing.T) {
 	tempdir := t.TempDir()
 	ogSnap := OriginalSnap.New(tempdir)
-	r := api.MaybeEncryptedRecord{
+	r := &api.MaybeEncryptedRecord{
 		Data:      fakeSnapshotData.Data,
 		Algorithm: meowCrypter{}.Algorithm(),
 	}
-	data, err := r.Marshal()
+	data, err := proto.Marshal(r)
 	require.NoError(t, err)
 
 	emptyEncryptionFakeData := fakeSnapshotData
@@ -89,11 +90,11 @@ func TestSnapshotterLoadDecryptingFail(t *testing.T) {
 	crypter := &meowCrypter{}
 
 	ogSnap := OriginalSnap.New(tempdir)
-	r := api.MaybeEncryptedRecord{
+	r := &api.MaybeEncryptedRecord{
 		Data:      fakeSnapshotData.Data,
 		Algorithm: crypter.Algorithm(),
 	}
-	data, err := r.Marshal()
+	data, err := proto.Marshal(r)
 	require.NoError(t, err)
 
 	emptyEncryptionFakeData := fakeSnapshotData
@@ -121,8 +122,8 @@ func TestSnapshotterSavesSnapshotWithEncryption(t *testing.T) {
 	readSnap, err := ogSnap.Load()
 	require.NoError(t, err)
 
-	r := api.MaybeEncryptedRecord{}
-	require.NoError(t, r.Unmarshal(readSnap.Data))
+	r := &api.MaybeEncryptedRecord{}
+	require.NoError(t, proto.Unmarshal(readSnap.Data, r))
 	require.NotEqual(t, fakeSnapshotData.Data, r.Data)
 	require.Equal(t, fakeSnapshotData.Metadata, readSnap.Metadata)
 }

@@ -36,7 +36,15 @@ type portSpace struct {
 	dynamicPortSpace *idm.IDM
 }
 
-type allocatedPorts map[api.PortConfig]map[uint32]*api.PortConfig
+// portConfigKey is a comparable struct used as a map key for port configuration.
+// It captures the fields that uniquely identify a port within a single Endpoint.
+type portConfigKey struct {
+	Name       string
+	Protocol   api.PortConfig_Protocol
+	TargetPort uint32
+}
+
+type allocatedPorts map[portConfigKey]map[uint32]*api.PortConfig
 
 // addState add the state of an allocated port to the collection.
 // `allocatedPorts` is a map of portKey:publishedPort:portState.
@@ -131,8 +139,8 @@ func newPortSpace(protocol api.PortConfig_Protocol) *portSpace {
 // getPortConfigKey returns a map key for doing set operations with
 // ports. The key consists of name, protocol and target port which
 // uniquely identifies a port within a single Endpoint.
-func getPortConfigKey(p *api.PortConfig) api.PortConfig {
-	return api.PortConfig{
+func getPortConfigKey(p *api.PortConfig) portConfigKey {
+	return portConfigKey{
 		Name:       p.Name,
 		Protocol:   p.Protocol,
 		TargetPort: p.TargetPort,

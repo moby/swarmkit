@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ WALFactory = walCryptor{}
@@ -63,8 +64,8 @@ func TestReadAllWrappedNoEncryption(t *testing.T) {
 	metadata, entries, snapshot := makeWALData(1, 1, &confState)
 	wrappedEntries := make([]raftpb.Entry, len(entries))
 	for i, entry := range entries {
-		r := api.MaybeEncryptedRecord{Data: entry.Data}
-		data, err := r.Marshal()
+		r := &api.MaybeEncryptedRecord{Data: entry.Data}
+		data, err := proto.Marshal(r)
 		require.NoError(t, err)
 		entry.Data = data
 		wrappedEntries[i] = entry
@@ -89,8 +90,8 @@ func TestReadAllWrappedNoEncryption(t *testing.T) {
 func TestReadAllNoSupportedDecrypter(t *testing.T) {
 	metadata, entries, snapshot := makeWALData(1, 1, &confState)
 	for i, entry := range entries {
-		r := api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: api.MaybeEncryptedRecord_Algorithm(-3)}
-		data, err := r.Marshal()
+		r := &api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: api.MaybeEncryptedRecord_Algorithm(-3)}
+		data, err := proto.Marshal(r)
 		require.NoError(t, err)
 		entries[i].Data = data
 	}
@@ -115,8 +116,8 @@ func TestReadAllEntryIncorrectlyEncrypted(t *testing.T) {
 
 	// metadata is correctly encryptd, but entries are not meow-encryptd
 	for i, entry := range entries {
-		r := api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: crypter.Algorithm()}
-		data, err := r.Marshal()
+		r := &api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: crypter.Algorithm()}
+		data, err := proto.Marshal(r)
 		require.NoError(t, err)
 		entries[i].Data = data
 	}
@@ -151,8 +152,8 @@ func TestSave(t *testing.T) {
 	require.Equal(t, metadata, meta)
 	require.Equal(t, state, state)
 	for _, ent := range ents {
-		var encrypted api.MaybeEncryptedRecord
-		require.NoError(t, encrypted.Unmarshal(ent.Data))
+		encrypted := &api.MaybeEncryptedRecord{}
+		require.NoError(t, proto.Unmarshal(ent.Data, encrypted))
 
 		require.Equal(t, crypter.Algorithm(), encrypted.Algorithm)
 		require.True(t, bytes.HasSuffix(encrypted.Data, []byte("🐱")))

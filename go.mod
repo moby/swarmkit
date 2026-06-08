@@ -12,7 +12,6 @@ require (
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c
 	github.com/docker/go-metrics v0.0.1
 	github.com/fernet/fernet-go v0.0.0-20211208181803-9f70042a33ee
-	github.com/gogo/protobuf v1.3.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hashicorp/go-memdb v1.3.2
 	github.com/onsi/ginkgo v1.16.5
@@ -59,6 +58,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/certificate-transparency-go v1.1.4 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect

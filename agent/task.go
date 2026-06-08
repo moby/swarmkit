@@ -184,7 +184,7 @@ func (tm *taskManager) run(ctx context.Context) {
 			default:
 			}
 		case status := <-statusq:
-			tm.task.Status = *status
+			tm.task.Status = status
 		case task := <-tm.updateq:
 			if equality.TasksEqualStable(task, tm.task) {
 				continue // ignore the update

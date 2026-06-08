@@ -11,6 +11,7 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/orchestrator"
 	"github.com/moby/swarmkit/v2/manager/state/store"
+	"google.golang.org/protobuf/proto"
 )
 
 type fakeRestartSupervisor struct {
@@ -104,26 +105,27 @@ var _ = Describe("Replicated Job reconciler", func() {
 			totalCompletions = 30
 			service = &api.Service{
 				ID: serviceID,
-				Spec: api.ServiceSpec{
+				Spec: &api.ServiceSpec{
 					Mode: &api.ServiceSpec_ReplicatedJob{
 						ReplicatedJob: &api.ReplicatedJob{
 							MaxConcurrent:    maxConcurrent,
 							TotalCompletions: totalCompletions,
 						},
 					},
+					Task: &api.TaskSpec{},
 				},
 				JobStatus: &api.JobStatus{
-					JobIteration: api.Version{Index: 0},
+					JobIteration: &api.Version{Index: 0},
 				},
 			}
 
 			cluster = &api.Cluster{
 				ID: "someCluster",
-				Spec: api.ClusterSpec{
-					Annotations: api.Annotations{
+				Spec: &api.ClusterSpec{
+					Annotations: &api.Annotations{
 						Name: "someCluster",
 					},
-					TaskDefaults: api.TaskDefaults{
+					TaskDefaults: &api.TaskDefaults{
 						LogDriver: &api.Driver{
 							Name: "someDriver",
 						},
@@ -269,7 +271,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 					tasks := AllTasks(s)
 					Expect(len(tasks) >= 1).To(BeTrue())
 
-					Expect(tasks[0].LogDriver).To(Equal(cluster.Spec.TaskDefaults.LogDriver))
+					Expect(proto.Equal(tasks[0].LogDriver, cluster.Spec.TaskDefaults.LogDriver)).To(BeTrue())
 				})
 			})
 
@@ -490,7 +492,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 			err := s.Update(func(tx store.Tx) error {
 				service := &api.Service{
 					ID: "someService",
-					Spec: api.ServiceSpec{
+					Spec: &api.ServiceSpec{
 						Mode: &api.ServiceSpec_ReplicatedJob{
 							ReplicatedJob: &api.ReplicatedJob{
 								MaxConcurrent:    maxConcurrent,

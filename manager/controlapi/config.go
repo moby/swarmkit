@@ -20,7 +20,7 @@ const MaxConfigSize = 1000 * 1024 // 1000KB
 func configFromConfigSpec(spec *api.ConfigSpec) *api.Config {
 	return &api.Config{
 		ID:   identity.NewID(),
-		Spec: *spec,
+		Spec: spec,
 	}
 }
 
@@ -70,7 +70,7 @@ func (s *Server) UpdateConfig(ctx context.Context, request *api.UpdateConfigRequ
 		}
 
 		// We only allow updating Labels
-		config.Meta.Version = *request.ConfigVersion
+		config.Meta.Version = request.ConfigVersion
 		config.Spec.Annotations.Labels = request.Spec.Annotations.Labels
 
 		return store.UpdateConfig(tx, config)
@@ -236,7 +236,7 @@ func validateConfigSpec(spec *api.ConfigSpec) error {
 	if spec == nil {
 		return status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
-	if err := validateConfigOrSecretAnnotations(spec.Annotations); err != nil {
+	if err := validateConfigOrSecretAnnotations(*spec.Annotations); err != nil {
 		return err
 	}
 

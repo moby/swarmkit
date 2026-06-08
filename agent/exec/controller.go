@@ -94,9 +94,16 @@ type PortStatuser interface {
 // error merely reports the failure at getting the controller.
 func Resolve(ctx context.Context, task *api.Task, executor Executor) (Controller, *api.TaskStatus, error) {
 	status := task.Status.Copy()
+	if status == nil {
+		status = &api.TaskStatus{}
+	}
 
 	defer func() {
-		logStateChange(ctx, task.DesiredState, task.Status.State, status.State)
+		taskStatusState := api.TaskState(0)
+		if task.Status != nil {
+			taskStatusState = task.Status.State
+		}
+		logStateChange(ctx, task.DesiredState, taskStatusState, status.State)
 	}()
 
 	ctlr, err := executor.Controller(task)
@@ -109,12 +116,16 @@ func Resolve(ctx context.Context, task *api.Task, executor Executor) (Controller
 		// before the task has been started, we consider it a rejection.
 		// if task is running, consider the task has failed
 		// otherwise keep the existing state
-		if task.Status.State < api.TaskStateStarting {
+		taskState := api.TaskState(0)
+		if task.Status != nil {
+			taskState = task.Status.State
+		}
+		if taskState < api.TaskStateStarting {
 			status.State = api.TaskStateRejected
-		} else if task.Status.State <= api.TaskStateRunning {
+		} else if taskState <= api.TaskStateRunning {
 			status.State = api.TaskStateFailed
 		}
-	} else if task.Status.State < api.TaskStateAccepted {
+	} else if task.GetStatus().GetState() < api.TaskStateAccepted {
 		// we always want to proceed to accepted when we resolve the controller
 		status.Message = "accepted"
 		status.State = api.TaskStateAccepted
@@ -141,6 +152,9 @@ func Resolve(ctx context.Context, task *api.Task, executor Executor) (Controller
 // action.
 func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, error) {
 	status := task.Status.Copy()
+	if status == nil {
+		status = &api.TaskStatus{}
+	}
 
 	// stay in the current state.
 	noop := func(_ ...error) (*api.TaskStatus, error) {
@@ -224,9 +238,13 @@ func Do(ctx context.Context, task *api.Task, ctlr Controller) (*api.TaskStatus, 
 	// below, we have several callbacks that are run after the state transition
 	// is completed.
 	defer func() {
-		logStateChange(ctx, task.DesiredState, task.Status.State, status.State)
+		taskStatusState := api.TaskState(0)
+		if task.Status != nil {
+			taskStatusState = task.Status.State
+		}
+		logStateChange(ctx, task.DesiredState, taskStatusState, status.State)
 
-		if !equality.TaskStatusesEqualStable(status, &task.Status) {
+		if !equality.TaskStatusesEqualStable(status, task.Status) {
 			status.Timestamp = ptypes.MustTimestampProto(time.Now())
 		}
 	}()

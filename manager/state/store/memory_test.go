@@ -20,24 +20,24 @@ var (
 	clusterSet = []*api.Cluster{
 		{
 			ID: "id1",
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 			},
 		},
 		{
 			ID: "id2",
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 			},
 		},
 		{
 			ID: "id3",
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: "name3",
 				},
 			},
@@ -46,8 +46,8 @@ var (
 	altClusterSet = []*api.Cluster{
 		{
 			ID: "alt-id1",
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: "alt-name1",
 				},
 			},
@@ -57,7 +57,7 @@ var (
 	nodeSet = []*api.Node{
 		{
 			ID: "id1",
-			Spec: api.NodeSpec{
+			Spec: &api.NodeSpec{
 				Membership: api.NodeMembershipPending,
 			},
 			Description: &api.NodeDescription{
@@ -67,7 +67,7 @@ var (
 		},
 		{
 			ID: "id2",
-			Spec: api.NodeSpec{
+			Spec: &api.NodeSpec{
 				Membership: api.NodeMembershipAccepted,
 			},
 			Description: &api.NodeDescription{
@@ -77,7 +77,7 @@ var (
 		},
 		{
 			ID: "id3",
-			Spec: api.NodeSpec{
+			Spec: &api.NodeSpec{
 				Membership: api.NodeMembershipAccepted,
 			},
 			Description: &api.NodeDescription{
@@ -90,7 +90,7 @@ var (
 	altNodeSet = []*api.Node{
 		{
 			ID: "alt-id1",
-			Spec: api.NodeSpec{
+			Spec: &api.NodeSpec{
 				Membership: api.NodeMembershipPending,
 			},
 			Description: &api.NodeDescription{
@@ -103,16 +103,16 @@ var (
 	serviceSet = []*api.Service{
 		{
 			ID: "id1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 			},
 		},
 		{
 			ID: "id2",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 				Mode: &api.ServiceSpec_Global{
@@ -122,8 +122,8 @@ var (
 		},
 		{
 			ID: "id3",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name3",
 				},
 			},
@@ -132,8 +132,8 @@ var (
 	altServiceSet = []*api.Service{
 		{
 			ID: "alt-id1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "alt-name1",
 				},
 			},
@@ -143,10 +143,10 @@ var (
 	taskSet = []*api.Task{
 		{
 			ID: "id1",
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name1",
 			},
 			DesiredState: api.TaskStateRunning,
@@ -154,10 +154,10 @@ var (
 		},
 		{
 			ID: "id2",
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "name2.1",
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name2",
 			},
 			DesiredState: api.TaskStateRunning,
@@ -165,10 +165,10 @@ var (
 		},
 		{
 			ID: "id3",
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "name2.2",
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name2",
 			},
 			DesiredState: api.TaskStateShutdown,
@@ -177,10 +177,10 @@ var (
 	altTaskSet = []*api.Task{
 		{
 			ID: "alt-id1",
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "alt-name1",
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "alt-name1",
 			},
 			DesiredState: api.TaskStateRunning,
@@ -191,24 +191,24 @@ var (
 	networkSet = []*api.Network{
 		{
 			ID: "id1",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 			},
 		},
 		{
 			ID: "id2",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 			},
 		},
 		{
 			ID: "id3",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "name3",
 				},
 			},
@@ -217,8 +217,8 @@ var (
 	altNetworkSet = []*api.Network{
 		{
 			ID: "alt-id1",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "alt-name1",
 				},
 			},
@@ -228,24 +228,24 @@ var (
 	configSet = []*api.Config{
 		{
 			ID: "id1",
-			Spec: api.ConfigSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ConfigSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 			},
 		},
 		{
 			ID: "id2",
-			Spec: api.ConfigSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ConfigSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 			},
 		},
 		{
 			ID: "id3",
-			Spec: api.ConfigSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ConfigSpec{
+				Annotations: &api.Annotations{
 					Name: "name3",
 				},
 			},
@@ -254,8 +254,8 @@ var (
 	altConfigSet = []*api.Config{
 		{
 			ID: "alt-id1",
-			Spec: api.ConfigSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ConfigSpec{
+				Annotations: &api.Annotations{
 					Name: "alt-name1",
 				},
 			},
@@ -265,24 +265,24 @@ var (
 	secretSet = []*api.Secret{
 		{
 			ID: "id1",
-			Spec: api.SecretSpec{
-				Annotations: api.Annotations{
+			Spec: &api.SecretSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 			},
 		},
 		{
 			ID: "id2",
-			Spec: api.SecretSpec{
-				Annotations: api.Annotations{
+			Spec: &api.SecretSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 			},
 		},
 		{
 			ID: "id3",
-			Spec: api.SecretSpec{
-				Annotations: api.Annotations{
+			Spec: &api.SecretSpec{
+				Annotations: &api.Annotations{
 					Name: "name3",
 				},
 			},
@@ -291,8 +291,8 @@ var (
 	altSecretSet = []*api.Secret{
 		{
 			ID: "alt-id1",
-			Spec: api.SecretSpec{
-				Annotations: api.Annotations{
+			Spec: &api.SecretSpec{
+				Annotations: &api.Annotations{
 					Name: "alt-name1",
 				},
 			},
@@ -302,19 +302,19 @@ var (
 	extensionSet = []*api.Extension{
 		{
 			ID: "id1",
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 		},
 		{
 			ID: "id2",
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "name2",
 			},
 		},
 		{
 			ID: "id3",
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "name3",
 			},
 		},
@@ -322,7 +322,7 @@ var (
 	altExtensionSet = []*api.Extension{
 		{
 			ID: "alt-id1",
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "alt-name1",
 			},
 		},
@@ -331,21 +331,21 @@ var (
 	resourceSet = []*api.Resource{
 		{
 			ID: "id1",
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Kind: "name1", // corresponds to extension id1
 		},
 		{
 			ID: "id2",
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "name2",
 			},
 			Kind: "name2", // corresponds to extension id2
 		},
 		{
 			ID: "id3",
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "name3",
 			},
 			Kind: "name3", // corresponds to extension id3
@@ -354,7 +354,7 @@ var (
 	altResourceSet = []*api.Resource{
 		{
 			ID: "alt-id1",
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "alt-name1",
 			},
 			Kind: "alt-name1", // corresponds to extension alt-id1
@@ -363,8 +363,8 @@ var (
 	volumeSet = []*api.Volume{
 		{
 			ID: "id1",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 				Driver: &api.Driver{
@@ -374,8 +374,8 @@ var (
 		},
 		{
 			ID: "id2",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 				Driver: &api.Driver{
@@ -385,8 +385,8 @@ var (
 		},
 		{
 			ID: "id3",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "name3",
 				},
 				Driver: &api.Driver{
@@ -398,8 +398,8 @@ var (
 	altVolumeSet = []*api.Volume{
 		{
 			ID: "alt-id1",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "alt-name1",
 				},
 				Driver: &api.Driver{
@@ -583,8 +583,8 @@ func TestStoreService(t *testing.T) {
 		assert.Equal(t,
 			CreateService(tx, &api.Service{
 				ID: "id1",
-				Spec: api.ServiceSpec{
-					Annotations: api.Annotations{
+				Spec: &api.ServiceSpec{
+					Annotations: &api.Annotations{
 						Name: "name4",
 					},
 				},
@@ -593,8 +593,8 @@ func TestStoreService(t *testing.T) {
 		assert.Equal(t,
 			CreateService(tx, &api.Service{
 				ID: "id4",
-				Spec: api.ServiceSpec{
-					Annotations: api.Annotations{
+				Spec: &api.ServiceSpec{
+					Annotations: &api.Annotations{
 						Name: "name1",
 					},
 				},
@@ -603,8 +603,8 @@ func TestStoreService(t *testing.T) {
 		assert.Equal(t,
 			CreateService(tx, &api.Service{
 				ID: "id4",
-				Spec: api.ServiceSpec{
-					Annotations: api.Annotations{
+				Spec: &api.ServiceSpec{
+					Annotations: &api.Annotations{
 						Name: "NAME1",
 					},
 				},
@@ -825,10 +825,10 @@ func TestStoreTask(t *testing.T) {
 	// Update.
 	update := &api.Task{
 		ID: "id3",
-		Annotations: api.Annotations{
+		Annotations: &api.Annotations{
 			Name: "name3",
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name3",
 		},
 	}
@@ -940,8 +940,8 @@ func TestStoreSnapshot(t *testing.T) {
 	// Create node
 	createNode := &api.Node{
 		ID: "id4",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "name4",
 			},
 		},
@@ -963,8 +963,8 @@ func TestStoreSnapshot(t *testing.T) {
 	// Update node
 	updateNode := &api.Node{
 		ID: "id3",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "name3",
 			},
 		},
@@ -1000,8 +1000,8 @@ func TestStoreSnapshot(t *testing.T) {
 	// Create service
 	createService := &api.Service{
 		ID: "id4",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name4",
 			},
 		},
@@ -1054,7 +1054,7 @@ func TestStoreSnapshot(t *testing.T) {
 	// Create task
 	createTask := &api.Task{
 		ID: "id4",
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name4",
 		},
 	}
@@ -1075,7 +1075,7 @@ func TestStoreSnapshot(t *testing.T) {
 	// Update task
 	updateTask := &api.Task{
 		ID: "id3",
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name3",
 		},
 	}
@@ -1121,12 +1121,18 @@ func TestCustomIndex(t *testing.T) {
 		for _, n := range allNodes {
 			switch n.ID {
 			case "id2":
-				n.Spec.Annotations.Indices = []api.IndexEntry{
+				if n.Spec.Annotations == nil {
+					n.Spec.Annotations = &api.Annotations{}
+				}
+				n.Spec.Annotations.Indices = []*api.IndexEntry{
 					{Key: "nodesbefore", Val: "id1"},
 				}
 				assert.NoError(t, UpdateNode(tx, n))
 			case "id3":
-				n.Spec.Annotations.Indices = []api.IndexEntry{
+				if n.Spec.Annotations == nil {
+					n.Spec.Annotations = &api.Annotations{}
+				}
+				n.Spec.Annotations.Indices = []*api.IndexEntry{
 					{Key: "nodesbefore", Val: "id1"},
 					{Key: "nodesbefore", Val: "id2"},
 				}
@@ -1218,8 +1224,8 @@ func TestVersion(t *testing.T) {
 	// Create one node
 	n := &api.Node{
 		ID: "id1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 		},
@@ -1282,8 +1288,8 @@ func TestTimestamps(t *testing.T) {
 	// Create one node
 	n := &api.Node{
 		ID: "id1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 		},
@@ -1333,8 +1339,8 @@ func TestBatch(t *testing.T) {
 		for i := range 2*MaxChangesPerTransaction + 5 {
 			n := &api.Node{
 				ID: "id" + strconv.Itoa(i),
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: "name" + strconv.Itoa(i),
 					},
 				},
@@ -1394,8 +1400,8 @@ func TestBatchFailure(t *testing.T) {
 		for i := 0; ; i++ {
 			n := &api.Node{
 				ID: "id" + strconv.Itoa(i),
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: "name" + strconv.Itoa(i),
 					},
 				},
@@ -1450,7 +1456,7 @@ func TestStoreSaveRestore(t *testing.T) {
 	// updated on restore), as well as one extraneous object (which should be deleted
 	// on restore).  We also want to bump the version on all the ones that will be
 	// updated just to make sure that restoration works.
-	version := api.Version{Index: 100}
+	version := &api.Version{Index: 100}
 	c := clusterSet[0].Copy()
 	c.Meta.Version = version
 	n := nodeSet[0].Copy()
@@ -1803,8 +1809,8 @@ func TestWatchFrom(t *testing.T) {
 		err := s.Batch(func(batch *Batch) error {
 			node := &api.Node{
 				ID: "id" + strconv.Itoa(i),
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: "name" + strconv.Itoa(i),
 					},
 				},
@@ -1812,8 +1818,8 @@ func TestWatchFrom(t *testing.T) {
 
 			service := &api.Service{
 				ID: "id" + strconv.Itoa(i),
-				Spec: api.ServiceSpec{
-					Annotations: api.Annotations{
+				Spec: &api.ServiceSpec{
+					Annotations: &api.Annotations{
 						Name: "name" + strconv.Itoa(i),
 					},
 				},
@@ -1893,8 +1899,8 @@ func TestWatchFrom(t *testing.T) {
 	assert.NoError(t, s.Update(func(tx Tx) error {
 		node := &api.Node{
 			ID: "newnode",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "newnode",
 				},
 			},
@@ -1902,8 +1908,8 @@ func TestWatchFrom(t *testing.T) {
 
 		service := &api.Service{
 			ID: "newservice",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "newservice",
 				},
 			},
@@ -1955,8 +1961,8 @@ func TestWatchFrom(t *testing.T) {
 	assert.NoError(t, s.Update(func(tx Tx) error {
 		node := &api.Node{
 			ID: "newnode2",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "newnode2",
 				},
 			},
@@ -2012,8 +2018,8 @@ func setupNodes(b *testing.B, n int) (*MemoryStore, []string) {
 		for i := range n {
 			_ = CreateNode(tx1, &api.Node{
 				ID: nodeIDs[i],
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: "name" + strconv.Itoa(i),
 					},
 				},
@@ -2036,8 +2042,8 @@ func BenchmarkUpdateNode(b *testing.B) {
 		for i := range b.N {
 			_ = UpdateNode(tx1, &api.Node{
 				ID: nodeIDs[i%benchmarkNumNodes],
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
 					},
 				},
@@ -2054,8 +2060,8 @@ func BenchmarkUpdateNodeTransaction(b *testing.B) {
 		_ = s.Update(func(tx1 Tx) error {
 			_ = UpdateNode(tx1, &api.Node{
 				ID: nodeIDs[i%benchmarkNumNodes],
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
 					},
 				},
@@ -2122,8 +2128,8 @@ func BenchmarkNodeConcurrency(b *testing.B) {
 				_ = s.Update(func(tx1 Tx) error {
 					_ = UpdateNode(tx1, &api.Node{
 						ID: nodeIDs[i%benchmarkNumNodes],
-						Spec: api.NodeSpec{
-							Annotations: api.Annotations{
+						Spec: &api.NodeSpec{
+							Annotations: &api.Annotations{
 								Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(c) + "_" + strconv.Itoa(i),
 							},
 						},

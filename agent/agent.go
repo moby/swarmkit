@@ -7,10 +7,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
+	"github.com/moby/swarmkit/v2/remotes"
 	"github.com/pkg/errors"
 )
 
@@ -411,14 +413,14 @@ func (a *Agent) run(ctx context.Context) {
 }
 
 func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMessage, nti *api.NodeTLSInfo) error {
-	seen := map[api.Peer]struct{}{}
+	seen := map[remotes.PeerKey]struct{}{}
 	for _, manager := range message.Managers {
-		if manager.Peer.Addr == "" {
+		if manager.Peer == nil || manager.Peer.Addr == "" {
 			continue
 		}
 
 		a.config.ConnBroker.Remotes().Observe(*manager.Peer, int(manager.Weight))
-		seen[*manager.Peer] = struct{}{}
+		seen[remotes.ToPeerKey(*manager.Peer)] = struct{}{}
 	}
 
 	var changes *NodeChanges
@@ -444,9 +446,9 @@ func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMe
 	}
 
 	// prune managers not in list.
-	for peer := range a.config.ConnBroker.Remotes().Weights() {
-		if _, ok := seen[peer]; !ok {
-			a.config.ConnBroker.Remotes().Remove(peer)
+	for pkey := range a.config.ConnBroker.Remotes().Weights() {
+		if _, ok := seen[pkey]; !ok {
+			a.config.ConnBroker.Remotes().Remove(remotes.FromPeerKey(pkey))
 		}
 	}
 
@@ -617,7 +619,7 @@ func (a *Agent) Publisher(ctx context.Context, subscriptionID string) (exec.LogP
 
 			return publisher.Send(&api.PublishLogsMessage{
 				SubscriptionID: subscriptionID,
-				Messages:       []api.LogMessage{message},
+				Messages:       []*api.LogMessage{&message},
 			})
 		}), func() {
 			sendCloseMsg()
@@ -646,8 +648,8 @@ func (a *Agent) nodeDescriptionWithHostname(ctx context.Context, tlsInfo *api.No
 func nodesEqual(a, b *api.Node) bool {
 	a, b = a.Copy(), b.Copy()
 
-	a.Status, b.Status = api.NodeStatus{}, api.NodeStatus{}
-	a.Meta, b.Meta = api.Meta{}, api.Meta{}
+	a.Status, b.Status = nil, nil
+	a.Meta, b.Meta = nil, nil
 
 	return proto.Equal(a, b)
 }

@@ -16,7 +16,6 @@ import (
 	"code.cloudfoundry.org/clock"
 	"github.com/docker/go-events"
 	"github.com/docker/go-metrics"
-	"github.com/gogo/protobuf/proto"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/log"
@@ -38,6 +37,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -828,8 +828,8 @@ func (n *Node) getCurrentRaftConfig() api.RaftConfig {
 	raftConfig := DefaultRaftConfig()
 	n.memoryStore.View(func(readTx store.ReadTx) {
 		clusters, err := store.FindClusters(readTx, store.ByName(store.DefaultClusterName))
-		if err == nil && len(clusters) == 1 {
-			raftConfig = clusters[0].Spec.Raft
+		if err == nil && len(clusters) == 1 && clusters[0].Spec.GetRaft() != nil {
+			raftConfig = *clusters[0].Spec.Raft
 		}
 	})
 	return raftConfig
@@ -1077,7 +1077,7 @@ func (n *Node) addMember(ctx context.Context, addr string, raftID uint64, nodeID
 		Addr:   addr,
 	}
 
-	meta, err := node.Marshal()
+	meta, err := proto.Marshal(&node)
 	if err != nil {
 		return err
 	}
@@ -1104,7 +1104,7 @@ func (n *Node) updateNodeBlocking(ctx context.Context, id uint64, addr string) e
 		Addr:   addr,
 	}
 
-	meta, err := node.Marshal()
+	meta, err := proto.Marshal(&node)
 	if err != nil {
 		return err
 	}
@@ -1593,7 +1593,7 @@ func (n *Node) ProposeValue(ctx context.Context, storeAction []api.StoreAction, 
 	defer metrics.StartTimer(proposeLatencyTimer)()
 	ctx, cancel := n.WithContext(ctx)
 	defer cancel()
-	_, err := n.processInternalRaftRequest(ctx, &api.InternalRaftRequest{Action: storeAction}, cb)
+	_, err := n.processInternalRaftRequest(ctx, &api.InternalRaftRequest{Action: refStoreActions(storeAction)}, cb)
 
 	return err
 }
@@ -1650,7 +1650,7 @@ func (n *Node) ChangesBetween(from, to api.Version) ([]state.Change, error) {
 		}
 
 		if r.Action != nil {
-			changes = append(changes, state.Change{StoreActions: r.Action, Version: api.Version{Index: pb.Index}})
+			changes = append(changes, state.Change{StoreActions: derefStoreActions(r.Action), Version: api.Version{Index: pb.Index}})
 		}
 	}
 
@@ -1690,7 +1690,7 @@ func (n *Node) GetMemberlist() map[uint64]*api.RaftMember {
 			RaftID: member.RaftID,
 			NodeID: member.NodeID,
 			Addr:   member.Addr,
-			Status: api.RaftMemberStatus{
+			Status: &api.RaftMemberStatus{
 				Leader:       leader,
 				Reachability: reachability,
 			},
@@ -1807,7 +1807,7 @@ func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRa
 		return nil, ErrLostLeadership
 	}
 
-	data, err := r.Marshal()
+	data, err := proto.Marshal(r)
 	if err != nil {
 		n.wait.cancel(r.ID)
 		return nil, err
@@ -1929,7 +1929,7 @@ func (n *Node) processEntry(ctx context.Context, entry raftpb.Entry) error {
 		// TODO(anshul) This call is likely redundant, remove after consideration.
 		n.wait.cancelAll()
 
-		err := n.memoryStore.ApplyStoreActions(r.Action)
+		err := n.memoryStore.ApplyStoreActions(derefStoreActions(r.Action))
 		if err != nil {
 			log.G(ctx).WithError(err).Error("failed to apply actions from raft")
 		}
@@ -1943,7 +1943,7 @@ func (n *Node) processConfChange(ctx context.Context, entry raftpb.Entry) {
 		cc  raftpb.ConfChange
 	)
 
-	if err := proto.Unmarshal(entry.Data, &cc); err != nil {
+	if err := cc.Unmarshal(entry.Data); err != nil {
 		n.wait.trigger(cc.ID, err)
 	}
 
@@ -2070,7 +2070,7 @@ func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raf
 	}
 	if !found {
 		node := &api.RaftMember{RaftID: self}
-		meta, err := node.Marshal()
+		meta, err := proto.Marshal(node)
 		if err != nil {
 			log.L.WithError(err).Panic("marshal member should never fail")
 		}
@@ -2155,4 +2155,24 @@ func stackDump() {
 	}
 	buf = buf[:stackSize]
 	_, _ = os.Stderr.Write(buf)
+}
+
+// derefStoreActions converts []*api.StoreAction to []api.StoreAction.
+func derefStoreActions(actions []*api.StoreAction) []api.StoreAction {
+	result := make([]api.StoreAction, len(actions))
+	for i, a := range actions {
+		if a != nil {
+			result[i] = *a
+		}
+	}
+	return result
+}
+
+// refStoreActions converts []api.StoreAction to []*api.StoreAction.
+func refStoreActions(actions []api.StoreAction) []*api.StoreAction {
+	result := make([]*api.StoreAction, len(actions))
+	for i := range actions {
+		result[i] = &actions[i]
+	}
+	return result
 }

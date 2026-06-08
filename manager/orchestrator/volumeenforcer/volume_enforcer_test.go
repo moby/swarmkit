@@ -32,15 +32,15 @@ var _ = Describe("VolumeEnforcer", func() {
 			// change things in the future
 			n = &api.Node{
 				ID: "node",
-				Status: api.NodeStatus{
+				Status: &api.NodeStatus{
 					State: api.NodeStatus_READY,
 				},
 			}
 
 			v = &api.Volume{
 				ID: "volumeID",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volume",
 					},
 					Driver: &api.Driver{
@@ -62,7 +62,7 @@ var _ = Describe("VolumeEnforcer", func() {
 			t = &api.Task{
 				ID:     "task",
 				NodeID: "node",
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateRunning,
 				},
 				DesiredState: api.TaskStateRunning,

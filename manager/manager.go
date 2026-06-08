@@ -15,7 +15,6 @@ import (
 
 	"github.com/docker/go-events"
 	gmetrics "github.com/docker/go-metrics"
-	gogotypes "github.com/gogo/protobuf/types"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
@@ -50,6 +49,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 const (
@@ -1071,9 +1071,8 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 			cluster = store.GetCluster(tx, clusterID)
 		})
 		var defaultConfig = dispatcher.DefaultConfig()
-		heartbeatPeriod, err := gogotypes.DurationFromProto(cluster.Spec.Dispatcher.HeartbeatPeriod)
-		if err == nil {
-			defaultConfig.HeartbeatPeriod = heartbeatPeriod
+		if cluster.Spec.GetDispatcher().GetHeartbeatPeriod() != nil {
+			defaultConfig.HeartbeatPeriod = cluster.Spec.Dispatcher.HeartbeatPeriod.AsDuration()
 		}
 		d.Init(m.raftNode, defaultConfig, drivers.New(m.config.PluginGetter), m.config.SecurityConfig)
 		if err := d.Run(ctx); err != nil {
@@ -1210,25 +1209,25 @@ func defaultClusterObject(
 
 	return &api.Cluster{
 		ID: clusterID,
-		Spec: api.ClusterSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ClusterSpec{
+			Annotations: &api.Annotations{
 				Name: store.DefaultClusterName,
 			},
-			Orchestration: api.OrchestrationConfig{
+			Orchestration: &api.OrchestrationConfig{
 				TaskHistoryRetentionLimit: defaultTaskHistoryRetentionLimit,
 			},
-			Dispatcher: api.DispatcherConfig{
-				HeartbeatPeriod: gogotypes.DurationProto(dispatcher.DefaultHeartBeatPeriod),
+			Dispatcher: &api.DispatcherConfig{
+				HeartbeatPeriod: durationpb.New(dispatcher.DefaultHeartBeatPeriod),
 			},
-			Raft:             raftCfg,
-			CAConfig:         initialCAConfig,
-			EncryptionConfig: encryptionConfig,
+			Raft:             &raftCfg,
+			CAConfig:         &initialCAConfig,
+			EncryptionConfig: &encryptionConfig,
 		},
-		RootCA: api.RootCA{
+		RootCA: &api.RootCA{
 			CAKey:      caKey,
 			CACert:     rootCA.Certs,
 			CACertHash: rootCA.Digest.String(),
-			JoinTokens: api.JoinTokens{
+			JoinTokens: &api.JoinTokens{
 				Worker:  ca.GenerateJoinToken(rootCA, fips),
 				Manager: ca.GenerateJoinToken(rootCA, fips),
 			},
@@ -1245,14 +1244,14 @@ func defaultClusterObject(
 func managerNode(nodeID string, availability api.NodeSpec_Availability, vxlanPort uint32) *api.Node {
 	return &api.Node{
 		ID: nodeID,
-		Certificate: api.Certificate{
+		Certificate: &api.Certificate{
 			CN:   nodeID,
 			Role: api.NodeRoleManager,
-			Status: api.IssuanceStatus{
+			Status: &api.IssuanceStatus{
 				State: api.IssuanceStateIssued,
 			},
 		},
-		Spec: api.NodeSpec{
+		Spec: &api.NodeSpec{
 			DesiredRole:  api.NodeRoleManager,
 			Membership:   api.NodeMembershipAccepted,
 			Availability: availability,
@@ -1268,9 +1267,9 @@ func managerNode(nodeID string, availability api.NodeSpec_Availability, vxlanPor
 func newIngressNetwork() *api.Network {
 	return &api.Network{
 		ID: identity.NewID(),
-		Spec: api.NetworkSpec{
+		Spec: &api.NetworkSpec{
 			Ingress: true,
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "ingress",
 			},
 			DriverConfig: &api.Driver{},
@@ -1291,8 +1290,8 @@ func newIngressNetwork() *api.Network {
 func newPredefinedNetwork(name, driver string) *api.Network {
 	return &api.Network{
 		ID: identity.NewID(),
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NetworkSpec{
+			Annotations: &api.Annotations{
 				Name: name,
 				Labels: map[string]string{
 					networkallocator.PredefinedLabel: "true",

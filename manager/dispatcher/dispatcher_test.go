@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/api"
@@ -441,28 +442,28 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 
 	secret := &api.Secret{
 		ID: "driverSecret",
-		Spec: api.SecretSpec{
-			Annotations: api.Annotations{Name: existingSecretName},
+		Spec: &api.SecretSpec{
+			Annotations: &api.Annotations{Name: existingSecretName},
 			Driver:      &api.Driver{Name: secretDriver},
 		},
 	}
 	doNotReuseSecret := &api.Secret{
 		ID: "driverDoNotReuseSecret",
-		Spec: api.SecretSpec{
-			Annotations: api.Annotations{Name: doNotReuseExistingSecretName},
+		Spec: &api.SecretSpec{
+			Annotations: &api.Annotations{Name: doNotReuseExistingSecretName},
 			Driver:      &api.Driver{Name: secretDriver},
 		},
 	}
 	errSecret := &api.Secret{
 		ID: "driverErrSecret",
-		Spec: api.SecretSpec{
-			Annotations: api.Annotations{Name: errSecretName},
+		Spec: &api.SecretSpec{
+			Annotations: &api.Annotations{Name: errSecretName},
 			Driver:      &api.Driver{Name: secretDriver},
 		},
 	}
 	config := &api.Config{
 		ID: "config",
-		Spec: api.ConfigSpec{
+		Spec: &api.ConfigSpec{
 			Data: []byte("config"),
 		},
 	}
@@ -471,9 +472,9 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 	task := &api.Task{
 		NodeID:       nodeID,
 		ID:           "secretTask",
-		Status:       api.TaskStatus{State: api.TaskStateReady},
+		Status:       &api.TaskStatus{State: api.TaskStateReady},
 		DesiredState: api.TaskStateNew,
-		Spec:         spec,
+		Spec:         &spec,
 		Endpoint: &api.Endpoint{
 			Spec: &api.EndpointSpec{
 				Mode: serviceEndpointMode,
@@ -483,12 +484,12 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 						PublishedPort: portConfig.PublishedPort,
 						Protocol:      api.PortConfig_Protocol(portConfig.Protocol),
 						TargetPort:    portConfig.TargetPort,
-						PublishMode:   api.PortConfig_PublishMode(portConfig.PublishMode),
+						PublishMode:   api.PublishMode(portConfig.PublishMode),
 					},
 				},
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name:   serviceName,
 			Labels: serviceLabels,
 		},
@@ -537,8 +538,8 @@ func TestAssignmentsWithVolume(t *testing.T) {
 	volumes := []*api.Volume{
 		{
 			ID: "volumeID0",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "volumeName",
 				},
 				Driver: &api.Driver{
@@ -568,8 +569,8 @@ func TestAssignmentsWithVolume(t *testing.T) {
 			},
 		}, {
 			ID: "volumeID1",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "volumeOtherName",
 				},
 				Group: "volumeGroup",
@@ -608,24 +609,24 @@ func TestAssignmentsWithVolume(t *testing.T) {
 	secrets := []*api.Secret{
 		{
 			ID: "secret0",
-			Spec: api.SecretSpec{
-				Annotations: api.Annotations{
+			Spec: &api.SecretSpec{
+				Annotations: &api.Annotations{
 					Name: "secretName0",
 				},
 				Data: []byte("secret0 data"),
 			},
 		}, {
 			ID: "secret1",
-			Spec: api.SecretSpec{
-				Annotations: api.Annotations{
+			Spec: &api.SecretSpec{
+				Annotations: &api.Annotations{
 					Name: "secretName1",
 				},
 				Data: []byte("secret1 data"),
 			},
 		}, {
 			ID: "secret2",
-			Spec: api.SecretSpec{
-				Annotations: api.Annotations{
+			Spec: &api.SecretSpec{
+				Annotations: &api.Annotations{
 					Name: "secretName2",
 				},
 				Data: []byte("secret2 data"),
@@ -636,14 +637,14 @@ func TestAssignmentsWithVolume(t *testing.T) {
 	task := &api.Task{
 		ID:     "task1",
 		NodeID: nodeID,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStateAssigned,
 		},
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
-					Mounts: []api.Mount{
+					Mounts: []*api.Mount{
 						{
 							Type:   api.MountTypeCluster,
 							Source: "volumeName",
@@ -667,7 +668,7 @@ func TestAssignmentsWithVolume(t *testing.T) {
 					},
 				},
 			},
-			ResourceReferences: []api.ResourceReference{
+			ResourceReferences: []*api.ResourceReference{
 				{
 					ResourceID:   "secret1",
 					ResourceType: api.ResourceType_SECRET,
@@ -718,7 +719,7 @@ func TestAssignmentsWithVolume(t *testing.T) {
 
 	verifyChanges(t, resp.Changes, []changeExpectations{
 		{
-			action:  api.AssignmentChange_AssignmentActionUpdate,
+			action:  api.AssignmentActionUpdate,
 			tasks:   []*api.Task{task},
 			secrets: secrets,
 			volumes: []*api.VolumeAssignment{
@@ -769,7 +770,7 @@ func TestAssignmentsWithVolume(t *testing.T) {
 	assert.Equal(t,
 		volumeChanges[idAndAction{
 			id:     "volumeID0",
-			action: api.AssignmentChange_AssignmentActionUpdate,
+			action: api.AssignmentActionUpdate,
 		}],
 		&api.VolumeAssignment{
 			ID:       "volumeID0",
@@ -867,7 +868,7 @@ func testAssignmentsInitialNodeTasksWithGivenTasks(t *testing.T, genTasks taskGe
 	updatedSecrets, updatedConfigs := filterDependencies(secrets, configs, assignedToRunningTasks, nil)
 	verifyChanges(t, resp.Changes, []changeExpectations{
 		{
-			action:  api.AssignmentChange_AssignmentActionUpdate,
+			action:  api.AssignmentActionUpdate,
 			tasks:   atLeastAssignedTasks, // dispatcher sends task updates for all tasks >= ASSIGNED
 			secrets: updatedSecrets,
 			configs: updatedConfigs,
@@ -893,11 +894,11 @@ func testAssignmentsInitialNodeTasksWithGivenTasks(t *testing.T, genTasks taskGe
 	verifyChanges(t, resp.Changes, []changeExpectations{
 		{
 			// ASSIGNED tasks are always sent down even if they haven't changed
-			action: api.AssignmentChange_AssignmentActionUpdate,
+			action: api.AssignmentActionUpdate,
 			tasks:  filterTasks(tasks, func(s api.TaskState) bool { return s == api.TaskStateAssigned }),
 		},
 		{
-			action:  api.AssignmentChange_AssignmentActionRemove,
+			action:  api.AssignmentActionRemove,
 			secrets: updatedSecrets,
 			configs: updatedConfigs,
 		},
@@ -921,7 +922,7 @@ func testAssignmentsInitialNodeTasksWithGivenTasks(t *testing.T, genTasks taskGe
 	updatedSecrets, updatedConfigs = filterDependencies(secrets, configs, atLeastAssignedTasks, nil)
 	verifyChanges(t, resp.Changes, []changeExpectations{
 		{
-			action:  api.AssignmentChange_AssignmentActionRemove,
+			action:  api.AssignmentActionRemove,
 			tasks:   atLeastAssignedTasks,
 			secrets: updatedSecrets,
 			configs: updatedConfigs,
@@ -932,8 +933,8 @@ func testAssignmentsInitialNodeTasksWithGivenTasks(t *testing.T, genTasks taskGe
 func mockNumberedConfig(i int) *api.Config {
 	return &api.Config{
 		ID: fmt.Sprintf("IDconfig%d", i),
-		Spec: api.ConfigSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ConfigSpec{
+			Annotations: &api.Annotations{
 				Name: fmt.Sprintf("config%d", i),
 			},
 			Data: fmt.Appendf(nil, "config%d", i),
@@ -944,8 +945,8 @@ func mockNumberedConfig(i int) *api.Config {
 func mockNumberedSecret(i int) *api.Secret {
 	return &api.Secret{
 		ID: fmt.Sprintf("IDsecret%d", i),
-		Spec: api.SecretSpec{
-			Annotations: api.Annotations{
+		Spec: &api.SecretSpec{
+			Annotations: &api.Annotations{
 				Name: fmt.Sprintf("secret%d", i),
 			},
 			Data: fmt.Appendf(nil, "secret%d", i),
@@ -957,9 +958,9 @@ func mockNumberedReadyTask(i int, nodeID string, taskState api.TaskState, spec a
 	return &api.Task{
 		NodeID:       nodeID,
 		ID:           fmt.Sprintf("testTask%d", i),
-		Status:       api.TaskStatus{State: taskState},
+		Status:       &api.TaskStatus{State: taskState},
 		DesiredState: api.TaskStateReady,
-		Spec:         spec,
+		Spec:         &spec,
 	}
 }
 
@@ -968,8 +969,8 @@ func makeMockResource(tx store.Tx, resourceRef *api.ResourceReference) error {
 	case api.ResourceType_SECRET:
 		dummySecret := &api.Secret{
 			ID: resourceRef.ResourceID,
-			Spec: api.SecretSpec{
-				Annotations: api.Annotations{
+			Spec: &api.SecretSpec{
+				Annotations: &api.Annotations{
 					Name: fmt.Sprintf("dummy_secret_%s", resourceRef.ResourceID),
 				},
 				Data: fmt.Appendf(nil, "secret_%s", resourceRef.ResourceID),
@@ -983,8 +984,8 @@ func makeMockResource(tx store.Tx, resourceRef *api.ResourceReference) error {
 	case api.ResourceType_CONFIG:
 		dummyConfig := &api.Config{
 			ID: resourceRef.ResourceID,
-			Spec: api.ConfigSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ConfigSpec{
+				Annotations: &api.Annotations{
 					Name: fmt.Sprintf("dummy_config_%s", resourceRef.ResourceID),
 				},
 				Data: fmt.Appendf(nil, "config_%s", resourceRef.ResourceID),
@@ -1096,7 +1097,7 @@ func testAssignmentsAddingTasksWithGivenTasks(t *testing.T, genTasks taskGenerat
 	updatedSecrets, updatedConfigs := filterDependencies(createdSecrets, createdConfigs, assignedToRunningTasks, nil)
 	verifyChanges(t, resp.Changes, []changeExpectations{
 		{
-			action:  api.AssignmentChange_AssignmentActionUpdate,
+			action:  api.AssignmentActionUpdate,
 			tasks:   atLeastAssignedTasks, // dispatcher sends task updates for all tasks >= ASSIGNED
 			secrets: updatedSecrets,
 			configs: updatedConfigs,
@@ -1124,7 +1125,7 @@ func testAssignmentsAddingTasksWithGivenTasks(t *testing.T, genTasks taskGenerat
 	updatedSecrets, updatedConfigs = filterDependencies(secrets, configs, atLeastAssignedTasks, nil)
 	verifyChanges(t, resp.Changes, []changeExpectations{
 		{
-			action:  api.AssignmentChange_AssignmentActionRemove,
+			action:  api.AssignmentActionRemove,
 			tasks:   atLeastAssignedTasks,
 			secrets: updatedSecrets,
 			configs: updatedConfigs,
@@ -1201,7 +1202,7 @@ func testAssignmentsDependencyUpdateAndDeletionWithGivenTasks(t *testing.T, genT
 	updatedSecrets, updatedConfigs := filterDependencies(secrets, configs, assignedToRunningTasks, nil)
 	verifyChanges(t, resp.Changes, []changeExpectations{
 		{
-			action:  api.AssignmentChange_AssignmentActionUpdate,
+			action:  api.AssignmentActionUpdate,
 			tasks:   atLeastAssignedTasks, // dispatcher sends task updates for all tasks >= ASSIGNED
 			secrets: updatedSecrets,
 			configs: updatedConfigs,
@@ -1280,13 +1281,13 @@ func TestTasksStatusChange(t *testing.T) {
 	testTask1 := &api.Task{
 		NodeID:       nodeID,
 		ID:           "testTask1",
-		Status:       api.TaskStatus{State: api.TaskStateAssigned},
+		Status:       &api.TaskStatus{State: api.TaskStateAssigned},
 		DesiredState: api.TaskStateReady,
 	}
 	testTask2 := &api.Task{
 		NodeID:       nodeID,
 		ID:           "testTask2",
-		Status:       api.TaskStatus{State: api.TaskStateAssigned},
+		Status:       &api.TaskStatus{State: api.TaskStateAssigned},
 		DesiredState: api.TaskStateReady,
 	}
 
@@ -1319,7 +1320,7 @@ func TestTasksStatusChange(t *testing.T) {
 
 	verifyChanges(t, resp.Changes, []changeExpectations{
 		{
-			action: api.AssignmentChange_AssignmentActionUpdate,
+			action: api.AssignmentActionUpdate,
 			tasks:  []*api.Task{testTask1, testTask2},
 		},
 	})
@@ -1331,7 +1332,7 @@ func TestTasksStatusChange(t *testing.T) {
 		}
 		task.NodeID = nodeID
 		// only Status is changed for task1
-		task.Status = api.TaskStatus{State: api.TaskStateFailed, Err: "1234"}
+		task.Status = &api.TaskStatus{State: api.TaskStateFailed, Err: "1234"}
 		task.DesiredState = api.TaskStateReady
 		return store.UpdateTask(tx, task)
 	}))
@@ -1370,12 +1371,12 @@ func TestTasksBatch(t *testing.T) {
 	testTask1 := &api.Task{
 		NodeID: nodeID,
 		ID:     "testTask1",
-		Status: api.TaskStatus{State: api.TaskStateAssigned},
+		Status: &api.TaskStatus{State: api.TaskStateAssigned},
 	}
 	testTask2 := &api.Task{
 		NodeID: nodeID,
 		ID:     "testTask2",
-		Status: api.TaskStatus{State: api.TaskStateAssigned},
+		Status: &api.TaskStatus{State: api.TaskStateAssigned},
 	}
 
 	stream, err := gd.Clients[0].Assignments(context.Background(), &api.AssignmentsRequest{SessionID: expectedSessionID})
@@ -1413,7 +1414,7 @@ func TestTasksBatch(t *testing.T) {
 	// all tasks have been deleted
 	verifyChanges(t, resp.Changes, []changeExpectations{
 		{
-			action: api.AssignmentChange_AssignmentActionRemove,
+			action: api.AssignmentActionRemove,
 			tasks:  []*api.Task{testTask1, testTask2},
 		},
 	})
@@ -1470,7 +1471,7 @@ func TestTaskUpdate(t *testing.T) {
 	testTask4 := &api.Task{
 		ID:     "testTask4",
 		NodeID: nodeID,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStateShutdown,
 		},
 	}
@@ -1483,23 +1484,23 @@ func TestTaskUpdate(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	testTask1.Status = api.TaskStatus{State: api.TaskStateAssigned}
-	testTask2.Status = api.TaskStatus{State: api.TaskStateAssigned}
-	testTask3.Status = api.TaskStatus{State: api.TaskStateAssigned}
-	testTask4.Status = api.TaskStatus{State: api.TaskStateRunning}
+	testTask1.Status = &api.TaskStatus{State: api.TaskStateAssigned}
+	testTask2.Status = &api.TaskStatus{State: api.TaskStateAssigned}
+	testTask3.Status = &api.TaskStatus{State: api.TaskStateAssigned}
+	testTask4.Status = &api.TaskStatus{State: api.TaskStateRunning}
 	updReq := &api.UpdateTaskStatusRequest{
 		Updates: []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
 			{
 				TaskID: testTask1.ID,
-				Status: &testTask1.Status,
+				Status: testTask1.Status,
 			},
 			{
 				TaskID: testTask2.ID,
-				Status: &testTask2.Status,
+				Status: testTask2.Status,
 			},
 			{
 				TaskID: testTask4.ID,
-				Status: &testTask4.Status,
+				Status: testTask4.Status,
 			},
 		},
 	}
@@ -1521,7 +1522,7 @@ func TestTaskUpdate(t *testing.T) {
 		updReq.Updates = []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
 			{
 				TaskID: testTask3.ID,
-				Status: &testTask3.Status,
+				Status: testTask3.Status,
 			},
 		}
 
@@ -1538,18 +1539,18 @@ func TestTaskUpdate(t *testing.T) {
 		assert.NotNil(t, storeTask1)
 		storeTask2 := store.GetTask(readTx, testTask2.ID)
 		assert.NotNil(t, storeTask2)
-		assert.Equal(t, storeTask1.Status.State, api.TaskStateAssigned)
-		assert.Equal(t, storeTask2.Status.State, api.TaskStateAssigned)
+		assert.Equal(t, storeTask1.GetStatus().GetState(), api.TaskStateAssigned)
+		assert.Equal(t, storeTask2.GetStatus().GetState(), api.TaskStateAssigned)
 
 		storeTask3 := store.GetTask(readTx, testTask3.ID)
 		assert.NotNil(t, storeTask3)
-		assert.Equal(t, storeTask3.Status.State, api.TaskStateNew)
+		assert.Equal(t, storeTask3.GetStatus().GetState(), api.TaskStateNew)
 
 		// The update to task4's state should be ignored because it
 		// would have moved backwards.
 		storeTask4 := store.GetTask(readTx, testTask4.ID)
 		assert.NotNil(t, storeTask4)
-		assert.Equal(t, storeTask4.Status.State, api.TaskStateShutdown)
+		assert.Equal(t, storeTask4.GetStatus().GetState(), api.TaskStateShutdown)
 	})
 
 }
@@ -1567,12 +1568,12 @@ func TestTaskUpdateNoCert(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	testTask1.Status = api.TaskStatus{State: api.TaskStateAssigned}
+	testTask1.Status = &api.TaskStatus{State: api.TaskStateAssigned}
 	updReq := &api.UpdateTaskStatusRequest{
 		Updates: []*api.UpdateTaskStatusRequest_TaskStatusUpdate{
 			{
 				TaskID: testTask1.ID,
-				Status: &testTask1.Status,
+				Status: testTask1.Status,
 			},
 		},
 	}
@@ -1926,12 +1927,12 @@ func makeTasksAndDependenciesWithRedundantReferences(t *testing.T, nodeID string
 func taskSpecFromDependencies(dependencies ...any) api.TaskSpec {
 	var secretRefs []*api.SecretReference
 	var configRefs []*api.ConfigReference
-	var resourceRefs []api.ResourceReference
+	var resourceRefs []*api.ResourceReference
 	for _, d := range dependencies {
 		switch v := d.(type) {
 		case *api.Secret:
 			secretRefs = append(secretRefs, &api.SecretReference{
-				SecretName: v.Spec.Annotations.Name,
+				SecretName: v.GetSpec().GetAnnotations().GetName(),
 				SecretID:   v.ID,
 				Target: &api.SecretReference_File{
 					File: &api.FileTarget{
@@ -1944,7 +1945,7 @@ func taskSpecFromDependencies(dependencies ...any) api.TaskSpec {
 			})
 		case *api.Config:
 			configRefs = append(configRefs, &api.ConfigReference{
-				ConfigName: v.Spec.Annotations.Name,
+				ConfigName: v.GetSpec().GetAnnotations().GetName(),
 				ConfigID:   v.ID,
 				Target: &api.ConfigReference_File{
 					File: &api.FileTarget{
@@ -1956,7 +1957,7 @@ func taskSpecFromDependencies(dependencies ...any) api.TaskSpec {
 				},
 			})
 		case *api.ResourceReference:
-			resourceRefs = append(resourceRefs, api.ResourceReference{
+			resourceRefs = append(resourceRefs, &api.ResourceReference{
 				ResourceID:   v.ResourceID,
 				ResourceType: v.ResourceType,
 			})
@@ -2014,13 +2015,13 @@ func TestOldTasks(t *testing.T) {
 	testTask1 := &api.Task{
 		NodeID:       nodeID,
 		ID:           "testTask1",
-		Status:       api.TaskStatus{State: api.TaskStateAssigned},
+		Status:       &api.TaskStatus{State: api.TaskStateAssigned},
 		DesiredState: api.TaskStateReady,
 	}
 	testTask2 := &api.Task{
 		NodeID:       nodeID,
 		ID:           "testTask2",
-		Status:       api.TaskStatus{State: api.TaskStateAssigned},
+		Status:       &api.TaskStatus{State: api.TaskStateAssigned},
 		DesiredState: api.TaskStateReady,
 	}
 
@@ -2063,7 +2064,7 @@ func TestOldTasks(t *testing.T) {
 			return errors.New("no task")
 		}
 		task.NodeID = nodeID
-		task.Status = api.TaskStatus{State: api.TaskStateAssigned}
+		task.Status = &api.TaskStatus{State: api.TaskStateAssigned}
 		task.DesiredState = api.TaskStateRunning
 		return store.UpdateTask(tx, task)
 	}))
@@ -2111,13 +2112,13 @@ func TestOldTasksStatusChange(t *testing.T) {
 	testTask1 := &api.Task{
 		NodeID:       nodeID,
 		ID:           "testTask1",
-		Status:       api.TaskStatus{State: api.TaskStateAssigned},
+		Status:       &api.TaskStatus{State: api.TaskStateAssigned},
 		DesiredState: api.TaskStateReady,
 	}
 	testTask2 := &api.Task{
 		NodeID:       nodeID,
 		ID:           "testTask2",
-		Status:       api.TaskStatus{State: api.TaskStateAssigned},
+		Status:       &api.TaskStatus{State: api.TaskStateAssigned},
 		DesiredState: api.TaskStateReady,
 	}
 
@@ -2161,7 +2162,7 @@ func TestOldTasksStatusChange(t *testing.T) {
 		}
 		task.NodeID = nodeID
 		// only Status is changed for task1
-		task.Status = api.TaskStatus{State: api.TaskStateFailed, Err: "1234"}
+		task.Status = &api.TaskStatus{State: api.TaskStateFailed, Err: "1234"}
 		task.DesiredState = api.TaskStateReady
 		return store.UpdateTask(tx, task)
 	}))
@@ -2200,12 +2201,12 @@ func TestOldTasksBatch(t *testing.T) {
 	testTask1 := &api.Task{
 		NodeID: nodeID,
 		ID:     "testTask1",
-		Status: api.TaskStatus{State: api.TaskStateAssigned},
+		Status: &api.TaskStatus{State: api.TaskStateAssigned},
 	}
 	testTask2 := &api.Task{
 		NodeID: nodeID,
 		ID:     "testTask2",
-		Status: api.TaskStatus{State: api.TaskStateAssigned},
+		Status: &api.TaskStatus{State: api.TaskStateAssigned},
 	}
 
 	stream, err := gd.Clients[0].Tasks(context.Background(), &api.TasksRequest{SessionID: expectedSessionID})
@@ -2287,7 +2288,7 @@ func TestClusterUpdatesSendMessages(t *testing.T) {
 	{
 		msg, err = stream.Recv()
 		require.NoError(t, err)
-		require.Equal(t, expected, msg)
+		require.True(t, proto.Equal(expected, msg))
 	}
 
 	// changing the peers results in a new message with updated managers
@@ -2298,7 +2299,7 @@ func TestClusterUpdatesSendMessages(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, msg.Managers, 2)
 		expected.Managers = msg.Managers
-		require.Equal(t, expected, msg)
+		require.True(t, proto.Equal(expected, msg))
 	}
 
 	// changing the rootCA cert and has in the cluster results in a new message with an updated cert
@@ -2317,7 +2318,7 @@ func TestClusterUpdatesSendMessages(t *testing.T) {
 	{
 		msg, err = stream.Recv()
 		require.NoError(t, err)
-		require.Equal(t, expected, msg)
+		require.True(t, proto.Equal(expected, msg))
 	}
 }
 

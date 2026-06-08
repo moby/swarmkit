@@ -11,11 +11,12 @@ import (
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 )
 
 func createConfigSpec(name string, data []byte, labels map[string]string) *api.ConfigSpec {
 	return &api.ConfigSpec{
-		Annotations: api.Annotations{Name: name, Labels: labels},
+		Annotations: &api.Annotations{Name: name, Labels: labels},
 		Data:        data,
 	}
 }
@@ -110,7 +111,7 @@ func TestCreateConfig(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Config)
-	assert.Equal(t, *creationSpec, resp.Config.Spec)
+	assert.True(t, proto.Equal(creationSpec, resp.Config.Spec), "config spec should be equal")
 
 	// for sanity, check that the stored config still has the config data
 	var storedConfig *api.Config
@@ -151,7 +152,7 @@ func TestGetConfig(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Config)
-	assert.Equal(t, config, resp.Config)
+	assert.True(t, proto.Equal(config, resp.Config), "config should be equal")
 }
 
 func TestUpdateConfig(t *testing.T) {
@@ -179,8 +180,8 @@ func TestUpdateConfig(t *testing.T) {
 	config.Spec.Data = []byte{1}
 	resp, err := ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{
 		ConfigID:      config.ID,
-		Spec:          &config.Spec,
-		ConfigVersion: &config.Meta.Version,
+		Spec:          config.Spec,
+		ConfigVersion: config.Meta.Version,
 	})
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
@@ -189,8 +190,8 @@ func TestUpdateConfig(t *testing.T) {
 	config.Spec.Annotations.Name = "AnotherName"
 	resp, err = ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{
 		ConfigID:      config.ID,
-		Spec:          &config.Spec,
-		ConfigVersion: &config.Meta.Version,
+		Spec:          config.Spec,
+		ConfigVersion: config.Meta.Version,
 	})
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
@@ -200,8 +201,8 @@ func TestUpdateConfig(t *testing.T) {
 	assert.NotNil(t, config.Spec.Data)
 	resp, err = ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{
 		ConfigID:      config.ID,
-		Spec:          &config.Spec,
-		ConfigVersion: &config.Meta.Version,
+		Spec:          config.Spec,
+		ConfigVersion: config.Meta.Version,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -213,8 +214,8 @@ func TestUpdateConfig(t *testing.T) {
 	config.Spec.Data = nil
 	resp, err = ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{
 		ConfigID:      config.ID,
-		Spec:          &config.Spec,
-		ConfigVersion: &resp.Config.Meta.Version,
+		Spec:          config.Spec,
+		ConfigVersion: resp.Config.Meta.Version,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -227,8 +228,8 @@ func TestUpdateConfig(t *testing.T) {
 	config.Spec.Annotations.Name = "name"
 	resp, err = ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{
 		ConfigID:      config.ID,
-		Spec:          &config.Spec,
-		ConfigVersion: &resp.Config.Meta.Version,
+		Spec:          config.Spec,
+		ConfigVersion: resp.Config.Meta.Version,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -255,7 +256,7 @@ func TestRemoveUnusedConfig(t *testing.T) {
 
 	resp, err := ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigID: config.ID})
 	assert.NoError(t, err)
-	assert.Equal(t, api.RemoveConfigResponse{}, *resp)
+	assert.True(t, proto.Equal(&api.RemoveConfigResponse{}, resp), "remove response should be empty")
 
 	// ---- it was really removed because attempting to remove it again fails with a NotFound ----
 	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigID: config.ID})

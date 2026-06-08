@@ -8,6 +8,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
@@ -140,7 +141,7 @@ func (p *peer) resolveAddr(ctx context.Context, id uint64) (string, error) {
 // Returns the raft message struct size (not including the payload size) for the given raftpb.Message.
 // The payload is typically the snapshot or append entries.
 func raftMessageStructSize(m *raftpb.Message) int {
-	return (&api.ProcessRaftMessageRequest{Message: m}).Size() - len(m.Snapshot.Data)
+	return int(proto.Size(&api.ProcessRaftMessageRequest{Message: m})) - len(m.Snapshot.Data)
 }
 
 // Returns the max allowable payload based on MaxRaftMsgSize and
@@ -193,7 +194,7 @@ func splitSnapshotData(_ context.Context, m *raftpb.Message) []api.StreamRaftMes
 // and size larger than MaxRaftMsgSize.
 func needsSplitting(m *raftpb.Message) bool {
 	raftMsg := api.ProcessRaftMessageRequest{Message: m}
-	return m.Type == raftpb.MsgSnap && raftMsg.Size() > GRPCMaxMsgSize
+	return m.Type == raftpb.MsgSnap && int(proto.Size(&raftMsg)) > GRPCMaxMsgSize
 }
 
 func (p *peer) sendProcessMessage(ctx context.Context, m raftpb.Message) error {

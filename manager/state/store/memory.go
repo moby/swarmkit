@@ -13,8 +13,9 @@ import (
 
 	"github.com/docker/go-events"
 	"github.com/docker/go-metrics"
-	gogotypes "github.com/gogo/protobuf/types"
 	memdb "github.com/hashicorp/go-memdb"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/watch"
@@ -251,11 +252,18 @@ type tx struct {
 
 // changelistBetweenVersions returns the changes after "from" up to and
 // including "to".
-func (s *MemoryStore) changelistBetweenVersions(from, to api.Version) ([]api.Event, error) {
+func (s *MemoryStore) changelistBetweenVersions(from, to *api.Version) ([]api.Event, error) {
 	if s.proposer == nil {
 		return nil, errors.New("store does not support versioning")
 	}
-	changes, err := s.proposer.ChangesBetween(from, to)
+	var fromV, toV api.Version
+	if from != nil {
+		fromV = *from
+	}
+	if to != nil {
+		toV = *to
+	}
+	changes, err := s.proposer.ChangesBetween(fromV, toV)
 	if err != nil {
 		return nil, err
 	}
@@ -430,7 +438,7 @@ func (batch *Batch) Update(cb func(Tx) error) error {
 		if err != nil {
 			return err
 		}
-		batch.transactionSizeEstimate += sa.Size()
+		batch.transactionSizeEstimate += int(proto.Size(&sa))
 		batch.changelistLen++
 	}
 
@@ -590,7 +598,11 @@ func (tx *tx) create(table string, o api.StoreObject) error {
 
 	cp := o.CopyStoreObject()
 	meta := cp.GetMeta()
-	if err := touchMeta(&meta, tx.curVersion); err != nil {
+	if meta == nil {
+		meta = &api.Meta{}
+		cp.SetMeta(meta)
+	}
+	if err := touchMeta(meta, tx.curVersion); err != nil {
 		return err
 	}
 	cp.SetMeta(meta)
@@ -612,15 +624,19 @@ func (tx *tx) update(table string, o api.StoreObject) error {
 	}
 
 	meta := o.GetMeta()
+	if meta == nil {
+		meta = &api.Meta{}
+	}
 
 	if tx.curVersion != nil {
-		if oldN.GetMeta().Version != meta.Version {
+		oldMeta := oldN.GetMeta()
+		if oldMeta.GetVersion().GetIndex() != meta.GetVersion().GetIndex() {
 			return ErrSequenceConflict
 		}
 	}
 
 	cp := o.CopyStoreObject()
-	if err := touchMeta(&meta, tx.curVersion); err != nil {
+	if err := touchMeta(meta, tx.curVersion); err != nil {
 		return err
 	}
 	cp.SetMeta(meta)
@@ -954,7 +970,7 @@ func WatchFrom(store *MemoryStore, version *api.Version, specifiers ...api.Event
 		return nil, nil, errors.New("could not get current version from store")
 	}
 
-	changelist, err := store.changelistBetweenVersions(*version, *curVersion)
+	changelist, err := store.changelistBetweenVersions(version, curVersion)
 	if err != nil {
 		cancelWatch()
 		return nil, nil, err
@@ -1002,12 +1018,9 @@ func touchMeta(meta *api.Meta, version *api.Version) error {
 		return nil
 	}
 
-	now, err := gogotypes.TimestampProto(time.Now())
-	if err != nil {
-		return err
-	}
+	now := timestamppb.Now()
 
-	meta.Version = *version
+	meta.Version = version
 
 	// Updated CreatedAt if not defined
 	if meta.CreatedAt == nil {

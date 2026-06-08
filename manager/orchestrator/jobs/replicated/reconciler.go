@@ -88,7 +88,7 @@ func (r *Reconciler) ReconcileService(id string) error {
 	// indicates which Version of iteration we're on. We should only be looking
 	// at tasks of the latest Version
 
-	jobVersion := service.JobStatus.JobIteration.Index
+	jobVersion := service.JobStatus.GetJobIteration().GetIndex()
 
 	// now, check how many tasks we need and how many we have running. note
 	// that some of these Running tasks may complete before we even finish this
@@ -119,7 +119,7 @@ func (r *Reconciler) ReconcileService(id string) error {
 		// previous job iteration are not important
 		if task.JobIteration != nil {
 			if task.JobIteration.Index == jobVersion {
-				if task.Status.State == api.TaskStateCompleted {
+				if task.GetStatus().GetState() == api.TaskStateCompleted {
 					completeTasks++
 					slots[task.Slot] = true
 				}
@@ -127,7 +127,7 @@ func (r *Reconciler) ReconcileService(id string) error {
 				// the Restart Manager may put a task in the desired state Ready,
 				// so we should match not only tasks in desired state Completed,
 				// but also those in any valid running state.
-				if task.Status.State != api.TaskStateCompleted && task.DesiredState <= api.TaskStateCompleted {
+				if task.GetStatus().GetState() != api.TaskStateCompleted && task.DesiredState <= api.TaskStateCompleted {
 					runningTasks++
 					slots[task.Slot] = true
 
@@ -135,7 +135,7 @@ func (r *Reconciler) ReconcileService(id string) error {
 					// it. throw it on the pile if so. this is still counted as a
 					// running task for the purpose of determining how many new
 					// tasks to create.
-					if task.Status.State > api.TaskStateCompleted {
+					if task.GetStatus().GetState() > api.TaskStateCompleted {
 						restartTasks = append(restartTasks, task.ID)
 					}
 				}
@@ -143,7 +143,7 @@ func (r *Reconciler) ReconcileService(id string) error {
 				// tasks belonging to a previous iteration of the job may
 				// exist. if any such tasks exist, they should have their task
 				// state set to Remove
-				if task.Status.State <= api.TaskStateRunning && task.DesiredState != api.TaskStateRemove {
+				if task.GetStatus().GetState() <= api.TaskStateRunning && task.DesiredState != api.TaskStateRemove {
 					removeTasks = append(removeTasks, task.ID)
 				}
 			}

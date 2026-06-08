@@ -60,7 +60,7 @@ func (ra *ResourceAllocator) AttachNetwork(ctx context.Context, request *api.Att
 	t := &api.Task{
 		ID:     identity.NewID(),
 		NodeID: nodeInfo.NodeID,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Attachment{
 				Attachment: &api.NetworkAttachmentSpec{
 					ContainerID: request.ContainerID,
@@ -73,7 +73,7 @@ func (ra *ResourceAllocator) AttachNetwork(ctx context.Context, request *api.Att
 				},
 			},
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State:     api.TaskStateNew,
 			Timestamp: ptypes.MustTimestampProto(time.Now()),
 			Message:   "created",

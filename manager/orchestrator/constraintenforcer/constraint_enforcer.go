@@ -154,12 +154,12 @@ loop:
 		if service := services[t.ServiceID]; service != nil {
 			// This task is associated with a service, so we use the service's
 			// current placement constraints.
-			placement = service.Spec.Task.Placement
+			placement = service.GetSpec().GetTask().GetPlacement()
 		} else {
 			// This task is not associated with a service (or the service no
 			// longer exists), so we use the placement constraints from the
 			// original task spec.
-			placement = t.Spec.Placement
+			placement = t.GetSpec().GetPlacement()
 		}
 		if placement != nil && len(placement.Constraints) > 0 {
 			constraints, _ := constraint.Parse(placement.Constraints)
@@ -171,18 +171,18 @@ loop:
 
 		// Ensure that the task assigned to the node
 		// still satisfies the resource limits.
-		if t.Spec.Resources != nil && t.Spec.Resources.Reservations != nil {
-			if t.Spec.Resources.Reservations.MemoryBytes > available.MemoryBytes {
+		if t.GetSpec().GetResources() != nil && t.GetSpec().GetResources().GetReservations() != nil {
+			if t.GetSpec().GetResources().GetReservations().GetMemoryBytes() > available.MemoryBytes {
 				removeTasks[t.ID] = t
 				continue
 			}
-			if t.Spec.Resources.Reservations.NanoCPUs > available.NanoCPUs {
+			if t.GetSpec().GetResources().GetReservations().GetNanoCPUs() > available.NanoCPUs {
 				removeTasks[t.ID] = t
 				continue
 			}
 
-			available.MemoryBytes -= t.Spec.Resources.Reservations.MemoryBytes
-			available.NanoCPUs -= t.Spec.Resources.Reservations.NanoCPUs
+			available.MemoryBytes -= t.GetSpec().GetResources().GetReservations().GetMemoryBytes()
+			available.NanoCPUs -= t.GetSpec().GetResources().GetReservations().GetNanoCPUs()
 		}
 
 		// Ensure that the task assigned to the node

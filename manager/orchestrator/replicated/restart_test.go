@@ -4,9 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/testutils"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -33,17 +32,17 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
 					Restart: &api.RestartPolicy{
 						Condition: api.RestartOnAny,
-						Delay:     gogotypes.DurationProto(0),
+						Delay:     durationpb.New(0),
 					},
 				},
 				Mode: &api.ServiceSpec_Replicated{
@@ -73,7 +72,7 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
+	updatedTask1.Status = &api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
@@ -96,7 +95,7 @@ func TestOrchestratorRestartOnAny(t *testing.T) {
 
 	// Mark the second task as completed. Confirm that it gets restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateCompleted, Timestamp: ptypes.MustTimestampProto(time.Now())}
+	updatedTask2.Status = &api.TaskStatus{State: api.TaskStateCompleted, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
@@ -138,17 +137,17 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
 					Restart: &api.RestartPolicy{
 						Condition: api.RestartOnFailure,
-						Delay:     gogotypes.DurationProto(0),
+						Delay:     durationpb.New(0),
 					},
 				},
 				Mode: &api.ServiceSpec_Replicated{
@@ -178,7 +177,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
+	updatedTask1.Status = &api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
@@ -198,7 +197,7 @@ func TestOrchestratorRestartOnFailure(t *testing.T) {
 
 	// Mark the second task as completed. Confirm that it does not get restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateCompleted, Timestamp: ptypes.MustTimestampProto(time.Now())}
+	updatedTask2.Status = &api.TaskStatus{State: api.TaskStateCompleted, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
@@ -262,11 +261,11 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
@@ -318,7 +317,7 @@ func TestOrchestratorRestartOnNone(t *testing.T) {
 
 	// Mark the second task as completed. Confirm that it does not get restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateCompleted, Timestamp: ptypes.MustTimestampProto(time.Now())}
+	updatedTask2.Status = &api.TaskStatus{State: api.TaskStateCompleted, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
@@ -395,17 +394,17 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
 					Restart: &api.RestartPolicy{
 						Condition: api.RestartOnAny,
-						Delay:     gogotypes.DurationProto(100 * time.Millisecond),
+						Delay:     durationpb.New(100 * time.Millisecond),
 					},
 				},
 				Mode: &api.ServiceSpec_Replicated{
@@ -435,7 +434,7 @@ func TestOrchestratorRestartDelay(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
+	updatedTask1.Status = &api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	before := time.Now()
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
@@ -487,8 +486,8 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 				Mode: &api.ServiceSpec_Replicated{
@@ -496,13 +495,13 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 						Replicas: 2,
 					},
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
 					Restart: &api.RestartPolicy{
 						Condition:   api.RestartOnAny,
-						Delay:       gogotypes.DurationProto(100 * time.Millisecond),
+						Delay:       durationpb.New(100 * time.Millisecond),
 						MaxAttempts: 1,
 					},
 				},
@@ -523,7 +522,7 @@ func TestOrchestratorRestartMaxAttempts(t *testing.T) {
 
 	failTask := func(task *api.Task, expectRestart bool) {
 		task = task.Copy()
-		task.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
+		task.Status = &api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
 		err = s.Update(func(tx store.Tx) error {
 			assert.NoError(t, store.UpdateTask(tx, task))
 			return nil
@@ -655,8 +654,8 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 				Mode: &api.ServiceSpec_Replicated{
@@ -664,12 +663,12 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 						Replicas: 2,
 					},
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Restart: &api.RestartPolicy{
 						Condition:   api.RestartOnAny,
-						Delay:       gogotypes.DurationProto(100 * time.Millisecond),
+						Delay:       durationpb.New(100 * time.Millisecond),
 						MaxAttempts: 1,
-						Window:      gogotypes.DurationProto(500 * time.Millisecond),
+						Window:      durationpb.New(500 * time.Millisecond),
 					},
 				},
 			},
@@ -694,7 +693,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 
 	// Fail the first task. Confirm that it gets restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
+	updatedTask1.Status = &api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	before := time.Now()
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
@@ -727,7 +726,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 
 	// Fail the second task. Confirm that it gets restarted.
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
+	updatedTask2.Status = &api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
 		return nil
@@ -752,7 +751,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 
 	// Fail the first instance again. It should not be restarted.
 	updatedTask1 = observedTask3.Copy()
-	updatedTask1.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
+	updatedTask1.Status = &api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
@@ -774,7 +773,7 @@ func TestOrchestratorRestartWindow(t *testing.T) {
 	// Fail the second instance again. It should get restarted because
 	// enough time has elapsed since the last restarts.
 	updatedTask2 = observedTask5.Copy()
-	updatedTask2.Status = api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
+	updatedTask2.Status = &api.TaskStatus{State: api.TaskStateFailed, Timestamp: ptypes.MustTimestampProto(time.Now())}
 	before = time.Now()
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))

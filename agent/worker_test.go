@@ -12,7 +12,23 @@ import (
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/assert"
 	bolt "go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 )
+
+// assertTasksEqual compares two slices of *api.Task using proto.Equal to avoid
+// issues with unexported fields in protoimpl.MessageState.
+func assertTasksEqual(t *testing.T, expected, actual []*api.Task, msgAndArgs ...interface{}) bool {
+	t.Helper()
+	if len(expected) != len(actual) {
+		return assert.Fail(t, "task slice lengths differ", "expected %d tasks, got %d", len(expected), len(actual))
+	}
+	for i := range expected {
+		if !proto.Equal(expected[i], actual[i]) {
+			return assert.Fail(t, "tasks not equal", "tasks at index %d differ: expected %v, got %v", i, expected[i], actual[i])
+		}
+	}
+	return true
+}
 
 type testPublisherProvider struct {
 }
@@ -87,7 +103,7 @@ func TestWorkerAssign(t *testing.T) {
 							Task: &api.Task{ID: "task-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -95,7 +111,7 @@ func TestWorkerAssign(t *testing.T) {
 							Secret: &api.Secret{ID: "secret-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -103,7 +119,7 @@ func TestWorkerAssign(t *testing.T) {
 							Config: &api.Config{ID: "config-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -111,7 +127,7 @@ func TestWorkerAssign(t *testing.T) {
 							Volume: &api.VolumeAssignment{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 				// these should be ignored
 				{
@@ -120,7 +136,7 @@ func TestWorkerAssign(t *testing.T) {
 							Secret: &api.Secret{ID: "secret-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -128,7 +144,7 @@ func TestWorkerAssign(t *testing.T) {
 							Task: &api.Task{ID: "task-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -136,7 +152,7 @@ func TestWorkerAssign(t *testing.T) {
 							Config: &api.Config{ID: "config-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -144,7 +160,7 @@ func TestWorkerAssign(t *testing.T) {
 							Volume: &api.VolumeAssignment{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 			},
 			expectedTasks: []*api.Task{
@@ -171,7 +187,7 @@ func TestWorkerAssign(t *testing.T) {
 							Task: &api.Task{ID: "task-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -179,7 +195,7 @@ func TestWorkerAssign(t *testing.T) {
 							Secret: &api.Secret{ID: "secret-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -187,7 +203,7 @@ func TestWorkerAssign(t *testing.T) {
 							Config: &api.Config{ID: "config-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -195,7 +211,7 @@ func TestWorkerAssign(t *testing.T) {
 							Volume: &api.VolumeAssignment{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 			},
 			expectedTasks: []*api.Task{
@@ -241,8 +257,8 @@ func TestWorkerAssign(t *testing.T) {
 			})
 		}))
 
-		assert.Equal(t, testcase.expectedTasks, tasks)
-		assert.Equal(t, testcase.expectedAssigned, assigned)
+		assertTasksEqual(t, testcase.expectedTasks, tasks)
+		assertTasksEqual(t, testcase.expectedAssigned, assigned)
 		for _, secret := range testcase.expectedSecrets {
 			secret, err := executor.Secrets().Get(secret.ID)
 			assert.NoError(t, err)
@@ -298,7 +314,7 @@ func TestWorkerWait(t *testing.T) {
 					Task: &api.Task{ID: "task-1"},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentActionUpdate,
 		},
 		{
 			Assignment: &api.Assignment{
@@ -306,7 +322,7 @@ func TestWorkerWait(t *testing.T) {
 					Task: &api.Task{ID: "task-2"},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentActionUpdate,
 		},
 		{
 			Assignment: &api.Assignment{
@@ -314,7 +330,7 @@ func TestWorkerWait(t *testing.T) {
 					Secret: &api.Secret{ID: "secret-1"},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentActionUpdate,
 		},
 		{
 			Assignment: &api.Assignment{
@@ -322,7 +338,7 @@ func TestWorkerWait(t *testing.T) {
 					Config: &api.Config{ID: "config-1"},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentActionUpdate,
 		},
 		{
 			Assignment: &api.Assignment{
@@ -330,7 +346,7 @@ func TestWorkerWait(t *testing.T) {
 					Volume: &api.VolumeAssignment{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentActionUpdate,
 		},
 	}
 
@@ -372,8 +388,8 @@ func TestWorkerWait(t *testing.T) {
 		})
 	}))
 
-	assert.Equal(t, expectedTasks, tasks)
-	assert.Equal(t, expectedAssigned, assigned)
+	assertTasksEqual(t, expectedTasks, tasks)
+	assertTasksEqual(t, expectedAssigned, assigned)
 	for _, secret := range expectedSecrets {
 		secret, err := executor.Secrets().Get(secret.ID)
 		assert.NoError(t, err)
@@ -450,7 +466,7 @@ func TestWorkerUpdate(t *testing.T) {
 					Task: &api.Task{ID: "task-1"},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentActionUpdate,
 		},
 		{
 			Assignment: &api.Assignment{
@@ -458,7 +474,7 @@ func TestWorkerUpdate(t *testing.T) {
 					Secret: &api.Secret{ID: "secret-1"},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentActionUpdate,
 		},
 		{
 			Assignment: &api.Assignment{
@@ -466,7 +482,7 @@ func TestWorkerUpdate(t *testing.T) {
 					Config: &api.Config{ID: "config-1"},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentActionUpdate,
 		},
 		{
 			Assignment: &api.Assignment{
@@ -474,7 +490,7 @@ func TestWorkerUpdate(t *testing.T) {
 					Volume: &api.VolumeAssignment{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentActionUpdate,
 		},
 	}))
 
@@ -512,7 +528,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Task: &api.Task{ID: "task-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 			},
 			expectedTasks: []*api.Task{
@@ -540,7 +556,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Task: &api.Task{ID: "task-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -548,7 +564,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Secret: &api.Secret{ID: "secret-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -556,7 +572,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Config: &api.Config{ID: "config-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -564,7 +580,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Volume: &api.VolumeAssignment{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 			},
 			expectedTasks: []*api.Task{
@@ -597,7 +613,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Task: &api.Task{ID: "task-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -605,7 +621,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Secret: &api.Secret{ID: "secret-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -613,7 +629,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Secret: &api.Secret{ID: "secret-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -621,7 +637,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Config: &api.Config{ID: "config-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -629,7 +645,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Config: &api.Config{ID: "config-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -637,7 +653,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Volume: &api.VolumeAssignment{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -645,7 +661,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Volume: &api.VolumeAssignment{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				},
 			},
 			expectedTasks: []*api.Task{
@@ -673,7 +689,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Task: &api.Task{ID: "task-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -681,7 +697,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Secret: &api.Secret{ID: "secret-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -689,7 +705,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Task: &api.Task{ID: "task-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -697,7 +713,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Secret: &api.Secret{ID: "secret-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -705,7 +721,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Config: &api.Config{ID: "config-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -713,7 +729,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Config: &api.Config{ID: "config-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -721,7 +737,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Volume: &api.VolumeAssignment{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 				{
 					Assignment: &api.Assignment{
@@ -729,7 +745,7 @@ func TestWorkerUpdate(t *testing.T) {
 							Volume: &api.VolumeAssignment{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentActionRemove,
 				},
 			},
 		},
@@ -750,8 +766,8 @@ func TestWorkerUpdate(t *testing.T) {
 			})
 		}))
 
-		assert.Equal(t, testcase.expectedTasks, tasks)
-		assert.Equal(t, testcase.expectedAssigned, assigned)
+		assertTasksEqual(t, testcase.expectedTasks, tasks)
+		assertTasksEqual(t, testcase.expectedAssigned, assigned)
 		for _, secret := range testcase.expectedSecrets {
 			secret, err := executor.Secrets().Get(secret.ID)
 			assert.NoError(t, err)

@@ -89,14 +89,14 @@ func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
 	for _, t := range tasks {
 		// Ignore all tasks that have not reached PENDING
 		// state and tasks that no longer consume resources.
-		if t.Status.State < api.TaskStatePending || t.Status.State > api.TaskStateRunning {
+		if t.GetStatus().GetState() < api.TaskStatePending || t.GetStatus().GetState() > api.TaskStateRunning {
 			continue
 		}
 
 		// Also ignore tasks that have not yet been assigned but desired state
 		// is beyond TaskStateCompleted. This can happen if you update, delete
 		// or scale down a service before its tasks were assigned.
-		if t.Status.State == api.TaskStatePending && t.DesiredState > api.TaskStateCompleted {
+		if t.GetStatus().GetState() == api.TaskStatePending && t.DesiredState > api.TaskStateCompleted {
 			continue
 		}
 
@@ -106,7 +106,7 @@ func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
 			continue
 		}
 		// preassigned tasks need to validate resource requirement on corresponding node
-		if t.Status.State == api.TaskStatePending {
+		if t.GetStatus().GetState() == api.TaskStatePending {
 			s.preassignedTasks[t.ID] = struct{}{}
 			s.pendingPreassignedTasks[t.ID] = t
 			continue
@@ -128,7 +128,6 @@ func (s *Scheduler) setupTasksList(tx store.ReadTx) error {
 func (s *Scheduler) Run(pctx context.Context) error {
 	ctx := log.WithModule(pctx, "scheduler")
 	defer close(s.doneChan)
-
 	s.pipeline.AddFilter(&VolumesFilter{vs: s.volumes})
 
 	updates, cancel, err := store.ViewAndWatch(s.store, s.setupTasksList)
@@ -254,7 +253,7 @@ func (s *Scheduler) enqueue(t *api.Task) {
 func (s *Scheduler) createTask(_ context.Context, t *api.Task) bool {
 	// Ignore all tasks that have not reached PENDING
 	// state, and tasks that no longer consume resources.
-	if t.Status.State < api.TaskStatePending || t.Status.State > api.TaskStateRunning {
+	if t.GetStatus().GetState() < api.TaskStatePending || t.GetStatus().GetState() > api.TaskStateRunning {
 		return false
 	}
 
@@ -265,7 +264,7 @@ func (s *Scheduler) createTask(_ context.Context, t *api.Task) bool {
 		return true
 	}
 
-	if t.Status.State == api.TaskStatePending {
+	if t.GetStatus().GetState() == api.TaskStatePending {
 		s.preassignedTasks[t.ID] = struct{}{}
 		s.pendingPreassignedTasks[t.ID] = t
 		// preassigned tasks do not contribute to running tasks count
@@ -283,7 +282,7 @@ func (s *Scheduler) createTask(_ context.Context, t *api.Task) bool {
 func (s *Scheduler) updateTask(ctx context.Context, t *api.Task) bool {
 	// Ignore all tasks that have not reached PENDING
 	// state.
-	if t.Status.State < api.TaskStatePending {
+	if t.GetStatus().GetState() < api.TaskStatePending {
 		return false
 	}
 
@@ -291,13 +290,13 @@ func (s *Scheduler) updateTask(ctx context.Context, t *api.Task) bool {
 
 	// Ignore all tasks that have not reached Pending
 	// state, and tasks that no longer consume resources.
-	if t.Status.State > api.TaskStateRunning {
+	if t.GetStatus().GetState() > api.TaskStateRunning {
 		if oldTask == nil {
 			return false
 		}
 
-		if t.Status.State != oldTask.Status.State &&
-			(t.Status.State == api.TaskStateFailed || t.Status.State == api.TaskStateRejected) {
+		if t.GetStatus().GetState() != oldTask.GetStatus().GetState() &&
+			(t.GetStatus().GetState() == api.TaskStateFailed || t.GetStatus().GetState() == api.TaskStateRejected) {
 			// Keep track of task failures, so other nodes can be preferred
 			// for scheduling this service if it looks like the service is
 			// failing in a loop on this node. However, skip this for
@@ -327,7 +326,7 @@ func (s *Scheduler) updateTask(ctx context.Context, t *api.Task) bool {
 		return true
 	}
 
-	if t.Status.State == api.TaskStatePending {
+	if t.GetStatus().GetState() == api.TaskStatePending {
 		if oldTask != nil {
 			s.deleteTask(oldTask)
 		}
@@ -408,7 +407,7 @@ func (s *Scheduler) processPreassignedTasks(ctx context.Context) {
 	successful, failed := s.applySchedulingDecisions(ctx, schedulingDecisions)
 
 	for _, decision := range successful {
-		if decision.new.Status.State == api.TaskStateAssigned {
+		if decision.new.GetStatus().GetState() == api.TaskStateAssigned {
 			delete(s.pendingPreassignedTasks, decision.old.ID)
 		}
 	}
@@ -428,8 +427,8 @@ func (s *Scheduler) processPreassignedTasks(ctx context.Context) {
 // tick attempts to schedule the queue.
 func (s *Scheduler) tick(ctx context.Context) {
 	type commonSpecKey struct {
-		serviceID   string
-		specVersion api.Version
+		serviceID        string
+		specVersionIndex uint64
 	}
 	tasksByCommonSpec := make(map[commonSpecKey]map[string]*api.Task)
 	var oneOffTasks []*api.Task
@@ -445,8 +444,8 @@ func (s *Scheduler) tick(ctx context.Context) {
 		// Group tasks with common specs
 		if t.SpecVersion != nil {
 			taskGroupKey := commonSpecKey{
-				serviceID:   t.ServiceID,
-				specVersion: *t.SpecVersion,
+				serviceID:        t.ServiceID,
+				specVersionIndex: t.SpecVersion.GetIndex(),
 			}
 
 			if tasksByCommonSpec[taskGroupKey] == nil {
@@ -467,7 +466,6 @@ func (s *Scheduler) tick(ctx context.Context) {
 	for _, t := range oneOffTasks {
 		s.scheduleTaskGroup(ctx, map[string]*api.Task{t.ID: t}, schedulingDecisions)
 	}
-
 	_, failed := s.applySchedulingDecisions(ctx, schedulingDecisions)
 	for _, decision := range failed {
 		s.allTasks[decision.old.ID] = decision.old
@@ -523,14 +521,14 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 						continue
 					}
 
-					if t.Status.State == decision.new.Status.State &&
-						t.Status.Message == decision.new.Status.Message &&
-						t.Status.Err == decision.new.Status.Err {
+					if t.GetStatus().GetState() == decision.new.GetStatus().GetState() &&
+						t.GetStatus().GetMessage() == decision.new.GetStatus().GetMessage() &&
+						t.GetStatus().GetErr() == decision.new.GetStatus().GetErr() {
 						// No changes, ignore
 						continue
 					}
 
-					if t.Status.State >= api.TaskStateAssigned {
+					if t.GetStatus().GetState() >= api.TaskStateAssigned {
 						nodeInfo, err := s.nodeSet.nodeInfo(decision.new.NodeID)
 						if err != nil {
 							failed = append(failed, decision)
@@ -575,10 +573,10 @@ func (s *Scheduler) applySchedulingDecisions(ctx context.Context, schedulingDeci
 						// be set to Drain before it can be deleted. it stops
 						// us from having to worry about any other field when
 						// attempting to use the Volume.
-						if v.Spec.Availability != api.VolumeAvailabilityActive {
+						if v.GetSpec().GetAvailability() != api.VolumeAvailabilityActive {
 							log.G(ctx).Debugf(
 								"scheduler failed to update task %s because volume %s has availability %s",
-								taskID, v.ID, v.Spec.Availability.String(),
+								taskID, v.ID, v.GetSpec().GetAvailability().String(),
 							)
 							failed = append(failed, decision)
 							continue taskLoop
@@ -650,6 +648,13 @@ func (s *Scheduler) taskFitNode(_ context.Context, t *api.Task, nodeID string) *
 		return nil
 	}
 	newT := *t
+	// Create a NEW Status to avoid modifying the shared pointer
+	if t.Status != nil {
+		statusCopy := *t.Status
+		newT.Status = &statusCopy
+	} else {
+		newT.Status = &api.TaskStatus{}
+	}
 	s.pipeline.SetTask(t)
 	if !s.pipeline.Process(&nodeInfo) {
 		// this node cannot accommodate this task
@@ -676,7 +681,7 @@ func (s *Scheduler) taskFitNode(_ context.Context, t *api.Task, nodeID string) *
 
 	newT.Volumes = attachments
 
-	newT.Status = api.TaskStatus{
+	newT.Status = &api.TaskStatus{
 		State:     api.TaskStateAssigned,
 		Timestamp: ptypes.MustTimestampProto(time.Now()),
 		Message:   "scheduler confirmed task can run on preassigned node",
@@ -735,8 +740,8 @@ func (s *Scheduler) scheduleTaskGroup(ctx context.Context, taskGroup map[string]
 	}
 
 	var prefs []*api.PlacementPreference
-	if t.Spec.Placement != nil {
-		prefs = t.Spec.Placement.Preferences
+	if t.GetSpec().GetPlacement() != nil {
+		prefs = t.GetSpec().GetPlacement().GetPreferences()
 	}
 
 	tree := s.nodeSet.tree(t.ServiceID, prefs, len(taskGroup), s.pipeline.Process, nodeLess)
@@ -872,7 +877,7 @@ func (s *Scheduler) scheduleNTasksOnNodes(ctx context.Context, n int, taskGroup 
 		newT.Volumes = attachments
 		newT.NodeID = node.ID
 		s.volumes.reserveTaskVolumes(&newT)
-		newT.Status = api.TaskStatus{
+		newT.Status = &api.TaskStatus{
 			State:     api.TaskStateAssigned,
 			Timestamp: ptypes.MustTimestampProto(time.Now()),
 			Message:   "scheduler assigned task to node",
@@ -940,6 +945,14 @@ func (s *Scheduler) noSuitableNode(ctx context.Context, taskGroup map[string]*ap
 		log.G(ctx).WithField("task.id", t.ID).Debug("no suitable node available for task")
 
 		newT := *t
+		// Create a NEW Status object to avoid modifying the shared pointer
+		// that the store and the event may hold.
+		if t.Status != nil {
+			statusCopy := *t.Status
+			newT.Status = &statusCopy
+		} else {
+			newT.Status = &api.TaskStatus{}
+		}
 		newT.Status.Timestamp = ptypes.MustTimestampProto(time.Now())
 		sv := service.SpecVersion
 		tv := newT.SpecVersion
@@ -947,7 +960,7 @@ func (s *Scheduler) noSuitableNode(ctx context.Context, taskGroup map[string]*ap
 			log.G(ctx).WithField("task.id", t.ID).Debug(
 				"task belongs to old revision of service",
 			)
-			if t.Status.State == api.TaskStatePending && t.DesiredState >= api.TaskStateShutdown {
+			if t.GetStatus().GetState() == api.TaskStatePending && t.DesiredState >= api.TaskStateShutdown {
 				log.G(ctx).WithField("task.id", t.ID).Debug(
 					"task is desired shutdown, scheduler will go ahead and do so",
 				)

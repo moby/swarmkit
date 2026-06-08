@@ -9,8 +9,8 @@ import (
 	enginemount "github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/go-units"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 func TestVolumesAndBinds(t *testing.T) {
@@ -40,9 +40,9 @@ func TestVolumesAndBinds(t *testing.T) {
 	for _, c := range cases {
 		cfg := containerConfig{
 			task: &api.Task{
-				Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+				Spec: &api.TaskSpec{Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
-						Mounts: []api.Mount{c.config},
+						Mounts: []*api.Mount{c.config},
 					},
 				}},
 			},
@@ -88,9 +88,9 @@ func TestTmpfsOptions(t *testing.T) {
 	for _, c := range cases {
 		cfg := containerConfig{
 			task: &api.Task{
-				Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+				Spec: &api.TaskSpec{Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
-						Mounts: []api.Mount{c.config},
+						Mounts: []*api.Mount{c.config},
 					},
 				}},
 			},
@@ -112,15 +112,15 @@ func TestTmpfsOptions(t *testing.T) {
 func TestHealthcheck(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+			Spec: &api.TaskSpec{Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Healthcheck: &api.HealthConfig{
 						Test:          []string{"a", "b", "c"},
-						Interval:      gogotypes.DurationProto(time.Second),
-						Timeout:       gogotypes.DurationProto(time.Minute),
+						Interval:      durationpb.New(time.Second),
+						Timeout:       durationpb.New(time.Minute),
 						Retries:       10,
-						StartPeriod:   gogotypes.DurationProto(time.Minute),
-						StartInterval: gogotypes.DurationProto(time.Minute),
+						StartPeriod:   durationpb.New(time.Minute),
+						StartInterval: durationpb.New(time.Minute),
 					},
 				},
 			}},
@@ -143,7 +143,7 @@ func TestHealthcheck(t *testing.T) {
 func TestExtraHosts(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+			Spec: &api.TaskSpec{Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Hosts: []string{
 						"1.2.3.4 example.com",
@@ -182,7 +182,7 @@ func TestExtraHosts(t *testing.T) {
 func TestPidLimit(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+			Spec: &api.TaskSpec{Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					PidsLimit: 10,
 				},
@@ -202,7 +202,7 @@ func TestPidLimit(t *testing.T) {
 func TestStopSignal(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+			Spec: &api.TaskSpec{Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					StopSignal: "SIGWINCH",
 				},
@@ -220,7 +220,7 @@ func TestStopSignal(t *testing.T) {
 func TestInit(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+			Spec: &api.TaskSpec{Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					StopSignal: "SIGWINCH",
 				},
@@ -244,7 +244,7 @@ func TestInit(t *testing.T) {
 func TestIsolation(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Isolation: api.ContainerIsolationHyperV,
@@ -264,7 +264,7 @@ func TestIsolation(t *testing.T) {
 func TestCapabilityAdd(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						CapabilityAdd: []string{"CAP_NET_RAW", "CAP_SYS_CHROOT"},
@@ -284,7 +284,7 @@ func TestCapabilityAdd(t *testing.T) {
 func TestCapabilityDrop(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						CapabilityDrop: []string{"CAP_KILL"},
@@ -304,7 +304,7 @@ func TestCapabilityDrop(t *testing.T) {
 func TestUlimits(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Ulimits: []*api.ContainerSpec_Ulimit{

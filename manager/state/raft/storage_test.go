@@ -483,8 +483,8 @@ func proposeLargeValue(t *testing.T, raftNode *raftutils.TestNode, time time.Dur
 	}
 	node := &api.Node{
 		ID: nodeIDStr,
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: nodeIDStr,
 				Labels: map[string]string{
 					"largestring": string(a),

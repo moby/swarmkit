@@ -85,10 +85,10 @@ func newTestServer(t *testing.T) *testServer {
 func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, membership api.NodeSpec_Membership, state api.NodeStatus_State) *api.Node {
 	node := &api.Node{
 		ID: id,
-		Spec: api.NodeSpec{
+		Spec: &api.NodeSpec{
 			Membership: membership,
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: state,
 		},
 		Role: role,

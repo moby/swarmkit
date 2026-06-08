@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
@@ -155,7 +156,7 @@ func (m *MockDispatcher) Assignments(_ *api.AssignmentsRequest, stream api.Dispa
 
 // Heartbeat always successfully heartbeats
 func (m *MockDispatcher) Heartbeat(context.Context, *api.HeartbeatRequest) (*api.HeartbeatResponse, error) {
-	return &api.HeartbeatResponse{Period: time.Second * 5}, nil
+	return &api.HeartbeatResponse{Period: durationpb.New(time.Second * 5)}, nil
 }
 
 // Session allows a session to be established, and sends the node info

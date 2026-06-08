@@ -18,7 +18,7 @@ func createTask(t *testing.T, ts *testServer, desiredState api.TaskState) *api.T
 	task := &api.Task{
 		ID:           identity.NewID(),
 		DesiredState: desiredState,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},

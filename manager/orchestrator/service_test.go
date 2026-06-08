@@ -13,7 +13,7 @@ func TestIsReplicatedJob(t *testing.T) {
 	// first, create a spec with no mode, that we can reuse for each subtest.
 	service := &api.Service{
 		ID:   "someService",
-		Spec: api.ServiceSpec{},
+		Spec: &api.ServiceSpec{},
 	}
 	// this might seem like a good use-case for a table-based test, but the
 	// various service modes do not share a common public interface, and so
@@ -41,7 +41,7 @@ func TestIsGlobalJob(t *testing.T) {
 	// first, create a spec with no mode, that we can reuse for each subtest.
 	service := &api.Service{
 		ID:   "someService",
-		Spec: api.ServiceSpec{},
+		Spec: &api.ServiceSpec{},
 	}
 	// this might seem like a good use-case for a table-based test, but the
 	// various service modes do not share a common public interface, and so

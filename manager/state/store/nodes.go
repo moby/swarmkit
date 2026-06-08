@@ -162,5 +162,5 @@ func (ni nodeIndexerByMembership) FromObject(obj any) (bool, []byte, error) {
 	n := obj.(*api.Node)
 
 	// Add the null character as a terminator
-	return true, []byte(strconv.FormatInt(int64(n.Spec.Membership), 10) + "\x00"), nil
+	return true, []byte(strconv.FormatInt(int64(n.GetSpec().GetMembership()), 10) + "\x00"), nil
 }

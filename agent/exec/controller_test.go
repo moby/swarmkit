@@ -7,7 +7,8 @@ import (
 	"runtime"
 	"testing"
 
-	gogotypes "github.com/gogo/protobuf/types"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/stretchr/testify/assert"
@@ -25,11 +26,11 @@ func TestResolve(t *testing.T) {
 	assert.Equal(t, api.TaskStateAccepted, status.State)
 	assert.Equal(t, "accepted", status.Message)
 
-	task.Status = *status
+	task.Status = status
 	// now, we get no status update.
 	_, status, err = Resolve(ctx, task, executor)
 	assert.NoError(t, err)
-	assert.Equal(t, task.Status, *status)
+	assert.True(t, proto.Equal(task.Status, status))
 
 	// now test an error causing rejection
 	executor.err = errors.New("some error")
@@ -53,11 +54,11 @@ func TestResolve(t *testing.T) {
 	// task is now foobared, from a reporting perspective but we can now
 	// resolve the controller for some reason. Ensure the task state isn't
 	// touched.
-	task.Status = *status
+	task.Status = status
 	executor.err = nil
 	_, status, err = Resolve(ctx, task, executor)
 	assert.NoError(t, err)
-	assert.Equal(t, task.Status, *status)
+	assert.True(t, proto.Equal(task.Status, status))
 }
 
 func TestAcceptPrepare(t *testing.T) {
@@ -81,14 +82,14 @@ func TestAcceptPrepare(t *testing.T) {
 	})
 
 	// Actually prepare the task.
-	task.Status = *status
+	task.Status = status
 
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStatePreparing,
 		Message: "preparing",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateReady,
@@ -116,14 +117,14 @@ func TestPrepareAlready(t *testing.T) {
 	})
 
 	// Actually prepare the task.
-	task.Status = *status
+	task.Status = status
 
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStatePreparing,
 		Message: "preparing",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateReady,
@@ -151,14 +152,14 @@ func TestPrepareFailure(t *testing.T) {
 	})
 
 	// Actually prepare the task.
-	task.Status = *status
+	task.Status = status
 
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStatePreparing,
 		Message: "preparing",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateRejected,
@@ -197,7 +198,7 @@ func TestReadyRunning(t *testing.T) {
 		Message: "starting",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	// start the container
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
@@ -205,7 +206,7 @@ func TestReadyRunning(t *testing.T) {
 		Message: "started",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	// resume waiting
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
@@ -213,7 +214,7 @@ func TestReadyRunning(t *testing.T) {
 		Message: "started",
 	}, ErrTaskRetry)
 
-	task.Status = *status
+	task.Status = status
 	// wait and cancel
 	dctlr := &StatuserController{
 		StubController: ctlr,
@@ -256,7 +257,7 @@ func TestReadyRunningExitFailure(t *testing.T) {
 		Message: "starting",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	// start the container
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
@@ -264,7 +265,7 @@ func TestReadyRunningExitFailure(t *testing.T) {
 		Message: "started",
 	})
 
-	task.Status = *status
+	task.Status = status
 	dctlr := &StatuserController{
 		StubController: ctlr,
 		cstatus: &api.ContainerStatus{
@@ -313,7 +314,7 @@ func TestAlreadyStarted(t *testing.T) {
 		Message: "starting",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	// start the container
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
@@ -321,14 +322,14 @@ func TestAlreadyStarted(t *testing.T) {
 		Message: "started",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
 		State:   api.TaskStateRunning,
 		Message: "started",
 	}, ErrTaskRetry)
 
-	task.Status = *status
+	task.Status = status
 
 	// now take the real exit to test wait cancelling.
 	dctlr := &StatuserController{
@@ -464,11 +465,8 @@ func checkDo(ctx context.Context, t *testing.T, task *api.Task, ctlr Controller,
 	// if the status and task.Status are different, make sure new timestamp is greater
 	if task.Status.Timestamp != nil {
 		// crazy timestamp validation follows
-		previous, err := gogotypes.TimestampFromProto(task.Status.Timestamp)
-		assert.Nil(t, err)
-
-		current, err := gogotypes.TimestampFromProto(status.Timestamp)
-		assert.Nil(t, err)
+		previous := task.Status.Timestamp.AsTime()
+		current := status.Timestamp.AsTime()
 
 		if current.Before(previous) {
 			// ensure that the timestamp always proceeds forward
@@ -486,7 +484,7 @@ func checkDo(ctx context.Context, t *testing.T, task *api.Task, ctlr Controller,
 func newTestTask(t *testing.T, state, desired api.TaskState) *api.Task {
 	return &api.Task{
 		ID: "test-task",
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: state,
 		},
 		DesiredState: desired,

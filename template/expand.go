@@ -40,39 +40,41 @@ func ExpandContainerSpec(n *api.NodeDescription, t *api.Task) (*api.ContainerSpe
 	return container, errors.Wrap(err, "expanding hostname failed")
 }
 
-func expandMounts(ctx Context, mounts []api.Mount) ([]api.Mount, error) {
+func expandMounts(ctx Context, mounts []*api.Mount) ([]*api.Mount, error) {
 	if len(mounts) == 0 {
 		return mounts, nil
 	}
 
-	expanded := make([]api.Mount, len(mounts))
+	expanded := make([]*api.Mount, len(mounts))
 	for i, mount := range mounts {
+		// make a copy to avoid modifying the original
+		m := *mount
 		var err error
-		mount.Source, err = ctx.Expand(mount.Source)
+		m.Source, err = ctx.Expand(m.Source)
 		if err != nil {
-			return mounts, errors.Wrapf(err, "expanding mount source %q", mount.Source)
+			return mounts, errors.Wrapf(err, "expanding mount source %q", m.Source)
 		}
 
-		mount.Target, err = ctx.Expand(mount.Target)
+		m.Target, err = ctx.Expand(m.Target)
 		if err != nil {
-			return mounts, errors.Wrapf(err, "expanding mount target %q", mount.Target)
+			return mounts, errors.Wrapf(err, "expanding mount target %q", m.Target)
 		}
 
-		if mount.VolumeOptions != nil {
-			mount.VolumeOptions.Labels, err = expandMap(ctx, mount.VolumeOptions.Labels)
+		if m.VolumeOptions != nil {
+			m.VolumeOptions.Labels, err = expandMap(ctx, m.VolumeOptions.Labels)
 			if err != nil {
 				return mounts, errors.Wrap(err, "expanding volume labels")
 			}
 
-			if mount.VolumeOptions.DriverConfig != nil {
-				mount.VolumeOptions.DriverConfig.Options, err = expandMap(ctx, mount.VolumeOptions.DriverConfig.Options)
+			if m.VolumeOptions.DriverConfig != nil {
+				m.VolumeOptions.DriverConfig.Options, err = expandMap(ctx, m.VolumeOptions.DriverConfig.Options)
 				if err != nil {
 					return mounts, errors.Wrap(err, "expanding volume driver config")
 				}
 			}
 		}
 
-		expanded[i] = mount
+		expanded[i] = &m
 	}
 
 	return expanded, nil
@@ -131,7 +133,7 @@ func expandPayload(ctx *PayloadContext, payload []byte) ([]byte, error) {
 // Templating is evaluated on the agent-side.
 func ExpandSecretSpec(s *api.Secret, node *api.NodeDescription, t *api.Task, dependencies exec.DependencyGetter) (*api.SecretSpec, error) {
 	if s.Spec.Templating == nil {
-		return &s.Spec, nil
+		return s.Spec, nil
 	}
 	if s.Spec.Templating.Name == "golang" {
 		ctx := NewPayloadContextFromTask(node, t, dependencies)
@@ -141,14 +143,14 @@ func ExpandSecretSpec(s *api.Secret, node *api.NodeDescription, t *api.Task, dep
 		secretSpec.Data, err = expandPayload(&ctx, secretSpec.Data)
 		return secretSpec, err
 	}
-	return &s.Spec, errors.New("unrecognized template type")
+	return s.Spec, errors.New("unrecognized template type")
 }
 
 // ExpandConfigSpec expands the template inside the config payload, if any.
 // Templating is evaluated on the agent-side.
 func ExpandConfigSpec(c *api.Config, node *api.NodeDescription, t *api.Task, dependencies exec.DependencyGetter) (*api.ConfigSpec, bool, error) {
 	if c.Spec.Templating == nil {
-		return &c.Spec, false, nil
+		return c.Spec, false, nil
 	}
 	if c.Spec.Templating.Name == "golang" {
 		ctx := NewPayloadContextFromTask(node, t, dependencies)
@@ -158,5 +160,5 @@ func ExpandConfigSpec(c *api.Config, node *api.NodeDescription, t *api.Task, dep
 		configSpec.Data, err = expandPayload(&ctx, configSpec.Data)
 		return configSpec, ctx.sensitive, err
 	}
-	return &c.Spec, false, errors.New("unrecognized template type")
+	return c.Spec, false, errors.New("unrecognized template type")
 }

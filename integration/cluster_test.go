@@ -193,13 +193,13 @@ func (c *testCluster) runNode(n *testNode, nodeOrder int) error {
 // CreateService creates dummy service.
 func (c *testCluster) CreateService(name string, instances int) (string, error) {
 	spec := &api.ServiceSpec{
-		Annotations: api.Annotations{Name: name},
+		Annotations: &api.Annotations{Name: name},
 		Mode: &api.ServiceSpec_Replicated{
 			Replicated: &api.ReplicatedService{
 				Replicas: uint64(instances),
 			},
 		},
-		Task: api.TaskSpec{
+		Task: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{Image: "alpine", Command: []string{"sh"}},
 			},
@@ -299,7 +299,7 @@ func (c *testCluster) SetNodeRole(id string, role api.NodeRole) error {
 		if _, err := c.api.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 			NodeID:      id,
 			Spec:        spec,
-			NodeVersion: &resp.Node.Meta.Version,
+			NodeVersion: resp.Node.Meta.Version,
 		}); err != nil {
 			// there possible problems on calling update node because redirecting
 			// node or leader might want to shut down
@@ -367,7 +367,7 @@ func (c *testCluster) RotateRootCA(cert, key []byte) error {
 		_, err = c.api.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
 			ClusterID:      clusterInfo.ID,
 			Spec:           newSpec,
-			ClusterVersion: &clusterInfo.Meta.Version,
+			ClusterVersion: clusterInfo.Meta.Version,
 		})
 		return err
 	}, opsTimeout)
@@ -382,9 +382,9 @@ func (c *testCluster) RotateUnlockKey() error {
 		}
 		_, err = c.api.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
 			ClusterID:      clusterInfo.ID,
-			Spec:           &clusterInfo.Spec,
-			ClusterVersion: &clusterInfo.Meta.Version,
-			Rotation: api.KeyRotation{
+			Spec:           clusterInfo.Spec,
+			ClusterVersion: clusterInfo.Meta.Version,
+			Rotation: &api.KeyRotation{
 				ManagerUnlockKey: true,
 			},
 		})
@@ -404,7 +404,7 @@ func (c *testCluster) AutolockManagers(autolock bool) error {
 		_, err = c.api.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
 			ClusterID:      clusterInfo.ID,
 			Spec:           newSpec,
-			ClusterVersion: &clusterInfo.Meta.Version,
+			ClusterVersion: clusterInfo.Meta.Version,
 		})
 		return err
 	}, opsTimeout)

@@ -701,7 +701,7 @@ func (nc *networkContext) isServiceAllocated(s *api.Service, flags ...func(*netw
 	for _, flag := range flags {
 		flag(&options)
 	}
-	if (s.Spec.Endpoint != nil && len(s.Spec.Endpoint.Ports) != 0) ||
+	if (s.GetSpec().GetEndpoint() != nil && len(s.GetSpec().GetEndpoint().GetPorts()) != 0) ||
 		(s.Endpoint != nil && len(s.Endpoint.Ports) != 0) {
 		return nc.portAllocator.isPortsAllocatedOnInit(s, options.OnInit)
 	}
@@ -1530,7 +1530,7 @@ func (a *Allocator) NetworkAllocator() networkallocator.NetworkAllocator {
 
 // updateTaskStatus sets TaskStatus and updates timestamp.
 func updateTaskStatus(t *api.Task, newStatus api.TaskState, message string) {
-	t.Status = api.TaskStatus{
+	t.Status = &api.TaskStatus{
 		State:     newStatus,
 		Message:   message,
 		Timestamp: ptypes.MustTimestampProto(time.Now()),

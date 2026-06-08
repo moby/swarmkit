@@ -384,16 +384,16 @@ func (n *Node) run(ctx context.Context) (err error) {
 					//    role, we continue renewing with exponential backoff.
 					// 2) If the server is sending us IssuanceStateRotate, renew the cert as
 					//    requested by the CA.
-					desiredRoleChanged := lastNodeDesiredRole.observe(nodeChanges.Node.Spec.DesiredRole)
+					desiredRoleChanged := lastNodeDesiredRole.observe(nodeChanges.Node.GetSpec().GetDesiredRole())
 					if desiredRoleChanged {
-						switch nodeChanges.Node.Spec.DesiredRole {
+						switch nodeChanges.Node.GetSpec().GetDesiredRole() {
 						case api.NodeRoleManager:
 							renewer.SetExpectedRole(ca.ManagerRole)
 						case api.NodeRoleWorker:
 							renewer.SetExpectedRole(ca.WorkerRole)
 						}
 					}
-					if desiredRoleChanged || nodeChanges.Node.Certificate.Status.State == api.IssuanceStateRotate {
+					if desiredRoleChanged || nodeChanges.Node.GetCertificate().GetStatus().GetState() == api.IssuanceStateRotate {
 						renewer.Renew()
 					}
 				}
@@ -770,11 +770,11 @@ func (n *Node) IsStateDirty() (bool, error) {
 // Remotes returns a list of known peers known to node.
 func (n *Node) Remotes() []api.Peer {
 	weights := n.remotes.Weights()
-	remotes := make([]api.Peer, 0, len(weights))
-	for p := range weights {
-		remotes = append(remotes, p)
+	peers := make([]api.Peer, 0, len(weights))
+	for pk := range weights {
+		peers = append(peers, remotes.FromPeerKey(pk))
 	}
-	return remotes
+	return peers
 }
 
 // Given a cluster ID, returns whether the cluster ID indicates that the cluster
@@ -1237,10 +1237,11 @@ func (s *persistentRemotes) Remove(peers ...api.Peer) {
 
 func (s *persistentRemotes) save() error {
 	weights := s.Weights()
-	remotes := make([]api.Peer, 0, len(weights))
-	for r := range weights {
-		remotes = append(remotes, r)
+	peers := make([]api.Peer, 0, len(weights))
+	for pk := range weights {
+		peers = append(peers, remotes.FromPeerKey(pk))
 	}
+	remotes := peers
 	sort.Sort(sortablePeers(remotes))
 	if reflect.DeepEqual(remotes, s.lastSavedState) {
 		return nil

@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -68,7 +69,7 @@ func (n *Node) loadAndStart(ctx context.Context, forceNewCluster bool) error {
 
 	// Read logs to fully catch up store
 	var raftNode api.RaftMember
-	if err := raftNode.Unmarshal(waldata.Metadata); err != nil {
+	if err := proto.Unmarshal(waldata.Metadata, &raftNode); err != nil {
 		return errors.Wrap(err, "failed to unmarshal WAL metadata")
 	}
 	n.Config.ID = raftNode.RaftID
@@ -172,7 +173,7 @@ func (n *Node) newRaftLogs(nodeID string) (raft.Peer, error) {
 		NodeID: nodeID,
 		Addr:   n.opts.Addr,
 	}
-	metadata, err := raftNode.Marshal()
+	metadata, err := proto.Marshal(raftNode)
 	if err != nil {
 		return raft.Peer{}, errors.Wrap(err, "error marshalling raft node")
 	}
@@ -184,7 +185,7 @@ func (n *Node) newRaftLogs(nodeID string) (raft.Peer, error) {
 }
 
 func (n *Node) triggerSnapshot(ctx context.Context, raftConfig api.RaftConfig) {
-	snapshot := api.Snapshot{Version: api.Snapshot_V0}
+	snapshot := api.Snapshot{Version: api.Snapshot_V0, Membership: &api.ClusterSnapshot{}}
 	for _, member := range n.cluster.Members() {
 		snapshot.Membership.Members = append(snapshot.Membership.Members,
 			&api.RaftMember{
@@ -212,14 +213,14 @@ func (n *Node) triggerSnapshot(ctx context.Context, raftConfig api.RaftConfig) {
 
 			var storeSnapshot *api.StoreSnapshot
 			storeSnapshot, err = n.memoryStore.Save(tx)
-			snapshot.Store = *storeSnapshot
+			snapshot.Store = storeSnapshot
 		})
 		if err != nil {
 			log.G(ctx).WithError(err).Error("failed to read snapshot from store")
 			return
 		}
 
-		d, err := snapshot.Marshal()
+		d, err := proto.Marshal(&snapshot)
 		if err != nil {
 			log.G(ctx).WithError(err).Error("failed to marshal snapshot")
 			return
@@ -250,16 +251,28 @@ func (n *Node) triggerSnapshot(ctx context.Context, raftConfig api.RaftConfig) {
 
 func (n *Node) clusterSnapshot(data []byte) (api.ClusterSnapshot, error) {
 	var snapshot api.Snapshot
-	if err := snapshot.Unmarshal(data); err != nil {
-		return snapshot.Membership, err
+	if err := proto.Unmarshal(data, &snapshot); err != nil {
+		if snapshot.Membership != nil {
+			return *snapshot.Membership, err
+		}
+		return api.ClusterSnapshot{}, err
 	}
 	if snapshot.Version != api.Snapshot_V0 {
-		return snapshot.Membership, fmt.Errorf("unrecognized snapshot version %d", snapshot.Version)
+		if snapshot.Membership != nil {
+			return *snapshot.Membership, fmt.Errorf("unrecognized snapshot version %d", snapshot.Version)
+		}
+		return api.ClusterSnapshot{}, fmt.Errorf("unrecognized snapshot version %d", snapshot.Version)
 	}
 
-	if err := n.memoryStore.Restore(&snapshot.Store); err != nil {
-		return snapshot.Membership, err
+	if err := n.memoryStore.Restore(snapshot.Store); err != nil {
+		if snapshot.Membership != nil {
+			return *snapshot.Membership, err
+		}
+		return api.ClusterSnapshot{}, err
 	}
 
-	return snapshot.Membership, nil
+	if snapshot.Membership != nil {
+		return *snapshot.Membership, nil
+	}
+	return api.ClusterSnapshot{}, nil
 }

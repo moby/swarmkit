@@ -65,7 +65,7 @@ func init() {
 // Returns ErrExist if the ID is already taken.
 func CreateNetwork(tx Tx, n *api.Network) error {
 	// Ensure the name is not already in use.
-	if tx.lookup(tableNetwork, indexName, strings.ToLower(n.Spec.Annotations.Name)) != nil {
+	if tx.lookup(tableNetwork, indexName, strings.ToLower(n.GetSpec().GetAnnotations().GetName())) != nil {
 		return ErrNameConflict
 	}
 
@@ -76,7 +76,7 @@ func CreateNetwork(tx Tx, n *api.Network) error {
 // Returns ErrNotExist if the network doesn't exist.
 func UpdateNetwork(tx Tx, n *api.Network) error {
 	// Ensure the name is either not in use or already used by this same Network.
-	if existing := tx.lookup(tableNetwork, indexName, strings.ToLower(n.Spec.Annotations.Name)); existing != nil {
+	if existing := tx.lookup(tableNetwork, indexName, strings.ToLower(n.GetSpec().GetAnnotations().GetName())); existing != nil {
 		if existing.GetID() != n.ID {
 			return ErrNameConflict
 		}

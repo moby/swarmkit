@@ -9,15 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/grpc"
-
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/ca/testutils"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/protobuf/ptypes"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 )
 
 func TestLogBrokerLogs(t *testing.T) {
@@ -93,7 +91,7 @@ func TestLogBrokerLogs(t *testing.T) {
 						wg.Done()
 					}()
 
-					msgctx := api.LogContext{
+					msgctx := &api.LogContext{
 						NodeID:    agentSecurity.ClientTLSCreds.NodeID(),
 						ServiceID: serviceID,
 						TaskID:    taskID,
@@ -101,7 +99,7 @@ func TestLogBrokerLogs(t *testing.T) {
 					for i := range nLogMessagesPerTask {
 						require.NoError(t, publisher.Send(&api.PublishLogsMessage{
 							SubscriptionID: sub.ID,
-							Messages:       []api.LogMessage{newLogMessage(msgctx, "log message number %d", i)},
+							Messages:       []*api.LogMessage{newLogMessage(msgctx, "log message number %d", i)},
 						}))
 					}
 				}(nodeID, serviceID, taskID)
@@ -394,7 +392,7 @@ func TestLogBrokerNoFollow(t *testing.T) {
 		if err := store.CreateTask(tx, &api.Task{
 			ID:        "task1",
 			ServiceID: "service",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
 			NodeID: agent1Security.ServerTLSCreds.NodeID(),
@@ -405,7 +403,7 @@ func TestLogBrokerNoFollow(t *testing.T) {
 		return store.CreateTask(tx, &api.Task{
 			ID:        "task2",
 			ServiceID: "service",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
 			NodeID: agent2Security.ServerTLSCreds.NodeID(),
@@ -447,8 +445,8 @@ func TestLogBrokerNoFollow(t *testing.T) {
 	require.NoError(t,
 		publisher.Send(&api.PublishLogsMessage{
 			SubscriptionID: subscription1.ID,
-			Messages: []api.LogMessage{
-				newLogMessage(api.LogContext{
+			Messages: []*api.LogMessage{
+				newLogMessage(&api.LogContext{
 					NodeID:    agent1Security.ServerTLSCreds.NodeID(),
 					ServiceID: "service",
 					TaskID:    "task1",
@@ -470,8 +468,8 @@ func TestLogBrokerNoFollow(t *testing.T) {
 	require.NoError(t,
 		publisher.Send(&api.PublishLogsMessage{
 			SubscriptionID: subscription2.ID,
-			Messages: []api.LogMessage{
-				newLogMessage(api.LogContext{
+			Messages: []*api.LogMessage{
+				newLogMessage(&api.LogContext{
 					NodeID:    agent2Security.ServerTLSCreds.NodeID(),
 					ServiceID: "service",
 					TaskID:    "task2",
@@ -512,7 +510,7 @@ func TestLogBrokerNoFollowMissingNode(t *testing.T) {
 		if err := store.CreateTask(tx, &api.Task{
 			ID:        "task1",
 			ServiceID: "service",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
 			NodeID: agentSecurity.ServerTLSCreds.NodeID(),
@@ -524,7 +522,7 @@ func TestLogBrokerNoFollowMissingNode(t *testing.T) {
 			ID:        "task2",
 			ServiceID: "service",
 			NodeID:    "node-2",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
 		})
@@ -559,8 +557,8 @@ func TestLogBrokerNoFollowMissingNode(t *testing.T) {
 	require.NoError(t,
 		publisher.Send(&api.PublishLogsMessage{
 			SubscriptionID: sub.ID,
-			Messages: []api.LogMessage{
-				newLogMessage(api.LogContext{
+			Messages: []*api.LogMessage{
+				newLogMessage(&api.LogContext{
 					NodeID:    agentSecurity.ServerTLSCreds.NodeID(),
 					ServiceID: "service",
 					TaskID:    "task1",
@@ -594,7 +592,7 @@ func TestLogBrokerNoFollowNotYetRunningTask(t *testing.T) {
 		return store.CreateTask(tx, &api.Task{
 			ID:        "task1",
 			ServiceID: "service",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 		})
@@ -639,7 +637,7 @@ func TestLogBrokerNoFollowDisconnect(t *testing.T) {
 		if err := store.CreateTask(tx, &api.Task{
 			ID:        "task1",
 			ServiceID: "service",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
 			NodeID: agent1Security.ServerTLSCreds.NodeID(),
@@ -650,7 +648,7 @@ func TestLogBrokerNoFollowDisconnect(t *testing.T) {
 		return store.CreateTask(tx, &api.Task{
 			ID:        "task2",
 			ServiceID: "service",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
 			NodeID: agent2Security.ServerTLSCreds.NodeID(),
@@ -692,8 +690,8 @@ func TestLogBrokerNoFollowDisconnect(t *testing.T) {
 	require.NoError(t,
 		publisher.Send(&api.PublishLogsMessage{
 			SubscriptionID: subscription1.ID,
-			Messages: []api.LogMessage{
-				newLogMessage(api.LogContext{
+			Messages: []*api.LogMessage{
+				newLogMessage(&api.LogContext{
 					NodeID:    agent1Security.ServerTLSCreds.NodeID(),
 					ServiceID: "service",
 					TaskID:    "task1",
@@ -813,14 +811,17 @@ func testBrokerClient(t *testing.T, tca *testutils.TestCA, addr string) (api.Log
 
 func printLogMessages(msgs ...api.LogMessage) {
 	for _, msg := range msgs {
-		ts, _ := gogotypes.TimestampFromProto(msg.Timestamp)
+		var ts time.Time
+		if msg.Timestamp != nil {
+			ts = msg.Timestamp.AsTime()
+		}
 		fmt.Printf("%v %v %s\n", msg.Context, ts, string(msg.Data))
 	}
 }
 
 // newLogMessage is just a helper to build a new log message.
-func newLogMessage(msgctx api.LogContext, format string, vs ...any) api.LogMessage {
-	return api.LogMessage{
+func newLogMessage(msgctx *api.LogContext, format string, vs ...any) *api.LogMessage {
+	return &api.LogMessage{
 		Context:   msgctx,
 		Timestamp: ptypes.MustTimestampProto(time.Now()),
 		Data:      fmt.Appendf(nil, format, vs...),

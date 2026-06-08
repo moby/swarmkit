@@ -350,7 +350,7 @@ func TestRequestAndSaveNewCertificatesWithIntermediates(t *testing.T) {
 	t.Parallel()
 
 	// use a RootCA with an intermediate
-	apiRootCA := api.RootCA{
+	apiRootCA := &api.RootCA{
 		CACert: cautils.ECDSACertChain[2],
 		CAKey:  cautils.ECDSACertChainKeys[2],
 		RootRotation: &api.RootRotation{
@@ -360,7 +360,7 @@ func TestRequestAndSaveNewCertificatesWithIntermediates(t *testing.T) {
 		},
 	}
 	tempdir := t.TempDir()
-	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, apiRootCA, nil)
+	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, *apiRootCA, nil)
 	defer tc.Stop()
 	issuerInfo, parsedCerts := testRequestAndSaveNewCertificates(t, tc)
 	require.Len(t, parsedCerts, 2)
@@ -401,6 +401,9 @@ func TestRequestAndSaveNewCertificatesWithKEKUpdate(t *testing.T) {
 	// be encrypted with that kek
 	require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
 		cluster := store.GetCluster(tx, tc.Organization)
+		if cluster.Spec.EncryptionConfig == nil {
+			cluster.Spec.EncryptionConfig = &api.EncryptionConfig{}
+		}
 		cluster.Spec.EncryptionConfig.AutoLockManagers = true
 		cluster.UnlockKeys = []*api.EncryptionKey{{
 			Subsystem: ca.ManagerRole,
@@ -599,10 +602,10 @@ func (n *nonSigningCAServer) NodeCertificateStatus(ctx context.Context, request 
 		n.tc.MemoryStore.View(func(tx store.ReadTx) {
 			node = store.GetNode(tx, request.NodeID)
 		})
-		if node != nil && node.Certificate.Status.State == api.IssuanceStateIssued {
+		if node != nil && node.Certificate.GetStatus().GetState() == api.IssuanceStateIssued {
 			return &api.NodeCertificateStatusResponse{
-				Status:      &node.Certificate.Status,
-				Certificate: &node.Certificate,
+				Status:      node.Certificate.Status,
+				Certificate: node.Certificate,
 			}, nil
 		}
 		select {
@@ -625,15 +628,15 @@ func (n *nonSigningCAServer) IssueNodeCertificate(ctx context.Context, request *
 		node := &api.Node{
 			Role: role,
 			ID:   nodeID,
-			Certificate: api.Certificate{
+			Certificate: &api.Certificate{
 				CSR:  request.CSR,
 				CN:   nodeID,
 				Role: role,
-				Status: api.IssuanceStatus{
+				Status: &api.IssuanceStatus{
 					State: api.IssuanceStatePending,
 				},
 			},
-			Spec: api.NodeSpec{
+			Spec: &api.NodeSpec{
 				DesiredRole:  role,
 				Membership:   api.NodeMembershipAccepted,
 				Availability: request.Availability,
@@ -754,7 +757,7 @@ type fakeRemotes struct {
 	peers []api.Peer
 }
 
-func (f *fakeRemotes) Weights() map[api.Peer]int {
+func (f *fakeRemotes) Weights() map[remotes.PeerKey]int {
 	panic("this is not called")
 }
 
@@ -778,7 +781,7 @@ func (f *fakeRemotes) ObserveIfExists(peer api.Peer, weight int) {
 	if weight < 0 {
 		var newPeers []api.Peer
 		for _, p := range f.peers {
-			if p != peer {
+			if p.NodeID != peer.NodeID || p.Addr != peer.Addr {
 				newPeers = append(newPeers, p)
 			}
 		}
@@ -1206,7 +1209,7 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 
 	newRoot, err := ca.NewRootCA(fauxRootCert, fauxRootCert, cautils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
-	apiNewRoot := api.RootCA{
+	apiNewRoot := &api.RootCA{
 		CACert: fauxRootCert,
 		CAKey:  cautils.ECDSACertChainKeys[1],
 	}
@@ -1237,7 +1240,7 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 	}
 
 	// create an external signing server that generates leaf certs with the new root (but does not append the intermediate)
-	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, apiNewRoot, nil)
+	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, *apiNewRoot, nil)
 	defer tc.Stop()
 
 	// we need creds that trust both the old and new root in order to connect to the test CA, and we want this root CA to

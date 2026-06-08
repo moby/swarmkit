@@ -19,16 +19,16 @@ func TestAssignVolume(t *testing.T) {
 		for _, s := range []*api.Secret{
 			{
 				ID: "secret1",
-				Spec: api.SecretSpec{
-					Annotations: api.Annotations{
+				Spec: &api.SecretSpec{
+					Annotations: &api.Annotations{
 						Name: "secretName1",
 					},
 					Data: []byte("foo"),
 				},
 			}, {
 				ID: "secret2",
-				Spec: api.SecretSpec{
-					Annotations: api.Annotations{
+				Spec: &api.SecretSpec{
+					Annotations: &api.Annotations{
 						Name: "secretName2",
 					},
 					Data: []byte("foo"),
@@ -42,8 +42,8 @@ func TestAssignVolume(t *testing.T) {
 
 		v := &api.Volume{
 			ID: "volume1",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "volumeName1",
 				},
 				Driver: &api.Driver{
@@ -138,7 +138,7 @@ func TestAssignVolume(t *testing.T) {
 	var foundSecret1, foundSecret2 bool
 	for _, change := range m.Changes {
 		if vol, ok := change.Assignment.Item.(*api.Assignment_Volume); ok {
-			assert.Equal(t, change.Action, api.AssignmentChange_AssignmentActionUpdate)
+			assert.Equal(t, change.Action, api.AssignmentActionUpdate)
 			assert.Equal(t, vol.Volume, &api.VolumeAssignment{
 				ID:       "volume1",
 				VolumeID: "volumeID1",
@@ -167,7 +167,7 @@ func TestAssignVolume(t *testing.T) {
 		}
 
 		// every one of these should be an Update change
-		assert.Equal(t, change.Action, api.AssignmentChange_AssignmentActionUpdate)
+		assert.Equal(t, change.Action, api.AssignmentActionUpdate)
 	}
 
 	assert.True(t, foundSecret1)
@@ -194,7 +194,7 @@ func TestAssignVolume(t *testing.T) {
 	m = as.message()
 	assert.Len(t, m.Changes, 1)
 
-	assert.Equal(t, m.Changes[0].Action, api.AssignmentChange_AssignmentActionRemove)
+	assert.Equal(t, m.Changes[0].Action, api.AssignmentActionRemove)
 	v, ok := m.Changes[0].Assignment.Item.(*api.Assignment_Volume)
 	assert.True(t, ok)
 	assert.Equal(t, v.Volume, &api.VolumeAssignment{
@@ -234,7 +234,7 @@ func TestAssignVolume(t *testing.T) {
 	foundSecret2 = false
 
 	for _, change := range m.Changes {
-		assert.Equal(t, change.Action, api.AssignmentChange_AssignmentActionRemove)
+		assert.Equal(t, change.Action, api.AssignmentActionRemove)
 		s, ok := change.Assignment.Item.(*api.Assignment_Secret)
 		assert.True(t, ok)
 		switch s.Secret.ID {

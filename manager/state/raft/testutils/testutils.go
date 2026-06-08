@@ -4,10 +4,11 @@ import (
 	"context"
 	"net"
 	"os"
-	"reflect"
 	"sync"
 	"testing"
 	"time"
+
+	"google.golang.org/protobuf/proto"
 
 	"code.cloudfoundry.org/clock/fakeclock"
 	"github.com/docker/go-events"
@@ -371,11 +372,11 @@ func NewInitNode(t *testing.T, tc *cautils.TestCA, raftConfig *api.RaftConfig, o
 		assert.NoError(t, n.MemoryStore().Update(func(tx store.Tx) error {
 			return store.CreateCluster(tx, &api.Cluster{
 				ID: identity.NewID(),
-				Spec: api.ClusterSpec{
-					Annotations: api.Annotations{
+				Spec: &api.ClusterSpec{
+					Annotations: &api.Annotations{
 						Name: store.DefaultClusterName,
 					},
-					Raft: *raftConfig,
+					Raft: raftConfig,
 				},
 			})
 		}))
@@ -543,8 +544,8 @@ func ProposeValue(t *testing.T, raftNode *TestNode, time time.Duration, nodeID .
 	}
 	node := &api.Node{
 		ID: nodeIDStr,
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: nodeIDStr,
 			},
 		},
@@ -587,7 +588,7 @@ func CheckValue(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *TestNo
 				err = errors.Errorf("expected 1 node, got %d nodes", len(allNodes))
 				return
 			}
-			if !reflect.DeepEqual(allNodes[0], createdNode) {
+			if !proto.Equal(allNodes[0], createdNode) {
 				err = errors.New("node did not match expected value")
 			}
 		})
@@ -634,7 +635,7 @@ func CheckValuesOnNodes(t *testing.T, clockSource *fakeclock.FakeClock, checkNod
 						err = errors.Errorf("node %s not found on %d (iteration %d)", id, checkNodeID, iteration)
 						return
 					}
-					if !reflect.DeepEqual(values[i], n) {
+					if !proto.Equal(values[i], n) {
 						err = errors.Errorf("node %s did not match expected value on %d (iteration %d)", id, checkNodeID, iteration)
 						return
 					}

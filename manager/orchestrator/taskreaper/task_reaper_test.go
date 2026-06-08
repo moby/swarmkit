@@ -11,9 +11,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/replicated"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/testutils"
@@ -32,11 +31,11 @@ func TestTaskReaperInit(t *testing.T) {
 
 	// Create the basic cluster with precooked tasks we need for the taskreaper
 	cluster := &api.Cluster{
-		Spec: api.ClusterSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ClusterSpec{
+			Annotations: &api.Annotations{
 				Name: store.DefaultClusterName,
 			},
-			Orchestration: api.OrchestrationConfig{
+			Orchestration: &api.OrchestrationConfig{
 				TaskHistoryRetentionLimit: 2,
 			},
 		},
@@ -45,11 +44,11 @@ func TestTaskReaperInit(t *testing.T) {
 	// this service is alive and active, has no tasks to clean up
 	service := &api.Service{
 		ID: "cleanservice",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "cleanservice",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				// the runtime spec isn't looked at and doesn't really need to
 				// be filled in
 				Runtime: &api.TaskSpec_Container{
@@ -69,7 +68,7 @@ func TestTaskReaperInit(t *testing.T) {
 		ID:           "cleantask1",
 		Slot:         1,
 		DesiredState: api.TaskStateRunning,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStateRunning,
 		},
 		ServiceID: "cleanservice",
@@ -79,7 +78,7 @@ func TestTaskReaperInit(t *testing.T) {
 		ID:           "cleantask2",
 		Slot:         2,
 		DesiredState: api.TaskStateRunning,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStateRunning,
 		},
 		ServiceID: "cleanservice",
@@ -91,7 +90,7 @@ func TestTaskReaperInit(t *testing.T) {
 		ID:           "retainedtask",
 		Slot:         1,
 		DesiredState: api.TaskStateShutdown,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStateFailed,
 		},
 		ServiceID: "cleanservice",
@@ -102,7 +101,7 @@ func TestTaskReaperInit(t *testing.T) {
 		ID:           "removedtask",
 		Slot:         3,
 		DesiredState: api.TaskStateRemove,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStateShutdown,
 		},
 		ServiceID: "cleanservice",
@@ -114,7 +113,7 @@ func TestTaskReaperInit(t *testing.T) {
 		ID:           "terminaltask1",
 		Slot:         1,
 		DesiredState: api.TaskStateRemove,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStateRunning,
 		},
 		ServiceID: "goneservice",
@@ -125,7 +124,7 @@ func TestTaskReaperInit(t *testing.T) {
 		ID:           "terminaltask2",
 		Slot:         2,
 		DesiredState: api.TaskStateRemove,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			// use COMPLETE because it's the earliest terminal state
 			State: api.TaskStateCompleted,
 		},
@@ -137,7 +136,7 @@ func TestTaskReaperInit(t *testing.T) {
 		ID:           "earlytask1",
 		Slot:         3,
 		DesiredState: api.TaskStateRemove,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 		ServiceID: "goneservice",
@@ -148,7 +147,7 @@ func TestTaskReaperInit(t *testing.T) {
 		ID:           "earlytask2",
 		Slot:         4,
 		DesiredState: api.TaskStateRemove,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStateNew,
 		},
 		ServiceID: "goneservice",
@@ -210,11 +209,11 @@ func TestTaskHistory(t *testing.T) {
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
 			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
-				Orchestration: api.OrchestrationConfig{
+				Orchestration: &api.OrchestrationConfig{
 					TaskHistoryRetentionLimit: 2,
 				},
 			},
@@ -236,8 +235,8 @@ func TestTaskHistory(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		j1 := &api.Service{
 			ID: "id1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 				Mode: &api.ServiceSpec_Replicated{
@@ -245,10 +244,10 @@ func TestTaskHistory(t *testing.T) {
 						Replicas: 2,
 					},
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Restart: &api.RestartPolicy{
 						Condition: api.RestartOnAny,
-						Delay:     gogotypes.DurationProto(0),
+						Delay:     durationpb.New(0),
 					},
 				},
 			},
@@ -275,10 +274,10 @@ func TestTaskHistory(t *testing.T) {
 	// Fail both tasks. They should both get restarted.
 	updatedTask1 := observedTask1.Copy()
 	updatedTask1.Status.State = api.TaskStateFailed
-	updatedTask1.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask1.ServiceAnnotations = &api.Annotations{Name: "original"}
 	updatedTask2 := observedTask2.Copy()
 	updatedTask2.Status.State = api.TaskStateFailed
-	updatedTask2.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask2.ServiceAnnotations = &api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
@@ -341,11 +340,11 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
 			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
-				Orchestration: api.OrchestrationConfig{
+				Orchestration: &api.OrchestrationConfig{
 					// set TaskHistoryRetentionLimit to a negative value, so
 					// that it is not considered in this test
 					TaskHistoryRetentionLimit: -1,
@@ -366,8 +365,8 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 
 	service1 := &api.Service{
 		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -375,10 +374,10 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 					Replicas: 2,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(0),
+					Delay:     durationpb.New(0),
 				},
 			},
 		},
@@ -408,10 +407,10 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 	// Set both tasks to RUNNING, so the service is successfully running
 	updatedTask1 := observedTask1.Copy()
 	updatedTask1.Status.State = api.TaskStateRunning
-	updatedTask1.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask1.ServiceAnnotations = &api.Annotations{Name: "original"}
 	updatedTask2 := observedTask2.Copy()
 	updatedTask2.Status.State = api.TaskStateRunning
-	updatedTask2.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask2.ServiceAnnotations = &api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
@@ -472,11 +471,11 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
 			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
-				Orchestration: api.OrchestrationConfig{
+				Orchestration: &api.OrchestrationConfig{
 					// set TaskHistoryRetentionLimit to a negative value, so
 					// that it is not considered in this test
 					TaskHistoryRetentionLimit: -1,
@@ -496,8 +495,8 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 
 	service1 := &api.Service{
 		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -505,10 +504,10 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 					Replicas: 2,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(0),
+					Delay:     durationpb.New(0),
 				},
 			},
 		},
@@ -540,10 +539,10 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	// Set both tasks to RUNNING, so the service is successfully running
 	updatedTask1 := observedTask1.Copy()
 	updatedTask1.Status.State = api.TaskStateRunning
-	updatedTask1.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask1.ServiceAnnotations = &api.Annotations{Name: "original"}
 	updatedTask2 := observedTask2.Copy()
 	updatedTask2.Status.State = api.TaskStateRunning
-	updatedTask2.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask2.ServiceAnnotations = &api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
@@ -609,11 +608,11 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
 			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
-				Orchestration: api.OrchestrationConfig{
+				Orchestration: &api.OrchestrationConfig{
 					// set TaskHistoryRetentionLimit to a negative value, so
 					// that it is not considered in this test
 					TaskHistoryRetentionLimit: -1,
@@ -633,8 +632,8 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 
 	service1 := &api.Service{
 		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -642,11 +641,11 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 					Replicas: 2,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Restart: &api.RestartPolicy{
 					// Turn off restart to get an accurate count on tasks.
 					Condition: api.RestartOnNone,
-					Delay:     gogotypes.DurationProto(0),
+					Delay:     durationpb.New(0),
 				},
 			},
 		},
@@ -678,10 +677,10 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	// Set both task states to RUNNING.
 	updatedTask1 := observedTask1.Copy()
 	updatedTask1.Status.State = api.TaskStateRunning
-	updatedTask1.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask1.ServiceAnnotations = &api.Annotations{Name: "original"}
 	updatedTask2 := observedTask2.Copy()
 	updatedTask2.Status.State = api.TaskStateRunning
-	updatedTask2.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask2.ServiceAnnotations = &api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
@@ -698,11 +697,11 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	updatedTask3 := observedTask1.Copy()
 	updatedTask3.DesiredState = api.TaskStateCompleted
 	updatedTask3.Status.State = api.TaskStateCompleted
-	updatedTask3.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask3.ServiceAnnotations = &api.Annotations{Name: "original"}
 	updatedTask4 := observedTask2.Copy()
 	updatedTask4.DesiredState = api.TaskStateCompleted
 	updatedTask4.Status.State = api.TaskStateCompleted
-	updatedTask4.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask4.ServiceAnnotations = &api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask3))
 		assert.NoError(t, store.UpdateTask(tx, updatedTask4))
@@ -772,11 +771,11 @@ func TestTaskReaperBatching(t *testing.T) {
 		// to a low value
 		assert.NoError(t, store.CreateCluster(tx, &api.Cluster{
 			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
-				Orchestration: api.OrchestrationConfig{
+				Orchestration: &api.OrchestrationConfig{
 					TaskHistoryRetentionLimit: 1,
 				},
 			},
@@ -787,7 +786,7 @@ func TestTaskReaperBatching(t *testing.T) {
 			ServiceID:    "bar",
 			Slot:         0,
 			DesiredState: api.TaskStateShutdown,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateShutdown,
 			},
 		}
@@ -800,7 +799,7 @@ func TestTaskReaperBatching(t *testing.T) {
 			ServiceID:    "bar",
 			Slot:         1,
 			DesiredState: api.TaskStateShutdown,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateShutdown,
 			},
 		}
@@ -815,7 +814,7 @@ func TestTaskReaperBatching(t *testing.T) {
 				// based on exceeding the retention limit
 				Slot:         uint64(i),
 				DesiredState: api.TaskStateShutdown,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateShutdown,
 				},
 			}
@@ -829,7 +828,7 @@ func TestTaskReaperBatching(t *testing.T) {
 			ServiceID:    "bar",
 			Slot:         2,
 			DesiredState: api.TaskStateShutdown,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateShutdown,
 			},
 		}
@@ -955,11 +954,11 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
 			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
-				Orchestration: api.OrchestrationConfig{
+				Orchestration: &api.OrchestrationConfig{
 					// set TaskHistoryRetentionLimit to a negative value, so
 					// that tasks are cleaned up right away.
 					TaskHistoryRetentionLimit: 1,
@@ -979,8 +978,8 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 
 	service1 := &api.Service{
 		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -988,11 +987,11 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 					Replicas: 1,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Restart: &api.RestartPolicy{
 					// Turn off restart to get an accurate count on tasks.
 					Condition: api.RestartOnNone,
-					Delay:     gogotypes.DurationProto(0),
+					Delay:     durationpb.New(0),
 				},
 			},
 		},
@@ -1020,7 +1019,7 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 	// Set the task state to PENDING to simulate allocation.
 	updatedTask1 := observedTask1.Copy()
 	updatedTask1.Status.State = api.TaskStatePending
-	updatedTask1.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask1.ServiceAnnotations = &api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
@@ -1110,8 +1109,8 @@ func TestTick(t *testing.T) {
 	// Create a service in the store for the following test cases.
 	service1 := &api.Service{
 		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -1119,11 +1118,11 @@ func TestTick(t *testing.T) {
 					Replicas: 1,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Restart: &api.RestartPolicy{
 					// Turn off restart to get an accurate count on tasks.
 					Condition: api.RestartOnNone,
-					Delay:     gogotypes.DurationProto(0),
+					Delay:     durationpb.New(0),
 				},
 			},
 		},
@@ -1132,8 +1131,8 @@ func TestTick(t *testing.T) {
 	// Create another service in the store for the following test cases.
 	service2 := &api.Service{
 		ID: "id2",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name2",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -1141,11 +1140,11 @@ func TestTick(t *testing.T) {
 					Replicas: 1,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Restart: &api.RestartPolicy{
 					// Turn off restart to get an accurate count on tasks.
 					Condition: api.RestartOnNone,
-					Delay:     gogotypes.DurationProto(0),
+					Delay:     durationpb.New(0),
 				},
 			},
 		},
@@ -1177,11 +1176,11 @@ func TestTick(t *testing.T) {
 		ID:           "id1task1",
 		Slot:         1,
 		DesiredState: api.TaskStateShutdown,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStateShutdown,
 		},
 		ServiceID: "id1",
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name1",
 		},
 	}
@@ -1190,11 +1189,11 @@ func TestTick(t *testing.T) {
 		ID:           "id2task1",
 		Slot:         1,
 		DesiredState: api.TaskStateShutdown,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStateShutdown,
 		},
 		ServiceID: "id2",
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name2",
 		},
 	}
@@ -1265,8 +1264,8 @@ func TestTickHistoryCleanup(t *testing.T) {
 	// Create a service.
 	service1 := &api.Service{
 		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -1274,11 +1273,11 @@ func TestTickHistoryCleanup(t *testing.T) {
 					Replicas: 1,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Restart: &api.RestartPolicy{
 					// Turn off restart to get an accurate count on tasks.
 					Condition: api.RestartOnNone,
-					Delay:     gogotypes.DurationProto(0),
+					Delay:     durationpb.New(0),
 				},
 			},
 		},
@@ -1308,11 +1307,11 @@ func TestTickHistoryCleanup(t *testing.T) {
 				ID:           "id1task3",
 				Slot:         1,
 				DesiredState: desiredState,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: actualState,
 				},
 				ServiceID: "id1",
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "name1",
 				},
 			}

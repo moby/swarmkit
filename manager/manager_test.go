@@ -25,6 +25,7 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestManager(t *testing.T) {
@@ -164,10 +165,10 @@ func TestManager(t *testing.T) {
 	}))
 	require.NotNil(t, cluster)
 	require.Len(t, cluster.UnlockKeys, 1)
-	require.Equal(t, &api.EncryptionKey{
+	require.True(t, proto.Equal(&api.EncryptionKey{
 		Subsystem: ca.ManagerRole,
 		Key:       []byte("kek"),
-	}, cluster.UnlockKeys[0])
+	}, cluster.UnlockKeys[0]), "encryption key should match")
 
 	// Test removal of the agent node
 	agentID := agentSecurityConfig.ClientTLSCreds.NodeID()
@@ -175,7 +176,7 @@ func TestManager(t *testing.T) {
 		return store.CreateNode(tx,
 			&api.Node{
 				ID: agentID,
-				Certificate: api.Certificate{
+				Certificate: &api.Certificate{
 					Role: api.NodeRoleWorker,
 					CN:   agentID,
 				},
@@ -185,7 +186,7 @@ func TestManager(t *testing.T) {
 	controlClient = api.NewControlClient(controlConn)
 	_, err = controlClient.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
 		Spec: &api.NetworkSpec{
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "test-network-bad-driver",
 			},
 			DriverConfig: &api.Driver{
@@ -302,7 +303,7 @@ func TestManagerLockUnlock(t *testing.T) {
 		spec.EncryptionConfig.AutoLockManagers = true
 		updateResp, err := client.UpdateCluster(tc.Context, &api.UpdateClusterRequest{
 			ClusterID:      cluster.ID,
-			ClusterVersion: &cluster.Meta.Version,
+			ClusterVersion: cluster.Meta.Version,
 			Spec:           spec,
 		})
 		if testutils.ErrorDesc(err) == "update out of sequence" {
@@ -375,7 +376,7 @@ func TestManagerLockUnlock(t *testing.T) {
 		spec.EncryptionConfig.AutoLockManagers = false
 		_, err = client.UpdateCluster(tc.Context, &api.UpdateClusterRequest{
 			ClusterID:      cluster.ID,
-			ClusterVersion: &cluster.Meta.Version,
+			ClusterVersion: cluster.Meta.Version,
 			Spec:           spec,
 		})
 		if testutils.ErrorDesc(err) == "update out of sequence" {

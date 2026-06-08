@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
@@ -24,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ api.CAServer = &ca.Server{}
@@ -388,11 +388,14 @@ func TestGetUnlockKey(t *testing.T) {
 	resp, err := tc.CAClients[0].GetUnlockKey(tc.Context, &api.GetUnlockKeyRequest{})
 	require.NoError(t, err)
 	require.Nil(t, resp.UnlockKey)
-	require.Equal(t, cluster.Meta.Version, resp.Version)
+	require.True(t, proto.Equal(cluster.Meta.Version, resp.Version), "proto messages should be equal")
 
 	// Update the unlock key
 	require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
 		cluster = store.GetCluster(tx, cluster.ID)
+		if cluster.Spec.EncryptionConfig == nil {
+			cluster.Spec.EncryptionConfig = &api.EncryptionConfig{}
+		}
 		cluster.Spec.EncryptionConfig.AutoLockManagers = true
 		cluster.UnlockKeys = []*api.EncryptionKey{{
 			Subsystem: ca.ManagerRole,
@@ -491,18 +494,18 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 
 	fakeClusterSpec := func(rootCerts, key []byte, rotation *api.RootRotation, externalCAs []*api.ExternalCA) *api.Cluster {
 		return &api.Cluster{
-			RootCA: api.RootCA{
+			RootCA: &api.RootCA{
 				CACert:     rootCerts,
 				CAKey:      key,
 				CACertHash: "hash",
-				JoinTokens: api.JoinTokens{
+				JoinTokens: &api.JoinTokens{
 					Worker:  "SWMTKN-1-worker",
 					Manager: "SWMTKN-1-manager",
 				},
 				RootRotation: rotation,
 			},
-			Spec: api.ClusterSpec{
-				CAConfig: api.CAConfig{
+			Spec: &api.ClusterSpec{
+				CAConfig: &api.CAConfig{
 					ExternalCAs: externalCAs,
 				},
 			},
@@ -526,7 +529,7 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 	for i, testCase := range []clusterObjToUpdate{
 		{
 			clusterObj: fakeClusterSpec(tc.RootCA.Certs, nil, nil, []*api.ExternalCA{{
-				Protocol: api.ExternalCA_CAProtocolCFSSL,
+				Protocol: api.CAProtocolCFSSL,
 				URL:      tc.ExternalSigningServer.URL,
 				// without a CA cert, the URL gets successfully added, and there should be no error connecting to it
 			}}),
@@ -540,7 +543,7 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 				CrossSignedCACert: crossSigned,
 			}, []*api.ExternalCA{
 				{
-					Protocol: api.ExternalCA_CAProtocolCFSSL,
+					Protocol: api.CAProtocolCFSSL,
 					URL:      tc.ExternalSigningServer.URL,
 					// without a CA cert, we count this as the old tc.RootCA.Certs, and this should be ignored because we want the new root
 				},
@@ -556,12 +559,12 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 				CrossSignedCACert: crossSigned,
 			}, []*api.ExternalCA{
 				{
-					Protocol: api.ExternalCA_CAProtocolCFSSL,
+					Protocol: api.CAProtocolCFSSL,
 					URL:      tc.ExternalSigningServer.URL,
 					// without a CA cert, we count this as the old tc.RootCA.Certs
 				},
 				{
-					Protocol: api.ExternalCA_CAProtocolCFSSL,
+					Protocol: api.CAProtocolCFSSL,
 					URL:      externalServer.URL,
 					CACert:   append(cert, '\n'),
 				},
@@ -656,7 +659,7 @@ func (r *rootRotationTester) convergeRootCA(wantRootCA *api.RootCA, descr string
 		if err != nil || len(clusters) != 1 {
 			return errors.Wrap(err, "unable to find cluster")
 		}
-		clusters[0].RootCA = *wantRootCA
+		clusters[0].RootCA = wantRootCA
 		return store.UpdateCluster(tx, clusters[0])
 	}), descr)
 }
@@ -664,12 +667,12 @@ func (r *rootRotationTester) convergeRootCA(wantRootCA *api.RootCA, descr string
 func getFakeAPINode(t *testing.T, id string, state api.IssuanceStatus_State, tlsInfo *api.NodeTLSInfo, member bool) *api.Node {
 	node := &api.Node{
 		ID: id,
-		Certificate: api.Certificate{
-			Status: api.IssuanceStatus{
+		Certificate: &api.Certificate{
+			Status: &api.IssuanceStatus{
 				State: state,
 			},
 		},
-		Spec: api.NodeSpec{
+		Spec: &api.NodeSpec{
 			Membership: api.NodeMembershipAccepted,
 		},
 	}
@@ -967,7 +970,7 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 			startCAServer(rt.tc.Context, rt.tc.CAServer)
 		} else {
 			// otherwise, start the CA in the state where there is no root rotation, and start a root rotation
-			rt.convergeRootCA(&startCluster.RootCA, testcase.descr) // no root rotation
+			rt.convergeRootCA(startCluster.RootCA, testcase.descr) // no root rotation
 			startCAServer(rt.tc.Context, rt.tc.CAServer)
 			rt.convergeRootCA(testcase.rootCA, testcase.descr)
 		}
@@ -996,8 +999,8 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				return errors.New("no cluster found")
 			}
 
-			if !equality.RootCAEqualStable(&cluster.RootCA, testcase.expectedRootCA) {
-				return fmt.Errorf("root CAs not equal:\n\texpected: %v\n\tactual: %v", *testcase.expectedRootCA, cluster.RootCA)
+			if !equality.RootCAEqualStable(cluster.RootCA, testcase.expectedRootCA) {
+				return fmt.Errorf("root CAs not equal:\n\texpected: %v\n\tactual: %v", testcase.expectedRootCA, cluster.RootCA)
 			}
 			if len(nodes) != len(testcase.expectedNodes) {
 				return fmt.Errorf("number of expected nodes (%d) does not equal number of actual nodes (%d)",
@@ -1008,11 +1011,11 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				if !ok {
 					return fmt.Errorf("node %s is present and was unexpected", node.ID)
 				}
-				if !reflect.DeepEqual(expected.Description, node.Description) {
+				if !proto.Equal(expected.Description, node.Description) {
 					return fmt.Errorf("the node description of node %s is not expected:\n\texpected: %v\n\tactual: %v", node.ID,
 						expected.Description, node.Description)
 				}
-				if !reflect.DeepEqual(expected.Certificate.Status, node.Certificate.Status) {
+				if !proto.Equal(expected.Certificate.GetStatus(), node.Certificate.GetStatus()) {
 					return fmt.Errorf("the certificate status of node %s is not expected:\n\texpected: %v\n\tactual: %v", node.ID,
 						expected.Certificate, node.Certificate)
 				}
@@ -1115,7 +1118,7 @@ func TestRootRotationReconciliationNoChanges(t *testing.T) {
 		// stop the CA server, get the cluster to the state we want (correct root CA, correct nodes, etc.)
 		rt.tc.CAServer.Stop()
 		rt.convergeWantedNodes(testcase.nodes, testcase.descr)
-		rt.convergeRootCA(&startCluster.RootCA, testcase.descr) // no root rotation
+		rt.convergeRootCA(startCluster.RootCA, testcase.descr) // no root rotation
 		startCAServer(rt.tc.Context, rt.tc.CAServer)
 		rt.convergeRootCA(testcase.rootCA, testcase.descr)
 
@@ -1133,13 +1136,13 @@ func TestRootRotationReconciliationNoChanges(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, cluster)
-		require.Equal(t, cluster.RootCA, *testcase.rootCA, testcase.descr)
+		require.True(t, proto.Equal(cluster.RootCA, testcase.rootCA), testcase.descr)
 		require.Len(t, nodes, len(testcase.nodes), testcase.descr)
 		for _, node := range nodes {
 			expected, ok := testcase.nodes[node.ID]
 			require.True(t, ok, "node %s: %s", node.ID, testcase.descr)
-			require.Equal(t, expected.Description, node.Description, "node %s: %s", node.ID, testcase.descr)
-			require.Equal(t, expected.Certificate.Status, node.Certificate.Status, "node %s: %s", node.ID, testcase.descr)
+			require.True(t, proto.Equal(expected.Description, node.Description), "node %s: %s", node.ID, testcase.descr)
+			require.True(t, proto.Equal(expected.Certificate.GetStatus(), node.Certificate.GetStatus()), "node %s: %s", node.ID, testcase.descr)
 		}
 
 		// ensure that the server's root CA object has the same expected key
@@ -1234,7 +1237,7 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 				CAKey:             rotationKey,
 				CrossSignedCACert: rotationCrossSigned,
 			}
-			cluster.RootCA = *rootCA
+			cluster.RootCA = rootCA
 			return store.UpdateCluster(tx, cluster)
 		}))
 		for _, node := range nodes {
@@ -1334,7 +1337,7 @@ func TestRootRotationReconciliationThrottled(t *testing.T) {
 			CAKey:             rotationKey,
 			CrossSignedCACert: rotationCrossSigned,
 		}
-		cluster.RootCA = *rootCA
+		cluster.RootCA = rootCA
 		return store.UpdateCluster(tx, cluster)
 	}))
 

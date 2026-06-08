@@ -93,26 +93,26 @@ func TestConstraintEnforcer(t *testing.T) {
 		// this node starts as a worker, but then is changed to a manager.
 		{
 			ID: "id1",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 				Availability: api.NodeAvailabilityActive,
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 			Role: api.NodeRoleWorker,
 		},
 		{
 			ID: "id2",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 				Availability: api.NodeAvailabilityActive,
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 			Description: &api.NodeDescription{
@@ -129,12 +129,12 @@ func TestConstraintEnforcer(t *testing.T) {
 		{
 			ID:           "id0",
 			DesiredState: api.TaskStateRunning,
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Placement: &api.Placement{
 					Constraints: []string{"node.role == manager"},
 				},
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			NodeID: "id1",
@@ -143,7 +143,7 @@ func TestConstraintEnforcer(t *testing.T) {
 		{
 			ID:           "id1",
 			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			NodeID: "id1",
@@ -152,7 +152,7 @@ func TestConstraintEnforcer(t *testing.T) {
 		{
 			ID:           "id5",
 			DesiredState: api.TaskStateCompleted,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			NodeID: "id1",
@@ -163,12 +163,12 @@ func TestConstraintEnforcer(t *testing.T) {
 		{
 			ID:           "id2",
 			DesiredState: api.TaskStateRunning,
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Placement: &api.Placement{
 					Constraints: []string{"node.role == worker"},
 				},
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
 			NodeID: "id1",
@@ -176,7 +176,7 @@ func TestConstraintEnforcer(t *testing.T) {
 		{
 			ID:           "id3",
 			DesiredState: api.TaskStateNew,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			NodeID: "id2",
@@ -184,14 +184,14 @@ func TestConstraintEnforcer(t *testing.T) {
 		{
 			ID:           "id4",
 			DesiredState: api.TaskStateReady,
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Resources: &api.ResourceRequirements{
 					Reservations: &api.Resources{
 						MemoryBytes: 9e8,
 					},
 				},
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 			NodeID: "id2",
@@ -290,8 +290,8 @@ func TestConstraintEnforcer(t *testing.T) {
 func TestOutdatedTaskPlacementConstraints(t *testing.T) {
 	node := &api.Node{
 		ID: "id0",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node1",
 				Labels: map[string]string{
 					"foo": "bar",
@@ -299,7 +299,7 @@ func TestOutdatedTaskPlacementConstraints(t *testing.T) {
 			},
 			Availability: api.NodeAvailabilityActive,
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Role: api.NodeRoleWorker,
@@ -307,11 +307,11 @@ func TestOutdatedTaskPlacementConstraints(t *testing.T) {
 
 	service := &api.Service{
 		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "service1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Placement: &api.Placement{
 					Constraints: []string{
 						"node.labels.foo == bar",
@@ -323,12 +323,12 @@ func TestOutdatedTaskPlacementConstraints(t *testing.T) {
 
 	task := &api.Task{
 		ID: "id2",
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Placement: nil, // Note: No placement constraints.
 		},
 		ServiceID: service.ID,
 		NodeID:    node.ID,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStateRunning,
 		},
 		DesiredState: api.TaskStateRunning,
@@ -375,13 +375,13 @@ func TestOutdatedTaskPlacementConstraints(t *testing.T) {
 func TestGenericResourcesPlacementConstraints(t *testing.T) {
 	node := &api.Node{
 		ID: "id0",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node1",
 			},
 			Availability: api.NodeAvailabilityActive,
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Role: api.NodeRoleWorker,
@@ -394,11 +394,11 @@ func TestGenericResourcesPlacementConstraints(t *testing.T) {
 
 	service := &api.Service{
 		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "service1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Resources: &api.ResourceRequirements{
 					Reservations: &api.Resources{
 						Generic: genericresource.NewSet("mygeneric", "1"),
@@ -410,7 +410,7 @@ func TestGenericResourcesPlacementConstraints(t *testing.T) {
 
 	task := &api.Task{
 		ID: "id2",
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
 					Generic: genericresource.NewSet("mygeneric", "1"),
@@ -419,7 +419,7 @@ func TestGenericResourcesPlacementConstraints(t *testing.T) {
 		},
 		ServiceID: service.ID,
 		NodeID:    node.ID,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStateRunning,
 		},
 		DesiredState:             api.TaskStateRunning,
@@ -471,13 +471,13 @@ func TestGenericResourcesPlacementConstraints(t *testing.T) {
 func TestGenericResourcesPlacementConstraintsDiscrete(t *testing.T) {
 	node := &api.Node{
 		ID: "id0",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node1",
 			},
 			Availability: api.NodeAvailabilityActive,
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Role: api.NodeRoleWorker,
@@ -499,11 +499,11 @@ func TestGenericResourcesPlacementConstraintsDiscrete(t *testing.T) {
 
 	service := &api.Service{
 		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "service1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Resources: &api.ResourceRequirements{
 					Reservations: &api.Resources{
 						Generic: []*api.GenericResource{
@@ -522,7 +522,7 @@ func TestGenericResourcesPlacementConstraintsDiscrete(t *testing.T) {
 
 	task := &api.Task{
 		ID: "id2",
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
 					Generic: []*api.GenericResource{
@@ -538,7 +538,7 @@ func TestGenericResourcesPlacementConstraintsDiscrete(t *testing.T) {
 		},
 		ServiceID: service.ID,
 		NodeID:    node.ID,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStateRunning,
 		},
 		DesiredState: api.TaskStateRunning,

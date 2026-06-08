@@ -12,7 +12,7 @@ PACKAGES = $(shell go list ./...)
 INTEGRATION_PACKAGE = $(shell go list ./integration)
 
 # Project binaries.
-COMMANDS=swarm-bench protoc-gen-gogoswarm
+COMMANDS=swarm-bench protoc-gen-goswarm proto-name-fix
 BINARIES=$(addprefix bin/,$(COMMANDS))
 SWARMD_COMMANDS=swarmd swarmctl swarm-rafttool
 SWARMD_BINARIES=$(addprefix swarmd/bin/,$(SWARMD_COMMANDS))
@@ -43,24 +43,75 @@ setup: ## install dependencies
 	@echo "🐳 $@"
 	# install golangci-lint to ./bin/golangci-lint
 	@curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/v2.1.5/install.sh | sh -s v2.1.5
-	@go install tool github.com/containerd/protobuild
+	# install standard protobuf code generators
+	@go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
 .PHONY: generate
 generate: protos
 	@echo "🐳 $@"
 	@PATH=${ROOTDIR}/bin:${GOBIN}:${PATH} go generate -x ${PACKAGES}
 
+# API protos get the full treatment (go + grpc + goswarm). plugin.proto is an
+# options-definition file (analogous to descriptor.proto) and is generated
+# separately with protoc-gen-go only — it must not receive the swarmkit codegen
+# plugins (deepcopy/storeobject/raftproxy/authwrapper).
+PROTO_SRCS = $(wildcard api/*.proto)
+# Include paths: project root, system protobuf includes, vendor for etcd raft proto,
+# and internal stubs that satisfy gogoproto imports in vendored .proto files.
+PROTO_INCLUDES = -I. -I/usr/local/include -Ivendor -Iinternal/protoc-stubs
+
+# Map well-known types, our plugin, and API protos to the correct Go packages.
+# These -M flags are passed to protoc-gen-go, protoc-gen-go-grpc, and protoc-gen-goswarm.
+_PROTO_M = \
+	Mgoogle/protobuf/timestamp.proto=google.golang.org/protobuf/types/known/timestamppb \
+	Mgoogle/protobuf/duration.proto=google.golang.org/protobuf/types/known/durationpb \
+	Mgoogle/protobuf/any.proto=google.golang.org/protobuf/types/known/anypb \
+	Mgoogle/protobuf/wrappers.proto=google.golang.org/protobuf/types/known/wrapperspb \
+	Mgoogle/protobuf/field_mask.proto=google.golang.org/protobuf/types/known/fieldmaskpb \
+	Mprotobuf/plugin/plugin.proto=github.com/moby/swarmkit/v2/protobuf/plugin \
+	Mapi/types.proto=github.com/moby/swarmkit/v2/api \
+	Mapi/specs.proto=github.com/moby/swarmkit/v2/api \
+	Mapi/objects.proto=github.com/moby/swarmkit/v2/api \
+	Mapi/control.proto=github.com/moby/swarmkit/v2/api \
+	Mapi/dispatcher.proto=github.com/moby/swarmkit/v2/api \
+	Mapi/ca.proto=github.com/moby/swarmkit/v2/api \
+	Mapi/watch.proto=github.com/moby/swarmkit/v2/api \
+	Mapi/health.proto=github.com/moby/swarmkit/v2/api \
+	Mapi/raft.proto=github.com/moby/swarmkit/v2/api \
+	Mapi/resource.proto=github.com/moby/swarmkit/v2/api \
+	Mapi/snapshot.proto=github.com/moby/swarmkit/v2/api \
+	Mapi/logbroker.proto=github.com/moby/swarmkit/v2/api \
+	Mgo.etcd.io/raft/v3/raftpb/raft.proto=go.etcd.io/raft/v3/raftpb \
+	Mgogoproto/gogo.proto=github.com/gogo/protobuf/gogoproto
+
+PROTO_M_FLAGS = $(addprefix --go_opt=,$(_PROTO_M)) \
+	$(addprefix --go-grpc_opt=,$(_PROTO_M)) --go-grpc_opt=require_unimplemented_servers=false \
+	$(addprefix --goswarm_opt=,$(_PROTO_M))
+
 .PHONY: protos
-protos: bin/protoc-gen-gogoswarm ## generate protobuf
+protos: bin/protoc-gen-goswarm bin/proto-name-fix ## generate protobuf
 	@echo "🐳 $@"
-	@PATH=${ROOTDIR}/bin:${GOBIN}:${PATH} protobuild ${PACKAGES}
+	@GOPATH_BIN=$$(go env GOPATH)/bin && PATH=${ROOTDIR}/bin:$${GOPATH_BIN}:${PATH} && \
+		protoc $(PROTO_INCLUDES) \
+		$(addprefix --go_opt=,$(_PROTO_M)) \
+		--go_out=. --go_opt=paths=source_relative \
+		protobuf/plugin/plugin.proto && \
+		protoc $(PROTO_INCLUDES) $(PROTO_M_FLAGS) \
+		--go_out=. --go_opt=paths=source_relative \
+		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+		--goswarm_out=. --goswarm_opt=paths=source_relative \
+		--plugin=protoc-gen-goswarm=${ROOTDIR}/bin/protoc-gen-goswarm \
+		$(PROTO_SRCS)
+	@echo "🐳 Applying name fixes..."
+	@${ROOTDIR}/bin/proto-name-fix -rename-map=rename_map.json api/*.pb.go
 
 .PHONY: checkprotos
-checkprotos: generate ## check if protobufs needs to be generated again
+checkprotos: protos ## check if protobufs needs to be generated again
 	@echo "🐳 $@"
 	@test -z "$$(git status --short | grep ".pb.go" | tee /dev/stderr)" || \
 		((git diff | cat) && \
-		(echo "👹 please run 'make generate' when making changes to proto files" && false))
+		(echo "👹 please run 'make protos' when making changes to proto files" && false))
 
 .PHONY: check
 check: fmt-proto
@@ -72,8 +123,6 @@ check: ## Run various source code validation tools
 fmt-proto:
 	@test -z "$$(find . -path ./vendor -prune -o ! -name timestamp.proto ! -name duration.proto -name '*.proto' -type f -exec grep -Hn -e "^ " {} \; | tee /dev/stderr)" || \
 		(echo "👹 please indent proto files with tabs only" && false)
-	@test -z "$$(find . -path ./vendor -prune -o -name '*.proto' -type f -exec grep -Hn "Meta meta = " {} \; | grep -v '(gogoproto.nullable) = false' | tee /dev/stderr)" || \
-		(echo "👹 meta fields in proto files must have option (gogoproto.nullable) = false" && false)
 
 .PHONY: build
 build: ## build the go packages
@@ -154,8 +203,3 @@ dep-validate: go-mod-vendor
 go-mod-vendor:
 	@go mod tidy
 	@go mod vendor
-	@# ensure that key protobuf spec files are in vendor dir
-	@module=github.com/gogo/protobuf ; \
-		prefix=$$(go env GOMODCACHE)/$${module} ; \
-		version=$$(go list -m -f '{{.Version}}' $${module}) ; \
-		cp -a $${prefix}@$${version}/protobuf vendor/$${module}/ && chmod -R u+w vendor/$${module}

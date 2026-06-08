@@ -77,7 +77,7 @@ func (s *Server) validateNetworkSpec(spec *api.NetworkSpec) error {
 		return status.Errorf(codes.InvalidArgument, "ingress network cannot be attachable")
 	}
 
-	if err := validateAnnotations(spec.Annotations); err != nil {
+	if err := validateAnnotations(*spec.Annotations); err != nil {
 		return err
 	}
 
@@ -111,7 +111,7 @@ func (s *Server) CreateNetwork(_ context.Context, request *api.CreateNetworkRequ
 	// duplicate creations. See #65
 	n := &api.Network{
 		ID:   identity.NewID(),
-		Spec: *request.Spec,
+		Spec: request.Spec,
 	}
 
 	err := s.store.Update(func(tx store.Tx) error {

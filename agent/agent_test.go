@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/grpc/credentials"
 
 	events "github.com/docker/go-events"
@@ -290,7 +292,7 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 		}
 		return nil
 	}, 2*time.Second))
-	require.NotEqual(t, currSession, gotSession)
+	require.False(t, proto.Equal(currSession, gotSession), "sessions should be different")
 	require.NotNil(t, gotSession.Description)
 	require.Equal(t, "testAgent", gotSession.Description.Hostname)
 	require.True(t, gotSession.Description.FIPS)
@@ -300,7 +302,7 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 	tlsCh <- gotSession.Description.TLSInfo
 	time.Sleep(1 * time.Second)
 	gotSession, closedSessions = tester.dispatcher.GetSessions()
-	require.Equal(t, currSession, gotSession)
+	require.True(t, proto.Equal(currSession, gotSession), "sessions should be equal")
 	require.Len(t, closedSessions, 1)
 
 	newTLSInfo := &api.NodeTLSInfo{
@@ -319,10 +321,10 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 		}
 		return nil
 	}, 2*time.Second))
-	require.NotEqual(t, currSession, gotSession)
+	require.False(t, proto.Equal(currSession, gotSession), "sessions should be different")
 	require.NotNil(t, gotSession.Description)
 	require.Equal(t, "testAgent", gotSession.Description.Hostname)
-	require.Equal(t, newTLSInfo, gotSession.Description.TLSInfo)
+	require.True(t, proto.Equal(newTLSInfo, gotSession.Description.TLSInfo), "TLSInfo should match")
 	require.True(t, gotSession.Description.FIPS)
 }
 
@@ -602,10 +604,10 @@ type fakeRemotes struct {
 	peer api.Peer
 }
 
-func (f *fakeRemotes) Weights() map[api.Peer]int {
+func (f *fakeRemotes) Weights() map[remotes.PeerKey]int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return map[api.Peer]int{f.peer: 1}
+	return map[remotes.PeerKey]int{remotes.ToPeerKey(f.peer): 1}
 }
 
 func (f *fakeRemotes) Select(...string) (api.Peer, error) {

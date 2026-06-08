@@ -720,7 +720,7 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 				return store.CreateNode(tx, &api.Node{
 					Role: testCase.role,
 					ID:   nodeID,
-					Spec: api.NodeSpec{
+					Spec: &api.NodeSpec{
 						DesiredRole:  testCase.role,
 						Membership:   api.NodeMembershipAccepted,
 						Availability: api.NodeAvailabilityActive,
@@ -786,7 +786,7 @@ func TestRenewTLSConfigUpdatesRootNonUnknownAuthError(t *testing.T) {
 					return err
 				}
 				node.Certificate.Certificate = cautils.ReDateCert(t, certChain, cert, key, time.Now().Add(-5*time.Hour), time.Now().Add(-4*time.Hour))
-				node.Certificate.Status = api.IssuanceStatus{
+				node.Certificate.Status = &api.IssuanceStatus{
 					State: api.IssuanceStateIssued,
 				}
 				return store.UpdateNode(tx, node)

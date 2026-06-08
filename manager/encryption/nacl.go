@@ -31,7 +31,7 @@ func NewNACLSecretbox(key []byte) NACLSecretbox {
 
 // Algorithm returns the type of algorithm this is (NACL Secretbox using XSalsa20 and Poly1305)
 func (n NACLSecretbox) Algorithm() api.MaybeEncryptedRecord_Algorithm {
-	return api.MaybeEncryptedRecord_NACLSecretboxSalsa20Poly1305
+	return api.NACLSecretboxSalsa20Poly1305
 }
 
 // Encrypt encrypts some bytes and returns an encrypted record

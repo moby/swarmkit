@@ -2,26 +2,12 @@ syntax = "proto3";
 
 package test;
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+option go_package = "github.com/moby/swarmkit/v2/protobuf/plugin/deepcopy/test";
 
-option (gogoproto.goproto_stringer_all) = false;
-option (gogoproto.goproto_enum_prefix_all) = false;
-option (gogoproto.goproto_getters_all) = false;
-option (gogoproto.gostring_all) = false;
-option (gogoproto.face_all) = false;
-option (gogoproto.unmarshaler_all) = false;
-option (gogoproto.marshaler_all) = false;
-option (gogoproto.sizer_all) = false;
-option (gogoproto.protosizer_all) = false;
-option (gogoproto.goproto_enum_stringer_all) = false;
-option (gogoproto.enum_stringer_all) = false;
-option (gogoproto.unsafe_marshaler_all) = false;
-option (gogoproto.unsafe_unmarshaler_all) = false;
-
-
-option (gogoproto.testgen_all) = true;
-option (gogoproto.populate_all) = true;
-option (gogoproto.equal_all) = true;
+// This file defines test messages exercising the deepcopy plugin's code
+// generation across scalars, repeated fields, nested messages, maps, and
+// oneofs. The generated Copy()/CopyFrom() methods are tested in
+// deepcopy_test.go.
 
 message BasicScalar {
 	double Field1 = 1;
@@ -87,21 +73,10 @@ message RepeatedExternalStruct {
 	repeated RepeatedScalarPacked Field3 = 3;
 }
 
-message NonNullableExternalStruct {
-	BasicScalar Field1 = 1 [(gogoproto.nullable) = false];
-	RepeatedScalar Field2 = 2 [(gogoproto.nullable) = false];
-	RepeatedScalarPacked Field3 = 3 [(gogoproto.nullable) = false];
-}
-
-message RepeatedNonNullableExternalStruct {
-	repeated BasicScalar Field1 = 1 [(gogoproto.nullable) = false];
-	repeated RepeatedScalar Field2 = 2 [(gogoproto.nullable) = false];
-	repeated RepeatedScalarPacked Field3 = 3 [(gogoproto.nullable) = false];
-}
-
 message MapStruct {
 	map <string, BasicScalar> nullable_map = 1;
-	map <string, BasicScalar> nonnullable_map = 2 [(gogoproto.nullable) = false];
+	map <string, string> scalar_map = 2;
+	map <string, bytes> bytes_map = 3;
 }
 
 message OneOf {
@@ -114,12 +89,11 @@ message OneOf {
 		string Field6 = 6;
 		bytes Field7 = 7;
 		MapStruct Field8 = 8;
-		RepeatedNonNullableExternalStruct Field9 = 9;
+		RepeatedExternalStruct Field9 = 9;
 	}
 
 	oneof fieldsTwo {
-		NonNullableExternalStruct Field10 = 10;
+		ExternalStruct Field10 = 10;
 		RepeatedExternalStruct Field11 = 11;
 	}
 }
-

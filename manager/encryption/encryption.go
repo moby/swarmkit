@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/pkg/errors"
 )
@@ -52,7 +52,7 @@ func (n noopCrypter) Encrypt(data []byte) (*api.MaybeEncryptedRecord, error) {
 }
 
 func (n noopCrypter) Algorithm() api.MaybeEncryptedRecord_Algorithm {
-	return api.MaybeEncryptedRecord_NotEncrypted
+	return api.NotEncrypted
 }
 
 // NoopCrypter is just a pass-through crypter - it does not actually encrypt or

@@ -17,8 +17,8 @@ func (suite *testSuite) TestIPAMNotNil() {
 	// Predefined node-local network
 	p := &api.Network{
 		ID: "one_unIque_id",
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NetworkSpec{
+			Annotations: &api.Annotations{
 				Name: "pred_bridge_network",
 				Labels: map[string]string{
 					"com.docker.swarm.predefined": "true",
@@ -31,8 +31,8 @@ func (suite *testSuite) TestIPAMNotNil() {
 	// Node-local swarm scope network
 	nln := &api.Network{
 		ID: "another_unIque_id",
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NetworkSpec{
+			Annotations: &api.Annotations{
 				Name: "swarm-macvlan",
 			},
 			DriverConfig: &api.Driver{Name: "macvlan"},
@@ -44,8 +44,8 @@ func (suite *testSuite) TestIPAMNotNil() {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress-nw-id",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "default-ingress",
 				},
 				Ingress: true,

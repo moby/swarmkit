@@ -72,10 +72,10 @@ func (b *Benchmark) Run(ctx context.Context) error {
 
 func (b *Benchmark) spec() *api.ServiceSpec {
 	return &api.ServiceSpec{
-		Annotations: api.Annotations{
+		Annotations: &api.Annotations{
 			Name: "benchmark",
 		},
-		Task: api.TaskSpec{
+		Task: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image:   "alpine:latest",

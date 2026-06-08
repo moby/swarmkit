@@ -7,6 +7,8 @@ import (
 	"sort"
 	"testing"
 
+	"google.golang.org/protobuf/proto"
+
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +41,7 @@ func TestStoragePutGet(t *testing.T) {
 		for i, task := range tasks {
 			assert.NoError(t, PutTask(tx, task))
 			// remove status to make comparison work
-			tasks[i].Status = api.TaskStatus{}
+			tasks[i].Status = nil
 		}
 
 		return nil
@@ -49,7 +51,7 @@ func TestStoragePutGet(t *testing.T) {
 		for _, task := range tasks {
 			retrieved, err := GetTask(tx, task.ID)
 			assert.NoError(t, err)
-			assert.Equal(t, task, retrieved)
+			assert.True(t, proto.Equal(task, retrieved), "task %s not equal", task.ID)
 		}
 
 		return nil
@@ -66,7 +68,7 @@ func TestStoragePutGetStatusAssigned(t *testing.T) {
 	assert.NoError(t, db.Update(func(tx *bolt.Tx) error {
 		for _, task := range tasks {
 			assert.NoError(t, PutTask(tx, task))
-			assert.NoError(t, PutTaskStatus(tx, task.ID, &task.Status))
+			assert.NoError(t, PutTaskStatus(tx, task.ID, task.Status))
 			assert.NoError(t, SetTaskAssignment(tx, task.ID, true))
 		}
 
@@ -77,13 +79,13 @@ func TestStoragePutGetStatusAssigned(t *testing.T) {
 		for _, task := range tasks {
 			status, err := GetTaskStatus(tx, task.ID)
 			assert.NoError(t, err)
-			assert.Equal(t, &task.Status, status)
+			assert.True(t, proto.Equal(task.Status, status), "status mismatch for task %s", task.ID)
 
 			retrieved, err := GetTask(tx, task.ID)
 			assert.NoError(t, err)
 
-			task.Status = api.TaskStatus{}
-			assert.Equal(t, task, retrieved)
+			task.Status = nil
+			assert.True(t, proto.Equal(task, retrieved), "task %s not equal", task.ID)
 
 			assert.True(t, TaskAssigned(tx, task.ID))
 		}
@@ -94,8 +96,11 @@ func TestStoragePutGetStatusAssigned(t *testing.T) {
 	// set evens to unassigned and updates all states plus one
 	assert.NoError(t, db.Update(func(tx *bolt.Tx) error {
 		for i, task := range tasks {
+			if task.Status == nil {
+				task.Status = &api.TaskStatus{}
+			}
 			task.Status.State++
-			assert.NoError(t, PutTaskStatus(tx, task.ID, &task.Status))
+			assert.NoError(t, PutTaskStatus(tx, task.ID, task.Status))
 
 			if i%2 == 0 {
 				assert.NoError(t, SetTaskAssignment(tx, task.ID, false))
@@ -109,13 +114,13 @@ func TestStoragePutGetStatusAssigned(t *testing.T) {
 		for i, task := range tasks {
 			status, err := GetTaskStatus(tx, task.ID)
 			assert.NoError(t, err)
-			assert.Equal(t, &task.Status, status)
+			assert.True(t, proto.Equal(task.Status, status), "status mismatch for task %s", task.ID)
 
 			retrieved, err := GetTask(tx, task.ID)
 			assert.NoError(t, err)
 
-			task.Status = api.TaskStatus{}
-			assert.Equal(t, task, retrieved)
+			task.Status = nil
+			assert.True(t, proto.Equal(task, retrieved), "task %s not equal", task.ID)
 
 			if i%2 == 0 {
 				assert.False(t, TaskAssigned(tx, task.ID))
@@ -144,8 +149,8 @@ func genTask() *api.Task {
 	return &api.Task{
 		ID:        identity.NewID(),
 		ServiceID: identity.NewID(),
-		Status:    *genTaskStatus(),
-		Spec: api.TaskSpec{
+		Status:    genTaskStatus(),
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image:   "foo",

@@ -11,11 +11,12 @@ import (
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 )
 
 func createSecretSpec(name string, data []byte, labels map[string]string) *api.SecretSpec {
 	return &api.SecretSpec{
-		Annotations: api.Annotations{Name: name, Labels: labels},
+		Annotations: &api.Annotations{Name: name, Labels: labels},
 		Data:        data,
 	}
 }
@@ -122,7 +123,7 @@ func TestCreateSecret(t *testing.T) {
 	assert.NotNil(t, resp.Secret)
 
 	// the data should be empty/omitted
-	assert.Equal(t, *createSecretSpec("name", nil, nil), resp.Secret.Spec)
+	assert.True(t, proto.Equal(createSecretSpec("name", nil, nil), resp.Secret.Spec), "secret spec should match (data omitted)")
 
 	// for sanity, check that the stored secret still has the secret data
 	var storedSecret *api.Secret
@@ -165,9 +166,9 @@ func TestGetSecret(t *testing.T) {
 	assert.NotNil(t, resp.Secret)
 
 	// the data should be empty/omitted
-	assert.NotEqual(t, secret, resp.Secret)
+	assert.False(t, proto.Equal(secret, resp.Secret), "secret with data should not equal response (data omitted)")
 	secret.Spec.Data = nil
-	assert.Equal(t, secret, resp.Secret)
+	assert.True(t, proto.Equal(secret, resp.Secret), "secret without data should equal response")
 }
 
 func TestUpdateSecret(t *testing.T) {
@@ -195,8 +196,8 @@ func TestUpdateSecret(t *testing.T) {
 	secret.Spec.Data = []byte{1}
 	resp, err := ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
 		SecretID:      secret.ID,
-		Spec:          &secret.Spec,
-		SecretVersion: &secret.Meta.Version,
+		Spec:          secret.Spec,
+		SecretVersion: secret.Meta.Version,
 	})
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
@@ -205,8 +206,8 @@ func TestUpdateSecret(t *testing.T) {
 	secret.Spec.Annotations.Name = "AnotherName"
 	resp, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
 		SecretID:      secret.ID,
-		Spec:          &secret.Spec,
-		SecretVersion: &secret.Meta.Version,
+		Spec:          secret.Spec,
+		SecretVersion: secret.Meta.Version,
 	})
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
@@ -216,8 +217,8 @@ func TestUpdateSecret(t *testing.T) {
 	assert.NotNil(t, secret.Spec.Data)
 	resp, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
 		SecretID:      secret.ID,
-		Spec:          &secret.Spec,
-		SecretVersion: &secret.Meta.Version,
+		Spec:          secret.Spec,
+		SecretVersion: secret.Meta.Version,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -229,8 +230,8 @@ func TestUpdateSecret(t *testing.T) {
 	secret.Spec.Data = nil
 	resp, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
 		SecretID:      secret.ID,
-		Spec:          &secret.Spec,
-		SecretVersion: &resp.Secret.Meta.Version,
+		Spec:          secret.Spec,
+		SecretVersion: resp.Secret.Meta.Version,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -243,8 +244,8 @@ func TestUpdateSecret(t *testing.T) {
 	secret.Spec.Annotations.Name = "name"
 	resp, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
 		SecretID:      secret.ID,
-		Spec:          &secret.Spec,
-		SecretVersion: &resp.Secret.Meta.Version,
+		Spec:          secret.Spec,
+		SecretVersion: resp.Secret.Meta.Version,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -271,7 +272,7 @@ func TestRemoveUnusedSecret(t *testing.T) {
 
 	resp, err := ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: secret.ID})
 	assert.NoError(t, err)
-	assert.Equal(t, api.RemoveSecretResponse{}, *resp)
+	assert.True(t, proto.Equal(&api.RemoveSecretResponse{}, resp), "remove response should be empty")
 
 	// ---- it was really removed because attempting to remove it again fails with a NotFound ----
 	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: secret.ID})

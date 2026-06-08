@@ -4,9 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/testutils"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -33,11 +32,11 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		s1 := &api.Service{
 			ID: "id1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
@@ -71,11 +70,11 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	err = s.Update(func(tx store.Tx) error {
 		s2 := &api.Service{
 			ID: "id2",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
@@ -100,11 +99,11 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	err = s.Update(func(tx store.Tx) error {
 		s2 := &api.Service{
 			ID: "id2",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
@@ -133,11 +132,11 @@ func TestReplicatedOrchestrator(t *testing.T) {
 	err = s.Update(func(tx store.Tx) error {
 		s2 := &api.Service{
 			ID: "id2",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
@@ -214,8 +213,8 @@ func TestReplicatedScaleDown(t *testing.T) {
 
 	s1 := &api.Service{
 		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -232,37 +231,37 @@ func TestReplicatedScaleDown(t *testing.T) {
 		nodes := []*api.Node{
 			{
 				ID: "node1",
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: "name1",
 					},
 					Availability: api.NodeAvailabilityActive,
 				},
-				Status: api.NodeStatus{
+				Status: &api.NodeStatus{
 					State: api.NodeStatus_READY,
 				},
 			},
 			{
 				ID: "node2",
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: "name2",
 					},
 					Availability: api.NodeAvailabilityActive,
 				},
-				Status: api.NodeStatus{
+				Status: &api.NodeStatus{
 					State: api.NodeStatus_READY,
 				},
 			},
 			{
 				ID: "node3",
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: "name3",
 					},
 					Availability: api.NodeAvailabilityActive,
 				},
-				Status: api.NodeStatus{
+				Status: &api.NodeStatus{
 					State: api.NodeStatus_READY,
 				},
 			},
@@ -281,10 +280,10 @@ func TestReplicatedScaleDown(t *testing.T) {
 				ID:           "task1",
 				Slot:         1,
 				DesiredState: api.TaskStateRunning,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateStarting,
 				},
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "task1",
 				},
 				ServiceID: "id1",
@@ -294,10 +293,10 @@ func TestReplicatedScaleDown(t *testing.T) {
 				ID:           "task2",
 				Slot:         2,
 				DesiredState: api.TaskStateRunning,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateRunning,
 				},
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "task2",
 				},
 				ServiceID: "id1",
@@ -307,10 +306,10 @@ func TestReplicatedScaleDown(t *testing.T) {
 				ID:           "task3",
 				Slot:         3,
 				DesiredState: api.TaskStateRunning,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateRunning,
 				},
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "task3",
 				},
 				ServiceID: "id1",
@@ -320,10 +319,10 @@ func TestReplicatedScaleDown(t *testing.T) {
 				ID:           "task4",
 				Slot:         4,
 				DesiredState: api.TaskStateRunning,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateRunning,
 				},
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "task4",
 				},
 				ServiceID: "id1",
@@ -333,10 +332,10 @@ func TestReplicatedScaleDown(t *testing.T) {
 				ID:           "task5",
 				Slot:         5,
 				DesiredState: api.TaskStateRunning,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateRunning,
 				},
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "task5",
 				},
 				ServiceID: "id1",
@@ -346,10 +345,10 @@ func TestReplicatedScaleDown(t *testing.T) {
 				ID:           "task6",
 				Slot:         6,
 				DesiredState: api.TaskStateRunning,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateRunning,
 				},
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "task6",
 				},
 				ServiceID: "id1",
@@ -359,10 +358,10 @@ func TestReplicatedScaleDown(t *testing.T) {
 				ID:           "task7",
 				Slot:         7,
 				DesiredState: api.TaskStateRunning,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateNew,
 				},
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "task7",
 				},
 				ServiceID: "id1",
@@ -479,11 +478,11 @@ func TestInitializationRejectedTasks(t *testing.T) {
 
 	service1 := &api.Service{
 		ID: "serviceid1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
@@ -502,13 +501,13 @@ func TestInitializationRejectedTasks(t *testing.T) {
 		nodes := []*api.Node{
 			{
 				ID: "node1",
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: "name1",
 					},
 					Availability: api.NodeAvailabilityActive,
 				},
-				Status: api.NodeStatus{
+				Status: &api.NodeStatus{
 					State: api.NodeStatus_READY,
 				},
 			},
@@ -523,15 +522,15 @@ func TestInitializationRejectedTasks(t *testing.T) {
 				ID:           "task1",
 				Slot:         1,
 				DesiredState: api.TaskStateReady,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateRejected,
 				},
-				Spec: api.TaskSpec{
+				Spec: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
 				},
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "task1",
 				},
 				ServiceID: "serviceid1",
@@ -597,11 +596,11 @@ func TestInitializationFailedTasks(t *testing.T) {
 
 	service1 := &api.Service{
 		ID: "serviceid1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
@@ -620,13 +619,13 @@ func TestInitializationFailedTasks(t *testing.T) {
 		nodes := []*api.Node{
 			{
 				ID: "node1",
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: "name1",
 					},
 					Availability: api.NodeAvailabilityActive,
 				},
-				Status: api.NodeStatus{
+				Status: &api.NodeStatus{
 					State: api.NodeStatus_READY,
 				},
 			},
@@ -641,15 +640,15 @@ func TestInitializationFailedTasks(t *testing.T) {
 				ID:           "task1",
 				Slot:         1,
 				DesiredState: api.TaskStateRunning,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateFailed,
 				},
-				Spec: api.TaskSpec{
+				Spec: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
 				},
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "task1",
 				},
 				ServiceID: "serviceid1",
@@ -659,15 +658,15 @@ func TestInitializationFailedTasks(t *testing.T) {
 				ID:           "task2",
 				Slot:         2,
 				DesiredState: api.TaskStateRunning,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateStarting,
 				},
-				Spec: api.TaskSpec{
+				Spec: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
 				},
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "task2",
 				},
 				ServiceID: "serviceid1",
@@ -731,11 +730,11 @@ func TestInitializationNodeDown(t *testing.T) {
 
 	service1 := &api.Service{
 		ID: "serviceid1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
@@ -754,13 +753,13 @@ func TestInitializationNodeDown(t *testing.T) {
 		nodes := []*api.Node{
 			{
 				ID: "node1",
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: "name1",
 					},
 					Availability: api.NodeAvailabilityActive,
 				},
-				Status: api.NodeStatus{
+				Status: &api.NodeStatus{
 					State: api.NodeStatus_DOWN,
 				},
 			},
@@ -775,15 +774,15 @@ func TestInitializationNodeDown(t *testing.T) {
 				ID:           "task1",
 				Slot:         1,
 				DesiredState: api.TaskStateRunning,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateRunning,
 				},
-				Spec: api.TaskSpec{
+				Spec: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
 				},
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "task1",
 				},
 				ServiceID: "serviceid1",
@@ -830,17 +829,17 @@ func TestInitializationDelayStart(t *testing.T) {
 
 	service1 := &api.Service{
 		ID: "serviceid1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(100 * time.Millisecond),
+					Delay:     durationpb.New(100 * time.Millisecond),
 				},
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -858,13 +857,13 @@ func TestInitializationDelayStart(t *testing.T) {
 		nodes := []*api.Node{
 			{
 				ID: "node1",
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: "name1",
 					},
 					Availability: api.NodeAvailabilityActive,
 				},
-				Status: api.NodeStatus{
+				Status: &api.NodeStatus{
 					State: api.NodeStatus_READY,
 				},
 			},
@@ -879,20 +878,20 @@ func TestInitializationDelayStart(t *testing.T) {
 				ID:           "task1",
 				Slot:         1,
 				DesiredState: api.TaskStateReady,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State:     api.TaskStateReady,
 					Timestamp: ptypes.MustTimestampProto(before),
 				},
-				Spec: api.TaskSpec{
+				Spec: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
 					Restart: &api.RestartPolicy{
 						Condition: api.RestartOnAny,
-						Delay:     gogotypes.DurationProto(100 * time.Millisecond),
+						Delay:     durationpb.New(100 * time.Millisecond),
 					},
 				},
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "task1",
 				},
 				ServiceID: "serviceid1",

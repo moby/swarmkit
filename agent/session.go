@@ -206,7 +206,7 @@ func (s *session) heartbeat(ctx context.Context) error {
 
 			log.G(ctx).WithFields(fields).Debugf("heartbeat successful to manager %v, next heartbeat period: %v", s.conn.Peer(), resp.Period)
 
-			heartbeat.Reset(resp.Period)
+			heartbeat.Reset(resp.Period.AsDuration())
 		case <-s.closed:
 			return errSessionClosed
 		case <-ctx.Done():
@@ -339,7 +339,7 @@ func (s *session) watch(ctx context.Context) error {
 							Task: t,
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentActionUpdate,
 				}
 
 				assignmentChanges = append(assignmentChanges, taskChange)

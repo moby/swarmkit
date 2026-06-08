@@ -92,11 +92,11 @@ func (r *Reconciler) ReconcileService(id string) error {
 	// we need to compute the constraints on the service so we know which nodes
 	// to schedule it on
 	var constraints []constraint.Constraint
-	if service.Spec.Task.Placement != nil && len(service.Spec.Task.Placement.Constraints) != 0 {
+	if service.GetSpec().GetTask().GetPlacement() != nil && len(service.GetSpec().GetTask().GetPlacement().GetConstraints()) != 0 {
 		// constraint.Parse does return an error, but we don't need to check
 		// it, because it was already checked when the service was created or
 		// updated.
-		constraints, _ = constraint.Parse(service.Spec.Task.Placement.Constraints)
+		constraints, _ = constraint.Parse(service.GetSpec().GetTask().GetPlacement().GetConstraints())
 	}
 
 	var candidateNodes []string
@@ -115,10 +115,10 @@ func (r *Reconciler) ReconcileService(id string) error {
 			continue
 		}
 
-		if node.Spec.Availability != api.NodeAvailabilityActive {
+		if node.GetSpec().GetAvailability() != api.NodeAvailabilityActive {
 			continue
 		}
-		if node.Status.State != api.NodeStatus_READY {
+		if node.GetStatus().GetState() != api.NodeStatus_READY {
 			continue
 		}
 		// you can append to a nil slice and get a non-nil slice, which is
@@ -144,18 +144,18 @@ func (r *Reconciler) ReconcileService(id string) error {
 		// state completed, including failed tasks. We only want to create
 		// tasks for nodes on which there are no existing tasks.
 		if task.JobIteration != nil {
-			if task.JobIteration.Index == service.JobStatus.JobIteration.Index &&
+			if task.JobIteration.Index == service.JobStatus.GetJobIteration().GetIndex() &&
 				task.DesiredState <= api.TaskStateCompleted {
 				// we already know the task is desired to be executing (because its
 				// desired state is Completed). Check here to see if it's already
 				// failed, so we can restart it
-				if task.Status.State > api.TaskStateCompleted {
+				if task.GetStatus().GetState() > api.TaskStateCompleted {
 					restartTasks = append(restartTasks, task.ID)
 				}
 				nodeToTask[task.NodeID] = task.ID
 			}
 
-			if task.JobIteration.Index != service.JobStatus.JobIteration.Index {
+			if task.JobIteration.Index != service.JobStatus.GetJobIteration().GetIndex() {
 				if task.DesiredState != api.TaskStateRemove {
 					removeTasks = append(removeTasks, task.ID)
 				}
@@ -173,7 +173,7 @@ func (r *Reconciler) ReconcileService(id string) error {
 					// if the node does not already have a running or completed
 					// task, create a task for this node.
 					task := orchestrator.NewTask(cluster, service, 0, node)
-					task.JobIteration = &service.JobStatus.JobIteration
+					task.JobIteration = service.JobStatus.JobIteration
 					task.DesiredState = api.TaskStateCompleted
 					return store.CreateTask(tx, task)
 				}); err != nil {
@@ -238,7 +238,7 @@ func (r *Reconciler) ReconcileService(id string) error {
 					}
 					// if the task is still desired to be running, and is still
 					// actually, running, then it still needs to be shut down.
-					if t.DesiredState > api.TaskStateCompleted || t.Status.State <= api.TaskStateRunning {
+					if t.DesiredState > api.TaskStateCompleted || t.GetStatus().GetState() <= api.TaskStateRunning {
 						t.DesiredState = api.TaskStateShutdown
 						return store.UpdateTask(tx, t)
 					}

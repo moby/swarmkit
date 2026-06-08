@@ -5,7 +5,6 @@ import (
 	"sort"
 	"time"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/defaults"
 	"github.com/moby/swarmkit/v2/log"
@@ -59,26 +58,24 @@ func CheckTasks(ctx context.Context, s *store.MemoryStore, readTx store.ReadTx, 
 
 			// desired state ready is a transient state that it should be started.
 			// however previous leader may not have started it, retry start here
-			if t.DesiredState != api.TaskStateReady || t.Status.State > api.TaskStateCompleted {
+			if t.DesiredState != api.TaskStateReady || t.Status.GetState() > api.TaskStateCompleted {
 				continue
 			}
-			restartDelay, _ := gogotypes.DurationFromProto(defaults.Service.Task.Restart.Delay)
+			restartDelay := defaults.Service.Task.Restart.Delay.AsDuration()
 			if t.Spec.Restart != nil && t.Spec.Restart.Delay != nil {
-				var err error
-				restartDelay, err = gogotypes.DurationFromProto(t.Spec.Restart.Delay)
-				if err != nil {
-					log.G(ctx).WithError(err).Error("invalid restart delay")
-					restartDelay, _ = gogotypes.DurationFromProto(defaults.Service.Task.Restart.Delay)
-				}
+				restartDelay = t.Spec.Restart.Delay.AsDuration()
 			}
 			if restartDelay != 0 {
 				var timestamp time.Time
-				if t.Status.AppliedAt != nil {
-					timestamp, err = gogotypes.TimestampFromProto(t.Status.AppliedAt)
-				} else {
-					timestamp, err = gogotypes.TimestampFromProto(t.Status.Timestamp)
+				var hasTimestamp bool
+				if t.Status.GetAppliedAt() != nil {
+					timestamp = t.Status.GetAppliedAt().AsTime()
+					hasTimestamp = true
+				} else if t.Status.GetTimestamp() != nil {
+					timestamp = t.Status.GetTimestamp().AsTime()
+					hasTimestamp = true
 				}
-				if err == nil {
+				if hasTimestamp {
 					restartTime := timestamp.Add(restartDelay)
 					calculatedRestartDelay := time.Until(restartTime)
 					if calculatedRestartDelay < restartDelay {
