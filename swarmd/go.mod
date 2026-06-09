@@ -4,13 +4,13 @@ go 1.24.0
 
 require (
 	github.com/cloudflare/cfssl v1.6.4
-	github.com/docker/docker v24.0.0-rc.2.0.20230908212318-6ce5aa1cd5a4+incompatible // master (v25.0.0-dev)
+	github.com/docker/docker v25.0.14+incompatible
 	github.com/docker/go-connections v0.4.1-0.20231110212414-fa09c952e3ea
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/moby/swarmkit/v2 v2.1.2-0.20251106140653-b63092e712bf
+	github.com/moby/swarmkit/v2 v2.1.2-0.20251110192100-17b8d222e7dd
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.20.5
@@ -45,7 +45,7 @@ require (
 	github.com/bits-and-blooms/bitset v1.13.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/container-storage-interface/spec v1.2.0 // indirect
-	github.com/containerd/containerd v1.7.29 // indirect
+	github.com/containerd/log v0.1.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
@@ -97,5 +97,3 @@ require (
 	gotest.tools/v3 v3.5.2 // indirect
 	k8s.io/klog/v2 v2.90.1 // indirect
 )
-
-replace github.com/moby/swarmkit/v2 => ../

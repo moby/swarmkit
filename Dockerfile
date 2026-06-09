@@ -110,7 +110,7 @@ RUN --mount=type=bind,target=. \
     (
       set -x
       cd $dir
-      golangci-lint run --config "$config" ./...
+      GOWORK=off golangci-lint run --config "$config" ./...
     )
   done
 EOT
