@@ -2056,7 +2056,7 @@ func isValidSubnet(t assert.TestingT, subnet string) bool {
 
 type mockTester struct{}
 
-func (m mockTester) Errorf(_ string, _ ...interface{}) {
+func (m mockTester) Errorf(_ string, _ ...any) {
 }
 
 // Returns a timeout given whether we should expect a timeout:  In the case where we do expect a timeout,

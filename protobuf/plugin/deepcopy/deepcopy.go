@@ -59,11 +59,11 @@ func (d *deepCopyGen) genMsgDeepCopy(m *generator.Descriptor) {
 	d.P()
 
 	if len(m.Field) == 0 {
-		d.P("func (m *", ccTypeName, ") CopyFrom(src interface{})", " {}")
+		d.P("func (m *", ccTypeName, ") CopyFrom(src any)", " {}")
 		return
 	}
 
-	d.P("func (m *", ccTypeName, ") CopyFrom(src interface{})", " {")
+	d.P("func (m *", ccTypeName, ") CopyFrom(src any)", " {")
 	d.P()
 
 	d.P("o := src.(*", ccTypeName, ")")

@@ -615,7 +615,7 @@ func (d *storeObjectGen) genMsgStoreObject(m *generator.Descriptor, storeObject 
 	d.genFromArgs(ccTypeName + "IndexerByID")
 	d.genPrefixFromArgs(ccTypeName + "IndexerByID")
 
-	d.P("func (indexer ", ccTypeName, "IndexerByID) FromObject(obj interface{}) (bool, []byte, error) {")
+	d.P("func (indexer ", ccTypeName, "IndexerByID) FromObject(obj any) (bool, []byte, error) {")
 	d.In()
 	d.P("m := obj.(*", ccTypeName, ")")
 	// Add the null character as a terminator
@@ -631,7 +631,7 @@ func (d *storeObjectGen) genMsgStoreObject(m *generator.Descriptor, storeObject 
 	d.genFromArgs(ccTypeName + "IndexerByName")
 	d.genPrefixFromArgs(ccTypeName + "IndexerByName")
 
-	d.P("func (indexer ", ccTypeName, "IndexerByName) FromObject(obj interface{}) (bool, []byte, error) {")
+	d.P("func (indexer ", ccTypeName, "IndexerByName) FromObject(obj any) (bool, []byte, error) {")
 	d.In()
 	d.P("m := obj.(*", ccTypeName, ")")
 	if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
@@ -652,7 +652,7 @@ func (d *storeObjectGen) genMsgStoreObject(m *generator.Descriptor, storeObject 
 	d.genFromArgs(ccTypeName + "CustomIndexer")
 	d.genPrefixFromArgs(ccTypeName + "CustomIndexer")
 
-	d.P("func (indexer ", ccTypeName, "CustomIndexer) FromObject(obj interface{}) (bool, [][]byte, error) {")
+	d.P("func (indexer ", ccTypeName, "CustomIndexer) FromObject(obj any) (bool, [][]byte, error) {")
 	d.In()
 	d.P("m := obj.(*", ccTypeName, ")")
 	if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
@@ -665,7 +665,7 @@ func (d *storeObjectGen) genMsgStoreObject(m *generator.Descriptor, storeObject 
 }
 
 func (d *storeObjectGen) genFromArgs(indexerName string) {
-	d.P("func (indexer ", indexerName, ") FromArgs(args ...interface{}) ([]byte, error) {")
+	d.P("func (indexer ", indexerName, ") FromArgs(args ...any) ([]byte, error) {")
 	d.In()
 	d.P("return fromArgs(args...)")
 	d.Out()
@@ -673,7 +673,7 @@ func (d *storeObjectGen) genFromArgs(indexerName string) {
 }
 
 func (d *storeObjectGen) genPrefixFromArgs(indexerName string) {
-	d.P("func (indexer ", indexerName, ") PrefixFromArgs(args ...interface{}) ([]byte, error) {")
+	d.P("func (indexer ", indexerName, ") PrefixFromArgs(args ...any) ([]byte, error) {")
 	d.In()
 	d.P("return prefixFromArgs(args...)")
 	d.Out()

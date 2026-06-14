@@ -419,7 +419,7 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 	}
 
 	var mux MockPluginClient
-	mux.HandleFunc(drivers.SecretsProviderAPI, func(body []byte) (interface{}, error) {
+	mux.HandleFunc(drivers.SecretsProviderAPI, func(body []byte) (any, error) {
 		var request drivers.SecretsProviderRequest
 		assert.NoError(t, json.Unmarshal(body, &request))
 		response := responses[request.SecretName]
@@ -1923,7 +1923,7 @@ func makeTasksAndDependenciesWithRedundantReferences(t *testing.T, nodeID string
 	return secrets, configs, resourceRefs, tasks
 }
 
-func taskSpecFromDependencies(dependencies ...interface{}) api.TaskSpec {
+func taskSpecFromDependencies(dependencies ...any) api.TaskSpec {
 	var secretRefs []*api.SecretReference
 	var configRefs []*api.ConfigReference
 	var resourceRefs []api.ResourceReference
@@ -2367,7 +2367,7 @@ func (m *MockPlugin) ScopedPath(_ string) string {
 	return ""
 }
 
-type MockPluginHandlerFn func(argsJSON []byte) (interface{}, error)
+type MockPluginHandlerFn func(argsJSON []byte) (any, error)
 
 type MockPluginClient struct {
 	handlers map[string]MockPluginHandlerFn
@@ -2383,7 +2383,7 @@ func (mc *MockPluginClient) HandleFunc(method string, fn MockPluginHandlerFn) {
 	mc.handlers[method] = fn
 }
 
-func (mc *MockPluginClient) Call(method string, args, ret interface{}) error {
+func (mc *MockPluginClient) Call(method string, args, ret any) error {
 	fn, ok := mc.handlers[method]
 	if !ok {
 		return fmt.Errorf("no handler for %s", method)

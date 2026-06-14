@@ -28,7 +28,7 @@ type uniqueSlotsMatcher struct {
 	duplicatedSlot uint64
 }
 
-func (u uniqueSlotsMatcher) Match(actual interface{}) (bool, error) {
+func (u uniqueSlotsMatcher) Match(actual any) (bool, error) {
 	tasks, ok := actual.([]*api.Task)
 	if !ok {
 		return false, fmt.Errorf("actual is not []*api.Tasks{}")
@@ -45,11 +45,11 @@ func (u uniqueSlotsMatcher) Match(actual interface{}) (bool, error) {
 	return true, nil
 }
 
-func (u uniqueSlotsMatcher) FailureMessage(_ interface{}) string {
+func (u uniqueSlotsMatcher) FailureMessage(_ any) string {
 	return fmt.Sprintf("expected tasks to have unique slots, but %v is duplicated", u.duplicatedSlot)
 }
 
-func (u uniqueSlotsMatcher) NegatedFailureMessage(_ interface{}) string {
+func (u uniqueSlotsMatcher) NegatedFailureMessage(_ any) string {
 	return fmt.Sprintf("expected tasks to have duplicate slots")
 }
 

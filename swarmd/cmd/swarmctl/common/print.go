@@ -22,7 +22,7 @@ func PrintHeader(w io.Writer, columns ...string) {
 // FprintfIfNotEmpty prints only if `s` is not empty.
 //
 // NOTE(stevvooe): Not even remotely a printf function.. doesn't take args.
-func FprintfIfNotEmpty(w io.Writer, format string, v interface{}) {
+func FprintfIfNotEmpty(w io.Writer, format string, v any) {
 	if v != nil && v != "" {
 		fmt.Fprintf(w, format, v)
 	}
