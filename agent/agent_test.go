@@ -233,6 +233,33 @@ func TestHandleSessionMessageNodeChanges(t *testing.T) {
 	require.Empty(t, closedSessions)
 }
 
+// TestNodeDescriptionsEqual verifies that semantically equivalent protobuf
+// messages compare equal despite representation differences. A protobuf
+// round-trip may represent an empty repeated field as nil.
+//
+// regression test for https://github.com/moby/swarmkit/pull/3249
+func TestNodeDescriptionsEqual(t *testing.T) {
+	t.Run("nil and empty repeated field", func(t *testing.T) {
+		a := &api.NodeDescription{}
+		b := &api.NodeDescription{
+			CSIInfo: []*api.NodeCSIInfo{},
+		}
+
+		require.True(t, nodeDescriptionsEqual(a, b))
+	})
+
+	t.Run("different repeated field", func(t *testing.T) {
+		a := &api.NodeDescription{}
+		b := &api.NodeDescription{
+			CSIInfo: []*api.NodeCSIInfo{
+				{PluginName: "plugin"},
+			},
+		}
+
+		require.False(t, nodeDescriptionsEqual(a, b))
+	})
+}
+
 // when the node description changes, the session is restarted and propagated up to the dispatcher.
 // the node description includes the FIPSness of the agent.
 func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
