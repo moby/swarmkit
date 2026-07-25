@@ -287,7 +287,7 @@ func (c *testCluster) SetNodeRole(id string, role api.NodeRole) error {
 
 	var initialTimeout time.Duration
 	// version might change between get and update, so retry
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		time.Sleep(initialTimeout)
 		initialTimeout += 500 * time.Millisecond
 		resp, err := c.api.GetNode(context.Background(), &api.GetNodeRequest{NodeID: id})

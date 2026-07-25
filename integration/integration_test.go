@@ -169,10 +169,10 @@ func pollServiceReady(t *testing.T, c *testCluster, sid string, replicas int) {
 
 func newCluster(t *testing.T, numWorker, numManager int) *testCluster {
 	cl := newTestCluster(t.Name(), false)
-	for i := 0; i < numManager; i++ {
+	for i := range numManager {
 		require.NoError(t, cl.AddManager(false, nil), "manager number %d", i+1)
 	}
-	for i := 0; i < numWorker; i++ {
+	for i := range numWorker {
 		require.NoError(t, cl.AddAgent(), "agent number %d", i+1)
 	}
 
@@ -182,10 +182,10 @@ func newCluster(t *testing.T, numWorker, numManager int) *testCluster {
 
 func newClusterWithRootCA(t *testing.T, numWorker, numManager int, rootCA *ca.RootCA, fips bool) *testCluster {
 	cl := newTestCluster(t.Name(), fips)
-	for i := 0; i < numManager; i++ {
+	for i := range numManager {
 		require.NoError(t, cl.AddManager(false, rootCA), "manager number %d", i+1)
 	}
-	for i := 0; i < numWorker; i++ {
+	for i := range numWorker {
 		require.NoError(t, cl.AddAgent(), "agent number %d", i+1)
 	}
 
@@ -209,10 +209,10 @@ func TestServiceCreateLateBind(t *testing.T) {
 	numWorker, numManager := 3, 3
 
 	cl := newTestCluster(t.Name(), false)
-	for i := 0; i < numManager; i++ {
+	for i := range numManager {
 		require.NoError(t, cl.AddManager(true, nil), "manager number %d", i+1)
 	}
-	for i := 0; i < numWorker; i++ {
+	for i := range numWorker {
 		require.NoError(t, cl.AddAgent(), "agent number %d", i+1)
 	}
 
@@ -754,7 +754,7 @@ func TestRepeatedRootRotation(t *testing.T) {
 
 	// perform multiple root rotations, wait a second between each
 	var newRootCert, newRootKey []byte
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		newRootCert, newRootKey, err = cautils.CreateRootCertAndKey("newRootCN")
 		require.NoError(t, err)
 		require.NoError(t, cl.RotateRootCA(newRootCert, newRootKey))
@@ -881,7 +881,7 @@ func TestMixedFIPSClusterNonMandatoryFIPS(t *testing.T) {
 		require.NoError(t, cl.Stop())
 	}()
 	// create cluster with a non-FIPS manager, add another non-FIPS manager and a non-FIPs worker
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		require.NoError(t, cl.AddManager(false, nil))
 	}
 	require.NoError(t, cl.AddAgent())
@@ -923,7 +923,7 @@ func TestMixedFIPSClusterMandatoryFIPS(t *testing.T) {
 	defer func() {
 		require.NoError(t, cl.Stop())
 	}()
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		require.NoError(t, cl.AddManager(false, nil))
 	}
 	require.NoError(t, cl.AddAgent())
