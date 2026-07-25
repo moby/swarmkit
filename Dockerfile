@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 ARG GO_VERSION=1.24
-ARG BASE_DEBIAN_DISTRO="bullseye"
+ARG BASE_DEBIAN_DISTRO="bookworm"
 ARG GOLANG_IMAGE="golang:${GO_VERSION}-${BASE_DEBIAN_DISTRO}"
 
 ARG PROTOC_VERSION=3.14.0
@@ -104,7 +104,7 @@ EOT
 FROM golangci/golangci-lint:${GOLANGCI_LINT_VERSION} AS golangci-lint
 FROM gobase AS lint
 ARG DEBIAN_FRONTEND
-RUN apt-get install -y --no-install-recommends libgcc-10-dev libc6-dev
+RUN apt-get install -y --no-install-recommends libgcc-11-dev libc6-dev
 RUN --mount=type=bind,target=. \
     --mount=type=cache,target=/root/.cache \
     --mount=from=golangci-lint,source=/usr/bin/golangci-lint,target=/usr/bin/golangci-lint <<EOT
