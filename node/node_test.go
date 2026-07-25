@@ -287,7 +287,6 @@ func TestLoadSecurityConfigNodeFIPSCreateCluster(t *testing.T) {
 // the cluster ID to.
 func TestLoadSecurityConfigNodeFIPSJoinCluster(t *testing.T) {
 	for _, fips := range []bool{true, false} {
-		fips := fips
 		t.Run("fips="+strconv.FormatBool(fips), func(t *testing.T) {
 			t.Parallel()
 			tempdir := t.TempDir()

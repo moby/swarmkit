@@ -406,10 +406,7 @@ func TestDesiredStateRemoveOnlyNonterminal(t *testing.T) {
 		// no TaskStateOrphaned because that's not a state the task can be in
 		// on the agent
 	} {
-		// capture state variable here to run in parallel
-		state := state
 		t.Run(state.String(), func(t *testing.T) {
-			// go parallel to go faster
 			t.Parallel()
 			var (
 				// create a new task, actual state `state`, desired state
@@ -479,9 +476,9 @@ func checkDo(ctx context.Context, t *testing.T, task *api.Task, ctlr Controller,
 		}
 	}
 
-	copy := status.Copy()
-	copy.Timestamp = nil // don't check against timestamp
-	assert.Equal(t, expected, copy)
+	cp := status.Copy()
+	cp.Timestamp = nil // don't check against timestamp
+	assert.Equal(t, expected, cp)
 
 	return status
 }

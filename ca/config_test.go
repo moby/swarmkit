@@ -711,7 +711,6 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 		// requests from certs different than the cluster root CA, add another test case to make sure that the downloaded
 		// root has to validate against both the old TLS creds and new TLS creds
 	} {
-		testCase := testCase
 		nodeID := "node" + strconv.Itoa(i)
 		t.Run(nodeID, func(t *testing.T) {
 			tlsKeyPair, issuerInfo, err := testCase.issuingRootCA.IssueAndSaveNewCertificates(krw, nodeID, ca.ManagerRole, tc.Organization)

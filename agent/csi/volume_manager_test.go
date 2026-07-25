@@ -57,7 +57,6 @@ func TestTaskRestrictedVolumesProvider(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		testCase := testCase
 		t.Run(testCase.desc, func(t *testing.T) {
 			ctx := context.Background()
 
