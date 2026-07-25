@@ -8,6 +8,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -93,7 +94,7 @@ func NewPlugin(p mobyplugin.AddrPlugin, provider SecretProvider) Plugin {
 // connect is a private method that initializes a gRPC ClientConn and creates
 // the IdentityClient and ControllerClient.
 func (p *plugin) connect(ctx context.Context) error {
-	cc, err := grpc.DialContext(ctx, p.socket, grpc.WithInsecure())
+	cc, err := grpc.NewClient(p.socket, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return err
 	}
@@ -231,8 +232,8 @@ func (p *plugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string
 }
 
 // UnpublishVolume calls ControllerUnpublishVolume to unpublish the given
-// Volume from the Node with the given swarmkit ID. It returns an error if the
-// unpublish does not succeed
+// Volume from the Node with the given swarmkit ID. It returns an error if
+// unpublish does not succeed.
 func (p *plugin) UnpublishVolume(ctx context.Context, v *api.Volume, nodeID string) error {
 	if !p.publisher {
 		return nil
@@ -319,16 +320,15 @@ func (p *plugin) makeControllerPublishVolumeRequest(v *api.Volume, nodeID string
 		return nil
 	}
 
-	secrets := p.makeSecrets(v)
-	capability := capability.MakeCapability(v.Spec.AccessMode)
-	capability.AccessType = &csi.VolumeCapability_Mount{
+	volumeCapability := capability.MakeCapability(v.Spec.AccessMode)
+	volumeCapability.AccessType = &csi.VolumeCapability_Mount{
 		Mount: &csi.VolumeCapability_MountVolume{},
 	}
 	return &csi.ControllerPublishVolumeRequest{
 		VolumeId:         v.VolumeInfo.VolumeID,
 		NodeId:           p.swarmToCSI[nodeID],
-		Secrets:          secrets,
-		VolumeCapability: capability,
+		Secrets:          p.makeSecrets(v),
+		VolumeCapability: volumeCapability,
 		VolumeContext:    v.VolumeInfo.VolumeContext,
 	}
 }

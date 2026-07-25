@@ -3,6 +3,7 @@ package jobs
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"context"
 	"net"
@@ -82,12 +83,13 @@ var _ = Describe("Integration between the controlapi and jobs orchestrator", fun
 		// cancel after dial has completed is a no-op, but if we don't cancel,
 		// linters will (probably) complain about a leaked context.
 		defer cancel()
-		conn, err = grpc.DialContext(
-			ctx, "unix:"+tempUnixSocket,
+		//nolint:staticcheck // NewClient does not support WithBlock.
+		conn, err = grpc.DialContext(ctx,
+			"unix:"+tempUnixSocket,
 			// block on making this connection, to avoid the tests failing for
 			// funny reasons related to this connection being established async
 			grpc.WithBlock(),
-			grpc.WithInsecure(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -101,12 +103,12 @@ var _ = Describe("Integration between the controlapi and jobs orchestrator", fun
 	})
 
 	AfterEach(func() {
-		conn.Close()
+		_ = conn.Close()
 		grpcServer.Stop()
 		// wait for the server to stop
 		<-serverDone
-		s.Close()
-		os.RemoveAll(tempUnixSocket)
+		_ = s.Close()
+		_ = os.RemoveAll(tempUnixSocket)
 
 		o.Stop()
 		<-orchestratorDone
