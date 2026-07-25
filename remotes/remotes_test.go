@@ -114,7 +114,7 @@ func TestRemotesConvergence(t *testing.T) {
 	}
 
 	// crank it up
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		remotes.Observe(api.Peer{Addr: "one"}, DefaultObservationWeight)
 	}
 
@@ -149,7 +149,7 @@ func TestRemotesZeroWeights(t *testing.T) {
 	}
 
 	seen := map[api.Peer]struct{}{}
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		peer, err := remotes.Select()
 		if err != nil {
 			t.Fatalf("unexpected error from Select: %v", err)
@@ -168,7 +168,7 @@ func TestRemotesZeroWeights(t *testing.T) {
 	remotes.Observe(api.Peer{Addr: "three"}, DefaultObservationWeight)
 
 	count := map[api.Peer]int{}
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		// basically, we expect the same one to return
 		peer, err := remotes.Select()
 		if err != nil {
@@ -246,7 +246,7 @@ func TestRemotesDownweight(t *testing.T) {
 	samples := 100000
 	chosen := 0
 
-	for i := 0; i < samples; i++ {
+	for range samples {
 		p, err := remotes.Select()
 		if err != nil {
 			t.Fatalf("error selecting remote: %v", err)
@@ -272,7 +272,7 @@ func TestRemotesPractical(t *testing.T) {
 	tolerance := 0.20 // allow 20% delta to reduce test failure probability
 
 	// set a baseline, where selections should be even
-	for i := 0; i < selections; i++ {
+	for range selections {
 		peer, err := remotes.Select()
 		if err != nil {
 			t.Fatalf("error selecting peer: %v", err)
@@ -294,7 +294,7 @@ func TestRemotesPractical(t *testing.T) {
 	remotes.Observe(peers[0], -DefaultObservationWeight)
 
 	seen = map[api.Peer]int{} // result
-	for i := 0; i < selections; i++ {
+	for range selections {
 		peer, err := remotes.Select()
 		if err != nil {
 			t.Fatalf("error selecting peer: %v", err)

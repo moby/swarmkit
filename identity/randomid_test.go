@@ -9,7 +9,7 @@ import (
 func TestGenerateGUID(t *testing.T) {
 	idReader = rand.New(rand.NewSource(0))
 
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		guid := NewID()
 
 		var i big.Int
