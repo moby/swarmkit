@@ -84,7 +84,7 @@ func TestServiceDelete(t *testing.T) {
 				createDBObjects(t, s, service)
 
 				taskIDs := make([]string, taskCount)
-				tasks := make([]interface{}, taskCount)
+				tasks := make([]any, taskCount)
 				for i := 0; i < taskCount; i++ {
 					taskIDs[i] = "task" + strconv.Itoa(i+1)
 					tasks[i] = newTask(taskIDs[i], service)
@@ -329,7 +329,7 @@ func ensureNoDeallocatorEvent(t *testing.T, deallocator *Deallocator) {
 	}
 }
 
-func createDBObjects(t *testing.T, s *store.MemoryStore, objects ...interface{}) {
+func createDBObjects(t *testing.T, s *store.MemoryStore, objects ...any) {
 	err := s.Update(func(tx store.Tx) (e error) {
 		for _, object := range objects {
 			switch typedObject := object.(type) {

@@ -819,7 +819,7 @@ func printLogMessages(msgs ...api.LogMessage) {
 }
 
 // newLogMessage is just a helper to build a new log message.
-func newLogMessage(msgctx api.LogContext, format string, vs ...interface{}) api.LogMessage {
+func newLogMessage(msgctx api.LogContext, format string, vs ...any) api.LogMessage {
 	return api.LogMessage{
 		Context:   msgctx,
 		Timestamp: ptypes.MustTimestampProto(time.Now()),
