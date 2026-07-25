@@ -66,7 +66,7 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 
 	dec := json.NewDecoder(rc)
 	dec.UseNumber()
-	m := map[string]interface{}{}
+	m := map[string]any{}
 	spamLimiter := rate.NewLimiter(rate.Every(1000*time.Millisecond), 1)
 
 	lastStatus := ""
@@ -81,7 +81,7 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 		// limit pull progress logs unless the status changes
 		if spamLimiter.Allow() || lastStatus != m["status"] {
 			// if we have progress details, we have everything we need
-			if progress, ok := m["progressDetail"].(map[string]interface{}); ok {
+			if progress, ok := m["progressDetail"].(map[string]any); ok {
 				// first, log the image and status
 				l = l.WithFields(log.Fields{
 					"image":  c.container.image(),
