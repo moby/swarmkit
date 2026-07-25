@@ -74,7 +74,7 @@ func TestReporter(t *testing.T) {
 		api.TaskStateReady,
 		api.TaskStateCompleted,
 	} {
-		for i := 0; i < ntasks; i++ {
+		for i := range ntasks {
 			taskID, status := fmt.Sprint(i), &api.TaskStatus{State: state}
 			expected[taskID] = status
 
