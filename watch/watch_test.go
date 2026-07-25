@@ -2,6 +2,7 @@ package watch
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -85,12 +86,7 @@ func TestWatch(t *testing.T) {
 	tagFilter := func(t string) events.Matcher {
 		return events.MatcherFunc(func(event events.Event) bool {
 			testEvent := event.(testEvent)
-			for _, itemTag := range testEvent.tags {
-				if t == itemTag {
-					return true
-				}
-			}
-			return false
+			return slices.Contains(testEvent.tags, t)
 		})
 	}
 
