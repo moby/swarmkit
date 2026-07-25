@@ -823,6 +823,6 @@ func newLogMessage(msgctx api.LogContext, format string, vs ...any) api.LogMessa
 	return api.LogMessage{
 		Context:   msgctx,
 		Timestamp: ptypes.MustTimestampProto(time.Now()),
-		Data:      []byte(fmt.Sprintf(format, vs...)),
+		Data:      fmt.Appendf(nil, format, vs...),
 	}
 }

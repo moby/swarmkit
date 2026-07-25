@@ -936,7 +936,7 @@ func mockNumberedConfig(i int) *api.Config {
 			Annotations: api.Annotations{
 				Name: fmt.Sprintf("config%d", i),
 			},
-			Data: []byte(fmt.Sprintf("config%d", i)),
+			Data: fmt.Appendf(nil, "config%d", i),
 		},
 	}
 }
@@ -948,7 +948,7 @@ func mockNumberedSecret(i int) *api.Secret {
 			Annotations: api.Annotations{
 				Name: fmt.Sprintf("secret%d", i),
 			},
-			Data: []byte(fmt.Sprintf("secret%d", i)),
+			Data: fmt.Appendf(nil, "secret%d", i),
 		},
 	}
 }
@@ -972,7 +972,7 @@ func makeMockResource(tx store.Tx, resourceRef *api.ResourceReference) error {
 				Annotations: api.Annotations{
 					Name: fmt.Sprintf("dummy_secret_%s", resourceRef.ResourceID),
 				},
-				Data: []byte(fmt.Sprintf("secret_%s", resourceRef.ResourceID)),
+				Data: fmt.Appendf(nil, "secret_%s", resourceRef.ResourceID),
 			},
 		}
 		if store.GetSecret(tx, dummySecret.ID) == nil {
@@ -987,7 +987,7 @@ func makeMockResource(tx store.Tx, resourceRef *api.ResourceReference) error {
 				Annotations: api.Annotations{
 					Name: fmt.Sprintf("dummy_config_%s", resourceRef.ResourceID),
 				},
-				Data: []byte(fmt.Sprintf("config_%s", resourceRef.ResourceID)),
+				Data: fmt.Appendf(nil, "config_%s", resourceRef.ResourceID),
 			},
 		}
 		if store.GetConfig(tx, dummyConfig.ID) == nil {

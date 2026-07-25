@@ -38,7 +38,7 @@ func makeWALData(index uint64, term uint64, state *raftpb.ConfState) ([]byte, []
 		entries = append(entries, raftpb.Entry{
 			Term:  wsn.Term + 1,
 			Index: i,
-			Data:  []byte(fmt.Sprintf("Entry %d", i)),
+			Data:  fmt.Appendf(nil, "Entry %d", i),
 		})
 	}
 
