@@ -3391,7 +3391,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 
 		_ = s.Update(func(tx store.Tx) error {
 			// Create initial nodes and tasks
-			for i := 0; i < nodes; i++ {
+			for i := range nodes {
 				n := &api.Node{
 					ID: identity.NewID(),
 					Spec: api.NodeSpec{
@@ -3422,7 +3422,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 					panic(err)
 				}
 			}
-			for i := 0; i < tasks; i++ {
+			for i := range tasks {
 				id := "task" + strconv.Itoa(i)
 				t := &api.Task{
 					ID:           id,

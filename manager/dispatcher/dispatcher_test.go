@@ -234,7 +234,7 @@ func TestRegisterExceedRateLimit(t *testing.T) {
 	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
 		assert.NoError(t, err)
 		msg, err := stream.Recv()

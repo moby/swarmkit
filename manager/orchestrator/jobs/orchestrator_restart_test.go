@@ -169,7 +169,7 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 		// has successfully fully started. this means we fail 3 tasks in total.
 		// failing the fourth task happens after this loop, and is the
 		// iteration that should not create a new task.
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			err = s.Update(func(tx store.Tx) error {
 				tasks, err := store.FindTasks(tx, store.ByTaskState(api.TaskStateNew))
 				if err != nil {

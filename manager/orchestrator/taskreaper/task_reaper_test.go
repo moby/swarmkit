@@ -807,7 +807,7 @@ func TestTaskReaperBatching(t *testing.T) {
 		assert.NoError(t, store.CreateTask(tx, task2))
 
 		tasks = make([]*api.Task, maxDirty+1)
-		for i := 0; i < maxDirty+1; i++ {
+		for i := range maxDirty + 1 {
 			tasks[i] = &api.Task{
 				ID:        fmt.Sprintf("baz%v", i),
 				ServiceID: "bar",

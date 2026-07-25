@@ -187,7 +187,7 @@ func (r *Reconciler) ReconcileService(id string) error {
 	// finally, we can create these tasks. do this in a batch operation, to
 	// avoid exceeding transaction size limits
 	err := r.store.Batch(func(batch *store.Batch) error {
-		for i := uint64(0); i < actualNewTasks; i++ {
+		for range actualNewTasks {
 			if err := batch.Update(func(tx store.Tx) error {
 				var slot uint64
 				// each task will go into a unique slot, and at the end, there

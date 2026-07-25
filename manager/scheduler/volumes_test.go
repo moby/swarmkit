@@ -546,7 +546,7 @@ var _ = Describe("volumeSet", func() {
 			allVolume = cannedVolume(5)
 
 			// add some volumes
-			for i := 0; i < 4; i++ {
+			for i := range 4 {
 				volumes = append(volumes, cannedVolume(i))
 				vs.addOrUpdateVolume(volumes[i])
 

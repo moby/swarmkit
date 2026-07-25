@@ -52,7 +52,7 @@ var _ = Describe("Replicated job orchestrator", func() {
 			// Create some services. 3 replicated jobs and 1 of different
 			// service mode
 			err := s.Update(func(tx store.Tx) error {
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					serviceReplicated := &api.Service{
 						ID: fmt.Sprintf("serviceReplicated%v", i),
 						Spec: api.ServiceSpec{
@@ -165,7 +165,7 @@ var _ = Describe("Replicated job orchestrator", func() {
 			// Create some services. Wait a moment, and then check that they
 			// are reconciled.
 			err := s.Update(func(tx store.Tx) error {
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					service := &api.Service{
 						ID: fmt.Sprintf("service%v", i),
 						Spec: api.ServiceSpec{
@@ -193,7 +193,7 @@ var _ = Describe("Replicated job orchestrator", func() {
 
 		It("should reconcile each global job service received", func() {
 			err := s.Update(func(tx store.Tx) error {
-				for i := 0; i < 3; i++ {
+				for i := range 3 {
 					service := &api.Service{
 						ID: fmt.Sprintf("service%v", i),
 						Spec: api.ServiceSpec{

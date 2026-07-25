@@ -2002,14 +2002,14 @@ func setupNodes(b *testing.B, n int) (*MemoryStore, []string) {
 
 	nodeIDs := make([]string, n)
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		nodeIDs[i] = identity.NewID()
 	}
 
 	b.ResetTimer()
 
 	_ = s.Update(func(tx1 Tx) error {
-		for i := 0; i < n; i++ {
+		for i := range n {
 			_ = CreateNode(tx1, &api.Node{
 				ID: nodeIDs[i],
 				Spec: api.NodeSpec{

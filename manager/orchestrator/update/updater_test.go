@@ -122,7 +122,7 @@ func TestUpdater(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateCluster(tx, cluster))
 		assert.NoError(t, store.CreateService(tx, service))
-		for i := 0; i < instances; i++ {
+		for i := range instances {
 			assert.NoError(t, store.CreateTask(tx, orchestrator.NewTask(cluster, service, uint64(i), "")))
 		}
 		return nil
@@ -319,7 +319,7 @@ func TestUpdaterPlacement(t *testing.T) {
 		assert.NoError(t, store.CreateCluster(tx, cluster))
 		assert.NoError(t, store.CreateService(tx, service))
 		store.CreateNode(tx, node)
-		for i := 0; i < instances; i++ {
+		for i := range instances {
 			assert.NoError(t, store.CreateTask(tx, orchestrator.NewTask(cluster, service, uint64(i), "node1")))
 		}
 		return nil
@@ -433,7 +433,7 @@ func TestUpdaterFailureAction(t *testing.T) {
 	err := s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateCluster(tx, cluster))
 		assert.NoError(t, store.CreateService(tx, service))
-		for i := 0; i < instances; i++ {
+		for i := range instances {
 			assert.NoError(t, store.CreateTask(tx, orchestrator.NewTask(cluster, service, uint64(i), "")))
 		}
 		return nil
@@ -572,7 +572,7 @@ func TestUpdaterTaskTimeout(t *testing.T) {
 
 	err := s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateService(tx, service))
-		for i := uint64(0); i < instances; i++ {
+		for i := range instances {
 			task := orchestrator.NewTask(nil, service, uint64(i), "")
 			task.Status.State = api.TaskStateRunning
 			assert.NoError(t, store.CreateTask(tx, task))
@@ -663,7 +663,7 @@ func TestUpdaterOrder(t *testing.T) {
 
 	err := s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateService(tx, service))
-		for i := 0; i < instances; i++ {
+		for i := range instances {
 			assert.NoError(t, store.CreateTask(tx, orchestrator.NewTask(nil, service, uint64(i), "")))
 		}
 		return nil

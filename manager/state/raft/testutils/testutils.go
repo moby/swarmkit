@@ -118,7 +118,7 @@ func WaitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[ui
 			return errors.New("did not find leader in member list")
 		}
 		// Don't raise error just because test machine is running slowly
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			if leadNode.ReadyForProposals() {
 				return nil
 			}
@@ -678,7 +678,7 @@ func GetAllValuesOnNode(t *testing.T, clockSource *fakeclock.FakeClock, raftNode
 // is (index of the byte) % 256.
 func NewSnapshotMessage(from, to uint64, size int) *raftpb.Message {
 	data := make([]byte, size)
-	for i := 0; i < size; i++ {
+	for i := range size {
 		data[i] = byte(i % (1 << 8))
 	}
 

@@ -85,7 +85,7 @@ func TestServiceDelete(t *testing.T) {
 
 				taskIDs := make([]string, taskCount)
 				tasks := make([]any, taskCount)
-				for i := 0; i < taskCount; i++ {
+				for i := range taskCount {
 					taskIDs[i] = "task" + strconv.Itoa(i+1)
 					tasks[i] = newTask(taskIDs[i], service)
 				}
@@ -389,7 +389,7 @@ func newNetwork(id string, pendingDelete bool) *api.Network {
 func newNetworkConfigs(networks ...*api.Network) []*api.NetworkAttachmentConfig {
 	networkConfigs := make([]*api.NetworkAttachmentConfig, len(networks))
 
-	for i := 0; i < len(networks); i++ {
+	for i := range networks {
 		networkConfigs[i] = &api.NetworkAttachmentConfig{
 			Target: networks[i].ID,
 		}

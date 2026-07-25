@@ -846,7 +846,7 @@ func TestStress(t *testing.T) {
 	pIDs := []string{}
 
 	leader := -1
-	for iters := 0; iters < 1000; iters++ {
+	for iters := range 1000 {
 		// keep proposing new values and killing leader
 		for i := 1; i <= 5; i++ {
 			if nodes[uint64(i)] != nil {
