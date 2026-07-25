@@ -1,11 +1,15 @@
 # syntax=docker/dockerfile:1
 
 ARG GO_VERSION=1.24
+ARG BASE_DEBIAN_DISTRO="bullseye"
+ARG GOLANG_IMAGE="golang:${GO_VERSION}-${BASE_DEBIAN_DISTRO}"
+
 ARG PROTOC_VERSION=3.14.0
 ARG GOLANGCI_LINT_VERSION=v2.12.2
 ARG DEBIAN_FRONTEND=noninteractive
 
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS gobase
+# gobase
+FROM --platform=$BUILDPLATFORM ${GOLANG_IMAGE} AS gobase
 ARG DEBIAN_FRONTEND
 RUN apt-get update && apt-get install -y --no-install-recommends git make rsync
 WORKDIR /go/src/github.com/docker/swarmkit
