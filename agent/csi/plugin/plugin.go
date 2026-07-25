@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -116,13 +117,17 @@ func (np *nodePlugin) connect(ctx context.Context) error {
 	}
 
 	np.cc = cc
-	// first, probe the plugin, to ensure that it exists and is ready to go
-	idc := csi.NewIdentityClient(cc)
-	np.idClient = idc
-
+	np.idClient = csi.NewIdentityClient(cc)
 	np.nodeClient = csi.NewNodeClient(cc)
 
-	return np.init(ctx)
+	if err := np.init(ctx); err != nil {
+		_ = cc.Close()
+		np.cc = nil
+		np.idClient = nil
+		np.nodeClient = nil
+		return err
+	}
+	return nil
 }
 
 func (np *nodePlugin) Client(ctx context.Context) (csi.NodeClient, error) {
@@ -135,6 +140,13 @@ func (np *nodePlugin) Client(ctx context.Context) (csi.NodeClient, error) {
 }
 
 func (np *nodePlugin) init(ctx context.Context) error {
+	if np.idClient == nil {
+		return errors.New("identity client is not initialized")
+	}
+	if np.nodeClient == nil {
+		return errors.New("node client is not initialized")
+	}
+	// first, probe the plugin, to ensure that it exists and is ready to go
 	probe, err := np.idClient.Probe(ctx, &csi.ProbeRequest{})
 	if err != nil {
 		return err
@@ -143,12 +155,7 @@ func (np *nodePlugin) init(ctx context.Context) error {
 		return status.Error(codes.FailedPrecondition, "Plugin is not Ready")
 	}
 
-	c, err := np.Client(ctx)
-	if err != nil {
-		return err
-	}
-
-	resp, err := c.NodeGetCapabilities(ctx, &csi.NodeGetCapabilitiesRequest{})
+	resp, err := np.nodeClient.NodeGetCapabilities(ctx, &csi.NodeGetCapabilitiesRequest{})
 	if err != nil {
 		// TODO(ameyag): handle
 		return err
