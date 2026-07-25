@@ -2,6 +2,7 @@ package allocator
 
 import (
 	"context"
+	"slices"
 	"sync"
 
 	"github.com/docker/go-events"
@@ -201,11 +202,8 @@ func (a *Allocator) taskAllocateVote(voter string, id string) bool {
 	defer a.taskBallot.Unlock()
 
 	// If voter has already voted, return false
-	for _, v := range a.taskBallot.votes[id] {
-		// check if voter is in x
-		if v == voter {
-			return false
-		}
+	if slices.Contains(a.taskBallot.votes[id], voter) {
+		return false
 	}
 
 	a.taskBallot.votes[id] = append(a.taskBallot.votes[id], voter)

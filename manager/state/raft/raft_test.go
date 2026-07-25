@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -939,14 +940,7 @@ func TestStress(t *testing.T) {
 
 	// ids should be a subset of pIDs
 	for _, id := range ids {
-		find = false
-		for _, pid := range pIDs {
-			if id == pid {
-				find = true
-				break
-			}
-		}
-		assert.True(t, find)
+		assert.True(t, slices.Contains(pIDs, id))
 	}
 }
 
