@@ -1,12 +1,14 @@
 # syntax=docker/dockerfile:1
 
-ARG GO_VERSION=1.24
+ARG GO_VERSION=1.25
+ARG BASE_DEBIAN_DISTRO="bookworm"
+ARG GOLANG_IMAGE="golang:${GO_VERSION}-${BASE_DEBIAN_DISTRO}"
+
 ARG PROTOC_VERSION=3.14.0
 ARG GOLANGCI_LINT_VERSION=v2.12.2
-ARG DEBIAN_FRONTEND=noninteractive
 
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bullseye AS gobase
-ARG DEBIAN_FRONTEND
+# gobase
+FROM --platform=$BUILDPLATFORM ${GOLANG_IMAGE} AS gobase
 RUN apt-get update && apt-get install -y --no-install-recommends git make rsync
 WORKDIR /go/src/github.com/docker/swarmkit
 RUN git config --global --add safe.directory /go/src/github.com/docker/swarmkit
@@ -54,7 +56,6 @@ RUN --mount=type=bind,target=. \
     go install tool github.com/containerd/protobuild
 
 FROM gobase AS generate-base
-ARG DEBIAN_FRONTEND
 RUN apt-get --no-install-recommends install -y unzip
 ARG PROTOC_VERSION
 ARG TARGETOS
@@ -99,8 +100,7 @@ EOT
 
 FROM golangci/golangci-lint:${GOLANGCI_LINT_VERSION} AS golangci-lint
 FROM gobase AS lint
-ARG DEBIAN_FRONTEND
-RUN apt-get install -y --no-install-recommends libgcc-10-dev libc6-dev
+RUN apt-get install -y --no-install-recommends libgcc-11-dev libc6-dev
 RUN --mount=type=bind,target=. \
     --mount=type=cache,target=/root/.cache \
     --mount=from=golangci-lint,source=/usr/bin/golangci-lint,target=/usr/bin/golangci-lint <<EOT
