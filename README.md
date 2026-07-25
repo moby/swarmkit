@@ -2,7 +2,6 @@
 
 [![PkgGoDev](https://img.shields.io/badge/go.dev-docs-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/moby/swarmkit)
 [![CI Status](https://img.shields.io/github/actions/workflow/status/moby/swarmkit/ci.yml?branch=master&label=ci&logo=github&style=flat-square)](https://github.com/moby/swarmkit/actions?query=workflow%3Aci)
-[![Go Report Card](https://goreportcard.com/badge/github.com/moby/swarmkit)](https://goreportcard.com/report/github.com/moby/swarmkit)
 [![codecov](https://img.shields.io/codecov/c/github/moby/swarmkit?logo=codecov&style=flat-square)](https://codecov.io/gh/moby/swarmkit)
 
 *SwarmKit* is a toolkit for orchestrating distributed systems at any scale. It includes primitives for node discovery, raft-based consensus, task scheduling and more.
