@@ -946,8 +946,7 @@ func TestStress(t *testing.T) {
 
 // Test the server side code for raft snapshot streaming.
 func TestStreamRaftMessage(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	nodes, _ := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(nodes)
