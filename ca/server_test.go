@@ -1177,7 +1177,7 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 	)
 
 	tempDir := t.TempDir()
-	for i := 0; i < 5; i++ { // to make sure we get some collision
+	for i := range 5 { // to make sure we get some collision
 		// start a competing CA server
 		paths[i] = ca.NewConfigPaths(filepath.Join(tempDir, fmt.Sprintf("%d", i)))
 
@@ -1202,14 +1202,14 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 	}
 
 	nodes := make(map[string]*api.Node)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		nodeID := fmt.Sprintf("%d", i)
 		nodes[nodeID] = getFakeAPINode(t, nodeID, api.IssuanceStateIssued, oldNodeTLSInfo, true)
 	}
 	rt.convergeWantedNodes(nodes, "setting up nodes for root rotation race condition test")
 
 	var rotationCert, rotationKey []byte
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		var (
 			rotationCrossSigned []byte
 			rotationTLSInfo     *api.NodeTLSInfo

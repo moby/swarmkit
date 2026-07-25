@@ -299,7 +299,7 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 	}
 
 	var kekUpdate *KEKData
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		// ValidateCertChain will always return at least 1 cert, so indexing at 0 is safe
 		kekUpdate, err = rca.getKEKUpdate(ctx, leafCert, tlsKeyPair, config)
 		if err == nil {
