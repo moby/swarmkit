@@ -5,6 +5,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
@@ -621,6 +622,16 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 			slices.Contains(sel.NodeIDs, t.NodeID)
 	}
 
+	var ch <-chan events.Event
+	if options.Follow {
+		// Start watching before collecting the current task managers so that
+		// tasks added while taking the snapshot are queued for processing.
+		ch = w.taskevents.CallbackWatchContext(ctx, events.MatcherFunc(func(v events.Event) bool {
+			task, ok := v.(*api.Task)
+			return ok && match(task)
+		}))
+	}
+
 	w.mu.RLock()
 	taskManagers := make([]*taskManager, 0, len(w.taskManagers))
 	for _, tm := range w.taskManagers {
@@ -636,28 +647,12 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 		})
 	}
 
-	// If follow mode is disabled, wait for the current set of matched tasks
-	// to finish publishing logs, then close the subscription by returning.
-	if !options.Follow {
-		wg.Wait()
-		return ctx.Err()
-	}
+	// In follow mode, watch for new matching tasks until the subscription
+	// context is cancelled.
+	if options.Follow {
+		for v := range ch {
+			task := v.(*api.Task)
 
-	// In follow mode, watch for new tasks. Don't close the subscription
-	// until it's cancelled.
-	ch, cancel := w.taskevents.Watch()
-	defer cancel()
-	for {
-		select {
-		case v, ok := <-ch:
-			if !ok {
-				return nil
-			}
-
-			task, ok := v.(*api.Task)
-			if !ok || !match(task) {
-				continue
-			}
 			w.mu.RLock()
 			tm, ok := w.taskManagers[task.ID]
 			w.mu.RUnlock()
@@ -668,11 +663,11 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 			wg.Go(func() {
 				tm.Logs(ctx, options, publisher)
 			})
-		case <-ctx.Done():
-			wg.Wait()
-			return ctx.Err()
 		}
 	}
+
+	wg.Wait()
+	return ctx.Err()
 }
 
 func (w *worker) Wait(ctx context.Context) error {
