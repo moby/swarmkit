@@ -641,10 +641,23 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 	}
 	w.mu.RUnlock()
 	var wg sync.WaitGroup
-	for _, tm := range taskManagers {
+
+	// A task may be present in the initial snapshot and also be delivered by
+	// the watcher. Start at most one log stream per task for this subscription.
+	started := make(map[string]struct{})
+	startLogs := func(tm *taskManager) {
+		taskID := tm.task.ID
+		if _, ok := started[taskID]; ok {
+			return
+		}
+		started[taskID] = struct{}{}
+
 		wg.Go(func() {
 			tm.Logs(ctx, options, publisher)
 		})
+	}
+	for _, tm := range taskManagers {
+		startLogs(tm)
 	}
 
 	// In follow mode, watch for new matching tasks until the subscription
@@ -660,9 +673,7 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 				continue
 			}
 
-			wg.Go(func() {
-				tm.Logs(ctx, options, publisher)
-			})
+			startLogs(tm)
 		}
 	}
 
