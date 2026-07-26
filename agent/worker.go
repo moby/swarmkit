@@ -646,18 +646,23 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 	defer cancel()
 	for {
 		select {
-		case v := <-ch:
-			task := v.(*api.Task)
-			if match(task) {
-				w.mu.RLock()
-				tm, ok := w.taskManagers[task.ID]
-				w.mu.RUnlock()
-				if !ok {
-					continue
-				}
-
-				go tm.Logs(ctx, *subscription.Options, publisher)
+		case v, ok := <-ch:
+			if !ok {
+				return nil
 			}
+
+			task, ok := v.(*api.Task)
+			if !ok || !match(task) {
+				continue
+			}
+			w.mu.RLock()
+			tm, ok := w.taskManagers[task.ID]
+			w.mu.RUnlock()
+			if !ok {
+				continue
+			}
+
+			go tm.Logs(ctx, *subscription.Options, publisher)
 		case <-ctx.Done():
 			return ctx.Err()
 		}
