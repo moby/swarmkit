@@ -595,7 +595,16 @@ func (w *worker) updateTaskStatus(ctx context.Context, tx *bolt.Tx, taskID strin
 
 // Subscribe to log messages matching the subscription.
 func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMessage) error {
-	log.G(ctx).Debugf("Received subscription %s (selector: %v)", subscription.ID, subscription.Selector)
+	var options api.LogSubscriptionOptions
+	if subscription.Options != nil {
+		options = *subscription.Options
+	}
+
+	log.G(ctx).WithFields(log.Fields{
+		"id":       subscription.ID,
+		"selector": subscription.Selector,
+		"follow":   options.Follow,
+	}).Debug("Received subscription")
 
 	publisher, cancel, err := w.publisherProvider.Publisher(ctx, subscription.ID)
 	if err != nil {
@@ -617,7 +626,7 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 	for _, tm := range w.taskManagers {
 		if match(tm.task) {
 			wg.Go(func() {
-				tm.Logs(ctx, *subscription.Options, publisher)
+				tm.Logs(ctx, options, publisher)
 			})
 		}
 	}
@@ -625,7 +634,7 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 
 	// If follow mode is disabled, wait for the current set of matched tasks
 	// to finish publishing logs, then close the subscription by returning.
-	if subscription.Options == nil || !subscription.Options.Follow {
+	if !options.Follow {
 		waitCh := make(chan struct{})
 		go func() {
 			defer close(waitCh)
@@ -662,7 +671,7 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 				continue
 			}
 
-			go tm.Logs(ctx, *subscription.Options, publisher)
+			go tm.Logs(ctx, options, publisher)
 		case <-ctx.Done():
 			return ctx.Err()
 		}
