@@ -661,8 +661,11 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 				continue
 			}
 
-			go tm.Logs(ctx, options, publisher)
+			wg.Go(func() {
+				tm.Logs(ctx, options, publisher)
+			})
 		case <-ctx.Done():
+			wg.Wait()
 			return ctx.Err()
 		}
 	}
