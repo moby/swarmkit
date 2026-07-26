@@ -621,16 +621,20 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 			slices.Contains(sel.NodeIDs, t.NodeID)
 	}
 
-	var wg sync.WaitGroup
 	w.mu.RLock()
+	taskManagers := make([]*taskManager, 0, len(w.taskManagers))
 	for _, tm := range w.taskManagers {
 		if match(tm.task) {
-			wg.Go(func() {
-				tm.Logs(ctx, options, publisher)
-			})
+			taskManagers = append(taskManagers, tm)
 		}
 	}
 	w.mu.RUnlock()
+	var wg sync.WaitGroup
+	for _, tm := range taskManagers {
+		wg.Go(func() {
+			tm.Logs(ctx, options, publisher)
+		})
+	}
 
 	// If follow mode is disabled, wait for the current set of matched tasks
 	// to finish publishing logs, then close the subscription by returning.
