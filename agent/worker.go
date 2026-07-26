@@ -635,18 +635,8 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 	// If follow mode is disabled, wait for the current set of matched tasks
 	// to finish publishing logs, then close the subscription by returning.
 	if !options.Follow {
-		waitCh := make(chan struct{})
-		go func() {
-			defer close(waitCh)
-			wg.Wait()
-		}()
-
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-waitCh:
-			return nil
-		}
+		wg.Wait()
+		return ctx.Err()
 	}
 
 	// In follow mode, watch for new tasks. Don't close the subscription
