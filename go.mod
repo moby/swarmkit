@@ -1,6 +1,6 @@
 module github.com/moby/swarmkit/v2
 
-go 1.24.0
+go 1.25.0
 
 require (
 	code.cloudfoundry.org/clock v1.1.0
