@@ -613,7 +613,7 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 	}
 
 	var wg sync.WaitGroup
-	w.mu.Lock()
+	w.mu.RLock()
 	for _, tm := range w.taskManagers {
 		if match(tm.task) {
 			wg.Go(func() {
@@ -621,7 +621,7 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 			})
 		}
 	}
-	w.mu.Unlock()
+	w.mu.RUnlock()
 
 	// If follow mode is disabled, wait for the current set of matched tasks
 	// to finish publishing logs, then close the subscription by returning.
