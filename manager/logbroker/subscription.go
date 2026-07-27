@@ -17,6 +17,8 @@ import (
 type subscription struct {
 	id string
 
+	follow bool
+
 	mu sync.RWMutex
 	wg sync.WaitGroup
 
@@ -35,16 +37,13 @@ type subscription struct {
 func newSubscription(store *store.MemoryStore, message *api.SubscriptionMessage, changed *watch.Queue) *subscription {
 	return &subscription{
 		id:           message.ID,
+		follow:       message.Options != nil && message.Options.Follow,
 		store:        store,
 		message:      message,
 		changed:      changed,
 		nodes:        make(map[string]struct{}),
 		pendingTasks: make(map[string]struct{}),
 	}
-}
-
-func (s *subscription) follow() bool {
-	return s.message.Options != nil && s.message.Options.Follow
 }
 
 func (s *subscription) ID() string {
@@ -73,12 +72,12 @@ func (s *subscription) Nodes() []string {
 func (s *subscription) Run(ctx context.Context) {
 	s.ctx, s.cancel = context.WithCancel(ctx)
 
-	if s.follow() {
+	if s.follow {
 		wq := s.store.WatchQueue()
 		ch, cancel := state.Watch(wq, api.EventCreateTask{}, api.EventUpdateTask{})
 		go func() {
 			defer cancel()
-			s.watch(ch)
+			_ = s.watch(ch)
 		}()
 	}
 
@@ -93,7 +92,7 @@ func (s *subscription) Stop() {
 
 func (s *subscription) Wait(_ context.Context) <-chan struct{} {
 	// Follow subscriptions never end
-	if s.follow() {
+	if s.follow {
 		return nil
 	}
 
@@ -113,7 +112,7 @@ func (s *subscription) Done(nodeID string, err error) {
 		s.errors = append(s.errors, err)
 	}
 
-	if s.follow() {
+	if s.follow {
 		return
 	}
 
@@ -190,7 +189,7 @@ func (s *subscription) match() {
 			}
 			for _, task := range tasks {
 				// if we're not following, don't add tasks that aren't running yet
-				if !s.follow() && task.Status.State < api.TaskStateRunning {
+				if !s.follow && task.Status.State < api.TaskStateRunning {
 					continue
 				}
 				add(task)
