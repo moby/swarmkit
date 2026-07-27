@@ -158,6 +158,7 @@ func (s *subscription) Closed() bool {
 func (s *subscription) match() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	selector := s.message.Selector
 
 	add := func(t *api.Task) {
 		if t.NodeID == "" {
@@ -171,17 +172,17 @@ func (s *subscription) match() {
 	}
 
 	s.store.View(func(tx store.ReadTx) {
-		for _, nid := range s.message.Selector.NodeIDs {
+		for _, nid := range selector.NodeIDs {
 			s.nodes[nid] = struct{}{}
 		}
 
-		for _, tid := range s.message.Selector.TaskIDs {
+		for _, tid := range selector.TaskIDs {
 			if task := store.GetTask(tx, tid); task != nil {
 				add(task)
 			}
 		}
 
-		for _, sid := range s.message.Selector.ServiceIDs {
+		for _, sid := range selector.ServiceIDs {
 			tasks, err := store.FindTasks(tx, store.ByServiceID(sid))
 			if err != nil {
 				log.L.Warning(err)
@@ -199,13 +200,15 @@ func (s *subscription) match() {
 }
 
 func (s *subscription) watch(ch <-chan events.Event) error {
+	selector := s.message.Selector
+
 	matchTasks := map[string]struct{}{}
-	for _, tid := range s.message.Selector.TaskIDs {
+	for _, tid := range selector.TaskIDs {
 		matchTasks[tid] = struct{}{}
 	}
 
 	matchServices := map[string]struct{}{}
-	for _, sid := range s.message.Selector.ServiceIDs {
+	for _, sid := range selector.ServiceIDs {
 		matchServices[sid] = struct{}{}
 	}
 
