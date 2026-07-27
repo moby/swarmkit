@@ -15,6 +15,8 @@ import (
 )
 
 type subscription struct {
+	id string
+
 	mu sync.RWMutex
 	wg sync.WaitGroup
 
@@ -32,6 +34,7 @@ type subscription struct {
 
 func newSubscription(store *store.MemoryStore, message *api.SubscriptionMessage, changed *watch.Queue) *subscription {
 	return &subscription{
+		id:           message.ID,
 		store:        store,
 		message:      message,
 		changed:      changed,
@@ -42,6 +45,10 @@ func newSubscription(store *store.MemoryStore, message *api.SubscriptionMessage,
 
 func (s *subscription) follow() bool {
 	return s.message.Options != nil && s.message.Options.Follow
+}
+
+func (s *subscription) ID() string {
+	return s.id
 }
 
 func (s *subscription) Contains(nodeID string) bool {

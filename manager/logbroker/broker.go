@@ -123,20 +123,20 @@ func (lb *LogBroker) getSubscription(id string) *subscription {
 	return sub
 }
 
-func (lb *LogBroker) registerSubscription(subscription *subscription) {
+func (lb *LogBroker) registerSubscription(sub *subscription) {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
 
-	lb.registeredSubscriptions[subscription.message.ID] = subscription
-	lb.subscriptionQueue.Publish(subscription)
+	lb.registeredSubscriptions[sub.ID()] = sub
+	lb.subscriptionQueue.Publish(sub)
 
-	for _, node := range subscription.Nodes() {
+	for _, node := range sub.Nodes() {
 		if _, ok := lb.subscriptionsByNode[node]; !ok {
 			// Mark nodes that won't receive the message as done.
-			subscription.Done(node, fmt.Errorf("node %s is not available", node))
+			sub.Done(node, fmt.Errorf("node %s is not available", node))
 		} else {
 			// otherwise, add the subscription to the node's subscriptions list
-			lb.subscriptionsByNode[node][subscription] = struct{}{}
+			lb.subscriptionsByNode[node][sub] = struct{}{}
 		}
 	}
 }
@@ -145,7 +145,7 @@ func (lb *LogBroker) unregisterSubscription(subscription *subscription) {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
 
-	delete(lb.registeredSubscriptions, subscription.message.ID)
+	delete(lb.registeredSubscriptions, subscription.ID())
 
 	// remove the subscription from all of the nodes
 	for _, node := range subscription.Nodes() {
@@ -239,12 +239,12 @@ func (lb *LogBroker) SubscribeLogs(request *api.SubscribeLogsRequest, stream api
 	logger := log.G(ctx).WithFields(
 		log.Fields{
 			"method":          "(*LogBroker).SubscribeLogs",
-			"subscription.id": sub.message.ID,
+			"subscription.id": sub.ID(),
 		},
 	)
 	logger.Debug("subscribed")
 
-	publishCh, publishCancel := lb.subscribe(sub.message.ID)
+	publishCh, publishCancel := lb.subscribe(sub.ID())
 	defer publishCancel()
 
 	lb.registerSubscription(sub)
@@ -271,7 +271,7 @@ func (lb *LogBroker) SubscribeLogs(request *api.SubscribeLogsRequest, stream api
 			completed = nil
 			lb.logQueue.Publish(&logMessage{
 				PublishLogsMessage: &api.PublishLogsMessage{
-					SubscriptionID: sub.message.ID,
+					SubscriptionID: sub.ID(),
 				},
 				completed: true,
 				err:       sub.Err(),
@@ -343,7 +343,7 @@ func (lb *LogBroker) ListenSubscriptions(_ *api.ListenSubscriptionsRequest, stre
 			logger.Error(err)
 			return err
 		}
-		activeSubscriptions[sub.message.ID] = sub
+		activeSubscriptions[sub.ID()] = sub
 	}
 
 	// Send down new subscriptions.
@@ -353,13 +353,13 @@ func (lb *LogBroker) ListenSubscriptions(_ *api.ListenSubscriptionsRequest, stre
 			sub := v.(*subscription)
 
 			if sub.Closed() {
-				delete(activeSubscriptions, sub.message.ID)
+				delete(activeSubscriptions, sub.ID())
 			} else {
 				// Avoid sending down the same subscription multiple times
-				if _, ok := activeSubscriptions[sub.message.ID]; ok {
+				if _, ok := activeSubscriptions[sub.ID()]; ok {
 					continue
 				}
-				activeSubscriptions[sub.message.ID] = sub
+				activeSubscriptions[sub.ID()] = sub
 			}
 			if err := stream.Send(sub.message); err != nil {
 				logger.Error(err)
@@ -406,7 +406,7 @@ func (lb *LogBroker) PublishLogs(stream api.LogBroker_PublishLogsServer) (err er
 				return status.Errorf(codes.NotFound, "unknown subscription ID")
 			}
 		} else {
-			if logMsg.SubscriptionID != currentSubscription.message.ID {
+			if logMsg.SubscriptionID != currentSubscription.ID() {
 				return status.Errorf(codes.InvalidArgument, "different subscription IDs in the same session")
 			}
 		}
