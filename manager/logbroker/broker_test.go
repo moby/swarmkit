@@ -52,7 +52,7 @@ func TestLogBrokerLogs(t *testing.T) {
 		t.Fatalf("error subscribing: %v", err)
 	}
 
-	subscription, err := subStream.Recv()
+	sub, err := subStream.Recv()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestLogBrokerLogs(t *testing.T) {
 					}
 					for i := 0; i < nLogMessagesPerTask; i++ {
 						require.NoError(t, publisher.Send(&api.PublishLogsMessage{
-							SubscriptionID: subscription.ID,
+							SubscriptionID: sub.ID,
 							Messages:       []api.LogMessage{newLogMessage(msgctx, "log message number %d", i)},
 						}))
 					}
@@ -552,13 +552,13 @@ func TestLogBrokerNoFollowMissingNode(t *testing.T) {
 	require.NoError(t, err)
 
 	// Grab the subscription and publish a log message from the connected agent.
-	subscription := ensureSubscription(t, agentSubscriptions)
-	require.Equal(t, subscription.Selector.ServiceIDs[0], "service")
+	sub := ensureSubscription(t, agentSubscriptions)
+	require.Equal(t, sub.Selector.ServiceIDs[0], "service")
 	publisher, err := agent.PublishLogs(ctx)
 	require.NoError(t, err)
 	require.NoError(t,
 		publisher.Send(&api.PublishLogsMessage{
-			SubscriptionID: subscription.ID,
+			SubscriptionID: sub.ID,
 			Messages: []api.LogMessage{
 				newLogMessage(api.LogContext{
 					NodeID:    agentSecurity.ServerTLSCreds.NodeID(),

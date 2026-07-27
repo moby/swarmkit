@@ -105,24 +105,22 @@ func (lb *LogBroker) newSubscription(selector *api.LogSelector, options *api.Log
 	lb.mu.RLock()
 	defer lb.mu.RUnlock()
 
-	subscription := newSubscription(lb.store, &api.SubscriptionMessage{
+	return newSubscription(lb.store, &api.SubscriptionMessage{
 		ID:       identity.NewID(),
 		Selector: selector,
 		Options:  options,
 	}, lb.subscriptionQueue)
-
-	return subscription
 }
 
 func (lb *LogBroker) getSubscription(id string) *subscription {
 	lb.mu.RLock()
 	defer lb.mu.RUnlock()
 
-	subscription, ok := lb.registeredSubscriptions[id]
+	sub, ok := lb.registeredSubscriptions[id]
 	if !ok {
 		return nil
 	}
-	return subscription
+	return sub
 }
 
 func (lb *LogBroker) registerSubscription(subscription *subscription) {
@@ -234,25 +232,25 @@ func (lb *LogBroker) SubscribeLogs(request *api.SubscribeLogsRequest, stream api
 		return errNotRunning
 	}
 
-	subscription := lb.newSubscription(request.Selector, request.Options)
-	subscription.Run(pctx)
-	defer subscription.Stop()
+	sub := lb.newSubscription(request.Selector, request.Options)
+	sub.Run(pctx)
+	defer sub.Stop()
 
 	logger := log.G(ctx).WithFields(
 		log.Fields{
 			"method":          "(*LogBroker).SubscribeLogs",
-			"subscription.id": subscription.message.ID,
+			"subscription.id": sub.message.ID,
 		},
 	)
 	logger.Debug("subscribed")
 
-	publishCh, publishCancel := lb.subscribe(subscription.message.ID)
+	publishCh, publishCancel := lb.subscribe(sub.message.ID)
 	defer publishCancel()
 
-	lb.registerSubscription(subscription)
-	defer lb.unregisterSubscription(subscription)
+	lb.registerSubscription(sub)
+	defer lb.unregisterSubscription(sub)
 
-	completed := subscription.Wait(ctx)
+	completed := sub.Wait(ctx)
 	for {
 		select {
 		case <-ctx.Done():
@@ -273,10 +271,10 @@ func (lb *LogBroker) SubscribeLogs(request *api.SubscribeLogsRequest, stream api
 			completed = nil
 			lb.logQueue.Publish(&logMessage{
 				PublishLogsMessage: &api.PublishLogsMessage{
-					SubscriptionID: subscription.message.ID,
+					SubscriptionID: sub.message.ID,
 				},
 				completed: true,
-				err:       subscription.Err(),
+				err:       sub.Err(),
 			})
 		}
 	}
@@ -332,7 +330,7 @@ func (lb *LogBroker) ListenSubscriptions(_ *api.ListenSubscriptionsRequest, stre
 	activeSubscriptions := make(map[string]*subscription)
 
 	// Start by sending down all active subscriptions.
-	for _, subscription := range subscriptions {
+	for _, sub := range subscriptions {
 		select {
 		case <-stream.Context().Done():
 			return stream.Context().Err()
@@ -341,29 +339,29 @@ func (lb *LogBroker) ListenSubscriptions(_ *api.ListenSubscriptionsRequest, stre
 		default:
 		}
 
-		if err := stream.Send(subscription.message); err != nil {
+		if err := stream.Send(sub.message); err != nil {
 			logger.Error(err)
 			return err
 		}
-		activeSubscriptions[subscription.message.ID] = subscription
+		activeSubscriptions[sub.message.ID] = sub
 	}
 
 	// Send down new subscriptions.
 	for {
 		select {
 		case v := <-subscriptionCh:
-			subscription := v.(*subscription)
+			sub := v.(*subscription)
 
-			if subscription.Closed() {
-				delete(activeSubscriptions, subscription.message.ID)
+			if sub.Closed() {
+				delete(activeSubscriptions, sub.message.ID)
 			} else {
 				// Avoid sending down the same subscription multiple times
-				if _, ok := activeSubscriptions[subscription.message.ID]; ok {
+				if _, ok := activeSubscriptions[sub.message.ID]; ok {
 					continue
 				}
-				activeSubscriptions[subscription.message.ID] = subscription
+				activeSubscriptions[sub.message.ID] = sub
 			}
-			if err := stream.Send(subscription.message); err != nil {
+			if err := stream.Send(sub.message); err != nil {
 				logger.Error(err)
 				return err
 			}
