@@ -152,11 +152,12 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 
 	var restartTask *api.Task
 
-	if orchestrator.IsReplicatedService(service) || orchestrator.IsReplicatedJob(service) {
+	switch {
+	case orchestrator.IsReplicatedService(service), orchestrator.IsReplicatedJob(service):
 		restartTask = orchestrator.NewTask(cluster, service, t.Slot, "")
-	} else if orchestrator.IsGlobalService(service) || orchestrator.IsGlobalJob(service) {
+	case orchestrator.IsGlobalService(service), orchestrator.IsGlobalJob(service):
 		restartTask = orchestrator.NewTask(cluster, service, 0, t.NodeID)
-	} else {
+	default:
 		log.G(ctx).Error("service not supported by restart supervisor")
 		return nil
 	}

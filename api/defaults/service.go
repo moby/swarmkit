@@ -66,11 +66,9 @@ func InterpolateService(origSpec *api.ServiceSpec) *api.ServiceSpec {
 
 	if spec.Task.Restart == nil {
 		spec.Task.Restart = Service.Task.Restart.Copy()
-	} else {
-		if spec.Task.Restart.Delay == nil {
-			spec.Task.Restart.Delay = &gogotypes.Duration{}
-			deepcopy.Copy(spec.Task.Restart.Delay, Service.Task.Restart.Delay)
-		}
+	} else if spec.Task.Restart.Delay == nil {
+		spec.Task.Restart.Delay = &gogotypes.Duration{}
+		deepcopy.Copy(spec.Task.Restart.Delay, Service.Task.Restart.Delay)
 	}
 
 	if spec.Task.Placement == nil {
@@ -79,20 +77,16 @@ func InterpolateService(origSpec *api.ServiceSpec) *api.ServiceSpec {
 
 	if spec.Update == nil {
 		spec.Update = Service.Update.Copy()
-	} else {
-		if spec.Update.Monitor == nil {
-			spec.Update.Monitor = &gogotypes.Duration{}
-			deepcopy.Copy(spec.Update.Monitor, Service.Update.Monitor)
-		}
+	} else if spec.Update.Monitor == nil {
+		spec.Update.Monitor = &gogotypes.Duration{}
+		deepcopy.Copy(spec.Update.Monitor, Service.Update.Monitor)
 	}
 
 	if spec.Rollback == nil {
 		spec.Rollback = Service.Rollback.Copy()
-	} else {
-		if spec.Rollback.Monitor == nil {
-			spec.Rollback.Monitor = &gogotypes.Duration{}
-			deepcopy.Copy(spec.Rollback.Monitor, Service.Rollback.Monitor)
-		}
+	} else if spec.Rollback.Monitor == nil {
+		spec.Rollback.Monitor = &gogotypes.Duration{}
+		deepcopy.Copy(spec.Rollback.Monitor, Service.Rollback.Monitor)
 	}
 
 	return spec

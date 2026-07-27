@@ -157,7 +157,8 @@ func (d *deepCopyGen) genMap(_ *generator.Descriptor, f *descriptor.FieldDescrip
 	d.P("m.", fName, " = make(", typename, ", ", "len(o.", fName, "))")
 	d.P("for k, v := range o.", fName, " {")
 	d.In()
-	if mt.ValueField.IsMessage() {
+	switch {
+	case mt.ValueField.IsMessage():
 		if !gogoproto.IsNullable(f) {
 			d.P("n := ", d.TypeName(d.ObjectNamed(mt.ValueField.GetTypeName())), "{}")
 			d.genCopyFunc("&n", "&v")
@@ -166,10 +167,10 @@ func (d *deepCopyGen) genMap(_ *generator.Descriptor, f *descriptor.FieldDescrip
 			d.P("m.", fName, "[k] = &", d.TypeName(d.ObjectNamed(mt.ValueField.GetTypeName())), "{}")
 			d.genCopyFunc("m."+fName+"[k]", "v")
 		}
-	} else if mt.ValueField.IsBytes() {
+	case mt.ValueField.IsBytes():
 		d.P("m.", fName, "[k] = o.", fName, "[k]")
 		d.genCopyBytes("m."+fName+"[k]", "o."+fName+"[k]")
-	} else {
+	default:
 		d.P("m.", fName, "[k] = v")
 	}
 	d.Out()
@@ -192,7 +193,8 @@ func (d *deepCopyGen) genRepeated(m *generator.Descriptor, f *descriptor.FieldDe
 	d.P("if o.", fName, " != nil {")
 	d.In()
 	d.P("m.", fName, " = make(", typename, ", len(o.", fName, "))")
-	if f.IsMessage() {
+	switch {
+	case f.IsMessage():
 		// TODO(stevvooe): Handle custom type here?
 		goType := d.TypeName(d.ObjectNamed(f.GetTypeName())) // elides [] or *
 
@@ -206,13 +208,13 @@ func (d *deepCopyGen) genRepeated(m *generator.Descriptor, f *descriptor.FieldDe
 		}
 		d.Out()
 		d.P("}")
-	} else if f.IsBytes() {
+	case f.IsBytes():
 		d.P("for i := range m.", fName, " {")
 		d.In()
 		d.genCopyBytes("m."+fName+"[i]", "o."+fName+"[i]")
 		d.Out()
 		d.P("}")
-	} else {
+	default:
 		d.P("copy(m.", fName, ", ", "o.", fName, ")")
 	}
 	d.Out()
@@ -241,12 +243,13 @@ func (d *deepCopyGen) genOneOf(m *generator.Descriptor, oneof *descriptor.OneofD
 		d.In()
 
 		var rhs string
-		if f.IsMessage() {
+		switch {
+		case f.IsMessage():
 			goType := d.TypeName(d.ObjectNamed(f.GetTypeName())) // elides [] or *
 			rhs = "&" + goType + "{}"
-		} else if f.IsBytes() {
+		case f.IsBytes():
 			rhs = "make([]byte, len(o.Get" + fName + "()))"
-		} else {
+		default:
 			rhs = "o.Get" + fName + "()"
 		}
 		d.P(fName, ": ", rhs, ",")
