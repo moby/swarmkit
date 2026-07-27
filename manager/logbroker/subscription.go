@@ -266,3 +266,18 @@ func (s *subscription) watch(ch <-chan events.Event) error {
 		}
 	}
 }
+
+// Message returns a snapshot of the current subscription message.
+//
+// The underlying message is owned by the subscription and may be updated
+// as part of its lifecycle. Callers should use this accessor rather than
+// accessing the underlying message directly.
+func (s *subscription) Message() *api.SubscriptionMessage {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// Return a snapshot of the message to avoid races while it is being
+	// marshaled. See https://github.com/moby/moby/issues/47322.
+	msg := *s.message
+	return &msg
+}

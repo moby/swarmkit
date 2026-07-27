@@ -339,7 +339,7 @@ func (lb *LogBroker) ListenSubscriptions(_ *api.ListenSubscriptionsRequest, stre
 		default:
 		}
 
-		if err := stream.Send(sub.message); err != nil {
+		if err := stream.Send(sub.Message()); err != nil {
 			logger.WithError(err).Error("failed to send initial subscription")
 			return err
 		}
@@ -361,7 +361,7 @@ func (lb *LogBroker) ListenSubscriptions(_ *api.ListenSubscriptionsRequest, stre
 				}
 				activeSubscriptions[sub.ID()] = sub
 			}
-			if err := stream.Send(sub.message); err != nil {
+			if err := stream.Send(sub.Message()); err != nil {
 				logger.WithError(err).Error("failed to send subscription update")
 				return err
 			}
