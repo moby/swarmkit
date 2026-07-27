@@ -340,7 +340,7 @@ func (lb *LogBroker) ListenSubscriptions(_ *api.ListenSubscriptionsRequest, stre
 		}
 
 		if err := stream.Send(sub.message); err != nil {
-			logger.Error(err)
+			logger.WithError(err).Error("failed to send initial subscription")
 			return err
 		}
 		activeSubscriptions[sub.ID()] = sub
@@ -362,7 +362,7 @@ func (lb *LogBroker) ListenSubscriptions(_ *api.ListenSubscriptionsRequest, stre
 				activeSubscriptions[sub.ID()] = sub
 			}
 			if err := stream.Send(sub.message); err != nil {
-				logger.Error(err)
+				logger.WithError(err).Error("failed to send subscription update")
 				return err
 			}
 		case <-stream.Context().Done():
