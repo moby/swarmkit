@@ -290,7 +290,7 @@ var _ raft.EncryptionKeyRotator = NewSimpleKeyRotator(raft.EncryptionKeys{})
 
 // NewNode creates a new raft node to use for tests
 func NewNode(t *testing.T, clockSource *fakeclock.FakeClock, tc *cautils.TestCA, opts ...raft.NodeOptions) *TestNode {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	l, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err, "can't bind to raft service port")
 	wrappedListener := NewWrappedListener(l)
 
