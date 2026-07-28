@@ -65,13 +65,13 @@ func TestLogBrokerLogs(t *testing.T) {
 		nLogMessagesPerTask = 5
 	)
 
-	for service := 0; service < nServices; service++ {
+	for service := range nServices {
 		serviceID := fmt.Sprintf("service-%v", service)
 
-		for task := 0; task < nTasksPerService; task++ {
+		for task := range nTasksPerService {
 			taskID := fmt.Sprintf("%v.task-%v", serviceID, task)
 
-			for node := 0; node < nNodes; node++ {
+			for node := range nNodes {
 				nodeID := fmt.Sprintf("node-%v", node)
 
 				if (task+1)%(node+1) != 0 {
@@ -98,7 +98,7 @@ func TestLogBrokerLogs(t *testing.T) {
 						ServiceID: serviceID,
 						TaskID:    taskID,
 					}
-					for i := 0; i < nLogMessagesPerTask; i++ {
+					for i := range nLogMessagesPerTask {
 						require.NoError(t, publisher.Send(&api.PublishLogsMessage{
 							SubscriptionID: sub.ID,
 							Messages:       []api.LogMessage{newLogMessage(msgctx, "log message number %d", i)},
@@ -819,10 +819,10 @@ func printLogMessages(msgs ...api.LogMessage) {
 }
 
 // newLogMessage is just a helper to build a new log message.
-func newLogMessage(msgctx api.LogContext, format string, vs ...interface{}) api.LogMessage {
+func newLogMessage(msgctx api.LogContext, format string, vs ...any) api.LogMessage {
 	return api.LogMessage{
 		Context:   msgctx,
 		Timestamp: ptypes.MustTimestampProto(time.Now()),
-		Data:      []byte(fmt.Sprintf(format, vs...)),
+		Data:      fmt.Appendf(nil, format, vs...),
 	}
 }

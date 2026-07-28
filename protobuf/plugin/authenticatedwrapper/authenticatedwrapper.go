@@ -60,19 +60,20 @@ func sigPrefix(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescrip
 }
 
 func genRoles(auth *plugin.TLSAuthorization) string {
-	rolesSlice := "[]string{"
+	var rolesSlice strings.Builder
+	rolesSlice.WriteString("[]string{")
 	first := true
 	for _, role := range auth.Roles {
 		if !first {
-			rolesSlice += ","
+			rolesSlice.WriteString(",")
 		}
 		first = false
-		rolesSlice += `"` + role + `"`
+		rolesSlice.WriteString(`"` + role + `"`)
 	}
 
-	rolesSlice += "}"
+	rolesSlice.WriteString("}")
 
-	return rolesSlice
+	return rolesSlice.String()
 }
 
 func (g *authenticatedWrapperGen) genServerStreamingMethod(s *descriptor.ServiceDescriptorProto, m *descriptor.MethodDescriptorProto) {

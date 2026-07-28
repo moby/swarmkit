@@ -3,6 +3,7 @@ package dockerexec
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"net"
 	"strconv"
 	"strings"
@@ -243,28 +244,22 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 }
 
 func (c *containerConfig) labels() map[string]string {
-	var (
-		system = map[string]string{
-			"task":         "", // mark as cluster task
-			"task.id":      c.task.ID,
-			"task.name":    naming.Task(c.task),
-			"node.id":      c.task.NodeID,
-			"service.id":   c.task.ServiceID,
-			"service.name": c.task.ServiceAnnotations.Name,
-		}
-		labels = make(map[string]string)
-	)
+	system := map[string]string{
+		"task":         "", // mark as cluster task
+		"task.id":      c.task.ID,
+		"task.name":    naming.Task(c.task),
+		"node.id":      c.task.NodeID,
+		"service.id":   c.task.ServiceID,
+		"service.name": c.task.ServiceAnnotations.Name,
+	}
 
 	// base labels are those defined in the spec.
-	for k, v := range c.spec().Labels {
-		labels[k] = v
-	}
+	labels := make(map[string]string)
+	maps.Copy(labels, c.spec().Labels)
 
 	// we then apply the overrides from the task, which may be set via the
 	// orchestrator.
-	for k, v := range c.task.Annotations.Labels {
-		labels[k] = v
-	}
+	maps.Copy(labels, c.task.Annotations.Labels)
 
 	// finally, we apply the system labels, which override all labels.
 	for k, v := range system {
@@ -340,22 +335,12 @@ func convertMount(m api.Mount) enginemount.Mount {
 			NoCopy: m.VolumeOptions.NoCopy,
 			// TODO: uncomment after 26.0 vendor
 			// Subpath: m.VolumeOptions.Subpath,
-		}
-		if m.VolumeOptions.Labels != nil {
-			mount.VolumeOptions.Labels = make(map[string]string, len(m.VolumeOptions.Labels))
-			for k, v := range m.VolumeOptions.Labels {
-				mount.VolumeOptions.Labels[k] = v
-			}
+			Labels: maps.Clone(m.VolumeOptions.Labels),
 		}
 		if m.VolumeOptions.DriverConfig != nil {
 			mount.VolumeOptions.DriverConfig = &enginemount.Driver{
-				Name: m.VolumeOptions.DriverConfig.Name,
-			}
-			if m.VolumeOptions.DriverConfig.Options != nil {
-				mount.VolumeOptions.DriverConfig.Options = make(map[string]string, len(m.VolumeOptions.DriverConfig.Options))
-				for k, v := range m.VolumeOptions.DriverConfig.Options {
-					mount.VolumeOptions.DriverConfig.Options[k] = v
-				}
+				Name:    m.VolumeOptions.DriverConfig.Name,
+				Options: maps.Clone(m.VolumeOptions.DriverConfig.Options),
 			}
 		}
 	}
@@ -415,7 +400,7 @@ func getMountMask(m *api.Mount) string {
 				"exec":   true,
 				"noexec": true,
 			}
-			for _, opt := range strings.Split(strings.ToLower(opts), ",") {
+			for opt := range strings.SplitSeq(strings.ToLower(opts), ",") {
 				if _, ok := validOpts[opt]; ok {
 					maskOpts = append(maskOpts, opt)
 				}

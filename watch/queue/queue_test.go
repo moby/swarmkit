@@ -77,7 +77,7 @@ func TestLimitQueueNoLimit(t *testing.T) {
 	require.Equal(0, q.Len())
 	require.Equal(0, ms.Len())
 
-	for i := 0; i < 9999; i++ {
+	for range 9999 {
 		require.NoError(q.Write("test event"))
 	}
 	require.Equal(9999, q.Len()) // 1 event blocked in the sink, 9999 waiting in the queue
@@ -85,7 +85,7 @@ func TestLimitQueueNoLimit(t *testing.T) {
 
 	// Unblock the sink and expect all the events to have been flushed out of
 	// the queue.
-	for i := 0; i < 10000; i++ {
+	for range 10000 {
 		ch <- struct{}{}
 	}
 	deadline = time.Now().Add(5 * time.Second)
@@ -121,7 +121,7 @@ func TestLimitQueueWithLimit(t *testing.T) {
 	require.Equal(0, q.Len())
 
 	// Fill up the queue
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		require.NoError(q.Write("test event"))
 	}
 	require.Equal(0, ms.Len())

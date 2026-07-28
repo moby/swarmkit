@@ -16,7 +16,7 @@ const testSnapSize = 1 << 20 // 1 MB
 // Build a snapshot message where each byte in the data is of the value (index % sizeof(byte))
 func newSnapshotMessage(from uint64, to uint64) raftpb.Message {
 	data := make([]byte, testSnapSize)
-	for i := 0; i < testSnapSize; i++ {
+	for i := range testSnapSize {
 		data[i] = byte(i % (1 << 8))
 	}
 
@@ -83,7 +83,7 @@ func testSend(ctx context.Context, c *mockCluster, from uint64, to []uint64, msg
 
 		if msgType == raftpb.MsgSnap {
 			var snaps []snapshotReport
-			for i := 0; i < len(to); i++ {
+			for range to {
 				select {
 				case snap := <-c.Get(from).processedSnapshots:
 					snaps = append(snaps, snap)

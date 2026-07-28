@@ -26,7 +26,7 @@ func NewResolver(cmd *cobra.Command, c api.ControlClient) *Resolver {
 	}
 }
 
-func (r *Resolver) get(t interface{}, id string) string {
+func (r *Resolver) get(t any, id string) string {
 	switch t.(type) {
 	case api.Node:
 		res, err := r.c.GetNode(r.ctx, &api.GetNodeRequest{NodeID: id})
@@ -61,7 +61,7 @@ func (r *Resolver) get(t interface{}, id string) string {
 // Resolve will attempt to resolve an ID to a Name by querying the manager.
 // Results are stored into a cache.
 // If the `-n` flag is used in the command-line, resolution is disabled.
-func (r *Resolver) Resolve(t interface{}, id string) string {
+func (r *Resolver) Resolve(t any, id string) string {
 	if r.cmd.Flags().Changed("no-resolve") {
 		return id
 	}

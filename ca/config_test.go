@@ -629,7 +629,7 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 		cas          = make([]ca.RootCA, 3)
 		err          error
 	)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		certs[i], keys[i], err = cautils.CreateRootCertAndKey("CA" + strconv.Itoa(i))
 		require.NoError(t, err)
 		switch i {
@@ -711,7 +711,6 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 		// requests from certs different than the cluster root CA, add another test case to make sure that the downloaded
 		// root has to validate against both the old TLS creds and new TLS creds
 	} {
-		testCase := testCase
 		nodeID := "node" + strconv.Itoa(i)
 		t.Run(nodeID, func(t *testing.T) {
 			tlsKeyPair, issuerInfo, err := testCase.issuingRootCA.IssueAndSaveNewCertificates(krw, nodeID, ca.ManagerRole, tc.Organization)
@@ -815,7 +814,7 @@ func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
 	leafCert, err := os.ReadFile(paths.Node.Cert)
 	require.NoError(t, err)
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		cert, _, err := cautils.CreateRootCertAndKey("root " + strconv.Itoa(i+2))
 		require.NoError(t, err)
 

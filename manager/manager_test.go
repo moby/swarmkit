@@ -366,7 +366,7 @@ func TestManagerLockUnlock(t *testing.T) {
 	require.NotNil(t, snapshot)
 
 	// update the lock key to nil
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		getResp, err := client.GetCluster(tc.Context, &api.GetClusterRequest{ClusterID: cluster.ID})
 		require.NoError(t, err)
 		cluster = getResp.Cluster

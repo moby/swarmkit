@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -846,7 +847,7 @@ func TestStress(t *testing.T) {
 	pIDs := []string{}
 
 	leader := -1
-	for iters := 0; iters < 1000; iters++ {
+	for iters := range 1000 {
 		// keep proposing new values and killing leader
 		for i := 1; i <= 5; i++ {
 			if nodes[uint64(i)] != nil {
@@ -939,21 +940,13 @@ func TestStress(t *testing.T) {
 
 	// ids should be a subset of pIDs
 	for _, id := range ids {
-		find = false
-		for _, pid := range pIDs {
-			if id == pid {
-				find = true
-				break
-			}
-		}
-		assert.True(t, find)
+		assert.True(t, slices.Contains(pIDs, id))
 	}
 }
 
 // Test the server side code for raft snapshot streaming.
 func TestStreamRaftMessage(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	nodes, _ := raftutils.NewRaftCluster(t, tc)
 	defer raftutils.TeardownCluster(nodes)

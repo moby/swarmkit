@@ -131,7 +131,7 @@ func TestStoragePutGetStatusAssigned(t *testing.T) {
 
 func genTasks(n int) []*api.Task {
 	var tasks []*api.Task
-	for i := 0; i < n; i++ {
+	for range n {
 		tasks = append(tasks, genTask())
 	}
 

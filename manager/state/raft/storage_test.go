@@ -768,9 +768,9 @@ func TestRaftEncryptionKeyRotationStress(t *testing.T) {
 		}
 	}()
 
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		// rotate the encryption key
-		nodes[3].KeyRotator.QueuePendingKey([]byte(fmt.Sprintf("newKey%d", i)))
+		nodes[3].KeyRotator.QueuePendingKey(fmt.Appendf(nil, "newKey%d", i))
 		nodes[3].KeyRotator.RotationNotify() <- struct{}{}
 
 		require.NoError(t, testutils.PollFunc(clockSource, func() error {

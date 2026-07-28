@@ -1600,21 +1600,21 @@ func TestListServiceStatuses(t *testing.T) {
 	failed := api.TaskStateFailed
 
 	// create 3 running tasks for justRight
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		createTask(justRight, running, running)
 	}
 	// create 2 failed and 2 shutdown tasks
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		createTask(justRight, failed, shutdown)
 		createTask(justRight, shutdown, shutdown)
 	}
 
 	// create 4 tasks for notEnough
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		createTask(notEnough, running, running)
 	}
 	// create 3 tasks in new state
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		createTask(notEnough, newt, running)
 	}
 	// create 1 failed and 1 shutdown task
@@ -1622,44 +1622,44 @@ func TestListServiceStatuses(t *testing.T) {
 	createTask(notEnough, shutdown, shutdown)
 
 	// create 2 tasks out of 2 desired for global
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		createTask(global, running, running)
 	}
 	// create 3 shutdown tasks for global
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		createTask(global, shutdown, shutdown)
 	}
 
 	// create 4 out of 5 tasks for global2
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		createTask(global2, running, running)
 	}
 	createTask(global2, newt, running)
 
 	// create 6 failed tasks
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		createTask(global2, failed, shutdown)
 	}
 
 	// create 4 out of 2 tasks. no shutdown or failed tasks.  this would be the
 	// case if you did a call immediately after updating the service, before
 	// the orchestrator had updated the task desired states
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		createTask(over, running, running)
 	}
 
 	// create 2 running tasks for replicatedJob1
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		createTask(replicatedJob1, running, completed, withJobIteration)
 	}
 
 	// create 4 completed tasks for replicatedJob1
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		createTask(replicatedJob1, completed, completed, withJobIteration)
 	}
 
 	// create 10 completed tasks for replicatedJob2
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		createTask(replicatedJob2, completed, completed, withJobIteration)
 	}
 
@@ -1681,16 +1681,16 @@ func TestListServiceStatuses(t *testing.T) {
 	// and create 1 tasks out of 2
 	createTask(replicatedJob2, running, completed, withJobIteration)
 	// and 3 completed already
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		createTask(replicatedJob2, completed, completed, withJobIteration)
 	}
 
 	// create 5 running tasks for globalJob
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		createTask(globalJob, running, completed, withJobIteration)
 	}
 	// create 3 completed tasks
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		createTask(globalJob, completed, completed, withJobIteration)
 	}
 
@@ -1702,7 +1702,7 @@ func TestListServiceStatuses(t *testing.T) {
 		Spec: *goneSpec,
 	}
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		createTask(gone, running, shutdown)
 		createTask(gone, shutdown, shutdown)
 	}

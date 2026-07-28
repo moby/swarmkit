@@ -10,7 +10,7 @@ func TestHeartbeatBeat(t *testing.T) {
 	hb := New(200*time.Millisecond, func() {
 		close(ch)
 	})
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		time.Sleep(100 * time.Millisecond)
 		hb.Beat()
 	}
@@ -44,7 +44,7 @@ func TestHeartbeatReactivate(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 	hb.Beat()
 	time.Sleep(200 * time.Millisecond)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		select {
 		case <-ch:
 		case <-time.After(500 * time.Millisecond):

@@ -111,7 +111,7 @@ func Expect(t *testing.T, watch chan events.Event, specifiers ...api.Event) {
 }
 
 // FatalStack logs the stacks of all goroutines and immediately fails the test.
-func FatalStack(t *testing.T, msg string, args ...interface{}) {
+func FatalStack(t *testing.T, msg string, args ...any) {
 	stack := make([]byte, 1024*1024)
 	stack = stack[:runtime.Stack(stack, true)]
 	t.Logf("%s\n", stack)

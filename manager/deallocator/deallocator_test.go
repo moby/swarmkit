@@ -84,8 +84,8 @@ func TestServiceDelete(t *testing.T) {
 				createDBObjects(t, s, service)
 
 				taskIDs := make([]string, taskCount)
-				tasks := make([]interface{}, taskCount)
-				for i := 0; i < taskCount; i++ {
+				tasks := make([]any, taskCount)
+				for i := range taskCount {
 					taskIDs[i] = "task" + strconv.Itoa(i+1)
 					tasks[i] = newTask(taskIDs[i], service)
 				}
@@ -329,7 +329,7 @@ func ensureNoDeallocatorEvent(t *testing.T, deallocator *Deallocator) {
 	}
 }
 
-func createDBObjects(t *testing.T, s *store.MemoryStore, objects ...interface{}) {
+func createDBObjects(t *testing.T, s *store.MemoryStore, objects ...any) {
 	err := s.Update(func(tx store.Tx) (e error) {
 		for _, object := range objects {
 			switch typedObject := object.(type) {
@@ -389,7 +389,7 @@ func newNetwork(id string, pendingDelete bool) *api.Network {
 func newNetworkConfigs(networks ...*api.Network) []*api.NetworkAttachmentConfig {
 	networkConfigs := make([]*api.NetworkAttachmentConfig, len(networks))
 
-	for i := 0; i < len(networks); i++ {
+	for i := range networks {
 		networkConfigs[i] = &api.NetworkAttachmentConfig{
 			Target: networks[i].ID,
 		}

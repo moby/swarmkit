@@ -116,7 +116,7 @@ func TestTaskSort(t *testing.T) {
 	var tasks []*api.Task
 	size := 5
 	seconds := int64(size)
-	for i := 0; i < size; i++ {
+	for i := range size {
 		task := &api.Task{
 			ID: "id_" + strconv.Itoa(i),
 			Status: api.TaskStatus{

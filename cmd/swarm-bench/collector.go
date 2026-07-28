@@ -29,7 +29,7 @@ func (c *Collector) Listen(port int) error {
 // Collect blocks until `count` tasks phoned home.
 func (c *Collector) Collect(ctx context.Context, count uint64) {
 	start := time.Now()
-	for i := uint64(0); i < count; i++ {
+	for range count {
 		conn, err := c.ln.Accept()
 		if err != nil {
 			log.G(ctx).WithError(err).Error("failure accepting connection")

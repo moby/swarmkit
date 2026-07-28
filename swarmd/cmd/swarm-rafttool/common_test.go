@@ -39,7 +39,7 @@ func writeFakeRaftData(t *testing.T, stateDir string, snapshot *raftpb.Snapshot,
 		entries = append(entries, raftpb.Entry{
 			Term:  wsn.Term + 1,
 			Index: i,
-			Data:  []byte(fmt.Sprintf("v3Entry %d", i)),
+			Data:  fmt.Appendf(nil, "v3Entry %d", i),
 		})
 	}
 

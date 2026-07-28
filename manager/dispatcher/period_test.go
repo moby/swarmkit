@@ -9,7 +9,7 @@ func TestPeriodChooser(t *testing.T) {
 	period := 100 * time.Millisecond
 	epsilon := 50 * time.Millisecond
 	pc := newPeriodChooser(period, epsilon)
-	for i := 0; i < 1024; i++ {
+	for range 1024 {
 		ttl := pc.Choose()
 		if ttl < period-epsilon {
 			t.Fatalf("ttl elected below epsilon range: %v", ttl)

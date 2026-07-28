@@ -12,7 +12,7 @@ func TestTasksEqualStable(t *testing.T) {
 	const taskCount = 5
 	var tasks [taskCount]*api.Task
 
-	for i := 0; i < taskCount; i++ {
+	for i := range taskCount {
 		tasks[i] = &api.Task{
 			ID:   "task-id",
 			Meta: api.Meta{Version: api.Version{Index: 6}},

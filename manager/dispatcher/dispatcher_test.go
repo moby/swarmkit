@@ -234,7 +234,7 @@ func TestRegisterExceedRateLimit(t *testing.T) {
 	gd := startDispatcher(t, DefaultConfig())
 	defer gd.Close()
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		stream, err := gd.Clients[0].Session(context.Background(), &api.SessionRequest{})
 		assert.NoError(t, err)
 		msg, err := stream.Recv()
@@ -419,7 +419,7 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 	}
 
 	var mux MockPluginClient
-	mux.HandleFunc(drivers.SecretsProviderAPI, func(body []byte) (interface{}, error) {
+	mux.HandleFunc(drivers.SecretsProviderAPI, func(body []byte) (any, error) {
 		var request drivers.SecretsProviderRequest
 		assert.NoError(t, json.Unmarshal(body, &request))
 		response := responses[request.SecretName]
@@ -936,7 +936,7 @@ func mockNumberedConfig(i int) *api.Config {
 			Annotations: api.Annotations{
 				Name: fmt.Sprintf("config%d", i),
 			},
-			Data: []byte(fmt.Sprintf("config%d", i)),
+			Data: fmt.Appendf(nil, "config%d", i),
 		},
 	}
 }
@@ -948,7 +948,7 @@ func mockNumberedSecret(i int) *api.Secret {
 			Annotations: api.Annotations{
 				Name: fmt.Sprintf("secret%d", i),
 			},
-			Data: []byte(fmt.Sprintf("secret%d", i)),
+			Data: fmt.Appendf(nil, "secret%d", i),
 		},
 	}
 }
@@ -972,7 +972,7 @@ func makeMockResource(tx store.Tx, resourceRef *api.ResourceReference) error {
 				Annotations: api.Annotations{
 					Name: fmt.Sprintf("dummy_secret_%s", resourceRef.ResourceID),
 				},
-				Data: []byte(fmt.Sprintf("secret_%s", resourceRef.ResourceID)),
+				Data: fmt.Appendf(nil, "secret_%s", resourceRef.ResourceID),
 			},
 		}
 		if store.GetSecret(tx, dummySecret.ID) == nil {
@@ -987,7 +987,7 @@ func makeMockResource(tx store.Tx, resourceRef *api.ResourceReference) error {
 				Annotations: api.Annotations{
 					Name: fmt.Sprintf("dummy_config_%s", resourceRef.ResourceID),
 				},
-				Data: []byte(fmt.Sprintf("config_%s", resourceRef.ResourceID)),
+				Data: fmt.Appendf(nil, "config_%s", resourceRef.ResourceID),
 			},
 		}
 		if store.GetConfig(tx, dummyConfig.ID) == nil {
@@ -1923,7 +1923,7 @@ func makeTasksAndDependenciesWithRedundantReferences(t *testing.T, nodeID string
 	return secrets, configs, resourceRefs, tasks
 }
 
-func taskSpecFromDependencies(dependencies ...interface{}) api.TaskSpec {
+func taskSpecFromDependencies(dependencies ...any) api.TaskSpec {
 	var secretRefs []*api.SecretReference
 	var configRefs []*api.ConfigReference
 	var resourceRefs []api.ResourceReference
@@ -2367,7 +2367,7 @@ func (m *MockPlugin) ScopedPath(_ string) string {
 	return ""
 }
 
-type MockPluginHandlerFn func(argsJSON []byte) (interface{}, error)
+type MockPluginHandlerFn func(argsJSON []byte) (any, error)
 
 type MockPluginClient struct {
 	handlers map[string]MockPluginHandlerFn
@@ -2383,7 +2383,7 @@ func (mc *MockPluginClient) HandleFunc(method string, fn MockPluginHandlerFn) {
 	mc.handlers[method] = fn
 }
 
-func (mc *MockPluginClient) Call(method string, args, ret interface{}) error {
+func (mc *MockPluginClient) Call(method string, args, ret any) error {
 	fn, ok := mc.handlers[method]
 	if !ok {
 		return fmt.Errorf("no handler for %s", method)

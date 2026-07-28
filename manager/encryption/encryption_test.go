@@ -91,7 +91,7 @@ func TestMultiDecryptor(t *testing.T) {
 	)
 
 	for i, c := range crypters {
-		plaintext := []byte(fmt.Sprintf("message %d", i))
+		plaintext := fmt.Appendf(nil, "message %d", i)
 		ciphertext, err := Encrypt(plaintext, c)
 		require.NoError(t, err)
 		decrypted, err := Decrypt(ciphertext, m)

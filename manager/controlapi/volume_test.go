@@ -382,7 +382,6 @@ func TestUpdateVolumeInvalidFields(t *testing.T) {
 		},
 		// TODO(dperny): we should probably be able to update volume secrets.
 	} {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			// create a new volume for each iteration, so that tests are
 			// independent
@@ -618,7 +617,6 @@ func TestListVolumesByGroup(t *testing.T) {
 			},
 		},
 	} {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			resp, err := ts.Client.ListVolumes(context.Background(), &api.ListVolumesRequest{
 				Filters: tc.filters,

@@ -1432,10 +1432,7 @@ func TestSchedulerFaultyNode(t *testing.T) {
 
 		node2Info, err := scheduler.nodeSet.nodeInfo("id2")
 		assert.NoError(t, err)
-		expectedNode2Failures := i
-		if i > 5 {
-			expectedNode2Failures = 5
-		}
+		expectedNode2Failures := min(i, 5)
 		assert.Len(t, node2Info.recentFailures[versionedService{serviceID: "service1"}], expectedNode2Failures)
 
 		node1Info, err := scheduler.nodeSet.nodeInfo("id1")
@@ -3394,7 +3391,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 
 		_ = s.Update(func(tx store.Tx) error {
 			// Create initial nodes and tasks
-			for i := 0; i < nodes; i++ {
+			for i := range nodes {
 				n := &api.Node{
 					ID: identity.NewID(),
 					Spec: api.NodeSpec{
@@ -3425,7 +3422,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 					panic(err)
 				}
 			}
-			for i := 0; i < tasks; i++ {
+			for i := range tasks {
 				id := "task" + strconv.Itoa(i)
 				t := &api.Task{
 					ID:           id,
