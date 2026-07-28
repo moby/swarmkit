@@ -223,21 +223,19 @@ func benchmarkWatchForQueue(q *Queue, b *testing.B, nlisteners, npublishers int,
 		publishersRunning sync.WaitGroup
 	)
 
+	eventsPerPublisher := b.N / npublishers
+	eventsPerWatcher := eventsPerPublisher * npublishers
 	for range nlisteners {
 		watchersAttached.Add(1)
-		watchersRunning.Add(1)
-		go func(n int) {
+		watchersRunning.Go(func() {
 			w, cancel := q.Watch()
 			defer cancel()
 			watchersAttached.Done()
 
-			for range n {
+			for range eventsPerWatcher {
 				<-w
 			}
-			if waitForWatchers {
-				watchersRunning.Done()
-			}
-		}(b.N / npublishers * npublishers)
+		})
 	}
 
 	// Wait for watchers to be in place before we start publishing events.
@@ -246,13 +244,11 @@ func benchmarkWatchForQueue(q *Queue, b *testing.B, nlisteners, npublishers int,
 	b.ResetTimer()
 
 	for range npublishers {
-		publishersRunning.Add(1)
-		go func(n int) {
-			for range n {
+		publishersRunning.Go(func() {
+			for range eventsPerPublisher {
 				q.Publish("myevent")
 			}
-			publishersRunning.Done()
-		}(b.N / npublishers)
+		})
 	}
 
 	publishersRunning.Wait()

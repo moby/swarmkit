@@ -612,15 +612,13 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 			slices.Contains(sel.NodeIDs, t.NodeID)
 	}
 
-	wg := sync.WaitGroup{}
+	var wg sync.WaitGroup
 	w.mu.Lock()
 	for _, tm := range w.taskManagers {
 		if match(tm.task) {
-			wg.Add(1)
-			go func(tm *taskManager) {
-				defer wg.Done()
+			wg.Go(func() {
 				tm.Logs(ctx, *subscription.Options, publisher)
-			}(tm)
+			})
 		}
 	}
 	w.mu.Unlock()
