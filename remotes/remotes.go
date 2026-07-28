@@ -1,7 +1,7 @@
 package remotes
 
 import (
-	"fmt"
+	"errors"
 	"maps"
 	"math"
 	"math/rand"
@@ -11,7 +11,7 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 )
 
-var errRemotesUnavailable = fmt.Errorf("no remote hosts provided")
+var errRemotesUnavailable = errors.New("no remote hosts provided")
 
 // DefaultObservationWeight provides a weight to use for positive observations
 // that will balance well under repeated observations.

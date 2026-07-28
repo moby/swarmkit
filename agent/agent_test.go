@@ -96,9 +96,7 @@ func TestAgentStartStop(t *testing.T) {
 	assert.Equal(t, errAgentNotStarted, agent.Stop(ctx))
 	assert.NoError(t, agent.Start(ctx))
 
-	if err := agent.Start(ctx); err != errAgentStarted {
-		t.Fatalf("expected agent started error: %v", err)
-	}
+	require.ErrorIs(t, agent.Start(ctx), errAgentStarted, "expected agent started")
 
 	assert.NoError(t, agent.Stop(ctx))
 }

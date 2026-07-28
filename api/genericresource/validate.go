@@ -1,6 +1,7 @@
 package genericresource
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -24,7 +25,7 @@ func ValidateTask(resources *api.Resources) error {
 func HasEnough(nodeRes []*api.GenericResource, taskRes *api.GenericResource) (bool, error) {
 	t := taskRes.GetDiscreteResourceSpec()
 	if t == nil {
-		return false, fmt.Errorf("task should only hold Discrete type")
+		return false, errors.New("task should only hold Discrete type")
 	}
 
 	if nodeRes == nil {

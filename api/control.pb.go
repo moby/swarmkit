@@ -5,6 +5,7 @@ package api
 
 import (
 	context "context"
+	errors "errors"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
@@ -12175,7 +12176,7 @@ func (p *raftProxyControlServer) GetNode(ctx context.Context, r *GetNodeRequest)
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12196,7 +12197,7 @@ func (p *raftProxyControlServer) GetNode(ctx context.Context, r *GetNodeRequest)
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.GetNode(ctx, r)
 			}
 			return nil, err
@@ -12210,7 +12211,7 @@ func (p *raftProxyControlServer) ListNodes(ctx context.Context, r *ListNodesRequ
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12231,7 +12232,7 @@ func (p *raftProxyControlServer) ListNodes(ctx context.Context, r *ListNodesRequ
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.ListNodes(ctx, r)
 			}
 			return nil, err
@@ -12245,7 +12246,7 @@ func (p *raftProxyControlServer) UpdateNode(ctx context.Context, r *UpdateNodeRe
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12266,7 +12267,7 @@ func (p *raftProxyControlServer) UpdateNode(ctx context.Context, r *UpdateNodeRe
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.UpdateNode(ctx, r)
 			}
 			return nil, err
@@ -12280,7 +12281,7 @@ func (p *raftProxyControlServer) RemoveNode(ctx context.Context, r *RemoveNodeRe
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12301,7 +12302,7 @@ func (p *raftProxyControlServer) RemoveNode(ctx context.Context, r *RemoveNodeRe
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.RemoveNode(ctx, r)
 			}
 			return nil, err
@@ -12315,7 +12316,7 @@ func (p *raftProxyControlServer) GetTask(ctx context.Context, r *GetTaskRequest)
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12336,7 +12337,7 @@ func (p *raftProxyControlServer) GetTask(ctx context.Context, r *GetTaskRequest)
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.GetTask(ctx, r)
 			}
 			return nil, err
@@ -12350,7 +12351,7 @@ func (p *raftProxyControlServer) ListTasks(ctx context.Context, r *ListTasksRequ
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12371,7 +12372,7 @@ func (p *raftProxyControlServer) ListTasks(ctx context.Context, r *ListTasksRequ
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.ListTasks(ctx, r)
 			}
 			return nil, err
@@ -12385,7 +12386,7 @@ func (p *raftProxyControlServer) RemoveTask(ctx context.Context, r *RemoveTaskRe
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12406,7 +12407,7 @@ func (p *raftProxyControlServer) RemoveTask(ctx context.Context, r *RemoveTaskRe
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.RemoveTask(ctx, r)
 			}
 			return nil, err
@@ -12420,7 +12421,7 @@ func (p *raftProxyControlServer) GetService(ctx context.Context, r *GetServiceRe
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12441,7 +12442,7 @@ func (p *raftProxyControlServer) GetService(ctx context.Context, r *GetServiceRe
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.GetService(ctx, r)
 			}
 			return nil, err
@@ -12455,7 +12456,7 @@ func (p *raftProxyControlServer) ListServices(ctx context.Context, r *ListServic
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12476,7 +12477,7 @@ func (p *raftProxyControlServer) ListServices(ctx context.Context, r *ListServic
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.ListServices(ctx, r)
 			}
 			return nil, err
@@ -12490,7 +12491,7 @@ func (p *raftProxyControlServer) CreateService(ctx context.Context, r *CreateSer
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12511,7 +12512,7 @@ func (p *raftProxyControlServer) CreateService(ctx context.Context, r *CreateSer
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.CreateService(ctx, r)
 			}
 			return nil, err
@@ -12525,7 +12526,7 @@ func (p *raftProxyControlServer) UpdateService(ctx context.Context, r *UpdateSer
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12546,7 +12547,7 @@ func (p *raftProxyControlServer) UpdateService(ctx context.Context, r *UpdateSer
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.UpdateService(ctx, r)
 			}
 			return nil, err
@@ -12560,7 +12561,7 @@ func (p *raftProxyControlServer) RemoveService(ctx context.Context, r *RemoveSer
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12581,7 +12582,7 @@ func (p *raftProxyControlServer) RemoveService(ctx context.Context, r *RemoveSer
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.RemoveService(ctx, r)
 			}
 			return nil, err
@@ -12595,7 +12596,7 @@ func (p *raftProxyControlServer) ListServiceStatuses(ctx context.Context, r *Lis
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12616,7 +12617,7 @@ func (p *raftProxyControlServer) ListServiceStatuses(ctx context.Context, r *Lis
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.ListServiceStatuses(ctx, r)
 			}
 			return nil, err
@@ -12630,7 +12631,7 @@ func (p *raftProxyControlServer) GetNetwork(ctx context.Context, r *GetNetworkRe
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12651,7 +12652,7 @@ func (p *raftProxyControlServer) GetNetwork(ctx context.Context, r *GetNetworkRe
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.GetNetwork(ctx, r)
 			}
 			return nil, err
@@ -12665,7 +12666,7 @@ func (p *raftProxyControlServer) ListNetworks(ctx context.Context, r *ListNetwor
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12686,7 +12687,7 @@ func (p *raftProxyControlServer) ListNetworks(ctx context.Context, r *ListNetwor
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.ListNetworks(ctx, r)
 			}
 			return nil, err
@@ -12700,7 +12701,7 @@ func (p *raftProxyControlServer) CreateNetwork(ctx context.Context, r *CreateNet
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12721,7 +12722,7 @@ func (p *raftProxyControlServer) CreateNetwork(ctx context.Context, r *CreateNet
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.CreateNetwork(ctx, r)
 			}
 			return nil, err
@@ -12735,7 +12736,7 @@ func (p *raftProxyControlServer) RemoveNetwork(ctx context.Context, r *RemoveNet
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12756,7 +12757,7 @@ func (p *raftProxyControlServer) RemoveNetwork(ctx context.Context, r *RemoveNet
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.RemoveNetwork(ctx, r)
 			}
 			return nil, err
@@ -12770,7 +12771,7 @@ func (p *raftProxyControlServer) GetCluster(ctx context.Context, r *GetClusterRe
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12791,7 +12792,7 @@ func (p *raftProxyControlServer) GetCluster(ctx context.Context, r *GetClusterRe
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.GetCluster(ctx, r)
 			}
 			return nil, err
@@ -12805,7 +12806,7 @@ func (p *raftProxyControlServer) ListClusters(ctx context.Context, r *ListCluste
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12826,7 +12827,7 @@ func (p *raftProxyControlServer) ListClusters(ctx context.Context, r *ListCluste
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.ListClusters(ctx, r)
 			}
 			return nil, err
@@ -12840,7 +12841,7 @@ func (p *raftProxyControlServer) UpdateCluster(ctx context.Context, r *UpdateClu
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12861,7 +12862,7 @@ func (p *raftProxyControlServer) UpdateCluster(ctx context.Context, r *UpdateClu
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.UpdateCluster(ctx, r)
 			}
 			return nil, err
@@ -12875,7 +12876,7 @@ func (p *raftProxyControlServer) GetSecret(ctx context.Context, r *GetSecretRequ
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12896,7 +12897,7 @@ func (p *raftProxyControlServer) GetSecret(ctx context.Context, r *GetSecretRequ
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.GetSecret(ctx, r)
 			}
 			return nil, err
@@ -12910,7 +12911,7 @@ func (p *raftProxyControlServer) UpdateSecret(ctx context.Context, r *UpdateSecr
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12931,7 +12932,7 @@ func (p *raftProxyControlServer) UpdateSecret(ctx context.Context, r *UpdateSecr
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.UpdateSecret(ctx, r)
 			}
 			return nil, err
@@ -12945,7 +12946,7 @@ func (p *raftProxyControlServer) ListSecrets(ctx context.Context, r *ListSecrets
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -12966,7 +12967,7 @@ func (p *raftProxyControlServer) ListSecrets(ctx context.Context, r *ListSecrets
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.ListSecrets(ctx, r)
 			}
 			return nil, err
@@ -12980,7 +12981,7 @@ func (p *raftProxyControlServer) CreateSecret(ctx context.Context, r *CreateSecr
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13001,7 +13002,7 @@ func (p *raftProxyControlServer) CreateSecret(ctx context.Context, r *CreateSecr
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.CreateSecret(ctx, r)
 			}
 			return nil, err
@@ -13015,7 +13016,7 @@ func (p *raftProxyControlServer) RemoveSecret(ctx context.Context, r *RemoveSecr
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13036,7 +13037,7 @@ func (p *raftProxyControlServer) RemoveSecret(ctx context.Context, r *RemoveSecr
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.RemoveSecret(ctx, r)
 			}
 			return nil, err
@@ -13050,7 +13051,7 @@ func (p *raftProxyControlServer) GetConfig(ctx context.Context, r *GetConfigRequ
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13071,7 +13072,7 @@ func (p *raftProxyControlServer) GetConfig(ctx context.Context, r *GetConfigRequ
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.GetConfig(ctx, r)
 			}
 			return nil, err
@@ -13085,7 +13086,7 @@ func (p *raftProxyControlServer) UpdateConfig(ctx context.Context, r *UpdateConf
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13106,7 +13107,7 @@ func (p *raftProxyControlServer) UpdateConfig(ctx context.Context, r *UpdateConf
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.UpdateConfig(ctx, r)
 			}
 			return nil, err
@@ -13120,7 +13121,7 @@ func (p *raftProxyControlServer) ListConfigs(ctx context.Context, r *ListConfigs
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13141,7 +13142,7 @@ func (p *raftProxyControlServer) ListConfigs(ctx context.Context, r *ListConfigs
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.ListConfigs(ctx, r)
 			}
 			return nil, err
@@ -13155,7 +13156,7 @@ func (p *raftProxyControlServer) CreateConfig(ctx context.Context, r *CreateConf
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13176,7 +13177,7 @@ func (p *raftProxyControlServer) CreateConfig(ctx context.Context, r *CreateConf
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.CreateConfig(ctx, r)
 			}
 			return nil, err
@@ -13190,7 +13191,7 @@ func (p *raftProxyControlServer) RemoveConfig(ctx context.Context, r *RemoveConf
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13211,7 +13212,7 @@ func (p *raftProxyControlServer) RemoveConfig(ctx context.Context, r *RemoveConf
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.RemoveConfig(ctx, r)
 			}
 			return nil, err
@@ -13225,7 +13226,7 @@ func (p *raftProxyControlServer) GetExtension(ctx context.Context, r *GetExtensi
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13246,7 +13247,7 @@ func (p *raftProxyControlServer) GetExtension(ctx context.Context, r *GetExtensi
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.GetExtension(ctx, r)
 			}
 			return nil, err
@@ -13260,7 +13261,7 @@ func (p *raftProxyControlServer) CreateExtension(ctx context.Context, r *CreateE
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13281,7 +13282,7 @@ func (p *raftProxyControlServer) CreateExtension(ctx context.Context, r *CreateE
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.CreateExtension(ctx, r)
 			}
 			return nil, err
@@ -13295,7 +13296,7 @@ func (p *raftProxyControlServer) RemoveExtension(ctx context.Context, r *RemoveE
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13316,7 +13317,7 @@ func (p *raftProxyControlServer) RemoveExtension(ctx context.Context, r *RemoveE
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.RemoveExtension(ctx, r)
 			}
 			return nil, err
@@ -13330,7 +13331,7 @@ func (p *raftProxyControlServer) GetResource(ctx context.Context, r *GetResource
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13351,7 +13352,7 @@ func (p *raftProxyControlServer) GetResource(ctx context.Context, r *GetResource
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.GetResource(ctx, r)
 			}
 			return nil, err
@@ -13365,7 +13366,7 @@ func (p *raftProxyControlServer) UpdateResource(ctx context.Context, r *UpdateRe
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13386,7 +13387,7 @@ func (p *raftProxyControlServer) UpdateResource(ctx context.Context, r *UpdateRe
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.UpdateResource(ctx, r)
 			}
 			return nil, err
@@ -13400,7 +13401,7 @@ func (p *raftProxyControlServer) ListResources(ctx context.Context, r *ListResou
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13421,7 +13422,7 @@ func (p *raftProxyControlServer) ListResources(ctx context.Context, r *ListResou
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.ListResources(ctx, r)
 			}
 			return nil, err
@@ -13435,7 +13436,7 @@ func (p *raftProxyControlServer) CreateResource(ctx context.Context, r *CreateRe
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13456,7 +13457,7 @@ func (p *raftProxyControlServer) CreateResource(ctx context.Context, r *CreateRe
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.CreateResource(ctx, r)
 			}
 			return nil, err
@@ -13470,7 +13471,7 @@ func (p *raftProxyControlServer) RemoveResource(ctx context.Context, r *RemoveRe
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13491,7 +13492,7 @@ func (p *raftProxyControlServer) RemoveResource(ctx context.Context, r *RemoveRe
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.RemoveResource(ctx, r)
 			}
 			return nil, err
@@ -13505,7 +13506,7 @@ func (p *raftProxyControlServer) CreateVolume(ctx context.Context, r *CreateVolu
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13526,7 +13527,7 @@ func (p *raftProxyControlServer) CreateVolume(ctx context.Context, r *CreateVolu
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.CreateVolume(ctx, r)
 			}
 			return nil, err
@@ -13540,7 +13541,7 @@ func (p *raftProxyControlServer) GetVolume(ctx context.Context, r *GetVolumeRequ
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13561,7 +13562,7 @@ func (p *raftProxyControlServer) GetVolume(ctx context.Context, r *GetVolumeRequ
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.GetVolume(ctx, r)
 			}
 			return nil, err
@@ -13575,7 +13576,7 @@ func (p *raftProxyControlServer) UpdateVolume(ctx context.Context, r *UpdateVolu
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13596,7 +13597,7 @@ func (p *raftProxyControlServer) UpdateVolume(ctx context.Context, r *UpdateVolu
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.UpdateVolume(ctx, r)
 			}
 			return nil, err
@@ -13610,7 +13611,7 @@ func (p *raftProxyControlServer) ListVolumes(ctx context.Context, r *ListVolumes
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13631,7 +13632,7 @@ func (p *raftProxyControlServer) ListVolumes(ctx context.Context, r *ListVolumes
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.ListVolumes(ctx, r)
 			}
 			return nil, err
@@ -13645,7 +13646,7 @@ func (p *raftProxyControlServer) RemoveVolume(ctx context.Context, r *RemoveVolu
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -13666,7 +13667,7 @@ func (p *raftProxyControlServer) RemoveVolume(ctx context.Context, r *RemoveVolu
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.RemoveVolume(ctx, r)
 			}
 			return nil, err

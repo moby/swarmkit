@@ -5,6 +5,7 @@ package api
 
 import (
 	context "context"
+	errors "errors"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
@@ -2231,7 +2232,7 @@ func (p *raftProxyWatchServer) Watch(r *WatchRequest, stream Watch_WatchServer) 
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return err
@@ -2256,7 +2257,7 @@ func (p *raftProxyWatchServer) Watch(r *WatchRequest, stream Watch_WatchServer) 
 
 	for {
 		msg, err := clientStream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

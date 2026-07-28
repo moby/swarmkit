@@ -2398,7 +2398,7 @@ func (mc *MockPluginClient) Call(method string, args, ret any) error {
 	}
 	jsonRes, err := json.Marshal(res)
 	if err != nil {
-		return fmt.Errorf("error marshalling response: %v", err)
+		return fmt.Errorf("error marshalling response: %w", err)
 	}
 	return json.Unmarshal(jsonRes, ret)
 }

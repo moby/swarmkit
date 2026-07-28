@@ -2,6 +2,7 @@ package template
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 	"text/template"
@@ -11,7 +12,6 @@ import (
 	"github.com/moby/swarmkit/v2/agent/secrets"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/naming"
-	"github.com/pkg/errors"
 )
 
 // Platform holds information about the underlying platform of the node
@@ -132,7 +132,7 @@ func (ctx *PayloadContext) secretGetter(target string) (string, error) {
 		}
 	}
 
-	return "", errors.Errorf("secret target %s not found", target)
+	return "", fmt.Errorf("secret target %s not found", target)
 }
 
 func (ctx *PayloadContext) configGetter(target string) (string, error) {
@@ -156,7 +156,7 @@ func (ctx *PayloadContext) configGetter(target string) (string, error) {
 		}
 	}
 
-	return "", errors.Errorf("config target %s not found", target)
+	return "", fmt.Errorf("config target %s not found", target)
 }
 
 func (ctx *PayloadContext) envGetter(variable string) (string, error) {

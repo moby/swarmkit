@@ -3,7 +3,7 @@ package manager
 import (
 	"crypto/subtle"
 	"encoding/base64"
-	"fmt"
+	"errors"
 
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/manager/encryption"
@@ -62,7 +62,7 @@ func (r RaftDEKData) UnmarshalHeaders(headers map[string]string, kekData ca.KEKD
 	}
 
 	if pendingDEK != nil && currentDEK == nil {
-		return nil, fmt.Errorf("there is a pending DEK, but no current DEK")
+		return nil, errors.New("there is a pending DEK, but no current DEK")
 	}
 
 	_, ok := headers[pemHeaderRaftDEKNeedsRotation]
@@ -120,7 +120,7 @@ func compareKEKs(oldKEK, candidateKEK ca.KEKData) (bool, bool, error) {
 	keksEqual := subtle.ConstantTimeCompare(oldKEK.KEK, candidateKEK.KEK) == 1
 	switch {
 	case oldKEK.Version == candidateKEK.Version && !keksEqual:
-		return false, false, fmt.Errorf("candidate KEK has the same version as the current KEK, but a different KEK value")
+		return false, false, errors.New("candidate KEK has the same version as the current KEK, but a different KEK value")
 	case oldKEK.Version >= candidateKEK.Version || keksEqual:
 		return false, false, nil
 	default:
@@ -136,11 +136,11 @@ type RaftDEKManager struct {
 	FIPS       bool
 }
 
-var errNoUpdateNeeded = fmt.Errorf("don't need to rotate or update")
+var errNoUpdateNeeded = errors.New("don't need to rotate or update")
 
 // this error is returned if the KeyReadWriter's PEMKeyHeaders object is no longer a RaftDEKData object -
 // this can happen if the node is no longer a manager, for example
-var errNotUsingRaftDEKData = fmt.Errorf("RaftDEKManager can no longer store and manage TLS key headers")
+var errNotUsingRaftDEKData = errors.New("RaftDEKManager can no longer store and manage TLS key headers")
 
 // NewRaftDEKManager returns a RaftDEKManager that uses the current key writer
 // and header manager
@@ -159,7 +159,7 @@ func NewRaftDEKManager(kw ca.KeyWriter, fips bool) (*RaftDEKManager, error) {
 		}
 		return nil, errNoUpdateNeeded
 	})
-	if err != nil && err != errNoUpdateNeeded {
+	if err != nil && !errors.Is(err, errNoUpdateNeeded) {
 		return nil, err
 	}
 	return &RaftDEKManager{
@@ -259,7 +259,7 @@ func (r *RaftDEKManager) MaybeUpdateKEK(candidateKEK ca.KEKData) (bool, bool, er
 		}
 		return candidateKEK, data, nil
 	})
-	if err == errNoUpdateNeeded {
+	if errors.Is(err, errNoUpdateNeeded) {
 		err = nil
 	}
 

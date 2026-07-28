@@ -1,6 +1,7 @@
 package encryption
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -41,7 +42,7 @@ func (f Fernet) Encrypt(data []byte) (*api.MaybeEncryptedRecord, error) {
 // Decrypt decrypts a MaybeEncryptedRecord and returns some bytes
 func (f Fernet) Decrypt(record api.MaybeEncryptedRecord) ([]byte, error) {
 	if record.Algorithm != f.Algorithm() {
-		return nil, fmt.Errorf("record is not a Fernet message")
+		return nil, errors.New("record is not a Fernet message")
 	}
 
 	// -1 skips the TTL check, since we don't care about message expiry

@@ -2,13 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -55,16 +55,16 @@ var (
 				},
 			})
 			if err != nil {
-				return errors.Wrap(err, "failed to subscribe to logs")
+				return fmt.Errorf("failed to subscribe to logs: %w", err)
 			}
 
 			for {
 				log, err := stream.Recv()
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					return nil
 				}
 				if err != nil {
-					return errors.Wrap(err, "failed receiving stream message")
+					return fmt.Errorf("failed receiving stream message: %w", err)
 				}
 
 				for _, msg := range log.Messages {

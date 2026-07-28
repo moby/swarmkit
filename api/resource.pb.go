@@ -5,6 +5,7 @@ package api
 
 import (
 	context "context"
+	errors "errors"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
@@ -637,7 +638,7 @@ func (p *raftProxyResourceAllocatorServer) AttachNetwork(ctx context.Context, r 
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -658,7 +659,7 @@ func (p *raftProxyResourceAllocatorServer) AttachNetwork(ctx context.Context, r 
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.AttachNetwork(ctx, r)
 			}
 			return nil, err
@@ -672,7 +673,7 @@ func (p *raftProxyResourceAllocatorServer) DetachNetwork(ctx context.Context, r 
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -693,7 +694,7 @@ func (p *raftProxyResourceAllocatorServer) DetachNetwork(ctx context.Context, r 
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.DetachNetwork(ctx, r)
 			}
 			return nil, err

@@ -3,6 +3,8 @@ package agent
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -11,7 +13,6 @@ import (
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -464,7 +465,7 @@ func (a *Agent) handleSessionMessage(ctx context.Context, message *api.SessionMe
 		if !same {
 			a.keys = message.NetworkBootstrapKeys
 			if err := a.config.Executor.SetNetworkBootstrapKeys(a.keys); err != nil {
-				return errors.Wrap(err, "configuring network key failed")
+				return fmt.Errorf("configuring network key failed: %w", err)
 			}
 		}
 	}
@@ -514,7 +515,7 @@ func (a *Agent) UpdateTaskStatus(ctx context.Context, taskID string, status *api
 		go func() {
 			err := session.sendTaskStatus(ctx, taskID, status)
 			if err != nil {
-				if err == errTaskUnknown {
+				if errors.Is(err, errTaskUnknown) {
 					err = nil // dispatcher no longer cares about this task.
 				} else {
 					log.G(ctx).WithError(err).Error("closing session after fatal error")

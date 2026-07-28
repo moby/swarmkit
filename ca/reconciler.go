@@ -3,6 +3,7 @@ package ca
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
@@ -13,7 +14,6 @@ import (
 	"github.com/moby/swarmkit/v2/api/equality"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/state/store"
-	"github.com/pkg/errors"
 )
 
 // IssuanceStateRotateMaxBatchSize is the maximum number of nodes we'll tell to rotate their certificates in any given update
@@ -54,7 +54,7 @@ func IssuerFromAPIRootCA(rootCA *api.RootCA) (*IssuerInfo, error) {
 	}
 	issuerCerts, err := helpers.ParseCertificatesPEM(wantedIssuer)
 	if err != nil {
-		return nil, errors.Wrap(err, "invalid certificate in cluster root CA object")
+		return nil, fmt.Errorf("invalid certificate in cluster root CA object: %w", err)
 	}
 	if len(issuerCerts) == 0 {
 		return nil, errors.New("invalid certificate in cluster root CA object")
@@ -166,7 +166,7 @@ func (r *rootRotationReconciler) runReconcilerLoop(ctx context.Context, loopRoot
 				return
 			}
 			log.G(r.ctx).WithError(err).Error("could not complete root rotation")
-			if err == errRootRotationChanged {
+			if errors.Is(err, errRootRotationChanged) {
 				// if the root rotation has changed, this loop will be cancelled anyway, so may as well abort early
 				return
 			}
@@ -222,7 +222,7 @@ func (r *rootRotationReconciler) finishRootRotation(tx store.Tx, expectedRootCA 
 	updatedRootCA, err := NewRootCA(cluster.RootCA.RootRotation.CACert, signerCert, cluster.RootCA.RootRotation.CAKey,
 		DefaultNodeCertExpiration, nil)
 	if err != nil {
-		return errors.Wrap(err, "invalid cluster root rotation object")
+		return fmt.Errorf("invalid cluster root rotation object: %w", err)
 	}
 	cluster.RootCA = api.RootCA{
 		CACert:     cluster.RootCA.RootRotation.CACert,
@@ -249,7 +249,7 @@ func (r *rootRotationReconciler) batchUpdateNodes(toUpdate []*api.Node) error {
 		for _, n := range toUpdate {
 			if err := batch.Update(func(tx store.Tx) error {
 				return store.UpdateNode(tx, n)
-			}); err != nil && err != store.ErrSequenceConflict {
+			}); err != nil && !errors.Is(err, store.ErrSequenceConflict) {
 				log.G(r.ctx).WithError(err).Errorf("unable to update node %s to request a certificate rotation", n.ID)
 			}
 		}

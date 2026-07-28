@@ -3,6 +3,7 @@ package dockerexec
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -16,7 +17,6 @@ import (
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
-	"github.com/pkg/errors"
 	"golang.org/x/time/rate"
 )
 
@@ -72,7 +72,7 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 	lastStatus := ""
 	for {
 		if err := dec.Decode(&m); err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return err
@@ -104,7 +104,7 @@ func (c *containerAdapter) pullImage(ctx context.Context) error {
 	}
 	// if the final stream object contained an error, return it
 	if errMsg, ok := m["error"]; ok {
-		return errors.Errorf("%v", errMsg)
+		return fmt.Errorf("%v", errMsg)
 	}
 	return nil
 }
@@ -286,7 +286,7 @@ func (c *containerAdapter) logs(ctx context.Context, options api.LogSubscription
 		// See protobuf documentation for details of how this works.
 		apiOptions.Tail = fmt.Sprint(-options.Tail - 1)
 	} else if options.Tail > 0 {
-		return nil, fmt.Errorf("tail relative to start of logs not supported via docker API")
+		return nil, errors.New("tail relative to start of logs not supported via docker API")
 	}
 
 	if len(options.Streams) == 0 {

@@ -10,6 +10,7 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/genericresource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -97,7 +98,5 @@ func TestControllerFlowIntegration(t *testing.T) {
 	assert.NoError(t, ctlr.Close())
 
 	// NOTE(stevvooe): testify has no clue how to correctly do error equality.
-	if err := ctlr.Close(); err != exec.ErrControllerClosed {
-		t.Fatalf("expected controller to be closed: %v", err)
-	}
+	require.ErrorIs(t, ctlr.Close(), exec.ErrControllerClosed, "expected controller to be closed")
 }

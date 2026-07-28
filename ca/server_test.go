@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -20,7 +21,6 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/opencontainers/go-digest"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -408,7 +408,7 @@ func TestGetUnlockKey(t *testing.T) {
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		resp, err = tc.CAClients[0].GetUnlockKey(tc.Context, &api.GetUnlockKeyRequest{})
 		if err != nil {
-			return fmt.Errorf("get unlock key: %v", err)
+			return fmt.Errorf("get unlock key: %w", err)
 		}
 		if !bytes.Equal(resp.UnlockKey, []byte("secret")) {
 			return fmt.Errorf("secret hasn't rotated yet")
@@ -480,7 +480,7 @@ func TestServerExternalCAGetsTLSKeypairUpdates(t *testing.T) {
 		}
 		return nil
 	}, 2*time.Second))
-	require.Contains(t, errors.Cause(err).Error(), "remote error: tls: expired certificate")
+	require.ErrorContains(t, err, "remote error: tls: expired certificate")
 }
 
 func TestCAServerUpdateRootCA(t *testing.T) {
@@ -654,7 +654,7 @@ func (r *rootRotationTester) convergeRootCA(wantRootCA *api.RootCA, descr string
 	require.NoError(r.t, r.tc.MemoryStore.Update(func(tx store.Tx) error {
 		clusters, err := store.FindClusters(tx, store.All)
 		if err != nil || len(clusters) != 1 {
-			return errors.Wrap(err, "unable to find cluster")
+			return fmt.Errorf("unable to find cluster: %w", err)
 		}
 		clusters[0].RootCA = *wantRootCA
 		return store.UpdateCluster(tx, clusters[0])
@@ -1266,7 +1266,7 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 				return err
 			}
 			if !bytes.Equal(s.Key, rotationKey) {
-				return errors.Errorf("server %d's root CAs hasn't been updated yet", i)
+				return fmt.Errorf("server %d's root CAs hasn't been updated yet", i)
 			}
 		}
 		return nil

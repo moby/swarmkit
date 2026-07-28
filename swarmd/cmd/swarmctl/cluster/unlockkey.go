@@ -25,7 +25,7 @@ func displayUnlockKey(cmd *cobra.Command) error {
 	}
 
 	if len(resp.UnlockKey) == 0 {
-		fmt.Printf("Managers not auto-locked")
+		fmt.Print("Managers not auto-locked")
 	}
 	fmt.Printf("Managers auto-locked.  Unlock key: %s\n", encryption.HumanReadableKey(resp.UnlockKey))
 	return nil
