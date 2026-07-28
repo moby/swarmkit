@@ -14,7 +14,6 @@ import (
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/encryption"
-	"github.com/moby/swarmkit/v2/node"
 	"github.com/moby/swarmkit/v2/testutils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -164,20 +163,17 @@ func (c *testCluster) runNode(n *testNode, nodeOrder int) error {
 	defer cancel()
 	defer close(done)
 
-	c.wg.Add(2)
-	go func() {
+	c.wg.Go(func() {
 		c.errs <- n.node.Start(ctx)
-		c.wg.Done()
-	}()
-	go func(n *node.Node) {
-		err := n.Err(errCtx)
+	})
+	c.wg.Go(func() {
+		err := n.node.Err(errCtx)
 		select {
 		case <-errCtx.Done():
 		default:
 			done <- err
 		}
-		c.wg.Done()
-	}(n.node)
+	})
 
 	select {
 	case <-n.node.Ready():
