@@ -394,10 +394,18 @@ func (np *nodePlugin) makeSecrets(v *api.VolumeAssignment) map[string]string {
 // makeNodeInfo converts a csi.NodeGetInfoResponse object into a swarmkit NodeCSIInfo
 // object.
 func makeNodeInfo(csiNodeInfo *csi.NodeGetInfoResponse) *api.NodeCSIInfo {
-	return &api.NodeCSIInfo{
-		NodeID:            csiNodeInfo.NodeId,
-		MaxVolumesPerNode: csiNodeInfo.MaxVolumesPerNode,
-	}
+	nodeInfo := &api.NodeCSIInfo{
+        NodeID:            csiNodeInfo.NodeId,
+        MaxVolumesPerNode: csiNodeInfo.MaxVolumesPerNode,
+    }
+
+    if topology := csiNodeInfo.GetAccessibleTopology(); topology != nil {
+        nodeInfo.AccessibleTopology = &api.Topology{
+            Segments: topology.GetSegments(),
+        }
+    }
+
+    return nodeInfo
 }
 
 // stagePath returns the staging path for a given volume assignment
