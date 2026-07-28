@@ -13,7 +13,7 @@ func TestRemotesSimple(t *testing.T) {
 	index := remotes.Weights()
 
 	seen := make(map[api.Peer]int)
-	for i := 0; i < len(peers)*10; i++ {
+	for range len(peers) * 10 {
 		next, err := remotes.Select()
 		if err != nil {
 			t.Fatalf("error selecting remote: %v", err)
@@ -77,7 +77,7 @@ func TestRemotesExclude(t *testing.T) {
 	}
 
 	// exclude one peer
-	for i := 0; i < len(peers)*10; i++ {
+	for range len(peers) * 10 {
 		next, err := remotes.Select(excludes[0])
 		if err != nil {
 			t.Fatalf("error selecting remote: %v", err)
@@ -89,7 +89,7 @@ func TestRemotesExclude(t *testing.T) {
 	}
 
 	// exclude 2 peers
-	for i := 0; i < len(peers)*10; i++ {
+	for range len(peers) * 10 {
 		next, err := remotes.Select(excludes[1:]...)
 		if err != nil {
 			t.Fatalf("error selecting remote: %v", err)
@@ -203,7 +203,7 @@ func TestRemotesLargeRanges(t *testing.T) {
 	remotes.Observe(peers[2], remoteWeightMax) // three bounces back!
 
 	seen := make(map[api.Peer]int)
-	for i := 0; i < len(peers)*remoteWeightMax*4; i++ {
+	for range len(peers) * remoteWeightMax * 4 {
 		next, err := remotes.Select()
 		if err != nil {
 			t.Fatalf("error selecting remote: %v", err)
@@ -353,7 +353,7 @@ func BenchmarkRemotesSelect27(b *testing.B) {
 func benchmarkRemotesSelect(b *testing.B, peers ...api.Peer) {
 	remotes := NewRemotes(peers...)
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := remotes.Select()
 		if err != nil {
 			b.Fatalf("error selecting remote: %v", err)
@@ -380,7 +380,7 @@ func BenchmarkRemotesObserve27(b *testing.B) {
 func benchmarkRemotesObserve(b *testing.B, peers ...api.Peer) {
 	remotes := NewRemotes(peers...)
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		remotes.Observe(peers[i%len(peers)], DefaultObservationWeight)
 	}
 }

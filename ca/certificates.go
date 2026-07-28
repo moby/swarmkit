@@ -243,7 +243,7 @@ func (rca *RootCA) RequestAndSaveNewCertificates(ctx context.Context, kw KeyWrit
 	// Retry up to 5 times in case the manager we first try to contact isn't
 	// responding properly (for example, it may have just been demoted).
 	var signedCert []byte
-	for i := 0; i != 5; i++ {
+	for range 5 {
 		signedCert, err = GetRemoteSignedCertificate(ctx, csr, rca.Pool, config)
 		if err == nil {
 			break

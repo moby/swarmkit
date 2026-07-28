@@ -339,7 +339,7 @@ func TestGCWAL(t *testing.T) {
 	// Bring up a 3 node cluster
 	nodes, clockSource := raftutils.NewRaftCluster(t, tc, &api.RaftConfig{SnapshotInterval: uint64(proposals + extraLogEntries), LogEntriesForSlowFollowers: 0})
 
-	for i := 0; i != proposals; i++ {
+	for i := range proposals {
 		_, err := proposeLargeValue(t, nodes[1], DefaultProposalTime, fmt.Sprintf("id%d", i))
 		assert.NoError(t, err, "failed to propose value")
 	}
@@ -380,7 +380,7 @@ func TestGCWAL(t *testing.T) {
 	nodes, clockSource = raftutils.NewRaftCluster(t, tc, &api.RaftConfig{SnapshotInterval: uint64(proposals + extraLogEntries), LogEntriesForSlowFollowers: 0})
 	defer raftutils.TeardownCluster(nodes)
 
-	for i := 0; i != proposals; i++ {
+	for i := range proposals {
 		_, err := proposeLargeValue(t, nodes[1], DefaultProposalTime, fmt.Sprintf("id%d", i))
 		assert.NoError(t, err, "failed to propose value")
 	}
@@ -478,7 +478,7 @@ func proposeLargeValue(t *testing.T, raftNode *raftutils.TestNode, time time.Dur
 		nodeIDStr = nodeID[0]
 	}
 	a := make([]byte, 10000)
-	for i := 0; i != len(a); i++ {
+	for i := range a {
 		a[i] = 'a'
 	}
 	node := &api.Node{
