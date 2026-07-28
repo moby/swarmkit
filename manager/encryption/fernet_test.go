@@ -55,7 +55,7 @@ func TestFernetInvalidAlgorithm(t *testing.T) {
 	crypter := NewFernet(key)
 	er, err := crypter.Encrypt([]byte("Hello again world"))
 	require.NoError(t, err)
-	er.Algorithm = api.MaybeEncryptedRecord_NotEncrypted
+	er.Algorithm = api.NotEncrypted
 
 	_, err = crypter.Decrypt(*er)
 	require.Error(t, err)

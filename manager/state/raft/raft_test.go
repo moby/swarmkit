@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"reflect"
 	"slices"
 	"strconv"
 	"testing"
@@ -19,6 +18,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
 	"code.cloudfoundry.org/clock/fakeclock"
 	"github.com/moby/swarmkit/v2/api"
@@ -488,6 +488,50 @@ func TestRaftNewNodeGetsData(t *testing.T) {
 	}
 }
 
+// changesEqual compares two slices of state.Change using proto.Equal for
+// proto message fields, since reflect.DeepEqual fails for proto messages.
+// Note: Meta is stripped from store objects before comparison because it is
+// set by ApplyStoreActions AFTER the raft log entry is written; ChangesBetween
+// returns the log entry content which does not include Meta.
+func changesEqual(t *testing.T, expected, actual []state.Change) bool {
+	t.Helper()
+	if len(expected) != len(actual) {
+		return false
+	}
+	for i := range expected {
+		if expected[i].Version.Index != actual[i].Version.Index {
+			t.Errorf("change[%d] version mismatch: expected %d, got %d", i, expected[i].Version.Index, actual[i].Version.Index)
+			return false
+		}
+		if len(expected[i].StoreActions) != len(actual[i].StoreActions) {
+			t.Errorf("change[%d] StoreActions length mismatch: expected %d, got %d", i, len(expected[i].StoreActions), len(actual[i].StoreActions))
+			return false
+		}
+		for j := range expected[i].StoreActions {
+			e := expected[i].StoreActions[j].GetNode()
+			a := actual[i].StoreActions[j].GetNode()
+			if e == nil || a == nil {
+				if e != nil || a != nil {
+					t.Errorf("change[%d] StoreAction[%d] node nil mismatch", i, j)
+					return false
+				}
+				continue
+			}
+			// Compare node IDs
+			if e.ID != a.ID {
+				t.Errorf("change[%d] StoreAction[%d] node ID mismatch: %q != %q", i, j, e.ID, a.ID)
+				return false
+			}
+			// Compare spec
+			if !proto.Equal(e.GetSpec(), a.GetSpec()) {
+				t.Errorf("change[%d] StoreAction[%d] node spec mismatch", i, j)
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func TestChangesBetween(t *testing.T) {
 	t.Parallel()
 
@@ -539,17 +583,17 @@ func TestChangesBetween(t *testing.T) {
 	changes, err = node.ChangesBetween(*startVersion, versionAdd(startVersion, 1))
 	assert.NoError(t, err)
 	require.Len(t, changes, 1)
-	assert.Equal(t, expectedChanges(*startVersion, values[:1]), changes)
+	assert.True(t, changesEqual(t, expectedChanges(*startVersion, values[:1]), changes))
 
 	changes, err = node.ChangesBetween(*startVersion, versionAdd(startVersion, 10))
 	assert.NoError(t, err)
 	require.Len(t, changes, 10)
-	assert.Equal(t, expectedChanges(*startVersion, values), changes)
+	assert.True(t, changesEqual(t, expectedChanges(*startVersion, values), changes))
 
 	changes, err = node.ChangesBetween(versionAdd(startVersion, 2), versionAdd(startVersion, 6))
 	assert.NoError(t, err)
 	require.Len(t, changes, 4)
-	assert.Equal(t, expectedChanges(versionAdd(startVersion, 2), values[2:6]), changes)
+	assert.True(t, changesEqual(t, expectedChanges(versionAdd(startVersion, 2), values[2:6]), changes))
 
 	// Unsatisfiable requests
 	_, err = node.ChangesBetween(versionAdd(startVersion, -1), versionAdd(startVersion, 11))
@@ -646,7 +690,7 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 
 				for i, nodeID := range []string{"id1", "id2"} {
 					n := store.GetNode(tx, nodeID)
-					if !reflect.DeepEqual(n, values[i]) {
+					if !proto.Equal(n, values[i]) {
 						err = fmt.Errorf("node %s did not match expected value", nodeID)
 						return
 					}
@@ -759,7 +803,7 @@ func TestRaftForceNewCluster(t *testing.T) {
 
 				for i, nodeID := range []string{"id1", "id2"} {
 					n := store.GetNode(tx, nodeID)
-					if !reflect.DeepEqual(n, values[i]) {
+					if !proto.Equal(n, values[i]) {
 						err = fmt.Errorf("node %s did not match expected value", nodeID)
 						return
 					}
@@ -928,7 +972,7 @@ func TestStress(t *testing.T) {
 	// since cluster is stable, final value must be in the raft store
 	find := false
 	for _, value := range values {
-		if reflect.DeepEqual(value, val) {
+		if proto.Equal(value, val) {
 			find = true
 			break
 		}
@@ -972,7 +1016,7 @@ func TestStreamRaftMessage(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = stream.CloseAndRecv()
-	errStr := fmt.Sprintf("grpc: received message larger than max (%d vs. %d)", raftMsg.Size(), transport.GRPCMaxMsgSize)
+	errStr := fmt.Sprintf("grpc: received message larger than max (%d vs. %d)", proto.Size(raftMsg), transport.GRPCMaxMsgSize)
 	s, _ := status.FromError(err)
 	assert.Equal(t, codes.ResourceExhausted, s.Code())
 	assert.Equal(t, errStr, s.Message())
@@ -986,7 +1030,7 @@ func TestStreamRaftMessage(t *testing.T) {
 	err = stream.Send(raftMsg)
 	assert.NoError(t, err)
 	msg = raftutils.NewSnapshotMessage(2, 1, 10)
-	msg.Index++
+	msg.Index = proto.Uint64(msg.GetIndex() + 1)
 	raftMsg = &api.StreamRaftMessageRequest{Message: msg}
 	err = stream.Send(raftMsg)
 	assert.NoError(t, err)
@@ -1000,7 +1044,7 @@ func TestStreamRaftMessage(t *testing.T) {
 	stream, err = api.NewRaftClient(cc).StreamRaftMessage(ctx)
 	assert.NoError(t, err)
 	msg = raftutils.NewSnapshotMessage(2, 1, 10)
-	msg.Type = raftpb.MsgApp
+	msg.Type = raftpb.MsgApp.Enum()
 	raftMsg = &api.StreamRaftMessageRequest{Message: msg}
 	err = stream.Send(raftMsg)
 	assert.NoError(t, err)

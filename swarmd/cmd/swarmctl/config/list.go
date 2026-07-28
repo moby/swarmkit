@@ -8,7 +8,6 @@ import (
 	"text/tabwriter"
 
 	"github.com/dustin/go-humanize"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/cobra"
@@ -19,14 +18,8 @@ type configSorter []*api.Config
 func (k configSorter) Len() int      { return len(k) }
 func (k configSorter) Swap(i, j int) { k[i], k[j] = k[j], k[i] }
 func (k configSorter) Less(i, j int) bool {
-	iTime, err := gogotypes.TimestampFromProto(k[i].Meta.CreatedAt)
-	if err != nil {
-		panic(err)
-	}
-	jTime, err := gogotypes.TimestampFromProto(k[j].Meta.CreatedAt)
-	if err != nil {
-		panic(err)
-	}
+	iTime := k[i].Meta.CreatedAt.AsTime()
+	jTime := k[j].Meta.CreatedAt.AsTime()
 	return jTime.Before(iTime)
 }
 
@@ -65,14 +58,10 @@ var (
 				}()
 				common.PrintHeader(w, "ID", "Name", "Created")
 				output = func(s *api.Config) {
-					created, err := gogotypes.TimestampFromProto(s.Meta.CreatedAt)
-					if err != nil {
-						panic(err)
-					}
 					fmt.Fprintf(w, "%s\t%s\t%s\n",
 						s.ID,
 						s.Spec.Annotations.Name,
-						humanize.Time(created),
+						humanize.Time(s.Meta.CreatedAt.AsTime()),
 					)
 				}
 			} else {

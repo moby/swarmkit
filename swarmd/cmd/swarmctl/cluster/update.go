@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/cli"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 var (
@@ -39,15 +39,15 @@ var (
 			}
 
 			flags := cmd.Flags()
-			spec := &cluster.Spec
-			var rotation api.KeyRotation
+			spec := cluster.Spec
+			rotation := &api.KeyRotation{}
 
 			if flags.Changed("certexpiry") {
 				cePeriod, err := flags.GetDuration("certexpiry")
 				if err != nil {
 					return err
 				}
-				ceProtoPeriod := gogotypes.DurationProto(cePeriod)
+				ceProtoPeriod := durationpb.New(cePeriod)
 				spec.CAConfig.NodeCertExpiry = ceProtoPeriod
 			}
 			if flags.Changed("external-ca") {
@@ -65,7 +65,7 @@ var (
 				if err != nil {
 					return err
 				}
-				spec.Dispatcher.HeartbeatPeriod = gogotypes.DurationProto(hbPeriod)
+				spec.Dispatcher.HeartbeatPeriod = durationpb.New(hbPeriod)
 			}
 			if flags.Changed("rotate-join-token") {
 				rotateJoinToken, err := flags.GetString("rotate-join-token")
@@ -103,7 +103,7 @@ var (
 
 			r, err := c.UpdateCluster(common.Context(cmd), &api.UpdateClusterRequest{
 				ClusterID:      cluster.ID,
-				ClusterVersion: &cluster.Meta.Version,
+				ClusterVersion: cluster.Meta.Version,
 				Spec:           spec,
 				Rotation:       rotation,
 			})

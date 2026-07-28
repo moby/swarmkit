@@ -20,6 +20,7 @@ import (
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 var tc *cautils.TestCA
@@ -195,57 +196,57 @@ func TestValidateConfigurationChange(t *testing.T) {
 	cls := newTestCluster(members, removed)
 
 	m := &api.RaftMember{RaftID: 1}
-	existingMember, err := m.Marshal()
+	existingMember, err := proto.Marshal(m)
 	assert.NoError(t, err)
 	assert.NotNil(t, existingMember)
 
 	m = &api.RaftMember{RaftID: 7}
-	newMember, err := m.Marshal()
+	newMember, err := proto.Marshal(m)
 	assert.NoError(t, err)
 	assert.NotNil(t, newMember)
 
 	m = &api.RaftMember{RaftID: 4}
-	removedMember, err := m.Marshal()
+	removedMember, err := proto.Marshal(m)
 	assert.NoError(t, err)
 	assert.NotNil(t, removedMember)
 
 	n := &api.Node{}
-	node, err := n.Marshal()
+	node, err := proto.Marshal(n)
 	assert.NoError(t, err)
 	assert.NotNil(t, node)
 
 	// Add node but ID exists
-	cc := raftpb.ConfChange{ID: 1, Type: raftpb.ConfChangeAddNode, NodeID: 1, Context: existingMember}
+	cc := &raftpb.ConfChange{Id: proto.Uint64(1), Type: raftpb.ConfChangeAddNode.Enum(), NodeId: proto.Uint64(1), Context: existingMember}
 	err = cls.ValidateConfigurationChange(cc)
 	assert.Error(t, err)
 	assert.Equal(t, err, membership.ErrIDExists)
 
 	// Any configuration change but ID in remove set
-	cc = raftpb.ConfChange{ID: 4, Type: raftpb.ConfChangeAddNode, NodeID: 4, Context: removedMember}
+	cc = &raftpb.ConfChange{Id: proto.Uint64(4), Type: raftpb.ConfChangeAddNode.Enum(), NodeId: proto.Uint64(4), Context: removedMember}
 	err = cls.ValidateConfigurationChange(cc)
 	assert.Error(t, err)
 	assert.Equal(t, err, membership.ErrIDRemoved)
 
 	// Remove Node but ID not found in memberlist
-	cc = raftpb.ConfChange{ID: 7, Type: raftpb.ConfChangeRemoveNode, NodeID: 7, Context: newMember}
+	cc = &raftpb.ConfChange{Id: proto.Uint64(7), Type: raftpb.ConfChangeRemoveNode.Enum(), NodeId: proto.Uint64(7), Context: newMember}
 	err = cls.ValidateConfigurationChange(cc)
 	assert.Error(t, err)
 	assert.Equal(t, err, membership.ErrIDNotFound)
 
 	// Update Node but ID not found in memberlist
-	cc = raftpb.ConfChange{ID: 7, Type: raftpb.ConfChangeUpdateNode, NodeID: 7, Context: newMember}
+	cc = &raftpb.ConfChange{Id: proto.Uint64(7), Type: raftpb.ConfChangeUpdateNode.Enum(), NodeId: proto.Uint64(7), Context: newMember}
 	err = cls.ValidateConfigurationChange(cc)
 	assert.Error(t, err)
 	assert.Equal(t, err, membership.ErrIDNotFound)
 
 	// Any configuration change but can't unmarshal config
-	cc = raftpb.ConfChange{ID: 7, Type: raftpb.ConfChangeAddNode, NodeID: 7, Context: []byte("abcdef")}
+	cc = &raftpb.ConfChange{Id: proto.Uint64(7), Type: raftpb.ConfChangeAddNode.Enum(), NodeId: proto.Uint64(7), Context: []byte("abcdef")}
 	err = cls.ValidateConfigurationChange(cc)
 	assert.Error(t, err)
 	assert.Equal(t, err, membership.ErrCannotUnmarshalConfig)
 
 	// Invalid configuration change
-	cc = raftpb.ConfChange{ID: 1, Type: 10, NodeID: 1, Context: newMember}
+	cc = &raftpb.ConfChange{Id: proto.Uint64(1), Type: raftpb.ConfChangeType(10).Enum(), NodeId: proto.Uint64(1), Context: newMember}
 	err = cls.ValidateConfigurationChange(cc)
 	assert.Error(t, err)
 	assert.Equal(t, err, membership.ErrConfigChangeInvalid)

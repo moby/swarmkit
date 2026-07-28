@@ -46,6 +46,10 @@ func (m *Manager) IsStateDirty() (bool, error) {
 		field := val.Field(i)
 		structField := val.Type().Field(i)
 		if structField.Type.Kind() != reflect.Slice {
+			// Skip internal protobuf fields (MessageState, SizeCache, etc.)
+			if !structField.IsExported() {
+				continue
+			}
 			panic(fmt.Sprintf("unexpected field type in StoreSnapshot: %s (type %v)", structField.Name, structField.Type.Kind()))
 		}
 		if structField.Name != "Nodes" && structField.Name != "Clusters" && structField.Name != "Networks" && field.Len() != 0 {

@@ -17,11 +17,11 @@ func setupEnv() {
 	task1 = &api.Task{
 		ID:           "id1",
 		DesiredState: api.TaskStateRunning,
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name1",
 		},
 
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Command: []string{"sh", "-c", "sleep 5"},
@@ -30,7 +30,7 @@ func setupEnv() {
 			},
 		},
 
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStateAssigned,
 		},
 	}
@@ -38,8 +38,8 @@ func setupEnv() {
 	ni = &NodeInfo{
 		Node: &api.Node{
 			ID: "nodeid-1",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: make(map[string]string),
 				},
 				DesiredRole: api.NodeRoleWorker,
@@ -49,7 +49,7 @@ func setupEnv() {
 					Labels: make(map[string]string),
 				},
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 				Addr:  "186.17.9.41",
 			},

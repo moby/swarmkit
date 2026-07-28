@@ -17,11 +17,11 @@ type hostPortSpec struct {
 
 // versionedService defines a tuple that contains a service ID and a spec
 // version, so that failures can be tracked per spec version. Note that if the
-// task predates spec versioning, specVersion will contain the zero value, and
+// task predates spec versioning, specVersionIndex will contain zero, and
 // this will still work correctly.
 type versionedService struct {
-	serviceID   string
-	specVersion api.Version
+	serviceID        string
+	specVersionIndex uint64
 }
 
 // NodeInfo contains a node and some additional metadata.
@@ -153,9 +153,9 @@ func (nodeInfo *NodeInfo) addTask(t *api.Task) bool {
 	return true
 }
 
-func taskReservations(spec api.TaskSpec) (reservations api.Resources) {
-	if spec.Resources != nil && spec.Resources.Reservations != nil {
-		reservations = *spec.Resources.Reservations
+func taskReservations(spec *api.TaskSpec) (reservations api.Resources) {
+	if spec.GetResources() != nil && spec.GetResources().Reservations != nil {
+		reservations = *spec.GetResources().Reservations
 	}
 	return
 }
@@ -184,7 +184,7 @@ func (nodeInfo *NodeInfo) taskFailed(ctx context.Context, t *api.Task) {
 
 	versionedService := versionedService{serviceID: t.ServiceID}
 	if t.SpecVersion != nil {
-		versionedService.specVersion = *t.SpecVersion
+		versionedService.specVersionIndex = t.SpecVersion.GetIndex()
 	}
 
 	for _, timestamp := range nodeInfo.recentFailures[versionedService] {
@@ -206,7 +206,7 @@ func (nodeInfo *NodeInfo) taskFailed(ctx context.Context, t *api.Task) {
 func (nodeInfo *NodeInfo) countRecentFailures(now time.Time, t *api.Task) int {
 	versionedService := versionedService{serviceID: t.ServiceID}
 	if t.SpecVersion != nil {
-		versionedService.specVersion = *t.SpecVersion
+		versionedService.specVersionIndex = t.SpecVersion.GetIndex()
 	}
 
 	recentFailureCount := len(nodeInfo.recentFailures[versionedService])

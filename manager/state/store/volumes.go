@@ -70,7 +70,7 @@ func init() {
 }
 
 func CreateVolume(tx Tx, v *api.Volume) error {
-	if tx.lookup(tableVolume, indexName, strings.ToLower(v.Spec.Annotations.Name)) != nil {
+	if tx.lookup(tableVolume, indexName, strings.ToLower(v.GetSpec().GetAnnotations().GetName())) != nil {
 		return ErrNameConflict
 	}
 
@@ -79,7 +79,7 @@ func CreateVolume(tx Tx, v *api.Volume) error {
 
 func UpdateVolume(tx Tx, v *api.Volume) error {
 	// ensure the name is either not in use, or is in use by this volume.
-	if existing := tx.lookup(tableVolume, indexName, strings.ToLower(v.Spec.Annotations.Name)); existing != nil {
+	if existing := tx.lookup(tableVolume, indexName, strings.ToLower(v.GetSpec().GetAnnotations().GetName())); existing != nil {
 		if existing.GetID() != v.ID {
 			return ErrNameConflict
 		}
@@ -127,7 +127,7 @@ func (vi volumeIndexerByGroup) FromArgs(args ...any) ([]byte, error) {
 
 func (vi volumeIndexerByGroup) FromObject(obj any) (bool, []byte, error) {
 	v := obj.(*api.Volume)
-	val := v.Spec.Group + "\x00"
+	val := v.GetSpec().GetGroup() + "\x00"
 	return true, []byte(val), nil
 }
 
@@ -141,9 +141,9 @@ func (vi volumeIndexerByDriver) FromObject(obj any) (bool, []byte, error) {
 	v := obj.(*api.Volume)
 	// this should never happen -- existence of the volume driver is checked
 	// at the controlapi level. However, guard against the unforeseen.
-	if v.Spec.Driver == nil {
+	if v.GetSpec().GetDriver() == nil {
 		return false, nil, nil
 	}
-	val := v.Spec.Driver.Name + "\x00"
+	val := v.GetSpec().GetDriver().GetName() + "\x00"
 	return true, []byte(val), nil
 }

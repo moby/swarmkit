@@ -13,7 +13,7 @@ import (
 
 func createClusterSpec(name string) *api.ClusterSpec {
 	return &api.ClusterSpec{
-		Annotations: api.Annotations{
+		Annotations: &api.Annotations{
 			Name: name,
 		},
 	}
@@ -24,7 +24,7 @@ func createCluster(t *testing.T, s *store.MemoryStore, id, name string) *api.Clu
 
 	cluster := &api.Cluster{
 		ID:   id,
-		Spec: *spec,
+		Spec: spec,
 	}
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		return store.CreateCluster(tx, cluster)

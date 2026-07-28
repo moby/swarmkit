@@ -10,7 +10,6 @@ import (
 
 	"github.com/docker/go-events"
 	"github.com/docker/go-metrics"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/equality"
 	"github.com/moby/swarmkit/v2/ca"
@@ -23,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 const (
@@ -248,9 +248,11 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 				return err
 			}
 			if len(clusters) == 1 {
-				heartbeatPeriod, err := gogotypes.DurationFromProto(clusters[0].Spec.Dispatcher.HeartbeatPeriod)
-				if err == nil && heartbeatPeriod > 0 {
-					d.config.HeartbeatPeriod = heartbeatPeriod
+				if clusters[0].Spec.GetDispatcher().GetHeartbeatPeriod() != nil {
+					heartbeatPeriod := clusters[0].Spec.Dispatcher.HeartbeatPeriod.AsDuration()
+					if heartbeatPeriod > 0 {
+						d.config.HeartbeatPeriod = heartbeatPeriod
+					}
 				}
 				if clusters[0].NetworkBootstrapKeys != nil {
 					d.networkBootstrapKeys = clusters[0].NetworkBootstrapKeys
@@ -318,9 +320,8 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			log.G(ctx).Info("cluster update event")
 			cluster := v.(api.EventUpdateCluster)
 			d.mu.Lock()
-			if cluster.Cluster.Spec.Dispatcher.HeartbeatPeriod != nil {
-				// ignore error, since Spec has passed validation before
-				heartbeatPeriod, _ := gogotypes.DurationFromProto(cluster.Cluster.Spec.Dispatcher.HeartbeatPeriod)
+			if cluster.Cluster.Spec.GetDispatcher().GetHeartbeatPeriod() != nil {
+				heartbeatPeriod := cluster.Cluster.Spec.Dispatcher.HeartbeatPeriod.AsDuration()
 				if heartbeatPeriod != d.config.HeartbeatPeriod {
 					// only call d.nodes.updatePeriod when heartbeatPeriod changes
 					d.config.HeartbeatPeriod = heartbeatPeriod
@@ -437,7 +438,7 @@ func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
 					return nil
 				}
 				// do not try to resurrect down nodes
-				if node.Status.State == api.NodeStatus_DOWN {
+				if node.GetStatus().GetState() == api.NodeStatus_DOWN {
 					nodeCopy := node
 					expireFunc := func() {
 						log.Infof("moving tasks to orphaned state for node: %s", nodeCopy.ID)
@@ -453,6 +454,9 @@ func (d *Dispatcher) markNodesUnknown(ctx context.Context) error {
 					return nil
 				}
 
+				if node.Status == nil {
+					node.Status = &api.NodeStatus{}
+				}
 				node.Status.State = api.NodeStatus_UNKNOWN
 				node.Status.Message = `Node moved to "unknown" state due to leadership change in cluster`
 
@@ -770,14 +774,14 @@ func (d *Dispatcher) processUpdates(ctx context.Context) {
 					return nil
 				}
 
-				logger = logger.WithField("state.transition", fmt.Sprintf("%v->%v", task.Status.State, taskStatus.State))
+				logger = logger.WithField("state.transition", fmt.Sprintf("%v->%v", task.Status.GetState(), taskStatus.State))
 
-				if task.Status == *taskStatus {
+				if task.Status.GetState() == taskStatus.State && task.Status.GetMessage() == taskStatus.Message && task.Status.GetErr() == taskStatus.Err {
 					logger.Debug("task status identical, ignoring")
 					return nil
 				}
 
-				if task.Status.State > taskStatus.State {
+				if task.Status.GetState() > taskStatus.State {
 					logger.Debug("task status invalid transition")
 					return nil
 				}
@@ -793,7 +797,7 @@ func (d *Dispatcher) processUpdates(ctx context.Context) {
 					schedulingDelayTimer.UpdateSince(start)
 				}
 
-				task.Status = *taskStatus
+				task.Status = taskStatus
 				task.Status.AppliedBy = d.securityConfig.ClientTLSCreds.NodeID()
 				task.Status.AppliedAt = ptypes.MustTimestampProto(time.Now())
 				logger.Debugf("state for task %v updated to %v", task.GetID(), task.Status.State)
@@ -819,6 +823,9 @@ func (d *Dispatcher) processUpdates(ctx context.Context) {
 				}
 
 				if nodeUpdate.status != nil {
+					if node.Status == nil {
+						node.Status = &api.NodeStatus{}
+					}
 					node.Status.State = nodeUpdate.status.State
 					node.Status.Message = nodeUpdate.status.Message
 					if nodeUpdate.status.Addr != "" {
@@ -946,7 +953,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 		var tasks []*api.Task
 		for _, t := range tasksMap {
 			// dispatcher only sends tasks that have been assigned to a node
-			if t != nil && t.Status.State >= api.TaskStateAssigned {
+			if t != nil && t.GetStatus().GetState() >= api.TaskStateAssigned {
 				tasks = append(tasks, t)
 			}
 		}
@@ -975,7 +982,7 @@ func (d *Dispatcher) Tasks(r *api.TasksRequest, stream api.Dispatcher_TasksServe
 						// States ASSIGNED and below are set by the orchestrator/scheduler,
 						// not the agent, so tasks in these states need to be sent to the
 						// agent even if nothing else has changed.
-						if equality.TasksEqualStable(oldTask, v.Task) && v.Task.Status.State > api.TaskStateAssigned {
+						if equality.TasksEqualStable(oldTask, v.Task) && v.Task.GetStatus().GetState() > api.TaskStateAssigned {
 							// this update should not trigger action at agent
 							tasksMap[v.Task.ID] = v.Task
 							continue
@@ -1233,7 +1240,10 @@ func (d *Dispatcher) moveTasksToOrphaned(nodeID string) error {
 			//
 			// Tasks in a final state (e.g. rejected) *cannot* have made
 			// progress, therefore there's no point in marking them as orphaned
-			if task.Status.State >= api.TaskStateAssigned && task.Status.State <= api.TaskStateRunning {
+			if task.GetStatus().GetState() >= api.TaskStateAssigned && task.GetStatus().GetState() <= api.TaskStateRunning {
+				if task.Status == nil {
+					task.Status = &api.TaskStatus{}
+				}
 				task.Status.State = api.TaskStateOrphaned
 			}
 
@@ -1334,7 +1344,7 @@ func (d *Dispatcher) Heartbeat(ctx context.Context, r *api.HeartbeatRequest) (*a
 	period, err := d.nodes.Heartbeat(nodeInfo.NodeID, r.SessionID)
 
 	log.G(ctx).WithField("method", "(*Dispatcher).Heartbeat").Debugf("received heartbeat from worker %v, expect next heartbeat in %v", nodeInfo, period)
-	return &api.HeartbeatResponse{Period: period}, err
+	return &api.HeartbeatResponse{Period: durationpb.New(period)}, err
 }
 
 func (d *Dispatcher) getManagers() []*api.WeightedPeer {

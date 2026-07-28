@@ -38,7 +38,7 @@ func (t templatedSecretGetter) Get(secretID string) (*api.Secret, error) {
 	}
 
 	secretCopy := *secret
-	secretCopy.Spec = *newSpec
+	secretCopy.Spec = newSpec
 	return &secretCopy, nil
 }
 
@@ -91,7 +91,7 @@ func (t templatedConfigGetter) GetAndFlagSecretData(configID string) (*api.Confi
 	}
 
 	configCopy := *config
-	configCopy.Spec = *newSpec
+	configCopy.Spec = newSpec
 	return &configCopy, sensitive, nil
 }
 

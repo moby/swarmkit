@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"testing"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -35,7 +36,7 @@ func prepResource(t *testing.T, ts *testServer) *api.Resource {
 		Name:   "SomeName",
 		Labels: map[string]string{"some": "label"},
 	}
-	anyMsg, err := gogotypes.MarshalAny(anyContent)
+	anyMsg, err := anypb.New(anyContent)
 	require.NoError(t, err)
 
 	// first, create a valid resource, to ensure that that works
@@ -77,7 +78,7 @@ func TestCreateResource(t *testing.T) {
 				Name: "ValidResource",
 			},
 			Kind:    testExtName,
-			Payload: &gogotypes.Any{},
+			Payload: &anypb.Any{},
 		}
 
 		resp, err := ts.Client.CreateResource(context.Background(), req)
@@ -132,7 +133,7 @@ func TestCreateResource(t *testing.T) {
 					Name: "ValidResource",
 				},
 				Kind:    testExtName,
-				Payload: &gogotypes.Any{},
+				Payload: &anypb.Any{},
 			},
 			code: codes.AlreadyExists,
 		},
@@ -168,14 +169,14 @@ func TestUpdateResourceValid(t *testing.T) {
 				newContent := &api.Annotations{
 					Name: "SomeNewName",
 				}
-				newMsg, err := gogotypes.MarshalAny(newContent)
+				newMsg, err := anypb.New(newContent)
 				require.NoError(t, err)
-				r.Annotations = *newAnnotations
+				r.Annotations = newAnnotations
 				r.Payload = newMsg
 
 				return &api.UpdateResourceRequest{
 					ResourceID:      resourceID,
-					ResourceVersion: &r.Meta.Version,
+					ResourceVersion: r.Meta.Version,
 					Annotations:     newAnnotations,
 					Payload:         newMsg,
 				}
@@ -186,8 +187,8 @@ func TestUpdateResourceValid(t *testing.T) {
 				r.Annotations.Labels = map[string]string{"onlyUpdating": "theseLabels"}
 				return &api.UpdateResourceRequest{
 					ResourceID:      r.ID,
-					ResourceVersion: &r.Meta.Version,
-					Annotations:     &r.Annotations,
+					ResourceVersion: r.Meta.Version,
+					Annotations:     r.Annotations,
 				}
 			},
 		}, {
@@ -196,12 +197,12 @@ func TestUpdateResourceValid(t *testing.T) {
 				newContent := &api.Annotations{
 					Name: "OnlyUpdatingPayload",
 				}
-				newMsg, err := gogotypes.MarshalAny(newContent)
+				newMsg, err := anypb.New(newContent)
 				require.NoError(t, err)
 				r.Payload = newMsg
 				return &api.UpdateResourceRequest{
 					ResourceID:      resourceID,
-					ResourceVersion: &r.Meta.Version,
+					ResourceVersion: r.Meta.Version,
 					Payload:         newMsg,
 				}
 			},
@@ -218,8 +219,8 @@ func TestUpdateResourceValid(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, resp)
 			require.NotNil(t, resp.Resource)
-			assert.Equal(t, resp.Resource.Payload, r.Payload)
-			assert.Equal(t, resp.Resource.Annotations, r.Annotations)
+			assert.True(t, proto.Equal(resp.Resource.Payload, r.Payload), "payload should be equal")
+			assert.True(t, proto.Equal(resp.Resource.Annotations, r.Annotations), "annotations should be equal")
 			assert.Equal(t, resp.Resource.Kind, testExtName)
 		})
 	}
@@ -240,7 +241,7 @@ func TestUpdateResourceInvalid(t *testing.T) {
 			name: "MissingID",
 			req: &api.UpdateResourceRequest{
 				ResourceID:      "",
-				ResourceVersion: &resource.Meta.Version,
+				ResourceVersion: resource.Meta.Version,
 			},
 			code: codes.InvalidArgument,
 		}, {
@@ -253,7 +254,7 @@ func TestUpdateResourceInvalid(t *testing.T) {
 			name: "NotFound",
 			req: &api.UpdateResourceRequest{
 				ResourceID:      "notreal",
-				ResourceVersion: &resource.Meta.Version,
+				ResourceVersion: resource.Meta.Version,
 			},
 			code: codes.NotFound,
 		}, {
@@ -267,7 +268,7 @@ func TestUpdateResourceInvalid(t *testing.T) {
 			name: "ChangedName",
 			req: &api.UpdateResourceRequest{
 				ResourceID:      resource.ID,
-				ResourceVersion: &resource.Meta.Version,
+				ResourceVersion: resource.Meta.Version,
 				Annotations: &api.Annotations{
 					Name: "different",
 				},

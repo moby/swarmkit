@@ -18,7 +18,7 @@ import (
 
 // Snapshotter is the interface presented by go.etcd.io/etcd/server/v3/api/snap.Snapshotter that we depend upon
 type Snapshotter interface {
-	SaveSnap(snapshot raftpb.Snapshot) error
+	SaveSnap(snapshot *raftpb.Snapshot) error
 	Load() (*raftpb.Snapshot, error)
 }
 
@@ -42,8 +42,10 @@ type wrappedSnap struct {
 
 // SaveSnap encrypts the snapshot data (if an encrypter is exists) before passing it onto the
 // wrapped snap.Snapshotter's SaveSnap function.
-func (s *wrappedSnap) SaveSnap(snapshot raftpb.Snapshot) error {
-	toWrite := snapshot
+func (s *wrappedSnap) SaveSnap(snapshot *raftpb.Snapshot) error {
+	// Copy the field-by-field rather than dereferencing *snapshot, to avoid
+	// copying the embedded protoimpl.MessageState lock (go vet copylocks).
+	toWrite := &raftpb.Snapshot{Metadata: snapshot.Metadata}
 	var err error
 	toWrite.Data, err = encryption.Encrypt(snapshot.Data, s.encrypter)
 	if err != nil {
@@ -126,7 +128,7 @@ func MigrateSnapshot(oldDir, newDir string, oldFactory, newFactory SnapFactory) 
 	tmpSnapshotter := newFactory.New(tmpdirpath)
 
 	// write the new snapshot to the temporary location
-	if err = tmpSnapshotter.SaveSnap(*snapshot); err != nil {
+	if err = tmpSnapshotter.SaveSnap(snapshot); err != nil {
 		return err
 	}
 

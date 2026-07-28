@@ -9,40 +9,41 @@ import (
 	enginemount "github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/go-units"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func TestVolumesAndBinds(t *testing.T) {
 	type testCase struct {
 		explain string
-		config  api.Mount
+		config  *api.Mount
 		x       enginemount.Mount
 	}
 
 	cases := []testCase{
-		{"Simple bind mount", api.Mount{Type: api.MountTypeBind, Source: "/banana", Target: "/kerfluffle"},
+		{"Simple bind mount", &api.Mount{Type: api.MountTypeBind, Source: "/banana", Target: "/kerfluffle"},
 			enginemount.Mount{Type: enginemount.TypeBind, Source: "/banana", Target: "/kerfluffle"}},
-		{"Bind mound with propagation", api.Mount{Type: api.MountTypeBind, Source: "/banana", Target: "/kerfluffle", BindOptions: &api.Mount_BindOptions{Propagation: api.MountPropagationRPrivate}},
+		{"Bind mound with propagation", &api.Mount{Type: api.MountTypeBind, Source: "/banana", Target: "/kerfluffle", BindOptions: &api.Mount_BindOptions{Propagation: api.MountPropagationRPrivate}},
 			enginemount.Mount{Type: enginemount.TypeBind, Source: "/banana", Target: "/kerfluffle", BindOptions: &enginemount.BindOptions{Propagation: enginemount.PropagationRPrivate}}},
-		{"Simple volume with source", api.Mount{Type: api.MountTypeVolume, Source: "banana", Target: "/kerfluffle"},
+		{"Simple volume with source", &api.Mount{Type: api.MountTypeVolume, Source: "banana", Target: "/kerfluffle"},
 			enginemount.Mount{Type: enginemount.TypeVolume, Source: "banana", Target: "/kerfluffle"}},
-		{"Volume with options", api.Mount{Type: api.MountTypeVolume, Source: "banana", Target: "/kerfluffle", VolumeOptions: &api.Mount_VolumeOptions{NoCopy: true}},
+		{"Volume with options", &api.Mount{Type: api.MountTypeVolume, Source: "banana", Target: "/kerfluffle", VolumeOptions: &api.Mount_VolumeOptions{NoCopy: true}},
 			enginemount.Mount{Type: enginemount.TypeVolume, Source: "banana", Target: "/kerfluffle", VolumeOptions: &enginemount.VolumeOptions{NoCopy: true}}},
-		{"Volume with no source", api.Mount{Type: api.MountTypeVolume, Target: "/kerfluffle"},
+		{"Volume with no source", &api.Mount{Type: api.MountTypeVolume, Target: "/kerfluffle"},
 			enginemount.Mount{Type: enginemount.TypeVolume, Target: "/kerfluffle"}},
-		{"Named pipe using Windows format", api.Mount{Type: api.MountTypeNamedPipe, Source: `\\.\pipe\foo`, Target: `\\.\pipe\foo`},
+		{"Named pipe using Windows format", &api.Mount{Type: api.MountTypeNamedPipe, Source: `\\.\pipe\foo`, Target: `\\.\pipe\foo`},
 			enginemount.Mount{Type: enginemount.TypeNamedPipe, Source: `\\.\pipe\foo`, Target: `\\.\pipe\foo`}},
-		{"Named pipe using Unix format", api.Mount{Type: api.MountTypeNamedPipe, Source: "//./pipe/foo", Target: "//./pipe/foo"},
+		{"Named pipe using Unix format", &api.Mount{Type: api.MountTypeNamedPipe, Source: "//./pipe/foo", Target: "//./pipe/foo"},
 			enginemount.Mount{Type: enginemount.TypeNamedPipe, Source: "//./pipe/foo", Target: "//./pipe/foo"}},
 	}
 
 	for _, c := range cases {
 		cfg := containerConfig{
 			task: &api.Task{
-				Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+				Spec: &api.TaskSpec{Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
-						Mounts: []api.Mount{c.config},
+						Mounts: []*api.Mount{c.config},
 					},
 				}},
 			},
@@ -76,21 +77,21 @@ func TestVolumesAndBinds(t *testing.T) {
 func TestTmpfsOptions(t *testing.T) {
 	type testCase struct {
 		explain string
-		config  api.Mount
+		config  *api.Mount
 		x       string
 	}
 
 	cases := []testCase{
-		{"Tmpfs mount with exec option", api.Mount{Type: api.MountTypeTmpfs, Target: "/kerfluffle", TmpfsOptions: &api.Mount_TmpfsOptions{Options: "exec"}}, "exec"},
-		{"Tmpfs mount with noexec option", api.Mount{Type: api.MountTypeTmpfs, Target: "/kerfluffle", TmpfsOptions: &api.Mount_TmpfsOptions{Options: "noexec"}}, "noexec"},
+		{"Tmpfs mount with exec option", &api.Mount{Type: api.MountTypeTmpfs, Target: "/kerfluffle", TmpfsOptions: &api.Mount_TmpfsOptions{Options: "exec"}}, "exec"},
+		{"Tmpfs mount with noexec option", &api.Mount{Type: api.MountTypeTmpfs, Target: "/kerfluffle", TmpfsOptions: &api.Mount_TmpfsOptions{Options: "noexec"}}, "noexec"},
 	}
 
 	for _, c := range cases {
 		cfg := containerConfig{
 			task: &api.Task{
-				Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+				Spec: &api.TaskSpec{Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
-						Mounts: []api.Mount{c.config},
+						Mounts: []*api.Mount{c.config},
 					},
 				}},
 			},
@@ -112,15 +113,15 @@ func TestTmpfsOptions(t *testing.T) {
 func TestHealthcheck(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+			Spec: &api.TaskSpec{Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Healthcheck: &api.HealthConfig{
 						Test:          []string{"a", "b", "c"},
-						Interval:      gogotypes.DurationProto(time.Second),
-						Timeout:       gogotypes.DurationProto(time.Minute),
+						Interval:      durationpb.New(time.Second),
+						Timeout:       durationpb.New(time.Minute),
 						Retries:       10,
-						StartPeriod:   gogotypes.DurationProto(time.Minute),
-						StartInterval: gogotypes.DurationProto(time.Minute),
+						StartPeriod:   durationpb.New(time.Minute),
+						StartInterval: durationpb.New(time.Minute),
 					},
 				},
 			}},
@@ -143,7 +144,7 @@ func TestHealthcheck(t *testing.T) {
 func TestExtraHosts(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+			Spec: &api.TaskSpec{Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Hosts: []string{
 						"1.2.3.4 example.com",
@@ -182,7 +183,7 @@ func TestExtraHosts(t *testing.T) {
 func TestPidLimit(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+			Spec: &api.TaskSpec{Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					PidsLimit: 10,
 				},
@@ -202,7 +203,7 @@ func TestPidLimit(t *testing.T) {
 func TestStopSignal(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+			Spec: &api.TaskSpec{Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					StopSignal: "SIGWINCH",
 				},
@@ -220,7 +221,7 @@ func TestStopSignal(t *testing.T) {
 func TestInit(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{Runtime: &api.TaskSpec_Container{
+			Spec: &api.TaskSpec{Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					StopSignal: "SIGWINCH",
 				},
@@ -232,7 +233,7 @@ func TestInit(t *testing.T) {
 	if actual != expected {
 		t.Fatalf("expected %v, got %v", expected, actual)
 	}
-	c.task.Spec.GetContainer().Init = &gogotypes.BoolValue{
+	c.task.Spec.GetContainer().Init = &wrapperspb.BoolValue{
 		Value: true,
 	}
 	actual = c.hostConfig().Init
@@ -244,7 +245,7 @@ func TestInit(t *testing.T) {
 func TestIsolation(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Isolation: api.ContainerIsolationHyperV,
@@ -264,7 +265,7 @@ func TestIsolation(t *testing.T) {
 func TestCapabilityAdd(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						CapabilityAdd: []string{"CAP_NET_RAW", "CAP_SYS_CHROOT"},
@@ -284,7 +285,7 @@ func TestCapabilityAdd(t *testing.T) {
 func TestCapabilityDrop(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						CapabilityDrop: []string{"CAP_KILL"},
@@ -304,7 +305,7 @@ func TestCapabilityDrop(t *testing.T) {
 func TestUlimits(t *testing.T) {
 	c := containerConfig{
 		task: &api.Task{
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Ulimits: []*api.ContainerSpec_Ulimit{

@@ -490,7 +490,7 @@ func TestDemoteDownedManager(t *testing.T) {
 		_, err := cl.api.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 			NodeID:      nodeID,
 			Spec:        spec,
-			NodeVersion: &resp.Node.Meta.Version,
+			NodeVersion: resp.Node.Meta.Version,
 		})
 		return err
 	}, opsTimeout))

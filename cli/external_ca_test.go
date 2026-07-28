@@ -32,7 +32,7 @@ func TestParseExternalCA(t *testing.T) {
 		{
 			input: "protocol=cfssl,url=https://example.com",
 			expected: &api.ExternalCA{
-				Protocol: api.ExternalCA_CAProtocolCFSSL,
+				Protocol: api.CAProtocolCFSSL,
 				URL:      "https://example.com",
 				Options:  map[string]string{},
 			},

@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -16,8 +17,8 @@ import (
 func cannedVolume(id int) *api.Volume {
 	return &api.Volume{
 		ID: fmt.Sprintf("volumeID%d", id),
-		Spec: api.VolumeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.VolumeSpec{
+			Annotations: &api.Annotations{
 				Name: fmt.Sprintf("volume%d", id),
 			},
 			Group: "group",
@@ -124,10 +125,10 @@ var _ = Describe("volumeSet", func() {
 						Target: "/srv/www",
 					},
 				},
-				Spec: api.TaskSpec{
+				Spec: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
-							Mounts: []api.Mount{
+							Mounts: []*api.Mount{
 								{
 									Type:   api.MountTypeCluster,
 									Source: v1.Spec.Group,
@@ -216,7 +217,7 @@ var _ = Describe("volumeSet", func() {
 
 				v := &api.Volume{
 					ID: "someVolume",
-					Spec: api.VolumeSpec{
+					Spec: &api.VolumeSpec{
 						AccessMode: c.AccessMode,
 						Driver: &api.Driver{
 							Name: "somePlugin",
@@ -366,8 +367,8 @@ var _ = Describe("volumeSet", func() {
 				volumes = []*api.Volume{
 					{
 						ID: "volume1",
-						Spec: api.VolumeSpec{
-							Annotations: api.Annotations{
+						Spec: &api.VolumeSpec{
+							Annotations: &api.Annotations{
 								Name: "volumeName1",
 							},
 							Driver: &api.Driver{
@@ -384,8 +385,8 @@ var _ = Describe("volumeSet", func() {
 					},
 					{
 						ID: "volume2",
-						Spec: api.VolumeSpec{
-							Annotations: api.Annotations{
+						Spec: &api.VolumeSpec{
+							Annotations: &api.Annotations{
 								Name: "volumeName2",
 							},
 							Driver: &api.Driver{
@@ -399,8 +400,8 @@ var _ = Describe("volumeSet", func() {
 					},
 					{
 						ID: "volume3",
-						Spec: api.VolumeSpec{
-							Annotations: api.Annotations{
+						Spec: &api.VolumeSpec{
+							Annotations: &api.Annotations{
 								Name: "volumeName3",
 							},
 							Driver: &api.Driver{
@@ -418,8 +419,8 @@ var _ = Describe("volumeSet", func() {
 					},
 					{
 						ID: "volume4",
-						Spec: api.VolumeSpec{
-							Annotations: api.Annotations{
+						Spec: &api.VolumeSpec{
+							Annotations: &api.Annotations{
 								Name: "volumeName4",
 							},
 							Driver: &api.Driver{
@@ -478,7 +479,7 @@ var _ = Describe("volumeSet", func() {
 			vs.addOrUpdateVolume(v2)
 			v3 := cannedVolume(3)
 			vs.addOrUpdateVolume(v3)
-			mounts := []api.Mount{
+			mounts := []*api.Mount{
 				{
 					Type:     api.MountTypeCluster,
 					Source:   "group:volumeGroup",
@@ -501,7 +502,7 @@ var _ = Describe("volumeSet", func() {
 
 			task := &api.Task{
 				ID: "taskID1",
-				Spec: api.TaskSpec{
+				Spec: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Mounts: mounts,
@@ -519,11 +520,22 @@ var _ = Describe("volumeSet", func() {
 
 			attachments, err := vs.chooseTaskVolumes(task, node)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(attachments).To(ConsistOf(
-				&api.VolumeAttachment{ID: v1.ID, Source: mounts[0].Source, Target: mounts[0].Target},
-				&api.VolumeAttachment{ID: v2.ID, Source: mounts[1].Source, Target: mounts[1].Target},
-				&api.VolumeAttachment{ID: v3.ID, Source: mounts[3].Source, Target: mounts[3].Target},
-			))
+			Expect(attachments).To(HaveLen(3))
+			expected := []*api.VolumeAttachment{
+				{ID: v1.ID, Source: mounts[0].Source, Target: mounts[0].Target},
+				{ID: v2.ID, Source: mounts[1].Source, Target: mounts[1].Target},
+				{ID: v3.ID, Source: mounts[3].Source, Target: mounts[3].Target},
+			}
+			for _, exp := range expected {
+				found := false
+				for _, att := range attachments {
+					if proto.Equal(exp, att) {
+						found = true
+						break
+					}
+				}
+				Expect(found).To(BeTrue(), "expected attachment %v not found", exp)
+			}
 		})
 	})
 
@@ -564,10 +576,10 @@ var _ = Describe("volumeSet", func() {
 				tasks = append(tasks, &api.Task{
 					ID:     fmt.Sprintf("task%d", i),
 					NodeID: nodes[i].ID,
-					Spec: api.TaskSpec{
+					Spec: &api.TaskSpec{
 						Runtime: &api.TaskSpec_Container{
 							Container: &api.ContainerSpec{
-								Mounts: []api.Mount{
+								Mounts: []*api.Mount{
 									{
 										Type:   api.MountTypeCluster,
 										Source: volumes[i].Spec.Annotations.Name,
@@ -664,10 +676,11 @@ var _ = Describe("volumeSet", func() {
 			for _, v := range freshVolumes {
 				switch v.ID {
 				case volumes[0].ID:
-					Expect(v.PublishStatus).To(ConsistOf(&api.VolumePublishStatus{
+					Expect(v.PublishStatus).To(HaveLen(1))
+					Expect(proto.Equal(v.PublishStatus[0], &api.VolumePublishStatus{
 						State:  api.VolumePublishStatus_PENDING_NODE_UNPUBLISH,
 						NodeID: nodes[0].ID,
-					}))
+					})).To(BeTrue())
 				case allVolume.ID:
 					for _, status := range v.PublishStatus {
 						if status.NodeID == nodes[0].ID {

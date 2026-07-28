@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gogo/protobuf/types"
+	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // CopierFrom can be implemented if an object knows how to copy another into itself.
@@ -26,8 +29,8 @@ type CopierFrom interface {
 // types that use this function.
 func Copy(dst, src any) {
 	switch dst := dst.(type) {
-	case *types.Any:
-		src := src.(*types.Any)
+	case *anypb.Any:
+		src := src.(*anypb.Any)
 		dst.TypeUrl = src.TypeUrl
 		if src.Value != nil {
 			dst.Value = make([]byte, len(src.Value))
@@ -35,25 +38,24 @@ func Copy(dst, src any) {
 		} else {
 			dst.Value = nil
 		}
-	case *types.Duration:
-		src := src.(*types.Duration)
+	case *durationpb.Duration:
+		src := src.(*durationpb.Duration)
 		*dst = *src
 	case *time.Duration:
 		src := src.(*time.Duration)
 		*dst = *src
-	case *types.Timestamp:
-		src := src.(*types.Timestamp)
+	case *timestamppb.Timestamp:
+		src := src.(*timestamppb.Timestamp)
 		*dst = *src
-	case *types.BoolValue:
-		src := src.(*types.BoolValue)
+	case *wrapperspb.BoolValue:
+		src := src.(*wrapperspb.BoolValue)
 		*dst = *src
-	case *types.Int64Value:
-		src := src.(*types.Int64Value)
+	case *wrapperspb.Int64Value:
+		src := src.(*wrapperspb.Int64Value)
 		*dst = *src
 	case CopierFrom:
 		dst.CopyFrom(src)
 	default:
 		panic(fmt.Sprintf("Copy for %T not implemented", dst))
 	}
-
 }

@@ -2,6 +2,8 @@ syntax = "proto2";
 
 package docker.protobuf.plugin;
 
+option go_package = "github.com/moby/swarmkit/v2/protobuf/plugin";
+
 import "google/protobuf/descriptor.proto";
 
 message WatchSelectors {
@@ -50,4 +52,22 @@ extend google.protobuf.MethodOptions {
 	// TLSAuthorization contains the authorization parameters for this
 	// method.
 	optional TLSAuthorization tls_authorization = 73626345;
+}
+
+// go_name overrides the Go field name for a message field.
+// Replaces (gogoproto.customname).
+extend google.protobuf.FieldOptions {
+	optional string go_name = 70002;
+}
+
+// go_enum_name overrides the Go type name for an enum.
+// Replaces (gogoproto.enum_customname).
+extend google.protobuf.EnumOptions {
+	optional string go_enum_name = 70003;
+}
+
+// go_enum_value_name overrides the Go constant name for an enum value.
+// Replaces (gogoproto.enumvalue_customname).
+extend google.protobuf.EnumValueOptions {
+	optional string go_enum_value_name = 70004;
 }

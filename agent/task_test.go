@@ -20,7 +20,7 @@ func init() {
 func TestTaskManager(t *testing.T) {
 	ctx := context.Background()
 	task := &api.Task{
-		Status:       api.TaskStatus{},
+		Status:       &api.TaskStatus{},
 		DesiredState: api.TaskStateAccepted,
 	}
 	accepted := make(chan struct{})

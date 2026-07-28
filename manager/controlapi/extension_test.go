@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -115,7 +116,7 @@ func TestRemoveUnreferencedExtension(t *testing.T) {
 
 	resp1, err := ts.Client.RemoveExtension(context.Background(), &api.RemoveExtensionRequest{ExtensionID: resp.Extension.ID})
 	assert.NoError(t, err)
-	assert.Equal(t, api.RemoveExtensionResponse{}, *resp1)
+	assert.True(t, proto.Equal(&api.RemoveExtensionResponse{}, resp1), "remove response should be empty")
 
 	// ---- verify the extension was really removed because attempting to remove it again fails with a NotFound ----
 	_, err = ts.Client.RemoveExtension(context.Background(), &api.RemoveExtensionRequest{ExtensionID: resp.Extension.ID})

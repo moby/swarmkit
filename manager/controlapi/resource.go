@@ -30,7 +30,7 @@ func (s *Server) CreateResource(ctx context.Context, request *api.CreateResource
 	}
 	r := &api.Resource{
 		ID:          identity.NewID(),
-		Annotations: *request.Annotations,
+		Annotations: request.Annotations,
 		Kind:        request.Kind,
 		Payload:     request.Payload,
 	}
@@ -202,9 +202,9 @@ func (s *Server) UpdateResource(_ context.Context, request *api.UpdateResourceRe
 			if r.Annotations.Name != request.Annotations.Name {
 				return status.Errorf(codes.InvalidArgument, "cannot change resource name")
 			}
-			r.Annotations = *request.Annotations
+			r.Annotations = request.Annotations
 		}
-		r.Meta.Version = *request.ResourceVersion
+		r.Meta.Version = request.ResourceVersion
 		// only alter the payload if the
 		if request.Payload != nil {
 			r.Payload = request.Payload

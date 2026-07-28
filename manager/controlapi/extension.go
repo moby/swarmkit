@@ -24,7 +24,7 @@ func (s *Server) CreateExtension(ctx context.Context, request *api.CreateExtensi
 
 	extension := &api.Extension{
 		ID:          identity.NewID(),
-		Annotations: *request.Annotations,
+		Annotations: request.Annotations,
 		Description: request.Description,
 	}
 

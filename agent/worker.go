@@ -107,7 +107,7 @@ func (w *worker) Init(ctx context.Context) error {
 				return nil
 			}
 
-			task.Status = *status // merges the status into the task, ensuring we start at the right point.
+			task.Status = status // merges the status into the task, ensuring we start at the right point.
 			return w.startTask(ctx, tx, task)
 		})
 	})
@@ -204,9 +204,9 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 	for _, a := range assignments {
 		if t := a.Assignment.GetTask(); t != nil {
 			switch a.Action {
-			case api.AssignmentChange_AssignmentActionUpdate:
+			case api.AssignmentActionUpdate:
 				updatedTasks = append(updatedTasks, t)
-			case api.AssignmentChange_AssignmentActionRemove:
+			case api.AssignmentActionRemove:
 				removedTasks = append(removedTasks, t)
 			}
 		}
@@ -253,11 +253,11 @@ func reconcileTaskState(ctx context.Context, w *worker, assignments []*api.Assig
 				}
 
 				// never seen before, register the provided status
-				if err := PutTaskStatus(tx, task.ID, &task.Status); err != nil {
+				if err := PutTaskStatus(tx, task.ID, task.Status); err != nil {
 					return err
 				}
 			} else {
-				task.Status = *status
+				task.Status = status
 			}
 			w.startTask(ctx, tx, task)
 		}
@@ -340,9 +340,9 @@ func reconcileSecrets(ctx context.Context, w *worker, assignments []*api.Assignm
 	for _, a := range assignments {
 		if s := a.Assignment.GetSecret(); s != nil {
 			switch a.Action {
-			case api.AssignmentChange_AssignmentActionUpdate:
+			case api.AssignmentActionUpdate:
 				updatedSecrets = append(updatedSecrets, *s)
-			case api.AssignmentChange_AssignmentActionRemove:
+			case api.AssignmentActionRemove:
 				removedSecrets = append(removedSecrets, s.ID)
 			}
 
@@ -383,9 +383,9 @@ func reconcileConfigs(ctx context.Context, w *worker, assignments []*api.Assignm
 	for _, a := range assignments {
 		if r := a.Assignment.GetConfig(); r != nil {
 			switch a.Action {
-			case api.AssignmentChange_AssignmentActionUpdate:
+			case api.AssignmentActionUpdate:
 				updatedConfigs = append(updatedConfigs, *r)
-			case api.AssignmentChange_AssignmentActionRemove:
+			case api.AssignmentActionRemove:
 				removedConfigs = append(removedConfigs, r.ID)
 			}
 
@@ -429,9 +429,9 @@ func reconcileVolumes(ctx context.Context, w *worker, assignments []*api.Assignm
 	for _, a := range assignments {
 		if r := a.Assignment.GetVolume(); r != nil {
 			switch a.Action {
-			case api.AssignmentChange_AssignmentActionUpdate:
+			case api.AssignmentActionUpdate:
 				updatedVolumes = append(updatedVolumes, *r)
-			case api.AssignmentChange_AssignmentActionRemove:
+			case api.AssignmentActionRemove:
 				removedVolumes = append(removedVolumes, *r)
 			}
 

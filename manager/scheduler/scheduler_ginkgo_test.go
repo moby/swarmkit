@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/testutils"
@@ -109,7 +110,7 @@ var _ = Describe("Scheduler", func() {
 						},
 					},
 				},
-				Status: api.NodeStatus{
+				Status: &api.NodeStatus{
 					State: api.NodeStatus_READY,
 				},
 			}
@@ -120,14 +121,14 @@ var _ = Describe("Scheduler", func() {
 			// task and not retry it.
 			service = &api.Service{
 				ID: "service1",
-				Spec: api.ServiceSpec{
-					Annotations: api.Annotations{
+				Spec: &api.ServiceSpec{
+					Annotations: &api.Annotations{
 						Name: "service",
 					},
-					Task: api.TaskSpec{
+					Task: &api.TaskSpec{
 						Runtime: &api.TaskSpec_Container{
 							Container: &api.ContainerSpec{
-								Mounts: []api.Mount{
+								Mounts: []*api.Mount{
 									{
 										Type:   api.MountTypeCluster,
 										Source: "volume1",
@@ -145,7 +146,7 @@ var _ = Describe("Scheduler", func() {
 				ID:           "task1",
 				ServiceID:    service.ID,
 				DesiredState: api.TaskStateRunning,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStatePending,
 				},
 				Spec: service.Spec.Task,
@@ -169,16 +170,20 @@ var _ = Describe("Scheduler", func() {
 				// Ensure that the task state has advanced to assigned
 				WithTransform(
 					func(t *api.Task) api.TaskState {
-						return t.Status.State
+						return t.GetStatus().GetState()
 					},
 					Equal(api.TaskStateAssigned),
 				),
 				// Ensure that the task has the assigned volumes
 				WithTransform(
-					func(t *api.Task) []*api.VolumeAttachment {
-						return t.Volumes
+					func(t *api.Task) bool {
+						vols := t.Volumes
+						if len(vols) != 1 {
+							return false
+						}
+						return proto.Equal(vols[0], attachment)
 					},
-					ConsistOf(attachment),
+					BeTrue(),
 				),
 				WithTransform(
 					func(t *api.Task) string {
@@ -200,8 +205,8 @@ var _ = Describe("Scheduler", func() {
 			It("should still choose a volume for the task", func() {
 				volume := &api.Volume{
 					ID: "volumeID1",
-					Spec: api.VolumeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.VolumeSpec{
+						Annotations: &api.Annotations{
 							Name: "volume1",
 						},
 						Driver: &api.Driver{
@@ -262,7 +267,7 @@ var _ = Describe("Scheduler", func() {
 				Consistently(pollStore, 10*time.Second).Should(
 					WithTransform(
 						func(t *api.Task) api.TaskState {
-							return t.Status.State
+							return t.GetStatus().GetState()
 						},
 						Equal(api.TaskStatePending),
 					),
@@ -273,8 +278,8 @@ var _ = Describe("Scheduler", func() {
 		It("should choose volumes for tasks", func() {
 			volume := &api.Volume{
 				ID: "volumeID1",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volume1",
 					},
 					Driver: &api.Driver{
@@ -335,18 +340,19 @@ var _ = Describe("Scheduler", func() {
 			// test case more readable.
 			havePendingPublish := func() types.GomegaMatcher {
 				return WithTransform(
-					func(v *api.Volume) []*api.VolumePublishStatus {
+					func(v *api.Volume) bool {
 						if v == nil {
-							return nil
+							return false
 						}
-						return v.PublishStatus
-					},
-					ConsistOf(
-						&api.VolumePublishStatus{
+						if len(v.PublishStatus) != 1 {
+							return false
+						}
+						return proto.Equal(v.PublishStatus[0], &api.VolumePublishStatus{
 							NodeID: node.ID,
 							State:  api.VolumePublishStatus_PENDING_PUBLISH,
-						},
-					),
+						})
+					},
+					BeTrue(),
 				)
 			}
 			Eventually(pollVolume).Should(havePendingPublish())
@@ -377,8 +383,8 @@ var _ = Describe("Scheduler", func() {
 			cannedNode := func(i int) *api.Node {
 				return &api.Node{
 					ID: fmt.Sprintf("nodeID%d", i),
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: fmt.Sprintf("node%d", i),
 						},
 					},
@@ -391,7 +397,7 @@ var _ = Describe("Scheduler", func() {
 							},
 						},
 					},
-					Status: api.NodeStatus{
+					Status: &api.NodeStatus{
 						State: api.NodeStatus_READY,
 					},
 				}
@@ -404,8 +410,8 @@ var _ = Describe("Scheduler", func() {
 			volumes = append(volumes,
 				&api.Volume{
 					ID: "volumeID1",
-					Spec: api.VolumeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.VolumeSpec{
+						Annotations: &api.Annotations{
 							Name: "volume1",
 						},
 						Group: "group1",
@@ -423,8 +429,8 @@ var _ = Describe("Scheduler", func() {
 				},
 				&api.Volume{
 					ID: "volumeID2",
-					Spec: api.VolumeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.VolumeSpec{
+						Annotations: &api.Annotations{
 							Name: "volume2",
 						},
 						Group: "group2",
@@ -442,8 +448,8 @@ var _ = Describe("Scheduler", func() {
 				},
 				&api.Volume{
 					ID: "volumeID3",
-					Spec: api.VolumeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.VolumeSpec{
+						Annotations: &api.Annotations{
 							Name: "volume3",
 						},
 						Group: "group2",
@@ -465,14 +471,14 @@ var _ = Describe("Scheduler", func() {
 				&api.Task{
 					ID:     "runningTask",
 					NodeID: "nodeID0",
-					Status: api.TaskStatus{
+					Status: &api.TaskStatus{
 						State: api.TaskStateRunning,
 					},
 					DesiredState: api.TaskStateRunning,
-					Spec: api.TaskSpec{
+					Spec: &api.TaskSpec{
 						Runtime: &api.TaskSpec_Container{
 							Container: &api.ContainerSpec{
-								Mounts: []api.Mount{
+								Mounts: []*api.Mount{
 									{
 										Type:   api.MountTypeCluster,
 										Source: "volume1",
@@ -502,14 +508,14 @@ var _ = Describe("Scheduler", func() {
 				&api.Task{
 					ID:     "shutdownTask",
 					NodeID: "nodeID1",
-					Status: api.TaskStatus{
+					Status: &api.TaskStatus{
 						State: api.TaskStateShutdown,
 					},
 					DesiredState: api.TaskStateShutdown,
-					Spec: api.TaskSpec{
+					Spec: &api.TaskSpec{
 						Runtime: &api.TaskSpec_Container{
 							Container: &api.ContainerSpec{
-								Mounts: []api.Mount{
+								Mounts: []*api.Mount{
 									{
 										Type:   api.MountTypeCluster,
 										Source: "volume1",
@@ -530,14 +536,14 @@ var _ = Describe("Scheduler", func() {
 				&api.Task{
 					ID:     "pendingID",
 					NodeID: "nodeID2",
-					Status: api.TaskStatus{
+					Status: &api.TaskStatus{
 						State: api.TaskStatePending,
 					},
 					DesiredState: api.TaskStateRunning,
-					Spec: api.TaskSpec{
+					Spec: &api.TaskSpec{
 						Runtime: &api.TaskSpec_Container{
 							Container: &api.ContainerSpec{
-								Mounts: []api.Mount{
+								Mounts: []*api.Mount{
 									{
 										Type:   api.MountTypeCluster,
 										Source: "group:group2",

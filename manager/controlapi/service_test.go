@@ -3,12 +3,10 @@ package controlapi
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -16,6 +14,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func createGenericSpec(name, runtime string) *api.ServiceSpec {
@@ -23,7 +25,7 @@ func createGenericSpec(name, runtime string) *api.ServiceSpec {
 	spec.Task.Runtime = &api.TaskSpec_Generic{
 		Generic: &api.GenericRuntimeSpec{
 			Kind: runtime,
-			Payload: &gogotypes.Any{
+			Payload: &anypb.Any{
 				TypeUrl: "com.docker.custom.runtime",
 				Value:   []byte{0},
 			},
@@ -34,14 +36,14 @@ func createGenericSpec(name, runtime string) *api.ServiceSpec {
 
 func createSpec(name, image string, instances uint64) *api.ServiceSpec {
 	return &api.ServiceSpec{
-		Annotations: api.Annotations{
+		Annotations: &api.Annotations{
 			Name: name,
 			Labels: map[string]string{
 				"common": "yes",
 				"unique": name,
 			},
 		},
-		Task: api.TaskSpec{
+		Task: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image: image,
@@ -58,7 +60,7 @@ func createSpec(name, image string, instances uint64) *api.ServiceSpec {
 
 func createSpecWithDuplicateMounts(name string) *api.ServiceSpec {
 	service := createSpec("", "image", 1)
-	mounts := []api.Mount{
+	mounts := []*api.Mount{
 		{
 			Target: "/foo",
 			Source: "/mnt/mount1",
@@ -84,7 +86,7 @@ func createSecret(t *testing.T, ts *testServer, secretName, target string) *api.
 	secretSpec := createSecretSpec(secretName, []byte(secretName), nil)
 	secret := &api.Secret{
 		ID:   fmt.Sprintf("ID%v", secretName),
-		Spec: *secretSpec,
+		Spec: secretSpec,
 	}
 	err := ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateSecret(tx, secret)
@@ -116,7 +118,7 @@ func createConfig(t *testing.T, ts *testServer, configName, target string) *api.
 	configSpec := createConfigSpec(configName, []byte(configName), nil)
 	config := &api.Config{
 		ID:   fmt.Sprintf("ID%v", configName),
-		Spec: *configSpec,
+		Spec: configSpec,
 	}
 	err := ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateConfig(tx, config)
@@ -271,27 +273,27 @@ func TestValidateTaskSpec(t *testing.T) {
 			c: codes.Unimplemented,
 		},
 		{
-			s: createSpec("", "", 0).Task,
+			s: *createSpec("", "", 0).Task,
 			c: codes.InvalidArgument,
 		},
 		{
-			s: createSpec("", "busybox###", 0).Task,
+			s: *createSpec("", "busybox###", 0).Task,
 			c: codes.InvalidArgument,
 		},
 		{
-			s: createGenericSpec("name", "").Task,
+			s: *createGenericSpec("name", "").Task,
 			c: codes.InvalidArgument,
 		},
 		{
-			s: createGenericSpec("name", "c").Task,
+			s: *createGenericSpec("name", "c").Task,
 			c: codes.InvalidArgument,
 		},
 		{
-			s: createSpecWithDuplicateMounts("test").Task,
+			s: *createSpecWithDuplicateMounts("test").Task,
 			c: codes.InvalidArgument,
 		},
 		{
-			s: createSpecWithHostnameTemplate("", "{{.Nothing.here}}").Task,
+			s: *createSpecWithHostnameTemplate("", "{{.Nothing.here}}").Task,
 			c: codes.InvalidArgument,
 		},
 	} {
@@ -301,9 +303,9 @@ func TestValidateTaskSpec(t *testing.T) {
 	}
 
 	for _, good := range []api.TaskSpec{
-		createSpec("", "image", 0).Task,
-		createGenericSpec("", "custom").Task,
-		createSpecWithHostnameTemplate("service", "{{.Service.Name}}-{{.Task.Slot}}").Task,
+		*createSpec("", "image", 0).Task,
+		*createGenericSpec("", "custom").Task,
+		*createSpecWithHostnameTemplate("service", "{{.Service.Name}}-{{.Task.Slot}}").Task,
 	} {
 		err := validateTaskSpec(good)
 		assert.NoError(t, err)
@@ -316,7 +318,7 @@ func TestValidateContainerSpec(t *testing.T) {
 		c    codes.Code
 	}
 
-	bad1 := api.TaskSpec{
+	bad1 := &api.TaskSpec{
 		Runtime: &api.TaskSpec_Container{
 			Container: &api.ContainerSpec{
 				Image: "", // image name should not be empty
@@ -324,18 +326,18 @@ func TestValidateContainerSpec(t *testing.T) {
 		},
 	}
 
-	bad2 := api.TaskSpec{
+	bad2 := &api.TaskSpec{
 		Runtime: &api.TaskSpec_Container{
 			Container: &api.ContainerSpec{
 				Image: "image",
-				Mounts: []api.Mount{
+				Mounts: []*api.Mount{
 					{
-						Type:   api.Mount_MountType(0),
+						Type:   api.MountType(0),
 						Source: "/data",
 						Target: "/data",
 					},
 					{
-						Type:   api.Mount_MountType(0),
+						Type:   api.MountType(0),
 						Source: "/data2",
 						Target: "/data", // duplicate mount point
 					},
@@ -344,17 +346,17 @@ func TestValidateContainerSpec(t *testing.T) {
 		},
 	}
 
-	bad3 := api.TaskSpec{
+	bad3 := &api.TaskSpec{
 		Runtime: &api.TaskSpec_Container{
 			Container: &api.ContainerSpec{
 				Image: "image",
 				Healthcheck: &api.HealthConfig{
 					Test:          []string{"curl 127.0.0.1:3000"},
-					Interval:      gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
-					Timeout:       gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
-					Retries:       -1,                                                       // invalid negative integer
-					StartPeriod:   gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
-					StartInterval: gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
+					Interval:      durationpb.New(time.Duration(-1 * time.Second)), // invalid negative duration
+					Timeout:       durationpb.New(time.Duration(-1 * time.Second)), // invalid negative duration
+					Retries:       -1,                                              // invalid negative integer
+					StartPeriod:   durationpb.New(time.Duration(-1 * time.Second)), // invalid negative duration
+					StartInterval: durationpb.New(time.Duration(-1 * time.Second)), // invalid negative duration
 				},
 			},
 		},
@@ -362,15 +364,15 @@ func TestValidateContainerSpec(t *testing.T) {
 
 	for _, bad := range []BadSpec{
 		{
-			spec: bad1,
+			spec: *bad1,
 			c:    codes.InvalidArgument,
 		},
 		{
-			spec: bad2,
+			spec: *bad2,
 			c:    codes.InvalidArgument,
 		},
 		{
-			spec: bad3,
+			spec: *bad3,
 			c:    codes.InvalidArgument,
 		},
 	} {
@@ -379,35 +381,35 @@ func TestValidateContainerSpec(t *testing.T) {
 		assert.Equal(t, bad.c, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	}
 
-	good1 := api.TaskSpec{
+	good1 := &api.TaskSpec{
 		Runtime: &api.TaskSpec_Container{
 			Container: &api.ContainerSpec{
 				Image: "image",
-				Mounts: []api.Mount{
+				Mounts: []*api.Mount{
 					{
-						Type:   api.Mount_MountType(0),
+						Type:   api.MountType(0),
 						Source: "/data",
 						Target: "/data",
 					},
 					{
-						Type:   api.Mount_MountType(0),
+						Type:   api.MountType(0),
 						Source: "/data2",
 						Target: "/data2",
 					},
 				},
 				Healthcheck: &api.HealthConfig{
 					Test:          []string{"curl 127.0.0.1:3000"},
-					Interval:      gogotypes.DurationProto(time.Duration(1 * time.Second)),
-					Timeout:       gogotypes.DurationProto(time.Duration(3 * time.Second)),
+					Interval:      durationpb.New(time.Duration(1 * time.Second)),
+					Timeout:       durationpb.New(time.Duration(3 * time.Second)),
 					Retries:       5,
-					StartPeriod:   gogotypes.DurationProto(time.Duration(1 * time.Second)),
-					StartInterval: gogotypes.DurationProto(time.Duration(1 * time.Second)),
+					StartPeriod:   durationpb.New(time.Duration(1 * time.Second)),
+					StartInterval: durationpb.New(time.Duration(1 * time.Second)),
 				},
 			},
 		},
 	}
 
-	for _, good := range []api.TaskSpec{good1} {
+	for _, good := range []api.TaskSpec{*good1} {
 		err := validateContainerSpec(good)
 		assert.NoError(t, err)
 	}
@@ -425,7 +427,7 @@ func TestValidateServiceSpec(t *testing.T) {
 			c:    codes.InvalidArgument,
 		},
 		{
-			spec: &api.ServiceSpec{Annotations: api.Annotations{Name: "name"}},
+			spec: &api.ServiceSpec{Annotations: &api.Annotations{Name: "name"}},
 			c:    codes.InvalidArgument,
 		},
 		{
@@ -499,13 +501,13 @@ func TestValidateServiceSpecJobsDifference(t *testing.T) {
 	// be verified for correctness
 	replicatedServiceBrokenUpdate := cannedSpec.Copy()
 	replicatedServiceBrokenUpdate.Update = &api.UpdateConfig{
-		Delay: -1 * time.Second,
+		Delay: durationpb.New(-1 * time.Second),
 	}
 	err = validateServiceSpec(replicatedServiceBrokenUpdate)
 	assert.Error(t, err)
 
 	replicatedServiceCorrectUpdate := replicatedServiceBrokenUpdate.Copy()
-	replicatedServiceCorrectUpdate.Update.Delay = time.Second
+	replicatedServiceCorrectUpdate.Update.Delay = durationpb.New(time.Second)
 	err = validateServiceSpec(replicatedServiceCorrectUpdate)
 	assert.NoError(t, err)
 
@@ -519,26 +521,26 @@ func TestValidateServiceSpecJobsDifference(t *testing.T) {
 	assert.Error(t, err)
 
 	globalServiceCorrectUpdate := globalServiceBrokenUpdate.Copy()
-	globalServiceCorrectUpdate.Update.Delay = time.Second
+	globalServiceCorrectUpdate.Update.Delay = durationpb.New(time.Second)
 	err = validateServiceSpec(globalServiceCorrectUpdate)
 }
 
 func TestValidateRestartPolicy(t *testing.T) {
 	bad := []*api.RestartPolicy{
 		{
-			Delay:  gogotypes.DurationProto(time.Duration(-1 * time.Second)),
-			Window: gogotypes.DurationProto(time.Duration(-1 * time.Second)),
+			Delay:  durationpb.New(time.Duration(-1 * time.Second)),
+			Window: durationpb.New(time.Duration(-1 * time.Second)),
 		},
 		{
-			Delay:  gogotypes.DurationProto(time.Duration(20 * time.Second)),
-			Window: gogotypes.DurationProto(time.Duration(-4 * time.Second)),
+			Delay:  durationpb.New(time.Duration(20 * time.Second)),
+			Window: durationpb.New(time.Duration(-4 * time.Second)),
 		},
 	}
 
 	good := []*api.RestartPolicy{
 		{
-			Delay:  gogotypes.DurationProto(time.Duration(10 * time.Second)),
-			Window: gogotypes.DurationProto(time.Duration(1 * time.Second)),
+			Delay:  durationpb.New(time.Duration(10 * time.Second)),
+			Window: durationpb.New(time.Duration(1 * time.Second)),
 		},
 	}
 
@@ -555,17 +557,17 @@ func TestValidateRestartPolicy(t *testing.T) {
 
 func TestValidateUpdate(t *testing.T) {
 	bad := []*api.UpdateConfig{
-		{Delay: -1 * time.Second},
-		{Delay: -1000 * time.Second},
-		{Monitor: gogotypes.DurationProto(time.Duration(-1 * time.Second))},
-		{Monitor: gogotypes.DurationProto(time.Duration(-1000 * time.Second))},
+		{Delay: durationpb.New(-1 * time.Second)},
+		{Delay: durationpb.New(-1000 * time.Second)},
+		{Monitor: durationpb.New(time.Duration(-1 * time.Second))},
+		{Monitor: durationpb.New(time.Duration(-1000 * time.Second))},
 		{MaxFailureRatio: -0.1},
 		{MaxFailureRatio: 1.1},
 	}
 
 	good := []*api.UpdateConfig{
-		{Delay: time.Second},
-		{Monitor: gogotypes.DurationProto(time.Duration(time.Second))},
+		{Delay: durationpb.New(time.Second)},
+		{Monitor: durationpb.New(time.Duration(time.Second))},
 		{MaxFailureRatio: 0.5},
 	}
 
@@ -788,7 +790,7 @@ func TestSecretValidation(t *testing.T) {
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      rs.Service.ID,
 		Spec:           serviceSpec1,
-		ServiceVersion: &rs.Service.Meta.Version,
+		ServiceVersion: rs.Service.Meta.Version,
 	})
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 }
@@ -896,7 +898,7 @@ func TestConfigValidation(t *testing.T) {
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      rs.Service.ID,
 		Spec:           serviceSpec1,
-		ServiceVersion: &rs.Service.Meta.Version,
+		ServiceVersion: rs.Service.Meta.Version,
 	})
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 }
@@ -928,16 +930,16 @@ func TestUpdateService(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
-	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: "invalid", Spec: &service.Spec, ServiceVersion: &api.Version{}})
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: "invalid", Spec: service.Spec, ServiceVersion: &api.Version{}})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
 	// No update options.
-	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: &service.Spec})
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: service.Spec})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
-	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: &service.Spec, ServiceVersion: &service.Meta.Version})
+	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{ServiceID: service.ID, Spec: service.Spec, ServiceVersion: service.Meta.Version})
 	assert.NoError(t, err)
 
 	r, err := ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
@@ -950,8 +952,8 @@ func TestUpdateService(t *testing.T) {
 	mode.Replicated.Replicas = 42
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      service.ID,
-		Spec:           &r.Service.Spec,
-		ServiceVersion: &r.Service.Meta.Version,
+		Spec:           r.Service.Spec,
+		ServiceVersion: r.Service.Meta.Version,
 	})
 	assert.NoError(t, err)
 
@@ -970,8 +972,8 @@ func TestUpdateService(t *testing.T) {
 	}
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      service.ID,
-		Spec:           &r.Service.Spec,
-		ServiceVersion: &r.Service.Meta.Version,
+		Spec:           r.Service.Spec,
+		ServiceVersion: r.Service.Meta.Version,
 	})
 	assert.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), errModeChangeNotAllowed.Error()))
@@ -979,11 +981,11 @@ func TestUpdateService(t *testing.T) {
 	// Versioning.
 	r, err = ts.Client.GetService(context.Background(), &api.GetServiceRequest{ServiceID: service.ID})
 	assert.NoError(t, err)
-	version := &r.Service.Meta.Version
+	version := r.Service.Meta.Version
 
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      service.ID,
-		Spec:           &r.Service.Spec,
+		Spec:           r.Service.Spec,
 		ServiceVersion: version,
 	})
 	assert.NoError(t, err)
@@ -991,7 +993,7 @@ func TestUpdateService(t *testing.T) {
 	// Perform an update with the "old" version.
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      service.ID,
-		Spec:           &r.Service.Spec,
+		Spec:           r.Service.Spec,
 		ServiceVersion: version,
 	})
 	assert.Error(t, err)
@@ -1000,7 +1002,7 @@ func TestUpdateService(t *testing.T) {
 	r.Service.Spec.Annotations.Name = "newname"
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      service.ID,
-		Spec:           &r.Service.Spec,
+		Spec:           r.Service.Spec,
 		ServiceVersion: version,
 	})
 	assert.Error(t, err)
@@ -1024,7 +1026,7 @@ func TestUpdateService(t *testing.T) {
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      rs.Service.ID,
 		Spec:           spec3,
-		ServiceVersion: &rs.Service.Meta.Version,
+		ServiceVersion: rs.Service.Meta.Version,
 	})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
@@ -1034,7 +1036,7 @@ func TestUpdateService(t *testing.T) {
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      rs.Service.ID,
 		Spec:           spec3,
-		ServiceVersion: &rs.Service.Meta.Version,
+		ServiceVersion: rs.Service.Meta.Version,
 	})
 	assert.NoError(t, err)
 
@@ -1046,7 +1048,7 @@ func TestUpdateService(t *testing.T) {
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      rs.Service.ID,
 		Spec:           spec4,
-		ServiceVersion: &rs.Service.Meta.Version,
+		ServiceVersion: rs.Service.Meta.Version,
 	})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
@@ -1072,8 +1074,8 @@ func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      service.ID,
-		Spec:           &service.Spec,
-		ServiceVersion: &service.Meta.Version,
+		Spec:           service.Spec,
+		ServiceVersion: service.Meta.Version,
 	})
 	assert.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), errNetworkUpdateNotSupported.Error()))
@@ -1096,8 +1098,8 @@ func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      service.ID,
-		Spec:           &service.Spec,
-		ServiceVersion: &service.Meta.Version,
+		Spec:           service.Spec,
+		ServiceVersion: service.Meta.Version,
 	})
 	assert.NoError(t, err)
 
@@ -1120,8 +1122,8 @@ func TestServiceUpdateRejectNetworkChange(t *testing.T) {
 
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      service.ID,
-		Spec:           &service.Spec,
-		ServiceVersion: &service.Meta.Version,
+		Spec:           service.Spec,
+		ServiceVersion: service.Meta.Version,
 	})
 	assert.NoError(t, err)
 }
@@ -1246,10 +1248,10 @@ func TestServiceEndpointSpecUpdate(t *testing.T) {
 	ts := newTestServer(t)
 	defer ts.Stop()
 	spec := &api.ServiceSpec{
-		Annotations: api.Annotations{
+		Annotations: &api.Annotations{
 			Name: "name",
 		},
-		Task: api.TaskSpec{
+		Task: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image: "image",
@@ -1570,7 +1572,7 @@ func TestListServiceStatuses(t *testing.T) {
 			ID:           identity.NewID(),
 			DesiredState: desired,
 			Spec:         s.Spec.Task,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: actual,
 			},
 			ServiceID: s.ID,
@@ -1589,7 +1591,7 @@ func TestListServiceStatuses(t *testing.T) {
 
 	withJobIteration := func(s *api.Service, task *api.Task) {
 		assert.NotNil(t, s.JobStatus)
-		task.JobIteration = &(s.JobStatus.JobIteration)
+		task.JobIteration = s.JobStatus.JobIteration
 	}
 
 	// alias task states for brevity
@@ -1670,7 +1672,7 @@ func TestListServiceStatuses(t *testing.T) {
 		context.Background(),
 		&api.UpdateServiceRequest{
 			ServiceID:      replicatedJob2.ID,
-			ServiceVersion: &replicatedJob2.Meta.Version,
+			ServiceVersion: replicatedJob2.Meta.Version,
 			Spec:           replicatedJob2Spec,
 		},
 	)
@@ -1699,7 +1701,7 @@ func TestListServiceStatuses(t *testing.T) {
 	goneSpec := createSpec("gone", "image", 3)
 	gone := &api.Service{
 		ID:   identity.NewID(),
-		Spec: *goneSpec,
+		Spec: goneSpec,
 	}
 
 	for range 3 {
@@ -1780,7 +1782,7 @@ func TestListServiceStatuses(t *testing.T) {
 			if visited[i] {
 				continue
 			}
-			if reflect.DeepEqual(expect, r.Statuses[i]) {
+			if proto.Equal(expect, r.Statuses[i]) {
 				visited[i] = true
 				found = true
 				break
@@ -1801,10 +1803,10 @@ func TestJobService(t *testing.T) {
 
 	// first, create a replicated job mode service spec
 	spec := &api.ServiceSpec{
-		Annotations: api.Annotations{
+		Annotations: &api.Annotations{
 			Name: "replicatedjob",
 		},
-		Task: api.TaskSpec{
+		Task: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image: "image",
@@ -1819,14 +1821,14 @@ func TestJobService(t *testing.T) {
 		},
 	}
 
-	before := gogotypes.TimestampNow()
+	before := timestamppb.Now()
 	// now, create the service
 	resp, err := ts.Client.CreateService(
 		context.Background(), &api.CreateServiceRequest{
 			Spec: spec,
 		},
 	)
-	after := gogotypes.TimestampNow()
+	after := timestamppb.Now()
 
 	// ensure there are no errors
 	require.NoError(t, err)
@@ -1837,14 +1839,14 @@ func TestJobService(t *testing.T) {
 	require.NotNil(t, resp.Service.JobStatus, "expected JobStatus to not be nil")
 	// and ensure that JobStatus.JobIteration is set to 0, which is the default
 	require.Equal(
-		t, resp.Service.JobStatus.JobIteration.Index, uint64(0),
+		t, resp.Service.JobStatus.GetJobIteration().GetIndex(), uint64(0),
 		"expected JobIteration for new replicated job to be 0",
 	)
 	require.NotNil(t, resp.Service.JobStatus.LastExecution)
-	assert.True(t, resp.Service.JobStatus.LastExecution.Compare(before) >= 0,
+	assert.True(t, resp.Service.JobStatus.LastExecution.AsTime().Compare(before.AsTime()) >= 0,
 		"expected %v to be after %v", resp.Service.JobStatus.LastExecution, before,
 	)
-	assert.True(t, resp.Service.JobStatus.LastExecution.Compare(after) <= 0,
+	assert.True(t, resp.Service.JobStatus.LastExecution.AsTime().Compare(after.AsTime()) <= 0,
 		"expected %v to be before %v", resp.Service.JobStatus.LastExecution, after,
 	)
 
@@ -1854,13 +1856,13 @@ func TestJobService(t *testing.T) {
 	gspec.Mode = &api.ServiceSpec_GlobalJob{
 		GlobalJob: &api.GlobalJob{},
 	}
-	before = gogotypes.TimestampNow()
+	before = timestamppb.Now()
 	gresp, gerr := ts.Client.CreateService(
 		context.Background(), &api.CreateServiceRequest{
 			Spec: gspec,
 		},
 	)
-	after = gogotypes.TimestampNow()
+	after = timestamppb.Now()
 
 	require.NoError(t, gerr)
 	require.NotNil(t, gresp)
@@ -1871,24 +1873,24 @@ func TestJobService(t *testing.T) {
 		"expected JobIteration for new global job to be 0",
 	)
 	require.NotNil(t, gresp.Service.JobStatus.LastExecution)
-	assert.True(t, gresp.Service.JobStatus.LastExecution.Compare(before) >= 0,
+	assert.True(t, gresp.Service.JobStatus.LastExecution.AsTime().Compare(before.AsTime()) >= 0,
 		"expected %v to be after %v", gresp.Service.JobStatus.LastExecution, before,
 	)
-	assert.True(t, gresp.Service.JobStatus.LastExecution.Compare(after) <= 0,
+	assert.True(t, gresp.Service.JobStatus.LastExecution.AsTime().Compare(after.AsTime()) <= 0,
 		"expected %v to be before %v", gresp.Service.JobStatus.LastExecution, after,
 	)
 
 	// now test that updating the service increments the JobIteration
 	spec.Task.ForceUpdate = spec.Task.ForceUpdate + 1
-	before = gogotypes.TimestampNow()
+	before = timestamppb.Now()
 	uresp, uerr := ts.Client.UpdateService(
 		context.Background(), &api.UpdateServiceRequest{
 			ServiceID:      resp.Service.ID,
-			ServiceVersion: &(resp.Service.Meta.Version),
+			ServiceVersion: resp.Service.Meta.Version,
 			Spec:           spec,
 		},
 	)
-	after = gogotypes.TimestampNow()
+	after = timestamppb.Now()
 
 	require.NoError(t, uerr)
 	require.NotNil(t, uresp)
@@ -1900,24 +1902,24 @@ func TestJobService(t *testing.T) {
 		"expected JobIteration for updated replicated job to be 1",
 	)
 	require.NotNil(t, uresp.Service.JobStatus.LastExecution)
-	assert.True(t, uresp.Service.JobStatus.LastExecution.Compare(before) >= 0,
+	assert.True(t, uresp.Service.JobStatus.LastExecution.AsTime().Compare(before.AsTime()) >= 0,
 		"expected %v to be after %v", uresp.Service.JobStatus.LastExecution, before,
 	)
-	assert.True(t, uresp.Service.JobStatus.LastExecution.Compare(after) <= 0,
+	assert.True(t, uresp.Service.JobStatus.LastExecution.AsTime().Compare(after.AsTime()) <= 0,
 		"expected %v to be before %v", uresp.Service.JobStatus.LastExecution, after,
 	)
 
 	// rinse and repeat
 	gspec.Task.ForceUpdate = spec.Task.ForceUpdate + 1
-	before = gogotypes.TimestampNow()
+	before = timestamppb.Now()
 	guresp, guerr := ts.Client.UpdateService(
 		context.Background(), &api.UpdateServiceRequest{
 			ServiceID:      gresp.Service.ID,
-			ServiceVersion: &(gresp.Service.Meta.Version),
+			ServiceVersion: gresp.Service.Meta.Version,
 			Spec:           gspec,
 		},
 	)
-	after = gogotypes.TimestampNow()
+	after = timestamppb.Now()
 
 	require.NoError(t, guerr)
 	require.NotNil(t, guresp)
@@ -1928,10 +1930,10 @@ func TestJobService(t *testing.T) {
 		"expected JobIteration for updated replicated job to be 1",
 	)
 	require.NotNil(t, guresp.Service.JobStatus.LastExecution)
-	assert.True(t, guresp.Service.JobStatus.LastExecution.Compare(before) >= 0,
+	assert.True(t, guresp.Service.JobStatus.LastExecution.AsTime().Compare(before.AsTime()) >= 0,
 		"expected %v to be after %v", guresp.Service.JobStatus.LastExecution, before,
 	)
-	assert.True(t, guresp.Service.JobStatus.LastExecution.Compare(after) <= 0,
+	assert.True(t, guresp.Service.JobStatus.LastExecution.AsTime().Compare(after.AsTime()) <= 0,
 		"expected %v to be before %v", guresp.Service.JobStatus.LastExecution, after,
 	)
 }

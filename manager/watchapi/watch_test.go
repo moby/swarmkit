@@ -8,6 +8,7 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestWatch(t *testing.T) {
@@ -30,7 +31,7 @@ func TestWatch(t *testing.T) {
 	// Should receive an initial message that indicates the watch is ready
 	msg, err := watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, &api.WatchMessage{}, msg)
+	assert.True(t, proto.Equal(&api.WatchMessage{}, msg), "expected empty WatchMessage")
 
 	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	msg, err = watch.Recv()
@@ -82,7 +83,7 @@ func TestWatch(t *testing.T) {
 	// Should receive an initial message that indicates the watch is ready
 	msg, err = watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, &api.WatchMessage{}, msg)
+	assert.True(t, proto.Equal(&api.WatchMessage{}, msg), "expected empty WatchMessage")
 
 	createNode(t, ts, "id2", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	msg, err = watch.Recv()
@@ -97,9 +98,9 @@ func TestWatch(t *testing.T) {
 	// Shouldn't be seen either - no hostname
 	node := &api.Node{
 		ID: "id4",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
-				Indices: []api.IndexEntry{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
+				Indices: []*api.IndexEntry{
 					{Key: "myindex", Val: "myval"},
 				},
 			},
@@ -117,9 +118,9 @@ func TestWatch(t *testing.T) {
 		Description: &api.NodeDescription{
 			Hostname: "west-40",
 		},
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
-				Indices: []api.IndexEntry{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
+				Indices: []*api.IndexEntry{
 					{Key: "myindex", Val: "myval"},
 				},
 			},
@@ -137,9 +138,9 @@ func TestWatch(t *testing.T) {
 		Description: &api.NodeDescription{
 			Hostname: "east-95",
 		},
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
-				Indices: []api.IndexEntry{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
+				Indices: []*api.IndexEntry{
 					{Key: "myindex", Val: "myval"},
 				},
 			},
@@ -180,7 +181,7 @@ func TestWatchMultipleActions(t *testing.T) {
 	// Should receive an initial message that indicates the watch is ready
 	msg, err := watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, &api.WatchMessage{}, msg)
+	assert.True(t, proto.Equal(&api.WatchMessage{}, msg), "expected empty WatchMessage")
 
 	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 	msg, err = watch.Recv()
@@ -233,7 +234,7 @@ func TestWatchIncludeOldObject(t *testing.T) {
 	// Should receive an initial message that indicates the watch is ready
 	msg, err := watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, &api.WatchMessage{}, msg)
+	assert.True(t, proto.Equal(&api.WatchMessage{}, msg), "expected empty WatchMessage")
 
 	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
 
@@ -275,14 +276,14 @@ func TestWatchResumeFrom(t *testing.T) {
 				Action: api.WatchActionKindCreate,
 			},
 		},
-		ResumeFrom: &node2.Meta.Version,
+		ResumeFrom: node2.Meta.Version,
 	})
 	assert.NoError(t, err)
 
 	// Should receive an initial message that indicates the watch is ready
 	msg, err := watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, &api.WatchMessage{}, msg)
+	assert.True(t, proto.Equal(&api.WatchMessage{}, msg), "expected empty WatchMessage")
 
 	msg, err = watch.Recv()
 	assert.NoError(t, err)

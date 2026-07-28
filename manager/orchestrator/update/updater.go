@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/defaults"
 	"github.com/moby/swarmkit/v2/log"
@@ -160,13 +159,13 @@ func (u *Updater) Run(ctx context.Context, slots []orchestrator.Slot) {
 	)
 
 	if service.UpdateStatus != nil && service.UpdateStatus.State == api.UpdateStatus_ROLLBACK_STARTED {
-		monitoringPeriod, _ = gogotypes.DurationFromProto(defaults.Service.Rollback.Monitor)
+		monitoringPeriod = defaults.Service.Rollback.Monitor.AsDuration()
 		updateConfig = service.Spec.Rollback
 		if updateConfig == nil {
 			updateConfig = defaults.Service.Rollback
 		}
 	} else {
-		monitoringPeriod, _ = gogotypes.DurationFromProto(defaults.Service.Update.Monitor)
+		monitoringPeriod = defaults.Service.Update.Monitor.AsDuration()
 		updateConfig = service.Spec.Update
 		if updateConfig == nil {
 			updateConfig = defaults.Service.Update
@@ -175,10 +174,7 @@ func (u *Updater) Run(ctx context.Context, slots []orchestrator.Slot) {
 
 	parallelism := int(updateConfig.Parallelism)
 	if updateConfig.Monitor != nil {
-		newMonitoringPeriod, err := gogotypes.DurationFromProto(updateConfig.Monitor)
-		if err == nil {
-			monitoringPeriod = newMonitoringPeriod
-		}
+		monitoringPeriod = updateConfig.Monitor.AsDuration()
 	}
 
 	if parallelism == 0 {
@@ -205,7 +201,7 @@ func (u *Updater) Run(ctx context.Context, slots []orchestrator.Slot) {
 		failedTaskWatch, cancelWatch = state.Watch(
 			u.store.WatchQueue(),
 			api.EventUpdateTask{
-				Task:   &api.Task{ServiceID: service.ID, Status: api.TaskStatus{State: api.TaskStateRunning}},
+				Task:   &api.Task{ServiceID: service.ID, Status: &api.TaskStatus{State: api.TaskStateRunning}},
 				Checks: []api.TaskCheckFunc{api.TaskCheckServiceID, state.TaskCheckStateGreaterThan},
 			},
 		)
@@ -282,8 +278,9 @@ slotsLoop:
 	if !stopped {
 		// if a delay is set we need to monitor for a period longer than the delay
 		// otherwise we will leave the monitorLoop before the task is done delaying
-		if updateConfig.Delay >= monitoringPeriod {
-			monitoringPeriod = updateConfig.Delay + 1*time.Second
+		updateDelay := updateConfig.Delay.AsDuration()
+		if updateDelay >= monitoringPeriod {
+			monitoringPeriod = updateDelay + 1*time.Second
 		}
 		// Keep watching for task failures for one more monitoringPeriod,
 		// before declaring the update complete.
@@ -354,9 +351,9 @@ func (u *Updater) worker(ctx context.Context, queue <-chan orchestrator.Slot, up
 			}
 		}
 
-		if updateConfig.Delay != 0 {
+		if updateConfig.Delay.AsDuration() != 0 {
 			select {
-			case <-time.After(updateConfig.Delay):
+			case <-time.After(updateConfig.Delay.AsDuration()):
 			case <-u.stopChan:
 				return
 			}
@@ -610,7 +607,7 @@ func (u *Updater) rollbackUpdate(ctx context.Context, serviceID, message string)
 		if service.PreviousSpec == nil {
 			return errors.New("cannot roll back service because no previous spec is available")
 		}
-		service.Spec = *service.PreviousSpec
+		service.Spec = service.PreviousSpec
 		service.SpecVersion = service.PreviousSpecVersion.Copy()
 		service.PreviousSpec = nil
 		service.PreviousSpecVersion = nil

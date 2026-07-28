@@ -24,7 +24,7 @@ func parseVolume(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			if strings.Contains(volume, ":") {
 				return fmt.Errorf("volume format %q not supported", volume)
 			}
-			container.Mounts = append(container.Mounts, api.Mount{
+			container.Mounts = append(container.Mounts, &api.Mount{
 				Type:   api.MountTypeVolume,
 				Target: volume,
 			})

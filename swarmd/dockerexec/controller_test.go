@@ -17,12 +17,12 @@ import (
 	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/network"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 const tenSecond = 10
@@ -450,14 +450,15 @@ func genTask(t *testing.T) *api.Task {
 	)
 
 	return &api.Task{
-		ID:        identity.NewID(),
-		ServiceID: serviceID,
-		NodeID:    nodeID,
-		Spec: api.TaskSpec{
+		ID:                 identity.NewID(),
+		ServiceID:          serviceID,
+		NodeID:             nodeID,
+		ServiceAnnotations: &api.Annotations{},
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image:           reference,
-					StopGracePeriod: gogotypes.DurationProto(10 * time.Second),
+					StopGracePeriod: durationpb.New(10 * time.Second),
 				},
 			},
 		},

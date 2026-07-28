@@ -22,10 +22,10 @@ import (
 func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, membership api.NodeSpec_Membership, state api.NodeStatus_State) *api.Node {
 	node := &api.Node{
 		ID: id,
-		Spec: api.NodeSpec{
+		Spec: &api.NodeSpec{
 			Membership: membership,
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: state,
 		},
 		Role: role,
@@ -161,8 +161,8 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 	nodes := make([]*api.Node, 3)
 	nodes[0] = &api.Node{
 		ID: "node0",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Labels: map[string]string{
 					"allcommon":  "node",
 					"nodelabel1": "shouldmatch",
@@ -183,8 +183,8 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 
 	nodes[1] = &api.Node{
 		ID: "node1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Labels: map[string]string{
 					"allcommon":  "node",
 					"nodelabel1": "shouldmatch",
@@ -204,8 +204,8 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 	}
 	nodes[2] = &api.Node{
 		ID: "node2",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Labels: map[string]string{
 					"allcommon":  "node",
 					"nodelabel1": "shouldnevermatch",
@@ -361,8 +361,8 @@ func TestRemoveNodes(t *testing.T) {
 	ts.Store.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
 			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
 			},
@@ -682,7 +682,7 @@ func TestUpdateNode(t *testing.T) {
 	assert.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateNode(tx, &api.Node{
 			ID: nodes[1].SecurityConfig.ClientTLSCreds.NodeID(),
-			Spec: api.NodeSpec{
+			Spec: &api.NodeSpec{
 				Membership: api.NodeMembershipAccepted,
 			},
 			Role: api.NodeRoleManager,
@@ -721,7 +721,7 @@ func TestUpdateNode(t *testing.T) {
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      nodeID,
 		Spec:        spec,
-		NodeVersion: &r.Node.Meta.Version,
+		NodeVersion: r.Node.Meta.Version,
 	})
 	assert.NoError(t, err)
 
@@ -734,12 +734,12 @@ func TestUpdateNode(t *testing.T) {
 	assert.NotNil(t, r.Node.Spec)
 	assert.Equal(t, api.NodeAvailabilityDrain, r.Node.Spec.Availability)
 
-	version := &r.Node.Meta.Version
-	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, NodeVersion: version})
+	version := r.Node.Meta.Version
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: r.Node.Spec, NodeVersion: version})
 	assert.NoError(t, err)
 
 	// Perform an update with the "old" version.
-	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, NodeVersion: version})
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: r.Node.Spec, NodeVersion: version})
 	assert.Error(t, err)
 }
 
@@ -760,7 +760,7 @@ func testUpdateNodeDemote(t *testing.T) {
 	assert.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateNode(tx, &api.Node{
 			ID: nodes[1].SecurityConfig.ClientTLSCreds.NodeID(),
-			Spec: api.NodeSpec{
+			Spec: &api.NodeSpec{
 				DesiredRole: api.NodeRoleManager,
 				Membership:  api.NodeMembershipAccepted,
 			},
@@ -768,7 +768,7 @@ func testUpdateNodeDemote(t *testing.T) {
 		}))
 		assert.NoError(t, store.CreateNode(tx, &api.Node{
 			ID: nodes[2].SecurityConfig.ClientTLSCreds.NodeID(),
-			Spec: api.NodeSpec{
+			Spec: &api.NodeSpec{
 				DesiredRole: api.NodeRoleManager,
 				Membership:  api.NodeMembershipAccepted,
 			},
@@ -776,7 +776,7 @@ func testUpdateNodeDemote(t *testing.T) {
 		}))
 		assert.NoError(t, store.CreateNode(tx, &api.Node{
 			ID: nodes[3].SecurityConfig.ClientTLSCreds.NodeID(),
-			Spec: api.NodeSpec{
+			Spec: &api.NodeSpec{
 				DesiredRole: api.NodeRoleManager,
 				Membership:  api.NodeMembershipAccepted,
 			},
@@ -806,7 +806,7 @@ func testUpdateNodeDemote(t *testing.T) {
 	assert.NoError(t, err)
 	spec := r.Node.Spec.Copy()
 	spec.DesiredRole = api.NodeRoleWorker
-	version := &r.Node.Meta.Version
+	version := r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      nodes[2].SecurityConfig.ClientTLSCreds.NodeID(),
 		Spec:        spec,
@@ -839,7 +839,7 @@ func testUpdateNodeDemote(t *testing.T) {
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
 	spec.DesiredRole = api.NodeRoleWorker
-	version = &r.Node.Meta.Version
+	version = r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      nodes[3].SecurityConfig.ClientTLSCreds.NodeID(),
 		Spec:        spec,
@@ -876,7 +876,7 @@ func testUpdateNodeDemote(t *testing.T) {
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
 	spec.DesiredRole = api.NodeRoleWorker
-	version = &r.Node.Meta.Version
+	version = r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      demoteNode.SecurityConfig.ClientTLSCreds.NodeID(),
 		Spec:        spec,
@@ -909,7 +909,7 @@ func testUpdateNodeDemote(t *testing.T) {
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
 	spec.DesiredRole = api.NodeRoleWorker
-	version = &r.Node.Meta.Version
+	version = r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      lastNode.SecurityConfig.ClientTLSCreds.NodeID(),
 		Spec:        spec,
@@ -923,7 +923,7 @@ func testUpdateNodeDemote(t *testing.T) {
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
 	spec.Availability = api.NodeAvailabilityDrain
-	version = &r.Node.Meta.Version
+	version = r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
 		NodeID:      lastNode.SecurityConfig.ClientTLSCreds.NodeID(),
 		Spec:        spec,
@@ -951,8 +951,8 @@ func TestOrphanNodeTasks(t *testing.T) {
 	ts.Store.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
 			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
 			},
@@ -982,8 +982,8 @@ func TestOrphanNodeTasks(t *testing.T) {
 	err = ts.Store.Update(func(tx store.Tx) error {
 		n := &api.Network{
 			ID: "net1id",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "net1name",
 				},
 				Attachable: true,
@@ -1000,10 +1000,10 @@ func TestOrphanNodeTasks(t *testing.T) {
 			ID:           "task1",
 			NodeID:       "id2",
 			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Attachment{
 					Attachment: &api.NetworkAttachmentSpec{
 						ContainerID: "container1",
@@ -1027,10 +1027,10 @@ func TestOrphanNodeTasks(t *testing.T) {
 			ID:           "task2",
 			NodeID:       "id1",
 			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Attachment{
 					Attachment: &api.NetworkAttachmentSpec{
 						ContainerID: "container2",
@@ -1054,10 +1054,10 @@ func TestOrphanNodeTasks(t *testing.T) {
 			ID:           "task3",
 			NodeID:       "id2",
 			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
@@ -1072,10 +1072,10 @@ func TestOrphanNodeTasks(t *testing.T) {
 			ID:           "task4",
 			NodeID:       "id1",
 			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
@@ -1091,12 +1091,12 @@ func TestOrphanNodeTasks(t *testing.T) {
 			ID:           "task5",
 			NodeID:       "id2",
 			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				// use TaskStateCompleted, as this is the earliest terminal
 				// state (this ensures we don't actually use <= instead of <)
 				State: api.TaskStateCompleted,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},

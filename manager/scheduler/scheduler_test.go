@@ -24,34 +24,34 @@ func TestScheduler(t *testing.T) {
 	initialNodeSet := []*api.Node{
 		{
 			ID: "id1",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		},
 		{
 			ID: "id2",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		},
 		{
 			ID: "id3",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		},
@@ -61,11 +61,11 @@ func TestScheduler(t *testing.T) {
 		{
 			ID:           "id1",
 			DesiredState: api.TaskStateRunning,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name1",
 			},
 
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateAssigned,
 			},
 			NodeID: initialNodeSet[0].ID,
@@ -73,20 +73,20 @@ func TestScheduler(t *testing.T) {
 		{
 			ID:           "id2",
 			DesiredState: api.TaskStateRunning,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name2",
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 		},
 		{
 			ID:           "id3",
 			DesiredState: api.TaskStateRunning,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name2",
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 		},
@@ -151,10 +151,10 @@ func TestScheduler(t *testing.T) {
 		t4 := &api.Task{
 			ID:           "id4",
 			DesiredState: api.TaskStateRunning,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name4",
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 		}
@@ -174,10 +174,10 @@ func TestScheduler(t *testing.T) {
 		t4 := &api.Task{
 			ID:           "id4",
 			DesiredState: api.TaskStateRunning,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name4",
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 		}
@@ -194,12 +194,12 @@ func TestScheduler(t *testing.T) {
 		// be assigned to it.
 		node := &api.Node{
 			ID: "removednode",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "removednode",
 				},
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_DOWN,
 			},
 		}
@@ -210,10 +210,10 @@ func TestScheduler(t *testing.T) {
 		task := &api.Task{
 			ID:           "removednode",
 			DesiredState: api.TaskStateRunning,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "removednode",
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 		}
@@ -230,12 +230,12 @@ func TestScheduler(t *testing.T) {
 		// assignment.
 		n4 := &api.Node{
 			ID: "id4",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name4",
 				},
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		}
@@ -245,10 +245,10 @@ func TestScheduler(t *testing.T) {
 		t5 := &api.Task{
 			ID:           "id5",
 			DesiredState: api.TaskStateRunning,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name5",
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 		}
@@ -265,12 +265,12 @@ func TestScheduler(t *testing.T) {
 		// assignment.
 		n5 := &api.Node{
 			ID: "id5",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name5",
 				},
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_DOWN,
 			},
 		}
@@ -280,10 +280,10 @@ func TestScheduler(t *testing.T) {
 		t6 := &api.Task{
 			ID:           "id6",
 			DesiredState: api.TaskStateRunning,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name6",
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 		}
@@ -299,12 +299,12 @@ func TestScheduler(t *testing.T) {
 		// Update node id5 to put it in the READY state.
 		n5 := &api.Node{
 			ID: "id5",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name5",
 				},
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		}
@@ -315,10 +315,10 @@ func TestScheduler(t *testing.T) {
 		t7 := &api.Task{
 			ID:           "id7",
 			DesiredState: api.TaskStateRunning,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name7",
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 		}
@@ -335,12 +335,12 @@ func TestScheduler(t *testing.T) {
 		// unassigned task should NOT be assigned to it.
 		n6 := &api.Node{
 			ID: "id6",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name6",
 				},
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		}
@@ -352,10 +352,10 @@ func TestScheduler(t *testing.T) {
 		t8 := &api.Task{
 			ID:           "id8",
 			DesiredState: api.TaskStateRunning,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name8",
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 		}
@@ -373,31 +373,31 @@ func testHA(t *testing.T, useSpecVersion bool) {
 	initialNodeSet := []*api.Node{
 		{
 			ID: "id1",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		},
 		{
 			ID: "id2",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		},
 		{
 			ID: "id3",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		},
 		{
 			ID: "id4",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		},
 		{
 			ID: "id5",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		},
@@ -406,14 +406,14 @@ func testHA(t *testing.T, useSpecVersion bool) {
 	taskTemplate1 := &api.Task{
 		DesiredState: api.TaskStateRunning,
 		ServiceID:    "service1",
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image: "v:1",
 				},
 			},
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -421,14 +421,14 @@ func testHA(t *testing.T, useSpecVersion bool) {
 	taskTemplate2 := &api.Task{
 		DesiredState: api.TaskStateRunning,
 		ServiceID:    "service2",
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image: "v:2",
 				},
 			},
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -657,11 +657,11 @@ func testPreferences(t *testing.T, useSpecVersion bool) {
 	initialNodeSet := []*api.Node{
 		{
 			ID: "id1",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: map[string]string{
 						"az": "az1",
 					},
@@ -670,11 +670,11 @@ func testPreferences(t *testing.T, useSpecVersion bool) {
 		},
 		{
 			ID: "id2",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: map[string]string{
 						"az": "az2",
 					},
@@ -683,11 +683,11 @@ func testPreferences(t *testing.T, useSpecVersion bool) {
 		},
 		{
 			ID: "id3",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: map[string]string{
 						"az": "az2",
 					},
@@ -696,11 +696,11 @@ func testPreferences(t *testing.T, useSpecVersion bool) {
 		},
 		{
 			ID: "id4",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: map[string]string{
 						"az": "az2",
 					},
@@ -709,11 +709,11 @@ func testPreferences(t *testing.T, useSpecVersion bool) {
 		},
 		{
 			ID: "id5",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: map[string]string{
 						"az": "az2",
 					},
@@ -725,7 +725,7 @@ func testPreferences(t *testing.T, useSpecVersion bool) {
 	taskTemplate1 := &api.Task{
 		DesiredState: api.TaskStateRunning,
 		ServiceID:    "service1",
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image: "v:1",
@@ -743,7 +743,7 @@ func testPreferences(t *testing.T, useSpecVersion bool) {
 				},
 			},
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -810,11 +810,11 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 	initialNodeSet := []*api.Node{
 		{
 			ID: "id0",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: map[string]string{
 						"az":   "az1",
 						"rack": "rack1",
@@ -833,11 +833,11 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 		},
 		{
 			ID: "id1",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: map[string]string{
 						"az":   "az1",
 						"rack": "rack1",
@@ -856,11 +856,11 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 		},
 		{
 			ID: "id2",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: map[string]string{
 						"az":   "az2",
 						"rack": "rack1",
@@ -879,11 +879,11 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 		},
 		{
 			ID: "id3",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: map[string]string{
 						"az":   "az2",
 						"rack": "rack1",
@@ -902,11 +902,11 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 		},
 		{
 			ID: "id4",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: map[string]string{
 						"az":   "az2",
 						"rack": "rack1",
@@ -925,11 +925,11 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 		},
 		{
 			ID: "id5",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: map[string]string{
 						"az":   "az2",
 						"rack": "rack2",
@@ -948,11 +948,11 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 		},
 		{
 			ID: "id6",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: map[string]string{
 						"az":   "az2",
 						"rack": "rack2",
@@ -974,7 +974,7 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 	taskTemplate1 := &api.Task{
 		DesiredState: api.TaskStateRunning,
 		ServiceID:    "service1",
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image: "v:1",
@@ -1007,7 +1007,7 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 				},
 			},
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -1117,11 +1117,11 @@ func TestMultiplePreferencesScaleUp(t *testing.T) {
 	initialNodeSet := []*api.Node{
 		{
 			ID: "id11",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: map[string]string{
 						"az":   "dc1",
 						"rack": "r1",
@@ -1131,11 +1131,11 @@ func TestMultiplePreferencesScaleUp(t *testing.T) {
 		},
 		{
 			ID: "id12",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: map[string]string{
 						"az":   "dc1",
 						"rack": "r2",
@@ -1145,11 +1145,11 @@ func TestMultiplePreferencesScaleUp(t *testing.T) {
 		},
 		{
 			ID: "id21",
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: map[string]string{
 						"az":   "dc2",
 						"rack": "r1",
@@ -1166,7 +1166,7 @@ func TestMultiplePreferencesScaleUp(t *testing.T) {
 		// group, a necessary precondition for the scheduler
 		// infinite-loop bug.
 		SpecVersion: &api.Version{Index: 1},
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image: "v:1",
@@ -1191,7 +1191,7 @@ func TestMultiplePreferencesScaleUp(t *testing.T) {
 				},
 			},
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -1266,10 +1266,10 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 		ID:           "id1",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name1",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -1304,12 +1304,12 @@ func TestSchedulerNoReadyNodes(t *testing.T) {
 		// node.
 		node := &api.Node{
 			ID: "newnode",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "newnode",
 				},
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		}
@@ -1328,10 +1328,10 @@ func TestSchedulerFaultyNode(t *testing.T) {
 	replicatedTaskTemplate := &api.Task{
 		ServiceID:    "service1",
 		DesiredState: api.TaskStateRunning,
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name1",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -1340,34 +1340,34 @@ func TestSchedulerFaultyNode(t *testing.T) {
 		ServiceID:    "service2",
 		NodeID:       "id1",
 		DesiredState: api.TaskStateRunning,
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name2",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
 
 	node1 := &api.Node{
 		ID: "id1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "id1",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 	}
 
 	node2 := &api.Node{
 		ID: "id2",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "id2",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 	}
@@ -1489,34 +1489,34 @@ func TestSchedulerFaultyNodeSpecVersion(t *testing.T) {
 		ServiceID:    "service1",
 		SpecVersion:  &api.Version{Index: 1},
 		DesiredState: api.TaskStateRunning,
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name1",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
 
 	node1 := &api.Node{
 		ID: "id1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "id1",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 	}
 
 	node2 := &api.Node{
 		ID: "id2",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "id2",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 	}
@@ -1598,10 +1598,10 @@ func TestSchedulerFaultyNodeSpecVersion(t *testing.T) {
 			expectedNode1Spec2Failures = i - 11
 			expectedNode2Spec2Failures = 5
 		}
-		assert.Len(t, node1Info.recentFailures[versionedService{serviceID: "service1", specVersion: api.Version{Index: 1}}], expectedNode1Spec1Failures)
-		assert.Len(t, node1Info.recentFailures[versionedService{serviceID: "service1", specVersion: api.Version{Index: 2}}], expectedNode1Spec2Failures)
-		assert.Len(t, node2Info.recentFailures[versionedService{serviceID: "service1", specVersion: api.Version{Index: 1}}], expectedNode2Spec1Failures)
-		assert.Len(t, node2Info.recentFailures[versionedService{serviceID: "service1", specVersion: api.Version{Index: 2}}], expectedNode2Spec2Failures)
+		assert.Len(t, node1Info.recentFailures[versionedService{serviceID: "service1", specVersionIndex: 1}], expectedNode1Spec1Failures)
+		assert.Len(t, node1Info.recentFailures[versionedService{serviceID: "service1", specVersionIndex: 2}], expectedNode1Spec2Failures)
+		assert.Len(t, node2Info.recentFailures[versionedService{serviceID: "service1", specVersionIndex: 1}], expectedNode2Spec1Failures)
+		assert.Len(t, node2Info.recentFailures[versionedService{serviceID: "service1", specVersionIndex: 2}], expectedNode2Spec2Failures)
 
 		err = s.Update(func(tx store.Tx) error {
 			newTask := store.GetTask(tx, newTask.ID)
@@ -1619,12 +1619,12 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 	// Create a ready node without enough memory to run the task.
 	underprovisionedNode := &api.Node{
 		ID: "underprovisioned",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "underprovisioned",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Description: &api.NodeDescription{
@@ -1642,12 +1642,12 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 	// Non-ready nodes that satisfy the constraints but shouldn't be used
 	nonready1 := &api.Node{
 		ID: "nonready1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "nonready1",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_UNKNOWN,
 		},
 		Description: &api.NodeDescription{
@@ -1663,12 +1663,12 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 	}
 	nonready2 := &api.Node{
 		ID: "nonready2",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "nonready2",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_UNKNOWN,
 		},
 		Description: &api.NodeDescription{
@@ -1687,7 +1687,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 		ID:           "id1",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
@@ -1701,10 +1701,10 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 				},
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name1",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -1746,8 +1746,8 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 		// assigned to this node.
 		node := &api.Node{
 			ID: "bignode",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "bignode",
 				},
 			},
@@ -1761,7 +1761,7 @@ func TestSchedulerResourceConstraint(t *testing.T) {
 					),
 				},
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		}
@@ -1781,12 +1781,12 @@ func TestSchedulerResourceConstraintHA(t *testing.T) {
 	ctx := context.Background()
 	node1 := &api.Node{
 		ID: "id1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "id1",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Description: &api.NodeDescription{
@@ -1800,12 +1800,12 @@ func TestSchedulerResourceConstraintHA(t *testing.T) {
 	}
 	node2 := &api.Node{
 		ID: "id2",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "id2",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Description: &api.NodeDescription{
@@ -1820,7 +1820,7 @@ func TestSchedulerResourceConstraintHA(t *testing.T) {
 
 	taskTemplate := &api.Task{
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
@@ -1833,10 +1833,10 @@ func TestSchedulerResourceConstraintHA(t *testing.T) {
 				},
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name1",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -1921,12 +1921,12 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 	// Create a ready node without enough memory to run the task.
 	node := &api.Node{
 		ID: "id1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Description: &api.NodeDescription{
@@ -1944,7 +1944,7 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 		DesiredState: api.TaskStateRunning,
 		ID:           "id1",
 		ServiceID:    "serviceID1",
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
 					MemoryBytes: 8e8,
@@ -1954,10 +1954,10 @@ func TestSchedulerResourceConstraintDeadTask(t *testing.T) {
 				},
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "big",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -2027,12 +2027,12 @@ func TestSchedulerPreexistingDeadTask(t *testing.T) {
 	// Create a ready node without enough memory to run two tasks at once.
 	node := &api.Node{
 		ID: "id1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Description: &api.NodeDescription{
@@ -2050,7 +2050,7 @@ func TestSchedulerPreexistingDeadTask(t *testing.T) {
 		DesiredState: api.TaskStateRunning,
 		ID:           "id1",
 		NodeID:       "id1",
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
 					MemoryBytes: 8e8,
@@ -2060,10 +2060,10 @@ func TestSchedulerPreexistingDeadTask(t *testing.T) {
 				},
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "big",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStateShutdown,
 		},
 	}
@@ -2114,13 +2114,13 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 		ID:           "id1",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name1",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Placement: &api.Placement{
 				Platforms: []*api.Platform{
 					{
@@ -2137,13 +2137,13 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 		ID:           "id2",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name2",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Placement: &api.Placement{
 				Platforms: []*api.Platform{
 					{
@@ -2160,10 +2160,10 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 		ID:           "id3",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name3",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -2173,13 +2173,13 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 		ID:           "id4",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name4",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Placement: &api.Placement{
 				Platforms: []*api.Platform{
 					{
@@ -2196,13 +2196,13 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 		ID:           "id5",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name5",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Placement: &api.Placement{
 				Platforms: []*api.Platform{
 					{
@@ -2220,12 +2220,12 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 
 	node1 := &api.Node{
 		ID: "node1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node1",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Description: &api.NodeDescription{
@@ -2238,12 +2238,12 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 
 	node2 := &api.Node{
 		ID: "node2",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node2",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Description: &api.NodeDescription{
@@ -2258,12 +2258,12 @@ func TestSchedulerCompatiblePlatform(t *testing.T) {
 	// with a platform constraint
 	node3 := &api.Node{
 		ID: "node3",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node3",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Description: &api.NodeDescription{},
@@ -2346,13 +2346,13 @@ func TestSchedulerUnassignedMap(t *testing.T) {
 		ID:           "id1",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name1",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Placement: &api.Placement{
 				Platforms: []*api.Platform{
 					{
@@ -2366,12 +2366,12 @@ func TestSchedulerUnassignedMap(t *testing.T) {
 
 	node1 := &api.Node{
 		ID: "node1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node1",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Description: &api.NodeDescription{
@@ -2423,23 +2423,23 @@ func TestPreassignedTasks(t *testing.T) {
 	initialNodeSet := []*api.Node{
 		{
 			ID: "node1",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		},
 		{
 			ID: "node2",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		},
@@ -2449,21 +2449,21 @@ func TestPreassignedTasks(t *testing.T) {
 		{
 			ID:           "task1",
 			DesiredState: api.TaskStateRunning,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name1",
 			},
 
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 		},
 		{
 			ID:           "task2",
 			DesiredState: api.TaskStateRunning,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name2",
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 			NodeID: initialNodeSet[0].ID,
@@ -2471,10 +2471,10 @@ func TestPreassignedTasks(t *testing.T) {
 		{
 			ID:           "task3",
 			DesiredState: api.TaskStateRunning,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name2",
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 			NodeID: initialNodeSet[0].ID,
@@ -2532,12 +2532,12 @@ func TestIgnoreTasks(t *testing.T) {
 	initialNodeSet := []*api.Node{
 		{
 			ID: "node1",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		},
@@ -2548,21 +2548,21 @@ func TestIgnoreTasks(t *testing.T) {
 		{
 			ID:           "task1",
 			DesiredState: api.TaskStateRunning,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name1",
 			},
 
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 		},
 		{
 			ID:           "task2",
 			DesiredState: api.TaskStateShutdown,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name2",
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 			NodeID: initialNodeSet[0].ID,
@@ -2570,10 +2570,10 @@ func TestIgnoreTasks(t *testing.T) {
 		{
 			ID:           "task3",
 			DesiredState: api.TaskStateRemove,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name2",
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStatePending,
 			},
 			NodeID: initialNodeSet[0].ID,
@@ -2630,12 +2630,12 @@ func TestUnscheduleableTask(t *testing.T) {
 	ctx := context.Background()
 	node := &api.Node{
 		ID: "nodeid1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Description: &api.NodeDescription{},
@@ -2648,7 +2648,7 @@ func TestUnscheduleableTask(t *testing.T) {
 		SpecVersion: &api.Version{
 			Index: 0,
 		},
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
@@ -2656,10 +2656,10 @@ func TestUnscheduleableTask(t *testing.T) {
 				MaxReplicas: 1,
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "servicename1",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -2671,7 +2671,7 @@ func TestUnscheduleableTask(t *testing.T) {
 		SpecVersion: &api.Version{
 			Index: 0,
 		},
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
@@ -2679,10 +2679,10 @@ func TestUnscheduleableTask(t *testing.T) {
 				MaxReplicas: 1,
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "servicename1",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -2723,10 +2723,10 @@ watchAttempt:
 		select {
 		case event := <-watch:
 			if task, ok := event.(api.EventUpdateTask); ok {
-				if task.Task.Status.State < api.TaskStateAssigned {
+				if task.Task.GetStatus().GetState() < api.TaskStateAssigned {
 					failed = task.Task.Copy()
-				} else if task.Task.Status.State >= api.TaskStateAssigned &&
-					task.Task.Status.State <= api.TaskStateRunning &&
+				} else if task.Task.GetStatus().GetState() >= api.TaskStateAssigned &&
+					task.Task.GetStatus().GetState() <= api.TaskStateRunning &&
 					task.Task.NodeID != "" {
 					assigned = task.Task.Copy()
 				}
@@ -2762,7 +2762,7 @@ watchAttempt:
 		SpecVersion: &api.Version{
 			Index: 1,
 		},
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
@@ -2770,10 +2770,10 @@ watchAttempt:
 				MaxReplicas: 1,
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "servicename1",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -2813,12 +2813,12 @@ watchShutdown:
 		case event := <-watch:
 			if task, ok := event.(api.EventUpdateTask); ok {
 				if task.Task.ID == failed.ID {
-					if task.Task.Status.State >= api.TaskStateShutdown {
+					if task.Task.GetStatus().GetState() >= api.TaskStateShutdown {
 						break watchShutdown
 					}
 				}
 				if task.Task.ID == task1Update.ID {
-					if task.Task.Status.State == api.TaskStateAssigned {
+					if task.Task.GetStatus().GetState() == api.TaskStateAssigned {
 						t.Logf("updated task assigned")
 					}
 				}
@@ -2834,7 +2834,7 @@ func watchAssignmentFailure(t *testing.T, watch chan events.Event) *api.Task {
 		select {
 		case event := <-watch:
 			if task, ok := event.(api.EventUpdateTask); ok {
-				if task.Task.Status.State < api.TaskStateAssigned {
+				if task.Task.GetStatus().GetState() < api.TaskStateAssigned {
 					return task.Task
 				}
 			}
@@ -2850,8 +2850,8 @@ func watchAssignment(t *testing.T, watch chan events.Event) *api.Task {
 		select {
 		case event := <-watch:
 			if task, ok := event.(api.EventUpdateTask); ok {
-				if task.Task.Status.State >= api.TaskStateAssigned &&
-					task.Task.Status.State <= api.TaskStateRunning &&
+				if task.Task.GetStatus().GetState() >= api.TaskStateAssigned &&
+					task.Task.GetStatus().GetState() <= api.TaskStateRunning &&
 					task.Task.NodeID != "" {
 					return task.Task
 				}
@@ -2868,14 +2868,14 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	// Node1: vol plugin1
 	n1 := &api.Node{
 		ID: "node1_ID",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node1",
 			},
 		},
 		Description: &api.NodeDescription{
 			Engine: &api.EngineDescription{
-				Plugins: []api.PluginDescription{
+				Plugins: []*api.PluginDescription{
 					{
 						Type: "Volume",
 						Name: "plugin1",
@@ -2887,7 +2887,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				},
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 	}
@@ -2895,14 +2895,14 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	// Node2: vol plugin1, vol plugin2
 	n2 := &api.Node{
 		ID: "node2_ID",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node2",
 			},
 		},
 		Description: &api.NodeDescription{
 			Engine: &api.EngineDescription{
-				Plugins: []api.PluginDescription{
+				Plugins: []*api.PluginDescription{
 					{
 						Type: "Volume",
 						Name: "plugin1",
@@ -2918,7 +2918,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				},
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 	}
@@ -2926,14 +2926,14 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	// Node3: vol plugin1, network plugin1
 	n3 := &api.Node{
 		ID: "node3_ID",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node3",
 			},
 		},
 		Description: &api.NodeDescription{
 			Engine: &api.EngineDescription{
-				Plugins: []api.PluginDescription{
+				Plugins: []*api.PluginDescription{
 					{
 						Type: "Volume",
 						Name: "plugin1",
@@ -2949,7 +2949,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				},
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 	}
@@ -2957,14 +2957,14 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 	// Node4: log plugin1
 	n4 := &api.Node{
 		ID: "node4_ID",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node4",
 			},
 		},
 		Description: &api.NodeDescription{
 			Engine: &api.EngineDescription{
-				Plugins: []api.PluginDescription{
+				Plugins: []*api.PluginDescription{
 					{
 						Type: "Log",
 						Name: "plugin1",
@@ -2972,7 +2972,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				},
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 	}
@@ -2990,10 +2990,10 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 		ID:           "task0_ID",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
-					Mounts: []api.Mount{
+					Mounts: []*api.Mount{
 						{
 							Source: "/src",
 							Target: "/foo",
@@ -3003,10 +3003,10 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				},
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "task0",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -3016,10 +3016,10 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 		ID:           "task1_ID",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
-					Mounts: []api.Mount{
+					Mounts: []*api.Mount{
 						{
 							Source:        "testVol1",
 							Target:        "/foo",
@@ -3030,10 +3030,10 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				},
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "task1",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -3043,10 +3043,10 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 		ID:           "task2_ID",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
-					Mounts: []api.Mount{
+					Mounts: []*api.Mount{
 						{
 							Source:        "testVol1",
 							Target:        "/foo",
@@ -3063,10 +3063,10 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				},
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "task2",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -3080,8 +3080,8 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 			{
 				Network: &api.Network{
 					ID: "testNwID1",
-					Spec: api.NetworkSpec{
-						Annotations: api.Annotations{
+					Spec: &api.NetworkSpec{
+						Annotations: &api.Annotations{
 							Name: "testVol1",
 						},
 					},
@@ -3091,10 +3091,10 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				},
 			},
 		},
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
-					Mounts: []api.Mount{
+					Mounts: []*api.Mount{
 						{
 							Source:        "testVol1",
 							Target:        "/foo",
@@ -3105,10 +3105,10 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				},
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "task2",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -3117,16 +3117,16 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 		ID:           "task4_ID",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
 			LogDriver: &api.Driver{Name: "plugin1"},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "task4",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -3135,16 +3135,16 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 		ID:           "task5_ID",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
 			LogDriver: &api.Driver{Name: "plugin1"},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "task5",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -3154,16 +3154,16 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 		ID:           "task6_ID",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
 			LogDriver: &api.Driver{Name: "none"},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "task6",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -3173,7 +3173,7 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 		ID:           "task7_ID",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
@@ -3183,10 +3183,10 @@ func TestSchedulerPluginConstraint(t *testing.T) {
 				},
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "task7",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -3394,13 +3394,13 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 			for i := range nodes {
 				n := &api.Node{
 					ID: identity.NewID(),
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name:   "name" + strconv.Itoa(i),
 							Labels: make(map[string]string),
 						},
 					},
-					Status: api.NodeStatus{
+					Status: &api.NodeStatus{
 						State: api.NodeStatus_READY,
 					},
 					Description: &api.NodeDescription{
@@ -3409,7 +3409,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 				}
 				// Give every third node a special network
 				if i%3 == 0 {
-					n.Description.Engine.Plugins = []api.PluginDescription{
+					n.Description.Engine.Plugins = []*api.PluginDescription{
 						{
 							Name: "network",
 							Type: "Network",
@@ -3427,10 +3427,10 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 				t := &api.Task{
 					ID:           id,
 					DesiredState: api.TaskStateRunning,
-					ServiceAnnotations: api.Annotations{
+					ServiceAnnotations: &api.Annotations{
 						Name: id,
 					},
-					Status: api.TaskStatus{
+					Status: &api.TaskStatus{
 						State: api.TaskStatePending,
 					},
 				}
@@ -3468,23 +3468,23 @@ func TestSchedulerHostPort(t *testing.T) {
 	ctx := context.Background()
 	node1 := &api.Node{
 		ID: "nodeid1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node1",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 	}
 	node2 := &api.Node{
 		ID: "nodeid2",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node2",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 	}
@@ -3493,15 +3493,15 @@ func TestSchedulerHostPort(t *testing.T) {
 		ID:           "id1",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name1",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 		Endpoint: &api.Endpoint{
@@ -3518,15 +3518,15 @@ func TestSchedulerHostPort(t *testing.T) {
 		ID:           "id2",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name2",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 		Endpoint: &api.Endpoint{
@@ -3543,15 +3543,15 @@ func TestSchedulerHostPort(t *testing.T) {
 		ID:           "id3",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name3",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 		Endpoint: &api.Endpoint{
@@ -3629,23 +3629,23 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 	ctx := context.Background()
 	node1 := &api.Node{
 		ID: "nodeid1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node1",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 	}
 	node2 := &api.Node{
 		ID: "nodeid2",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node2",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 	}
@@ -3653,7 +3653,7 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 		ID:           "id1",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
@@ -3661,10 +3661,10 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 				MaxReplicas: 1,
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name1",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -3672,7 +3672,7 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 		ID:           "id2",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
@@ -3680,10 +3680,10 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 				MaxReplicas: 1,
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name2",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -3691,7 +3691,7 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 		ID:           "id3",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
@@ -3699,10 +3699,10 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 				MaxReplicas: 1,
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name3",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -3763,12 +3763,12 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 	// Add third node to get task 3 scheduled
 	node3 := &api.Node{
 		ID: "nodeid3",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node3",
 			},
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 	}
@@ -3783,7 +3783,7 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 		ID:           "id4",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
@@ -3792,10 +3792,10 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 				MaxReplicas: 3,
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name4",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -3803,7 +3803,7 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 		ID:           "id5",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
@@ -3812,10 +3812,10 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 				MaxReplicas: 3,
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name5",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -3823,7 +3823,7 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 		ID:           "id6",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
@@ -3832,10 +3832,10 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 				MaxReplicas: 3,
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name6",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}
@@ -3843,7 +3843,7 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 		ID:           "id7",
 		ServiceID:    "serviceID1",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{},
 			},
@@ -3852,10 +3852,10 @@ func TestSchedulerMaxReplicas(t *testing.T) {
 				MaxReplicas: 3,
 			},
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name7",
 		},
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State: api.TaskStatePending,
 		},
 	}

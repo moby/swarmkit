@@ -50,10 +50,10 @@ func TestControllerFlowIntegration(t *testing.T) {
 		ID:        "dockerexec-integration-task-id",
 		ServiceID: "dockerexec-integration-service-id",
 		NodeID:    "dockerexec-integration-node-id",
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "dockerexec-integration",
 		},
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Command: []string{"sh", "-c", "sleep 5; echo $apple $orange; echo stderr >&2"},

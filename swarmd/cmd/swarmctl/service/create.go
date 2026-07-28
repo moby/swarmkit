@@ -34,7 +34,7 @@ var (
 						Replicas: 1,
 					},
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},

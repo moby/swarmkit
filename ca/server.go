@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/equality"
 	"github.com/moby/swarmkit/v2/identity"
@@ -17,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 const (
@@ -70,7 +70,7 @@ type Server struct {
 // DefaultCAConfig returns the default CA Config, with a default expiration.
 func DefaultCAConfig() api.CAConfig {
 	return api.CAConfig{
-		NodeCertExpiry: gogotypes.DurationProto(DefaultNodeCertExpiration),
+		NodeCertExpiry: durationpb.New(DefaultNodeCertExpiration),
 	}
 }
 
@@ -130,8 +130,13 @@ func (s *Server) GetUnlockKey(_ context.Context, _ *api.GetUnlockKeyRequest) (*a
 	resp := api.GetUnlockKeyResponse{}
 	s.store.View(func(tx store.ReadTx) {
 		cluster := store.GetCluster(tx, s.clusterID)
-		resp.Version = cluster.Meta.Version
-		if cluster.Spec.EncryptionConfig.AutoLockManagers {
+		if cluster == nil {
+			return
+		}
+		if cluster.Meta != nil {
+			resp.Version = cluster.Meta.Version
+		}
+		if cluster.Spec.GetEncryptionConfig().GetAutoLockManagers() {
 			for _, encryptionKey := range cluster.UnlockKeys {
 				if encryptionKey.Subsystem == ManagerRole {
 					resp.UnlockKey = encryptionKey.Key
@@ -188,10 +193,10 @@ func (s *Server) NodeCertificateStatus(ctx context.Context, request *api.NodeCer
 	})
 
 	// If this certificate has a final state, return it immediately (both pending and renew are transition states)
-	if isFinalState(node.Certificate.Status) {
+	if node.Certificate != nil && isFinalState(*node.Certificate.Status) {
 		return &api.NodeCertificateStatusResponse{
-			Status:      &node.Certificate.Status,
-			Certificate: &node.Certificate,
+			Status:      node.Certificate.Status,
+			Certificate: node.Certificate,
 		}, nil
 	}
 
@@ -209,10 +214,10 @@ func (s *Server) NodeCertificateStatus(ctx context.Context, request *api.NodeCer
 			case api.EventUpdateNode:
 				// We got an update on the certificate record. If the status is a final state,
 				// return the certificate.
-				if isFinalState(v.Node.Certificate.Status) {
+				if v.Node.Certificate != nil && isFinalState(*v.Node.Certificate.Status) {
 					cert := v.Node.Certificate.Copy()
 					return &api.NodeCertificateStatusResponse{
-						Status:      &cert.Status,
+						Status:      cert.Status,
 						Certificate: cert,
 					}, nil
 				}
@@ -307,15 +312,15 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 			node := &api.Node{
 				Role: role,
 				ID:   nodeID,
-				Certificate: api.Certificate{
+				Certificate: &api.Certificate{
 					CSR:  request.CSR,
 					CN:   nodeID,
 					Role: role,
-					Status: api.IssuanceStatus{
+					Status: &api.IssuanceStatus{
 						State: api.IssuanceStatePending,
 					},
 				},
-				Spec: api.NodeSpec{
+				Spec: &api.NodeSpec{
 					DesiredRole:  role,
 					Membership:   api.NodeMembershipAccepted,
 					Availability: request.Availability,
@@ -355,7 +360,7 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 // and changes the state to RENEW, so it can be picked up and signed by the signing reconciliation loop
 func (s *Server) issueRenewCertificate(ctx context.Context, nodeID string, csr []byte) (*api.IssueNodeCertificateResponse, error) {
 	var (
-		cert api.Certificate
+		cert *api.Certificate
 		node *api.Node
 	)
 	err := s.store.Update(func(tx store.Tx) error {
@@ -371,11 +376,11 @@ func (s *Server) issueRenewCertificate(ctx context.Context, nodeID string, csr [
 		}
 
 		// Create a new Certificate entry for this node with the new CSR and a RENEW state
-		cert = api.Certificate{
+		cert = &api.Certificate{
 			CSR:  csr,
 			CN:   node.ID,
 			Role: node.Role,
-			Status: api.IssuanceStatus{
+			Status: &api.IssuanceStatus{
 				State: api.IssuanceStateRenew,
 			},
 		}
@@ -517,7 +522,7 @@ func (s *Server) Run(ctx context.Context) error {
 			case api.EventUpdateNode:
 				// If this certificate is already at a final state
 				// no need to evaluate and sign it.
-				if !isFinalState(v.Node.Certificate.Status) {
+				if v.Node.Certificate == nil || !isFinalState(*v.Node.Certificate.Status) {
 					s.evaluateAndSignNodeCert(ctx, v.Node)
 				}
 				rootReconciler.UpdateNode(v.Node)
@@ -637,7 +642,7 @@ func filterExternalCAURLS(ctx context.Context, desiredCert, defaultCert []byte, 
 			certForExtCA = defaultCert
 		}
 		certForExtCA = NormalizePEMs(certForExtCA)
-		if extCA.Protocol != api.ExternalCA_CAProtocolCFSSL {
+		if extCA.Protocol != api.CAProtocolCFSSL {
 			log.G(ctx).Debugf("skipping external CA %d (url: %s) due to unknown protocol type", i, extCA.URL)
 			continue
 		}
@@ -680,14 +685,8 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster, reconci
 		}
 		expiry := DefaultNodeCertExpiration
 		if cluster.Spec.CAConfig.NodeCertExpiry != nil {
-			// NodeCertExpiry exists, let's try to parse the duration out of it
-			clusterExpiry, err := gogotypes.DurationFromProto(cluster.Spec.CAConfig.NodeCertExpiry)
-			if err != nil {
-				log.G(ctx).WithError(err).Warn("failed to parse certificate expiration, using default")
-			} else {
-				// We were able to successfully parse the expiration out of the cluster.
-				expiry = clusterExpiry
-			}
+			// NodeCertExpiry exists, parse the duration out of it
+			expiry = cluster.Spec.CAConfig.NodeCertExpiry.AsDuration()
 		} else {
 			// NodeCertExpiry seems to be nil
 			log.G(ctx).Warn("no certificate expiration specified, using default")
@@ -740,6 +739,9 @@ func (s *Server) UpdateRootCA(ctx context.Context, cluster *api.Cluster, reconci
 func (s *Server) evaluateAndSignNodeCert(ctx context.Context, node *api.Node) error {
 	// If the desired membership and actual state are in sync, there's
 	// nothing to do.
+	if node.Certificate == nil || node.Certificate.Status == nil {
+		return nil
+	}
 	certState := node.Certificate.Status.State
 	if node.Spec.Membership == api.NodeMembershipAccepted &&
 		(certState == api.IssuanceStateIssued || certState == api.IssuanceStateRotate) {
@@ -821,7 +823,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
 				return errors.Errorf("node %s not found", nodeID)
 			}
 
-			node.Certificate.Status = api.IssuanceStatus{
+			node.Certificate.Status = &api.IssuanceStatus{
 				State: api.IssuanceStateFailed,
 				Err:   err.Error(),
 			}
@@ -843,7 +845,7 @@ func (s *Server) signNodeCert(ctx context.Context, node *api.Node) error {
 	for {
 		err = s.store.Update(func(tx store.Tx) error {
 			node.Certificate.Certificate = cert
-			node.Certificate.Status = api.IssuanceStatus{
+			node.Certificate.Status = &api.IssuanceStatus{
 				State: api.IssuanceStateIssued,
 			}
 

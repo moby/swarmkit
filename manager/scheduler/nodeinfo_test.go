@@ -51,7 +51,7 @@ func TestRemoveTask(t *testing.T) {
 
 	task1 := &api.Task{
 		ID: "task1",
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Resources: &api.ResourceRequirements{Reservations: taskRes},
 		},
 		AssignedGenericResources: append(
@@ -135,7 +135,7 @@ func TestAddTask(t *testing.T) {
 
 	task3 := &api.Task{
 		ID: "task3",
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Resources: &api.ResourceRequirements{Reservations: taskRes},
 		},
 	}

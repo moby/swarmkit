@@ -91,7 +91,7 @@ func (r *mockRaft) RemovePeer(id uint64) error {
 }
 
 func (r *mockRaft) ProcessRaftMessage(ctx context.Context, req *api.ProcessRaftMessageRequest) (*api.ProcessRaftMessageResponse, error) {
-	if r.removed[req.Message.From] {
+	if r.removed[req.Message.GetFrom()] {
 		return nil, status.Error(codes.NotFound, membership.ErrMemberRemoved.Error())
 	}
 	r.processedMessages <- req.Message
@@ -114,7 +114,7 @@ func (r *mockRaft) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) er
 			return err
 		}
 
-		if r.removed[recvdMsg.Message.From] {
+		if r.removed[recvdMsg.Message.GetFrom()] {
 			return status.Error(codes.NotFound, membership.ErrMemberRemoved.Error())
 		}
 
@@ -126,8 +126,8 @@ func (r *mockRaft) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) er
 		// For all message types except raftpb.MsgSnap,
 		// we don't expect more than a single message
 		// on the stream.
-		if recvdMsg.Message.Type != raftpb.MsgSnap {
-			panic("Unexpected message type received on stream: " + string(recvdMsg.Message.Type))
+		if recvdMsg.Message.GetType() != raftpb.MsgSnap {
+			panic("Unexpected message type received on stream: " + recvdMsg.Message.GetType().String())
 		}
 
 		// Append received snapshot chunk to the chunk that was already received.
@@ -136,7 +136,7 @@ func (r *mockRaft) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) er
 
 	// We should have the complete snapshot. Verify and process.
 	if err == io.EOF {
-		if assembledMessage.Message.Type == raftpb.MsgSnap {
+		if assembledMessage.Message.GetType() == raftpb.MsgSnap {
 			if !verifySnapshot(assembledMessage.Message) {
 				log.G(context.Background()).Error("snapshot data mismatch")
 				panic("invalid snapshot data")

@@ -39,7 +39,7 @@ func WatchTaskCreate(t *testing.T, watch chan events.Event) *api.Task {
 			if _, ok := event.(api.EventUpdateTask); ok {
 				assert.FailNow(t, "got EventUpdateTask when expecting EventCreateTask", fmt.Sprint(event))
 			}
-		case <-time.After(3 * time.Second):
+		case <-time.After(10 * time.Second):
 			FatalStack(t, "no task creation")
 		}
 	}

@@ -86,7 +86,7 @@ func init() {
 // Returns ErrExist if the ID is already taken.
 func CreateService(tx Tx, s *api.Service) error {
 	// Ensure the name is not already in use.
-	if tx.lookup(tableService, indexName, strings.ToLower(s.Spec.Annotations.Name)) != nil {
+	if tx.lookup(tableService, indexName, strings.ToLower(s.GetSpec().GetAnnotations().GetName())) != nil {
 		return ErrNameConflict
 	}
 
@@ -97,7 +97,7 @@ func CreateService(tx Tx, s *api.Service) error {
 // Returns ErrNotExist if the service doesn't exist.
 func UpdateService(tx Tx, s *api.Service) error {
 	// Ensure the name is either not in use or already used by this same Service.
-	if existing := tx.lookup(tableService, indexName, strings.ToLower(s.Spec.Annotations.Name)); existing != nil {
+	if existing := tx.lookup(tableService, indexName, strings.ToLower(s.GetSpec().GetAnnotations().GetName())); existing != nil {
 		if existing.GetID() != s.ID {
 			return ErrNameConflict
 		}
@@ -150,7 +150,7 @@ func (si serviceIndexerByRuntime) FromArgs(args ...any) ([]byte, error) {
 
 func (si serviceIndexerByRuntime) FromObject(obj any) (bool, []byte, error) {
 	s := obj.(*api.Service)
-	r, err := naming.Runtime(s.Spec.Task)
+	r, err := naming.Runtime(s.GetSpec().GetTask())
 	if err != nil {
 		return false, nil, nil
 	}
@@ -172,10 +172,10 @@ func (si serviceIndexerByNetwork) FromObject(obj any) (bool, [][]byte, error) {
 
 	var networkIDs [][]byte
 
-	specNetworks := s.Spec.Task.Networks
+	specNetworks := s.Spec.GetTask().GetNetworks()
 
 	if len(specNetworks) == 0 {
-		specNetworks = s.Spec.Networks
+		specNetworks = s.Spec.GetNetworks()
 	}
 
 	for _, na := range specNetworks {
@@ -195,7 +195,7 @@ func (si serviceIndexerBySecret) FromArgs(args ...any) ([]byte, error) {
 func (si serviceIndexerBySecret) FromObject(obj any) (bool, [][]byte, error) {
 	s := obj.(*api.Service)
 
-	container := s.Spec.Task.GetContainer()
+	container := s.GetSpec().GetTask().GetContainer()
 	if container == nil {
 		return false, nil, nil
 	}
@@ -222,7 +222,7 @@ func (si serviceIndexerByConfig) FromObject(obj any) (bool, [][]byte, error) {
 		panic("unexpected type passed to FromObject")
 	}
 
-	container := s.Spec.Task.GetContainer()
+	container := s.GetSpec().GetTask().GetContainer()
 	if container == nil {
 		return false, nil, nil
 	}

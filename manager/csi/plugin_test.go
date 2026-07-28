@@ -44,13 +44,13 @@ var _ = Describe("Plugin manager", func() {
 			secretMap: map[string]*api.Secret{
 				"secretID1": {
 					ID: "secretID1",
-					Spec: api.SecretSpec{
+					Spec: &api.SecretSpec{
 						Data: []byte("superdupersecret1"),
 					},
 				},
 				"secretID2": {
 					ID: "secretID2",
-					Spec: api.SecretSpec{
+					Spec: &api.SecretSpec{
 						Data: []byte("superdupersecret2"),
 					},
 				},
@@ -78,8 +78,8 @@ var _ = Describe("Plugin manager", func() {
 		BeforeEach(func() {
 			v = &api.Volume{
 				ID: "someID",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "someVolume",
 					},
 					Driver: &api.Driver{
@@ -217,8 +217,8 @@ var _ = Describe("Plugin manager", func() {
 		It("should make a csi.ControllerPublishVolumeRequest for the given volume", func() {
 			v := &api.Volume{
 				ID: "volumeID1",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volumeName1",
 					},
 					Driver: &api.Driver{
@@ -291,8 +291,8 @@ var _ = Describe("Plugin manager", func() {
 		BeforeEach(func() {
 			v = &api.Volume{
 				ID: "volumeID",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volumeName",
 					},
 					Driver: &api.Driver{
@@ -356,8 +356,8 @@ var _ = Describe("Plugin manager", func() {
 		BeforeEach(func() {
 			v = &api.Volume{
 				ID: "volumeID1",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volumeName1",
 					},
 					Driver: &api.Driver{
@@ -451,8 +451,8 @@ var _ = Describe("Plugin manager", func() {
 		BeforeEach(func() {
 			v = &api.Volume{
 				ID: "volumeID1",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volumeName1",
 					},
 					Driver: &api.Driver{

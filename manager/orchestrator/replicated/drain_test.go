@@ -15,11 +15,11 @@ func TestDrain(t *testing.T) {
 	ctx := context.Background()
 	initialService := &api.Service{
 		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
@@ -37,62 +37,62 @@ func TestDrain(t *testing.T) {
 	initialNodeSet := []*api.Node{
 		{
 			ID: "id1",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 				Availability: api.NodeAvailabilityActive,
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		},
 		{
 			ID: "id2",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 				Availability: api.NodeAvailabilityActive,
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_DOWN,
 			},
 		},
 		// We should NOT kick out tasks on UNKNOWN nodes.
 		{
 			ID: "id3",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name3",
 				},
 				Availability: api.NodeAvailabilityActive,
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_UNKNOWN,
 			},
 		},
 		{
 			ID: "id4",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name4",
 				},
 				Availability: api.NodeAvailabilityPause,
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		},
 		{
 			ID: "id5",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name5",
 				},
 				Availability: api.NodeAvailabilityDrain,
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 		},
@@ -104,11 +104,11 @@ func TestDrain(t *testing.T) {
 			ID:           "id0",
 			DesiredState: api.TaskStateRunning,
 			Spec:         initialService.Spec.Task,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			Slot: 1,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name0",
 			},
 			ServiceID: "id1",
@@ -118,11 +118,11 @@ func TestDrain(t *testing.T) {
 			ID:           "id1",
 			DesiredState: api.TaskStateRunning,
 			Spec:         initialService.Spec.Task,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			Slot: 2,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name1",
 			},
 			ServiceID: "id1",
@@ -132,11 +132,11 @@ func TestDrain(t *testing.T) {
 			ID:           "id2",
 			DesiredState: api.TaskStateRunning,
 			Spec:         initialService.Spec.Task,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			Slot: 3,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name2",
 			},
 			ServiceID: "id1",
@@ -146,11 +146,11 @@ func TestDrain(t *testing.T) {
 			ID:           "id3",
 			DesiredState: api.TaskStateRunning,
 			Spec:         initialService.Spec.Task,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			Slot: 4,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name3",
 			},
 			ServiceID: "id1",
@@ -160,11 +160,11 @@ func TestDrain(t *testing.T) {
 			ID:           "id4",
 			DesiredState: api.TaskStateRunning,
 			Spec:         initialService.Spec.Task,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			Slot: 5,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name4",
 			},
 			ServiceID: "id1",
@@ -174,11 +174,11 @@ func TestDrain(t *testing.T) {
 			ID:           "id5",
 			DesiredState: api.TaskStateRunning,
 			Spec:         initialService.Spec.Task,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			Slot: 6,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name5",
 			},
 			ServiceID: "id1",

@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"testing"
 
-	google_protobuf "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/moby/swarmkit/v2/api"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Test IsTaskDirty() for placement constraints.
@@ -16,11 +16,11 @@ func TestIsTaskDirty(t *testing.T) {
 	service := &api.Service{
 		ID:          "id1",
 		SpecVersion: &api.Version{Index: 1},
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Image: "v:1",
@@ -32,7 +32,7 @@ func TestIsTaskDirty(t *testing.T) {
 
 	task := &api.Task{
 		ID: "task1",
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image: "v:1",
@@ -69,11 +69,11 @@ func TestIsTaskDirty(t *testing.T) {
 func TestIsTaskDirtyPlacementConstraintsOnly(t *testing.T) {
 	service := &api.Service{
 		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Image: "v:1",
@@ -85,7 +85,7 @@ func TestIsTaskDirtyPlacementConstraintsOnly(t *testing.T) {
 
 	task := &api.Task{
 		ID: "task1",
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image: "v:1",
@@ -94,20 +94,20 @@ func TestIsTaskDirtyPlacementConstraintsOnly(t *testing.T) {
 		},
 	}
 
-	assert.False(t, IsTaskDirtyPlacementConstraintsOnly(service.Spec.Task, task))
+	assert.False(t, IsTaskDirtyPlacementConstraintsOnly(*service.Spec.Task, task))
 
 	// Update only placement constraints.
 	service.Spec.Task.Placement = &api.Placement{}
 	service.Spec.Task.Placement.Constraints = append(service.Spec.Task.Placement.Constraints, "node==*")
-	assert.True(t, IsTaskDirtyPlacementConstraintsOnly(service.Spec.Task, task))
+	assert.True(t, IsTaskDirtyPlacementConstraintsOnly(*service.Spec.Task, task))
 
 	// Update something else in the task spec.
 	service.Spec.Task.GetContainer().Image = "v:2"
-	assert.False(t, IsTaskDirtyPlacementConstraintsOnly(service.Spec.Task, task))
+	assert.False(t, IsTaskDirtyPlacementConstraintsOnly(*service.Spec.Task, task))
 
 	// Clear out placement constraints.
 	service.Spec.Task.Placement.Constraints = nil
-	assert.False(t, IsTaskDirtyPlacementConstraintsOnly(service.Spec.Task, task))
+	assert.False(t, IsTaskDirtyPlacementConstraintsOnly(*service.Spec.Task, task))
 }
 
 // Test Task sorting, which is currently based on
@@ -119,8 +119,8 @@ func TestTaskSort(t *testing.T) {
 	for i := range size {
 		task := &api.Task{
 			ID: "id_" + strconv.Itoa(i),
-			Status: api.TaskStatus{
-				Timestamp: &google_protobuf.Timestamp{Seconds: seconds},
+			Status: &api.TaskStatus{
+				Timestamp: &timestamppb.Timestamp{Seconds: seconds},
 			},
 		}
 
@@ -130,19 +130,19 @@ func TestTaskSort(t *testing.T) {
 
 	sort.Sort(TasksByTimestamp(tasks))
 	for i, task := range tasks {
-		expected := &google_protobuf.Timestamp{Seconds: int64(i + 1)}
+		expected := &timestamppb.Timestamp{Seconds: int64(i + 1)}
 		assert.Equal(t, expected, task.Status.Timestamp)
 		assert.Equal(t, "id_"+strconv.Itoa(size-(i+1)), task.ID)
 	}
 
 	for i, task := range tasks {
-		task.Status.AppliedAt = &google_protobuf.Timestamp{Seconds: int64(size - i)}
+		task.Status.AppliedAt = &timestamppb.Timestamp{Seconds: int64(size - i)}
 	}
 
 	sort.Sort(TasksByTimestamp(tasks))
 	sort.Sort(TasksByTimestamp(tasks))
 	for i, task := range tasks {
-		expected := &google_protobuf.Timestamp{Seconds: int64(i + 1)}
+		expected := &timestamppb.Timestamp{Seconds: int64(i + 1)}
 		assert.Equal(t, expected, task.Status.AppliedAt)
 		assert.Equal(t, "id_"+strconv.Itoa(i), task.ID)
 	}

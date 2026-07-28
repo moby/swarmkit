@@ -6,7 +6,6 @@ import (
 	"sort"
 	"text/tabwriter"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/api"
 )
@@ -26,14 +25,8 @@ func (t tasksBySlot) Less(i, j int) bool {
 	}
 
 	// If same slot, sort by most recent.
-	it, err := gogotypes.TimestampFromProto(t[i].Meta.CreatedAt)
-	if err != nil {
-		panic(err)
-	}
-	jt, err := gogotypes.TimestampFromProto(t[j].Meta.CreatedAt)
-	if err != nil {
-		panic(err)
-	}
+	it := t[i].Meta.CreatedAt.AsTime()
+	jt := t[j].Meta.CreatedAt.AsTime()
 	return jt.Before(it)
 }
 

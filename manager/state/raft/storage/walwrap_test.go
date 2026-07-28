@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ WALFactory = walCryptor{}
@@ -21,23 +22,33 @@ var _ WALFactory = walCryptor{}
 var (
 	confState = raftpb.ConfState{
 		Voters:    []uint64{0x00ffca74},
-		AutoLeave: false,
+		AutoLeave: proto.Bool(false),
 	}
 )
 
+// requireEntriesEqual compares two slices of raftpb.Entry using proto.Equal,
+// since proto messages can't be compared with require.Equal.
+func requireEntriesEqual(t *testing.T, expected, actual []*raftpb.Entry) {
+	t.Helper()
+	require.Len(t, actual, len(expected))
+	for i := range expected {
+		require.True(t, proto.Equal(expected[i], actual[i]), "entry %d mismatch:\nexpected: %v\nactual:   %v", i, expected[i], actual[i])
+	}
+}
+
 // Generates a bunch of WAL test data
-func makeWALData(index uint64, term uint64, state *raftpb.ConfState) ([]byte, []raftpb.Entry, walpb.Snapshot) {
-	wsn := walpb.Snapshot{
-		Index:     index,
-		Term:      term,
+func makeWALData(index uint64, term uint64, state *raftpb.ConfState) ([]byte, []*raftpb.Entry, *walpb.Snapshot) {
+	wsn := &walpb.Snapshot{
+		Index:     proto.Uint64(index),
+		Term:      proto.Uint64(term),
 		ConfState: state,
 	}
 
-	var entries []raftpb.Entry
-	for i := wsn.Index + 1; i < wsn.Index+6; i++ {
-		entries = append(entries, raftpb.Entry{
-			Term:  wsn.Term + 1,
-			Index: i,
+	var entries []*raftpb.Entry
+	for i := wsn.GetIndex() + 1; i < wsn.GetIndex()+6; i++ {
+		entries = append(entries, &raftpb.Entry{
+			Term:  proto.Uint64(wsn.GetTerm() + 1),
+			Index: proto.Uint64(i),
 			Data:  fmt.Appendf(nil, "Entry %d", i),
 		})
 	}
@@ -45,14 +56,14 @@ func makeWALData(index uint64, term uint64, state *raftpb.ConfState) ([]byte, []
 	return []byte("metadata"), entries, wsn
 }
 
-func createWithWAL(t *testing.T, w WALFactory, metadata []byte, startSnap walpb.Snapshot, entries []raftpb.Entry) string {
+func createWithWAL(t *testing.T, w WALFactory, metadata []byte, startSnap *walpb.Snapshot, entries []*raftpb.Entry) string {
 	t.Helper()
 	walDir := t.TempDir()
 	walWriter, err := w.Create(walDir, metadata)
 	require.NoError(t, err)
 
 	require.NoError(t, walWriter.SaveSnapshot(startSnap))
-	require.NoError(t, walWriter.Save(raftpb.HardState{}, entries))
+	require.NoError(t, walWriter.Save(&raftpb.HardState{}, entries))
 	require.NoError(t, walWriter.Close())
 
 	return walDir
@@ -61,13 +72,14 @@ func createWithWAL(t *testing.T, w WALFactory, metadata []byte, startSnap walpb.
 // WAL can read entries are not wrapped, but not encrypted
 func TestReadAllWrappedNoEncryption(t *testing.T) {
 	metadata, entries, snapshot := makeWALData(1, 1, &confState)
-	wrappedEntries := make([]raftpb.Entry, len(entries))
+	wrappedEntries := make([]*raftpb.Entry, len(entries))
 	for i, entry := range entries {
-		r := api.MaybeEncryptedRecord{Data: entry.Data}
-		data, err := r.Marshal()
+		r := &api.MaybeEncryptedRecord{Data: entry.Data}
+		data, err := proto.Marshal(r)
 		require.NoError(t, err)
-		entry.Data = data
-		wrappedEntries[i] = entry
+		wrapped := proto.Clone(entry).(*raftpb.Entry)
+		wrapped.Data = data
+		wrappedEntries[i] = wrapped
 	}
 
 	tempdir := createWithWAL(t, OriginalWAL, metadata, snapshot, wrappedEntries)
@@ -82,15 +94,15 @@ func TestReadAllWrappedNoEncryption(t *testing.T) {
 	require.NoError(t, wrapped.Close())
 
 	require.Equal(t, metadata, metaW)
-	require.Equal(t, entries, entsW)
+	requireEntriesEqual(t, entries, entsW)
 }
 
 // When reading WAL, if the decrypter can't read the encryption type, errors
 func TestReadAllNoSupportedDecrypter(t *testing.T) {
 	metadata, entries, snapshot := makeWALData(1, 1, &confState)
 	for i, entry := range entries {
-		r := api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: api.MaybeEncryptedRecord_Algorithm(-3)}
-		data, err := r.Marshal()
+		r := &api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: api.MaybeEncryptedRecord_Algorithm(-3)}
+		data, err := proto.Marshal(r)
 		require.NoError(t, err)
 		entries[i].Data = data
 	}
@@ -115,8 +127,8 @@ func TestReadAllEntryIncorrectlyEncrypted(t *testing.T) {
 
 	// metadata is correctly encryptd, but entries are not meow-encryptd
 	for i, entry := range entries {
-		r := api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: crypter.Algorithm()}
-		data, err := r.Marshal()
+		r := &api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: crypter.Algorithm()}
+		data, err := proto.Marshal(r)
 		require.NoError(t, err)
 		entries[i].Data = data
 	}
@@ -151,8 +163,8 @@ func TestSave(t *testing.T) {
 	require.Equal(t, metadata, meta)
 	require.Equal(t, state, state)
 	for _, ent := range ents {
-		var encrypted api.MaybeEncryptedRecord
-		require.NoError(t, encrypted.Unmarshal(ent.Data))
+		encrypted := &api.MaybeEncryptedRecord{}
+		require.NoError(t, proto.Unmarshal(ent.Data, encrypted))
 
 		require.Equal(t, crypter.Algorithm(), encrypted.Algorithm)
 		require.True(t, bytes.HasSuffix(encrypted.Data, []byte("🐱")))
@@ -174,7 +186,7 @@ func TestSaveEncryptionFails(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, wrapped.SaveSnapshot(snapshot))
-	err = wrapped.Save(raftpb.HardState{}, entries)
+	err = wrapped.Save(&raftpb.HardState{}, entries)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "refusing to encrypt")
 	require.NoError(t, wrapped.Close())
@@ -200,7 +212,7 @@ func TestOpenInvalidDirFails(t *testing.T) {
 	// we created.
 	emptyDir := filepath.Join(tempDir, "empty_dir")
 	require.NoError(t, os.Mkdir(emptyDir, 0o700))
-	_, err := c.Open(emptyDir, walpb.Snapshot{}) // invalid because no WAL file
+	_, err := c.Open(emptyDir, &walpb.Snapshot{}) // invalid because no WAL file
 	require.Error(t, err)
 }
 
@@ -219,7 +231,7 @@ func TestSaveAndRead(t *testing.T) {
 	require.NoError(t, wrapped.Close())
 	require.NoError(t, err)
 	require.Equal(t, metadata, meta)
-	require.Equal(t, entries, ents)
+	requireEntriesEqual(t, entries, ents)
 }
 
 func TestReadRepairWAL(t *testing.T) {
@@ -242,13 +254,17 @@ func TestReadRepairWAL(t *testing.T) {
 	//
 	//	wal: max entry size limit exceeded, recBytes: 24, fileSize(200) - offset(184) - padBytes(0) = entryLimit(16)
 	//
-	// So the file should be >= 208 bytes.
+	// So the file should be >= 208 bytes. The truncation length must also land
+	// mid-record (not on a record boundary) so that ReadAll detects the partial
+	// write; with the google.golang.org/protobuf entry encoding (etcd 3.7) the
+	// records are smaller than with the previous gogo encoding, so 250 bytes
+	// lands inside a record while staying above the 208-byte floor.
 	//
 	// For further details, see:
 	//
 	// - https://github.com/etcd-io/etcd/commit/621cd7b9e5aa2ccf634b555e4ebe0037b8975066 / https://github.com/etcd-io/etcd/pull/14127 (backport of https://github.com/etcd-io/etcd/pull/14122)
 	// - https://github.com/etcd-io/etcd/issues/14114
-	require.NoError(t, os.Truncate(filepath.Join(tempdir, files[0].Name()), 300))
+	require.NoError(t, os.Truncate(filepath.Join(tempdir, files[0].Name()), 250))
 
 	ogWAL, err := OriginalWAL.Open(tempdir, snapshot)
 	require.NoError(t, err)
@@ -302,7 +318,7 @@ func TestMigrateWALs(t *testing.T) {
 	meta, _, ents, err := newWAL.ReadAll()
 	require.NoError(t, err)
 	require.Equal(t, metadata, meta)
-	require.Equal(t, entries, ents)
+	requireEntriesEqual(t, entries, ents)
 	require.NoError(t, newWAL.Close())
 
 	// new to original
@@ -317,7 +333,7 @@ func TestMigrateWALs(t *testing.T) {
 	meta, _, ents, err = newWAL.ReadAll()
 	require.NoError(t, err)
 	require.Equal(t, metadata, meta)
-	require.Equal(t, entries, ents)
+	requireEntriesEqual(t, entries, ents)
 	require.NoError(t, newWAL.Close())
 
 	// If we can't read the old directory (for instance if it doesn't exist), a temp directory
@@ -328,7 +344,7 @@ func TestMigrateWALs(t *testing.T) {
 	oldDir = dirs[0]
 	newDir = dirs[1]
 
-	err = MigrateWALs(context.Background(), oldDir, newDir, OriginalWAL, c, walpb.Snapshot{})
+	err = MigrateWALs(context.Background(), oldDir, newDir, OriginalWAL, c, &walpb.Snapshot{})
 	require.Error(t, err)
 
 	subdirs, err := os.ReadDir(tempDir)

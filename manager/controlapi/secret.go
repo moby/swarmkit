@@ -18,7 +18,7 @@ import (
 func secretFromSecretSpec(spec *api.SecretSpec) *api.Secret {
 	return &api.Secret{
 		ID:   identity.NewID(),
-		Spec: *spec,
+		Spec: spec,
 	}
 }
 
@@ -68,7 +68,7 @@ func (s *Server) UpdateSecret(ctx context.Context, request *api.UpdateSecretRequ
 		}
 
 		// We only allow updating Labels
-		secret.Meta.Version = *request.SecretVersion
+		secret.Meta.Version = request.SecretVersion
 		secret.Spec.Annotations.Labels = request.Spec.Annotations.Labels
 
 		return store.UpdateSecret(tx, secret)
@@ -244,7 +244,7 @@ func validateSecretSpec(spec *api.SecretSpec) error {
 	if spec == nil {
 		return status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
-	if err := validateConfigOrSecretAnnotations(spec.Annotations); err != nil {
+	if err := validateConfigOrSecretAnnotations(*spec.Annotations); err != nil {
 		return err
 	}
 	// Check if secret driver is defined

@@ -18,8 +18,8 @@ var (
 // StoreObject is an abstract object that can be handled by the store.
 type StoreObject interface {
 	GetID() string                           // Get ID
-	GetMeta() Meta                           // Retrieve metadata
-	SetMeta(Meta)                            // Set metadata
+	GetMeta() *Meta                          // Retrieve metadata
+	SetMeta(*Meta)                           // Set metadata
 	CopyStoreObject() StoreObject            // Return a copy of this object
 	EventCreate() Event                      // Return a creation event
 	EventUpdate(oldObject StoreObject) Event // Return an update event
@@ -54,6 +54,9 @@ type EventDelete interface {
 }
 
 func customIndexer(kind string, annotations *Annotations) (bool, [][]byte, error) {
+	if annotations == nil {
+		return false, nil, nil
+	}
 	var converted [][]byte
 
 	for _, entry := range annotations.Indices {
@@ -100,7 +103,10 @@ func prefixFromArgs(args ...any) ([]byte, error) {
 	return val, nil
 }
 
-func checkCustom(a1, a2 Annotations) bool {
+func checkCustom(a1, a2 *Annotations) bool {
+	if a1 == nil || a2 == nil {
+		return false
+	}
 	if len(a1.Indices) == 1 {
 		for _, ind := range a2.Indices {
 			if ind.Key == a1.Indices[0].Key && ind.Val == a1.Indices[0].Val {
@@ -111,7 +117,10 @@ func checkCustom(a1, a2 Annotations) bool {
 	return false
 }
 
-func checkCustomPrefix(a1, a2 Annotations) bool {
+func checkCustomPrefix(a1, a2 *Annotations) bool {
+	if a1 == nil || a2 == nil {
+		return false
+	}
 	if len(a1.Indices) == 1 {
 		for _, ind := range a2.Indices {
 			if ind.Key == a1.Indices[0].Key && strings.HasPrefix(ind.Val, a1.Indices[0].Val) {

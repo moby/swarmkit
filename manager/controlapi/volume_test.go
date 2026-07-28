@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -20,8 +21,8 @@ const testVolumeDriver = "somedriver"
 // copy before using, to avoid affecting other tests.
 var cannedVolume = &api.Volume{
 	ID: "someid",
-	Spec: api.VolumeSpec{
-		Annotations: api.Annotations{
+	Spec: &api.VolumeSpec{
+		Annotations: &api.Annotations{
 			Name: "somename",
 		},
 		Group: "somegroup",
@@ -57,9 +58,9 @@ func TestCreateVolumeNoName(t *testing.T) {
 	defer ts.Stop()
 
 	v := cannedVolume.Copy()
-	v.Spec.Annotations = api.Annotations{}
+	v.Spec.Annotations = &api.Annotations{}
 	_, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
-		Spec: &v.Spec,
+		Spec: v.Spec,
 	})
 
 	assert.Error(t, err)
@@ -76,7 +77,7 @@ func TestCreateVolumeNoDriver(t *testing.T) {
 
 	// no driver
 	_, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
-		Spec: &v.Spec,
+		Spec: v.Spec,
 	})
 
 	assert.Error(t, err)
@@ -93,14 +94,14 @@ func TestCreateVolumeValid(t *testing.T) {
 	v := cannedVolume.Copy()
 
 	resp, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
-		Spec: &v.Spec,
+		Spec: v.Spec,
 	})
 
 	assert.NoError(t, err)
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Volume, "volume in response should not be nil")
 	assert.NotEmpty(t, resp.Volume.ID, "volume ID should not be empty")
-	assert.Equal(t, resp.Volume.Spec, v.Spec, "response spec should match request spec")
+	assert.True(t, proto.Equal(resp.Volume.Spec, v.Spec), "response spec should match request spec")
 
 	var volume *api.Volume
 	ts.Store.View(func(tx store.ReadTx) {
@@ -119,8 +120,8 @@ func TestCreateVolumeValidateSecrets(t *testing.T) {
 	secrets := []*api.Secret{
 		{
 			ID: "someID1",
-			Spec: api.SecretSpec{
-				Annotations: api.Annotations{
+			Spec: &api.SecretSpec{
+				Annotations: &api.Annotations{
 					Name: "somename1",
 				},
 			},
@@ -148,7 +149,7 @@ func TestCreateVolumeValidateSecrets(t *testing.T) {
 	}
 
 	_, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
-		Spec: &v.Spec,
+		Spec: v.Spec,
 	})
 	assert.Error(t, err, "expected creating a volume when a secret doesn't exist to fail")
 	assert.Contains(t, err.Error(), "secret")
@@ -163,7 +164,7 @@ func TestCreateVolumeValidateSecrets(t *testing.T) {
 		},
 	}
 	_, err = ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
-		Spec: &v.Spec,
+		Spec: v.Spec,
 	})
 	assert.NoError(t, err)
 }
@@ -179,7 +180,7 @@ func TestCreateVolumeInvalidAccessMode(t *testing.T) {
 	volume.Spec.AccessMode = nil
 
 	_, err := ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
-		Spec: &volume.Spec,
+		Spec: volume.Spec,
 	})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "AccessMode must not be nil")
@@ -187,7 +188,7 @@ func TestCreateVolumeInvalidAccessMode(t *testing.T) {
 	volume.Spec.AccessMode = &api.VolumeAccessMode{}
 
 	_, err = ts.Client.CreateVolume(context.Background(), &api.CreateVolumeRequest{
-		Spec: &volume.Spec,
+		Spec: volume.Spec,
 	})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "either Mount or Block")
@@ -221,7 +222,7 @@ func TestUpdateVolume(t *testing.T) {
 
 	resp, err := ts.Client.UpdateVolume(context.Background(), &api.UpdateVolumeRequest{
 		VolumeID:      volume.ID,
-		VolumeVersion: &volume.Meta.Version,
+		VolumeVersion: volume.Meta.Version,
 		Spec:          spec,
 	})
 
@@ -229,7 +230,7 @@ func TestUpdateVolume(t *testing.T) {
 	require.NotNil(t, resp, "response was nil")
 	require.NotNil(t, resp.Volume, "response.Volume was nil")
 	require.Equal(t, resp.Volume.ID, volume.ID)
-	require.Equal(t, resp.Volume.Spec, *spec)
+	require.True(t, proto.Equal(resp.Volume.Spec, spec), "response spec should match updated spec")
 
 	// now get the updated volume from the store
 	var updatedVolume *api.Volume
@@ -237,7 +238,7 @@ func TestUpdateVolume(t *testing.T) {
 		updatedVolume = store.GetVolume(tx, volume.ID)
 	})
 	require.NotNil(t, updatedVolume)
-	assert.Equal(t, *spec, updatedVolume.Spec)
+	assert.True(t, proto.Equal(spec, updatedVolume.Spec), "stored spec should match updated spec")
 }
 
 // TestUpdateVolumeMissingRequestComponents tests that an UpdateVolumeRequest
@@ -248,7 +249,7 @@ func TestUpdateVolumeMissingRequestComponents(t *testing.T) {
 
 	// empty ID
 	_, err := ts.Client.UpdateVolume(context.Background(), &api.UpdateVolumeRequest{
-		Spec:          &cannedVolume.Spec,
+		Spec:          cannedVolume.Spec,
 		VolumeVersion: &api.Version{},
 	})
 	assert.Error(t, err)
@@ -267,7 +268,7 @@ func TestUpdateVolumeMissingRequestComponents(t *testing.T) {
 	// empty version
 	_, err = ts.Client.UpdateVolume(context.Background(), &api.UpdateVolumeRequest{
 		VolumeID: cannedVolume.ID,
-		Spec:     &cannedVolume.Spec,
+		Spec:     cannedVolume.Spec,
 	})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
@@ -282,7 +283,7 @@ func TestUpdateVolumeNotFound(t *testing.T) {
 
 	_, err := ts.Client.UpdateVolume(context.Background(), &api.UpdateVolumeRequest{
 		VolumeID:      cannedVolume.ID,
-		Spec:          &cannedVolume.Spec,
+		Spec:          cannedVolume.Spec,
 		VolumeVersion: &api.Version{},
 	})
 
@@ -406,7 +407,7 @@ func TestUpdateVolumeInvalidFields(t *testing.T) {
 			_, err = ts.Client.UpdateVolume(context.Background(), &api.UpdateVolumeRequest{
 				VolumeID:      volume.ID,
 				Spec:          spec,
-				VolumeVersion: &volume.Meta.Version,
+				VolumeVersion: volume.Meta.Version,
 			})
 			require.Error(t, err)
 			assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
@@ -434,7 +435,7 @@ func TestGetVolume(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, resp)
 	require.NotNil(t, resp.Volume)
-	require.Equal(t, resp.Volume, volume)
+	require.True(t, proto.Equal(resp.Volume, volume), "volume should be equal")
 }
 
 func TestGetVolumeNotFound(t *testing.T) {
@@ -459,8 +460,8 @@ func TestListVolumesByGroup(t *testing.T) {
 	volumes := []*api.Volume{
 		{
 			ID: "volid0",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "invol0",
 					Labels: map[string]string{
 						"label1": "yes",
@@ -473,8 +474,8 @@ func TestListVolumesByGroup(t *testing.T) {
 			},
 		}, {
 			ID: "volid1",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "vol1",
 					Labels: map[string]string{
 						"label2": "no",
@@ -487,8 +488,8 @@ func TestListVolumesByGroup(t *testing.T) {
 			},
 		}, {
 			ID: "volid2",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "vol2",
 					Labels: map[string]string{
 						"label2": "yes",
@@ -501,8 +502,8 @@ func TestListVolumesByGroup(t *testing.T) {
 			},
 		}, {
 			ID: "volid3",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "vol3",
 					Labels: map[string]string{
 						"label1": "no",
@@ -515,8 +516,8 @@ func TestListVolumesByGroup(t *testing.T) {
 			},
 		}, {
 			ID: "involid4",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "invol4",
 					Labels: map[string]string{
 						"label1": "yes",

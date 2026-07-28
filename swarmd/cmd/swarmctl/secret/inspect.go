@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
+	"time"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/cobra"
@@ -25,7 +25,7 @@ func printSecretSummary(secret *api.Secret) {
 		}
 	}
 
-	common.FprintfIfNotEmpty(w, "Created\t: %s\n", gogotypes.TimestampString(secret.Meta.CreatedAt))
+	common.FprintfIfNotEmpty(w, "Created\t: %s\n", secret.Meta.CreatedAt.AsTime().Format(time.RFC3339))
 }
 
 var (

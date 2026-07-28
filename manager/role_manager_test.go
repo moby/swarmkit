@@ -34,7 +34,7 @@ func TestRoleManagerRemovesDemotedNodesAndAddsPromotedNodes(t *testing.T) {
 			return store.CreateNode(tx, &api.Node{
 				Role: api.NodeRoleManager,
 				ID:   node.SecurityConfig.ClientTLSCreds.NodeID(),
-				Spec: api.NodeSpec{
+				Spec: &api.NodeSpec{
 					DesiredRole:  api.NodeRoleManager,
 					Membership:   api.NodeMembershipAccepted,
 					Availability: api.NodeAvailabilityActive,
@@ -127,7 +127,7 @@ func TestRoleManagerRemovesDemotedNodesOnStartup(t *testing.T) {
 			return store.CreateNode(tx, &api.Node{
 				Role: api.NodeRoleManager,
 				ID:   node.SecurityConfig.ClientTLSCreds.NodeID(),
-				Spec: api.NodeSpec{
+				Spec: &api.NodeSpec{
 					DesiredRole:  desired,
 					Membership:   api.NodeMembershipAccepted,
 					Availability: api.NodeAvailabilityActive,
@@ -184,7 +184,7 @@ func TestRoleManagerRemovesDeletedNodes(t *testing.T) {
 			return store.CreateNode(tx, &api.Node{
 				Role: api.NodeRoleManager,
 				ID:   node.SecurityConfig.ClientTLSCreds.NodeID(),
-				Spec: api.NodeSpec{
+				Spec: &api.NodeSpec{
 					DesiredRole:  api.NodeRoleManager,
 					Membership:   api.NodeMembershipAccepted,
 					Availability: api.NodeAvailabilityActive,
@@ -250,7 +250,7 @@ func TestRoleManagerRemovesDeletedNodesOnStartup(t *testing.T) {
 			return store.CreateNode(tx, &api.Node{
 				Role: api.NodeRoleManager,
 				ID:   node.SecurityConfig.ClientTLSCreds.NodeID(),
-				Spec: api.NodeSpec{
+				Spec: &api.NodeSpec{
 					DesiredRole:  api.NodeRoleManager,
 					Membership:   api.NodeMembershipAccepted,
 					Availability: api.NodeAvailabilityActive,

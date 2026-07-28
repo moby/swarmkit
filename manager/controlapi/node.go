@@ -5,11 +5,12 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"slices"
+	"time"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state/raft/membership"
 	"github.com/moby/swarmkit/v2/manager/state/store"
+	"github.com/moby/swarmkit/v2/protobuf/ptypes"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -214,8 +215,8 @@ func (s *Server) UpdateNode(_ context.Context, request *api.UpdateNodeRequest) (
 			}
 		}
 
-		node.Meta.Version = *request.NodeVersion
-		node.Spec = *request.Spec.Copy()
+		node.Meta.Version = request.NodeVersion
+		node.Spec = request.Spec.Copy()
 		return store.UpdateNode(tx, node)
 	})
 	if err != nil {
@@ -247,9 +248,9 @@ func orphanNodeTasks(tx store.Tx, nodeID string) error {
 		//
 		// therefore, we restrict updating to only tasks in a non-terminal
 		// state. Tasks in a terminal state do not need to be updated.
-		if task.Status.State < api.TaskStateCompleted {
-			task.Status = api.TaskStatus{
-				Timestamp: gogotypes.TimestampNow(),
+		if task.Status.GetState() < api.TaskStateCompleted {
+			task.Status = &api.TaskStatus{
+				Timestamp: ptypes.MustTimestampProto(time.Now()),
 				State:     api.TaskStateOrphaned,
 				Message:   "Task belonged to a node that has been deleted",
 			}
@@ -274,7 +275,7 @@ func (s *Server) RemoveNode(_ context.Context, request *api.RemoveNodeRequest) (
 		if node == nil {
 			return status.Errorf(codes.NotFound, "node %s not found", request.NodeID)
 		}
-		if node.Spec.DesiredRole == api.NodeRoleManager {
+		if node.GetSpec().GetDesiredRole() == api.NodeRoleManager {
 			if s.raft == nil {
 				return status.Errorf(codes.FailedPrecondition, "node %s is a manager but cannot access node information from the raft memberlist", request.NodeID)
 			}
@@ -282,7 +283,7 @@ func (s *Server) RemoveNode(_ context.Context, request *api.RemoveNodeRequest) (
 				return status.Errorf(codes.FailedPrecondition, "node %s is a cluster manager and is a member of the raft cluster. It must be demoted to worker before removal", request.NodeID)
 			}
 		}
-		if !request.Force && node.Status.State == api.NodeStatus_READY {
+		if !request.Force && node.GetStatus().GetState() == api.NodeStatus_READY {
 			return status.Errorf(codes.FailedPrecondition, "node %s is not down and can't be removed", request.NodeID)
 		}
 
@@ -300,15 +301,12 @@ func (s *Server) RemoveNode(_ context.Context, request *api.RemoveNodeRequest) (
 
 		// Set an expiry time for this RemovedNode if a certificate
 		// exists and can be parsed.
-		if len(node.Certificate.Certificate) != 0 {
+		if len(node.GetCertificate().GetCertificate()) != 0 {
 			certBlock, _ := pem.Decode(node.Certificate.Certificate)
 			if certBlock != nil {
 				X509Cert, err := x509.ParseCertificate(certBlock.Bytes)
 				if err == nil && !X509Cert.NotAfter.IsZero() {
-					expiry, err := gogotypes.TimestampProto(X509Cert.NotAfter)
-					if err == nil {
-						blacklistedCert.Expiry = expiry
-					}
+					blacklistedCert.Expiry = ptypes.MustTimestampProto(X509Cert.NotAfter)
 				}
 			}
 		}

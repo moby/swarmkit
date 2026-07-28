@@ -126,8 +126,8 @@ var _ = Describe("Manager", func() {
 			nodes = append(nodes,
 				&api.Node{
 					ID: "nodeID1",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "node1",
 						},
 					},
@@ -145,8 +145,8 @@ var _ = Describe("Manager", func() {
 				},
 				&api.Node{
 					ID: "nodeID2",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "node2",
 						},
 					},
@@ -167,8 +167,8 @@ var _ = Describe("Manager", func() {
 			volumes = append(volumes,
 				&api.Volume{
 					ID: "volumeID1",
-					Spec: api.VolumeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.VolumeSpec{
+						Annotations: &api.Annotations{
 							Name: "volume1",
 						},
 						Driver: &api.Driver{
@@ -178,8 +178,8 @@ var _ = Describe("Manager", func() {
 				},
 				&api.Volume{
 					ID: "volumeID2",
-					Spec: api.VolumeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.VolumeSpec{
+						Annotations: &api.Annotations{
 							Name: "volume2",
 						},
 						Driver: &api.Driver{
@@ -253,8 +253,8 @@ var _ = Describe("Manager", func() {
 			vm.init(context.Background())
 			volume := &api.Volume{
 				ID: "someVolume",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volumeName",
 					},
 					Driver: &api.Driver{
@@ -315,8 +315,8 @@ var _ = Describe("Manager", func() {
 			nodes = append(nodes,
 				&api.Node{
 					ID: "nodeID1",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "node1",
 						},
 					},
@@ -334,8 +334,8 @@ var _ = Describe("Manager", func() {
 				},
 				&api.Node{
 					ID: "nodeID2",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "node2",
 						},
 					},
@@ -353,8 +353,8 @@ var _ = Describe("Manager", func() {
 				},
 				&api.Node{
 					ID: "nodeIDextra",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "nodeExtra",
 						},
 					},
@@ -370,8 +370,8 @@ var _ = Describe("Manager", func() {
 			err := s.Update(func(tx store.Tx) error {
 				return store.CreateNode(tx, &api.Node{
 					ID: "nodeID3",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "node3",
 						},
 					},
@@ -526,8 +526,8 @@ var _ = Describe("Manager", func() {
 
 			v1 = &api.Volume{
 				ID: "volumeID1",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volume1",
 					},
 					Driver: &api.Driver{
@@ -682,8 +682,8 @@ var _ = Describe("Manager", func() {
 			// volume
 			volume := &api.Volume{
 				ID: "volumeID",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volumeName",
 					},
 					Driver: &api.Driver{

@@ -10,17 +10,22 @@ import (
 	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ SnapFactory = snapCryptor{}
 
-var fakeSnapshotData = raftpb.Snapshot{
-	Data: []byte("snapshotdata"),
-	Metadata: raftpb.SnapshotMetadata{
-		ConfState: raftpb.ConfState{Voters: []uint64{3}},
-		Index:     6,
-		Term:      2,
-	},
+// fakeSnapshotData returns a fresh snapshot for tests. It returns a pointer
+// since raftpb.Snapshot is a proto message that must not be copied by value.
+func fakeSnapshotData() *raftpb.Snapshot {
+	return &raftpb.Snapshot{
+		Data: []byte("snapshotdata"),
+		Metadata: &raftpb.SnapshotMetadata{
+			ConfState: &raftpb.ConfState{Voters: []uint64{3}},
+			Index:     proto.Uint64(6),
+			Term:      proto.Uint64(2),
+		},
+	}
 }
 
 func getSnapshotFile(t *testing.T, tempdir string) string {
@@ -41,13 +46,13 @@ func getSnapshotFile(t *testing.T, tempdir string) string {
 func TestSnapshotterLoadNotEncryptedSnapshot(t *testing.T) {
 	tempdir := t.TempDir()
 	ogSnap := OriginalSnap.New(tempdir)
-	r := api.MaybeEncryptedRecord{
-		Data: fakeSnapshotData.Data,
+	r := &api.MaybeEncryptedRecord{
+		Data: fakeSnapshotData().Data,
 	}
-	data, err := r.Marshal()
+	data, err := proto.Marshal(r)
 	require.NoError(t, err)
 
-	emptyEncryptionFakeData := fakeSnapshotData
+	emptyEncryptionFakeData := fakeSnapshotData()
 	emptyEncryptionFakeData.Data = data
 
 	require.NoError(t, ogSnap.SaveSnap(emptyEncryptionFakeData))
@@ -57,21 +62,21 @@ func TestSnapshotterLoadNotEncryptedSnapshot(t *testing.T) {
 
 	readSnap, err := wrapped.Load()
 	require.NoError(t, err)
-	require.Equal(t, fakeSnapshotData, *readSnap)
+	require.True(t, proto.Equal(fakeSnapshotData(), readSnap))
 }
 
 // If there is no decrypter for a snapshot, decrypting fails
 func TestSnapshotterLoadNoDecrypter(t *testing.T) {
 	tempdir := t.TempDir()
 	ogSnap := OriginalSnap.New(tempdir)
-	r := api.MaybeEncryptedRecord{
-		Data:      fakeSnapshotData.Data,
+	r := &api.MaybeEncryptedRecord{
+		Data:      fakeSnapshotData().Data,
 		Algorithm: meowCrypter{}.Algorithm(),
 	}
-	data, err := r.Marshal()
+	data, err := proto.Marshal(r)
 	require.NoError(t, err)
 
-	emptyEncryptionFakeData := fakeSnapshotData
+	emptyEncryptionFakeData := fakeSnapshotData()
 	emptyEncryptionFakeData.Data = data
 
 	require.NoError(t, ogSnap.SaveSnap(emptyEncryptionFakeData))
@@ -89,14 +94,14 @@ func TestSnapshotterLoadDecryptingFail(t *testing.T) {
 	crypter := &meowCrypter{}
 
 	ogSnap := OriginalSnap.New(tempdir)
-	r := api.MaybeEncryptedRecord{
-		Data:      fakeSnapshotData.Data,
+	r := &api.MaybeEncryptedRecord{
+		Data:      fakeSnapshotData().Data,
 		Algorithm: crypter.Algorithm(),
 	}
-	data, err := r.Marshal()
+	data, err := proto.Marshal(r)
 	require.NoError(t, err)
 
-	emptyEncryptionFakeData := fakeSnapshotData
+	emptyEncryptionFakeData := fakeSnapshotData()
 	emptyEncryptionFakeData.Data = data
 
 	require.NoError(t, ogSnap.SaveSnap(emptyEncryptionFakeData))
@@ -115,16 +120,16 @@ func TestSnapshotterSavesSnapshotWithEncryption(t *testing.T) {
 	tempdir := t.TempDir()
 	c := NewSnapFactory(meowCrypter{}, encryption.NoopCrypter)
 	wrapped := c.New(tempdir)
-	require.NoError(t, wrapped.SaveSnap(fakeSnapshotData))
+	require.NoError(t, wrapped.SaveSnap(fakeSnapshotData()))
 
 	ogSnap := OriginalSnap.New(tempdir)
 	readSnap, err := ogSnap.Load()
 	require.NoError(t, err)
 
-	r := api.MaybeEncryptedRecord{}
-	require.NoError(t, r.Unmarshal(readSnap.Data))
-	require.NotEqual(t, fakeSnapshotData.Data, r.Data)
-	require.Equal(t, fakeSnapshotData.Metadata, readSnap.Metadata)
+	r := &api.MaybeEncryptedRecord{}
+	require.NoError(t, proto.Unmarshal(readSnap.Data, r))
+	require.NotEqual(t, fakeSnapshotData().Data, r.Data)
+	require.True(t, proto.Equal(fakeSnapshotData().Metadata, readSnap.Metadata))
 }
 
 // If an encrypter is passed to Snapshotter, but encrypting the data fails, the
@@ -135,7 +140,7 @@ func TestSnapshotterSavesSnapshotEncryptionFails(t *testing.T) {
 		"snapshotdata": {},
 	}}, encryption.NoopCrypter)
 	wrapped := c.New(tempdir)
-	err := wrapped.SaveSnap(fakeSnapshotData)
+	err := wrapped.SaveSnap(fakeSnapshotData())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "refusing to encrypt")
 
@@ -151,10 +156,10 @@ func TestSaveAndLoad(t *testing.T) {
 	tempdir := t.TempDir()
 	c := NewSnapFactory(crypter, crypter)
 	wrapped := c.New(tempdir)
-	require.NoError(t, wrapped.SaveSnap(fakeSnapshotData))
+	require.NoError(t, wrapped.SaveSnap(fakeSnapshotData()))
 	readSnap, err := wrapped.Load()
 	require.NoError(t, err)
-	require.Equal(t, fakeSnapshotData, *readSnap)
+	require.True(t, proto.Equal(fakeSnapshotData(), readSnap))
 }
 
 func TestMigrateSnapshot(t *testing.T) {
@@ -170,7 +175,7 @@ func TestMigrateSnapshot(t *testing.T) {
 		dirs[i] = filepath.Join(tempDir, "snapDir"+strconv.Itoa(i))
 	}
 	require.NoError(t, os.Mkdir(dirs[0], 0o755))
-	require.NoError(t, OriginalSnap.New(dirs[0]).SaveSnap(fakeSnapshotData))
+	require.NoError(t, OriginalSnap.New(dirs[0]).SaveSnap(fakeSnapshotData()))
 
 	// original to new
 	oldDir := dirs[0]
@@ -181,7 +186,7 @@ func TestMigrateSnapshot(t *testing.T) {
 
 	readSnap, err := c.New(newDir).Load()
 	require.NoError(t, err)
-	require.Equal(t, fakeSnapshotData, *readSnap)
+	require.True(t, proto.Equal(fakeSnapshotData(), readSnap))
 
 	// new to original
 	oldDir = dirs[1]
@@ -192,7 +197,7 @@ func TestMigrateSnapshot(t *testing.T) {
 
 	readSnap, err = OriginalSnap.New(newDir).Load()
 	require.NoError(t, err)
-	require.Equal(t, fakeSnapshotData, *readSnap)
+	require.True(t, proto.Equal(fakeSnapshotData(), readSnap))
 
 	// We can migrate from empty directory without error
 	for _, dir := range dirs {

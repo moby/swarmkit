@@ -71,12 +71,12 @@ func (vs *volumeSet) addOrUpdateVolume(v *api.Volume) {
 		info.volume = v
 	}
 
-	if set, ok := vs.byGroup[v.Spec.Group]; ok {
+	if set, ok := vs.byGroup[v.GetSpec().GetGroup()]; ok {
 		set[v.ID] = struct{}{}
 	} else {
-		vs.byGroup[v.Spec.Group] = map[string]struct{}{v.ID: {}}
+		vs.byGroup[v.GetSpec().GetGroup()] = map[string]struct{}{v.ID: {}}
 	}
-	vs.byName[v.Spec.Annotations.Name] = v.ID
+	vs.byName[v.GetSpec().GetAnnotations().GetName()] = v.ID
 }
 
 //nolint:unused // only used in tests.
@@ -84,10 +84,10 @@ func (vs *volumeSet) removeVolume(volumeID string) {
 	if info, ok := vs.volumes[volumeID]; ok {
 		// if the volume exists in the set, look up its group ID and remove it
 		// from the byGroup mapping as well
-		group := info.volume.Spec.Group
+		group := info.volume.GetSpec().GetGroup()
 		delete(vs.byGroup[group], volumeID)
 		delete(vs.volumes, volumeID)
-		delete(vs.byName, info.volume.Spec.Annotations.Name)
+		delete(vs.byName, info.volume.GetSpec().GetAnnotations().GetName())
 	}
 }
 
@@ -115,7 +115,7 @@ func (vs *volumeSet) chooseTaskVolumes(task *api.Task, nodeInfo *NodeInfo) ([]*a
 	}
 	for _, mount := range task.Spec.GetContainer().Mounts {
 		if mount.Type == api.MountTypeCluster {
-			candidate := vs.isVolumeAvailableOnNode(&mount, nodeInfo)
+			candidate := vs.isVolumeAvailableOnNode(mount, nodeInfo)
 			if candidate == "" {
 				// TODO(dperny): return structured error types, instead of
 				// error strings
@@ -258,7 +258,7 @@ func (vs *volumeSet) checkVolume(id string, info *NodeInfo, readOnly bool) bool 
 	vi := vs.volumes[id]
 	// first, check if the volume's availability is even Active. If not. no
 	// reason to bother with anything further.
-	if vi.volume != nil && vi.volume.Spec.Availability != api.VolumeAvailabilityActive {
+	if vi.volume != nil && vi.volume.GetSpec().GetAvailability() != api.VolumeAvailabilityActive {
 		return false
 	}
 
@@ -266,7 +266,7 @@ func (vs *volumeSet) checkVolume(id string, info *NodeInfo, readOnly bool) bool 
 	var top *api.Topology
 	// get the topology for this volume's driver on this node
 	for _, info := range info.Description.CSIInfo {
-		if info.PluginName == vi.volume.Spec.Driver.Name {
+		if info.PluginName == vi.volume.GetSpec().GetDriver().GetName() {
 			top = info.AccessibleTopology
 			break
 		}
@@ -276,7 +276,7 @@ func (vs *volumeSet) checkVolume(id string, info *NodeInfo, readOnly bool) bool 
 	// availability on a node depends on its accessible topology, how it's
 	// already being used, and how this task intends to use it.
 
-	if vi.volume.Spec.AccessMode.Scope == api.VolumeScopeSingleNode {
+	if vi.volume.GetSpec().GetAccessMode().GetScope() == api.VolumeScopeSingleNode {
 		// if the volume is not in use on this node already, then it can't
 		// be used here.
 		for _, usage := range vi.tasks {
@@ -288,7 +288,7 @@ func (vs *volumeSet) checkVolume(id string, info *NodeInfo, readOnly bool) bool 
 
 	// even if the volume is currently on this node, or it has multi-node
 	// access, the volume sharing needs to be compatible.
-	switch vi.volume.Spec.AccessMode.Sharing {
+	switch vi.volume.GetSpec().GetAccessMode().GetSharing() {
 	case api.VolumeSharingNone:
 		// if the volume sharing is none, then the volume cannot be
 		// used by another task

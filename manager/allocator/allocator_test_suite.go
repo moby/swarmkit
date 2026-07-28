@@ -61,8 +61,8 @@ func (suite *testSuite) TestAllocator() {
 	// Predefined node-local networkTestNoDuplicateIPs
 	p := &api.Network{
 		ID: "one_unIque_id",
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NetworkSpec{
+			Annotations: &api.Annotations{
 				Name: "pred_bridge_network",
 				Labels: map[string]string{
 					"com.docker.swarm.predefined": "true",
@@ -75,8 +75,8 @@ func (suite *testSuite) TestAllocator() {
 	// Node-local swarm scope network
 	nln := &api.Network{
 		ID: "another_unIque_id",
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NetworkSpec{
+			Annotations: &api.Annotations{
 				Name: "swarm-macvlan",
 			},
 			DriverConfig: &api.Driver{Name: "macvlan"},
@@ -88,8 +88,8 @@ func (suite *testSuite) TestAllocator() {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress-nw-id",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "default-ingress",
 				},
 				Ingress: true,
@@ -99,8 +99,8 @@ func (suite *testSuite) TestAllocator() {
 
 		n1 := &api.Network{
 			ID: "testID1",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "test1",
 				},
 			},
@@ -109,11 +109,11 @@ func (suite *testSuite) TestAllocator() {
 
 		s1 := &api.Service{
 			ID: "testServiceID1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "service1",
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Networks: []*api.NetworkAttachmentConfig{
 						{
 							Target: "testID1",
@@ -153,7 +153,7 @@ func (suite *testSuite) TestAllocator() {
 
 		t1 := &api.Task{
 			ID: "testTaskID1",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			Networks: []*api.NetworkAttachment{
@@ -166,7 +166,7 @@ func (suite *testSuite) TestAllocator() {
 
 		t2 := &api.Task{
 			ID: "testTaskIDPreInit",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			ServiceID:    "testServiceID1",
@@ -179,11 +179,11 @@ func (suite *testSuite) TestAllocator() {
 
 		sp1 := &api.Service{
 			ID: "predServiceID1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "predService1",
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Networks: []*api.NetworkAttachmentConfig{
 						{
 							Target: p.ID,
@@ -197,7 +197,7 @@ func (suite *testSuite) TestAllocator() {
 
 		tp1 := &api.Task{
 			ID: "predTaskID1",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			Networks: []*api.NetworkAttachment{
@@ -213,11 +213,11 @@ func (suite *testSuite) TestAllocator() {
 
 		sp2 := &api.Service{
 			ID: "predServiceID2",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "predService2",
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Networks: []*api.NetworkAttachmentConfig{
 						{
 							Target: nln.ID,
@@ -231,7 +231,7 @@ func (suite *testSuite) TestAllocator() {
 
 		tp2 := &api.Task{
 			ID: "predTaskID2",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			Networks: []*api.NetworkAttachment{
@@ -308,8 +308,8 @@ func (suite *testSuite) TestAllocator() {
 	suite.NoError(s.Update(func(tx store.Tx) error {
 		n2 := &api.Network{
 			ID: "testID2",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "test2",
 				},
 			},
@@ -323,8 +323,8 @@ func (suite *testSuite) TestAllocator() {
 	suite.NoError(s.Update(func(tx store.Tx) error {
 		s2 := &api.Service{
 			ID: "testServiceID2",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "service2",
 				},
 				Networks: []*api.NetworkAttachmentConfig{
@@ -344,7 +344,7 @@ func (suite *testSuite) TestAllocator() {
 	suite.NoError(s.Update(func(tx store.Tx) error {
 		t2 := &api.Task{
 			ID: "testTaskID2",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			ServiceID:    "testServiceID2",
@@ -359,8 +359,8 @@ func (suite *testSuite) TestAllocator() {
 	// Now try adding a task which depends on a network before adding the network.
 	n3 := &api.Network{
 		ID: "testID3",
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NetworkSpec{
+			Annotations: &api.Annotations{
 				Name: "test3",
 			},
 		},
@@ -369,7 +369,7 @@ func (suite *testSuite) TestAllocator() {
 	suite.NoError(s.Update(func(tx store.Tx) error {
 		t3 := &api.Task{
 			ID: "testTaskID3",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			DesiredState: api.TaskStateRunning,
@@ -405,14 +405,14 @@ func (suite *testSuite) TestAllocator() {
 	suite.NoError(s.Update(func(tx store.Tx) error {
 		t5 := &api.Task{
 			ID: "testTaskID5",
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Networks: []*api.NetworkAttachmentConfig{
 					{
 						Target: "testID2",
 					},
 				},
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			DesiredState: api.TaskStateRunning,
@@ -440,7 +440,7 @@ func (suite *testSuite) TestAllocator() {
 	suite.NoError(s.Update(func(tx store.Tx) error {
 		t4 := &api.Task{
 			ID: "testTaskID4",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			DesiredState: api.TaskStateRunning,
@@ -484,8 +484,8 @@ func (suite *testSuite) TestAllocator() {
 	// later and verify if task reconciles and moves to ALLOCATED.
 	n4 := &api.Network{
 		ID: "testID4",
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NetworkSpec{
+			Annotations: &api.Annotations{
 				Name: "test4",
 			},
 			DriverConfig: &api.Driver{
@@ -515,7 +515,7 @@ func (suite *testSuite) TestAllocator() {
 	suite.NoError(s.Update(func(tx store.Tx) error {
 		t6 := &api.Task{
 			ID: "testTaskID6",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			DesiredState: api.TaskStateRunning,
@@ -544,8 +544,8 @@ func (suite *testSuite) TestAllocator() {
 	// reconciles and moves to ALLOCATED.
 	s3 := &api.Service{
 		ID: "testServiceID3",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "service3",
 			},
 			Endpoint: &api.EndpointSpec{
@@ -582,7 +582,7 @@ func (suite *testSuite) TestAllocator() {
 	suite.NoError(s.Update(func(tx store.Tx) error {
 		t7 := &api.Task{
 			ID: "testTaskID7",
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateNew,
 			},
 			ServiceID:    "testServiceID4",
@@ -612,8 +612,8 @@ func (suite *testSuite) TestNoDuplicateIPs() {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress-nw-id",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "default-ingress",
 				},
 				Ingress: true,
@@ -632,8 +632,8 @@ func (suite *testSuite) TestNoDuplicateIPs() {
 		suite.NoError(store.CreateNetwork(tx, in))
 		n1 := &api.Network{
 			ID: "testID1",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "test1",
 				},
 			},
@@ -652,11 +652,11 @@ func (suite *testSuite) TestNoDuplicateIPs() {
 
 		s1 := &api.Service{
 			ID: "testServiceID1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "service1",
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Networks: []*api.NetworkAttachmentConfig{
 						{
 							Target: "testID1",
@@ -713,7 +713,7 @@ func (suite *testSuite) TestNoDuplicateIPs() {
 				// numbered in ascending order, but it took
 				// until the 52nd task.
 				ID: "testTaskID" + strconv.Itoa(reps-i),
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateNew,
 				},
 				ServiceID:    "testServiceID1",
@@ -742,8 +742,8 @@ func (suite *testSuite) TestAllocatorRestoreForDuplicateIPs() {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress-nw-id",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "default-ingress",
 				},
 				Ingress: true,
@@ -763,8 +763,8 @@ func (suite *testSuite) TestAllocatorRestoreForDuplicateIPs() {
 		for i := range numsvcstsks {
 			svc := &api.Service{
 				ID: "testServiceID" + strconv.Itoa(i),
-				Spec: api.ServiceSpec{
-					Annotations: api.Annotations{
+				Spec: &api.ServiceSpec{
+					Annotations: &api.Annotations{
 						Name: "service" + strconv.Itoa(i),
 					},
 					Endpoint: &api.EndpointSpec{
@@ -806,7 +806,7 @@ func (suite *testSuite) TestAllocatorRestoreForDuplicateIPs() {
 		suite.NoError(s.Update(func(tx store.Tx) error {
 			tsk := &api.Task{
 				ID: "testTaskID" + strconv.Itoa(i),
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateNew,
 				},
 				ServiceID:    "testServiceID" + strconv.Itoa(i),
@@ -879,8 +879,8 @@ func (suite *testSuite) TestAllocatorRestartNoEndpointSpec() {
 		// populate ingress network
 		in := &api.Network{
 			ID: "overlay1",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "net1",
 				},
 			},
@@ -900,14 +900,14 @@ func (suite *testSuite) TestAllocatorRestartNoEndpointSpec() {
 		for i := range numsvcstsks {
 			svc := &api.Service{
 				ID: "testServiceID" + strconv.Itoa(i),
-				Spec: api.ServiceSpec{
-					Annotations: api.Annotations{
+				Spec: &api.ServiceSpec{
+					Annotations: &api.Annotations{
 						Name: "service" + strconv.Itoa(i),
 					},
 					// Endpoint: &api.EndpointSpec{
 					// 	Mode: api.ResolutionModeVirtualIP,
 					// },
-					Task: api.TaskSpec{
+					Task: &api.TaskSpec{
 						Networks: []*api.NetworkAttachmentConfig{
 							{
 								Target: "overlay1",
@@ -936,7 +936,7 @@ func (suite *testSuite) TestAllocatorRestartNoEndpointSpec() {
 		suite.NoError(s.Update(func(tx store.Tx) error {
 			tsk := &api.Task{
 				ID: "testTaskID" + strconv.Itoa(i),
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateNew,
 				},
 				ServiceID:    "testServiceID" + strconv.Itoa(i),
@@ -1028,8 +1028,8 @@ func (suite *testSuite) TestAllocatorRestoreForUnallocatedNetwork() {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress-nw-id",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "default-ingress",
 				},
 				Ingress: true,
@@ -1048,8 +1048,8 @@ func (suite *testSuite) TestAllocatorRestoreForUnallocatedNetwork() {
 
 		n1 = &api.Network{
 			ID: "testID1",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "test1",
 				},
 			},
@@ -1070,8 +1070,8 @@ func (suite *testSuite) TestAllocatorRestoreForUnallocatedNetwork() {
 			// Intentionally named testID0 so that in restore this network
 			// is looked into first
 			ID: "testID0",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "test2",
 				},
 			},
@@ -1081,11 +1081,11 @@ func (suite *testSuite) TestAllocatorRestoreForUnallocatedNetwork() {
 		for i := range numsvcstsks {
 			svc := &api.Service{
 				ID: "testServiceID" + strconv.Itoa(i),
-				Spec: api.ServiceSpec{
-					Annotations: api.Annotations{
+				Spec: &api.ServiceSpec{
+					Annotations: &api.Annotations{
 						Name: "service" + strconv.Itoa(i),
 					},
-					Task: api.TaskSpec{
+					Task: &api.TaskSpec{
 						Networks: []*api.NetworkAttachmentConfig{
 							{
 								Target: "testID1",
@@ -1134,10 +1134,10 @@ func (suite *testSuite) TestAllocatorRestoreForUnallocatedNetwork() {
 		suite.NoError(s.Update(func(tx store.Tx) error {
 			tsk := &api.Task{
 				ID: "testTaskID" + strconv.Itoa(i),
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateNew,
 				},
-				Spec: api.TaskSpec{
+				Spec: &api.TaskSpec{
 					Networks: []*api.NetworkAttachmentConfig{
 						{
 							Target: "testID1",
@@ -1224,8 +1224,8 @@ func (suite *testSuite) TestNodeAllocator() {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "ingress",
 				},
 				Ingress: true,
@@ -1235,8 +1235,8 @@ func (suite *testSuite) TestNodeAllocator() {
 
 		n1 := &api.Network{
 			ID: "overlayID1",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "overlayID1",
 				},
 			},
@@ -1246,8 +1246,8 @@ func (suite *testSuite) TestNodeAllocator() {
 		// this network will never be used for any task
 		nUnused := &api.Network{
 			ID: "overlayIDUnused",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "overlayIDUnused",
 				},
 			},
@@ -1275,7 +1275,7 @@ func (suite *testSuite) TestNodeAllocator() {
 			ID:           "task1",
 			NodeID:       node1.ID,
 			DesiredState: api.TaskStateRunning,
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Networks: []*api.NetworkAttachmentConfig{
 					{
 						Target: "overlayID1",
@@ -1310,8 +1310,8 @@ func (suite *testSuite) TestNodeAllocator() {
 	// Add a network and validate that nothing has changed in the nodes
 	n2 := &api.Network{
 		ID: "overlayID2",
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NetworkSpec{
+			Annotations: &api.Annotations{
 				Name: "overlayID2",
 			},
 		},
@@ -1333,7 +1333,7 @@ func (suite *testSuite) TestNodeAllocator() {
 			ID:           "task2",
 			NodeID:       node2.ID,
 			DesiredState: api.TaskStateRunning,
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Networks: []*api.NetworkAttachmentConfig{
 					{
 						Target: "overlayID2",
@@ -1360,7 +1360,7 @@ func (suite *testSuite) TestNodeAllocator() {
 			ID:           "task3",
 			NodeID:       node1.ID,
 			DesiredState: api.TaskStateRunning,
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Networks: []*api.NetworkAttachmentConfig{
 					{
 						Target: "overlayID1",
@@ -1416,8 +1416,8 @@ func (suite *testSuite) TestNodeAllocator() {
 	// Validate that a LB IP address is not allocated for node-local networks
 	p := &api.Network{
 		ID: "bridge",
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NetworkSpec{
+			Annotations: &api.Annotations{
 				Name: "pred_bridge_network",
 				Labels: map[string]string{
 					"com.docker.swarm.predefined": "true",
@@ -1450,8 +1450,8 @@ func (suite *testSuite) TestNodeAttachmentOnLeadershipChange() {
 
 	net1 := &api.Network{
 		ID: "ingress",
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NetworkSpec{
+			Annotations: &api.Annotations{
 				Name: "ingress",
 			},
 			Ingress: true,
@@ -1460,8 +1460,8 @@ func (suite *testSuite) TestNodeAttachmentOnLeadershipChange() {
 
 	net2 := &api.Network{
 		ID: "net2",
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NetworkSpec{
+			Annotations: &api.Annotations{
 				Name: "net2",
 			},
 		},
@@ -1475,7 +1475,7 @@ func (suite *testSuite) TestNodeAttachmentOnLeadershipChange() {
 		ID:           "task1",
 		NodeID:       node1.ID,
 		DesiredState: api.TaskStateRunning,
-		Spec:         api.TaskSpec{},
+		Spec:         &api.TaskSpec{},
 	}
 
 	// this task is not yet assigned. we will assign it to node1 after running
@@ -1484,7 +1484,7 @@ func (suite *testSuite) TestNodeAttachmentOnLeadershipChange() {
 	task2 := &api.Task{
 		ID:           "task2",
 		DesiredState: api.TaskStateRunning,
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Networks: []*api.NetworkAttachmentConfig{
 				{
 					Target: "net2",
@@ -1556,8 +1556,8 @@ func (suite *testSuite) TestAllocateServiceConflictingUserDefinedPorts() {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress-nw-id",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "default-ingress",
 				},
 				Ingress: true,
@@ -1577,8 +1577,8 @@ func (suite *testSuite) TestAllocateServiceConflictingUserDefinedPorts() {
 
 		s1 := &api.Service{
 			ID: svcID,
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "service1",
 				},
 				Endpoint: &api.EndpointSpec{
@@ -1640,8 +1640,8 @@ func (suite *testSuite) TestDeallocateServiceAllocate() {
 	newSvc := func(id string) *api.Service {
 		return &api.Service{
 			ID: id,
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "service1",
 				},
 				Endpoint: &api.EndpointSpec{
@@ -1662,8 +1662,8 @@ func (suite *testSuite) TestDeallocateServiceAllocate() {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress-nw-id",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "default-ingress",
 				},
 				Ingress: true,
@@ -1722,8 +1722,8 @@ func (suite *testSuite) TestServiceAddRemovePorts() {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress-nw-id",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "default-ingress",
 				},
 				Ingress: true,
@@ -1743,8 +1743,8 @@ func (suite *testSuite) TestServiceAddRemovePorts() {
 
 		s1 := &api.Service{
 			ID: svcID,
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "service1",
 				},
 				Endpoint: &api.EndpointSpec{
@@ -1836,8 +1836,8 @@ func (suite *testSuite) TestServiceUpdatePort() {
 		// populate ingress network
 		in := &api.Network{
 			ID: "ingress-nw-id",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "default-ingress",
 				},
 				Ingress: true,
@@ -1857,8 +1857,8 @@ func (suite *testSuite) TestServiceUpdatePort() {
 
 		s1 := &api.Service{
 			ID: svcID,
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "service1",
 				},
 				Endpoint: &api.EndpointSpec{
@@ -1919,8 +1919,8 @@ func (suite *testSuite) TestServicePortAllocationIsRepeatable() {
 			// populate ingress network
 			in := &api.Network{
 				ID: "ingress-nw-id",
-				Spec: api.NetworkSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NetworkSpec{
+					Annotations: &api.Annotations{
 						Name: "default-ingress",
 					},
 					Ingress: true,
@@ -1940,8 +1940,8 @@ func (suite *testSuite) TestServicePortAllocationIsRepeatable() {
 
 			s1 := &api.Service{
 				ID: svcID,
-				Spec: api.ServiceSpec{
-					Annotations: api.Annotations{
+				Spec: &api.ServiceSpec{
+					Annotations: &api.Annotations{
 						Name: "service1",
 					},
 					Endpoint: &api.EndpointSpec{

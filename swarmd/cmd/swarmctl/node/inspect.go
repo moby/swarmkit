@@ -21,7 +21,7 @@ func printNodeSummary(node *api.Node) {
 		// Ignore flushing errors - there's nothing we can do.
 		_ = w.Flush()
 	}()
-	spec := &node.Spec
+	spec := node.Spec
 	desc := node.Description
 	if desc == nil {
 		desc = &api.NodeDescription{}

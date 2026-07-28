@@ -203,7 +203,7 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 
 		externalCAs = []*api.ExternalCA{
 			{
-				Protocol: api.ExternalCA_CAProtocolCFSSL,
+				Protocol: api.CAProtocolCFSSL,
 				URL:      externalSigningServer.URL,
 				CACert:   extRootCA.Certs,
 			},
@@ -264,7 +264,7 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 	serverOpts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
 	grpcServer := grpc.NewServer(serverOpts...)
 
-	clusterObj := createClusterObject(t, s, organization, apiRootCA, &rootCA, externalCAs...)
+	clusterObj := createClusterObject(t, s, organization, &apiRootCA, &rootCA, externalCAs...)
 
 	caServer := ca.NewServer(s, managerConfig)
 	caServer.SetReconciliationRetryInterval(50 * time.Millisecond)
@@ -319,16 +319,16 @@ func createNode(s *store.MemoryStore, nodeID, role string, csr, cert []byte) err
 	err := s.Update(func(tx store.Tx) error {
 		node := &api.Node{
 			ID: nodeID,
-			Certificate: api.Certificate{
+			Certificate: &api.Certificate{
 				CSR:  csr,
 				CN:   nodeID,
 				Role: apiRole,
-				Status: api.IssuanceStatus{
+				Status: &api.IssuanceStatus{
 					State: api.IssuanceStateIssued,
 				},
 				Certificate: cert,
 			},
-			Spec: api.NodeSpec{
+			Spec: &api.NodeSpec{
 				DesiredRole: apiRole,
 				Membership:  api.NodeMembershipAccepted,
 			},
@@ -410,25 +410,31 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 	})
 }
 
-func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, apiRootCA api.RootCA, caRootCA *ca.RootCA, externalCAs ...*api.ExternalCA) *api.Cluster {
+func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, apiRootCA *api.RootCA, caRootCA *ca.RootCA, externalCAs ...*api.ExternalCA) *api.Cluster {
 	fips := strings.HasPrefix(clusterID, "FIPS.")
 	cluster := &api.Cluster{
 		ID: clusterID,
-		Spec: api.ClusterSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ClusterSpec{
+			Annotations: &api.Annotations{
 				Name: store.DefaultClusterName,
 			},
-			CAConfig: api.CAConfig{
+			CAConfig: &api.CAConfig{
 				ExternalCAs: externalCAs,
 			},
 		},
 		RootCA: apiRootCA,
 		FIPS:   fips,
 	}
-	if cluster.RootCA.JoinTokens.Worker == "" {
-		cluster.RootCA.JoinTokens.Worker = ca.GenerateJoinToken(caRootCA, fips)
+	if cluster.RootCA.GetJoinTokens().GetWorker() == "" {
+		cluster.RootCA.JoinTokens = &api.JoinTokens{
+			Worker:  ca.GenerateJoinToken(caRootCA, fips),
+			Manager: cluster.RootCA.GetJoinTokens().GetManager(),
+		}
 	}
-	if cluster.RootCA.JoinTokens.Manager == "" {
+	if cluster.RootCA.GetJoinTokens().GetManager() == "" {
+		if cluster.RootCA.JoinTokens == nil {
+			cluster.RootCA.JoinTokens = &api.JoinTokens{}
+		}
 		cluster.RootCA.JoinTokens.Manager = ca.GenerateJoinToken(caRootCA, fips)
 	}
 	err := s.Update(func(tx store.Tx) error {

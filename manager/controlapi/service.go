@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/distribution/reference"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/defaults"
 	"github.com/moby/swarmkit/v2/api/genericresource"
@@ -65,20 +64,14 @@ func validateRestartPolicy(rp *api.RestartPolicy) error {
 	}
 
 	if rp.Delay != nil {
-		delay, err := gogotypes.DurationFromProto(rp.Delay)
-		if err != nil {
-			return err
-		}
+		delay := rp.Delay.AsDuration()
 		if delay < 0 {
 			return status.Errorf(codes.InvalidArgument, "TaskSpec: restart-delay cannot be negative")
 		}
 	}
 
 	if rp.Window != nil {
-		win, err := gogotypes.DurationFromProto(rp.Window)
-		if err != nil {
-			return err
-		}
+		win := rp.Window.AsDuration()
 		if win < 0 {
 			return status.Errorf(codes.InvalidArgument, "TaskSpec: restart-window cannot be negative")
 		}
@@ -100,15 +93,12 @@ func validateUpdate(uc *api.UpdateConfig) error {
 		return nil
 	}
 
-	if uc.Delay < 0 {
+	if uc.Delay.AsDuration() < 0 {
 		return status.Errorf(codes.InvalidArgument, "TaskSpec: update-delay cannot be negative")
 	}
 
 	if uc.Monitor != nil {
-		monitor, err := gogotypes.DurationFromProto(uc.Monitor)
-		if err != nil {
-			return err
-		}
+		monitor := uc.Monitor.AsDuration()
 		if monitor < 0 {
 			return status.Errorf(codes.InvalidArgument, "TaskSpec: update-monitor cannot be negative")
 		}
@@ -132,15 +122,15 @@ func validateContainerSpec(taskSpec api.TaskSpec) error {
 			Architecture: "architecture",
 		},
 	}, &api.Task{
-		Spec:      taskSpec,
+		Spec:      &taskSpec,
 		ServiceID: "serviceid",
 		Slot:      1,
 		NodeID:    "nodeid",
 		Networks:  []*api.NetworkAttachment{},
-		Annotations: api.Annotations{
+		Annotations: &api.Annotations{
 			Name: "taskname",
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "servicename",
 		},
 		Endpoint:  &api.Endpoint{},
@@ -174,7 +164,7 @@ func validateImage(image string) error {
 }
 
 // validateMounts validates if there are duplicate mounts in containerSpec
-func validateMounts(mounts []api.Mount) error {
+func validateMounts(mounts []*api.Mount) error {
 	mountMap := make(map[string]bool)
 	for _, mount := range mounts {
 		if _, exists := mountMap[mount.Target]; exists {
@@ -193,40 +183,28 @@ func validateHealthCheck(hc *api.HealthConfig) error {
 	}
 
 	if hc.Interval != nil {
-		interval, err := gogotypes.DurationFromProto(hc.Interval)
-		if err != nil {
-			return err
-		}
+		interval := hc.Interval.AsDuration()
 		if interval != 0 && interval < minimumDuration {
 			return status.Errorf(codes.InvalidArgument, "ContainerSpec: Interval in HealthConfig cannot be less than %s", minimumDuration)
 		}
 	}
 
 	if hc.Timeout != nil {
-		timeout, err := gogotypes.DurationFromProto(hc.Timeout)
-		if err != nil {
-			return err
-		}
+		timeout := hc.Timeout.AsDuration()
 		if timeout != 0 && timeout < minimumDuration {
 			return status.Errorf(codes.InvalidArgument, "ContainerSpec: Timeout in HealthConfig cannot be less than %s", minimumDuration)
 		}
 	}
 
 	if hc.StartPeriod != nil {
-		sp, err := gogotypes.DurationFromProto(hc.StartPeriod)
-		if err != nil {
-			return err
-		}
+		sp := hc.StartPeriod.AsDuration()
 		if sp != 0 && sp < minimumDuration {
 			return status.Errorf(codes.InvalidArgument, "ContainerSpec: StartPeriod in HealthConfig cannot be less than %s", minimumDuration)
 		}
 	}
 
 	if hc.StartInterval != nil {
-		interval, err := gogotypes.DurationFromProto(hc.StartInterval)
-		if err != nil {
-			return err
-		}
+		interval := hc.StartInterval.AsDuration()
 		if interval != 0 && interval < minimumDuration {
 			return status.Errorf(codes.InvalidArgument, "ContainerSpec: StartInterval in HealthConfig cannot be less than %s", minimumDuration)
 		}
@@ -528,11 +506,23 @@ func validateServiceSpec(spec *api.ServiceSpec) error {
 	if spec == nil {
 		return status.Error(codes.InvalidArgument, errInvalidArgument.Error())
 	}
-	if err := validateAnnotations(spec.Annotations); err != nil {
-		return err
+	if spec.Annotations != nil {
+		if err := validateAnnotations(*spec.Annotations); err != nil {
+			return err
+		}
+	} else {
+		if err := validateAnnotations(api.Annotations{}); err != nil {
+			return err
+		}
 	}
-	if err := validateTaskSpec(spec.Task); err != nil {
-		return err
+	if spec.Task != nil {
+		if err := validateTaskSpec(*spec.Task); err != nil {
+			return err
+		}
+	} else {
+		if err := validateTaskSpec(api.TaskSpec{}); err != nil {
+			return err
+		}
 	}
 	err := validateMode(spec)
 	if err != nil {
@@ -741,13 +731,14 @@ func (s *Server) CreateService(_ context.Context, request *api.CreateServiceRequ
 	// duplicate creations. See #65
 	service := &api.Service{
 		ID:          identity.NewID(),
-		Spec:        *request.Spec,
+		Spec:        request.Spec,
 		SpecVersion: &api.Version{},
 	}
 
 	if isJobSpec(request.Spec) {
 		service.JobStatus = &api.JobStatus{
-			LastExecution: gogotypes.TimestampNow(),
+			LastExecution: ptypes.MustTimestampProto(time.Now()),
+			JobIteration:  &api.Version{Index: 0},
 		}
 	}
 
@@ -801,7 +792,7 @@ func (s *Server) GetService(_ context.Context, request *api.GetServiceRequest) (
 	}
 
 	if request.InsertDefaults {
-		service.Spec = *defaults.InterpolateService(&service.Spec)
+		service.Spec = defaults.InterpolateService(service.Spec)
 	}
 
 	return &api.GetServiceResponse{
@@ -879,13 +870,16 @@ func (s *Server) UpdateService(_ context.Context, request *api.UpdateServiceRequ
 			return status.Error(codes.Unimplemented, errRenameNotSupported.Error())
 		}
 
-		service.Meta.Version = *request.ServiceVersion
+		service.Meta.Version = request.ServiceVersion
 
 		// if the service has a JobStatus, that means it must be a Job, and we
 		// should increment the JobIteration
 		if service.JobStatus != nil {
+			if service.JobStatus.JobIteration == nil {
+				service.JobStatus.JobIteration = &api.Version{}
+			}
 			service.JobStatus.JobIteration.Index = service.JobStatus.JobIteration.Index + 1
-			service.JobStatus.LastExecution = gogotypes.TimestampNow()
+			service.JobStatus.LastExecution = ptypes.MustTimestampProto(time.Now())
 		}
 
 		if request.Rollback == api.UpdateServiceRequest_PREVIOUS {
@@ -895,7 +889,7 @@ func (s *Server) UpdateService(_ context.Context, request *api.UpdateServiceRequ
 
 			curSpec := service.Spec.Copy()
 			curSpecVersion := service.SpecVersion
-			service.Spec = *service.PreviousSpec.Copy()
+			service.Spec = service.PreviousSpec.Copy()
 			service.SpecVersion = service.PreviousSpecVersion.Copy()
 			service.PreviousSpec = curSpec
 			service.PreviousSpecVersion = curSpecVersion
@@ -908,7 +902,7 @@ func (s *Server) UpdateService(_ context.Context, request *api.UpdateServiceRequ
 		} else {
 			service.PreviousSpec = service.Spec.Copy()
 			service.PreviousSpecVersion = service.SpecVersion
-			service.Spec = *request.Spec.Copy()
+			service.Spec = request.Spec.Copy()
 			// Set spec version. Note that this will not match the
 			// service's Meta.Version after the store update. The
 			// versions for the spec and the service itself are not
@@ -1090,7 +1084,7 @@ func (s *Server) ListServiceStatuses(_ context.Context, req *api.ListServiceStat
 				}
 
 				if service.JobStatus != nil {
-					jobIteration = &service.JobStatus.JobIteration
+					jobIteration = service.JobStatus.JobIteration
 				}
 			}
 
@@ -1108,11 +1102,11 @@ func (s *Server) ListServiceStatuses(_ context.Context, req *api.ListServiceStat
 					// additionally, since we've verified that the service is a
 					// job and the task belongs to this iteration, we should
 					// increment CompletedTasks
-					if task.Status.State == api.TaskStateCompleted {
+					if task.GetStatus().GetState() == api.TaskStateCompleted {
 						status.CompletedTasks++
 					}
 				}
-				if task.Status.State == api.TaskStateRunning {
+				if task.GetStatus().GetState() == api.TaskStateRunning {
 					status.RunningTasks++
 				}
 
@@ -1125,7 +1119,7 @@ func (s *Server) ListServiceStatuses(_ context.Context, req *api.ListServiceStat
 
 				// for jobs, this is any task with desired state Completed
 				// which is not actually in that state.
-				if global && task.Status.State != api.TaskStateCompleted && task.DesiredState == api.TaskStateCompleted {
+				if global && task.GetStatus().GetState() != api.TaskStateCompleted && task.DesiredState == api.TaskStateCompleted {
 					status.DesiredTasks++
 				}
 			}

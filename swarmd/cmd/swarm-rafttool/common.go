@@ -99,7 +99,7 @@ func decryptRaftData(swarmdir, outdir, unlockKey string) error {
 	if snap != nil {
 		walsnap.Index = snap.Metadata.Index
 		walsnap.Term = snap.Metadata.Term
-		walsnap.ConfState = &snap.Metadata.ConfState
+		walsnap.ConfState = snap.Metadata.ConfState
 	}
 
 	walDir := filepath.Join(outdir, "wal-decrypted")
@@ -108,7 +108,7 @@ func decryptRaftData(swarmdir, outdir, unlockKey string) error {
 	}
 	return storage.MigrateWALs(context.Background(),
 		filepath.Join(swarmdir, "raft", "wal-v3-encrypted"), walDir,
-		storage.NewWALFactory(encryption.NoopCrypter, d), storage.OriginalWAL, walsnap)
+		storage.NewWALFactory(encryption.NoopCrypter, d), storage.OriginalWAL, &walsnap)
 }
 
 func downgradeKey(swarmdir, unlockKey string) error {

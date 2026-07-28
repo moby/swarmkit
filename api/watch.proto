@@ -2,11 +2,12 @@ syntax = "proto3";
 
 package docker.swarmkit.v1;
 
-import "github.com/docker/swarmkit/api/specs.proto";
-import "github.com/docker/swarmkit/api/objects.proto";
-import "github.com/docker/swarmkit/api/types.proto";
-import "gogoproto/gogo.proto";
-import "github.com/docker/swarmkit/protobuf/plugin/plugin.proto";
+option go_package = "github.com/moby/swarmkit/v2/api";
+
+import "api/specs.proto";
+import "api/objects.proto";
+import "api/types.proto";
+import "protobuf/plugin/plugin.proto";
 
 message Object {
 	oneof Object {
@@ -26,7 +27,7 @@ message Object {
 // FIXME(aaronl): These messages should ideally be embedded in SelectBy, but
 // protoc generates bad code for that.
 message SelectBySlot {
-	string service_id = 1 [(gogoproto.customname) = "ServiceID"];
+	string service_id = 1 [(docker.protobuf.plugin.go_name) = "ServiceID"];
 	uint64 slot = 2;
 }
 
@@ -42,16 +43,16 @@ message SelectBy {
 	// internal indices going forward.
 	oneof By {
 		// supported by all object types
-		string id = 1 [(gogoproto.customname) = "ID"]; // not applicable for FindObjects - use GetObject instead
-		string id_prefix = 2 [(gogoproto.customname) = "IDPrefix"];
+		string id = 1 [(docker.protobuf.plugin.go_name) = "ID"]; // not applicable for FindObjects - use GetObject instead
+		string id_prefix = 2 [(docker.protobuf.plugin.go_name) = "IDPrefix"];
 		string name = 3;
 		string name_prefix = 4;
 		SelectByCustom custom = 5;
 		SelectByCustom custom_prefix = 6;
 
 		// supported by tasks only
-		string service_id = 7 [(gogoproto.customname) = "ServiceID"];
-		string node_id = 8 [(gogoproto.customname) = "NodeID"];
+		string service_id = 7 [(docker.protobuf.plugin.go_name) = "ServiceID"];
+		string node_id = 8 [(docker.protobuf.plugin.go_name) = "NodeID"];
 		SelectBySlot slot = 9;
 		TaskState desired_state = 10;
 
@@ -60,9 +61,9 @@ message SelectBy {
 		NodeSpec.Membership membership = 12;
 
 		// supported by: service, task
-		string referenced_network_id = 13 [(gogoproto.customname) = "ReferencedNetworkID"];
-		string referenced_secret_id = 14 [(gogoproto.customname) = "ReferencedSecretID"];
-		string referenced_config_id = 16 [(gogoproto.customname) = "ReferencedConfigID"];
+		string referenced_network_id = 13 [(docker.protobuf.plugin.go_name) = "ReferencedNetworkID"];
+		string referenced_secret_id = 14 [(docker.protobuf.plugin.go_name) = "ReferencedSecretID"];
+		string referenced_config_id = 16 [(docker.protobuf.plugin.go_name) = "ReferencedConfigID"];
 
 		// supported by: resource
 		string kind = 15;
@@ -146,10 +147,9 @@ message WatchMessage {
 // is structured as a bitmap so multiple kinds of events can be requested with
 // a mask.
 enum WatchActionKind {
-	option (gogoproto.goproto_enum_prefix) = false;
-	option (gogoproto.enum_customname) = "WatchActionKind";
-	WATCH_ACTION_UNKNOWN = 0 [(gogoproto.enumvalue_customname) = "WatchActionKindUnknown"]; // default value, invalid
-	WATCH_ACTION_CREATE = 1 [(gogoproto.enumvalue_customname) = "WatchActionKindCreate"];
-	WATCH_ACTION_UPDATE = 2 [(gogoproto.enumvalue_customname) = "WatchActionKindUpdate"];
-	WATCH_ACTION_REMOVE = 4 [(gogoproto.enumvalue_customname) = "WatchActionKindRemove"];
+	option (docker.protobuf.plugin.go_enum_name) = "WatchActionKind";
+	WATCH_ACTION_UNKNOWN = 0 [(docker.protobuf.plugin.go_enum_value_name) = "WatchActionKindUnknown"]; // default value, invalid
+	WATCH_ACTION_CREATE = 1 [(docker.protobuf.plugin.go_enum_value_name) = "WatchActionKindCreate"];
+	WATCH_ACTION_UPDATE = 2 [(docker.protobuf.plugin.go_enum_value_name) = "WatchActionKindUpdate"];
+	WATCH_ACTION_REMOVE = 4 [(docker.protobuf.plugin.go_enum_value_name) = "WatchActionKindRemove"];
 }

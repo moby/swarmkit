@@ -34,3 +34,7 @@ bin/swarmkitstate
 
 # dev sync, if used
 /.docker-sync/
+
+# transient protobuf rename map produced by protoc-gen-goswarm and consumed by
+# proto-name-fix during `make protos`; regenerated every time, not source.
+/rename_map.json

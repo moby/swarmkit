@@ -6,6 +6,7 @@ import (
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/pflag"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 func parseUpdate(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
@@ -34,7 +35,7 @@ func parseUpdate(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		if spec.Update == nil {
 			spec.Update = &api.UpdateConfig{}
 		}
-		spec.Update.Delay = delayDuration
+		spec.Update.Delay = durationpb.New(delayDuration)
 	}
 
 	if flags.Changed("update-on-failure") {
@@ -103,7 +104,7 @@ func parseUpdate(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 		if spec.Rollback == nil {
 			spec.Rollback = &api.UpdateConfig{}
 		}
-		spec.Rollback.Delay = delayDuration
+		spec.Rollback.Delay = durationpb.New(delayDuration)
 	}
 
 	if flags.Changed("rollback-on-failure") {

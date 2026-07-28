@@ -40,8 +40,8 @@ const (
 // map of subsystems and corresponding encryption algorithm. Initially only
 // AES_128 in GCM mode is supported.
 var subsysToAlgo = map[string]api.EncryptionKey_Algorithm{
-	SubsystemGossip: api.AES_128_GCM,
-	SubsystemIPSec:  api.AES_128_GCM,
+	SubsystemGossip: api.EncryptionKey_AES_128_GCM,
+	SubsystemIPSec:  api.EncryptionKey_AES_128_GCM,
 }
 
 type keyRing struct {

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/testutils"
 	"github.com/moby/swarmkit/v2/manager/state"
@@ -14,18 +13,19 @@ import (
 	"github.com/moby/swarmkit/v2/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 var (
 	node1 = &api.Node{
 		ID: "nodeid1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Availability: api.NodeAvailabilityActive,
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Description: &api.NodeDescription{
@@ -35,13 +35,13 @@ var (
 	}
 	node2 = &api.Node{
 		ID: "nodeid2",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "name2",
 			},
 			Availability: api.NodeAvailabilityActive,
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Description: &api.NodeDescription{
@@ -54,17 +54,17 @@ var (
 
 	service1 = &api.Service{
 		ID: "serviceid1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
 			Mode: &api.ServiceSpec_Global{
@@ -75,11 +75,11 @@ var (
 
 	service2 = &api.Service{
 		ID: "serviceid2",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name2",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
@@ -92,11 +92,11 @@ var (
 
 	serviceNoRestart = &api.Service{
 		ID: "serviceid3",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "norestart",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
@@ -549,19 +549,19 @@ func TestInitializationRejectedTasks(t *testing.T) {
 			ID:           "task1",
 			Slot:         0,
 			DesiredState: api.TaskStateReady,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRejected,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task1",
 			},
 			ServiceID: "serviceid1",
@@ -611,20 +611,20 @@ func TestInitializationFailedTasks(t *testing.T) {
 			ID:           "task1",
 			Slot:         0,
 			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State:     api.TaskStateFailed,
 				Timestamp: ptypes.MustTimestampProto(before),
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task1",
 			},
 			ServiceID: "serviceid1",
@@ -682,19 +682,19 @@ func TestInitializationExtraTask(t *testing.T) {
 			ID:           "task1",
 			Slot:         0,
 			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task1",
 			},
 			ServiceID: "serviceid1",
@@ -704,19 +704,19 @@ func TestInitializationExtraTask(t *testing.T) {
 			ID:           "task2",
 			Slot:         0,
 			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task2",
 			},
 			ServiceID: "serviceid1",
@@ -779,11 +779,11 @@ func TestInitializationMultipleServices(t *testing.T) {
 		{
 			ID:           "task1",
 			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
 			Spec: service1.Spec.Task,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task1",
 			},
 			ServiceID: "serviceid1",
@@ -792,11 +792,11 @@ func TestInitializationMultipleServices(t *testing.T) {
 		{
 			ID:           "task2",
 			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
 			Spec: service2.Spec.Task,
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task2",
 			},
 			ServiceID: "serviceid2",
@@ -831,7 +831,7 @@ func TestInitializationMultipleServices(t *testing.T) {
 		s1 := store.GetService(tx, "serviceid1")
 		require.NotNil(t, s1)
 
-		s1.Spec.Task.Restart.Delay = gogotypes.DurationProto(70 * time.Millisecond)
+		s1.Spec.Task.Restart.Delay = durationpb.New(70 * time.Millisecond)
 
 		assert.NoError(t, store.UpdateService(tx, s1))
 		return nil
@@ -903,19 +903,19 @@ func TestInitializationTaskWithoutService(t *testing.T) {
 			ID:           "task1",
 			Slot:         0,
 			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task1",
 			},
 			ServiceID: "serviceid1",
@@ -925,19 +925,19 @@ func TestInitializationTaskWithoutService(t *testing.T) {
 			ID:           "task2",
 			Slot:         0,
 			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task2",
 			},
 			ServiceID: "serviceid2",
@@ -973,9 +973,9 @@ func TestInitializationTaskOnDrainedNode(t *testing.T) {
 
 	// create nodes, services and tasks in store directly
 	// where orchestrator runs, it should fix tasks to declarative state
-	n1 := *node1
+	n1 := node1.Copy()
 	n1.Spec.Availability = api.NodeAvailabilityDrain
-	addNode(t, s, &n1)
+	addNode(t, s, n1)
 	addService(t, s, service1)
 	tasks := []*api.Task{
 		// nodeid1 has 1 task for serviceid1
@@ -983,19 +983,19 @@ func TestInitializationTaskOnDrainedNode(t *testing.T) {
 			ID:           "task1",
 			Slot:         0,
 			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task1",
 			},
 			ServiceID: "serviceid1",
@@ -1055,19 +1055,19 @@ func TestInitializationTaskOnNonexistentNode(t *testing.T) {
 			ID:           "task1",
 			Slot:         0,
 			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State: api.TaskStateRunning,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
 					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task1",
 			},
 			ServiceID: "serviceid1",
@@ -1126,19 +1126,19 @@ func TestInitializationRestartHistory(t *testing.T) {
 		SpecVersion: &api.Version{
 			Index: 2,
 		},
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
 					Condition:   api.RestartOnAny,
-					Delay:       gogotypes.DurationProto(restartDelay),
+					Delay:       durationpb.New(restartDelay),
 					MaxAttempts: 3,
-					Window:      gogotypes.DurationProto(10 * time.Minute),
+					Window:      durationpb.New(10 * time.Minute),
 				},
 			},
 			Mode: &api.ServiceSpec_Global{
@@ -1154,14 +1154,14 @@ func TestInitializationRestartHistory(t *testing.T) {
 		// old spec versions should be ignored for restart tracking
 		{
 			ID: "oldspec",
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				CreatedAt: ptypes.MustTimestampProto(now.Add(-5 * time.Minute)),
 			},
 			DesiredState: api.TaskStateShutdown,
 			SpecVersion: &api.Version{
 				Index: 1,
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State:     api.TaskStateShutdown,
 				Timestamp: ptypes.MustTimestampProto(now.Add(-5 * time.Minute)),
 			},
@@ -1172,14 +1172,14 @@ func TestInitializationRestartHistory(t *testing.T) {
 		// this is the first task with the current spec version
 		{
 			ID: "firstcurrent",
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				CreatedAt: ptypes.MustTimestampProto(now.Add(-12 * time.Minute)),
 			},
 			DesiredState: api.TaskStateShutdown,
 			SpecVersion: &api.Version{
 				Index: 2,
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State:     api.TaskStateFailed,
 				Timestamp: ptypes.MustTimestampProto(now.Add(-12 * time.Minute)),
 			},
@@ -1191,14 +1191,14 @@ func TestInitializationRestartHistory(t *testing.T) {
 		// this task falls outside the restart window
 		{
 			ID: "outsidewindow",
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				CreatedAt: ptypes.MustTimestampProto(now.Add(-11 * time.Minute)),
 			},
 			DesiredState: api.TaskStateShutdown,
 			SpecVersion: &api.Version{
 				Index: 2,
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State:     api.TaskStateFailed,
 				Timestamp: ptypes.MustTimestampProto(now.Add(-11 * time.Minute)),
 			},
@@ -1209,14 +1209,14 @@ func TestInitializationRestartHistory(t *testing.T) {
 		// first task inside restart window
 		{
 			ID: "firstinside",
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				CreatedAt: ptypes.MustTimestampProto(now.Add(-9 * time.Minute)),
 			},
 			DesiredState: api.TaskStateShutdown,
 			SpecVersion: &api.Version{
 				Index: 2,
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State:     api.TaskStateFailed,
 				Timestamp: ptypes.MustTimestampProto(now.Add(-9 * time.Minute)),
 			},
@@ -1227,14 +1227,14 @@ func TestInitializationRestartHistory(t *testing.T) {
 		// second task inside restart window, currently running
 		{
 			ID: "secondinside",
-			Meta: api.Meta{
+			Meta: &api.Meta{
 				CreatedAt: ptypes.MustTimestampProto(now.Add(-8 * time.Minute)),
 			},
 			DesiredState: api.TaskStateRunning,
 			SpecVersion: &api.Version{
 				Index: 2,
 			},
-			Status: api.TaskStatus{
+			Status: &api.TaskStatus{
 				State:     api.TaskStateRunning,
 				Timestamp: ptypes.MustTimestampProto(now.Add(-8 * time.Minute)),
 			},

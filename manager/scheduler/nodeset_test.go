@@ -15,8 +15,8 @@ func TestTreeTaskCountConsistency(t *testing.T) {
 		{
 			Node: &api.Node{
 				ID: "node1",
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Labels: map[string]string{"datacenter": "dc1", "rack": "r1"},
 					},
 				},
@@ -26,8 +26,8 @@ func TestTreeTaskCountConsistency(t *testing.T) {
 		{
 			Node: &api.Node{
 				ID: "node2",
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Labels: map[string]string{"datacenter": "dc1", "rack": "r2"},
 					},
 				},
@@ -37,8 +37,8 @@ func TestTreeTaskCountConsistency(t *testing.T) {
 		{
 			Node: &api.Node{
 				ID: "node3",
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Labels: map[string]string{"datacenter": "dc2", "rack": "r2"},
 					},
 				},
@@ -48,8 +48,8 @@ func TestTreeTaskCountConsistency(t *testing.T) {
 		{
 			Node: &api.Node{
 				ID: "node4",
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Labels: map[string]string{}, // no label
 					},
 				},
@@ -59,8 +59,8 @@ func TestTreeTaskCountConsistency(t *testing.T) {
 		{
 			Node: &api.Node{
 				ID: "node5",
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Labels: map[string]string{}, // no label
 					},
 				},

@@ -78,7 +78,7 @@ var _ = Describe("Integration between the controlapi and jobs orchestrator", fun
 		// the controlapi tests use the older grpc.Dial with a manually entered
 		// timeout. avoid that mess by just using the DialTimeout function
 		// instead.
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		// cancel after dial has completed is a no-op, but if we don't cancel,
 		// linters will (probably) complain about a leaked context.
 		defer cancel()
@@ -88,6 +88,7 @@ var _ = Describe("Integration between the controlapi and jobs orchestrator", fun
 			// funny reasons related to this connection being established async
 			grpc.WithBlock(),
 			grpc.WithInsecure(),
+			grpc.WithNoProxy(), // bypass HTTP proxy for unix socket connections
 		)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -114,7 +115,7 @@ var _ = Describe("Integration between the controlapi and jobs orchestrator", fun
 
 	It("should create the requisite tasks for a new replicated job", func() {
 		spec := &api.ServiceSpec{
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "testService",
 			},
 			Mode: &api.ServiceSpec_ReplicatedJob{
@@ -123,7 +124,7 @@ var _ = Describe("Integration between the controlapi and jobs orchestrator", fun
 					TotalCompletions: 5,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Image: "image",

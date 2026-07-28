@@ -209,7 +209,7 @@ func (r *rootRotationReconciler) finishRootRotation(tx store.Tx, expectedRootCA 
 
 	// If the RootCA object has changed (because another root rotation was started or because some other node
 	// had finished the root rotation), we cannot finish the root rotation that we were working on.
-	if !equality.RootCAEqualStable(expectedRootCA, &cluster.RootCA) {
+	if !equality.RootCAEqualStable(expectedRootCA, cluster.RootCA) {
 		return errRootRotationChanged
 	}
 
@@ -224,11 +224,11 @@ func (r *rootRotationReconciler) finishRootRotation(tx store.Tx, expectedRootCA 
 	if err != nil {
 		return errors.Wrap(err, "invalid cluster root rotation object")
 	}
-	cluster.RootCA = api.RootCA{
+	cluster.RootCA = &api.RootCA{
 		CACert:     cluster.RootCA.RootRotation.CACert,
 		CAKey:      cluster.RootCA.RootRotation.CAKey,
 		CACertHash: updatedRootCA.Digest.String(),
-		JoinTokens: api.JoinTokens{
+		JoinTokens: &api.JoinTokens{
 			Worker:  GenerateJoinToken(&updatedRootCA, cluster.FIPS),
 			Manager: GenerateJoinToken(&updatedRootCA, cluster.FIPS),
 		},

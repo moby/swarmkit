@@ -1,44 +1,44 @@
 package orchestrator
 
 import (
-	"reflect"
 	"time"
 
-	google_protobuf "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/defaults"
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/constraint"
 	"github.com/moby/swarmkit/v2/protobuf/ptypes"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // NewTask creates a new task.
 func NewTask(cluster *api.Cluster, service *api.Service, slot uint64, nodeID string) *api.Task {
 	var logDriver *api.Driver
-	if service.Spec.Task.LogDriver != nil {
+	if service.GetSpec().GetTask().GetLogDriver() != nil {
 		// use the log driver specific to the task, if we have it.
-		logDriver = service.Spec.Task.LogDriver
+		logDriver = service.GetSpec().GetTask().GetLogDriver()
 	} else if cluster != nil {
 		// pick up the cluster default, if available.
-		logDriver = cluster.Spec.TaskDefaults.LogDriver // nil is okay here.
+		logDriver = cluster.GetSpec().GetTaskDefaults().GetLogDriver() // nil is okay here.
 	}
 
 	taskID := identity.NewID()
 	task := api.Task{
 		ID:                 taskID,
-		ServiceAnnotations: service.Spec.Annotations,
-		Spec:               service.Spec.Task,
+		ServiceAnnotations: service.GetSpec().GetAnnotations(),
+		Spec:               service.GetSpec().GetTask(),
 		SpecVersion:        service.SpecVersion,
 		ServiceID:          service.ID,
 		Slot:               slot,
-		Status: api.TaskStatus{
+		Status: &api.TaskStatus{
 			State:     api.TaskStateNew,
 			Timestamp: ptypes.MustTimestampProto(time.Now()),
 			Message:   "created",
 		},
 		Endpoint: &api.Endpoint{
-			Spec: service.Spec.Endpoint.Copy(),
+			Spec: service.GetSpec().GetEndpoint().Copy(),
 		},
 		DesiredState: api.TaskStateRunning,
 		LogDriver:    logDriver,
@@ -53,10 +53,10 @@ func NewTask(cluster *api.Cluster, service *api.Service, slot uint64, nodeID str
 }
 
 // RestartCondition returns the restart condition to apply to this task.
-func RestartCondition(task *api.Task) api.RestartPolicy_RestartCondition {
+func RestartCondition(task *api.Task) api.RestartCondition {
 	restartCondition := defaults.Service.Task.Restart.Condition
-	if task.Spec.Restart != nil {
-		restartCondition = task.Spec.Restart.Condition
+	if task.GetSpec().GetRestart() != nil {
+		restartCondition = task.GetSpec().GetRestart().GetCondition()
 	}
 	return restartCondition
 }
@@ -75,12 +75,15 @@ func IsTaskDirty(s *api.Service, t *api.Task, n *api.Node) bool {
 	// If the spec version matches, we know the task is not dirty. However,
 	// if it does not match, that doesn't mean the task is dirty, since
 	// only a portion of the spec is included in the comparison.
-	if t.SpecVersion != nil && s.SpecVersion != nil && *s.SpecVersion == *t.SpecVersion {
+	if t.SpecVersion != nil && s.SpecVersion != nil && s.SpecVersion.GetIndex() == t.SpecVersion.GetIndex() {
 		return false
 	}
 
 	// Make a deep copy of the service and task spec for the comparison.
-	serviceTaskSpec := *s.Spec.Task.Copy()
+	var serviceTaskSpec api.TaskSpec
+	if s.GetSpec().GetTask() != nil {
+		serviceTaskSpec = *s.Spec.Task.Copy()
+	}
 
 	// Task is not dirty if the placement constraints alone changed
 	// and the node currently assigned can satisfy the changed constraints.
@@ -96,7 +99,7 @@ func IsTaskDirty(s *api.Service, t *api.Task, n *api.Node) bool {
 	// a running (or ready to run) task to be considered 'dirty' when we
 	// handle updates.
 	// See https://github.com/docker/swarmkit/issues/971
-	currentState := t.Status.State
+	currentState := t.Status.GetState()
 	// Ignore PullOpts if the task is desired to be in a "runnable" state
 	// and its last known current state is between READY and RUNNING in
 	// which case we know that the task either successfully pulled its
@@ -104,13 +107,18 @@ func IsTaskDirty(s *api.Service, t *api.Task, n *api.Node) bool {
 	ignorePullOpts := t.DesiredState <= api.TaskStateRunning &&
 		currentState >= api.TaskStateReady &&
 		currentState <= api.TaskStateRunning
-	if ignorePullOpts && serviceTaskSpec.GetContainer() != nil && t.Spec.GetContainer() != nil {
+	if ignorePullOpts && serviceTaskSpec.GetContainer() != nil && t.GetSpec().GetContainer() != nil {
 		// Modify the service's container spec.
-		serviceTaskSpec.GetContainer().PullOptions = t.Spec.GetContainer().PullOptions
+		serviceTaskSpec.GetContainer().PullOptions = t.GetSpec().GetContainer().GetPullOptions()
 	}
 
-	return !reflect.DeepEqual(serviceTaskSpec, t.Spec) ||
-		(t.Endpoint != nil && !reflect.DeepEqual(s.Spec.Endpoint, t.Endpoint.Spec))
+	// If the task has no spec, treat it as an empty spec for comparison.
+	taskSpec := t.GetSpec()
+	if taskSpec == nil {
+		taskSpec = &api.TaskSpec{}
+	}
+	return !proto.Equal(&serviceTaskSpec, taskSpec) ||
+		(t.Endpoint != nil && !proto.Equal(s.GetSpec().GetEndpoint(), t.Endpoint.Spec))
 }
 
 // Checks if the current assigned node matches the Placement.Constraints
@@ -120,11 +128,7 @@ func nodeMatches(s *api.Service, n *api.Node) bool {
 		return false
 	}
 
-	var pc []string
-	if s.Spec.Task.Placement != nil {
-		pc = s.Spec.Task.Placement.Constraints
-	}
-
+	pc := s.GetSpec().GetTask().GetPlacement().GetConstraints()
 	constraints, err := constraint.Parse(pc)
 	if err != nil {
 		log.L.WithFields(map[string]any{
@@ -138,30 +142,35 @@ func nodeMatches(s *api.Service, n *api.Node) bool {
 // IsTaskDirtyPlacementConstraintsOnly checks if the Placement field alone
 // in the spec has changed.
 func IsTaskDirtyPlacementConstraintsOnly(serviceTaskSpec api.TaskSpec, t *api.Task) bool {
+	// Get the task spec, treating nil as an empty spec.
+	taskSpec := t.GetSpec()
+	if taskSpec == nil {
+		taskSpec = &api.TaskSpec{}
+	}
 	// Compare the task placement constraints.
-	if reflect.DeepEqual(serviceTaskSpec.Placement, t.Spec.Placement) {
+	if proto.Equal(serviceTaskSpec.Placement, taskSpec.Placement) {
 		return false
 	}
 
 	// Update spec placement to only the fields
 	// other than the placement constraints in the spec.
-	serviceTaskSpec.Placement = t.Spec.Placement
-	return reflect.DeepEqual(serviceTaskSpec, t.Spec)
+	serviceTaskSpec.Placement = taskSpec.Placement
+	return proto.Equal(&serviceTaskSpec, taskSpec)
 }
 
 // InvalidNode is true if the node is nil, down, or drained
 func InvalidNode(n *api.Node) bool {
 	return n == nil ||
-		n.Status.State == api.NodeStatus_DOWN ||
-		n.Spec.Availability == api.NodeAvailabilityDrain
+		n.GetStatus().GetState() == api.NodeStatus_DOWN ||
+		n.GetSpec().GetAvailability() == api.NodeAvailabilityDrain
 }
 
-func taskTimestamp(t *api.Task) *google_protobuf.Timestamp {
-	if t.Status.AppliedAt != nil {
-		return t.Status.AppliedAt
+func taskTimestamp(t *api.Task) *timestamppb.Timestamp {
+	if t.Status.GetAppliedAt() != nil {
+		return t.Status.GetAppliedAt()
 	}
 
-	return t.Status.Timestamp
+	return t.Status.GetTimestamp()
 }
 
 // TasksByTimestamp sorts tasks by applied timestamp if available, otherwise

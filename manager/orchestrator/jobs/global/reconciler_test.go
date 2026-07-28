@@ -58,22 +58,25 @@ var _ = Describe("Global Job Reconciler", func() {
 			// Set up the service and nodes. We can change these later
 			service = &api.Service{
 				ID: serviceID,
-				Spec: api.ServiceSpec{
+				Spec: &api.ServiceSpec{
 					Mode: &api.ServiceSpec_GlobalJob{
 						// GlobalJob has no parameters
 						GlobalJob: &api.GlobalJob{},
 					},
+					Task: &api.TaskSpec{},
 				},
-				JobStatus: &api.JobStatus{},
+				JobStatus: &api.JobStatus{
+					JobIteration: &api.Version{Index: 0},
+				},
 			}
 
 			cluster = &api.Cluster{
 				ID: "someCluster",
-				Spec: api.ClusterSpec{
-					Annotations: api.Annotations{
+				Spec: &api.ClusterSpec{
+					Annotations: &api.Annotations{
 						Name: "someCluster",
 					},
-					TaskDefaults: api.TaskDefaults{
+					TaskDefaults: &api.TaskDefaults{
 						LogDriver: &api.Driver{
 							Name: "someDriver",
 						},
@@ -87,37 +90,37 @@ var _ = Describe("Global Job Reconciler", func() {
 			nodes = []*api.Node{
 				{
 					ID: "node1",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "name1",
 						},
 						Availability: api.NodeAvailabilityActive,
 					},
-					Status: api.NodeStatus{
+					Status: &api.NodeStatus{
 						State: api.NodeStatus_READY,
 					},
 				},
 				{
 					ID: "node2",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "name2",
 						},
 						Availability: api.NodeAvailabilityActive,
 					},
-					Status: api.NodeStatus{
+					Status: &api.NodeStatus{
 						State: api.NodeStatus_READY,
 					},
 				},
 				{
 					ID: "node3",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "name3",
 						},
 						Availability: api.NodeAvailabilityActive,
 					},
-					Status: api.NodeStatus{
+					Status: &api.NodeStatus{
 						State: api.NodeStatus_READY,
 					},
 				},
@@ -296,7 +299,7 @@ var _ = Describe("Global Job Reconciler", func() {
 						ServiceID:    serviceID,
 						NodeID:       "node1",
 						DesiredState: api.TaskStateCompleted,
-						Status: api.TaskStatus{
+						Status: &api.TaskStatus{
 							State: api.TaskStateRunning,
 						},
 						JobIteration: &api.Version{},
@@ -307,7 +310,7 @@ var _ = Describe("Global Job Reconciler", func() {
 						ServiceID:    serviceID,
 						NodeID:       "node2",
 						DesiredState: api.TaskStateCompleted,
-						Status: api.TaskStatus{
+						Status: &api.TaskStatus{
 							State: api.TaskStateCompleted,
 						},
 						JobIteration: &api.Version{},
@@ -378,7 +381,7 @@ var _ = Describe("Global Job Reconciler", func() {
 						ServiceID:    service.ID,
 						NodeID:       nodes[0].ID,
 						DesiredState: api.TaskStateCompleted,
-						Status: api.TaskStatus{
+						Status: &api.TaskStatus{
 							State: api.TaskStateRunning,
 						},
 						JobIteration: &api.Version{
@@ -437,7 +440,7 @@ var _ = Describe("Global Job Reconciler", func() {
 				ID:           "someTask",
 				NodeID:       "someNode",
 				DesiredState: api.TaskStateShutdown,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateShutdown,
 				},
 			}
@@ -460,7 +463,7 @@ var _ = Describe("Global Job Reconciler", func() {
 				ID:           "someTask",
 				NodeID:       "someNode",
 				DesiredState: api.TaskStateCompleted,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: api.TaskStateFailed,
 				},
 			}

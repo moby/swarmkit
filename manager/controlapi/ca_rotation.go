@@ -66,7 +66,7 @@ func newRootRotationObject(ctx context.Context, securityConfig *ca.SecurityConfi
 		// We need the same credentials but to connect to the original URLs (in case we are in the middle of a root rotation already)
 		var urls []string
 		for _, c := range extCAs {
-			if c.Protocol == api.ExternalCA_CAProtocolCFSSL {
+			if c.Protocol == api.CAProtocolCFSSL {
 				urls = append(urls, c.URL)
 			}
 		}
@@ -138,7 +138,7 @@ func validateHasAtLeastOneExternalCA(ctx context.Context, externalCAs map[string
 			Certificates: securityConfig.ClientTLSCreds.Config().Certificates,
 		}
 		for i, ca := range specific {
-			if ca.Protocol == api.ExternalCA_CAProtocolCFSSL {
+			if ca.Protocol == api.CAProtocolCFSSL {
 				if err := validateExternalCAURL(&dialer, &opts, ca.URL); err != nil {
 					log.G(ctx).WithError(err).Warnf("external CA # %d is unreachable or invalid", i+1)
 				} else {
@@ -196,7 +196,12 @@ func getNormalizedExtCAs(caConfig *api.CAConfig, normalizedCurrentRootCACert []b
 //     - Otherwise, start a new root rotation using the desired signing cert and desired signing key as the root rotation
 //     signing cert and key.  If a root rotation is already in progress, just replace it and start over.
 func validateCAConfig(ctx context.Context, securityConfig *ca.SecurityConfig, cluster *api.Cluster) (*api.RootCA, error) {
-	newConfig := cluster.Spec.CAConfig.Copy()
+	var newConfig *api.CAConfig
+	if cluster.Spec.GetCAConfig() != nil {
+		newConfig = cluster.Spec.CAConfig.Copy()
+	} else {
+		newConfig = &api.CAConfig{}
+	}
 	newConfig.SigningCACert = ca.NormalizePEMs(newConfig.SigningCACert) // ensure this is normalized before we use it
 
 	if len(newConfig.SigningCAKey) > 0 && len(newConfig.SigningCACert) == 0 {
@@ -210,7 +215,7 @@ func validateCAConfig(ctx context.Context, securityConfig *ca.SecurityConfig, cl
 	}
 
 	var oldCertExtCAs []*api.ExternalCA
-	if !hasSigningKey(&cluster.RootCA) {
+	if !hasSigningKey(cluster.RootCA) {
 
 		// If we are going from external -> internal, but providing the external CA's signing key,
 		// then we don't need to validate any external CAs.  We can in fact abort any outstanding root
@@ -243,7 +248,7 @@ func validateCAConfig(ctx context.Context, securityConfig *ca.SecurityConfig, cl
 			if err != nil {
 				return nil, status.Error(codes.Internal, err.Error())
 			}
-			return newRootRotationObject(ctx, securityConfig, &cluster.RootCA, newRootCA, oldCertExtCAs, newConfig.ForceRotate)
+			return newRootRotationObject(ctx, securityConfig, cluster.RootCA, newRootCA, oldCertExtCAs, newConfig.ForceRotate)
 		}
 
 		// we also need to make sure that if the current root rotation requires an external CA, those external CAs are
@@ -255,7 +260,7 @@ func validateCAConfig(ctx context.Context, securityConfig *ca.SecurityConfig, cl
 			}
 		}
 
-		return &cluster.RootCA, nil // no change, return as is
+		return cluster.RootCA, nil // no change, return as is
 	}
 
 	// A desired cert and maybe key were provided - we need to make sure the cert and key (if provided) match.
@@ -312,5 +317,5 @@ func validateCAConfig(ctx context.Context, securityConfig *ca.SecurityConfig, cl
 	}
 
 	// ok, everything's different; we have to begin a new root rotation which means generating a new cross-signed cert
-	return newRootRotationObject(ctx, securityConfig, &cluster.RootCA, newRootCA, oldCertExtCAs, newConfig.ForceRotate)
+	return newRootRotationObject(ctx, securityConfig, cluster.RootCA, newRootCA, oldCertExtCAs, newConfig.ForceRotate)
 }

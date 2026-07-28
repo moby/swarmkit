@@ -2,7 +2,6 @@ package controlapi
 
 import (
 	"context"
-	"reflect"
 	"strings"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -10,6 +9,7 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 func (s *Server) CreateVolume(_ context.Context, request *api.CreateVolumeRequest) (*api.CreateVolumeResponse, error) {
@@ -36,7 +36,7 @@ func (s *Server) CreateVolume(_ context.Context, request *api.CreateVolumeReques
 
 	volume := &api.Volume{
 		ID:   identity.NewID(),
-		Spec: *request.Spec,
+		Spec: request.Spec,
 	}
 	err := s.store.Update(func(tx store.Tx) error {
 		// check all secrets, so that we can return an error indicating ALL
@@ -95,19 +95,19 @@ func (s *Server) UpdateVolume(_ context.Context, request *api.UpdateVolumeReques
 		if request.Spec.Group != volume.Spec.Group {
 			return status.Errorf(codes.InvalidArgument, "Group cannot be updated")
 		}
-		if !reflect.DeepEqual(request.Spec.AccessibilityRequirements, volume.Spec.AccessibilityRequirements) {
+		if !proto.Equal(request.Spec.AccessibilityRequirements, volume.Spec.AccessibilityRequirements) {
 			return status.Errorf(codes.InvalidArgument, "AccessibilityRequirements cannot be updated")
 		}
-		if !reflect.DeepEqual(request.Spec.Driver, volume.Spec.Driver) {
+		if !proto.Equal(request.Spec.Driver, volume.Spec.Driver) {
 			return status.Errorf(codes.InvalidArgument, "Driver cannot be updated")
 		}
-		if !reflect.DeepEqual(request.Spec.AccessMode, volume.Spec.AccessMode) {
+		if !proto.Equal(request.Spec.AccessMode, volume.Spec.AccessMode) {
 			return status.Errorf(codes.InvalidArgument, "AccessMode cannot be updated")
 		}
-		if !reflect.DeepEqual(request.Spec.Secrets, volume.Spec.Secrets) {
+		if !secretsEqual(request.Spec.Secrets, volume.Spec.Secrets) {
 			return status.Errorf(codes.InvalidArgument, "Secrets cannot be updated")
 		}
-		if !reflect.DeepEqual(request.Spec.CapacityRange, volume.Spec.CapacityRange) {
+		if !proto.Equal(request.Spec.CapacityRange, volume.Spec.CapacityRange) {
 			return status.Errorf(codes.InvalidArgument, "CapacityRange cannot be updated")
 		}
 
@@ -117,7 +117,7 @@ func (s *Server) UpdateVolume(_ context.Context, request *api.UpdateVolumeReques
 		volume.Spec.Annotations.Labels = request.Spec.Annotations.Labels
 		volume.Spec.Availability = request.Spec.Availability
 
-		volume.Meta.Version = *request.VolumeVersion
+		volume.Meta.Version = request.VolumeVersion
 		if err := store.UpdateVolume(tx, volume); err != nil {
 			return err
 		}
@@ -132,6 +132,19 @@ func (s *Server) UpdateVolume(_ context.Context, request *api.UpdateVolumeReques
 	return &api.UpdateVolumeResponse{
 		Volume: volume,
 	}, nil
+}
+
+// secretsEqual compares two slices of VolumeSecret using proto.Equal for each element.
+func secretsEqual(a, b []*api.VolumeSecret) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !proto.Equal(a[i], b[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Server) ListVolumes(_ context.Context, request *api.ListVolumesRequest) (*api.ListVolumesResponse, error) {

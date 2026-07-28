@@ -196,7 +196,7 @@ func TestServiceNotMarkedForDeletion(t *testing.T) {
 	defer stopDeallocator(t, deallocator, ran)
 
 	updateStoreAndWaitForEvent(t, deallocator, func(tx store.Tx) {
-		service.Meta = api.Meta{Version: api.Version{Index: 12}}
+		service.Meta = &api.Meta{Version: &api.Version{Index: 12}}
 		require.NoError(t, store.UpdateService(tx, service))
 	},
 		// the deallocator shouldn't do any DB updates based on this event
@@ -362,11 +362,11 @@ func updateStoreAndWaitForEvent(t *testing.T, deallocator *Deallocator, cb func(
 func newService(id string, pendingDelete bool, networks ...*api.Network) *api.Service {
 	return &api.Service{
 		ID: id,
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: id,
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Networks: newNetworkConfigs(networks...),
 			},
 		},
@@ -377,8 +377,8 @@ func newService(id string, pendingDelete bool, networks ...*api.Network) *api.Se
 func newNetwork(id string, pendingDelete bool) *api.Network {
 	return &api.Network{
 		ID: id,
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
+		Spec: &api.NetworkSpec{
+			Annotations: &api.Annotations{
 				Name: id,
 			},
 		},

@@ -34,7 +34,7 @@ func parseTmpfs(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 				return errors.Errorf("invalid mount spec: %v", tmpfs)
 			}
 
-			m := api.Mount{
+			m := &api.Mount{
 				Type:   api.MountTypeTmpfs,
 				Target: parts[0],
 			}
@@ -92,7 +92,7 @@ func parseTmpfs(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 						if err != nil {
 							return err
 						}
-						opts.Mode = os.FileMode(i)
+						opts.Mode = uint32(os.FileMode(i))
 					case flag == "ro":
 						m.ReadOnly = true
 					case flag == "rw":

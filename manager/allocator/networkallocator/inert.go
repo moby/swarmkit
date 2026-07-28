@@ -74,7 +74,7 @@ func (Inert) AllocateAttachment(_ *api.Node, _ *api.NetworkAttachment) error {
 
 // AllocateService succeeds iff the service specifies no network attachments.
 func (Inert) AllocateService(s *api.Service) error {
-	if len(s.Spec.Task.Networks) > 0 || len(s.Spec.Networks) > 0 {
+	if len(s.GetSpec().GetTask().GetNetworks()) > 0 || len(s.GetSpec().GetNetworks()) > 0 {
 		return errUnavailable
 	}
 	return nil
@@ -82,7 +82,7 @@ func (Inert) AllocateService(s *api.Service) error {
 
 // AllocateTask succeeds iff the task specifies no network attachments.
 func (Inert) AllocateTask(t *api.Task) error {
-	if len(t.Spec.Networks) > 0 {
+	if len(t.GetSpec().GetNetworks()) > 0 {
 		return errUnavailable
 	}
 	return nil

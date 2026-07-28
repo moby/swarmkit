@@ -18,7 +18,6 @@ import (
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/go-connections/nat"
 	"github.com/docker/go-units"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/genericresource"
@@ -191,10 +190,10 @@ func (c *containerConfig) healthcheck() *enginecontainer.HealthConfig {
 	if hcSpec == nil {
 		return nil
 	}
-	interval, _ := gogotypes.DurationFromProto(hcSpec.Interval)
-	timeout, _ := gogotypes.DurationFromProto(hcSpec.Timeout)
-	startPeriod, _ := gogotypes.DurationFromProto(hcSpec.StartPeriod)
-	startInterval, _ := gogotypes.DurationFromProto(hcSpec.StartInterval)
+	interval := hcSpec.Interval.AsDuration()
+	timeout := hcSpec.Timeout.AsDuration()
+	startPeriod := hcSpec.StartPeriod.AsDuration()
+	startInterval := hcSpec.StartInterval.AsDuration()
 	return &enginecontainer.HealthConfig{
 		Test:          hcSpec.Test,
 		Interval:      interval,
@@ -250,7 +249,7 @@ func (c *containerConfig) labels() map[string]string {
 		"task.name":    naming.Task(c.task),
 		"node.id":      c.task.NodeID,
 		"service.id":   c.task.ServiceID,
-		"service.name": c.task.ServiceAnnotations.Name,
+		"service.name": c.task.GetServiceAnnotations().GetName(),
 	}
 
 	// base labels are those defined in the spec.
@@ -259,7 +258,7 @@ func (c *containerConfig) labels() map[string]string {
 
 	// we then apply the overrides from the task, which may be set via the
 	// orchestrator.
-	maps.Copy(labels, c.task.Annotations.Labels)
+	maps.Copy(labels, c.task.GetAnnotations().GetLabels())
 
 	// finally, we apply the system labels, which override all labels.
 	for k, v := range system {
@@ -277,7 +276,7 @@ func (c *containerConfig) tmpfs() map[string]string {
 			continue
 		}
 
-		r[spec.Target] = getMountMask(&spec)
+		r[spec.Target] = getMountMask(spec)
 	}
 
 	return r
@@ -291,7 +290,7 @@ func (c *containerConfig) mounts() []enginemount.Mount {
 	return r
 }
 
-func convertMount(m api.Mount) enginemount.Mount {
+func convertMount(m *api.Mount) enginemount.Mount {
 	mount := enginemount.Mount{
 		Source:   m.Source,
 		Target:   m.Target,

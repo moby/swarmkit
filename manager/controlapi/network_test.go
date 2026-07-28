@@ -16,7 +16,7 @@ import (
 
 func createNetworkSpec(name string) *api.NetworkSpec {
 	return &api.NetworkSpec{
-		Annotations: api.Annotations{
+		Annotations: &api.Annotations{
 			Name: name,
 		},
 	}
@@ -33,7 +33,7 @@ func (s *Server) createInternalNetwork(ctx context.Context, request *api.CreateN
 	// duplicate creations. See #65
 	n := &api.Network{
 		ID:   identity.NewID(),
-		Spec: *request.Spec,
+		Spec: request.Spec,
 	}
 
 	err := s.store.Update(func(tx store.Tx) error {
@@ -50,14 +50,14 @@ func (s *Server) createInternalNetwork(ctx context.Context, request *api.CreateN
 
 func createServiceInNetworkSpec(name, image string, nwid string, instances uint64) *api.ServiceSpec {
 	return &api.ServiceSpec{
-		Annotations: api.Annotations{
+		Annotations: &api.Annotations{
 			Name: name,
 			Labels: map[string]string{
 				"common": "yes",
 				"unique": name,
 			},
 		},
-		Task: api.TaskSpec{
+		Task: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image: image,

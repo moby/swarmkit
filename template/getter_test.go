@@ -17,20 +17,20 @@ func TestTemplatedSecret(t *testing.T) {
 
 	referencedSecret := &api.Secret{
 		ID: "referencedsecret",
-		Spec: api.SecretSpec{
+		Spec: &api.SecretSpec{
 			Data: []byte("mysecret"),
 		},
 	}
 	referencedConfig := &api.Config{
 		ID: "referencedconfig",
-		Spec: api.ConfigSpec{
+		Spec: &api.ConfigSpec{
 			Data: []byte("myconfig"),
 		},
 	}
 
 	type testCase struct {
 		desc        string
-		secretSpec  api.SecretSpec
+		secretSpec  *api.SecretSpec
 		task        *api.Task
 		node        *api.NodeDescription
 		expected    string
@@ -40,7 +40,7 @@ func TestTemplatedSecret(t *testing.T) {
 	testCases := []testCase{
 		{
 			desc: "Test expansion of task context",
-			secretSpec: api.SecretSpec{
+			secretSpec: &api.SecretSpec{
 				Data: []byte("SERVICE_ID={{.Service.ID}}\n" +
 					"SERVICE_NAME={{.Service.Name}}\n" +
 					"TASK_ID={{.Task.ID}}\n" +
@@ -60,7 +60,7 @@ func TestTemplatedSecret(t *testing.T) {
 				"NODE_OS=testOS\n" +
 				"NODE_ARCHITECTURE=testArchitecture",
 			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Secrets: []*api.SecretReference{
@@ -81,13 +81,13 @@ func TestTemplatedSecret(t *testing.T) {
 		},
 		{
 			desc: "Test expansion of secret, by target",
-			secretSpec: api.SecretSpec{
+			secretSpec: &api.SecretSpec{
 				Data:       []byte("SECRET_VAL={{secret \"referencedsecrettarget\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "SECRET_VAL=mysecret\n",
 			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Secrets: []*api.SecretReference{
@@ -118,13 +118,13 @@ func TestTemplatedSecret(t *testing.T) {
 		},
 		{
 			desc: "Test expansion of config, by target",
-			secretSpec: api.SecretSpec{
+			secretSpec: &api.SecretSpec{
 				Data:       []byte("CONFIG_VAL={{config \"referencedconfigtarget\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "CONFIG_VAL=myconfig\n",
 			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Secrets: []*api.SecretReference{
@@ -157,13 +157,13 @@ func TestTemplatedSecret(t *testing.T) {
 		},
 		{
 			desc: "Test expansion of secret not available to task",
-			secretSpec: api.SecretSpec{
+			secretSpec: &api.SecretSpec{
 				Data:       []byte("SECRET_VAL={{secret \"unknowntarget\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
 			},
 			expectedErr: `failed to expand templated secret templatedsecret: template: expansion:1:13: executing "expansion" at <secret "unknowntarget">: error calling secret: secret target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Secrets: []*api.SecretReference{
@@ -182,13 +182,13 @@ func TestTemplatedSecret(t *testing.T) {
 		},
 		{
 			desc: "Test expansion of config not available to task",
-			secretSpec: api.SecretSpec{
+			secretSpec: &api.SecretSpec{
 				Data:       []byte("CONFIG_VAL={{config \"unknowntarget\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
 			},
 			expectedErr: `failed to expand templated secret templatedsecret: template: expansion:1:13: executing "expansion" at <config "unknowntarget">: error calling config: config target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Secrets: []*api.SecretReference{
@@ -207,13 +207,13 @@ func TestTemplatedSecret(t *testing.T) {
 		},
 		{
 			desc: "Test that expansion of the same secret avoids recursion",
-			secretSpec: api.SecretSpec{
+			secretSpec: &api.SecretSpec{
 				Data:       []byte("SECRET_VAL={{secret \"templatedsecrettarget\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "SECRET_VAL=SECRET_VAL={{secret \"templatedsecrettarget\"}}\n\n",
 			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Secrets: []*api.SecretReference{
@@ -240,7 +240,7 @@ func TestTemplatedSecret(t *testing.T) {
 		},
 		{
 			desc: "Test env",
-			secretSpec: api.SecretSpec{
+			secretSpec: &api.SecretSpec{
 				Data: []byte("ENV VALUE={{env \"foo\"}}\n" +
 					"DOES NOT EXIST={{env \"badname\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
@@ -248,7 +248,7 @@ func TestTemplatedSecret(t *testing.T) {
 			expected: "ENV VALUE=bar\n" +
 				"DOES NOT EXIST=\n",
 			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Secrets: []*api.SecretReference{
@@ -297,20 +297,20 @@ func TestTemplatedConfig(t *testing.T) {
 
 	referencedSecret := &api.Secret{
 		ID: "referencedsecret",
-		Spec: api.SecretSpec{
+		Spec: &api.SecretSpec{
 			Data: []byte("mysecret"),
 		},
 	}
 	referencedConfig := &api.Config{
 		ID: "referencedconfig",
-		Spec: api.ConfigSpec{
+		Spec: &api.ConfigSpec{
 			Data: []byte("myconfig"),
 		},
 	}
 
 	type testCase struct {
 		desc              string
-		configSpec        api.ConfigSpec
+		configSpec        *api.ConfigSpec
 		task              *api.Task
 		expected          string
 		expectedErr       string
@@ -321,7 +321,7 @@ func TestTemplatedConfig(t *testing.T) {
 	testCases := []testCase{
 		{
 			desc: "Test expansion of task context",
-			configSpec: api.ConfigSpec{
+			configSpec: &api.ConfigSpec{
 				Data: []byte("SERVICE_ID={{.Service.ID}}\n" +
 					"SERVICE_NAME={{.Service.Name}}\n" +
 					"TASK_ID={{.Task.ID}}\n" +
@@ -341,7 +341,7 @@ func TestTemplatedConfig(t *testing.T) {
 				"NODE_OS=testOS\n" +
 				"NODE_ARCHITECTURE=testArchitecture",
 			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Configs: []*api.ConfigReference{
@@ -362,14 +362,14 @@ func TestTemplatedConfig(t *testing.T) {
 		},
 		{
 			desc: "Test expansion of secret, by target",
-			configSpec: api.ConfigSpec{
+			configSpec: &api.ConfigSpec{
 				Data:       []byte("SECRET_VAL={{secret \"referencedsecrettarget\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
 			},
 			expected:          "SECRET_VAL=mysecret\n",
 			expectedSensitive: true,
 			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Secrets: []*api.SecretReference{
@@ -402,13 +402,13 @@ func TestTemplatedConfig(t *testing.T) {
 		},
 		{
 			desc: "Test expansion of config, by target",
-			configSpec: api.ConfigSpec{
+			configSpec: &api.ConfigSpec{
 				Data:       []byte("CONFIG_VAL={{config \"referencedconfigtarget\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "CONFIG_VAL=myconfig\n",
 			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Configs: []*api.ConfigReference{
@@ -439,13 +439,13 @@ func TestTemplatedConfig(t *testing.T) {
 		},
 		{
 			desc: "Test expansion of secret not available to task",
-			configSpec: api.ConfigSpec{
+			configSpec: &api.ConfigSpec{
 				Data:       []byte("SECRET_VAL={{secret \"unknowntarget\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
 			},
 			expectedErr: `failed to expand templated config templatedconfig: template: expansion:1:13: executing "expansion" at <secret "unknowntarget">: error calling secret: secret target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Configs: []*api.ConfigReference{
@@ -464,13 +464,13 @@ func TestTemplatedConfig(t *testing.T) {
 		},
 		{
 			desc: "Test expansion of config not available to task",
-			configSpec: api.ConfigSpec{
+			configSpec: &api.ConfigSpec{
 				Data:       []byte("CONFIG_VAL={{config \"unknowntarget\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
 			},
 			expectedErr: `failed to expand templated config templatedconfig: template: expansion:1:13: executing "expansion" at <config "unknowntarget">: error calling config: config target unknowntarget not found`,
 			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Configs: []*api.ConfigReference{
@@ -489,13 +489,13 @@ func TestTemplatedConfig(t *testing.T) {
 		},
 		{
 			desc: "Test that expansion of the same config avoids recursion",
-			configSpec: api.ConfigSpec{
+			configSpec: &api.ConfigSpec{
 				Data:       []byte("CONFIG_VAL={{config \"templatedconfigtarget\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
 			},
 			expected: "CONFIG_VAL=CONFIG_VAL={{config \"templatedconfigtarget\"}}\n\n",
 			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Configs: []*api.ConfigReference{
@@ -522,7 +522,7 @@ func TestTemplatedConfig(t *testing.T) {
 		},
 		{
 			desc: "Test env",
-			configSpec: api.ConfigSpec{
+			configSpec: &api.ConfigSpec{
 				Data: []byte("ENV VALUE={{env \"foo\"}}\n" +
 					"DOES NOT EXIST={{env \"badname\"}}\n"),
 				Templating: &api.Driver{Name: "golang"},
@@ -530,7 +530,7 @@ func TestTemplatedConfig(t *testing.T) {
 			expected: "ENV VALUE=bar\n" +
 				"DOES NOT EXIST=\n",
 			task: modifyTask(func(t *api.Task) {
-				t.Spec = api.TaskSpec{
+				t.Spec = &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Configs: []*api.ConfigReference{

@@ -19,7 +19,7 @@ func TestTaskNaming(t *testing.T) {
 				ID:     "taskID",
 				Slot:   10,
 				NodeID: "thenodeID",
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "theservice",
 				},
 			},
@@ -30,10 +30,10 @@ func TestTaskNaming(t *testing.T) {
 			Task: &api.Task{
 				ID:     "taskID",
 				NodeID: "thenodeID",
-				Annotations: api.Annotations{
+				Annotations: &api.Annotations{
 					Name: "thisisthetaskname",
 				},
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "theservice",
 				},
 			},
@@ -44,7 +44,7 @@ func TestTaskNaming(t *testing.T) {
 			Task: &api.Task{
 				ID:     "taskID",
 				NodeID: "thenodeID",
-				ServiceAnnotations: api.Annotations{
+				ServiceAnnotations: &api.Annotations{
 					Name: "theservice",
 				},
 			},

@@ -118,7 +118,7 @@ func (s *Server) ListTasks(_ context.Context, request *api.ListTasksRequest) (*a
 				return filterContainsPrefix(e.ID, request.Filters.IDPrefixes)
 			},
 			func(e *api.Task) bool {
-				return filterMatchLabels(e.ServiceAnnotations.Labels, request.Filters.Labels)
+				return filterMatchLabels(e.GetServiceAnnotations().GetLabels(), request.Filters.Labels)
 			},
 			func(e *api.Task) bool {
 				return filterContains(e.ServiceID, request.Filters.ServiceIDs)

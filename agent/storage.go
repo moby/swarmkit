@@ -1,9 +1,9 @@
 package agent
 
 import (
-	"github.com/gogo/protobuf/proto"
 	"github.com/moby/swarmkit/v2/api"
 	bolt "go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 )
 
 // Layout:
@@ -119,7 +119,7 @@ func WalkTaskStatus(tx *bolt.Tx, fn func(id string, status *api.TaskStatus) erro
 func PutTask(tx *bolt.Tx, task *api.Task) error {
 	return withCreateTaskBucketIfNotExists(tx, task.ID, func(bkt *bolt.Bucket) error {
 		taskCopy := *task
-		taskCopy.Status = api.TaskStatus{} // blank out the status.
+		taskCopy.Status = nil // blank out the status.
 
 		p, err := proto.Marshal(&taskCopy)
 		if err != nil {

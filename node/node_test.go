@@ -227,6 +227,9 @@ func TestLoadSecurityConfigDownloadAllCerts(t *testing.T) {
 		require.Len(t, clusters, 1)
 
 		newCluster := clusters[0].Copy()
+		if newCluster.Spec.EncryptionConfig == nil {
+			newCluster.Spec.EncryptionConfig = &api.EncryptionConfig{}
+		}
 		newCluster.Spec.EncryptionConfig.AutoLockManagers = true
 		newCluster.UnlockKeys = []*api.EncryptionKey{{
 			Subsystem: ca.ManagerRole,
@@ -554,7 +557,7 @@ func TestCertRenewals(t *testing.T) {
 	// ignored when DesiredRole has not changed.
 	node.notifyNodeChange <- &agent.NodeChanges{
 		Node: &api.Node{
-			Spec: api.NodeSpec{
+			Spec: &api.NodeSpec{
 				DesiredRole: api.NodeRoleManager,
 			},
 			Role: api.NodeRoleWorker,
@@ -573,7 +576,7 @@ func TestCertRenewals(t *testing.T) {
 	// the current role, a cert renewal should be triggered.
 	node.notifyNodeChange <- &agent.NodeChanges{
 		Node: &api.Node{
-			Spec: api.NodeSpec{
+			Spec: &api.NodeSpec{
 				DesiredRole: api.NodeRoleWorker,
 			},
 			Role: api.NodeRoleWorker,

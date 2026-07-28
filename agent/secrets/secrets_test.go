@@ -88,7 +88,7 @@ func TestTaskRestrictedSecretsProvider(t *testing.T) {
 		t.Logf("secretID=%s, taskID=%s, taskSpecificID=%s", originalSecretID, taskID, taskSpecificID)
 		secretsManager.Add(api.Secret{
 			ID: testCase.secretID,
-			Spec: api.SecretSpec{
+			Spec: &api.SecretSpec{
 				Data: []byte(testCase.value),
 			},
 		})

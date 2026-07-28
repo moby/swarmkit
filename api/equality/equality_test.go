@@ -15,8 +15,8 @@ func TestTasksEqualStable(t *testing.T) {
 	for i := range taskCount {
 		tasks[i] = &api.Task{
 			ID:   "task-id",
-			Meta: api.Meta{Version: api.Version{Index: 6}},
-			Spec: api.TaskSpec{
+			Meta: &api.Meta{Version: &api.Version{Index: 6}},
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Image: "redis:3.0.7",
@@ -26,7 +26,7 @@ func TestTasksEqualStable(t *testing.T) {
 			ServiceID:    "service-id",
 			Slot:         3,
 			NodeID:       "node-id",
-			Status:       api.TaskStatus{State: api.TaskStateAssigned},
+			Status:       &api.TaskStatus{State: api.TaskStateAssigned},
 			DesiredState: api.TaskStateReady,
 		}
 	}
@@ -56,17 +56,17 @@ func TestTasksEqualStable(t *testing.T) {
 }
 
 func TestRootCAEqualStable(t *testing.T) {
-	root1 := api.RootCA{
+	root1 := &api.RootCA{
 		CACert:     []byte("1"),
 		CAKey:      []byte("2"),
 		CACertHash: "hash",
 	}
-	root2 := root1
-	root2.JoinTokens = api.JoinTokens{
+	root2 := root1.Copy()
+	root2.JoinTokens = &api.JoinTokens{
 		Worker:  "worker",
 		Manager: "manager",
 	}
-	root3 := root1
+	root3 := root1.Copy()
 	root3.RootRotation = &api.RootRotation{
 		CACert:            []byte("3"),
 		CAKey:             []byte("4"),
@@ -75,34 +75,34 @@ func TestRootCAEqualStable(t *testing.T) {
 
 	for _, v := range []struct{ a, b *api.RootCA }{
 		{a: nil, b: nil},
-		{a: &root1, b: &root1},
-		{a: &root1, b: &root2},
-		{a: &root3, b: &root3},
+		{a: root1, b: root1},
+		{a: root1, b: root2},
+		{a: root3, b: root3},
 	} {
 		require.True(t, RootCAEqualStable(v.a, v.b), "should be equal:\n%v\n%v\n", v.a, v.b)
 	}
 
-	root1Permutations := []api.RootCA{root1, root1, root1}
-	root3Permutations := []api.RootCA{root3, root3, root3}
-	for _, r := range root3Permutations {
-		copy := *r.RootRotation
-		root3.RootRotation = &copy
-	}
-	root1Permutations[0].CACert = []byte("nope")
-	root1Permutations[1].CAKey = []byte("nope")
-	root1Permutations[2].CACertHash = "nope"
-	root3Permutations[0].RootRotation.CACert = []byte("nope")
-	root3Permutations[1].RootRotation.CAKey = []byte("nope")
-	root3Permutations[2].RootRotation.CrossSignedCACert = []byte("nope")
+	root1Perm0 := root1.Copy()
+	root1Perm1 := root1.Copy()
+	root1Perm2 := root1.Copy()
+	root3Perm0 := root3.Copy()
+	root3Perm1 := root3.Copy()
+	root3Perm2 := root3.Copy()
+	root1Perm0.CACert = []byte("nope")
+	root1Perm1.CAKey = []byte("nope")
+	root1Perm2.CACertHash = "nope"
+	root3Perm0.RootRotation.CACert = []byte("nope")
+	root3Perm1.RootRotation.CAKey = []byte("nope")
+	root3Perm2.RootRotation.CrossSignedCACert = []byte("nope")
 
 	for _, v := range []struct{ a, b *api.RootCA }{
-		{a: &root1, b: &root3},
-		{a: &root1, b: &root1Permutations[0]},
-		{a: &root1, b: &root1Permutations[1]},
-		{a: &root1, b: &root1Permutations[2]},
-		{a: &root3, b: &root3Permutations[0]},
-		{a: &root3, b: &root3Permutations[1]},
-		{a: &root3, b: &root3Permutations[2]},
+		{a: root1, b: root3},
+		{a: root1, b: root1Perm0},
+		{a: root1, b: root1Perm1},
+		{a: root1, b: root1Perm2},
+		{a: root3, b: root3Perm0},
+		{a: root3, b: root3Perm1},
+		{a: root3, b: root3Perm2},
 	} {
 		require.False(t, RootCAEqualStable(v.a, v.b), "should not be equal:\n%v\n%v\n", v.a, v.b)
 	}

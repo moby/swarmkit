@@ -9,10 +9,10 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/docker/go-events"
-	gogotypes "github.com/gogo/protobuf/types"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state/store"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 // passEventsUntil is a helper method that calls handleEvent on all events from
@@ -51,8 +51,8 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 
 		service = &api.Service{
 			ID: "norestartservice",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "norestartservice",
 				},
 				Mode: &api.ServiceSpec_ReplicatedJob{
@@ -61,10 +61,10 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 						TotalCompletions: uint64(1),
 					},
 				},
-				Task: api.TaskSpec{},
+				Task: &api.TaskSpec{},
 			},
 			JobStatus: &api.JobStatus{
-				JobIteration: api.Version{
+				JobIteration: &api.Version{
 					Index: 0,
 				},
 			},
@@ -155,7 +155,7 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 			MaxAttempts: 3,
 			// set a low but non-zero delay duration, so we avoid default
 			// duration, which may be long.
-			Delay: gogotypes.DurationProto(100 * time.Millisecond),
+			Delay: durationpb.New(100 * time.Millisecond),
 		}
 		err := s.Update(func(tx store.Tx) error {
 			return store.CreateService(tx, service)

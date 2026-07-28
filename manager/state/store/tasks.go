@@ -263,7 +263,7 @@ func (ti taskIndexerByNetwork) FromObject(obj any) (bool, [][]byte, error) {
 
 	var networkIDs [][]byte
 
-	for _, na := range t.Spec.Networks {
+	for _, na := range t.GetSpec().GetNetworks() {
 		// Add the null character as a terminator
 		networkIDs = append(networkIDs, []byte(na.Target+"\x00"))
 	}
@@ -352,5 +352,5 @@ func (ts taskIndexerByTaskState) FromObject(obj any) (bool, []byte, error) {
 	t := obj.(*api.Task)
 
 	// Add the null character as a terminator
-	return true, []byte(strconv.FormatInt(int64(t.Status.State), 10) + "\x00"), nil
+	return true, []byte(strconv.FormatInt(int64(t.GetStatus().GetState()), 10) + "\x00"), nil
 }

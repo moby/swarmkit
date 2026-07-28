@@ -22,7 +22,7 @@ func NewFernet(key []byte) Fernet {
 
 // Algorithm returns the type of algorithm this is (Fernet, which uses AES128-CBC)
 func (f Fernet) Algorithm() api.MaybeEncryptedRecord_Algorithm {
-	return api.MaybeEncryptedRecord_FernetAES128CBC
+	return api.FernetAES128CBC
 }
 
 // Encrypt encrypts some bytes and returns an encrypted record
