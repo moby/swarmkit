@@ -106,28 +106,19 @@ func (a *Allocator) Run(ctx context.Context) error {
 			a.registerToVote(aa.taskVoter)
 		}
 
-		// Assign a pointer for variable capture
-		aaPtr := &aa
 		actor := func() error {
-			wg.Add(1)
-			defer wg.Done()
-
 			// init might return an allocator specific context
 			// which is a child of the passed in context to hold
 			// allocator specific state
-			watch, watchCancel, err := a.init(ctx, aaPtr)
+			watch, watchCancel, err := a.init(ctx, &aa)
 			if err != nil {
 				return err
 			}
 
-			wg.Add(1)
-			go func(watch <-chan events.Event, watchCancel func()) {
-				defer func() {
-					watchCancel()
-					wg.Done()
-				}()
-				a.run(ctx, *aaPtr, watch)
-			}(watch, watchCancel)
+			wg.Go(func() {
+				defer watchCancel()
+				a.run(ctx, aa, watch)
+			})
 			return nil
 		}
 
