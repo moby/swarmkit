@@ -82,7 +82,7 @@ func (n *TestNode) SubscribeLeadership() (q chan events.Event, cancel func()) {
 func AdvanceTicks(clockSource *fakeclock.FakeClock, ticks int) {
 	// A FakeClock timer won't fire multiple times if time is advanced
 	// more than its interval.
-	for i := 0; i != ticks; i++ {
+	for range ticks {
 		clockSource.Increment(time.Second)
 	}
 }

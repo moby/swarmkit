@@ -308,7 +308,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 			When("some running tasks are desired to be shutdown", func() {
 				BeforeEach(func() {
 					err := s.Update(func(tx store.Tx) error {
-						for i := uint64(0); i < maxConcurrent; i++ {
+						for i := range maxConcurrent {
 							task := orchestrator.NewTask(cluster, service, i, "")
 							task.JobIteration = &api.Version{}
 							task.DesiredState = api.TaskStateShutdown
@@ -345,7 +345,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 					err := s.Update(func(tx store.Tx) error {
 						// first, create a set of tasks with slots
 						// [0, maxConcurrent-1] that have all succeeded
-						for i := uint64(0); i < maxConcurrent; i++ {
+						for i := range maxConcurrent {
 							task := orchestrator.NewTask(cluster, service, i, "")
 							task.JobIteration = &api.Version{}
 							task.DesiredState = api.TaskStateCompleted
@@ -428,7 +428,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 					// we need to create a rather large number of tasks, all in
 					// COMPLETE state.
 					err := s.Update(func(tx store.Tx) error {
-						for i := uint64(0); i < totalCompletions-10; i++ {
+						for i := range totalCompletions - 10 {
 							// each task will get a unique slot
 
 							task := orchestrator.NewTask(nil, service, i, "")
@@ -503,7 +503,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 					return err
 				}
 
-				for i := uint64(0); i < totalCompletions+10; i++ {
+				for range totalCompletions + 10 {
 					task := orchestrator.NewTask(nil, service, 0, "")
 					task.JobIteration = &api.Version{}
 					task.DesiredState = api.TaskStateCompleted

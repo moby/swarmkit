@@ -191,7 +191,7 @@ func (u *Updater) Run(ctx context.Context, slots []orchestrator.Slot) {
 	slotQueue := make(chan orchestrator.Slot)
 	wg := sync.WaitGroup{}
 	wg.Add(parallelism)
-	for i := 0; i < parallelism; i++ {
+	for range parallelism {
 		go func() {
 			u.worker(ctx, slotQueue, updateConfig)
 			wg.Done()

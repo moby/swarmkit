@@ -451,7 +451,7 @@ func testHA(t *testing.T, useSpecVersion bool) {
 		}
 
 		// Prepopulate tasks from template 1
-		for i := 0; i != t1Instances; i++ {
+		for i := range t1Instances {
 			taskTemplate1.ID = fmt.Sprintf("t1id%d", i)
 			assert.NoError(t, store.CreateTask(tx, taskTemplate1))
 		}
@@ -470,7 +470,7 @@ func testHA(t *testing.T, useSpecVersion bool) {
 	defer scheduler.Stop()
 
 	t1Assignments := make(map[string]int)
-	for i := 0; i != t1Instances; i++ {
+	for range t1Instances {
 		assignment := watchAssignment(t, watch)
 		if !strings.HasPrefix(assignment.ID, "t1") {
 			t.Fatal("got assignment for different kind of task")
@@ -500,7 +500,7 @@ func testHA(t *testing.T, useSpecVersion bool) {
 	// Add a new service with two instances. They should fill the nodes
 	// that only have two tasks.
 	err = s.Update(func(tx store.Tx) error {
-		for i := 0; i != t2Instances; i++ {
+		for i := range t2Instances {
 			taskTemplate2.ID = fmt.Sprintf("t2id%d", i)
 			assert.NoError(t, store.CreateTask(tx, taskTemplate2))
 		}
@@ -509,7 +509,7 @@ func testHA(t *testing.T, useSpecVersion bool) {
 	assert.NoError(t, err)
 
 	t2Assignments := make(map[string]int)
-	for i := 0; i != t2Instances; i++ {
+	for range t2Instances {
 		assignment := watchAssignment(t, watch)
 		if !strings.HasPrefix(assignment.ID, "t2") {
 			t.Fatal("got assignment for different kind of task")
@@ -536,7 +536,7 @@ func testHA(t *testing.T, useSpecVersion bool) {
 
 	var sharedNodes [2]string
 
-	for i := 0; i != 3; i++ {
+	for range 3 {
 		assignment := watchAssignment(t, watch)
 		if !strings.HasPrefix(assignment.ID, "t1") {
 			t.Fatal("got assignment for different kind of task")
@@ -634,7 +634,7 @@ func testHA(t *testing.T, useSpecVersion bool) {
 	})
 	assert.NoError(t, err)
 
-	for i := 0; i != 4+2; i++ {
+	for range 4 + 2 {
 		assignment := watchAssignment(t, watch)
 		if strings.HasPrefix(assignment.ID, "t1") {
 			t1Assignments[assignment.NodeID]++
@@ -765,7 +765,7 @@ func testPreferences(t *testing.T, useSpecVersion bool) {
 		}
 
 		// Prepopulate tasks from template 1
-		for i := 0; i != t1Instances; i++ {
+		for i := range t1Instances {
 			taskTemplate1.ID = fmt.Sprintf("t1id%d", i)
 			assert.NoError(t, store.CreateTask(tx, taskTemplate1))
 		}
@@ -784,7 +784,7 @@ func testPreferences(t *testing.T, useSpecVersion bool) {
 	defer scheduler.Stop()
 
 	t1Assignments := make(map[string]int)
-	for i := 0; i != t1Instances; i++ {
+	for range t1Instances {
 		assignment := watchAssignment(t, watch)
 		if !strings.HasPrefix(assignment.ID, "t1") {
 			t.Fatal("got assignment for different kind of task")
@@ -1029,7 +1029,7 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 		}
 
 		// Prepopulate tasks from template 1
-		for i := 0; i != t1Instances; i++ {
+		for i := range t1Instances {
 			taskTemplate1.ID = fmt.Sprintf("t1id%d", i)
 			assert.NoError(t, store.CreateTask(tx, taskTemplate1))
 		}
@@ -1048,7 +1048,7 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 	defer scheduler.Stop()
 
 	t1Assignments := make(map[string]int)
-	for i := 0; i != t1Instances; i++ {
+	for range t1Instances {
 		assignment := watchAssignment(t, watch)
 		if !strings.HasPrefix(assignment.ID, "t1") {
 			t.Fatal("got assignment for different kind of task")
@@ -1209,7 +1209,7 @@ func TestMultiplePreferencesScaleUp(t *testing.T) {
 		}
 
 		// Prepopulate tasks from template 1
-		for i := 0; i != t1Instances; i++ {
+		for i := range t1Instances {
 			taskTemplate1.ID = fmt.Sprintf("t1id%d", i)
 			assert.NoError(t, store.CreateTask(tx, taskTemplate1))
 		}
@@ -1220,7 +1220,7 @@ func TestMultiplePreferencesScaleUp(t *testing.T) {
 			"id12": 1,
 			"id21": 3,
 		} {
-			for i := 0; i != tasks; i++ {
+			for i := range tasks {
 				taskTemplate1.ID = fmt.Sprintf("t1running-%s-%d", node, i)
 				taskTemplate1.NodeID = node
 				taskTemplate1.Status.State = api.TaskStateRunning
@@ -1243,7 +1243,7 @@ func TestMultiplePreferencesScaleUp(t *testing.T) {
 
 	t1Assignments := make(map[string]int)
 	totalAssignments := 0
-	for i := 0; i != t1Instances; i++ {
+	for range t1Instances {
 		assignment := watchAssignment(t, watch)
 		if !strings.HasPrefix(assignment.ID, "t1") {
 			t.Fatal("got assignment for different kind of task")
@@ -1406,7 +1406,7 @@ func TestSchedulerFaultyNode(t *testing.T) {
 	}()
 	defer scheduler.Stop()
 
-	for i := 0; i != 8; i++ {
+	for i := range 8 {
 		// Simulate a task failure cycle
 		newReplicatedTask := replicatedTaskTemplate.Copy()
 		newReplicatedTask.ID = identity.NewID()
@@ -1549,7 +1549,7 @@ func TestSchedulerFaultyNodeSpecVersion(t *testing.T) {
 	}()
 	defer scheduler.Stop()
 
-	for i := 0; i != 15; i++ {
+	for i := range 15 {
 		// Simulate a task failure cycle
 		newTask := taskTemplate.Copy()
 		newTask.ID = identity.NewID()
@@ -2508,7 +2508,7 @@ func TestPreassignedTasks(t *testing.T) {
 		assert.NoError(t, scheduler.Run(ctx))
 	}()
 
-	//preassigned tasks would be processed first
+	// preassigned tasks would be processed first
 	assignment1 := watchAssignment(t, watch)
 	// task2 and task3 are preassigned to node1
 	assert.Equal(t, assignment1.NodeID, "node1")
@@ -3454,7 +3454,7 @@ func benchScheduler(b *testing.B, nodes, tasks int, networkConstraints bool) {
 			return nil
 		})
 
-		for i := 0; i != tasks; i++ {
+		for range tasks {
 			<-watch
 		}
 

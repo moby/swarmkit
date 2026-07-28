@@ -231,7 +231,7 @@ func benchmarkWatchForQueue(q *Queue, b *testing.B, nlisteners, npublishers int,
 			defer cancel()
 			watchersAttached.Done()
 
-			for i := 0; i != n; i++ {
+			for range n {
 				<-w
 			}
 			if waitForWatchers {

@@ -1776,7 +1776,7 @@ func TestListServiceStatuses(t *testing.T) {
 	visited := make([]bool, len(expected))
 	for name, expect := range expected {
 		found := false
-		for i := 0; i < len(r.Statuses); i++ {
+		for i := range r.Statuses {
 			if visited[i] {
 				continue
 			}

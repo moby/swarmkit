@@ -1330,7 +1330,7 @@ func TestBatch(t *testing.T) {
 
 	// Create 405 nodes. Should get split across 3 transactions.
 	err := s.Batch(func(batch *Batch) error {
-		for i := 0; i != 2*MaxChangesPerTransaction+5; i++ {
+		for i := range 2*MaxChangesPerTransaction + 5 {
 			n := &api.Node{
 				ID: "id" + strconv.Itoa(i),
 				Spec: api.NodeSpec{
@@ -1350,7 +1350,7 @@ func TestBatch(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	for i := 0; i != MaxChangesPerTransaction; i++ {
+	for range MaxChangesPerTransaction {
 		event := <-watch
 		if _, ok := event.(api.EventCreateNode); !ok {
 			t.Fatalf("expected EventCreateNode; got %#v", event)
@@ -1360,7 +1360,7 @@ func TestBatch(t *testing.T) {
 	if _, ok := event.(state.EventCommit); !ok {
 		t.Fatalf("expected EventCommit; got %#v", event)
 	}
-	for i := 0; i != MaxChangesPerTransaction; i++ {
+	for range MaxChangesPerTransaction {
 		event := <-watch
 		if _, ok := event.(api.EventCreateNode); !ok {
 			t.Fatalf("expected EventCreateNode; got %#v", event)
@@ -1370,7 +1370,7 @@ func TestBatch(t *testing.T) {
 	if _, ok := event.(state.EventCommit); !ok {
 		t.Fatalf("expected EventCommit; got %#v", event)
 	}
-	for i := 0; i != 5; i++ {
+	for range 5 {
 		event := <-watch
 		if _, ok := event.(api.EventCreateNode); !ok {
 			t.Fatalf("expected EventCreateNode; got %#v", event)
@@ -1412,7 +1412,7 @@ func TestBatchFailure(t *testing.T) {
 	})
 	assert.Error(t, err)
 
-	for i := 0; i != MaxChangesPerTransaction; i++ {
+	for range MaxChangesPerTransaction {
 		event := <-watch
 		if _, ok := event.(api.EventCreateNode); !ok {
 			t.Fatalf("expected EventCreateNode; got %#v", event)
@@ -1799,7 +1799,7 @@ func TestWatchFrom(t *testing.T) {
 	assert.NotNil(t, s)
 
 	// Create a few nodes, 2 per transaction
-	for i := 0; i != 5; i++ {
+	for i := range 5 {
 		err := s.Batch(func(batch *Batch) error {
 			node := &api.Node{
 				ID: "id" + strconv.Itoa(i),
@@ -1840,7 +1840,7 @@ func TestWatchFrom(t *testing.T) {
 	require.NoError(t, err)
 	defer cancel1()
 
-	for i := 0; i != 2; i++ {
+	for i := range 2 {
 		select {
 		case event := <-watch1:
 			nodeEvent, ok := event.(api.EventCreateNode)
@@ -2033,7 +2033,7 @@ func BenchmarkUpdateNode(b *testing.B) {
 	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
 	_ = s.Update(func(tx1 Tx) error {
-		for i := 0; i < b.N; i++ {
+		for i := range b.N {
 			_ = UpdateNode(tx1, &api.Node{
 				ID: nodeIDs[i%benchmarkNumNodes],
 				Spec: api.NodeSpec{
@@ -2050,7 +2050,7 @@ func BenchmarkUpdateNode(b *testing.B) {
 func BenchmarkUpdateNodeTransaction(b *testing.B) {
 	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		_ = s.Update(func(tx1 Tx) error {
 			_ = UpdateNode(tx1, &api.Node{
 				ID: nodeIDs[i%benchmarkNumNodes],
@@ -2068,7 +2068,7 @@ func BenchmarkUpdateNodeTransaction(b *testing.B) {
 func BenchmarkDeleteNodeTransaction(b *testing.B) {
 	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = s.Update(func(tx1 Tx) error {
 			_ = DeleteNode(tx1, nodeIDs[0])
 			// Don't actually commit deletions, so we can delete
@@ -2082,7 +2082,7 @@ func BenchmarkGetNode(b *testing.B) {
 	s, nodeIDs := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
 	s.View(func(tx1 ReadTx) {
-		for i := 0; i < b.N; i++ {
+		for i := range b.N {
 			_ = GetNode(tx1, nodeIDs[i%benchmarkNumNodes])
 		}
 	})
@@ -2092,7 +2092,7 @@ func BenchmarkFindAllNodes(b *testing.B) {
 	s, _ := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
 	s.View(func(tx1 ReadTx) {
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_, _ = FindNodes(tx1, All)
 		}
 	})
@@ -2102,7 +2102,7 @@ func BenchmarkFindNodeByName(b *testing.B) {
 	s, _ := setupNodes(b, benchmarkNumNodes)
 	b.ResetTimer()
 	s.View(func(tx1 ReadTx) {
-		for i := 0; i < b.N; i++ {
+		for i := range b.N {
 			_, _ = FindNodes(tx1, ByName("name"+strconv.Itoa(i)))
 		}
 	})
@@ -2114,11 +2114,11 @@ func BenchmarkNodeConcurrency(b *testing.B) {
 
 	// Run 5 writer goroutines and 5 reader goroutines
 	var wg sync.WaitGroup
-	for c := 0; c != 5; c++ {
+	for c := range 5 {
 		wg.Add(1)
-		go func(c int) {
+		go func() {
 			defer wg.Done()
-			for i := 0; i < b.N; i++ {
+			for i := range b.N {
 				_ = s.Update(func(tx1 Tx) error {
 					_ = UpdateNode(tx1, &api.Node{
 						ID: nodeIDs[i%benchmarkNumNodes],
@@ -2131,15 +2131,15 @@ func BenchmarkNodeConcurrency(b *testing.B) {
 					return nil
 				})
 			}
-		}(c)
+		}()
 	}
 
-	for c := 0; c != 5; c++ {
+	for range 5 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			s.View(func(tx1 ReadTx) {
-				for i := 0; i < b.N; i++ {
+				for i := range b.N {
 					_ = GetNode(tx1, nodeIDs[i%benchmarkNumNodes])
 				}
 			})

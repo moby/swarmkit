@@ -406,7 +406,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 	// lower Slot numbers than node3's tasks.
 
 	shutdowns := make(map[string]int)
-	for i := 0; i != 2; i++ {
+	for range 2 {
 		observedUpdateDesiredRemove := testutils.WatchTaskUpdate(t, watch)
 		assert.Equal(t, api.TaskStateRemove, observedUpdateDesiredRemove.DesiredState)
 		shutdowns[observedUpdateDesiredRemove.NodeID]++
@@ -444,7 +444,7 @@ func TestReplicatedScaleDown(t *testing.T) {
 	// is not running yet.
 
 	shutdowns = make(map[string]int)
-	for i := 0; i != 2; i++ {
+	for range 2 {
 		observedUpdateDesiredRemove := testutils.WatchTaskUpdate(t, watch)
 		assert.Equal(t, api.TaskStateRemove, observedUpdateDesiredRemove.DesiredState)
 		shutdowns[observedUpdateDesiredRemove.NodeID]++
