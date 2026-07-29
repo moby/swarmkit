@@ -50,12 +50,12 @@ aMbljbOLAjpZS3/VnQteab4=
 
 func TestIsPKCS8(t *testing.T) {
 	// Check PKCS8 keys
-	assert.True(t, IsPKCS8([]byte(decryptedPKCS8Block.Bytes)))
-	assert.True(t, IsPKCS8([]byte(encryptedPKCS8Block.Bytes)))
+	assert.True(t, IsPKCS8(decryptedPKCS8Block.Bytes))
+	assert.True(t, IsPKCS8(encryptedPKCS8Block.Bytes))
 
 	// Check PKCS1 keys
-	assert.False(t, IsPKCS8([]byte(decryptedPKCS1Block.Bytes)))
-	assert.False(t, IsPKCS8([]byte(encryptedPKCS1Block.Bytes)))
+	assert.False(t, IsPKCS8(decryptedPKCS1Block.Bytes))
+	assert.False(t, IsPKCS8(encryptedPKCS1Block.Bytes))
 }
 
 func TestIsEncryptedPEMBlock(t *testing.T) {
