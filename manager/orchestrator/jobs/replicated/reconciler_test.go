@@ -267,7 +267,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 
 				It("should use the cluster to set the default log driver", func() {
 					tasks := AllTasks(s)
-					Expect(len(tasks) >= 1).To(BeTrue())
+					Expect(tasks).ToNot(BeEmpty())
 
 					Expect(tasks[0].LogDriver).To(Equal(cluster.Spec.TaskDefaults.LogDriver))
 				})

@@ -195,7 +195,7 @@ var _ = Describe("Plugin manager", func() {
 			})
 
 			It("should not call CreateVolume", func() {
-				Expect(controller.createVolumeRequests).To(HaveLen(0))
+				Expect(controller.createVolumeRequests).To(BeEmpty())
 			})
 
 			It("should not return an error", func() {
