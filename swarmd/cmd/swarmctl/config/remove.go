@@ -28,11 +28,11 @@ var removeCmd = &cobra.Command{
 			return err
 		}
 
-		_, err = client.RemoveConfig(common.Context(cmd), &api.RemoveConfigRequest{ConfigID: config.ID})
+		_, err = client.RemoveConfig(common.Context(cmd), &api.RemoveConfigRequest{ConfigId: config.Id})
 		if err != nil {
 			return err
 		}
-		fmt.Println(config.ID)
+		fmt.Println(config.Id)
 		return nil
 	},
 }

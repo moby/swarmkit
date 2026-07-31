@@ -99,7 +99,7 @@ func Merge(cmd *cobra.Command, spec *api.ServiceSpec, c api.ControlClient) error
 			if len(parts) != 2 {
 				return fmt.Errorf("malformed label: %s", l)
 			}
-			spec.Annotations.Labels[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+			spec.GetAnnotations().GetLabels()[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 		}
 	}
 

@@ -143,7 +143,7 @@ func TestManager(t *testing.T) {
 	}()
 
 	// check that the kek is added to the config
-	var cluster api.Cluster
+	var cluster *api.Cluster
 	require.NoError(t, testutils.PollFunc(nil, func() error {
 		var (
 			err      error
@@ -158,7 +158,7 @@ func TestManager(t *testing.T) {
 		if len(clusters) != 1 {
 			return errors.New("wrong number of clusters")
 		}
-		cluster = *clusters[0]
+		cluster = clusters[0]
 		return nil
 
 	}))
@@ -174,10 +174,10 @@ func TestManager(t *testing.T) {
 	require.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
 		return store.CreateNode(tx,
 			&api.Node{
-				ID: agentID,
-				Certificate: api.Certificate{
-					Role: api.NodeRoleWorker,
-					CN:   agentID,
+				Id: agentID,
+				Certificate: &api.Certificate{
+					Role: api.NodeRole_WORKER,
+					Cn:   agentID,
 				},
 			},
 		)
@@ -185,7 +185,7 @@ func TestManager(t *testing.T) {
 	controlClient = api.NewControlClient(controlConn)
 	_, err = controlClient.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
 		Spec: &api.NetworkSpec{
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "test-network-bad-driver",
 			},
 			DriverConfig: &api.Driver{
@@ -197,7 +197,7 @@ func TestManager(t *testing.T) {
 
 	_, err = controlClient.RemoveNode(context.Background(),
 		&api.RemoveNodeRequest{
-			NodeID: agentID,
+			NodeId: agentID,
 			Force:  true,
 		},
 	)
@@ -294,15 +294,15 @@ func TestManagerLockUnlock(t *testing.T) {
 
 	// update the lock key - this may fail due to update out of sequence errors, so try again
 	for {
-		getResp, err := client.GetCluster(tc.Context, &api.GetClusterRequest{ClusterID: cluster.ID})
+		getResp, err := client.GetCluster(tc.Context, &api.GetClusterRequest{ClusterId: cluster.Id})
 		require.NoError(t, err)
 		cluster = getResp.Cluster
 
 		spec := cluster.Spec.Copy()
 		spec.EncryptionConfig.AutoLockManagers = true
 		updateResp, err := client.UpdateCluster(tc.Context, &api.UpdateClusterRequest{
-			ClusterID:      cluster.ID,
-			ClusterVersion: &cluster.Meta.Version,
+			ClusterId:      cluster.Id,
+			ClusterVersion: cluster.Meta.Version,
 			Spec:           spec,
 		})
 		if testutils.ErrorDesc(err) == "update out of sequence" {
@@ -367,15 +367,15 @@ func TestManagerLockUnlock(t *testing.T) {
 
 	// update the lock key to nil
 	for range 3 {
-		getResp, err := client.GetCluster(tc.Context, &api.GetClusterRequest{ClusterID: cluster.ID})
+		getResp, err := client.GetCluster(tc.Context, &api.GetClusterRequest{ClusterId: cluster.Id})
 		require.NoError(t, err)
 		cluster = getResp.Cluster
 
 		spec := cluster.Spec.Copy()
 		spec.EncryptionConfig.AutoLockManagers = false
 		_, err = client.UpdateCluster(tc.Context, &api.UpdateClusterRequest{
-			ClusterID:      cluster.ID,
-			ClusterVersion: &cluster.Meta.Version,
+			ClusterId:      cluster.Id,
+			ClusterVersion: cluster.Meta.Version,
 			Spec:           spec,
 		})
 		if testutils.ErrorDesc(err) == "update out of sequence" {

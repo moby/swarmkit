@@ -21,11 +21,11 @@ import (
 
 func createNode(t *testing.T, ts *testServer, id string, role api.NodeRole, membership api.NodeSpec_Membership, state api.NodeStatus_State) *api.Node {
 	node := &api.Node{
-		ID: id,
-		Spec: api.NodeSpec{
+		Id: id,
+		Spec: &api.NodeSpec{
 			Membership: membership,
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: state,
 		},
 		Role: role,
@@ -45,14 +45,14 @@ func TestGetNode(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
-	_, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: "invalid"})
+	_, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeId: "invalid"})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
-	node := createNode(t, ts, "id", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
-	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: node.ID})
+	node := createNode(t, ts, "id", api.NodeRole_MANAGER, api.NodeSpec_ACCEPTED, api.NodeStatus_READY)
+	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeId: node.Id})
 	assert.NoError(t, err)
-	assert.Equal(t, node.ID, r.Node.ID)
+	assert.Equal(t, node.Id, r.Node.Id)
 }
 
 func TestListNodes(t *testing.T) {
@@ -63,13 +63,13 @@ func TestListNodes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, r.Nodes)
 
-	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	createNode(t, ts, "id1", api.NodeRole_MANAGER, api.NodeSpec_ACCEPTED, api.NodeStatus_READY)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Nodes))
 
-	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_READY)
-	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipPending, api.NodeStatus_READY)
+	createNode(t, ts, "id2", api.NodeRole_WORKER, api.NodeSpec_ACCEPTED, api.NodeStatus_READY)
+	createNode(t, ts, "id3", api.NodeRole_WORKER, api.NodeSpec_PENDING, api.NodeStatus_READY)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Nodes))
@@ -78,7 +78,7 @@ func TestListNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Roles: []api.NodeRole{api.NodeRoleManager},
+				Roles: []api.NodeRole{api.NodeRole_MANAGER},
 			},
 		},
 	)
@@ -87,7 +87,7 @@ func TestListNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Roles: []api.NodeRole{api.NodeRoleWorker},
+				Roles: []api.NodeRole{api.NodeRole_WORKER},
 			},
 		},
 	)
@@ -96,7 +96,7 @@ func TestListNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Roles: []api.NodeRole{api.NodeRoleManager, api.NodeRoleWorker},
+				Roles: []api.NodeRole{api.NodeRole_MANAGER, api.NodeRole_WORKER},
 			},
 		},
 	)
@@ -107,7 +107,7 @@ func TestListNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Memberships: []api.NodeSpec_Membership{api.NodeMembershipAccepted},
+				Memberships: []api.NodeSpec_Membership{api.NodeSpec_ACCEPTED},
 			},
 		},
 	)
@@ -116,7 +116,7 @@ func TestListNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Memberships: []api.NodeSpec_Membership{api.NodeMembershipPending},
+				Memberships: []api.NodeSpec_Membership{api.NodeSpec_PENDING},
 			},
 		},
 	)
@@ -125,7 +125,7 @@ func TestListNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Memberships: []api.NodeSpec_Membership{api.NodeMembershipAccepted, api.NodeMembershipPending},
+				Memberships: []api.NodeSpec_Membership{api.NodeSpec_ACCEPTED, api.NodeSpec_PENDING},
 			},
 		},
 	)
@@ -134,8 +134,8 @@ func TestListNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Roles:       []api.NodeRole{api.NodeRoleWorker},
-				Memberships: []api.NodeSpec_Membership{api.NodeMembershipPending},
+				Roles:       []api.NodeRole{api.NodeRole_WORKER},
+				Memberships: []api.NodeSpec_Membership{api.NodeSpec_PENDING},
 			},
 		},
 	)
@@ -160,9 +160,9 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 	// we'll need 3 nodes for this test.
 	nodes := make([]*api.Node, 3)
 	nodes[0] = &api.Node{
-		ID: "node0",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Id: "node0",
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Labels: map[string]string{
 					"allcommon":  "node",
 					"nodelabel1": "shouldmatch",
@@ -182,9 +182,9 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 	}
 
 	nodes[1] = &api.Node{
-		ID: "node1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Id: "node1",
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Labels: map[string]string{
 					"allcommon":  "node",
 					"nodelabel1": "shouldmatch",
@@ -203,9 +203,9 @@ func TestListNodesWithLabelFilter(t *testing.T) {
 		},
 	}
 	nodes[2] = &api.Node{
-		ID: "node2",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Id: "node2",
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Labels: map[string]string{
 					"allcommon":  "node",
 					"nodelabel1": "shouldnevermatch",
@@ -360,9 +360,9 @@ func TestRemoveNodes(t *testing.T) {
 
 	ts.Store.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
-			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Id: identity.NewID(),
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
 			},
@@ -374,13 +374,13 @@ func TestRemoveNodes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, r.Nodes)
 
-	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	createNode(t, ts, "id1", api.NodeRole_MANAGER, api.NodeSpec_ACCEPTED, api.NodeStatus_READY)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Len(t, r.Nodes, 1)
 
-	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_READY)
-	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipPending, api.NodeStatus_UNKNOWN)
+	createNode(t, ts, "id2", api.NodeRole_WORKER, api.NodeSpec_ACCEPTED, api.NodeStatus_READY)
+	createNode(t, ts, "id3", api.NodeRole_WORKER, api.NodeSpec_PENDING, api.NodeStatus_UNKNOWN)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Len(t, r.Nodes, 3)
@@ -388,7 +388,7 @@ func TestRemoveNodes(t *testing.T) {
 	// Attempt to remove a ready node without force
 	_, err = ts.Client.RemoveNode(context.Background(),
 		&api.RemoveNodeRequest{
-			NodeID: "id2",
+			NodeId: "id2",
 			Force:  false,
 		},
 	)
@@ -397,7 +397,7 @@ func TestRemoveNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Roles: []api.NodeRole{api.NodeRoleManager, api.NodeRoleWorker},
+				Roles: []api.NodeRole{api.NodeRole_MANAGER, api.NodeRole_WORKER},
 			},
 		},
 	)
@@ -407,7 +407,7 @@ func TestRemoveNodes(t *testing.T) {
 	// Attempt to remove a ready node with force
 	_, err = ts.Client.RemoveNode(context.Background(),
 		&api.RemoveNodeRequest{
-			NodeID: "id2",
+			NodeId: "id2",
 			Force:  true,
 		},
 	)
@@ -416,7 +416,7 @@ func TestRemoveNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Roles: []api.NodeRole{api.NodeRoleManager, api.NodeRoleWorker},
+				Roles: []api.NodeRole{api.NodeRole_MANAGER, api.NodeRole_WORKER},
 			},
 		},
 	)
@@ -433,7 +433,7 @@ func TestRemoveNodes(t *testing.T) {
 	// Attempt to remove a non-ready node without force
 	_, err = ts.Client.RemoveNode(context.Background(),
 		&api.RemoveNodeRequest{
-			NodeID: "id3",
+			NodeId: "id3",
 			Force:  false,
 		},
 	)
@@ -442,7 +442,7 @@ func TestRemoveNodes(t *testing.T) {
 	r, err = ts.Client.ListNodes(context.Background(),
 		&api.ListNodesRequest{
 			Filters: &api.ListNodesRequest_Filters{
-				Roles: []api.NodeRole{api.NodeRoleManager, api.NodeRoleWorker},
+				Roles: []api.NodeRole{api.NodeRole_MANAGER, api.NodeRole_WORKER},
 			},
 		},
 	)
@@ -459,7 +459,7 @@ func getMap(t *testing.T, nodes []*api.Node) map[uint64]*api.ManagerStatus {
 	m := make(map[uint64]*api.ManagerStatus)
 	for _, n := range nodes {
 		if n.ManagerStatus != nil {
-			m[n.ManagerStatus.RaftID] = n.ManagerStatus
+			m[n.ManagerStatus.RaftId] = n.ManagerStatus
 		}
 	}
 	return m
@@ -478,9 +478,9 @@ func TestListManagerNodes(t *testing.T) {
 
 	// Create a node object for each of the managers
 	assert.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNode(tx, &api.Node{ID: nodes[1].SecurityConfig.ClientTLSCreds.NodeID()}))
-		assert.NoError(t, store.CreateNode(tx, &api.Node{ID: nodes[2].SecurityConfig.ClientTLSCreds.NodeID()}))
-		assert.NoError(t, store.CreateNode(tx, &api.Node{ID: nodes[3].SecurityConfig.ClientTLSCreds.NodeID()}))
+		assert.NoError(t, store.CreateNode(tx, &api.Node{Id: nodes[1].SecurityConfig.ClientTLSCreds.NodeID()}))
+		assert.NoError(t, store.CreateNode(tx, &api.Node{Id: nodes[2].SecurityConfig.ClientTLSCreds.NodeID()}))
+		assert.NoError(t, store.CreateNode(tx, &api.Node{Id: nodes[3].SecurityConfig.ClientTLSCreds.NodeID()}))
 		return nil
 	}))
 
@@ -517,8 +517,8 @@ func TestListManagerNodes(t *testing.T) {
 
 	// Add node entries for these
 	assert.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
-		assert.NoError(t, store.CreateNode(tx, &api.Node{ID: nodes[4].SecurityConfig.ClientTLSCreds.NodeID()}))
-		assert.NoError(t, store.CreateNode(tx, &api.Node{ID: nodes[5].SecurityConfig.ClientTLSCreds.NodeID()}))
+		assert.NoError(t, store.CreateNode(tx, &api.Node{Id: nodes[4].SecurityConfig.ClientTLSCreds.NodeID()}))
+		assert.NoError(t, store.CreateNode(tx, &api.Node{Id: nodes[5].SecurityConfig.ClientTLSCreds.NodeID()}))
 		return nil
 	}))
 
@@ -669,9 +669,9 @@ func TestUpdateNode(t *testing.T) {
 	ts.Server.store = nodes[1].MemoryStore()
 
 	_, err := ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID: nodeID,
+		NodeId: nodeID,
 		Spec: &api.NodeSpec{
-			Availability: api.NodeAvailabilityDrain,
+			Availability: api.NodeSpec_DRAIN,
 		},
 		NodeVersion: &api.Version{},
 	})
@@ -681,11 +681,11 @@ func TestUpdateNode(t *testing.T) {
 	// Create a node object for the manager
 	assert.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateNode(tx, &api.Node{
-			ID: nodes[1].SecurityConfig.ClientTLSCreds.NodeID(),
-			Spec: api.NodeSpec{
-				Membership: api.NodeMembershipAccepted,
+			Id: nodes[1].SecurityConfig.ClientTLSCreds.NodeID(),
+			Spec: &api.NodeSpec{
+				Membership: api.NodeSpec_ACCEPTED,
 			},
-			Role: api.NodeRoleManager,
+			Role: api.NodeRole_MANAGER,
 		}))
 		return nil
 	}))
@@ -694,52 +694,52 @@ func TestUpdateNode(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
-	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: "invalid", Spec: &api.NodeSpec{}, NodeVersion: &api.Version{}})
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeId: "invalid", Spec: &api.NodeSpec{}, NodeVersion: &api.Version{}})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
-	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodeID})
+	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeId: nodeID})
 	assert.NoError(t, err)
 	if !assert.NotNil(t, r) {
 		assert.FailNow(t, "got unexpected nil response from GetNode")
 	}
 	assert.NotNil(t, r.Node)
 
-	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID})
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeId: nodeID})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	spec := r.Node.Spec.Copy()
-	spec.Availability = api.NodeAvailabilityDrain
+	spec.Availability = api.NodeSpec_DRAIN
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID: nodeID,
+		NodeId: nodeID,
 		Spec:   spec,
 	})
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID:      nodeID,
+		NodeId:      nodeID,
 		Spec:        spec,
-		NodeVersion: &r.Node.Meta.Version,
+		NodeVersion: r.Node.Meta.Version,
 	})
 	assert.NoError(t, err)
 
-	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodeID})
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeId: nodeID})
 	assert.NoError(t, err)
 	if !assert.NotNil(t, r) {
 		assert.FailNow(t, "got unexpected nil response from GetNode")
 	}
 	assert.NotNil(t, r.Node)
 	assert.NotNil(t, r.Node.Spec)
-	assert.Equal(t, api.NodeAvailabilityDrain, r.Node.Spec.Availability)
+	assert.Equal(t, api.NodeSpec_DRAIN, r.Node.Spec.GetAvailability())
 
-	version := &r.Node.Meta.Version
-	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, NodeVersion: version})
+	version := r.Node.Meta.Version
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeId: nodeID, Spec: r.Node.Spec, NodeVersion: version})
 	assert.NoError(t, err)
 
 	// Perform an update with the "old" version.
-	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeID: nodeID, Spec: &r.Node.Spec, NodeVersion: version})
+	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{NodeId: nodeID, Spec: r.Node.Spec, NodeVersion: version})
 	assert.Error(t, err)
 }
 
@@ -759,28 +759,28 @@ func testUpdateNodeDemote(t *testing.T) {
 	// Create a node object for each of the managers
 	assert.NoError(t, nodes[1].MemoryStore().Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateNode(tx, &api.Node{
-			ID: nodes[1].SecurityConfig.ClientTLSCreds.NodeID(),
-			Spec: api.NodeSpec{
-				DesiredRole: api.NodeRoleManager,
-				Membership:  api.NodeMembershipAccepted,
+			Id: nodes[1].SecurityConfig.ClientTLSCreds.NodeID(),
+			Spec: &api.NodeSpec{
+				DesiredRole: api.NodeRole_MANAGER,
+				Membership:  api.NodeSpec_ACCEPTED,
 			},
-			Role: api.NodeRoleManager,
+			Role: api.NodeRole_MANAGER,
 		}))
 		assert.NoError(t, store.CreateNode(tx, &api.Node{
-			ID: nodes[2].SecurityConfig.ClientTLSCreds.NodeID(),
-			Spec: api.NodeSpec{
-				DesiredRole: api.NodeRoleManager,
-				Membership:  api.NodeMembershipAccepted,
+			Id: nodes[2].SecurityConfig.ClientTLSCreds.NodeID(),
+			Spec: &api.NodeSpec{
+				DesiredRole: api.NodeRole_MANAGER,
+				Membership:  api.NodeSpec_ACCEPTED,
 			},
-			Role: api.NodeRoleManager,
+			Role: api.NodeRole_MANAGER,
 		}))
 		assert.NoError(t, store.CreateNode(tx, &api.Node{
-			ID: nodes[3].SecurityConfig.ClientTLSCreds.NodeID(),
-			Spec: api.NodeSpec{
-				DesiredRole: api.NodeRoleManager,
-				Membership:  api.NodeMembershipAccepted,
+			Id: nodes[3].SecurityConfig.ClientTLSCreds.NodeID(),
+			Spec: &api.NodeSpec{
+				DesiredRole: api.NodeRole_MANAGER,
+				Membership:  api.NodeSpec_ACCEPTED,
 			},
-			Role: api.NodeRoleManager,
+			Role: api.NodeRole_MANAGER,
 		}))
 		return nil
 	}))
@@ -802,13 +802,13 @@ func testUpdateNodeDemote(t *testing.T) {
 	}))
 
 	// Try to demote Node 2, this should fail because of the quorum safeguard
-	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodes[2].SecurityConfig.ClientTLSCreds.NodeID()})
+	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeId: nodes[2].SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec := r.Node.Spec.Copy()
-	spec.DesiredRole = api.NodeRoleWorker
-	version := &r.Node.Meta.Version
+	spec.DesiredRole = api.NodeRole_WORKER
+	version := r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID:      nodes[2].SecurityConfig.ClientTLSCreds.NodeID(),
+		NodeId:      nodes[2].SecurityConfig.ClientTLSCreds.NodeID(),
 		Spec:        spec,
 		NodeVersion: version,
 	})
@@ -835,13 +835,13 @@ func testUpdateNodeDemote(t *testing.T) {
 	assert.NotNil(t, raftMember)
 
 	// Try to demote Node 3, this should succeed
-	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodes[3].SecurityConfig.ClientTLSCreds.NodeID()})
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeId: nodes[3].SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
-	spec.DesiredRole = api.NodeRoleWorker
-	version = &r.Node.Meta.Version
+	spec.DesiredRole = api.NodeRole_WORKER
+	version = r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID:      nodes[3].SecurityConfig.ClientTLSCreds.NodeID(),
+		NodeId:      nodes[3].SecurityConfig.ClientTLSCreds.NodeID(),
 		Spec:        spec,
 		NodeVersion: version,
 	})
@@ -852,7 +852,7 @@ func testUpdateNodeDemote(t *testing.T) {
 		2: nodes[2],
 	}
 
-	ts.Server.raft.RemoveMember(context.Background(), raftMember.RaftID)
+	ts.Server.raft.RemoveMember(context.Background(), raftMember.RaftId)
 
 	raftutils.WaitForCluster(t, clockSource, newCluster)
 
@@ -872,19 +872,19 @@ func testUpdateNodeDemote(t *testing.T) {
 	assert.NotNil(t, raftMember)
 
 	// Try to demote a Node and scale down to 1
-	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: demoteNode.SecurityConfig.ClientTLSCreds.NodeID()})
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeId: demoteNode.SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
-	spec.DesiredRole = api.NodeRoleWorker
-	version = &r.Node.Meta.Version
+	spec.DesiredRole = api.NodeRole_WORKER
+	version = r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID:      demoteNode.SecurityConfig.ClientTLSCreds.NodeID(),
+		NodeId:      demoteNode.SecurityConfig.ClientTLSCreds.NodeID(),
 		Spec:        spec,
 		NodeVersion: version,
 	})
 	assert.NoError(t, err)
 
-	ts.Server.raft.RemoveMember(context.Background(), raftMember.RaftID)
+	ts.Server.raft.RemoveMember(context.Background(), raftMember.RaftId)
 
 	// Update the server
 	ts.Server.raft = lastNode.Node
@@ -905,13 +905,13 @@ func testUpdateNodeDemote(t *testing.T) {
 	}))
 
 	// Make sure we can't demote the last manager.
-	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeId: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
-	spec.DesiredRole = api.NodeRoleWorker
-	version = &r.Node.Meta.Version
+	spec.DesiredRole = api.NodeRole_WORKER
+	version = r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID:      lastNode.SecurityConfig.ClientTLSCreds.NodeID(),
+		NodeId:      lastNode.SecurityConfig.ClientTLSCreds.NodeID(),
 		Spec:        spec,
 		NodeVersion: version,
 	})
@@ -919,22 +919,22 @@ func testUpdateNodeDemote(t *testing.T) {
 	assert.Equal(t, codes.FailedPrecondition, testutils.ErrorCode(err))
 
 	// Propose a change in the spec and check if the remaining node can still process updates
-	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeId: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
 	spec = r.Node.Spec.Copy()
-	spec.Availability = api.NodeAvailabilityDrain
-	version = &r.Node.Meta.Version
+	spec.Availability = api.NodeSpec_DRAIN
+	version = r.Node.Meta.Version
 	_, err = ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-		NodeID:      lastNode.SecurityConfig.ClientTLSCreds.NodeID(),
+		NodeId:      lastNode.SecurityConfig.ClientTLSCreds.NodeID(),
 		Spec:        spec,
 		NodeVersion: version,
 	})
 	assert.NoError(t, err)
 
 	// Get node information and check that the availability is set to drain
-	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeID: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
+	r, err = ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeId: lastNode.SecurityConfig.ClientTLSCreds.NodeID()})
 	assert.NoError(t, err)
-	assert.Equal(t, r.Node.Spec.Availability, api.NodeAvailabilityDrain)
+	assert.Equal(t, r.Node.Spec.GetAvailability(), api.NodeSpec_DRAIN)
 }
 
 func TestUpdateNodeDemote(t *testing.T) {
@@ -950,9 +950,9 @@ func TestOrphanNodeTasks(t *testing.T) {
 
 	ts.Store.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
-			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Id: identity.NewID(),
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
 			},
@@ -966,14 +966,14 @@ func TestOrphanNodeTasks(t *testing.T) {
 	assert.Empty(t, r.Nodes)
 
 	// create a manager
-	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	createNode(t, ts, "id1", api.NodeRole_MANAGER, api.NodeSpec_ACCEPTED, api.NodeStatus_READY)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Len(t, r.Nodes, 1)
 
 	// create a worker. put it in the DOWN state, which is the state it will be
 	// in to remove it anyway
-	createNode(t, ts, "id2", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_DOWN)
+	createNode(t, ts, "id2", api.NodeRole_WORKER, api.NodeSpec_ACCEPTED, api.NodeStatus_DOWN)
 	r, err = ts.Client.ListNodes(context.Background(), &api.ListNodesRequest{})
 	assert.NoError(t, err)
 	assert.Len(t, r.Nodes, 2)
@@ -981,9 +981,9 @@ func TestOrphanNodeTasks(t *testing.T) {
 	// create a network we can "attach" to
 	err = ts.Store.Update(func(tx store.Tx) error {
 		n := &api.Network{
-			ID: "net1id",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Id: "net1id",
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "net1name",
 				},
 				Attachable: true,
@@ -997,16 +997,16 @@ func TestOrphanNodeTasks(t *testing.T) {
 	err = ts.Store.Update(func(tx store.Tx) error {
 		// 1.) A network attachment on the node we're gonna remove
 		task1 := &api.Task{
-			ID:           "task1",
-			NodeID:       "id2",
-			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			Id:           "task1",
+			NodeId:       "id2",
+			DesiredState: api.TaskState_RUNNING,
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Attachment{
 					Attachment: &api.NetworkAttachmentSpec{
-						ContainerID: "container1",
+						ContainerId: "container1",
 					},
 				},
 				Networks: []*api.NetworkAttachmentConfig{
@@ -1024,16 +1024,16 @@ func TestOrphanNodeTasks(t *testing.T) {
 
 		// 2.) A network attachment on the node we're not going to remove
 		task2 := &api.Task{
-			ID:           "task2",
-			NodeID:       "id1",
-			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			Id:           "task2",
+			NodeId:       "id1",
+			DesiredState: api.TaskState_RUNNING,
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Attachment{
 					Attachment: &api.NetworkAttachmentSpec{
-						ContainerID: "container2",
+						ContainerId: "container2",
 					},
 				},
 				Networks: []*api.NetworkAttachmentConfig{
@@ -1051,13 +1051,13 @@ func TestOrphanNodeTasks(t *testing.T) {
 
 		// 3.) A regular task on the node we're going to remove
 		task3 := &api.Task{
-			ID:           "task3",
-			NodeID:       "id2",
-			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			Id:           "task3",
+			NodeId:       "id2",
+			DesiredState: api.TaskState_RUNNING,
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
@@ -1069,13 +1069,13 @@ func TestOrphanNodeTasks(t *testing.T) {
 
 		// 4.) A regular task on the node we're not going to remove
 		task4 := &api.Task{
-			ID:           "task4",
-			NodeID:       "id1",
-			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			Id:           "task4",
+			NodeId:       "id1",
+			DesiredState: api.TaskState_RUNNING,
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
@@ -1088,15 +1088,15 @@ func TestOrphanNodeTasks(t *testing.T) {
 		// 5.) A regular task that's already in a terminal state on the node,
 		//	   which does not need to be updated.
 		task5 := &api.Task{
-			ID:           "task5",
-			NodeID:       "id2",
-			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
+			Id:           "task5",
+			NodeId:       "id2",
+			DesiredState: api.TaskState_RUNNING,
+			Status: &api.TaskStatus{
 				// use TaskStateCompleted, as this is the earliest terminal
 				// state (this ensures we don't actually use <= instead of <)
-				State: api.TaskStateCompleted,
+				State: api.TaskState_COMPLETE,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
@@ -1121,10 +1121,10 @@ func TestOrphanNodeTasks(t *testing.T) {
 		// and the list should not contain task1 or task2
 		for _, task := range tasks {
 			require.NotNil(t, task)
-			if task.ID == "task1" || task.ID == "task3" {
-				require.Equal(t, task.Status.State, api.TaskStateOrphaned)
+			if task.Id == "task1" || task.Id == "task3" {
+				require.Equal(t, task.Status.GetState(), api.TaskState_ORPHANED)
 			} else {
-				require.NotEqual(t, task.Status.State, api.TaskStateOrphaned)
+				require.NotEqual(t, task.Status.GetState(), api.TaskState_ORPHANED)
 			}
 		}
 	})

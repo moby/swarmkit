@@ -15,7 +15,7 @@ import (
 
 func createSecretSpec(name string, data []byte, labels map[string]string) *api.SecretSpec {
 	return &api.SecretSpec{
-		Annotations: api.Annotations{Name: name, Labels: labels},
+		Annotations: &api.Annotations{Name: name, Labels: labels},
 		Data:        data,
 	}
 }
@@ -122,15 +122,15 @@ func TestCreateSecret(t *testing.T) {
 	assert.NotNil(t, resp.Secret)
 
 	// the data should be empty/omitted
-	assert.Equal(t, *createSecretSpec("name", nil, nil), resp.Secret.Spec)
+	assert.True(t, createSecretSpec("name", nil, nil).EqualVT(resp.Secret.Spec))
 
 	// for sanity, check that the stored secret still has the secret data
 	var storedSecret *api.Secret
 	ts.Store.View(func(tx store.ReadTx) {
-		storedSecret = store.GetSecret(tx, resp.Secret.ID)
+		storedSecret = store.GetSecret(tx, resp.Secret.Id)
 	})
 	assert.NotNil(t, storedSecret)
-	assert.Equal(t, data, storedSecret.Spec.Data)
+	assert.Equal(t, data, storedSecret.Spec.GetData())
 
 	// ---- creating a secret with the same name, even if it's the exact same spec, fails due to a name conflict ----
 	_, err = ts.Client.CreateSecret(context.Background(), &validSpecRequest)
@@ -148,7 +148,7 @@ func TestGetSecret(t *testing.T) {
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// ---- getting a non-existent secret fails with NotFound ----
-	_, err = ts.Client.GetSecret(context.Background(), &api.GetSecretRequest{SecretID: "12345"})
+	_, err = ts.Client.GetSecret(context.Background(), &api.GetSecretRequest{SecretId: "12345"})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
@@ -159,7 +159,7 @@ func TestGetSecret(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	resp, err := ts.Client.GetSecret(context.Background(), &api.GetSecretRequest{SecretID: secret.ID})
+	resp, err := ts.Client.GetSecret(context.Background(), &api.GetSecretRequest{SecretId: secret.Id})
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Secret)
@@ -187,16 +187,16 @@ func TestUpdateSecret(t *testing.T) {
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// getting a non-existent secret fails with NotFound
-	_, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{SecretID: "1234adsaa", SecretVersion: &api.Version{Index: 1}})
+	_, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{SecretId: "1234adsaa", SecretVersion: &api.Version{Index: 1}})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// updating an existing secret's data returns an error
 	secret.Spec.Data = []byte{1}
 	resp, err := ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
-		SecretID:      secret.ID,
-		Spec:          &secret.Spec,
-		SecretVersion: &secret.Meta.Version,
+		SecretId:      secret.Id,
+		Spec:          secret.Spec,
+		SecretVersion: secret.Meta.Version,
 	})
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
@@ -204,20 +204,20 @@ func TestUpdateSecret(t *testing.T) {
 	secret.Spec.Data = nil
 	secret.Spec.Annotations.Name = "AnotherName"
 	resp, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
-		SecretID:      secret.ID,
-		Spec:          &secret.Spec,
-		SecretVersion: &secret.Meta.Version,
+		SecretId:      secret.Id,
+		Spec:          secret.Spec,
+		SecretVersion: secret.Meta.Version,
 	})
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// updating the secret with the original spec succeeds
 	secret.Spec.Data = []byte("data")
 	secret.Spec.Annotations.Name = "name"
-	assert.NotNil(t, secret.Spec.Data)
+	assert.NotNil(t, secret.Spec.GetData())
 	resp, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
-		SecretID:      secret.ID,
-		Spec:          &secret.Spec,
-		SecretVersion: &secret.Meta.Version,
+		SecretId:      secret.Id,
+		Spec:          secret.Spec,
+		SecretVersion: secret.Meta.Version,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -228,29 +228,29 @@ func TestUpdateSecret(t *testing.T) {
 	secret.Spec.Annotations.Labels = newLabels
 	secret.Spec.Data = nil
 	resp, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
-		SecretID:      secret.ID,
-		Spec:          &secret.Spec,
-		SecretVersion: &resp.Secret.Meta.Version,
+		SecretId:      secret.Id,
+		Spec:          secret.Spec,
+		SecretVersion: resp.Secret.Meta.Version,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Secret)
-	assert.Nil(t, resp.Secret.Spec.Data)
-	assert.Equal(t, resp.Secret.Spec.Annotations.Labels, newLabels)
+	assert.Nil(t, resp.Secret.Spec.GetData())
+	assert.Equal(t, resp.Secret.GetSpec().GetAnnotations().GetLabels(), newLabels)
 
 	// updating a secret with nil data and correct name succeeds again
 	secret.Spec.Data = nil
 	secret.Spec.Annotations.Name = "name"
 	resp, err = ts.Client.UpdateSecret(context.Background(), &api.UpdateSecretRequest{
-		SecretID:      secret.ID,
-		Spec:          &secret.Spec,
-		SecretVersion: &resp.Secret.Meta.Version,
+		SecretId:      secret.Id,
+		Spec:          secret.Spec,
+		SecretVersion: resp.Secret.Meta.Version,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Secret)
-	assert.Nil(t, resp.Secret.Spec.Data)
-	assert.Equal(t, resp.Secret.Spec.Annotations.Labels, newLabels)
+	assert.Nil(t, resp.Secret.Spec.GetData())
+	assert.Equal(t, resp.Secret.GetSpec().GetAnnotations().GetLabels(), newLabels)
 }
 
 func TestRemoveUnusedSecret(t *testing.T) {
@@ -269,12 +269,12 @@ func TestRemoveUnusedSecret(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	resp, err := ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: secret.ID})
+	resp, err := ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretId: secret.Id})
 	assert.NoError(t, err)
-	assert.Equal(t, api.RemoveSecretResponse{}, *resp)
+	assert.True(t, (&api.RemoveSecretResponse{}).EqualVT(resp))
 
 	// ---- it was really removed because attempting to remove it again fails with a NotFound ----
-	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: secret.ID})
+	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretId: secret.Id})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
@@ -297,8 +297,8 @@ func TestRemoveUsedSecret(t *testing.T) {
 	service := createSpec("service1", "image", 1)
 	secretRefs := []*api.SecretReference{
 		{
-			SecretName: resp.Secret.Spec.Annotations.Name,
-			SecretID:   resp.Secret.ID,
+			SecretName: resp.Secret.GetSpec().GetAnnotations().GetName(),
+			SecretId:   resp.Secret.Id,
 			Target: &api.SecretReference_File{
 				File: &api.FileTarget{
 					Name: "target.txt",
@@ -316,16 +316,16 @@ func TestRemoveUsedSecret(t *testing.T) {
 	assert.NoError(t, err)
 
 	// removing a secret that exists but is in use fails
-	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: resp.Secret.ID})
+	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretId: resp.Secret.Id})
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	assert.Regexp(t, "service[1-2], service[1-2]", testutils.ErrorDesc(err))
 
 	// removing a secret that exists but is not in use succeeds
-	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: resp2.Secret.ID})
+	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretId: resp2.Secret.Id})
 	assert.NoError(t, err)
 
 	// it was really removed because attempting to remove it again fails with a NotFound
-	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretID: resp2.Secret.ID})
+	_, err = ts.Client.RemoveSecret(context.Background(), &api.RemoveSecretRequest{SecretId: resp2.Secret.Id})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 }
@@ -340,7 +340,7 @@ func TestListSecrets(t *testing.T) {
 
 		byName := make(map[string]*api.Secret)
 		for _, secret := range resp.Secrets {
-			byName[secret.Spec.Annotations.Name] = secret
+			byName[secret.GetSpec().GetAnnotations().GetName()] = secret
 		}
 		return byName
 	}
@@ -361,7 +361,7 @@ func TestListSecrets(t *testing.T) {
 			return store.CreateSecret(tx, secret)
 		})
 		assert.NoError(t, err)
-		secretNamesToID[secretName] = secret.ID
+		secretNamesToID[secretName] = secret.Id
 	}
 	// also add an internal secret to show that it's never returned
 	internalSecret := secretFromSecretSpec(createSecretSpec("internal", []byte("secret"), map[string]string{
@@ -373,7 +373,7 @@ func TestListSecrets(t *testing.T) {
 		return store.CreateSecret(tx, internalSecret)
 	})
 	assert.NoError(t, err)
-	secretNamesToID["internal"] = internalSecret.ID
+	secretNamesToID["internal"] = internalSecret.Id
 
 	// ---- build up our list of expectations for what secrets get filtered ----
 
@@ -407,7 +407,7 @@ func TestListSecrets(t *testing.T) {
 		{
 			desc:     "multiple ID prefix filters are or-ed together",
 			expected: []string{"aaa", "bbb"},
-			filter: &api.ListSecretsRequest_Filters{IDPrefixes: []string{
+			filter: &api.ListSecretsRequest_Filters{IdPrefixes: []string{
 				secretNamesToID["aaa"], secretNamesToID["bbb"], secretNamesToID["internal"]},
 			},
 		},
@@ -417,7 +417,7 @@ func TestListSecrets(t *testing.T) {
 			filter: &api.ListSecretsRequest_Filters{
 				Names:        []string{"aaa", "ccc", "internal"},
 				NamePrefixes: []string{"aa", "bb", "int"},
-				IDPrefixes:   []string{secretNamesToID["aaa"], secretNamesToID["ddd"], secretNamesToID["internal"]},
+				IdPrefixes:   []string{secretNamesToID["aaa"], secretNamesToID["ddd"], secretNamesToID["internal"]},
 			},
 		},
 		{
@@ -438,7 +438,7 @@ func TestListSecrets(t *testing.T) {
 			filter: &api.ListSecretsRequest_Filters{
 				Names:        []string{"aaa", "ccc", "internal"},
 				NamePrefixes: []string{"aa", "bb", "int"},
-				IDPrefixes:   []string{secretNamesToID["aaa"], secretNamesToID["ddd"], secretNamesToID["internal"]},
+				IdPrefixes:   []string{secretNamesToID["aaa"], secretNamesToID["ddd"], secretNamesToID["internal"]},
 				Labels: map[string]string{
 					"mod2": "0",
 				},
@@ -454,7 +454,7 @@ func TestListSecrets(t *testing.T) {
 		for _, name := range expectation.expected {
 			assert.Contains(t, result, name, expectation.desc)
 			assert.NotNil(t, result[name], expectation.desc)
-			assert.Equal(t, secretNamesToID[name], result[name].ID, expectation.desc)
+			assert.Equal(t, secretNamesToID[name], result[name].Id, expectation.desc)
 		}
 	}
 }

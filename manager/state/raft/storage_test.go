@@ -92,7 +92,7 @@ func TestRaftSnapshot(t *testing.T) {
 		raftNodes := make(map[uint64]*api.RaftMember)
 		for k, v := range memberList {
 			raftNodes[k] = &api.RaftMember{
-				RaftID: v.RaftID,
+				RaftId: v.RaftId,
 				Addr:   v.Addr,
 			}
 		}
@@ -212,7 +212,7 @@ func TestRaftSnapshotRestart(t *testing.T) {
 		raftNodes := make(map[uint64]*api.RaftMember)
 		for k, v := range memberList {
 			raftNodes[k] = &api.RaftMember{
-				RaftID: v.RaftID,
+				RaftId: v.RaftId,
 				Addr:   v.Addr,
 			}
 		}
@@ -276,7 +276,7 @@ func TestRaftSnapshotForceNewCluster(t *testing.T) {
 	raftClient := api.NewRaftMembershipClient(cc)
 	defer cc.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[2].Config.ID}})
+	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftId: nodes[2].Config.ID}})
 	cancel()
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
@@ -482,9 +482,9 @@ func proposeLargeValue(t *testing.T, raftNode *raftutils.TestNode, time time.Dur
 		a[i] = 'a'
 	}
 	node := &api.Node{
-		ID: nodeIDStr,
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Id: nodeIDStr,
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: nodeIDStr,
 				Labels: map[string]string{
 					"largestring": string(a),
@@ -493,9 +493,9 @@ func proposeLargeValue(t *testing.T, raftNode *raftutils.TestNode, time time.Dur
 		},
 	}
 
-	storeActions := []api.StoreAction{
+	storeActions := []*api.StoreAction{
 		{
-			Action: api.StoreActionKindCreate,
+			Action: api.StoreActionKind_STORE_ACTION_CREATE,
 			Target: &api.StoreAction_Node{
 				Node: node,
 			},
@@ -523,7 +523,7 @@ func TestRaftEncryptionKeyRotationWait(t *testing.T) {
 	var clockSource *fakeclock.FakeClock
 
 	raftConfig := raft.DefaultRaftConfig()
-	nodes[1], clockSource = raftutils.NewInitNode(t, tc, &raftConfig)
+	nodes[1], clockSource = raftutils.NewInitNode(t, tc, raftConfig)
 	defer raftutils.TeardownCluster(nodes)
 
 	nodeIDs := []string{"id1", "id2", "id3"}

@@ -36,7 +36,7 @@ func TestNACLSecretbox(t *testing.T) {
 	// both crypters can decrypt the other's text
 	for _, decrypter := range []Decrypter{crypter1, crypter2} {
 		for _, record := range []*api.MaybeEncryptedRecord{er1, er2} {
-			result, err := decrypter.Decrypt(*record)
+			result, err := decrypter.Decrypt(record)
 			require.NoError(t, err)
 			require.Equal(t, data, result)
 		}
@@ -51,9 +51,9 @@ func TestNACLSecretboxInvalidAlgorithm(t *testing.T) {
 	crypter := NewNACLSecretbox(key)
 	er, err := crypter.Encrypt([]byte("Hello again world"))
 	require.NoError(t, err)
-	er.Algorithm = api.MaybeEncryptedRecord_NotEncrypted
+	er.Algorithm = api.MaybeEncryptedRecord_NONE
 
-	_, err = crypter.Decrypt(*er)
+	_, err = crypter.Decrypt(er)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "not a NACL secretbox")
 }
@@ -68,7 +68,7 @@ func TestNACLSecretboxCannotDecryptWithoutRightKey(t *testing.T) {
 	require.NoError(t, err)
 
 	crypter = NewNACLSecretbox([]byte{})
-	_, err = crypter.Decrypt(*er)
+	_, err = crypter.Decrypt(er)
 	require.Error(t, err)
 }
 
@@ -82,7 +82,7 @@ func TestNACLSecretboxInvalidNonce(t *testing.T) {
 	require.NoError(t, err)
 	er.Nonce = er.Nonce[:20]
 
-	_, err = crypter.Decrypt(*er)
+	_, err = crypter.Decrypt(er)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid nonce size")
 }

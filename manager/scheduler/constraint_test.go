@@ -15,13 +15,13 @@ var (
 
 func setupEnv() {
 	task1 = &api.Task{
-		ID:           "id1",
-		DesiredState: api.TaskStateRunning,
-		ServiceAnnotations: api.Annotations{
+		Id:           "id1",
+		DesiredState: api.TaskState_RUNNING,
+		ServiceAnnotations: &api.Annotations{
 			Name: "name1",
 		},
 
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Command: []string{"sh", "-c", "sleep 5"},
@@ -30,26 +30,26 @@ func setupEnv() {
 			},
 		},
 
-		Status: api.TaskStatus{
-			State: api.TaskStateAssigned,
+		Status: &api.TaskStatus{
+			State: api.TaskState_ASSIGNED,
 		},
 	}
 
 	ni = &NodeInfo{
 		Node: &api.Node{
-			ID: "nodeid-1",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Id: "nodeid-1",
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Labels: make(map[string]string),
 				},
-				DesiredRole: api.NodeRoleWorker,
+				DesiredRole: api.NodeRole_WORKER,
 			},
 			Description: &api.NodeDescription{
 				Engine: &api.EngineDescription{
 					Labels: make(map[string]string),
 				},
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 				Addr:  "186.17.9.41",
 			},
@@ -244,13 +244,13 @@ func TestNodePlatform(t *testing.T) {
 
 	ni.Node.Description.Platform = &api.Platform{
 		Architecture: "x86_64",
-		OS:           "linux",
+		Os:           "linux",
 	}
 	assert.True(t, f.Check(ni))
 
 	ni.Node.Description.Platform = &api.Platform{
 		Architecture: "x86_64",
-		OS:           "windows",
+		Os:           "windows",
 	}
 	assert.False(t, f.Check(ni))
 
@@ -280,7 +280,7 @@ func TestNodeLabel(t *testing.T) {
 	ni.Description.Engine.Labels["security"] = "high"
 	assert.False(t, f.Check(ni))
 
-	ni.Spec.Annotations.Labels["security"] = "high"
+	ni.GetSpec().GetAnnotations().GetLabels()["security"] = "high"
 	assert.True(t, f.Check(ni))
 }
 
@@ -295,7 +295,7 @@ func TestEngineLabel(t *testing.T) {
 	assert.True(t, f.Check(ni))
 
 	// node label is not engine label
-	ni.Spec.Annotations.Labels["disk"] = "ssd"
+	ni.GetSpec().GetAnnotations().GetLabels()["disk"] = "ssd"
 	assert.True(t, f.Check(ni))
 
 	ni.Description.Engine.Labels["disk"] = "ssd"
@@ -338,10 +338,10 @@ func TestMultipleConstraints(t *testing.T) {
 	require.True(t, f.SetTask(task1))
 	assert.False(t, f.Check(ni))
 
-	// add label to Spec.Annotations.Labels
-	ni.Spec.Annotations.Labels["security"] = "low"
+	// add label to Spec.GetAnnotations().GetLabels()
+	ni.GetSpec().GetAnnotations().GetLabels()["security"] = "low"
 	assert.False(t, f.Check(ni))
-	ni.Spec.Annotations.Labels["security"] = "high"
+	ni.GetSpec().GetAnnotations().GetLabels()["security"] = "high"
 	assert.True(t, f.Check(ni))
 
 	// extra label doesn't interfere

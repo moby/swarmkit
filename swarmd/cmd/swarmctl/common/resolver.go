@@ -29,30 +29,30 @@ func NewResolver(cmd *cobra.Command, c api.ControlClient) *Resolver {
 func (r *Resolver) get(t any, id string) string {
 	switch t.(type) {
 	case api.Node:
-		res, err := r.c.GetNode(r.ctx, &api.GetNodeRequest{NodeID: id})
+		res, err := r.c.GetNode(r.ctx, &api.GetNodeRequest{NodeId: id})
 		if err != nil {
 			return id
 		}
-		if res.Node.Spec.Annotations.Name != "" {
-			return res.Node.Spec.Annotations.Name
+		if name := res.GetNode().GetSpec().GetAnnotations().GetName(); name != "" {
+			return name
 		}
-		if res.Node.Description == nil {
+		if res.GetNode().GetDescription() == nil {
 			return id
 		}
-		return res.Node.Description.Hostname
+		return res.GetNode().GetDescription().GetHostname()
 	case api.Service:
-		res, err := r.c.GetService(r.ctx, &api.GetServiceRequest{ServiceID: id})
+		res, err := r.c.GetService(r.ctx, &api.GetServiceRequest{ServiceId: id})
 		if err != nil {
 			return id
 		}
-		return res.Service.Spec.Annotations.Name
+		return res.GetService().GetSpec().GetAnnotations().GetName()
 	case api.Task:
-		res, err := r.c.GetTask(r.ctx, &api.GetTaskRequest{TaskID: id})
+		res, err := r.c.GetTask(r.ctx, &api.GetTaskRequest{TaskId: id})
 		if err != nil {
 			return id
 		}
-		svc := r.get(api.Service{}, res.Task.ServiceID)
-		return fmt.Sprintf("%s.%d", svc, res.Task.Slot)
+		svc := r.get(api.Service{}, res.GetTask().GetServiceId())
+		return fmt.Sprintf("%s.%d", svc, res.GetTask().GetSlot())
 	default:
 		return id
 	}

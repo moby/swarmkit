@@ -11,7 +11,6 @@ import (
 
 	"google.golang.org/grpc"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/ca/testutils"
@@ -45,7 +44,7 @@ func TestLogBrokerLogs(t *testing.T) {
 			Follow: true,
 		},
 		Selector: &api.LogSelector{
-			NodeIDs: []string{agentSecurity.ServerTLSCreds.NodeID()},
+			NodeIds: []string{agentSecurity.ServerTLSCreds.NodeID()},
 		},
 	})
 	if err != nil {
@@ -90,14 +89,14 @@ func TestLogBrokerLogs(t *testing.T) {
 					}()
 
 					msgctx := api.LogContext{
-						NodeID:    agentSecurity.ClientTLSCreds.NodeID(),
-						ServiceID: serviceID,
-						TaskID:    taskID,
+						NodeId:    agentSecurity.ClientTLSCreds.NodeID(),
+						ServiceId: serviceID,
+						TaskId:    taskID,
 					}
 					for i := range nLogMessagesPerTask {
 						require.NoError(t, publisher.Send(&api.PublishLogsMessage{
-							SubscriptionID: sub.ID,
-							Messages:       []api.LogMessage{newLogMessage(msgctx, "log message number %d", i)},
+							SubscriptionId: sub.Id,
+							Messages:       []*api.LogMessage{newLogMessage(&msgctx, "log message number %d", i)},
 						}))
 					}
 				})
@@ -198,7 +197,7 @@ func TestLogBrokerSubscriptions(t *testing.T) {
 			Follow: true,
 		},
 		Selector: &api.LogSelector{
-			NodeIDs: []string{
+			NodeIds: []string{
 				agent1Security.ServerTLSCreds.NodeID(),
 			},
 		},
@@ -209,7 +208,7 @@ func TestLogBrokerSubscriptions(t *testing.T) {
 			Follow: true,
 		},
 		Selector: &api.LogSelector{
-			NodeIDs: []string{
+			NodeIds: []string{
 				agent1Security.ServerTLSCreds.NodeID(),
 				agent2Security.ServerTLSCreds.NodeID(),
 			},
@@ -221,14 +220,14 @@ func TestLogBrokerSubscriptions(t *testing.T) {
 	{
 		s1 := ensureSubscription(t, subscriptions1)
 		require.False(t, s1.Close)
-		require.Contains(t, s1.Selector.NodeIDs, agent1Security.ServerTLSCreds.NodeID())
+		require.Contains(t, s1.Selector.NodeIds, agent1Security.ServerTLSCreds.NodeID())
 
 		s2 := ensureSubscription(t, subscriptions1)
 		require.False(t, s2.Close)
-		require.Contains(t, s2.Selector.NodeIDs, agent1Security.ServerTLSCreds.NodeID())
+		require.Contains(t, s2.Selector.NodeIds, agent1Security.ServerTLSCreds.NodeID())
 
 		// Ensure we received two different subscriptions.
-		require.NotEqual(t, s1.ID, s2.ID)
+		require.NotEqual(t, s1.Id, s2.Id)
 	}
 
 	// Join a second agent.
@@ -239,7 +238,7 @@ func TestLogBrokerSubscriptions(t *testing.T) {
 	{
 		s := ensureSubscription(t, subscriptions2)
 		require.False(t, s.Close)
-		require.Equal(t, []string{agent1Security.ServerTLSCreds.NodeID(), agent2Security.ServerTLSCreds.NodeID()}, s.Selector.NodeIDs)
+		require.Equal(t, []string{agent1Security.ServerTLSCreds.NodeID(), agent2Security.ServerTLSCreds.NodeID()}, s.Selector.NodeIds)
 
 		ensureNoSubscription(t, subscriptions2)
 	}
@@ -264,7 +263,7 @@ func TestLogBrokerSelector(t *testing.T) {
 	// Subscribe to a task.
 	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
 		return store.CreateTask(tx, &api.Task{
-			ID: "task",
+			Id: "task",
 		})
 	}))
 	_, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
@@ -272,7 +271,7 @@ func TestLogBrokerSelector(t *testing.T) {
 			Follow: true,
 		},
 		Selector: &api.LogSelector{
-			TaskIDs: []string{"task"},
+			TaskIds: []string{"task"},
 		},
 	})
 	require.NoError(t, err)
@@ -286,7 +285,7 @@ func TestLogBrokerSelector(t *testing.T) {
 	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
 		task := store.GetTask(tx, "task")
 		require.NotNil(t, task)
-		task.NodeID = agent1Security.ServerTLSCreds.NodeID()
+		task.NodeId = agent1Security.ServerTLSCreds.NodeID()
 		return store.UpdateTask(tx, task)
 	}))
 
@@ -296,7 +295,7 @@ func TestLogBrokerSelector(t *testing.T) {
 	// Subscribe to a service.
 	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
 		return store.CreateService(tx, &api.Service{
-			ID: "service",
+			Id: "service",
 		})
 	}))
 	_, err = client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
@@ -304,7 +303,7 @@ func TestLogBrokerSelector(t *testing.T) {
 			Follow: true,
 		},
 		Selector: &api.LogSelector{
-			ServiceIDs: []string{"service"},
+			ServiceIds: []string{"service"},
 		},
 	})
 	require.NoError(t, err)
@@ -316,9 +315,9 @@ func TestLogBrokerSelector(t *testing.T) {
 	// Create a task that does *NOT* belong to our service and assign it to node-1.
 	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
 		return store.CreateTask(tx, &api.Task{
-			ID:        "wrong-task",
-			ServiceID: "wrong-service",
-			NodeID:    agent1Security.ServerTLSCreds.NodeID(),
+			Id:        "wrong-task",
+			ServiceId: "wrong-service",
+			NodeId:    agent1Security.ServerTLSCreds.NodeID(),
 		})
 	}))
 
@@ -328,9 +327,9 @@ func TestLogBrokerSelector(t *testing.T) {
 	// Now create another task that does belong to our service and assign it to node-1.
 	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
 		return store.CreateTask(tx, &api.Task{
-			ID:        "service-task-1",
-			ServiceID: "service",
-			NodeID:    agent1Security.ServerTLSCreds.NodeID(),
+			Id:        "service-task-1",
+			ServiceId: "service",
+			NodeId:    agent1Security.ServerTLSCreds.NodeID(),
 		})
 	}))
 
@@ -342,9 +341,9 @@ func TestLogBrokerSelector(t *testing.T) {
 	// Create another task, same as above.
 	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
 		return store.CreateTask(tx, &api.Task{
-			ID:        "service-task-2",
-			ServiceID: "service",
-			NodeID:    agent1Security.ServerTLSCreds.NodeID(),
+			Id:        "service-task-2",
+			ServiceId: "service",
+			NodeId:    agent1Security.ServerTLSCreds.NodeID(),
 		})
 	}))
 
@@ -356,9 +355,9 @@ func TestLogBrokerSelector(t *testing.T) {
 	// Now, create another one and assign it to agent-2.
 	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
 		return store.CreateTask(tx, &api.Task{
-			ID:        "service-task-3",
-			ServiceID: "service",
-			NodeID:    agent2Security.ServerTLSCreds.NodeID(),
+			Id:        "service-task-3",
+			ServiceId: "service",
+			NodeId:    agent2Security.ServerTLSCreds.NodeID(),
 		})
 	}))
 
@@ -388,23 +387,23 @@ func TestLogBrokerNoFollow(t *testing.T) {
 	// Create fake environment.
 	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
 		if err := store.CreateTask(tx, &api.Task{
-			ID:        "task1",
-			ServiceID: "service",
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			Id:        "task1",
+			ServiceId: "service",
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			NodeID: agent1Security.ServerTLSCreds.NodeID(),
+			NodeId: agent1Security.ServerTLSCreds.NodeID(),
 		}); err != nil {
 			return err
 		}
 
 		return store.CreateTask(tx, &api.Task{
-			ID:        "task2",
-			ServiceID: "service",
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			Id:        "task2",
+			ServiceId: "service",
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			NodeID: agent2Security.ServerTLSCreds.NodeID(),
+			NodeId: agent2Security.ServerTLSCreds.NodeID(),
 		})
 	}))
 
@@ -424,30 +423,30 @@ func TestLogBrokerNoFollow(t *testing.T) {
 			Follow: false,
 		},
 		Selector: &api.LogSelector{
-			ServiceIDs: []string{"service"},
+			ServiceIds: []string{"service"},
 		},
 	})
 	require.NoError(t, err)
 
 	// Get the subscriptions from the agents.
 	subscription1 := ensureSubscription(t, agent1subscriptions)
-	require.Equal(t, subscription1.Selector.ServiceIDs[0], "service")
+	require.Equal(t, subscription1.Selector.ServiceIds[0], "service")
 	subscription2 := ensureSubscription(t, agent2subscriptions)
-	require.Equal(t, subscription2.Selector.ServiceIDs[0], "service")
+	require.Equal(t, subscription2.Selector.ServiceIds[0], "service")
 
-	require.Equal(t, subscription1.ID, subscription2.ID)
+	require.Equal(t, subscription1.Id, subscription2.Id)
 
 	// Publish a log message from agent-1 and close the publisher
 	publisher, err := agent1.PublishLogs(ctx)
 	require.NoError(t, err)
 	require.NoError(t,
 		publisher.Send(&api.PublishLogsMessage{
-			SubscriptionID: subscription1.ID,
-			Messages: []api.LogMessage{
-				newLogMessage(api.LogContext{
-					NodeID:    agent1Security.ServerTLSCreds.NodeID(),
-					ServiceID: "service",
-					TaskID:    "task1",
+			SubscriptionId: subscription1.Id,
+			Messages: []*api.LogMessage{
+				newLogMessage(&api.LogContext{
+					NodeId:    agent1Security.ServerTLSCreds.NodeID(),
+					ServiceId: "service",
+					TaskId:    "task1",
 				}, "log message"),
 			},
 		}))
@@ -458,19 +457,19 @@ func TestLogBrokerNoFollow(t *testing.T) {
 	log, err := logs.Recv()
 	require.NoError(t, err)
 	require.Len(t, log.Messages, 1)
-	require.Equal(t, log.Messages[0].Context.NodeID, agent1Security.ServerTLSCreds.NodeID())
+	require.Equal(t, log.Messages[0].Context.NodeId, agent1Security.ServerTLSCreds.NodeID())
 
 	// Now publish a message from the other agent and close the subscription
 	publisher, err = agent2.PublishLogs(ctx)
 	require.NoError(t, err)
 	require.NoError(t,
 		publisher.Send(&api.PublishLogsMessage{
-			SubscriptionID: subscription2.ID,
-			Messages: []api.LogMessage{
-				newLogMessage(api.LogContext{
-					NodeID:    agent2Security.ServerTLSCreds.NodeID(),
-					ServiceID: "service",
-					TaskID:    "task2",
+			SubscriptionId: subscription2.Id,
+			Messages: []*api.LogMessage{
+				newLogMessage(&api.LogContext{
+					NodeId:    agent2Security.ServerTLSCreds.NodeID(),
+					ServiceId: "service",
+					TaskId:    "task2",
 				}, "log message"),
 			},
 		}))
@@ -481,7 +480,7 @@ func TestLogBrokerNoFollow(t *testing.T) {
 	log, err = logs.Recv()
 	require.NoError(t, err)
 	require.Len(t, log.Messages, 1)
-	require.Equal(t, log.Messages[0].Context.NodeID, agent2Security.ServerTLSCreds.NodeID())
+	require.Equal(t, log.Messages[0].Context.NodeId, agent2Security.ServerTLSCreds.NodeID())
 
 	// Since we receive both messages the log stream should end
 	_, err = logs.Recv()
@@ -506,22 +505,22 @@ func TestLogBrokerNoFollowMissingNode(t *testing.T) {
 	// and a node that didn't connect to the broker.
 	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
 		if err := store.CreateTask(tx, &api.Task{
-			ID:        "task1",
-			ServiceID: "service",
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			Id:        "task1",
+			ServiceId: "service",
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			NodeID: agentSecurity.ServerTLSCreds.NodeID(),
+			NodeId: agentSecurity.ServerTLSCreds.NodeID(),
 		}); err != nil {
 			return err
 		}
 
 		return store.CreateTask(tx, &api.Task{
-			ID:        "task2",
-			ServiceID: "service",
-			NodeID:    "node-2",
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			Id:        "task2",
+			ServiceId: "service",
+			NodeId:    "node-2",
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
 		})
 	}))
@@ -542,24 +541,24 @@ func TestLogBrokerNoFollowMissingNode(t *testing.T) {
 			Follow: false,
 		},
 		Selector: &api.LogSelector{
-			ServiceIDs: []string{"service"},
+			ServiceIds: []string{"service"},
 		},
 	})
 	require.NoError(t, err)
 
 	// Grab the subscription and publish a log message from the connected agent.
 	sub := ensureSubscription(t, agentSubscriptions)
-	require.Equal(t, sub.Selector.ServiceIDs[0], "service")
+	require.Equal(t, sub.Selector.ServiceIds[0], "service")
 	publisher, err := agent.PublishLogs(ctx)
 	require.NoError(t, err)
 	require.NoError(t,
 		publisher.Send(&api.PublishLogsMessage{
-			SubscriptionID: sub.ID,
-			Messages: []api.LogMessage{
-				newLogMessage(api.LogContext{
-					NodeID:    agentSecurity.ServerTLSCreds.NodeID(),
-					ServiceID: "service",
-					TaskID:    "task1",
+			SubscriptionId: sub.Id,
+			Messages: []*api.LogMessage{
+				newLogMessage(&api.LogContext{
+					NodeId:    agentSecurity.ServerTLSCreds.NodeID(),
+					ServiceId: "service",
+					TaskId:    "task1",
 				}, "log message"),
 			},
 		}))
@@ -570,7 +569,7 @@ func TestLogBrokerNoFollowMissingNode(t *testing.T) {
 	log, err := logs.Recv()
 	require.NoError(t, err)
 	require.Len(t, log.Messages, 1)
-	require.Equal(t, log.Messages[0].Context.NodeID, agentSecurity.ServerTLSCreds.NodeID())
+	require.Equal(t, log.Messages[0].Context.NodeId, agentSecurity.ServerTLSCreds.NodeID())
 
 	// Ensure the log stream ends with an error complaining about the missing node
 	_, err = logs.Recv()
@@ -588,10 +587,10 @@ func TestLogBrokerNoFollowNotYetRunningTask(t *testing.T) {
 	// Create fake environment.
 	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
 		return store.CreateTask(tx, &api.Task{
-			ID:        "task1",
-			ServiceID: "service",
-			Status: api.TaskStatus{
-				State: api.TaskStateNew,
+			Id:        "task1",
+			ServiceId: "service",
+			Status: &api.TaskStatus{
+				State: api.TaskState_NEW,
 			},
 		})
 	}))
@@ -602,7 +601,7 @@ func TestLogBrokerNoFollowNotYetRunningTask(t *testing.T) {
 			Follow: false,
 		},
 		Selector: &api.LogSelector{
-			ServiceIDs: []string{"service"},
+			ServiceIds: []string{"service"},
 		},
 	})
 	require.NoError(t, err)
@@ -633,23 +632,23 @@ func TestLogBrokerNoFollowDisconnect(t *testing.T) {
 	// Create fake environment.
 	require.NoError(t, ca.MemoryStore.Update(func(tx store.Tx) error {
 		if err := store.CreateTask(tx, &api.Task{
-			ID:        "task1",
-			ServiceID: "service",
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			Id:        "task1",
+			ServiceId: "service",
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			NodeID: agent1Security.ServerTLSCreds.NodeID(),
+			NodeId: agent1Security.ServerTLSCreds.NodeID(),
 		}); err != nil {
 			return err
 		}
 
 		return store.CreateTask(tx, &api.Task{
-			ID:        "task2",
-			ServiceID: "service",
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			Id:        "task2",
+			ServiceId: "service",
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			NodeID: agent2Security.ServerTLSCreds.NodeID(),
+			NodeId: agent2Security.ServerTLSCreds.NodeID(),
 		})
 	}))
 
@@ -669,30 +668,30 @@ func TestLogBrokerNoFollowDisconnect(t *testing.T) {
 			Follow: false,
 		},
 		Selector: &api.LogSelector{
-			ServiceIDs: []string{"service"},
+			ServiceIds: []string{"service"},
 		},
 	})
 	require.NoError(t, err)
 
 	// Get the subscriptions from the agents.
 	subscription1 := ensureSubscription(t, agent1subscriptions)
-	require.Equal(t, subscription1.Selector.ServiceIDs[0], "service")
+	require.Equal(t, subscription1.Selector.ServiceIds[0], "service")
 	subscription2 := ensureSubscription(t, agent2subscriptions)
-	require.Equal(t, subscription2.Selector.ServiceIDs[0], "service")
+	require.Equal(t, subscription2.Selector.ServiceIds[0], "service")
 
-	require.Equal(t, subscription1.ID, subscription2.ID)
+	require.Equal(t, subscription1.Id, subscription2.Id)
 
 	// Publish a log message from agent-1 and close the publisher
 	publisher, err := agent1.PublishLogs(ctx)
 	require.NoError(t, err)
 	require.NoError(t,
 		publisher.Send(&api.PublishLogsMessage{
-			SubscriptionID: subscription1.ID,
-			Messages: []api.LogMessage{
-				newLogMessage(api.LogContext{
-					NodeID:    agent1Security.ServerTLSCreds.NodeID(),
-					ServiceID: "service",
-					TaskID:    "task1",
+			SubscriptionId: subscription1.Id,
+			Messages: []*api.LogMessage{
+				newLogMessage(&api.LogContext{
+					NodeId:    agent1Security.ServerTLSCreds.NodeID(),
+					ServiceId: "service",
+					TaskId:    "task1",
 				}, "log message"),
 			},
 		}))
@@ -706,7 +705,7 @@ func TestLogBrokerNoFollowDisconnect(t *testing.T) {
 	log, err := logs.Recv()
 	require.NoError(t, err)
 	require.Len(t, log.Messages, 1)
-	require.Equal(t, log.Messages[0].Context.NodeID, agent1Security.ServerTLSCreds.NodeID())
+	require.Equal(t, log.Messages[0].Context.NodeId, agent1Security.ServerTLSCreds.NodeID())
 
 	// ...and then an error
 	_, err = logs.Recv()
@@ -807,16 +806,15 @@ func testBrokerClient(t *testing.T, tca *testutils.TestCA, addr string) (api.Log
 	}
 }
 
-func printLogMessages(msgs ...api.LogMessage) {
+func printLogMessages(msgs ...*api.LogMessage) {
 	for _, msg := range msgs {
-		ts, _ := gogotypes.TimestampFromProto(msg.Timestamp)
-		fmt.Printf("%v %v %s\n", msg.Context, ts, string(msg.Data))
+		fmt.Printf("%v %v %s\n", msg.Context, msg.Timestamp.AsTime(), string(msg.Data))
 	}
 }
 
 // newLogMessage is just a helper to build a new log message.
-func newLogMessage(msgctx api.LogContext, format string, vs ...any) api.LogMessage {
-	return api.LogMessage{
+func newLogMessage(msgctx *api.LogContext, format string, vs ...any) *api.LogMessage {
+	return &api.LogMessage{
 		Context:   msgctx,
 		Timestamp: ptypes.MustTimestampProto(time.Now()),
 		Data:      fmt.Appendf(nil, format, vs...),

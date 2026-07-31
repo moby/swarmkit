@@ -1,9 +1,9 @@
 package flagparser
 
 import (
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/pflag"
+	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func parseContainer(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
@@ -53,7 +53,7 @@ func parseContainer(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			return err
 		}
 
-		spec.Task.GetContainer().TTY = tty
+		spec.Task.GetContainer().Tty = tty
 	}
 
 	if flags.Changed("open-stdin") {
@@ -71,7 +71,7 @@ func parseContainer(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			return err
 		}
 
-		spec.Task.GetContainer().Init = &gogotypes.BoolValue{
+		spec.Task.GetContainer().Init = &wrapperspb.BoolValue{
 			Value: init,
 		}
 	}

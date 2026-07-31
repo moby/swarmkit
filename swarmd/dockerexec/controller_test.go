@@ -17,12 +17,12 @@ import (
 	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/network"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/stretchr/testify/assert"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 )
 
 const tenSecond = 10
@@ -48,7 +48,7 @@ func TestControllerPrepare(t *testing.T) {
 			reflect.DeepEqual(*hConfig, *config.hostConfig()) &&
 			reflect.DeepEqual(*nConfig, *config.networkingConfig()) &&
 			containerName == config.name() {
-			return containertypes.CreateResponse{ID: "container-id-" + task.ID}, nil
+			return containertypes.CreateResponse{ID: "container-id-" + task.Id}, nil
 		}
 		panic("unexpected call to ContainerCreate")
 	}
@@ -416,7 +416,7 @@ func genTestControllerEnv(t *testing.T, task *api.Task) (context.Context, *StubA
 	testNodeDescription := &api.NodeDescription{
 		Hostname: "testHostname",
 		Platform: &api.Platform{
-			OS:           "linux",
+			Os:           "linux",
 			Architecture: "x86_64",
 		},
 	}
@@ -450,14 +450,14 @@ func genTask(t *testing.T) *api.Task {
 	)
 
 	return &api.Task{
-		ID:        identity.NewID(),
-		ServiceID: serviceID,
-		NodeID:    nodeID,
-		Spec: api.TaskSpec{
+		Id:        identity.NewID(),
+		ServiceId: serviceID,
+		NodeId:    nodeID,
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image:           reference,
-					StopGracePeriod: gogotypes.DurationProto(10 * time.Second),
+					StopGracePeriod: durationpb.New(10 * time.Second),
 				},
 			},
 		},

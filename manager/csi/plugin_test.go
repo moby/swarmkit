@@ -43,14 +43,14 @@ var _ = Describe("Plugin manager", func() {
 		provider = &fakeSecretProvider{
 			secretMap: map[string]*api.Secret{
 				"secretID1": {
-					ID: "secretID1",
-					Spec: api.SecretSpec{
+					Id: "secretID1",
+					Spec: &api.SecretSpec{
 						Data: []byte("superdupersecret1"),
 					},
 				},
 				"secretID2": {
-					ID: "secretID2",
-					Spec: api.SecretSpec{
+					Id: "secretID2",
+					Spec: &api.SecretSpec{
 						Data: []byte("superdupersecret2"),
 					},
 				},
@@ -77,9 +77,9 @@ var _ = Describe("Plugin manager", func() {
 
 		BeforeEach(func() {
 			v = &api.Volume{
-				ID: "someID",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Id: "someID",
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "someVolume",
 					},
 					Driver: &api.Driver{
@@ -90,8 +90,8 @@ var _ = Describe("Plugin manager", func() {
 						},
 					},
 					AccessMode: &api.VolumeAccessMode{
-						Scope:   api.VolumeScopeMultiNode,
-						Sharing: api.VolumeSharingOneWriter,
+						Scope:   api.VolumeAccessMode_MULTI_NODE,
+						Sharing: api.VolumeAccessMode_ONE_WRITER,
 						AccessType: &api.VolumeAccessMode_Mount{
 							Mount: &api.VolumeAccessMode_MountVolume{},
 						},
@@ -137,7 +137,7 @@ var _ = Describe("Plugin manager", func() {
 				HaveKeyWithValue("someFlag", "yeah"),
 				HaveKeyWithValue("requestNumber", "1"),
 			))
-			Expect(volumeInfo.VolumeID).To(Equal("volumeid1"))
+			Expect(volumeInfo.VolumeId).To(Equal("volumeid1"))
 		})
 
 		It("should not return an error", func() {
@@ -150,8 +150,8 @@ var _ = Describe("Plugin manager", func() {
 
 			Expect(createVolumeRequest).ToNot(BeNil())
 
-			Expect(createVolumeRequest.Name).To(Equal(v.Spec.Annotations.Name))
-			Expect(createVolumeRequest.Parameters).To(Equal(v.Spec.Driver.Options))
+			Expect(createVolumeRequest.Name).To(Equal(v.GetSpec().GetAnnotations().GetName()))
+			Expect(createVolumeRequest.Parameters).To(Equal(v.Spec.GetDriver().GetOptions()))
 			Expect(createVolumeRequest.VolumeCapabilities).To(Equal([]*csi.VolumeCapability{
 				{
 					AccessMode: &csi.VolumeCapability_AccessMode{
@@ -203,7 +203,7 @@ var _ = Describe("Plugin manager", func() {
 			})
 
 			It("should return the volume name as the VolumeID", func() {
-				Expect(volumeInfo.VolumeID).To(Equal(v.Spec.Annotations.Name))
+				Expect(volumeInfo.VolumeId).To(Equal(v.GetSpec().GetAnnotations().GetName()))
 			})
 		})
 	})
@@ -216,9 +216,9 @@ var _ = Describe("Plugin manager", func() {
 
 		It("should make a csi.ControllerPublishVolumeRequest for the given volume", func() {
 			v := &api.Volume{
-				ID: "volumeID1",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Id: "volumeID1",
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volumeName1",
 					},
 					Driver: &api.Driver{
@@ -234,22 +234,22 @@ var _ = Describe("Plugin manager", func() {
 						},
 					},
 					AccessMode: &api.VolumeAccessMode{
-						Scope:   api.VolumeScopeMultiNode,
-						Sharing: api.VolumeSharingOneWriter,
+						Scope:   api.VolumeAccessMode_MULTI_NODE,
+						Sharing: api.VolumeAccessMode_ONE_WRITER,
 					},
 				},
 				VolumeInfo: &api.VolumeInfo{
-					VolumeID: "volumePluginID1",
+					VolumeId: "volumePluginID1",
 					VolumeContext: map[string]string{
 						"foo": "bar",
 					},
 				},
 				PublishStatus: []*api.VolumePublishStatus{
 					{
-						NodeID: "swarmNode1",
+						NodeId: "swarmNode1",
 						State:  api.VolumePublishStatus_PENDING_PUBLISH,
 					}, {
-						NodeID: "swarmNode2",
+						NodeId: "swarmNode2",
 						State:  api.VolumePublishStatus_PENDING_PUBLISH,
 					},
 				},
@@ -290,27 +290,27 @@ var _ = Describe("Plugin manager", func() {
 
 		BeforeEach(func() {
 			v = &api.Volume{
-				ID: "volumeID",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Id: "volumeID",
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volumeName",
 					},
 					Driver: &api.Driver{
 						Name: plugin.name,
 					},
 					AccessMode: &api.VolumeAccessMode{
-						Scope:   api.VolumeScopeMultiNode,
-						Sharing: api.VolumeSharingOneWriter,
+						Scope:   api.VolumeAccessMode_MULTI_NODE,
+						Sharing: api.VolumeAccessMode_ONE_WRITER,
 					},
 				},
 				VolumeInfo: &api.VolumeInfo{
-					VolumeID:      "volumePluginID1",
+					VolumeId:      "volumePluginID1",
 					VolumeContext: map[string]string{"foo": "bar"},
 				},
 				PublishStatus: []*api.VolumePublishStatus{
 					{
 						State:  api.VolumePublishStatus_PENDING_PUBLISH,
-						NodeID: "swarmNode1",
+						NodeId: "swarmNode1",
 					},
 				},
 			}
@@ -355,9 +355,9 @@ var _ = Describe("Plugin manager", func() {
 
 		BeforeEach(func() {
 			v = &api.Volume{
-				ID: "volumeID1",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Id: "volumeID1",
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volumeName1",
 					},
 					Driver: &api.Driver{
@@ -373,22 +373,22 @@ var _ = Describe("Plugin manager", func() {
 						},
 					},
 					AccessMode: &api.VolumeAccessMode{
-						Scope:   api.VolumeScopeMultiNode,
-						Sharing: api.VolumeSharingOneWriter,
+						Scope:   api.VolumeAccessMode_MULTI_NODE,
+						Sharing: api.VolumeAccessMode_ONE_WRITER,
 					},
 				},
 				VolumeInfo: &api.VolumeInfo{
-					VolumeID: "volumePluginID1",
+					VolumeId: "volumePluginID1",
 					VolumeContext: map[string]string{
 						"foo": "bar",
 					},
 				},
 				PublishStatus: []*api.VolumePublishStatus{
 					{
-						NodeID: "swarmNode1",
+						NodeId: "swarmNode1",
 						State:  api.VolumePublishStatus_PENDING_UNPUBLISH,
 					}, {
-						NodeID: "swarmNode2",
+						NodeId: "swarmNode2",
 						State:  api.VolumePublishStatus_PENDING_UNPUBLISH,
 					},
 				},
@@ -450,9 +450,9 @@ var _ = Describe("Plugin manager", func() {
 
 		BeforeEach(func() {
 			v = &api.Volume{
-				ID: "volumeID1",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Id: "volumeID1",
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volumeName1",
 					},
 					Driver: &api.Driver{
@@ -468,12 +468,12 @@ var _ = Describe("Plugin manager", func() {
 						},
 					},
 					AccessMode: &api.VolumeAccessMode{
-						Scope:   api.VolumeScopeMultiNode,
-						Sharing: api.VolumeSharingOneWriter,
+						Scope:   api.VolumeAccessMode_MULTI_NODE,
+						Sharing: api.VolumeAccessMode_ONE_WRITER,
 					},
 				},
 				VolumeInfo: &api.VolumeInfo{
-					VolumeID: "volumePluginID1",
+					VolumeId: "volumePluginID1",
 					VolumeContext: map[string]string{
 						"foo": "bar",
 					},

@@ -53,7 +53,7 @@ var createCmd = &cobra.Command{
 		}
 
 		spec := &api.SecretSpec{
-			Annotations: api.Annotations{Name: args[0]},
+			Annotations: &api.Annotations{Name: args[0]},
 			Data:        secretData,
 		}
 		if driver != "" {
@@ -64,7 +64,7 @@ var createCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(resp.Secret.ID)
+		fmt.Println(resp.Secret.Id)
 		return nil
 	},
 }

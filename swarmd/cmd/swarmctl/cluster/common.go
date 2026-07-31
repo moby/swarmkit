@@ -8,7 +8,7 @@ import (
 )
 
 func getCluster(ctx context.Context, c api.ControlClient, input string) (*api.Cluster, error) {
-	rg, err := c.GetCluster(ctx, &api.GetClusterRequest{ClusterID: input})
+	rg, err := c.GetCluster(ctx, &api.GetClusterRequest{ClusterId: input})
 	if err == nil {
 		return rg.Cluster, nil
 	}

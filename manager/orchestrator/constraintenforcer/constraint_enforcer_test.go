@@ -18,9 +18,9 @@ func TestRejectNoncompliantTasksIgnoresCompletedJobTasksInReservations(t *testin
 	t.Cleanup(func() { _ = s.Close() })
 
 	node := &api.Node{
-		ID: "node1",
-		Spec: api.NodeSpec{
-			Availability: api.NodeAvailabilityActive,
+		Id: "node1",
+		Spec: &api.NodeSpec{
+			Availability: api.NodeSpec_ACTIVE,
 		},
 		Description: &api.NodeDescription{
 			Resources: &api.Resources{
@@ -31,14 +31,14 @@ func TestRejectNoncompliantTasksIgnoresCompletedJobTasksInReservations(t *testin
 
 	// A live task that fits if completed job tasks are ignored.
 	runningTask := &api.Task{
-		ID:           "running1",
-		NodeID:       node.ID,
-		ServiceID:    "svc1",
-		DesiredState: api.TaskStateRunning,
-		Status: api.TaskStatus{
-			State: api.TaskStateRunning,
+		Id:           "running1",
+		NodeId:       node.Id,
+		ServiceId:    "svc1",
+		DesiredState: api.TaskState_RUNNING,
+		Status: &api.TaskStatus{
+			State: api.TaskState_RUNNING,
 		},
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
 					MemoryBytes: 700,
@@ -49,14 +49,14 @@ func TestRejectNoncompliantTasksIgnoresCompletedJobTasksInReservations(t *testin
 
 	// A completed replicated-job task that should not consume reservations.
 	completedJobTask := &api.Task{
-		ID:           "job1",
-		NodeID:       node.ID,
-		ServiceID:    "jobsvc",
-		DesiredState: api.TaskStateCompleted,
-		Status: api.TaskStatus{
-			State: api.TaskStateCompleted,
+		Id:           "job1",
+		NodeId:       node.Id,
+		ServiceId:    "jobsvc",
+		DesiredState: api.TaskState_COMPLETE,
+		Status: &api.TaskStatus{
+			State: api.TaskState_COMPLETE,
 		},
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
 					MemoryBytes: 700,
@@ -82,9 +82,9 @@ func TestRejectNoncompliantTasksIgnoresCompletedJobTasksInReservations(t *testin
 	ce.rejectNoncompliantTasks(node)
 
 	s.View(func(tx store.ReadTx) {
-		got := store.GetTask(tx, runningTask.ID)
+		got := store.GetTask(tx, runningTask.Id)
 		require.NotNil(t, got)
-		assert.NotEqual(t, api.TaskStateRejected, got.Status.State, "running task unexpectedly rejected; completed job tasks should not count toward reservations")
+		assert.NotEqual(t, api.TaskState_REJECTED, got.Status.GetState(), "running task unexpectedly rejected; completed job tasks should not count toward reservations")
 	})
 }
 
@@ -92,32 +92,32 @@ func TestConstraintEnforcer(t *testing.T) {
 	nodes := []*api.Node{
 		// this node starts as a worker, but then is changed to a manager.
 		{
-			ID: "id1",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Id: "id1",
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
-				Availability: api.NodeAvailabilityActive,
+				Availability: api.NodeSpec_ACTIVE,
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
-			Role: api.NodeRoleWorker,
+			Role: api.NodeRole_WORKER,
 		},
 		{
-			ID: "id2",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Id: "id2",
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
-				Availability: api.NodeAvailabilityActive,
+				Availability: api.NodeSpec_ACTIVE,
 			},
-			Status: api.NodeStatus{
+			Status: &api.NodeStatus{
 				State: api.NodeStatus_READY,
 			},
 			Description: &api.NodeDescription{
 				Resources: &api.Resources{
-					NanoCPUs:    1e9,
+					NanoCpus:    1e9,
 					MemoryBytes: 1e9,
 				},
 			},
@@ -127,74 +127,74 @@ func TestConstraintEnforcer(t *testing.T) {
 	tasks := []*api.Task{
 		// This task should not run, because id1 is a worker
 		{
-			ID:           "id0",
-			DesiredState: api.TaskStateRunning,
-			Spec: api.TaskSpec{
+			Id:           "id0",
+			DesiredState: api.TaskState_RUNNING,
+			Spec: &api.TaskSpec{
 				Placement: &api.Placement{
 					Constraints: []string{"node.role == manager"},
 				},
 			},
-			Status: api.TaskStatus{
-				State: api.TaskStateNew,
+			Status: &api.TaskStatus{
+				State: api.TaskState_NEW,
 			},
-			NodeID: "id1",
+			NodeId: "id1",
 		},
 		// this task should run without question
 		{
-			ID:           "id1",
-			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
-				State: api.TaskStateNew,
+			Id:           "id1",
+			DesiredState: api.TaskState_RUNNING,
+			Status: &api.TaskStatus{
+				State: api.TaskState_NEW,
 			},
-			NodeID: "id1",
+			NodeId: "id1",
 		},
 		// this task, which might belong to a job, should run.
 		{
-			ID:           "id5",
-			DesiredState: api.TaskStateCompleted,
-			Status: api.TaskStatus{
-				State: api.TaskStateNew,
+			Id:           "id5",
+			DesiredState: api.TaskState_COMPLETE,
+			Status: &api.TaskStatus{
+				State: api.TaskState_NEW,
 			},
-			NodeID: "id1",
+			NodeId: "id1",
 		},
 		// this task should run fine and not shut down at first, because node
 		// id1 is correctly a worker. but when the node is updated to be a
 		// manager, it should be rejected
 		{
-			ID:           "id2",
-			DesiredState: api.TaskStateRunning,
-			Spec: api.TaskSpec{
+			Id:           "id2",
+			DesiredState: api.TaskState_RUNNING,
+			Spec: &api.TaskSpec{
 				Placement: &api.Placement{
 					Constraints: []string{"node.role == worker"},
 				},
 			},
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			NodeID: "id1",
+			NodeId: "id1",
 		},
 		{
-			ID:           "id3",
-			DesiredState: api.TaskStateNew,
-			Status: api.TaskStatus{
-				State: api.TaskStateNew,
+			Id:           "id3",
+			DesiredState: api.TaskState_NEW,
+			Status: &api.TaskStatus{
+				State: api.TaskState_NEW,
 			},
-			NodeID: "id2",
+			NodeId: "id2",
 		},
 		{
-			ID:           "id4",
-			DesiredState: api.TaskStateReady,
-			Spec: api.TaskSpec{
+			Id:           "id4",
+			DesiredState: api.TaskState_READY,
+			Spec: &api.TaskSpec{
 				Resources: &api.ResourceRequirements{
 					Reservations: &api.Resources{
 						MemoryBytes: 9e8,
 					},
 				},
 			},
-			Status: api.TaskStatus{
-				State: api.TaskStatePending,
+			Status: &api.TaskStatus{
+				State: api.TaskState_PENDING,
 			},
-			NodeID: "id2",
+			NodeId: "id2",
 		},
 	}
 
@@ -226,8 +226,8 @@ func TestConstraintEnforcer(t *testing.T) {
 
 	// id0 should be rejected immediately
 	shutdown1 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, "id0", shutdown1.ID)
-	assert.Equal(t, api.TaskStateRejected, shutdown1.Status.State)
+	assert.Equal(t, "id0", shutdown1.Id)
+	assert.Equal(t, api.TaskState_REJECTED, shutdown1.Status.GetState())
 
 	// Change node id1 to a manager
 	err = s.Update(func(tx store.Tx) error {
@@ -235,7 +235,7 @@ func TestConstraintEnforcer(t *testing.T) {
 		if node == nil {
 			t.Fatal("could not get node id1")
 		}
-		node.Role = api.NodeRoleManager
+		node.Role = api.NodeRole_MANAGER
 		assert.NoError(t, store.UpdateNode(tx, node))
 		return nil
 	})
@@ -244,8 +244,8 @@ func TestConstraintEnforcer(t *testing.T) {
 	// since we've changed the node from a worker to a manager, this task
 	// should now shut down
 	shutdown2 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, "id2", shutdown2.ID)
-	assert.Equal(t, api.TaskStateRejected, shutdown2.Status.State)
+	assert.Equal(t, "id2", shutdown2.Id)
+	assert.Equal(t, api.TaskState_REJECTED, shutdown2.Status.GetState())
 
 	// Change resources on node id2
 	err = s.Update(func(tx store.Tx) error {
@@ -260,8 +260,8 @@ func TestConstraintEnforcer(t *testing.T) {
 	assert.NoError(t, err)
 
 	shutdown3 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, "id4", shutdown3.ID)
-	assert.Equal(t, api.TaskStateRejected, shutdown3.Status.State)
+	assert.Equal(t, "id4", shutdown3.Id)
+	assert.Equal(t, api.TaskState_REJECTED, shutdown3.Status.GetState())
 }
 
 // TestOutdatedPlacementConstraints tests the following scenario: If a task is
@@ -289,29 +289,29 @@ func TestConstraintEnforcer(t *testing.T) {
 // task's own spec still has the original placement constraints.
 func TestOutdatedTaskPlacementConstraints(t *testing.T) {
 	node := &api.Node{
-		ID: "id0",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Id: "id0",
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node1",
 				Labels: map[string]string{
 					"foo": "bar",
 				},
 			},
-			Availability: api.NodeAvailabilityActive,
+			Availability: api.NodeSpec_ACTIVE,
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
-		Role: api.NodeRoleWorker,
+		Role: api.NodeRole_WORKER,
 	}
 
 	service := &api.Service{
-		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "service1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Placement: &api.Placement{
 					Constraints: []string{
 						"node.labels.foo == bar",
@@ -322,16 +322,16 @@ func TestOutdatedTaskPlacementConstraints(t *testing.T) {
 	}
 
 	task := &api.Task{
-		ID: "id2",
-		Spec: api.TaskSpec{
+		Id: "id2",
+		Spec: &api.TaskSpec{
 			Placement: nil, // Note: No placement constraints.
 		},
-		ServiceID: service.ID,
-		NodeID:    node.ID,
-		Status: api.TaskStatus{
-			State: api.TaskStateRunning,
+		ServiceId: service.Id,
+		NodeId:    node.Id,
+		Status: &api.TaskStatus{
+			State: api.TaskState_RUNNING,
 		},
-		DesiredState: api.TaskStateRunning,
+		DesiredState: api.TaskState_RUNNING,
 	}
 
 	s := store.NewMemoryStore(nil)
@@ -362,29 +362,29 @@ func TestOutdatedTaskPlacementConstraints(t *testing.T) {
 
 	// Update the node to remove the node label.
 	require.NoError(t, s.Update(func(tx store.Tx) error {
-		node = store.GetNode(tx, node.ID)
-		delete(node.Spec.Annotations.Labels, "foo")
+		node = store.GetNode(tx, node.Id)
+		delete(node.GetSpec().GetAnnotations().GetLabels(), "foo")
 		return store.UpdateNode(tx, node)
 	}))
 
 	// The task should be rejected immediately.
 	task = testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, api.TaskStateRejected, task.Status.State)
+	assert.Equal(t, api.TaskState_REJECTED, task.Status.GetState())
 }
 
 func TestGenericResourcesPlacementConstraints(t *testing.T) {
 	node := &api.Node{
-		ID: "id0",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Id: "id0",
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node1",
 			},
-			Availability: api.NodeAvailabilityActive,
+			Availability: api.NodeSpec_ACTIVE,
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
-		Role: api.NodeRoleWorker,
+		Role: api.NodeRole_WORKER,
 		Description: &api.NodeDescription{
 			Resources: &api.Resources{
 				Generic: genericresource.NewSet("mygeneric", "1"),
@@ -393,12 +393,12 @@ func TestGenericResourcesPlacementConstraints(t *testing.T) {
 	}
 
 	service := &api.Service{
-		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "service1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Resources: &api.ResourceRequirements{
 					Reservations: &api.Resources{
 						Generic: genericresource.NewSet("mygeneric", "1"),
@@ -409,20 +409,20 @@ func TestGenericResourcesPlacementConstraints(t *testing.T) {
 	}
 
 	task := &api.Task{
-		ID: "id2",
-		Spec: api.TaskSpec{
+		Id: "id2",
+		Spec: &api.TaskSpec{
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
 					Generic: genericresource.NewSet("mygeneric", "1"),
 				},
 			},
 		},
-		ServiceID: service.ID,
-		NodeID:    node.ID,
-		Status: api.TaskStatus{
-			State: api.TaskStateRunning,
+		ServiceId: service.Id,
+		NodeId:    node.Id,
+		Status: &api.TaskStatus{
+			State: api.TaskState_RUNNING,
 		},
-		DesiredState:             api.TaskStateRunning,
+		DesiredState:             api.TaskState_RUNNING,
 		AssignedGenericResources: genericresource.NewSet("mygeneric", "1"),
 	}
 
@@ -454,7 +454,7 @@ func TestGenericResourcesPlacementConstraints(t *testing.T) {
 
 	// Update the node to remove the generic resource
 	require.NoError(t, s.Update(func(tx store.Tx) error {
-		node = store.GetNode(tx, node.ID)
+		node = store.GetNode(tx, node.Id)
 		node.Description = &api.NodeDescription{
 			Resources: &api.Resources{
 				Generic: genericresource.NewSet("mygeneric", "2"),
@@ -465,22 +465,22 @@ func TestGenericResourcesPlacementConstraints(t *testing.T) {
 
 	// The task should be rejected immediately.
 	task = testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, api.TaskStateRejected, task.Status.State)
+	assert.Equal(t, api.TaskState_REJECTED, task.Status.GetState())
 }
 
 func TestGenericResourcesPlacementConstraintsDiscrete(t *testing.T) {
 	node := &api.Node{
-		ID: "id0",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Id: "id0",
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "node1",
 			},
-			Availability: api.NodeAvailabilityActive,
+			Availability: api.NodeSpec_ACTIVE,
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
-		Role: api.NodeRoleWorker,
+		Role: api.NodeRole_WORKER,
 		Description: &api.NodeDescription{
 			Resources: &api.Resources{
 				Generic: []*api.GenericResource{
@@ -491,19 +491,19 @@ func TestGenericResourcesPlacementConstraintsDiscrete(t *testing.T) {
 		Attachments: []*api.NetworkAttachment{
 			{
 				Network: &api.Network{
-					ID: "id1",
+					Id: "id1",
 				},
 			},
 		},
 	}
 
 	service := &api.Service{
-		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "service1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Resources: &api.ResourceRequirements{
 					Reservations: &api.Resources{
 						Generic: []*api.GenericResource{
@@ -521,8 +521,8 @@ func TestGenericResourcesPlacementConstraintsDiscrete(t *testing.T) {
 	}
 
 	task := &api.Task{
-		ID: "id2",
-		Spec: api.TaskSpec{
+		Id: "id2",
+		Spec: &api.TaskSpec{
 			Resources: &api.ResourceRequirements{
 				Reservations: &api.Resources{
 					Generic: []*api.GenericResource{
@@ -536,12 +536,12 @@ func TestGenericResourcesPlacementConstraintsDiscrete(t *testing.T) {
 				},
 			},
 		},
-		ServiceID: service.ID,
-		NodeID:    node.ID,
-		Status: api.TaskStatus{
-			State: api.TaskStateRunning,
+		ServiceId: service.Id,
+		NodeId:    node.Id,
+		Status: &api.TaskStatus{
+			State: api.TaskState_RUNNING,
 		},
-		DesiredState: api.TaskStateRunning,
+		DesiredState: api.TaskState_RUNNING,
 		AssignedGenericResources: []*api.GenericResource{
 			genericresource.NewDiscrete("mygeneric", 2),
 		},
@@ -573,13 +573,13 @@ func TestGenericResourcesPlacementConstraintsDiscrete(t *testing.T) {
 
 	// Update the node to remove the generic resource
 	require.NoError(t, s.Update(func(tx store.Tx) error {
-		node = store.GetNode(tx, node.ID)
+		node = store.GetNode(tx, node.Id)
 		node.Description = &api.NodeDescription{
 			Resources: &api.Resources{
 				Generic: []*api.GenericResource{
 					genericresource.NewDiscrete("mygeneric", 1),
 				},
-				NanoCPUs:    1e9,
+				NanoCpus:    1e9,
 				MemoryBytes: 1e9,
 			},
 		}
@@ -590,5 +590,5 @@ func TestGenericResourcesPlacementConstraintsDiscrete(t *testing.T) {
 
 	// The task should be rejected immediately.
 	task = testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, api.TaskStateRejected, task.Status.State)
+	assert.Equal(t, api.TaskState_REJECTED, task.Status.GetState())
 }

@@ -10,7 +10,6 @@ import (
 	"text/tabwriter"
 
 	"github.com/dustin/go-humanize"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/task"
 	"github.com/moby/swarmkit/v2/api"
@@ -22,12 +21,12 @@ func printServiceSummary(service *api.Service, running int) {
 	w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
 	defer w.Flush()
 
-	task := service.Spec.Task
-	common.FprintfIfNotEmpty(w, "ID\t: %s\n", service.ID)
-	common.FprintfIfNotEmpty(w, "Name\t: %s\n", service.Spec.Annotations.Name)
-	if len(service.Spec.Annotations.Labels) > 0 {
+	task := service.Spec.GetTask()
+	common.FprintfIfNotEmpty(w, "ID\t: %s\n", service.Id)
+	common.FprintfIfNotEmpty(w, "Name\t: %s\n", service.GetSpec().GetAnnotations().GetName())
+	if len(service.GetSpec().GetAnnotations().GetLabels()) > 0 {
 		fmt.Fprintln(w, "Labels\t")
-		for k, v := range service.Spec.Annotations.Labels {
+		for k, v := range service.GetSpec().GetAnnotations().GetLabels() {
 			fmt.Fprintf(w, "  %s\t: %s\n", k, v)
 		}
 	}
@@ -36,14 +35,14 @@ func printServiceSummary(service *api.Service, running int) {
 	if service.UpdateStatus != nil {
 		fmt.Fprintln(w, "Update Status\t")
 		fmt.Fprintln(w, " State\t:", service.UpdateStatus.State)
-		started, err := gogotypes.TimestampFromProto(service.UpdateStatus.StartedAt)
-		if err == nil {
-			fmt.Fprintln(w, " Started\t:", humanize.Time(started))
+		// AsTime cannot fail, so keep the "only print a usable timestamp"
+		// behaviour by testing validity explicitly.
+		if ts := service.UpdateStatus.StartedAt; ts.IsValid() {
+			fmt.Fprintln(w, " Started\t:", humanize.Time(ts.AsTime()))
 		}
 		if service.UpdateStatus.State == api.UpdateStatus_COMPLETED {
-			completed, err := gogotypes.TimestampFromProto(service.UpdateStatus.CompletedAt)
-			if err == nil {
-				fmt.Fprintln(w, " Completed\t:", humanize.Time(completed))
+			if ts := service.UpdateStatus.CompletedAt; ts.IsValid() {
+				fmt.Fprintln(w, " Completed\t:", humanize.Time(ts.AsTime()))
 			}
 		}
 		fmt.Fprintln(w, " Message\t:", service.UpdateStatus.Message)
@@ -51,7 +50,7 @@ func printServiceSummary(service *api.Service, running int) {
 
 	fmt.Fprintln(w, "Template\t")
 	fmt.Fprintln(w, " Container\t")
-	ctr := service.Spec.Task.GetContainer()
+	ctr := service.Spec.GetTask().GetContainer()
 	common.FprintfIfNotEmpty(w, "  Image\t: %s\n", ctr.Image)
 	common.FprintfIfNotEmpty(w, "  Command\t: %q\n", strings.Join(ctr.Command, " "))
 	common.FprintfIfNotEmpty(w, "  Args\t: [%s]\n", strings.Join(ctr.Args, ", "))
@@ -64,8 +63,8 @@ func printServiceSummary(service *api.Service, running int) {
 		res := task.Resources
 		fmt.Fprintln(w, "  Resources\t")
 		printResources := func(w io.Writer, r *api.Resources) {
-			if r.NanoCPUs != 0 {
-				fmt.Fprintf(w, "      CPU\t: %g\n", float64(r.NanoCPUs)/1e9)
+			if r.NanoCpus != 0 {
+				fmt.Fprintf(w, "      CPU\t: %g\n", float64(r.NanoCpus)/1e9)
 			}
 			if r.MemoryBytes != 0 {
 				fmt.Fprintf(w, "      Memory\t: %s\n", humanize.IBytes(uint64(r.MemoryBytes)))
@@ -90,9 +89,9 @@ func printServiceSummary(service *api.Service, running int) {
 			printResources(w, res.Limits)
 		}
 	}
-	if len(service.Spec.Task.Networks) > 0 {
+	if len(service.Spec.GetTask().GetNetworks()) > 0 {
 		fmt.Fprint(w, "  Networks:")
-		for _, n := range service.Spec.Task.Networks {
+		for _, n := range service.Spec.GetTask().GetNetworks() {
 			fmt.Fprintf(w, " %s", n.Target)
 		}
 	}
@@ -112,7 +111,7 @@ func printServiceSummary(service *api.Service, running int) {
 		for _, v := range ctr.Mounts {
 			fmt.Fprintf(w, "    - target = %s\n", v.Target)
 			fmt.Fprintf(w, "      source = %s\n", v.Source)
-			fmt.Fprintf(w, "      readonly = %v\n", v.ReadOnly)
+			fmt.Fprintf(w, "      readonly = %v\n", v.Readonly)
 			fmt.Fprintf(w, "      type = %v\n", strings.ToLower(v.Type.String()))
 		}
 	}
@@ -122,10 +121,10 @@ func printServiceSummary(service *api.Service, running int) {
 		for _, sr := range ctr.Secrets {
 			var targetName, mode string
 			if sr.GetFile() != nil {
-				targetName = sr.GetFile().Name
+				targetName = sr.GetFile().GetName()
 				mode = "FILE"
 			}
-			fmt.Fprintf(w, "    [%s] %s@%s:%s\n", mode, sr.SecretName, sr.SecretID, targetName)
+			fmt.Fprintf(w, "    [%s] %s@%s:%s\n", mode, sr.SecretName, sr.SecretId, targetName)
 		}
 	}
 
@@ -134,10 +133,10 @@ func printServiceSummary(service *api.Service, running int) {
 		for _, cr := range ctr.Configs {
 			var targetName, mode string
 			if cr.GetFile() != nil {
-				targetName = cr.GetFile().Name
+				targetName = cr.GetFile().GetName()
 				mode = "FILE"
 			}
-			fmt.Fprintf(w, "    [%s] %s@%s:%s\n", mode, cr.ConfigName, cr.ConfigID, targetName)
+			fmt.Fprintf(w, "    [%s] %s@%s:%s\n", mode, cr.ConfigName, cr.ConfigId, targetName)
 		}
 	}
 
@@ -199,7 +198,7 @@ var (
 			r, err := c.ListTasks(common.Context(cmd),
 				&api.ListTasksRequest{
 					Filters: &api.ListTasksRequest_Filters{
-						ServiceIDs: []string{service.ID},
+						ServiceIds: []string{service.Id},
 					},
 				})
 			if err != nil {
@@ -207,7 +206,7 @@ var (
 			}
 			var running int
 			for _, t := range r.Tasks {
-				if t.Status.State == api.TaskStateRunning {
+				if t.Status.GetState() == api.TaskState_RUNNING {
 					running++
 				}
 			}

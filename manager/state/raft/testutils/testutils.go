@@ -4,7 +4,6 @@ import (
 	"context"
 	"net"
 	"os"
-	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -25,6 +24,7 @@ import (
 	etcdraft "go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 )
 
 // TestNode represents a raft test node
@@ -58,7 +58,7 @@ func (n *TestNode) Done() <-chan struct{} {
 	return n.Node.Done()
 }
 
-func (n *TestNode) ProposeValue(ctx context.Context, actions []api.StoreAction, cb func()) error {
+func (n *TestNode) ProposeValue(ctx context.Context, actions []*api.StoreAction, cb func()) error {
 	return n.Node.ProposeValue(ctx, actions, cb)
 }
 
@@ -109,7 +109,10 @@ func WaitForCluster(t *testing.T, clockSource *fakeclock.FakeClock, nodes map[ui
 
 			for _, n2 := range nodes {
 				if n2.Node.Config.ID == cur.Lead {
-					if cur.Lead != prev.Lead || cur.Term != prev.Term || cur.Applied != prev.Applied {
+					// Status embeds *raftpb.HardState, so Term must be read
+					// through the getter - comparing the field directly would
+					// compare pointers, which never match.
+					if cur.Lead != prev.Lead || cur.GetTerm() != prev.GetTerm() || cur.Applied != prev.Applied {
 						return errors.New("state does not match on all nodes")
 					}
 					continue nodeLoop
@@ -370,12 +373,12 @@ func NewInitNode(t *testing.T, tc *cautils.TestCA, raftConfig *api.RaftConfig, o
 	if raftConfig != nil {
 		assert.NoError(t, n.MemoryStore().Update(func(tx store.Tx) error {
 			return store.CreateCluster(tx, &api.Cluster{
-				ID: identity.NewID(),
-				Spec: api.ClusterSpec{
-					Annotations: api.Annotations{
+				Id: identity.NewID(),
+				Spec: &api.ClusterSpec{
+					Annotations: &api.Annotations{
 						Name: store.DefaultClusterName,
 					},
-					Raft: *raftConfig,
+					Raft: raftConfig,
 				},
 			})
 		}))
@@ -542,17 +545,17 @@ func ProposeValue(t *testing.T, raftNode *TestNode, time time.Duration, nodeID .
 		nodeIDStr = nodeID[0]
 	}
 	node := &api.Node{
-		ID: nodeIDStr,
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Id: nodeIDStr,
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: nodeIDStr,
 			},
 		},
 	}
 
-	storeActions := []api.StoreAction{
+	storeActions := []*api.StoreAction{
 		{
-			Action: api.StoreActionKindCreate,
+			Action: api.StoreActionKind_STORE_ACTION_CREATE,
 			Target: &api.StoreAction_Node{
 				Node: node,
 			},
@@ -587,7 +590,7 @@ func CheckValue(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *TestNo
 				err = errors.Errorf("expected 1 node, got %d nodes", len(allNodes))
 				return
 			}
-			if !reflect.DeepEqual(allNodes[0], createdNode) {
+			if !allNodes[0].EqualVT(createdNode) {
 				err = errors.New("node did not match expected value")
 			}
 		})
@@ -634,7 +637,7 @@ func CheckValuesOnNodes(t *testing.T, clockSource *fakeclock.FakeClock, checkNod
 						err = errors.Errorf("node %s not found on %d (iteration %d)", id, checkNodeID, iteration)
 						return
 					}
-					if !reflect.DeepEqual(values[i], n) {
+					if !values[i].EqualVT(n) {
 						err = errors.Errorf("node %s did not match expected value on %d (iteration %d)", id, checkNodeID, iteration)
 						return
 					}
@@ -663,7 +666,7 @@ func GetAllValuesOnNode(t *testing.T, clockSource *fakeclock.FakeClock, raftNode
 				return
 			}
 			for _, node := range allNodes {
-				ids = append(ids, node.ID)
+				ids = append(ids, node.Id)
 				values = append(values, node)
 			}
 		})
@@ -683,14 +686,14 @@ func NewSnapshotMessage(from, to uint64, size int) *raftpb.Message {
 	}
 
 	return &raftpb.Message{
-		Type: raftpb.MsgSnap,
-		From: from,
-		To:   to,
+		Type: raftpb.MsgSnap.Enum(),
+		From: proto.Uint64(from),
+		To:   proto.Uint64(to),
 		Snapshot: &raftpb.Snapshot{
 			Data: data,
 			// Include the snapshot size in the Index field for testing.
-			Metadata: raftpb.SnapshotMetadata{
-				Index: uint64(len(data)),
+			Metadata: &raftpb.SnapshotMetadata{
+				Index: proto.Uint64(uint64(len(data))),
 			},
 		},
 	}
@@ -699,11 +702,12 @@ func NewSnapshotMessage(from, to uint64, size int) *raftpb.Message {
 // VerifySnapshot verifies that the snapshot data where each byte is
 // of the value (index % sizeof(byte)).
 func VerifySnapshot(raftMsg *raftpb.Message) bool {
-	for i, b := range raftMsg.Snapshot.Data {
+	data := raftMsg.GetSnapshot().GetData()
+	for i, b := range data {
 		if int(b) != i%(1<<8) {
 			return false
 		}
 	}
 
-	return len(raftMsg.Snapshot.Data) == int(raftMsg.Snapshot.Metadata.Index)
+	return len(data) == int(raftMsg.GetSnapshot().GetMetadata().GetIndex())
 }

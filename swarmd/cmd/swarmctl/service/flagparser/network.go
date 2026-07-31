@@ -25,7 +25,7 @@ func parseNetworks(cmd *cobra.Command, spec *api.ServiceSpec, c api.ControlClien
 
 	spec.Task.Networks = []*api.NetworkAttachmentConfig{
 		{
-			Target: n.ID,
+			Target: n.Id,
 		},
 	}
 	return nil

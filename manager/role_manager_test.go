@@ -32,12 +32,12 @@ func TestRoleManagerRemovesDemotedNodesAndAddsPromotedNodes(t *testing.T) {
 		// Create a new node object
 		require.NoError(t, s.Update(func(tx store.Tx) error {
 			return store.CreateNode(tx, &api.Node{
-				Role: api.NodeRoleManager,
-				ID:   node.SecurityConfig.ClientTLSCreds.NodeID(),
-				Spec: api.NodeSpec{
-					DesiredRole:  api.NodeRoleManager,
-					Membership:   api.NodeMembershipAccepted,
-					Availability: api.NodeAvailabilityActive,
+				Role: api.NodeRole_MANAGER,
+				Id:   node.SecurityConfig.ClientTLSCreds.NodeID(),
+				Spec: &api.NodeSpec{
+					DesiredRole:  api.NodeRole_MANAGER,
+					Membership:   api.NodeSpec_ACCEPTED,
+					Availability: api.NodeSpec_ACTIVE,
 				},
 			})
 		}))
@@ -59,7 +59,7 @@ func TestRoleManagerRemovesDemotedNodesAndAddsPromotedNodes(t *testing.T) {
 	// demote the node
 	require.NoError(t, lead.MemoryStore().Update(func(tx store.Tx) error {
 		n := store.GetNode(tx, nonLead.SecurityConfig.ClientTLSCreds.NodeID())
-		n.Spec.DesiredRole = api.NodeRoleWorker
+		n.Spec.DesiredRole = api.NodeRole_WORKER
 		return store.UpdateNode(tx, n)
 	}))
 	require.NoError(t, testutils.PollFuncWithTimeout(fc, func() error {
@@ -68,13 +68,13 @@ func TestRoleManagerRemovesDemotedNodesAndAddsPromotedNodes(t *testing.T) {
 			return errors.New("raft node hasn't been removed yet")
 		}
 		for _, m := range memberlist {
-			if m.NodeID == nonLead.SecurityConfig.ClientTLSCreds.NodeID() {
+			if m.NodeId == nonLead.SecurityConfig.ClientTLSCreds.NodeID() {
 				return errors.New("wrong member was removed")
 			}
 		}
 		// use Update just because it returns an error
 		return lead.MemoryStore().Update(func(tx store.Tx) error {
-			if n := store.GetNode(tx, nonLead.SecurityConfig.ClientTLSCreds.NodeID()); n.Role != api.NodeRoleWorker {
+			if n := store.GetNode(tx, nonLead.SecurityConfig.ClientTLSCreds.NodeID()); n.Role != api.NodeRole_WORKER {
 				return errors.New("raft node hasn't been marked as a worker yet")
 			}
 			return nil
@@ -84,7 +84,7 @@ func TestRoleManagerRemovesDemotedNodesAndAddsPromotedNodes(t *testing.T) {
 	// now promote the node
 	require.NoError(t, lead.MemoryStore().Update(func(tx store.Tx) error {
 		n := store.GetNode(tx, nonLead.SecurityConfig.ClientTLSCreds.NodeID())
-		n.Spec.DesiredRole = api.NodeRoleManager
+		n.Spec.DesiredRole = api.NodeRole_MANAGER
 		return store.UpdateNode(tx, n)
 	}))
 	require.NoError(t, testutils.PollFuncWithTimeout(fc, func() error {
@@ -93,7 +93,7 @@ func TestRoleManagerRemovesDemotedNodesAndAddsPromotedNodes(t *testing.T) {
 		}
 		// use Update just because it returns an error
 		return lead.MemoryStore().Update(func(tx store.Tx) error {
-			if n := store.GetNode(tx, nonLead.SecurityConfig.ClientTLSCreds.NodeID()); n.Role != api.NodeRoleManager {
+			if n := store.GetNode(tx, nonLead.SecurityConfig.ClientTLSCreds.NodeID()); n.Role != api.NodeRole_MANAGER {
 				return errors.New("raft node hasn't been marked as a manager yet")
 			}
 			return nil
@@ -118,19 +118,19 @@ func TestRoleManagerRemovesDemotedNodesOnStartup(t *testing.T) {
 	// create node objects in the memory store
 	for i, node := range nodes {
 		s := raftutils.Leader(nodes).MemoryStore()
-		desired := api.NodeRoleManager
+		desired := api.NodeRole_MANAGER
 		if i == 3 {
-			desired = api.NodeRoleWorker
+			desired = api.NodeRole_WORKER
 		}
 		// Create a new node object
 		require.NoError(t, s.Update(func(tx store.Tx) error {
 			return store.CreateNode(tx, &api.Node{
-				Role: api.NodeRoleManager,
-				ID:   node.SecurityConfig.ClientTLSCreds.NodeID(),
-				Spec: api.NodeSpec{
+				Role: api.NodeRole_MANAGER,
+				Id:   node.SecurityConfig.ClientTLSCreds.NodeID(),
+				Spec: &api.NodeSpec{
 					DesiredRole:  desired,
-					Membership:   api.NodeMembershipAccepted,
-					Availability: api.NodeAvailabilityActive,
+					Membership:   api.NodeSpec_ACCEPTED,
+					Availability: api.NodeSpec_ACTIVE,
 				},
 			})
 		}))
@@ -149,13 +149,13 @@ func TestRoleManagerRemovesDemotedNodesOnStartup(t *testing.T) {
 			return errors.New("raft node hasn't been removed yet")
 		}
 		for _, m := range memberlist {
-			if m.NodeID == demoted.SecurityConfig.ClientTLSCreds.NodeID() {
+			if m.NodeId == demoted.SecurityConfig.ClientTLSCreds.NodeID() {
 				return errors.New("wrong member was removed")
 			}
 		}
 		// use Update just because it returns an error
 		return lead.MemoryStore().Update(func(tx store.Tx) error {
-			if n := store.GetNode(tx, demoted.SecurityConfig.ClientTLSCreds.NodeID()); n.Role != api.NodeRoleWorker {
+			if n := store.GetNode(tx, demoted.SecurityConfig.ClientTLSCreds.NodeID()); n.Role != api.NodeRole_WORKER {
 				return errors.New("raft node hasn't been marked as a worker yet")
 			}
 			return nil
@@ -182,12 +182,12 @@ func TestRoleManagerRemovesDeletedNodes(t *testing.T) {
 		// Create a new node object
 		require.NoError(t, s.Update(func(tx store.Tx) error {
 			return store.CreateNode(tx, &api.Node{
-				Role: api.NodeRoleManager,
-				ID:   node.SecurityConfig.ClientTLSCreds.NodeID(),
-				Spec: api.NodeSpec{
-					DesiredRole:  api.NodeRoleManager,
-					Membership:   api.NodeMembershipAccepted,
-					Availability: api.NodeAvailabilityActive,
+				Role: api.NodeRole_MANAGER,
+				Id:   node.SecurityConfig.ClientTLSCreds.NodeID(),
+				Spec: &api.NodeSpec{
+					DesiredRole:  api.NodeRole_MANAGER,
+					Membership:   api.NodeSpec_ACCEPTED,
+					Availability: api.NodeSpec_ACTIVE,
 				},
 			})
 		}))
@@ -216,7 +216,7 @@ func TestRoleManagerRemovesDeletedNodes(t *testing.T) {
 			return errors.New("raft node hasn't been removed yet")
 		}
 		for _, m := range memberlist {
-			if m.NodeID == nonLead.SecurityConfig.ClientTLSCreds.NodeID() {
+			if m.NodeId == nonLead.SecurityConfig.ClientTLSCreds.NodeID() {
 				return errors.New("wrong member was removed")
 			}
 		}
@@ -248,12 +248,12 @@ func TestRoleManagerRemovesDeletedNodesOnStartup(t *testing.T) {
 		// Create a new node object
 		require.NoError(t, s.Update(func(tx store.Tx) error {
 			return store.CreateNode(tx, &api.Node{
-				Role: api.NodeRoleManager,
-				ID:   node.SecurityConfig.ClientTLSCreds.NodeID(),
-				Spec: api.NodeSpec{
-					DesiredRole:  api.NodeRoleManager,
-					Membership:   api.NodeMembershipAccepted,
-					Availability: api.NodeAvailabilityActive,
+				Role: api.NodeRole_MANAGER,
+				Id:   node.SecurityConfig.ClientTLSCreds.NodeID(),
+				Spec: &api.NodeSpec{
+					DesiredRole:  api.NodeRole_MANAGER,
+					Membership:   api.NodeSpec_ACCEPTED,
+					Availability: api.NodeSpec_ACTIVE,
 				},
 			})
 		}))
@@ -271,7 +271,7 @@ func TestRoleManagerRemovesDeletedNodesOnStartup(t *testing.T) {
 			return errors.New("raft node hasn't been removed yet")
 		}
 		for _, m := range memberlist {
-			if m.NodeID == nodes[3].SecurityConfig.ClientTLSCreds.NodeID() {
+			if m.NodeId == nodes[3].SecurityConfig.ClientTLSCreds.NodeID() {
 				return errors.New("wrong member was removed")
 			}
 		}

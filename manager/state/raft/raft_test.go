@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"reflect"
 	"slices"
 	"strconv"
 	"testing"
@@ -33,6 +32,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -369,7 +369,7 @@ func TestRaftFollowerLeave(t *testing.T) {
 	raftClient := api.NewRaftMembershipClient(cc)
 	defer cc.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[5].Config.ID}})
+	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftId: nodes[5].Config.ID}})
 	cancel()
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
@@ -414,7 +414,7 @@ func TestRaftLeaderLeave(t *testing.T) {
 	raftClient := api.NewRaftMembershipClient(cc)
 	defer cc.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftID: nodes[1].Config.ID}})
+	resp, err := raftClient.Leave(ctx, &api.LeaveRequest{Node: &api.RaftMember{RaftId: nodes[1].Config.ID}})
 	cancel()
 	assert.NoError(t, err, "error sending message to leave the raft")
 	assert.NotNil(t, resp, "leave response message is nil")
@@ -505,20 +505,26 @@ func TestChangesBetween(t *testing.T) {
 		values[i] = value
 	}
 
-	versionAdd := func(version *api.Version, offset int64) api.Version {
-		return api.Version{Index: uint64(int64(version.Index) + offset)}
+	versionAdd := func(version *api.Version, offset int64) *api.Version {
+		return &api.Version{Index: uint64(int64(version.Index) + offset)}
 	}
 
-	expectedChanges := func(startVersion api.Version, values []*api.Node) []state.Change {
+	expectedChanges := func(startVersion *api.Version, values []*api.Node) []state.Change {
 		var changes []state.Change
 
 		for i, value := range values {
+			// The raft log holds the node exactly as it was proposed, without
+			// a Meta. Applying the proposal gives the in-memory object an
+			// empty one, which used to be indistinguishable from the zero
+			// value, so drop it from the expectation.
+			value := value.Copy()
+			value.Meta = nil
 			changes = append(changes,
 				state.Change{
-					Version: versionAdd(&startVersion, int64(i+1)),
-					StoreActions: []api.StoreAction{
+					Version: versionAdd(startVersion, int64(i+1)),
+					StoreActions: []*api.StoreAction{
 						{
-							Action: api.StoreActionKindCreate,
+							Action: api.StoreActionKind_STORE_ACTION_CREATE,
 							Target: &api.StoreAction_Node{
 								Node: value,
 							},
@@ -532,19 +538,19 @@ func TestChangesBetween(t *testing.T) {
 	}
 
 	// Satisfiable requests
-	changes, err := node.ChangesBetween(versionAdd(startVersion, -1), *startVersion)
+	changes, err := node.ChangesBetween(versionAdd(startVersion, -1), startVersion)
 	assert.NoError(t, err)
 	assert.Len(t, changes, 0)
 
-	changes, err = node.ChangesBetween(*startVersion, versionAdd(startVersion, 1))
+	changes, err = node.ChangesBetween(startVersion, versionAdd(startVersion, 1))
 	assert.NoError(t, err)
 	require.Len(t, changes, 1)
-	assert.Equal(t, expectedChanges(*startVersion, values[:1]), changes)
+	assert.Equal(t, expectedChanges(startVersion, values[:1]), changes)
 
-	changes, err = node.ChangesBetween(*startVersion, versionAdd(startVersion, 10))
+	changes, err = node.ChangesBetween(startVersion, versionAdd(startVersion, 10))
 	assert.NoError(t, err)
 	require.Len(t, changes, 10)
-	assert.Equal(t, expectedChanges(*startVersion, values), changes)
+	assert.Equal(t, expectedChanges(startVersion, values), changes)
 
 	changes, err = node.ChangesBetween(versionAdd(startVersion, 2), versionAdd(startVersion, 6))
 	assert.NoError(t, err)
@@ -646,7 +652,7 @@ func testRaftRestartCluster(t *testing.T, stagger bool) {
 
 				for i, nodeID := range []string{"id1", "id2"} {
 					n := store.GetNode(tx, nodeID)
-					if !reflect.DeepEqual(n, values[i]) {
+					if !n.EqualVT(values[i]) {
 						err = fmt.Errorf("node %s did not match expected value", nodeID)
 						return
 					}
@@ -759,7 +765,7 @@ func TestRaftForceNewCluster(t *testing.T) {
 
 				for i, nodeID := range []string{"id1", "id2"} {
 					n := store.GetNode(tx, nodeID)
-					if !reflect.DeepEqual(n, values[i]) {
+					if !n.EqualVT(values[i]) {
 						err = fmt.Errorf("node %s did not match expected value", nodeID)
 						return
 					}
@@ -928,7 +934,7 @@ func TestStress(t *testing.T) {
 	// since cluster is stable, final value must be in the raft store
 	find := false
 	for _, value := range values {
-		if reflect.DeepEqual(value, val) {
+		if value.EqualVT(val) {
 			find = true
 			break
 		}
@@ -972,7 +978,7 @@ func TestStreamRaftMessage(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = stream.CloseAndRecv()
-	errStr := fmt.Sprintf("grpc: received message larger than max (%d vs. %d)", raftMsg.Size(), transport.GRPCMaxMsgSize)
+	errStr := fmt.Sprintf("grpc: received message larger than max (%d vs. %d)", raftMsg.SizeVT(), transport.GRPCMaxMsgSize)
 	s, _ := status.FromError(err)
 	assert.Equal(t, codes.ResourceExhausted, s.Code())
 	assert.Equal(t, errStr, s.Message())
@@ -986,7 +992,7 @@ func TestStreamRaftMessage(t *testing.T) {
 	err = stream.Send(raftMsg)
 	assert.NoError(t, err)
 	msg = raftutils.NewSnapshotMessage(2, 1, 10)
-	msg.Index++
+	msg.Index = proto.Uint64(msg.GetIndex() + 1)
 	raftMsg = &api.StreamRaftMessageRequest{Message: msg}
 	err = stream.Send(raftMsg)
 	assert.NoError(t, err)
@@ -1000,7 +1006,7 @@ func TestStreamRaftMessage(t *testing.T) {
 	stream, err = api.NewRaftClient(cc).StreamRaftMessage(ctx)
 	assert.NoError(t, err)
 	msg = raftutils.NewSnapshotMessage(2, 1, 10)
-	msg.Type = raftpb.MsgApp
+	msg.Type = raftpb.MsgApp.Enum()
 	raftMsg = &api.StreamRaftMessageRequest{Message: msg}
 	err = stream.Send(raftMsg)
 	assert.NoError(t, err)
@@ -1027,7 +1033,7 @@ func TestGetNodeIDByRaftID(t *testing.T) {
 	// get all of the raft ids
 	raftIDs := make([]uint64, 0, len(members))
 	for _, member := range members {
-		raftIDs = append(raftIDs, member.RaftID)
+		raftIDs = append(raftIDs, member.RaftId)
 	}
 
 	// now go and get the nodeID of every raftID
@@ -1040,9 +1046,9 @@ func TestGetNodeIDByRaftID(t *testing.T) {
 			assert.True(t,
 				// either both should match, or both should not match. if they
 				// are different, then there is an error
-				(member.RaftID == id) == (member.NodeID == nodeid),
+				(member.RaftId == id) == (member.NodeId == nodeid),
 				"member with id %v has node id %v, but we expected member with id %v to have node id %v",
-				member.RaftID, member.NodeID, id, nodeid,
+				member.RaftId, member.NodeId, id, nodeid,
 			)
 		}
 	}

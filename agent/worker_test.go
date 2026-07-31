@@ -18,12 +18,12 @@ type testPublisherProvider struct {
 }
 
 func (tpp *testPublisherProvider) Publisher(ctx context.Context, subscriptionID string) (exec.LogPublisher, func(), error) {
-	return exec.LogPublisherFunc(func(ctx context.Context, message api.LogMessage) error {
+	return exec.LogPublisherFunc(func(ctx context.Context, message *api.LogMessage) error {
 			log.G(ctx).WithFields(log.Fields{
 				"subscription": subscriptionID,
-				"task.id":      message.Context.TaskID,
-				"node.id":      message.Context.NodeID,
-				"service.id":   message.Context.ServiceID,
+				"task.id":      message.Context.TaskId,
+				"node.id":      message.Context.NodeId,
+				"service.id":   message.Context.ServiceId,
 			}).Info(message.Data)
 			return nil
 		}), func() {
@@ -84,83 +84,83 @@ func TestWorkerAssign(t *testing.T) {
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Task{
-							Task: &api.Task{ID: "task-1"},
+							Task: &api.Task{Id: "task-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Secret{
-							Secret: &api.Secret{ID: "secret-1"},
+							Secret: &api.Secret{Id: "secret-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Config{
-							Config: &api.Config{ID: "config-1"},
+							Config: &api.Config{Id: "config-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+							Volume: &api.VolumeAssignment{Id: "volumeID1", VolumeId: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 				// these should be ignored
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Secret{
-							Secret: &api.Secret{ID: "secret-2"},
+							Secret: &api.Secret{Id: "secret-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Task{
-							Task: &api.Task{ID: "task-2"},
+							Task: &api.Task{Id: "task-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Config{
-							Config: &api.Config{ID: "config-2"},
+							Config: &api.Config{Id: "config-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+							Volume: &api.VolumeAssignment{Id: "volumeID2", VolumeId: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 			},
 			expectedTasks: []*api.Task{
-				{ID: "task-1"},
+				{Id: "task-1"},
 			},
 			expectedSecrets: []*api.Secret{
-				{ID: "secret-1"},
+				{Id: "secret-1"},
 			},
 			expectedConfigs: []*api.Config{
-				{ID: "config-1"},
+				{Id: "config-1"},
 			},
 			expectedAssigned: []*api.Task{
-				{ID: "task-1"},
+				{Id: "task-1"},
 			},
 			expectedVolumes: []*api.VolumeAssignment{
-				{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+				{Id: "volumeID1", VolumeId: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 			},
 		},
 		{ // completely replaces the existing tasks and secrets
@@ -168,51 +168,51 @@ func TestWorkerAssign(t *testing.T) {
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Task{
-							Task: &api.Task{ID: "task-2"},
+							Task: &api.Task{Id: "task-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Secret{
-							Secret: &api.Secret{ID: "secret-2"},
+							Secret: &api.Secret{Id: "secret-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Config{
-							Config: &api.Config{ID: "config-2"},
+							Config: &api.Config{Id: "config-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+							Volume: &api.VolumeAssignment{Id: "volumeID2", VolumeId: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 			},
 			expectedTasks: []*api.Task{
-				{ID: "task-2"},
+				{Id: "task-2"},
 			},
 			expectedSecrets: []*api.Secret{
-				{ID: "secret-2"},
+				{Id: "secret-2"},
 			},
 			expectedConfigs: []*api.Config{
-				{ID: "config-2"},
+				{Id: "config-2"},
 			},
 			expectedAssigned: []*api.Task{
 				// task-1 should be cleaned up and deleted.
-				{ID: "task-2"},
+				{Id: "task-2"},
 			},
 			expectedVolumes: []*api.VolumeAssignment{
-				{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+				{Id: "volumeID2", VolumeId: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 			},
 		},
 		{
@@ -234,27 +234,27 @@ func TestWorkerAssign(t *testing.T) {
 		assert.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
 			return WalkTasks(tx, func(task *api.Task) error {
 				tasks = append(tasks, task)
-				if TaskAssigned(tx, task.ID) {
+				if TaskAssigned(tx, task.Id) {
 					assigned = append(assigned, task)
 				}
 				return nil
 			})
 		}))
 
-		assert.Equal(t, testcase.expectedTasks, tasks)
-		assert.Equal(t, testcase.expectedAssigned, assigned)
+		assertTasksEqual(t, testcase.expectedTasks, tasks)
+		assertTasksEqual(t, testcase.expectedAssigned, assigned)
 		for _, secret := range testcase.expectedSecrets {
-			secret, err := executor.Secrets().Get(secret.ID)
+			secret, err := executor.Secrets().Get(secret.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, secret)
 		}
 		for _, config := range testcase.expectedConfigs {
-			config, err := executor.Configs().Get(config.ID)
+			config, err := executor.Configs().Get(config.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, config)
 		}
 		for _, volume := range testcase.expectedVolumes {
-			_, err := executor.Volumes().Get(volume.VolumeID)
+			_, err := executor.Volumes().Get(volume.VolumeId)
 			assert.Error(t, err)
 			assert.True(t, errors.Is(err, exec.ErrDependencyNotReady))
 		}
@@ -295,65 +295,65 @@ func TestWorkerWait(t *testing.T) {
 		{
 			Assignment: &api.Assignment{
 				Item: &api.Assignment_Task{
-					Task: &api.Task{ID: "task-1"},
+					Task: &api.Task{Id: "task-1"},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentChange_UPDATE,
 		},
 		{
 			Assignment: &api.Assignment{
 				Item: &api.Assignment_Task{
-					Task: &api.Task{ID: "task-2"},
+					Task: &api.Task{Id: "task-2"},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentChange_UPDATE,
 		},
 		{
 			Assignment: &api.Assignment{
 				Item: &api.Assignment_Secret{
-					Secret: &api.Secret{ID: "secret-1"},
+					Secret: &api.Secret{Id: "secret-1"},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentChange_UPDATE,
 		},
 		{
 			Assignment: &api.Assignment{
 				Item: &api.Assignment_Config{
-					Config: &api.Config{ID: "config-1"},
+					Config: &api.Config{Id: "config-1"},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentChange_UPDATE,
 		},
 		{
 			Assignment: &api.Assignment{
 				Item: &api.Assignment_Volume{
-					Volume: &api.VolumeAssignment{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+					Volume: &api.VolumeAssignment{Id: "volumeID1", VolumeId: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentChange_UPDATE,
 		},
 	}
 
 	expectedTasks := []*api.Task{
-		{ID: "task-1"},
-		{ID: "task-2"},
+		{Id: "task-1"},
+		{Id: "task-2"},
 	}
 
 	expectedSecrets := []*api.Secret{
-		{ID: "secret-1"},
+		{Id: "secret-1"},
 	}
 
 	expectedConfigs := []*api.Config{
-		{ID: "config-1"},
+		{Id: "config-1"},
 	}
 
 	expectedAssigned := []*api.Task{
-		{ID: "task-1"},
-		{ID: "task-2"},
+		{Id: "task-1"},
+		{Id: "task-2"},
 	}
 
 	expectedVolumes := []*api.VolumeAssignment{
-		{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+		{Id: "volumeID1", VolumeId: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 	}
 
 	var (
@@ -365,27 +365,27 @@ func TestWorkerWait(t *testing.T) {
 	assert.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
 		return WalkTasks(tx, func(task *api.Task) error {
 			tasks = append(tasks, task)
-			if TaskAssigned(tx, task.ID) {
+			if TaskAssigned(tx, task.Id) {
 				assigned = append(assigned, task)
 			}
 			return nil
 		})
 	}))
 
-	assert.Equal(t, expectedTasks, tasks)
-	assert.Equal(t, expectedAssigned, assigned)
+	assertTasksEqual(t, expectedTasks, tasks)
+	assertTasksEqual(t, expectedAssigned, assigned)
 	for _, secret := range expectedSecrets {
-		secret, err := executor.Secrets().Get(secret.ID)
+		secret, err := executor.Secrets().Get(secret.Id)
 		assert.NoError(t, err)
 		assert.NotNil(t, secret)
 	}
 	for _, config := range expectedConfigs {
-		config, err := executor.Configs().Get(config.ID)
+		config, err := executor.Configs().Get(config.Id)
 		assert.NoError(t, err)
 		assert.NotNil(t, config)
 	}
 	for _, volume := range expectedVolumes {
-		_, err := executor.Volumes().Get(volume.VolumeID)
+		_, err := executor.Volumes().Get(volume.VolumeId)
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, exec.ErrDependencyNotReady))
 	}
@@ -400,7 +400,7 @@ func TestWorkerWait(t *testing.T) {
 
 	assert.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
 		return WalkTasks(tx, func(task *api.Task) error {
-			if TaskAssigned(tx, task.ID) {
+			if TaskAssigned(tx, task.Id) {
 				assigned = append(assigned, task)
 			}
 			return nil
@@ -447,34 +447,34 @@ func TestWorkerUpdate(t *testing.T) {
 		{
 			Assignment: &api.Assignment{
 				Item: &api.Assignment_Task{
-					Task: &api.Task{ID: "task-1"},
+					Task: &api.Task{Id: "task-1"},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentChange_UPDATE,
 		},
 		{
 			Assignment: &api.Assignment{
 				Item: &api.Assignment_Secret{
-					Secret: &api.Secret{ID: "secret-1"},
+					Secret: &api.Secret{Id: "secret-1"},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentChange_UPDATE,
 		},
 		{
 			Assignment: &api.Assignment{
 				Item: &api.Assignment_Config{
-					Config: &api.Config{ID: "config-1"},
+					Config: &api.Config{Id: "config-1"},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentChange_UPDATE,
 		},
 		{
 			Assignment: &api.Assignment{
 				Item: &api.Assignment_Volume{
-					Volume: &api.VolumeAssignment{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+					Volume: &api.VolumeAssignment{Id: "volumeID1", VolumeId: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 				},
 			},
-			Action: api.AssignmentChange_AssignmentActionUpdate,
+			Action: api.AssignmentChange_UPDATE,
 		},
 	}))
 
@@ -488,19 +488,19 @@ func TestWorkerUpdate(t *testing.T) {
 	}{
 		{ // handle nil changeSet case.
 			expectedTasks: []*api.Task{
-				{ID: "task-1"},
+				{Id: "task-1"},
 			},
 			expectedSecrets: []*api.Secret{
-				{ID: "secret-1"},
+				{Id: "secret-1"},
 			},
 			expectedConfigs: []*api.Config{
-				{ID: "config-1"},
+				{Id: "config-1"},
 			},
 			expectedAssigned: []*api.Task{
-				{ID: "task-1"},
+				{Id: "task-1"},
 			},
 			expectedVolumes: []*api.VolumeAssignment{
-				{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+				{Id: "volumeID1", VolumeId: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 			},
 		},
 		{
@@ -509,26 +509,26 @@ func TestWorkerUpdate(t *testing.T) {
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Task{
-							Task: &api.Task{ID: "task-1"},
+							Task: &api.Task{Id: "task-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 			},
 			expectedTasks: []*api.Task{
-				{ID: "task-1"},
+				{Id: "task-1"},
 			},
 			expectedSecrets: []*api.Secret{
-				{ID: "secret-1"},
+				{Id: "secret-1"},
 			},
 			expectedConfigs: []*api.Config{
-				{ID: "config-1"},
+				{Id: "config-1"},
 			},
 			expectedAssigned: []*api.Task{
-				{ID: "task-1"},
+				{Id: "task-1"},
 			},
 			expectedVolumes: []*api.VolumeAssignment{
-				{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+				{Id: "volumeID1", VolumeId: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 			},
 		},
 		{
@@ -537,55 +537,55 @@ func TestWorkerUpdate(t *testing.T) {
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Task{
-							Task: &api.Task{ID: "task-2"},
+							Task: &api.Task{Id: "task-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Secret{
-							Secret: &api.Secret{ID: "secret-2"},
+							Secret: &api.Secret{Id: "secret-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Config{
-							Config: &api.Config{ID: "config-2"},
+							Config: &api.Config{Id: "config-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+							Volume: &api.VolumeAssignment{Id: "volumeID2", VolumeId: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 			},
 			expectedTasks: []*api.Task{
-				{ID: "task-1"},
-				{ID: "task-2"},
+				{Id: "task-1"},
+				{Id: "task-2"},
 			},
 			expectedSecrets: []*api.Secret{
-				{ID: "secret-1"},
-				{ID: "secret-2"},
+				{Id: "secret-1"},
+				{Id: "secret-2"},
 			},
 			expectedConfigs: []*api.Config{
-				{ID: "config-1"},
-				{ID: "config-2"},
+				{Id: "config-1"},
+				{Id: "config-2"},
 			},
 			expectedAssigned: []*api.Task{
-				{ID: "task-1"},
-				{ID: "task-2"},
+				{Id: "task-1"},
+				{Id: "task-2"},
 			},
 			expectedVolumes: []*api.VolumeAssignment{
-				{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
-				{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+				{Id: "volumeID1", VolumeId: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+				{Id: "volumeID2", VolumeId: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 			},
 		},
 		{
@@ -594,74 +594,74 @@ func TestWorkerUpdate(t *testing.T) {
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Task{
-							Task: &api.Task{ID: "task-1"},
+							Task: &api.Task{Id: "task-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Secret{
-							Secret: &api.Secret{ID: "secret-1"},
+							Secret: &api.Secret{Id: "secret-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Secret{
-							Secret: &api.Secret{ID: "secret-2"},
+							Secret: &api.Secret{Id: "secret-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Config{
-							Config: &api.Config{ID: "config-1"},
+							Config: &api.Config{Id: "config-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Config{
-							Config: &api.Config{ID: "config-2"},
+							Config: &api.Config{Id: "config-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+							Volume: &api.VolumeAssignment{Id: "volumeID1", VolumeId: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+							Volume: &api.VolumeAssignment{Id: "volumeID2", VolumeId: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionUpdate,
+					Action: api.AssignmentChange_UPDATE,
 				},
 			},
 			expectedTasks: []*api.Task{
-				{ID: "task-2"},
+				{Id: "task-2"},
 			},
 			expectedSecrets: []*api.Secret{
-				{ID: "secret-2"},
+				{Id: "secret-2"},
 			},
 			expectedConfigs: []*api.Config{
-				{ID: "config-2"},
+				{Id: "config-2"},
 			},
 			expectedAssigned: []*api.Task{
-				{ID: "task-2"},
+				{Id: "task-2"},
 			},
 			expectedVolumes: []*api.VolumeAssignment{
-				{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+				{Id: "volumeID2", VolumeId: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 			},
 		},
 		{
@@ -670,66 +670,66 @@ func TestWorkerUpdate(t *testing.T) {
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Task{
-							Task: &api.Task{ID: "task-1"},
+							Task: &api.Task{Id: "task-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Secret{
-							Secret: &api.Secret{ID: "secret-1"},
+							Secret: &api.Secret{Id: "secret-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Task{
-							Task: &api.Task{ID: "task-2"},
+							Task: &api.Task{Id: "task-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Secret{
-							Secret: &api.Secret{ID: "secret-2"},
+							Secret: &api.Secret{Id: "secret-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Config{
-							Config: &api.Config{ID: "config-1"},
+							Config: &api.Config{Id: "config-1"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Config{
-							Config: &api.Config{ID: "config-2"},
+							Config: &api.Config{Id: "config-2"},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{ID: "volumeID1", VolumeID: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
+							Volume: &api.VolumeAssignment{Id: "volumeID1", VolumeId: "volume-1", Driver: &api.Driver{Name: "plugin-1"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 				{
 					Assignment: &api.Assignment{
 						Item: &api.Assignment_Volume{
-							Volume: &api.VolumeAssignment{ID: "volumeID2", VolumeID: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
+							Volume: &api.VolumeAssignment{Id: "volumeID2", VolumeId: "volume-2", Driver: &api.Driver{Name: "plugin-2"}},
 						},
 					},
-					Action: api.AssignmentChange_AssignmentActionRemove,
+					Action: api.AssignmentChange_REMOVE,
 				},
 			},
 		},
@@ -743,27 +743,27 @@ func TestWorkerUpdate(t *testing.T) {
 		assert.NoError(t, worker.db.View(func(tx *bolt.Tx) error {
 			return WalkTasks(tx, func(task *api.Task) error {
 				tasks = append(tasks, task)
-				if TaskAssigned(tx, task.ID) {
+				if TaskAssigned(tx, task.Id) {
 					assigned = append(assigned, task)
 				}
 				return nil
 			})
 		}))
 
-		assert.Equal(t, testcase.expectedTasks, tasks)
-		assert.Equal(t, testcase.expectedAssigned, assigned)
+		assertTasksEqual(t, testcase.expectedTasks, tasks)
+		assertTasksEqual(t, testcase.expectedAssigned, assigned)
 		for _, secret := range testcase.expectedSecrets {
-			secret, err := executor.Secrets().Get(secret.ID)
+			secret, err := executor.Secrets().Get(secret.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, secret)
 		}
 		for _, config := range testcase.expectedConfigs {
-			config, err := executor.Configs().Get(config.ID)
+			config, err := executor.Configs().Get(config.Id)
 			assert.NoError(t, err)
 			assert.NotNil(t, config)
 		}
 		for _, volume := range testcase.expectedVolumes {
-			_, err := executor.Volumes().Get(volume.VolumeID)
+			_, err := executor.Volumes().Get(volume.VolumeId)
 			// volumes should not be ready yet, so we expect an error.
 			assert.Error(t, err)
 			assert.True(t, errors.Is(err, exec.ErrDependencyNotReady), "error: %v", err)
@@ -804,4 +804,18 @@ func (m *mockExecutor) Configs() exec.ConfigsManager {
 
 func (m *mockExecutor) Volumes() exec.VolumesManager {
 	return m.dependencies.Volumes()
+}
+
+// assertTasksEqual compares two task slices with protobuf semantics.
+// assert.Equal cannot be used: it falls back to reflect.DeepEqual, which walks
+// the messages' internal state and reports two equal messages as different
+// once one of them has been marshalled.
+func assertTasksEqual(t *testing.T, expected, actual []*api.Task) {
+	t.Helper()
+	if !assert.Len(t, actual, len(expected)) {
+		return
+	}
+	for i := range expected {
+		assert.True(t, expected[i].EqualVT(actual[i]), "task %d differs:\n want %v\n  got %v", i, expected[i], actual[i])
+	}
 }

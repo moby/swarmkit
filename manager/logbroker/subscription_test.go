@@ -14,16 +14,16 @@ import (
 // Regression test for https://github.com/moby/moby/issues/47322.
 func TestSubscriptionMessageMarshalSnapshot(t *testing.T) {
 	sub := newSubscription(nil, &api.SubscriptionMessage{
-		ID: "subscription-id",
+		Id: "subscription-id",
 	}, nil)
 
 	msg := sub.Message()
-	size := msg.Size()
+	size := msg.SizeVT()
 
 	sub.Close()
 
 	require.NotPanics(t, func() {
-		_, err := msg.MarshalToSizedBuffer(make([]byte, size))
+		_, err := msg.MarshalToSizedBufferVT(make([]byte, size))
 		require.NoError(t, err)
 	})
 }

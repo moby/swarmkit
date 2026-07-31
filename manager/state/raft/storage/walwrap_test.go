@@ -14,30 +14,30 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ WALFactory = walCryptor{}
 
-var (
-	confState = raftpb.ConfState{
-		Voters:    []uint64{0x00ffca74},
-		AutoLeave: false,
-	}
-)
+var confState = &raftpb.ConfState{
+	Voters: []uint64{0x00ffca74},
+}
 
 // Generates a bunch of WAL test data
-func makeWALData(index uint64, term uint64, state *raftpb.ConfState) ([]byte, []raftpb.Entry, walpb.Snapshot) {
-	wsn := walpb.Snapshot{
-		Index:     index,
-		Term:      term,
+func makeWALData(index uint64, term uint64, state *raftpb.ConfState) ([]byte, []*raftpb.Entry, *walpb.Snapshot) {
+	// Index and Term must be set explicitly: the WAL refuses to write a
+	// snapshot record with an absent index or term.
+	wsn := &walpb.Snapshot{
+		Index:     proto.Uint64(index),
+		Term:      proto.Uint64(term),
 		ConfState: state,
 	}
 
-	var entries []raftpb.Entry
-	for i := wsn.Index + 1; i < wsn.Index+6; i++ {
-		entries = append(entries, raftpb.Entry{
-			Term:  wsn.Term + 1,
-			Index: i,
+	var entries []*raftpb.Entry
+	for i := index + 1; i < index+6; i++ {
+		entries = append(entries, &raftpb.Entry{
+			Term:  proto.Uint64(term + 1),
+			Index: proto.Uint64(i),
 			Data:  fmt.Appendf(nil, "Entry %d", i),
 		})
 	}
@@ -45,14 +45,14 @@ func makeWALData(index uint64, term uint64, state *raftpb.ConfState) ([]byte, []
 	return []byte("metadata"), entries, wsn
 }
 
-func createWithWAL(t *testing.T, w WALFactory, metadata []byte, startSnap walpb.Snapshot, entries []raftpb.Entry) string {
+func createWithWAL(t *testing.T, w WALFactory, metadata []byte, startSnap *walpb.Snapshot, entries []*raftpb.Entry) string {
 	t.Helper()
 	walDir := t.TempDir()
 	walWriter, err := w.Create(walDir, metadata)
 	require.NoError(t, err)
 
 	require.NoError(t, walWriter.SaveSnapshot(startSnap))
-	require.NoError(t, walWriter.Save(raftpb.HardState{}, entries))
+	require.NoError(t, walWriter.Save(&raftpb.HardState{}, entries))
 	require.NoError(t, walWriter.Close())
 
 	return walDir
@@ -60,14 +60,17 @@ func createWithWAL(t *testing.T, w WALFactory, metadata []byte, startSnap walpb.
 
 // WAL can read entries are not wrapped, but not encrypted
 func TestReadAllWrappedNoEncryption(t *testing.T) {
-	metadata, entries, snapshot := makeWALData(1, 1, &confState)
-	wrappedEntries := make([]raftpb.Entry, len(entries))
+	metadata, entries, snapshot := makeWALData(1, 1, confState)
+	wrappedEntries := make([]*raftpb.Entry, len(entries))
 	for i, entry := range entries {
-		r := api.MaybeEncryptedRecord{Data: entry.Data}
-		data, err := r.Marshal()
+		r := &api.MaybeEncryptedRecord{Data: entry.Data}
+		data, err := r.MarshalVT()
 		require.NoError(t, err)
-		entry.Data = data
-		wrappedEntries[i] = entry
+		// entries is what we expect to read back, so wrap a copy and leave
+		// the plaintext entry alone.
+		wrapped := proto.Clone(entry).(*raftpb.Entry)
+		wrapped.Data = data
+		wrappedEntries[i] = wrapped
 	}
 
 	tempdir := createWithWAL(t, OriginalWAL, metadata, snapshot, wrappedEntries)
@@ -82,15 +85,15 @@ func TestReadAllWrappedNoEncryption(t *testing.T) {
 	require.NoError(t, wrapped.Close())
 
 	require.Equal(t, metadata, metaW)
-	require.Equal(t, entries, entsW)
+	requireEqualEntries(t, entries, entsW)
 }
 
 // When reading WAL, if the decrypter can't read the encryption type, errors
 func TestReadAllNoSupportedDecrypter(t *testing.T) {
-	metadata, entries, snapshot := makeWALData(1, 1, &confState)
+	metadata, entries, snapshot := makeWALData(1, 1, confState)
 	for i, entry := range entries {
-		r := api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: api.MaybeEncryptedRecord_Algorithm(-3)}
-		data, err := r.Marshal()
+		r := &api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: api.MaybeEncryptedRecord_Algorithm(-3)}
+		data, err := r.MarshalVT()
 		require.NoError(t, err)
 		entries[i].Data = data
 	}
@@ -111,12 +114,12 @@ func TestReadAllNoSupportedDecrypter(t *testing.T) {
 // entry is incorrectly encryptd, an error is returned
 func TestReadAllEntryIncorrectlyEncrypted(t *testing.T) {
 	crypter := &meowCrypter{}
-	metadata, entries, snapshot := makeWALData(1, 1, &confState)
+	metadata, entries, snapshot := makeWALData(1, 1, confState)
 
 	// metadata is correctly encryptd, but entries are not meow-encryptd
 	for i, entry := range entries {
-		r := api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: crypter.Algorithm()}
-		data, err := r.Marshal()
+		r := &api.MaybeEncryptedRecord{Data: entry.Data, Algorithm: crypter.Algorithm()}
+		data, err := r.MarshalVT()
 		require.NoError(t, err)
 		entries[i].Data = data
 	}
@@ -136,7 +139,7 @@ func TestReadAllEntryIncorrectlyEncrypted(t *testing.T) {
 // The entry data and metadata are encryptd with the given encrypter, and a regular
 // WAL will see them as such.
 func TestSave(t *testing.T) {
-	metadata, entries, snapshot := makeWALData(1, 1, &confState)
+	metadata, entries, snapshot := makeWALData(1, 1, confState)
 
 	crypter := &meowCrypter{}
 	c := NewWALFactory(crypter, encryption.NoopCrypter)
@@ -151,8 +154,8 @@ func TestSave(t *testing.T) {
 	require.Equal(t, metadata, meta)
 	require.Equal(t, state, state)
 	for _, ent := range ents {
-		var encrypted api.MaybeEncryptedRecord
-		require.NoError(t, encrypted.Unmarshal(ent.Data))
+		encrypted := &api.MaybeEncryptedRecord{}
+		require.NoError(t, encrypted.UnmarshalVT(ent.Data))
 
 		require.Equal(t, crypter.Algorithm(), encrypted.Algorithm)
 		require.True(t, bytes.HasSuffix(encrypted.Data, []byte("🐱")))
@@ -161,7 +164,7 @@ func TestSave(t *testing.T) {
 
 // If encryption fails, saving will fail
 func TestSaveEncryptionFails(t *testing.T) {
-	metadata, entries, snapshot := makeWALData(1, 1, &confState)
+	metadata, entries, snapshot := makeWALData(1, 1, confState)
 
 	tempdir := t.TempDir()
 	walDir := filepath.Join(tempdir, "non_existing_dir") // non existing path
@@ -174,7 +177,7 @@ func TestSaveEncryptionFails(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, wrapped.SaveSnapshot(snapshot))
-	err = wrapped.Save(raftpb.HardState{}, entries)
+	err = wrapped.Save(&raftpb.HardState{}, entries)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "refusing to encrypt")
 	require.NoError(t, wrapped.Close())
@@ -200,14 +203,14 @@ func TestOpenInvalidDirFails(t *testing.T) {
 	// we created.
 	emptyDir := filepath.Join(tempDir, "empty_dir")
 	require.NoError(t, os.Mkdir(emptyDir, 0o700))
-	_, err := c.Open(emptyDir, walpb.Snapshot{}) // invalid because no WAL file
+	_, err := c.Open(emptyDir, &walpb.Snapshot{}) // invalid because no WAL file
 	require.Error(t, err)
 }
 
 // A WAL can read what it wrote so long as it has a corresponding decrypter
 func TestSaveAndRead(t *testing.T) {
 	crypter := &meowCrypter{}
-	metadata, entries, snapshot := makeWALData(1, 1, &confState)
+	metadata, entries, snapshot := makeWALData(1, 1, confState)
 
 	c := NewWALFactory(crypter, crypter)
 	tempdir := createWithWAL(t, c, metadata, snapshot, entries)
@@ -219,11 +222,11 @@ func TestSaveAndRead(t *testing.T) {
 	require.NoError(t, wrapped.Close())
 	require.NoError(t, err)
 	require.Equal(t, metadata, meta)
-	require.Equal(t, entries, ents)
+	requireEqualEntries(t, entries, ents)
 }
 
 func TestReadRepairWAL(t *testing.T) {
-	metadata, entries, snapshot := makeWALData(1, 1, &confState)
+	metadata, entries, snapshot := makeWALData(1, 1, confState)
 	tempdir := createWithWAL(t, OriginalWAL, metadata, snapshot, entries)
 
 	// there should only be one WAL file in there - corrupt it
@@ -233,22 +236,25 @@ func TestReadRepairWAL(t *testing.T) {
 
 	// Corrupt the file by truncating it to replicate a broken state (partial
 	// write), but for this test, make sure that there's enough bytes left to
-	// read a record (24 bytes). The record size (recBytes) is calculated here;
+	// read a record (23 bytes). The record size (recBytes) is calculated here;
 	//
 	// - https://github.com/etcd-io/etcd/blob/621cd7b9e5aa2ccf634b555e4ebe0037b8975066/server/wal/decoder.go#L83
 	// - https://github.com/etcd-io/etcd/blob/621cd7b9e5aa2ccf634b555e4ebe0037b8975066/server/wal/decoder.go#L122-L131
 	//
 	// Using a shorter length will make the test fail:
 	//
-	//	wal: max entry size limit exceeded, recBytes: 24, fileSize(200) - offset(184) - padBytes(0) = entryLimit(16)
+	//	wal: max entry size limit exceeded, recBytes: 23, fileSize(250) - offset(232) - padBytes(1) = entryLimit(17)
 	//
-	// So the file should be >= 208 bytes.
+	// The last complete record ends at offset 232, so the file should be
+	// >= 256 bytes. These offsets are smaller than they used to be because
+	// raftpb/walpb are generated by protoc-gen-go now: unset proto2 fields
+	// (such as Entry.Type) are no longer written out.
 	//
 	// For further details, see:
 	//
 	// - https://github.com/etcd-io/etcd/commit/621cd7b9e5aa2ccf634b555e4ebe0037b8975066 / https://github.com/etcd-io/etcd/pull/14127 (backport of https://github.com/etcd-io/etcd/pull/14122)
 	// - https://github.com/etcd-io/etcd/issues/14114
-	require.NoError(t, os.Truncate(filepath.Join(tempdir, files[0].Name()), 300))
+	require.NoError(t, os.Truncate(filepath.Join(tempdir, files[0].Name()), 260))
 
 	ogWAL, err := OriginalWAL.Open(tempdir, snapshot)
 	require.NoError(t, err)
@@ -261,12 +267,15 @@ func TestReadRepairWAL(t *testing.T) {
 	require.Equal(t, metadata, waldata.Metadata)
 	require.NoError(t, ogWAL.Close())
 
-	// Also run with a file beyond repair (<3.6.0)
+	// Also run with a file beyond repair (<3.6.0): truncating to 190 leaves
+	// fewer bytes than a record needs after the record that ends at offset
+	// 168, so this is the "max entry size limit exceeded" case described
+	// above.
 	tempdir = createWithWAL(t, OriginalWAL, metadata, snapshot, entries)
 	files, err = os.ReadDir(tempdir)
 	require.NoError(t, err)
 	require.Len(t, files, 1)
-	require.NoError(t, os.Truncate(filepath.Join(tempdir, files[0].Name()), 200))
+	require.NoError(t, os.Truncate(filepath.Join(tempdir, files[0].Name()), 190))
 
 	_, _, err = ReadRepairWAL(context.Background(), tempdir, snapshot, OriginalWAL)
 	// in etcd 3.6+ this is reported repairable as well
@@ -274,7 +283,7 @@ func TestReadRepairWAL(t *testing.T) {
 }
 
 func TestMigrateWALs(t *testing.T) {
-	metadata, entries, snapshot := makeWALData(1, 1, &confState)
+	metadata, entries, snapshot := makeWALData(1, 1, confState)
 	coder := &meowCrypter{}
 	c := NewWALFactory(coder, coder)
 
@@ -302,7 +311,7 @@ func TestMigrateWALs(t *testing.T) {
 	meta, _, ents, err := newWAL.ReadAll()
 	require.NoError(t, err)
 	require.Equal(t, metadata, meta)
-	require.Equal(t, entries, ents)
+	requireEqualEntries(t, entries, ents)
 	require.NoError(t, newWAL.Close())
 
 	// new to original
@@ -317,7 +326,7 @@ func TestMigrateWALs(t *testing.T) {
 	meta, _, ents, err = newWAL.ReadAll()
 	require.NoError(t, err)
 	require.Equal(t, metadata, meta)
-	require.Equal(t, entries, ents)
+	requireEqualEntries(t, entries, ents)
 	require.NoError(t, newWAL.Close())
 
 	// If we can't read the old directory (for instance if it doesn't exist), a temp directory
@@ -328,7 +337,7 @@ func TestMigrateWALs(t *testing.T) {
 	oldDir = dirs[0]
 	newDir = dirs[1]
 
-	err = MigrateWALs(context.Background(), oldDir, newDir, OriginalWAL, c, walpb.Snapshot{})
+	err = MigrateWALs(context.Background(), oldDir, newDir, OriginalWAL, c, &walpb.Snapshot{})
 	require.Error(t, err)
 
 	subdirs, err := os.ReadDir(tempDir)

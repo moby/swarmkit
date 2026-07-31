@@ -44,7 +44,7 @@ func (b *Benchmark) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Service %s launched (%d instances)\n", j.ID, b.cfg.Count)
+	fmt.Printf("Service %s launched (%d instances)\n", j.Id, b.cfg.Count)
 
 	// Periodically print stats.
 	doneCh := make(chan struct{})
@@ -72,10 +72,10 @@ func (b *Benchmark) Run(ctx context.Context) error {
 
 func (b *Benchmark) spec() *api.ServiceSpec {
 	return &api.ServiceSpec{
-		Annotations: api.Annotations{
+		Annotations: &api.Annotations{
 			Name: "benchmark",
 		},
-		Task: api.TaskSpec{
+		Task: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image:   "alpine:latest",

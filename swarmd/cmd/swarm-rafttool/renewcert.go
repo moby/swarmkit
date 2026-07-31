@@ -4,10 +4,9 @@ import (
 	"fmt"
 
 	"github.com/cloudflare/cfssl/helpers"
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
@@ -58,7 +57,7 @@ func renewCerts(swarmdir, unlockKey string) error {
 	// It's possible there's no snapshot yet, or the cluster has been updated
 	// since the last snapshot, so also read from the WALs
 	for _, ent := range walData.Entries {
-		if ent.Type != raftpb.EntryNormal {
+		if ent.GetType() != raftpb.EntryNormal {
 			continue
 		}
 
@@ -79,19 +78,18 @@ func renewCerts(swarmdir, unlockKey string) error {
 	// There should always be a cluster and CA cert, unless the raft store has been
 	// catastrophcially corrupted, but it's possible that there is no CA key because
 	// the cluster used an external CA.
-	if cluster == nil || cluster.RootCA.CACert == nil || cluster.RootCA.CAKey == nil {
+	if cluster == nil || cluster.RootCa.GetCaCert() == nil || cluster.RootCa.GetCaKey() == nil {
 		return errors.New("could not find CA key data in raft logs; cannot renew certs")
 	}
 
 	// Issue a new certificate that expires at the configured expiry time.
 	expiry := ca.DefaultNodeCertExpiration
-	if cluster.Spec.CAConfig.NodeCertExpiry != nil {
-		clusterExpiry, err := types.DurationFromProto(cluster.Spec.CAConfig.NodeCertExpiry)
-		if err == nil {
-			expiry = clusterExpiry
-		}
+	// AsDuration cannot fail, so validate explicitly to keep the default for
+	// an expiry we cannot make sense of.
+	if e := cluster.GetSpec().GetCaConfig().GetNodeCertExpiry(); e.IsValid() {
+		expiry = e.AsDuration()
 	}
-	rootCA, err := ca.RootCAFromAPI(&cluster.RootCA, expiry)
+	rootCA, err := ca.RootCAFromAPI(cluster.RootCa, expiry)
 	if err != nil {
 		return errors.Wrap(err, "invalid CA info in raft logs; cannot renew certs")
 	}

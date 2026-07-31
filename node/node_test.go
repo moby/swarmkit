@@ -437,7 +437,7 @@ func TestManagerRespectsDispatcherRootCAUpdate(t *testing.T) {
 
 	mockDispatcher, cleanup := agentutils.NewMockDispatcher(t, managerSecConfig, false)
 	defer cleanup()
-	node.remotes.Observe(api.Peer{Addr: mockDispatcher.Addr}, 1)
+	node.remotes.Observe(&api.Peer{Addr: mockDispatcher.Addr}, 1)
 
 	currentCACerts := rootCA.Certs
 
@@ -554,10 +554,10 @@ func TestCertRenewals(t *testing.T) {
 	// ignored when DesiredRole has not changed.
 	node.notifyNodeChange <- &agent.NodeChanges{
 		Node: &api.Node{
-			Spec: api.NodeSpec{
-				DesiredRole: api.NodeRoleManager,
+			Spec: &api.NodeSpec{
+				DesiredRole: api.NodeRole_MANAGER,
 			},
-			Role: api.NodeRoleWorker,
+			Role: api.NodeRole_WORKER,
 		},
 	}
 
@@ -573,10 +573,10 @@ func TestCertRenewals(t *testing.T) {
 	// the current role, a cert renewal should be triggered.
 	node.notifyNodeChange <- &agent.NodeChanges{
 		Node: &api.Node{
-			Spec: api.NodeSpec{
-				DesiredRole: api.NodeRoleWorker,
+			Spec: &api.NodeSpec{
+				DesiredRole: api.NodeRole_WORKER,
 			},
-			Role: api.NodeRoleWorker,
+			Role: api.NodeRole_WORKER,
 		},
 	}
 

@@ -55,16 +55,16 @@ func TestDeallocatorInit(t *testing.T) {
 
 	// now let's check that the DB is in the state we expect
 	s.View(func(tx store.ReadTx) {
-		assert.Nil(t, store.GetService(tx, service1.ID))
-		assert.Nil(t, store.GetNetwork(tx, network1.ID))
-		assert.NotNil(t, store.GetNetwork(tx, network2.ID))
+		assert.Nil(t, store.GetService(tx, service1.Id))
+		assert.Nil(t, store.GetNetwork(tx, network1.Id))
+		assert.NotNil(t, store.GetNetwork(tx, network2.Id))
 
-		assert.NotNil(t, store.GetService(tx, service2.ID))
-		assert.NotNil(t, store.GetNetwork(tx, network3.ID))
+		assert.NotNil(t, store.GetService(tx, service2.Id))
+		assert.NotNil(t, store.GetNetwork(tx, network3.Id))
 
-		assert.Nil(t, store.GetNetwork(tx, network4.ID))
+		assert.Nil(t, store.GetNetwork(tx, network4.Id))
 
-		assert.NotNil(t, store.GetNetwork(tx, network5.ID))
+		assert.NotNil(t, store.GetNetwork(tx, network5.Id))
 	})
 }
 
@@ -113,9 +113,9 @@ func TestServiceDelete(t *testing.T) {
 					// be there - after the last one it should be gone
 					s.View(func(tx store.ReadTx) {
 						if lastTask {
-							require.Nil(t, store.GetService(tx, service.ID))
+							require.Nil(t, store.GetService(tx, service.Id))
 						} else {
-							require.NotNil(t, store.GetService(tx, service.ID))
+							require.NotNil(t, store.GetService(tx, service.Id))
 						}
 					})
 
@@ -157,28 +157,28 @@ func TestServiceAndNetworkDelete(t *testing.T) {
 
 	// then let's delete one task
 	updateStoreAndWaitForEvent(t, deallocator, func(tx store.Tx) {
-		require.NoError(t, store.DeleteTask(tx, task2.ID))
+		require.NoError(t, store.DeleteTask(tx, task2.Id))
 	}, false)
 
 	// the service and network2 should still exist
 	s.View(func(tx store.ReadTx) {
-		require.NotNil(t, store.GetService(tx, service.ID))
-		require.NotNil(t, store.GetNetwork(tx, network2.ID))
+		require.NotNil(t, store.GetService(tx, service.Id))
+		require.NotNil(t, store.GetNetwork(tx, network2.Id))
 	})
 
 	// now let's delete the other task
 	updateStoreAndWaitForEvent(t, deallocator, func(tx store.Tx) {
-		require.NoError(t, store.DeleteTask(tx, task1.ID))
+		require.NoError(t, store.DeleteTask(tx, task1.Id))
 	}, true)
 
 	// now the service and network2 should be gone
 	s.View(func(tx store.ReadTx) {
-		require.Nil(t, store.GetService(tx, service.ID))
-		require.Nil(t, store.GetNetwork(tx, network2.ID))
+		require.Nil(t, store.GetService(tx, service.Id))
+		require.Nil(t, store.GetNetwork(tx, network2.Id))
 
 		// quick sanity check, the first service should be
 		// unaffected
-		require.NotNil(t, store.GetNetwork(tx, network1.ID))
+		require.NotNil(t, store.GetNetwork(tx, network1.Id))
 	})
 }
 
@@ -196,7 +196,7 @@ func TestServiceNotMarkedForDeletion(t *testing.T) {
 	defer stopDeallocator(t, deallocator, ran)
 
 	updateStoreAndWaitForEvent(t, deallocator, func(tx store.Tx) {
-		service.Meta = api.Meta{Version: api.Version{Index: 12}}
+		service.Meta = &api.Meta{Version: &api.Version{Index: 12}}
 		require.NoError(t, store.UpdateService(tx, service))
 	},
 		// the deallocator shouldn't do any DB updates based on this event
@@ -218,7 +218,7 @@ func TestNetworkNotMarkedForDeletion(t *testing.T) {
 	defer stopDeallocator(t, deallocator, ran)
 
 	updateStoreAndWaitForEvent(t, deallocator, func(tx store.Tx) {
-		network.IPAM = &api.IPAMOptions{Driver: &api.Driver{Name: "test_driver"}}
+		network.Ipam = &api.IPAMOptions{Driver: &api.Driver{Name: "test_driver"}}
 		require.NoError(t, store.UpdateNetwork(tx, network))
 	},
 		// the deallocator shouldn't do any DB updates based on this event
@@ -251,15 +251,15 @@ func TestDeallocatorWithOldStyleNetworks(t *testing.T) {
 
 	// now let's delete the one task saving it all from oblivion
 	updateStoreAndWaitForEvent(t, deallocator, func(tx store.Tx) {
-		require.NoError(t, store.DeleteTask(tx, task.ID))
+		require.NoError(t, store.DeleteTask(tx, task.Id))
 	}, true)
 
 	// the deallocator should have removed both the service and
 	// the first network, but not the second
 	s.View(func(tx store.ReadTx) {
-		require.Nil(t, store.GetService(tx, service.ID))
-		require.Nil(t, store.GetNetwork(tx, network1.ID))
-		require.NotNil(t, store.GetNetwork(tx, network2.ID))
+		require.Nil(t, store.GetService(tx, service.Id))
+		require.Nil(t, store.GetNetwork(tx, network1.Id))
+		require.NotNil(t, store.GetNetwork(tx, network2.Id))
 	})
 }
 
@@ -361,12 +361,12 @@ func updateStoreAndWaitForEvent(t *testing.T, deallocator *Deallocator, cb func(
 
 func newService(id string, pendingDelete bool, networks ...*api.Network) *api.Service {
 	return &api.Service{
-		ID: id,
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: id,
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: id,
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Networks: newNetworkConfigs(networks...),
 			},
 		},
@@ -376,9 +376,9 @@ func newService(id string, pendingDelete bool, networks ...*api.Network) *api.Se
 
 func newNetwork(id string, pendingDelete bool) *api.Network {
 	return &api.Network{
-		ID: id,
-		Spec: api.NetworkSpec{
-			Annotations: api.Annotations{
+		Id: id,
+		Spec: &api.NetworkSpec{
+			Annotations: &api.Annotations{
 				Name: id,
 			},
 		},
@@ -391,7 +391,7 @@ func newNetworkConfigs(networks ...*api.Network) []*api.NetworkAttachmentConfig 
 
 	for i := range networks {
 		networkConfigs[i] = &api.NetworkAttachmentConfig{
-			Target: networks[i].ID,
+			Target: networks[i].Id,
 		}
 	}
 
@@ -400,7 +400,7 @@ func newNetworkConfigs(networks ...*api.Network) []*api.NetworkAttachmentConfig 
 
 func newTask(id string, service *api.Service) *api.Task {
 	return &api.Task{
-		ID:        id,
-		ServiceID: service.ID,
+		Id:        id,
+		ServiceId: service.Id,
 	}
 }

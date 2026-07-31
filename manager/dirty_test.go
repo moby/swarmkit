@@ -63,7 +63,7 @@ func TestIsStateDirty(t *testing.T) {
 	assert.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
 		node := store.GetNode(tx, m.config.SecurityConfig.ClientTLSCreds.NodeID())
 		require.NotNil(t, node)
-		node.Spec.Availability = api.NodeAvailabilityPause
+		node.Spec.Availability = api.NodeSpec_PAUSE
 		return store.UpdateNode(tx, node)
 	}))
 	isDirty, err = m.IsStateDirty()
@@ -72,7 +72,7 @@ func TestIsStateDirty(t *testing.T) {
 
 	// Adding a service should cause the state to become dirty
 	assert.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
-		return store.CreateService(tx, &api.Service{ID: "foo"})
+		return store.CreateService(tx, &api.Service{Id: "foo"})
 	}))
 	isDirty, err = m.IsStateDirty()
 	assert.NoError(t, err)

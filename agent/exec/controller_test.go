@@ -7,7 +7,6 @@ import (
 	"runtime"
 	"testing"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/stretchr/testify/assert"
@@ -17,52 +16,54 @@ func TestResolve(t *testing.T) {
 	var (
 		ctx      = context.Background()
 		executor = &mockExecutor{}
-		task     = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
+		task     = newTestTask(t, api.TaskState_ASSIGNED, api.TaskState_RUNNING)
 	)
 
 	_, status, err := Resolve(ctx, task, executor)
 	assert.NoError(t, err)
-	assert.Equal(t, api.TaskStateAccepted, status.State)
+	assert.Equal(t, api.TaskState_ACCEPTED, status.State)
 	assert.Equal(t, "accepted", status.Message)
 
-	task.Status = *status
+	// Resolve returns a freshly copied status, so it can be adopted by the
+	// task without aliasing anything the caller still holds on to.
+	task.Status = status
 	// now, we get no status update.
 	_, status, err = Resolve(ctx, task, executor)
 	assert.NoError(t, err)
-	assert.Equal(t, task.Status, *status)
+	assert.True(t, task.Status.EqualVT(status), "status changed: %v != %v", task.Status, status)
 
 	// now test an error causing rejection
 	executor.err = errors.New("some error")
-	task = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
+	task = newTestTask(t, api.TaskState_ASSIGNED, api.TaskState_RUNNING)
 	_, status, err = Resolve(ctx, task, executor)
 	assert.Equal(t, executor.err, err)
-	assert.Equal(t, api.TaskStateRejected, status.State)
+	assert.Equal(t, api.TaskState_REJECTED, status.State)
 
 	// on Resolve failure, tasks already started should be considered failed
-	task = newTestTask(t, api.TaskStateStarting, api.TaskStateRunning)
+	task = newTestTask(t, api.TaskState_STARTING, api.TaskState_RUNNING)
 	_, status, err = Resolve(ctx, task, executor)
 	assert.Equal(t, executor.err, err)
-	assert.Equal(t, api.TaskStateFailed, status.State)
+	assert.Equal(t, api.TaskState_FAILED, status.State)
 
 	// on Resolve failure, tasks already in terminated state don't need update
-	task = newTestTask(t, api.TaskStateCompleted, api.TaskStateRunning)
+	task = newTestTask(t, api.TaskState_COMPLETE, api.TaskState_RUNNING)
 	_, status, err = Resolve(ctx, task, executor)
 	assert.Equal(t, executor.err, err)
-	assert.Equal(t, api.TaskStateCompleted, status.State)
+	assert.Equal(t, api.TaskState_COMPLETE, status.State)
 
 	// task is now foobared, from a reporting perspective but we can now
 	// resolve the controller for some reason. Ensure the task state isn't
 	// touched.
-	task.Status = *status
+	task.Status = status
 	executor.err = nil
 	_, status, err = Resolve(ctx, task, executor)
 	assert.NoError(t, err)
-	assert.Equal(t, task.Status, *status)
+	assert.True(t, task.Status.EqualVT(status), "status changed: %v != %v", task.Status, status)
 }
 
 func TestAcceptPrepare(t *testing.T) {
 	var (
-		task              = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
+		task              = newTestTask(t, api.TaskState_ASSIGNED, api.TaskState_RUNNING)
 		ctx, ctlr, finish = buildTestEnv(t, task)
 	)
 	defer func() {
@@ -76,29 +77,29 @@ func TestAcceptPrepare(t *testing.T) {
 
 	// Report acceptance.
 	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateAccepted,
+		State:   api.TaskState_ACCEPTED,
 		Message: "accepted",
 	})
 
 	// Actually prepare the task.
-	task.Status = *status
+	task.Status = status
 
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStatePreparing,
+		State:   api.TaskState_PREPARING,
 		Message: "preparing",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateReady,
+		State:   api.TaskState_READY,
 		Message: "prepared",
 	})
 }
 
 func TestPrepareAlready(t *testing.T) {
 	var (
-		task              = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
+		task              = newTestTask(t, api.TaskState_ASSIGNED, api.TaskState_RUNNING)
 		ctx, ctlr, finish = buildTestEnv(t, task)
 	)
 	defer func() {
@@ -111,29 +112,29 @@ func TestPrepareAlready(t *testing.T) {
 
 	// Report acceptance.
 	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateAccepted,
+		State:   api.TaskState_ACCEPTED,
 		Message: "accepted",
 	})
 
 	// Actually prepare the task.
-	task.Status = *status
+	task.Status = status
 
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStatePreparing,
+		State:   api.TaskState_PREPARING,
 		Message: "preparing",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateReady,
+		State:   api.TaskState_READY,
 		Message: "prepared",
 	})
 }
 
 func TestPrepareFailure(t *testing.T) {
 	var (
-		task              = newTestTask(t, api.TaskStateAssigned, api.TaskStateRunning)
+		task              = newTestTask(t, api.TaskState_ASSIGNED, api.TaskState_RUNNING)
 		ctx, ctlr, finish = buildTestEnv(t, task)
 	)
 	defer func() {
@@ -146,22 +147,22 @@ func TestPrepareFailure(t *testing.T) {
 
 	// Report acceptance.
 	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateAccepted,
+		State:   api.TaskState_ACCEPTED,
 		Message: "accepted",
 	})
 
 	// Actually prepare the task.
-	task.Status = *status
+	task.Status = status
 
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStatePreparing,
+		State:   api.TaskState_PREPARING,
 		Message: "preparing",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateRejected,
+		State:   api.TaskState_REJECTED,
 		Message: "preparing",
 		Err:     "test error",
 	})
@@ -169,7 +170,7 @@ func TestPrepareFailure(t *testing.T) {
 
 func TestReadyRunning(t *testing.T) {
 	var (
-		task              = newTestTask(t, api.TaskStateReady, api.TaskStateRunning)
+		task              = newTestTask(t, api.TaskState_READY, api.TaskState_RUNNING)
 		ctx, ctlr, finish = buildTestEnv(t, task)
 	)
 	defer func() {
@@ -193,27 +194,27 @@ func TestReadyRunning(t *testing.T) {
 
 	// Report starting
 	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateStarting,
+		State:   api.TaskState_STARTING,
 		Message: "starting",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	// start the container
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateRunning,
+		State:   api.TaskState_RUNNING,
 		Message: "started",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	// resume waiting
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateRunning,
+		State:   api.TaskState_RUNNING,
 		Message: "started",
 	}, ErrTaskRetry)
 
-	task.Status = *status
+	task.Status = status
 	// wait and cancel
 	dctlr := &StatuserController{
 		StubController: ctlr,
@@ -222,7 +223,7 @@ func TestReadyRunning(t *testing.T) {
 		},
 	}
 	checkDo(ctx, t, task, dctlr, &api.TaskStatus{
-		State:   api.TaskStateCompleted,
+		State:   api.TaskState_COMPLETE,
 		Message: "finished",
 		RuntimeStatus: &api.TaskStatus_Container{
 			Container: &api.ContainerStatus{
@@ -234,7 +235,7 @@ func TestReadyRunning(t *testing.T) {
 
 func TestReadyRunningExitFailure(t *testing.T) {
 	var (
-		task              = newTestTask(t, api.TaskStateReady, api.TaskStateRunning)
+		task              = newTestTask(t, api.TaskState_READY, api.TaskState_RUNNING)
 		ctx, ctlr, finish = buildTestEnv(t, task)
 	)
 	defer func() {
@@ -252,19 +253,19 @@ func TestReadyRunningExitFailure(t *testing.T) {
 
 	// Report starting
 	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateStarting,
+		State:   api.TaskState_STARTING,
 		Message: "starting",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	// start the container
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateRunning,
+		State:   api.TaskState_RUNNING,
 		Message: "started",
 	})
 
-	task.Status = *status
+	task.Status = status
 	dctlr := &StatuserController{
 		StubController: ctlr,
 		cstatus: &api.ContainerStatus{
@@ -272,7 +273,7 @@ func TestReadyRunningExitFailure(t *testing.T) {
 		},
 	}
 	checkDo(ctx, t, task, dctlr, &api.TaskStatus{
-		State: api.TaskStateFailed,
+		State: api.TaskState_FAILED,
 		RuntimeStatus: &api.TaskStatus_Container{
 			Container: &api.ContainerStatus{
 				ExitCode: 1,
@@ -285,7 +286,7 @@ func TestReadyRunningExitFailure(t *testing.T) {
 
 func TestAlreadyStarted(t *testing.T) {
 	var (
-		task              = newTestTask(t, api.TaskStateReady, api.TaskStateRunning)
+		task              = newTestTask(t, api.TaskState_READY, api.TaskState_RUNNING)
 		ctx, ctlr, finish = buildTestEnv(t, task)
 	)
 	defer func() {
@@ -309,26 +310,26 @@ func TestAlreadyStarted(t *testing.T) {
 
 	// Before we can move to running, we have to move to startin.
 	status := checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateStarting,
+		State:   api.TaskState_STARTING,
 		Message: "starting",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	// start the container
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateRunning,
+		State:   api.TaskState_RUNNING,
 		Message: "started",
 	})
 
-	task.Status = *status
+	task.Status = status
 
 	status = checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateRunning,
+		State:   api.TaskState_RUNNING,
 		Message: "started",
 	}, ErrTaskRetry)
 
-	task.Status = *status
+	task.Status = status
 
 	// now take the real exit to test wait cancelling.
 	dctlr := &StatuserController{
@@ -338,7 +339,7 @@ func TestAlreadyStarted(t *testing.T) {
 		},
 	}
 	checkDo(ctx, t, task, dctlr, &api.TaskStatus{
-		State: api.TaskStateFailed,
+		State: api.TaskState_FAILED,
 		RuntimeStatus: &api.TaskStatus_Container{
 			Container: &api.ContainerStatus{
 				ExitCode: 1,
@@ -351,7 +352,7 @@ func TestAlreadyStarted(t *testing.T) {
 }
 func TestShutdown(t *testing.T) {
 	var (
-		task              = newTestTask(t, api.TaskStateNew, api.TaskStateShutdown)
+		task              = newTestTask(t, api.TaskState_NEW, api.TaskState_SHUTDOWN)
 		ctx, ctlr, finish = buildTestEnv(t, task)
 	)
 	defer func() {
@@ -363,7 +364,7 @@ func TestShutdown(t *testing.T) {
 	}
 
 	checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateShutdown,
+		State:   api.TaskState_SHUTDOWN,
 		Message: "shutdown",
 	})
 }
@@ -374,7 +375,7 @@ func TestShutdown(t *testing.T) {
 // that are supposed to be removed to REMOVE.
 func TestDesiredStateRemove(t *testing.T) {
 	var (
-		task              = newTestTask(t, api.TaskStateNew, api.TaskStateRemove)
+		task              = newTestTask(t, api.TaskState_NEW, api.TaskState_REMOVE)
 		ctx, ctlr, finish = buildTestEnv(t, task)
 	)
 	defer func() {
@@ -386,7 +387,7 @@ func TestDesiredStateRemove(t *testing.T) {
 	}
 
 	checkDo(ctx, t, task, ctlr, &api.TaskStatus{
-		State:   api.TaskStateShutdown,
+		State:   api.TaskState_SHUTDOWN,
 		Message: "shutdown",
 	})
 }
@@ -398,11 +399,11 @@ func TestDesiredStateRemove(t *testing.T) {
 func TestDesiredStateRemoveOnlyNonterminal(t *testing.T) {
 	// go through all terminal states, just for completeness' sake
 	for _, state := range []api.TaskState{
-		api.TaskStateCompleted,
-		api.TaskStateShutdown,
-		api.TaskStateFailed,
-		api.TaskStateRejected,
-		api.TaskStateRemove,
+		api.TaskState_COMPLETE,
+		api.TaskState_SHUTDOWN,
+		api.TaskState_FAILED,
+		api.TaskState_REJECTED,
+		api.TaskState_REMOVE,
 		// no TaskStateOrphaned because that's not a state the task can be in
 		// on the agent
 	} {
@@ -411,7 +412,7 @@ func TestDesiredStateRemoveOnlyNonterminal(t *testing.T) {
 			var (
 				// create a new task, actual state `state`, desired state
 				// shutdown
-				task              = newTestTask(t, state, api.TaskStateShutdown)
+				task              = newTestTask(t, state, api.TaskState_SHUTDOWN)
 				ctx, ctlr, finish = buildTestEnv(t, task)
 			)
 			// make the shutdown function a noop
@@ -462,13 +463,13 @@ func checkDo(ctx context.Context, t *testing.T, task *api.Task, ctlr Controller,
 	}
 
 	// if the status and task.Status are different, make sure new timestamp is greater
-	if task.Status.Timestamp != nil {
+	if ts := task.Status.GetTimestamp(); ts != nil {
 		// crazy timestamp validation follows
-		previous, err := gogotypes.TimestampFromProto(task.Status.Timestamp)
-		assert.Nil(t, err)
+		assert.NoError(t, ts.CheckValid())
+		previous := ts.AsTime()
 
-		current, err := gogotypes.TimestampFromProto(status.Timestamp)
-		assert.Nil(t, err)
+		assert.NoError(t, status.Timestamp.CheckValid())
+		current := status.Timestamp.AsTime()
 
 		if current.Before(previous) {
 			// ensure that the timestamp always proceeds forward
@@ -478,15 +479,15 @@ func checkDo(ctx context.Context, t *testing.T, task *api.Task, ctlr Controller,
 
 	cp := status.Copy()
 	cp.Timestamp = nil // don't check against timestamp
-	assert.Equal(t, expected, cp)
+	assert.True(t, expected.EqualVT(cp), "expected %v, got %v", expected, cp)
 
 	return status
 }
 
 func newTestTask(t *testing.T, state, desired api.TaskState) *api.Task {
 	return &api.Task{
-		ID: "test-task",
-		Status: api.TaskStatus{
+		Id: "test-task",
+		Status: &api.TaskStatus{
 			State: state,
 		},
 		DesiredState: desired,

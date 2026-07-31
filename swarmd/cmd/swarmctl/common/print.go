@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
-	gogotypes "github.com/gogo/protobuf/types"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // PrintHeader prints a nice little header.
@@ -29,13 +30,26 @@ func FprintfIfNotEmpty(w io.Writer, format string, v any) {
 }
 
 // TimestampAgo returns a relative time string from a timestamp (e.g. "12 seconds ago").
-func TimestampAgo(ts *gogotypes.Timestamp) string {
+func TimestampAgo(ts *timestamppb.Timestamp) string {
 	if ts == nil {
 		return ""
 	}
-	t, err := gogotypes.TimestampFromProto(ts)
-	if err != nil {
+	// AsTime silently returns a bogus time for an out-of-range timestamp,
+	// so keep validating it explicitly like the gogo conversion did.
+	if err := ts.CheckValid(); err != nil {
 		panic(err)
 	}
-	return humanize.Time(t)
+	return humanize.Time(ts.AsTime())
+}
+
+// TimestampString formats a timestamp as RFC 3339, or renders the reason it
+// could not be formatted.
+//
+// It replaces gogo's types.TimestampString, which the official well-known
+// types do not provide.
+func TimestampString(ts *timestamppb.Timestamp) string {
+	if err := ts.CheckValid(); err != nil {
+		return fmt.Sprintf("(%v)", err)
+	}
+	return ts.AsTime().Format(time.RFC3339Nano)
 }

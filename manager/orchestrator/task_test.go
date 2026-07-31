@@ -5,8 +5,9 @@ import (
 	"strconv"
 	"testing"
 
-	google_protobuf "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/moby/swarmkit/v2/api"
 )
@@ -14,13 +15,13 @@ import (
 // Test IsTaskDirty() for placement constraints.
 func TestIsTaskDirty(t *testing.T) {
 	service := &api.Service{
-		ID:          "id1",
+		Id:          "id1",
 		SpecVersion: &api.Version{Index: 1},
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Image: "v:1",
@@ -31,8 +32,8 @@ func TestIsTaskDirty(t *testing.T) {
 	}
 
 	task := &api.Task{
-		ID: "task1",
-		Spec: api.TaskSpec{
+		Id: "task1",
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image: "v:1",
@@ -42,38 +43,38 @@ func TestIsTaskDirty(t *testing.T) {
 	}
 
 	node := &api.Node{
-		ID: "node1",
+		Id: "node1",
 	}
 
 	assert.False(t, IsTaskDirty(service, task, node))
 
 	// Update only placement constraints.
 	service.SpecVersion.Index++
-	service.Spec.Task.Placement = &api.Placement{}
-	service.Spec.Task.Placement.Constraints = append(service.Spec.Task.Placement.Constraints, "node=node1")
+	service.Spec.GetTask().Placement = &api.Placement{}
+	service.Spec.GetTask().Placement.Constraints = append(service.Spec.GetTask().GetPlacement().Constraints, "node=node1")
 	assert.False(t, IsTaskDirty(service, task, node))
 
 	// Update only placement constraints again.
 	service.SpecVersion.Index++
-	service.Spec.Task.Placement = &api.Placement{}
-	service.Spec.Task.Placement.Constraints = append(service.Spec.Task.Placement.Constraints, "node!=node1")
+	service.Spec.GetTask().Placement = &api.Placement{}
+	service.Spec.GetTask().Placement.Constraints = append(service.Spec.GetTask().GetPlacement().Constraints, "node!=node1")
 	assert.True(t, IsTaskDirty(service, task, node))
 
 	// Update only placement constraints
 	service.SpecVersion.Index++
-	service.Spec.Task.Placement = &api.Placement{}
-	service.Spec.Task.GetContainer().Image = "v:2"
+	service.Spec.GetTask().Placement = &api.Placement{}
+	service.Spec.GetTask().GetContainer().Image = "v:2"
 	assert.True(t, IsTaskDirty(service, task, node))
 }
 
 func TestIsTaskDirtyPlacementConstraintsOnly(t *testing.T) {
 	service := &api.Service{
-		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Image: "v:1",
@@ -84,8 +85,8 @@ func TestIsTaskDirtyPlacementConstraintsOnly(t *testing.T) {
 	}
 
 	task := &api.Task{
-		ID: "task1",
-		Spec: api.TaskSpec{
+		Id: "task1",
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image: "v:1",
@@ -94,20 +95,20 @@ func TestIsTaskDirtyPlacementConstraintsOnly(t *testing.T) {
 		},
 	}
 
-	assert.False(t, IsTaskDirtyPlacementConstraintsOnly(service.Spec.Task, task))
+	assert.False(t, IsTaskDirtyPlacementConstraintsOnly(service.Spec.GetTask(), task))
 
 	// Update only placement constraints.
-	service.Spec.Task.Placement = &api.Placement{}
-	service.Spec.Task.Placement.Constraints = append(service.Spec.Task.Placement.Constraints, "node==*")
-	assert.True(t, IsTaskDirtyPlacementConstraintsOnly(service.Spec.Task, task))
+	service.Spec.GetTask().Placement = &api.Placement{}
+	service.Spec.GetTask().Placement.Constraints = append(service.Spec.GetTask().GetPlacement().Constraints, "node==*")
+	assert.True(t, IsTaskDirtyPlacementConstraintsOnly(service.Spec.GetTask(), task))
 
 	// Update something else in the task spec.
-	service.Spec.Task.GetContainer().Image = "v:2"
-	assert.False(t, IsTaskDirtyPlacementConstraintsOnly(service.Spec.Task, task))
+	service.Spec.GetTask().GetContainer().Image = "v:2"
+	assert.False(t, IsTaskDirtyPlacementConstraintsOnly(service.Spec.GetTask(), task))
 
 	// Clear out placement constraints.
-	service.Spec.Task.Placement.Constraints = nil
-	assert.False(t, IsTaskDirtyPlacementConstraintsOnly(service.Spec.Task, task))
+	service.Spec.GetTask().Placement.Constraints = nil
+	assert.False(t, IsTaskDirtyPlacementConstraintsOnly(service.Spec.GetTask(), task))
 }
 
 // Test Task sorting, which is currently based on
@@ -118,9 +119,9 @@ func TestTaskSort(t *testing.T) {
 	seconds := int64(size)
 	for i := range size {
 		task := &api.Task{
-			ID: "id_" + strconv.Itoa(i),
-			Status: api.TaskStatus{
-				Timestamp: &google_protobuf.Timestamp{Seconds: seconds},
+			Id: "id_" + strconv.Itoa(i),
+			Status: &api.TaskStatus{
+				Timestamp: &timestamppb.Timestamp{Seconds: seconds},
 			},
 		}
 
@@ -130,20 +131,22 @@ func TestTaskSort(t *testing.T) {
 
 	sort.Sort(TasksByTimestamp(tasks))
 	for i, task := range tasks {
-		expected := &google_protobuf.Timestamp{Seconds: int64(i + 1)}
-		assert.Equal(t, expected, task.Status.Timestamp)
-		assert.Equal(t, "id_"+strconv.Itoa(size-(i+1)), task.ID)
+		expected := &timestamppb.Timestamp{Seconds: int64(i + 1)}
+		// assert.Equal cannot be used on protobuf messages, as it falls back to
+		// reflect.DeepEqual, which also walks their internal bookkeeping fields.
+		assert.True(t, proto.Equal(expected, task.Status.GetTimestamp()), "expected: %v, actual: %v", expected, task.Status.GetTimestamp())
+		assert.Equal(t, "id_"+strconv.Itoa(size-(i+1)), task.Id)
 	}
 
 	for i, task := range tasks {
-		task.Status.AppliedAt = &google_protobuf.Timestamp{Seconds: int64(size - i)}
+		task.Status.AppliedAt = &timestamppb.Timestamp{Seconds: int64(size - i)}
 	}
 
 	sort.Sort(TasksByTimestamp(tasks))
 	sort.Sort(TasksByTimestamp(tasks))
 	for i, task := range tasks {
-		expected := &google_protobuf.Timestamp{Seconds: int64(i + 1)}
-		assert.Equal(t, expected, task.Status.AppliedAt)
-		assert.Equal(t, "id_"+strconv.Itoa(i), task.ID)
+		expected := &timestamppb.Timestamp{Seconds: int64(i + 1)}
+		assert.True(t, proto.Equal(expected, task.Status.GetAppliedAt()), "expected: %v, actual: %v", expected, task.Status.GetAppliedAt())
+		assert.Equal(t, "id_"+strconv.Itoa(i), task.Id)
 	}
 }

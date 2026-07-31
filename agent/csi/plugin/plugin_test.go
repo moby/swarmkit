@@ -32,10 +32,10 @@ func TestNodeStageVolume(t *testing.T) {
 	node := "node-1"
 	nodePlugin := newVolumeClient(plugin, node)
 	s := &api.VolumeAssignment{
-		VolumeID: "vol1",
+		VolumeId: "vol1",
 		AccessMode: &api.VolumeAccessMode{
-			Scope:   api.VolumeScopeMultiNode,
-			Sharing: api.VolumeSharingOneWriter,
+			Scope:   api.VolumeAccessMode_MULTI_NODE,
+			Sharing: api.VolumeAccessMode_ONE_WRITER,
 			AccessType: &api.VolumeAccessMode_Mount{
 				Mount: &api.VolumeAccessMode_MountVolume{},
 			},
@@ -53,10 +53,10 @@ func TestNodeUnstageVolume(t *testing.T) {
 	node := "node-1"
 	nodePlugin := newVolumeClient(plugin, node)
 	s := &api.VolumeAssignment{
-		VolumeID: "vol2",
+		VolumeId: "vol2",
 		AccessMode: &api.VolumeAccessMode{
-			Scope:   api.VolumeScopeMultiNode,
-			Sharing: api.VolumeSharingOneWriter,
+			Scope:   api.VolumeAccessMode_MULTI_NODE,
+			Sharing: api.VolumeAccessMode_ONE_WRITER,
 			AccessType: &api.VolumeAccessMode_Mount{
 				Mount: &api.VolumeAccessMode_MountVolume{},
 			},
@@ -97,10 +97,10 @@ func TestNodePublishVolume(t *testing.T) {
 	for _, tc := range testcases {
 		nodePlugin := newVolumeClient(tc.plugin, "node-1")
 		s := &api.VolumeAssignment{
-			VolumeID: "vol3",
+			VolumeId: "vol3",
 			AccessMode: &api.VolumeAccessMode{
-				Scope:   api.VolumeScopeMultiNode,
-				Sharing: api.VolumeSharingOneWriter,
+				Scope:   api.VolumeAccessMode_MULTI_NODE,
+				Sharing: api.VolumeAccessMode_ONE_WRITER,
 				AccessType: &api.VolumeAccessMode_Mount{
 					Mount: &api.VolumeAccessMode_MountVolume{},
 				},
@@ -129,10 +129,10 @@ func TestNodeUnpublishVolume(t *testing.T) {
 	node := "node-1"
 	nodePlugin := newVolumeClient(plugin, node)
 	s := &api.VolumeAssignment{
-		VolumeID: "vol4",
+		VolumeId: "vol4",
 		AccessMode: &api.VolumeAccessMode{
-			Scope:   api.VolumeScopeMultiNode,
-			Sharing: api.VolumeSharingOneWriter,
+			Scope:   api.VolumeAccessMode_MULTI_NODE,
+			Sharing: api.VolumeAccessMode_ONE_WRITER,
 			AccessType: &api.VolumeAccessMode_Mount{
 				Mount: &api.VolumeAccessMode_MountVolume{},
 			},

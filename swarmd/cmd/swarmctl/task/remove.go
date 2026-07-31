@@ -28,7 +28,7 @@ var (
 				return err
 			}
 
-			_, err = c.RemoveTask(common.Context(cmd), &api.RemoveTaskRequest{TaskID: args[0]})
+			_, err = c.RemoveTask(common.Context(cmd), &api.RemoveTaskRequest{TaskId: args[0]})
 			if err != nil {
 				return err
 			}

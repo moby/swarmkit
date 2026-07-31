@@ -15,8 +15,8 @@ type fakeRestartSupervisor struct {
 	tasks []string
 }
 
-func (f *fakeRestartSupervisor) Restart(_ context.Context, _ store.Tx, _ *api.Cluster, _ *api.Service, task api.Task) error {
-	f.tasks = append(f.tasks, task.ID)
+func (f *fakeRestartSupervisor) Restart(_ context.Context, _ store.Tx, _ *api.Cluster, _ *api.Service, task *api.Task) error {
+	f.tasks = append(f.tasks, task.Id)
 	return nil
 }
 
@@ -57,23 +57,24 @@ var _ = Describe("Global Job Reconciler", func() {
 
 			// Set up the service and nodes. We can change these later
 			service = &api.Service{
-				ID: serviceID,
-				Spec: api.ServiceSpec{
+				Id: serviceID,
+				Spec: &api.ServiceSpec{
+					Task: &api.TaskSpec{},
 					Mode: &api.ServiceSpec_GlobalJob{
 						// GlobalJob has no parameters
 						GlobalJob: &api.GlobalJob{},
 					},
 				},
-				JobStatus: &api.JobStatus{},
+				JobStatus: &api.JobStatus{JobIteration: &api.Version{}},
 			}
 
 			cluster = &api.Cluster{
-				ID: "someCluster",
-				Spec: api.ClusterSpec{
-					Annotations: api.Annotations{
+				Id: "someCluster",
+				Spec: &api.ClusterSpec{
+					Annotations: &api.Annotations{
 						Name: "someCluster",
 					},
-					TaskDefaults: api.TaskDefaults{
+					TaskDefaults: &api.TaskDefaults{
 						LogDriver: &api.Driver{
 							Name: "someDriver",
 						},
@@ -86,38 +87,38 @@ var _ = Describe("Global Job Reconciler", func() {
 
 			nodes = []*api.Node{
 				{
-					ID: "node1",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Id: "node1",
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "name1",
 						},
-						Availability: api.NodeAvailabilityActive,
+						Availability: api.NodeSpec_ACTIVE,
 					},
-					Status: api.NodeStatus{
+					Status: &api.NodeStatus{
 						State: api.NodeStatus_READY,
 					},
 				},
 				{
-					ID: "node2",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Id: "node2",
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "name2",
 						},
-						Availability: api.NodeAvailabilityActive,
+						Availability: api.NodeSpec_ACTIVE,
 					},
-					Status: api.NodeStatus{
+					Status: &api.NodeStatus{
 						State: api.NodeStatus_READY,
 					},
 				},
 				{
-					ID: "node3",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Id: "node3",
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "name3",
 						},
-						Availability: api.NodeAvailabilityActive,
+						Availability: api.NodeSpec_ACTIVE,
 					},
-					Status: api.NodeStatus{
+					Status: &api.NodeStatus{
 						State: api.NodeStatus_READY,
 					},
 				},
@@ -170,7 +171,7 @@ var _ = Describe("Global Job Reconciler", func() {
 				err := s.Update(func(tx store.Tx) error {
 					service := store.GetService(tx, serviceID)
 					service.JobStatus.JobIteration.Index++
-					service.Spec.Task.ForceUpdate++
+					service.Spec.GetTask().ForceUpdate++
 					return store.UpdateService(tx, service)
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -189,7 +190,7 @@ var _ = Describe("Global Job Reconciler", func() {
 				for _, task := range allTasks {
 					Expect(task.JobIteration).ToNot(BeNil())
 					if task.JobIteration.Index == 0 {
-						Expect(task.DesiredState).To(Equal(api.TaskStateRemove))
+						Expect(task.DesiredState).To(Equal(api.TaskState_REMOVE))
 						count++
 					}
 				}
@@ -201,7 +202,7 @@ var _ = Describe("Global Job Reconciler", func() {
 				for _, task := range allTasks {
 					Expect(task.JobIteration).ToNot(BeNil())
 					if task.JobIteration.Index == 1 {
-						Expect(task.DesiredState).To(Equal(api.TaskStateCompleted))
+						Expect(task.DesiredState).To(Equal(api.TaskState_COMPLETE))
 						count++
 					}
 				}
@@ -213,10 +214,10 @@ var _ = Describe("Global Job Reconciler", func() {
 			BeforeEach(func() {
 				// all but the last node should be filled.
 				for _, node := range nodes[:len(nodes)-1] {
-					task := orchestrator.NewTask(cluster, service, 0, node.ID)
+					task := orchestrator.NewTask(cluster, service, 0, node.Id)
 					task.JobIteration = &api.Version{}
-					task.DesiredState = api.TaskStateCompleted
-					task.Status.State = api.TaskStateFailed
+					task.DesiredState = api.TaskState_COMPLETE
+					task.Status.State = api.TaskState_FAILED
 					tasks = append(tasks, task)
 				}
 			})
@@ -231,10 +232,10 @@ var _ = Describe("Global Job Reconciler", func() {
 					numFailedTasks := 0
 					numNewTasks := 0
 					for _, task := range tasks {
-						if task.Status.State == api.TaskStateNew {
+						if task.Status.GetState() == api.TaskState_NEW {
 							numNewTasks++
 						}
-						if task.Status.State == api.TaskStateFailed {
+						if task.Status.GetState() == api.TaskState_FAILED {
 							numFailedTasks++
 						}
 					}
@@ -248,7 +249,7 @@ var _ = Describe("Global Job Reconciler", func() {
 				taskIDs := []string{}
 				// all of the tasks in the list should be the failed tasks.
 				for _, task := range tasks {
-					taskIDs = append(taskIDs, task.ID)
+					taskIDs = append(taskIDs, task.Id)
 				}
 				Expect(f.tasks).To(ConsistOf(taskIDs))
 			})
@@ -258,7 +259,7 @@ var _ = Describe("Global Job Reconciler", func() {
 			It("should create a task for each node", func() {
 				s.View(func(tx store.ReadTx) {
 					for _, node := range nodes {
-						nodeTasks, err := store.FindTasks(tx, store.ByNodeID(node.ID))
+						nodeTasks, err := store.FindTasks(tx, store.ByNodeID(node.Id))
 						Expect(err).ToNot(HaveOccurred())
 						Expect(nodeTasks).To(HaveLen(1))
 					}
@@ -271,7 +272,7 @@ var _ = Describe("Global Job Reconciler", func() {
 					tasks, err := store.FindTasks(tx, store.All)
 					Expect(err).ToNot(HaveOccurred())
 					for _, task := range tasks {
-						Expect(task.DesiredState).To(Equal(api.TaskStateCompleted))
+						Expect(task.DesiredState).To(Equal(api.TaskState_COMPLETE))
 					}
 				})
 			})
@@ -291,24 +292,24 @@ var _ = Describe("Global Job Reconciler", func() {
 				BeforeEach(func() {
 					// create a random task for node 1 that's in state Running
 					tasks = append(tasks, &api.Task{
-						ID:           "existingTask1",
-						Spec:         service.Spec.Task,
-						ServiceID:    serviceID,
-						NodeID:       "node1",
-						DesiredState: api.TaskStateCompleted,
-						Status: api.TaskStatus{
-							State: api.TaskStateRunning,
+						Id:           "existingTask1",
+						Spec:         service.Spec.GetTask(),
+						ServiceId:    serviceID,
+						NodeId:       "node1",
+						DesiredState: api.TaskState_COMPLETE,
+						Status: &api.TaskStatus{
+							State: api.TaskState_RUNNING,
 						},
 						JobIteration: &api.Version{},
 					})
 					tasks = append(tasks, &api.Task{
-						ID:           "existingTask2",
-						Spec:         service.Spec.Task,
-						ServiceID:    serviceID,
-						NodeID:       "node2",
-						DesiredState: api.TaskStateCompleted,
-						Status: api.TaskStatus{
-							State: api.TaskStateCompleted,
+						Id:           "existingTask2",
+						Spec:         service.Spec.GetTask(),
+						ServiceId:    serviceID,
+						NodeId:       "node2",
+						DesiredState: api.TaskState_COMPLETE,
+						Status: &api.TaskStatus{
+							State: api.TaskState_COMPLETE,
 						},
 						JobIteration: &api.Version{},
 					})
@@ -322,7 +323,7 @@ var _ = Describe("Global Job Reconciler", func() {
 						Expect(tasks).To(
 							ContainElement(
 								WithTransform(func(t *api.Task) string {
-									return t.ID
+									return t.Id
 								}, Equal("existingTask1")),
 							),
 						)
@@ -339,7 +340,7 @@ var _ = Describe("Global Job Reconciler", func() {
 
 				BeforeEach(func() {
 					// set a constraint on the task to be only node1
-					service.Spec.Task.Placement = &api.Placement{
+					service.Spec.GetTask().Placement = &api.Placement{
 						Constraints: []string{"node.id==node1"},
 					}
 				})
@@ -349,7 +350,7 @@ var _ = Describe("Global Job Reconciler", func() {
 						tasks, err := store.FindTasks(tx, store.All)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(tasks).To(HaveLen(1))
-						Expect(tasks[0].NodeID).To(Equal("node1"))
+						Expect(tasks[0].NodeId).To(Equal("node1"))
 					})
 				})
 			})
@@ -371,15 +372,15 @@ var _ = Describe("Global Job Reconciler", func() {
 			When("a node is drained or paused", func() {
 				BeforeEach(func() {
 					// set node1 to drain, set node2 to pause
-					nodes[0].Spec.Availability = api.NodeAvailabilityDrain
-					nodes[1].Spec.Availability = api.NodeAvailabilityPause
+					nodes[0].Spec.Availability = api.NodeSpec_DRAIN
+					nodes[1].Spec.Availability = api.NodeSpec_PAUSE
 					tasks = append(tasks, &api.Task{
-						ID:           "someID",
-						ServiceID:    service.ID,
-						NodeID:       nodes[0].ID,
-						DesiredState: api.TaskStateCompleted,
-						Status: api.TaskStatus{
-							State: api.TaskStateRunning,
+						Id:           "someID",
+						ServiceId:    service.Id,
+						NodeId:       nodes[0].Id,
+						DesiredState: api.TaskState_COMPLETE,
+						Status: &api.TaskStatus{
+							State: api.TaskState_RUNNING,
 						},
 						JobIteration: &api.Version{
 							Index: service.JobStatus.JobIteration.Index,
@@ -393,18 +394,18 @@ var _ = Describe("Global Job Reconciler", func() {
 						Expect(err).ToNot(HaveOccurred())
 						Expect(tasks).To(HaveLen(2))
 
-						node2Tasks, err := store.FindTasks(tx, store.ByNodeID(nodes[2].ID))
+						node2Tasks, err := store.FindTasks(tx, store.ByNodeID(nodes[2].Id))
 						Expect(err).ToNot(HaveOccurred())
 						Expect(node2Tasks).To(HaveLen(1))
-						Expect(node2Tasks[0].DesiredState).To(Equal(api.TaskStateCompleted))
+						Expect(node2Tasks[0].DesiredState).To(Equal(api.TaskState_COMPLETE))
 					})
 				})
 
 				It("should shut down tasks on drained nodes", func() {
 					s.View(func(tx store.ReadTx) {
-						node0Tasks, err := store.FindTasks(tx, store.ByNodeID(nodes[0].ID))
+						node0Tasks, err := store.FindTasks(tx, store.ByNodeID(nodes[0].Id))
 						Expect(err).ToNot(HaveOccurred())
-						Expect(node0Tasks[0].DesiredState).To(Equal(api.TaskStateShutdown))
+						Expect(node0Tasks[0].DesiredState).To(Equal(api.TaskState_SHUTDOWN))
 					})
 				})
 			})
@@ -415,12 +416,12 @@ var _ = Describe("Global Job Reconciler", func() {
 				})
 				It("should not create tasks for that node", func() {
 					s.View(func(tx store.ReadTx) {
-						node0Tasks, err := store.FindTasks(tx, store.ByNodeID(nodes[0].ID))
+						node0Tasks, err := store.FindTasks(tx, store.ByNodeID(nodes[0].Id))
 						Expect(err).ToNot(HaveOccurred())
 						Expect(node0Tasks).To(BeEmpty())
 
 						for _, node := range nodes[1:] {
-							tasks, err := store.FindTasks(tx, store.ByNodeID(node.ID))
+							tasks, err := store.FindTasks(tx, store.ByNodeID(node.Id))
 							Expect(err).ToNot(HaveOccurred())
 							Expect(tasks).To(HaveLen(1))
 						}
@@ -434,11 +435,11 @@ var _ = Describe("Global Job Reconciler", func() {
 	Describe("FixTask", func() {
 		It("should take no action if the task is already desired to be shutdown", func() {
 			task := &api.Task{
-				ID:           "someTask",
-				NodeID:       "someNode",
-				DesiredState: api.TaskStateShutdown,
-				Status: api.TaskStatus{
-					State: api.TaskStateShutdown,
+				Id:           "someTask",
+				NodeId:       "someNode",
+				DesiredState: api.TaskState_SHUTDOWN,
+				Status: &api.TaskStatus{
+					State: api.TaskState_SHUTDOWN,
 				},
 			}
 			err := s.Update(func(tx store.Tx) error {
@@ -457,11 +458,11 @@ var _ = Describe("Global Job Reconciler", func() {
 			// we can cover this case by just not creating the node, as a nil
 			// node is invalid and this isn't a test of InvalidNode
 			task := &api.Task{
-				ID:           "someTask",
-				NodeID:       "someNode",
-				DesiredState: api.TaskStateCompleted,
-				Status: api.TaskStatus{
-					State: api.TaskStateFailed,
+				Id:           "someTask",
+				NodeId:       "someNode",
+				DesiredState: api.TaskState_COMPLETE,
+				Status: &api.TaskStatus{
+					State: api.TaskState_FAILED,
 				},
 			}
 			err := s.Update(func(tx store.Tx) error {
@@ -475,8 +476,8 @@ var _ = Describe("Global Job Reconciler", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 			s.View(func(tx store.ReadTx) {
-				t := store.GetTask(tx, task.ID)
-				Expect(t.DesiredState).To(Equal(api.TaskStateShutdown))
+				t := store.GetTask(tx, task.Id)
+				Expect(t.DesiredState).To(Equal(api.TaskState_SHUTDOWN))
 			})
 		})
 	})

@@ -63,11 +63,11 @@ var (
 			}
 
 			spec := &api.NetworkSpec{
-				Annotations: api.Annotations{
+				Annotations: &api.Annotations{
 					Name: name,
 				},
 				DriverConfig: driver,
-				IPAM:         ipamOpts,
+				Ipam:         ipamOpts,
 			}
 
 			c, err := common.Dial(cmd)
@@ -78,7 +78,7 @@ var (
 			if err != nil {
 				return err
 			}
-			fmt.Println(r.Network.ID)
+			fmt.Println(r.Network.Id)
 			return nil
 		},
 	}

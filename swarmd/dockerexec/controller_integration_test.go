@@ -47,13 +47,13 @@ func TestControllerFlowIntegration(t *testing.T) {
 	available = append(available, genericresource.NewDiscrete("orange", 3))
 
 	task := &api.Task{
-		ID:        "dockerexec-integration-task-id",
-		ServiceID: "dockerexec-integration-service-id",
-		NodeID:    "dockerexec-integration-node-id",
-		ServiceAnnotations: api.Annotations{
+		Id:        "dockerexec-integration-task-id",
+		ServiceId: "dockerexec-integration-service-id",
+		NodeId:    "dockerexec-integration-node-id",
+		ServiceAnnotations: &api.Annotations{
 			Name: "dockerexec-integration",
 		},
-		Spec: api.TaskSpec{
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Command: []string{"sh", "-c", "sleep 5; echo $apple $orange; echo stderr >&2"},
@@ -65,16 +65,16 @@ func TestControllerFlowIntegration(t *testing.T) {
 	}
 
 	var receivedLogs bool
-	publisher := exec.LogPublisherFunc(func(ctx context.Context, message api.LogMessage) error {
+	publisher := exec.LogPublisherFunc(func(ctx context.Context, message *api.LogMessage) error {
 		receivedLogs = true
 		v1 := genericresource.Value(available[0])
 		v2 := genericresource.Value(available[1])
 		genericResourceString := v1 + " " + v2 + "\n"
 
 		switch message.Stream {
-		case api.LogStreamStdout:
+		case api.LogStream_LOG_STREAM_STDOUT:
 			assert.Equal(t, genericResourceString, string(message.Data))
-		case api.LogStreamStderr:
+		case api.LogStream_LOG_STREAM_STDERR:
 			assert.Equal(t, "stderr\n", string(message.Data))
 		}
 
@@ -87,7 +87,7 @@ func TestControllerFlowIntegration(t *testing.T) {
 	assert.NotNil(t, ctlr)
 	assert.NoError(t, ctlr.Prepare(ctx))
 	assert.NoError(t, ctlr.Start(ctx))
-	assert.NoError(t, ctlr.(exec.ControllerLogs).Logs(ctx, publisher, api.LogSubscriptionOptions{
+	assert.NoError(t, ctlr.(exec.ControllerLogs).Logs(ctx, publisher, &api.LogSubscriptionOptions{
 		Follow: true,
 	}))
 	assert.NoError(t, ctlr.Wait(ctx))

@@ -125,39 +125,39 @@ var _ = Describe("Manager", func() {
 
 			nodes = append(nodes,
 				&api.Node{
-					ID: "nodeID1",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Id: "nodeID1",
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "node1",
 						},
 					},
 					Description: &api.NodeDescription{
-						CSIInfo: []*api.NodeCSIInfo{
+						CsiInfo: []*api.NodeCSIInfo{
 							{
 								PluginName: "newPlugin",
-								NodeID:     "newPluginNode1",
+								NodeId:     "newPluginNode1",
 							}, {
 								PluginName: "differentPlugin",
-								NodeID:     "differentPluginNode1",
+								NodeId:     "differentPluginNode1",
 							},
 						},
 					},
 				},
 				&api.Node{
-					ID: "nodeID2",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Id: "nodeID2",
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "node2",
 						},
 					},
 					Description: &api.NodeDescription{
-						CSIInfo: []*api.NodeCSIInfo{
+						CsiInfo: []*api.NodeCSIInfo{
 							{
 								PluginName: "newPlugin",
-								NodeID:     "newPluginNode2",
+								NodeId:     "newPluginNode2",
 							}, {
 								PluginName: "differentPlugin",
-								NodeID:     "differentPluginNode2",
+								NodeId:     "differentPluginNode2",
 							},
 						},
 					},
@@ -166,9 +166,9 @@ var _ = Describe("Manager", func() {
 
 			volumes = append(volumes,
 				&api.Volume{
-					ID: "volumeID1",
-					Spec: api.VolumeSpec{
-						Annotations: api.Annotations{
+					Id: "volumeID1",
+					Spec: &api.VolumeSpec{
+						Annotations: &api.Annotations{
 							Name: "volume1",
 						},
 						Driver: &api.Driver{
@@ -177,9 +177,9 @@ var _ = Describe("Manager", func() {
 					},
 				},
 				&api.Volume{
-					ID: "volumeID2",
-					Spec: api.VolumeSpec{
-						Annotations: api.Annotations{
+					Id: "volumeID2",
+					Spec: &api.VolumeSpec{
+						Annotations: &api.Annotations{
 							Name: "volume2",
 						},
 						Driver: &api.Driver{
@@ -187,7 +187,7 @@ var _ = Describe("Manager", func() {
 						},
 					},
 					VolumeInfo: &api.VolumeInfo{
-						VolumeID: "volumePluginID",
+						VolumeId: "volumePluginID",
 					},
 				},
 			)
@@ -252,9 +252,9 @@ var _ = Describe("Manager", func() {
 		JustBeforeEach(func() {
 			vm.init(context.Background())
 			volume := &api.Volume{
-				ID: "someVolume",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Id: "someVolume",
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volumeName",
 					},
 					Driver: &api.Driver{
@@ -268,7 +268,7 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			vm.processVolume(ctx, volume.ID, 0)
+			vm.processVolume(ctx, volume.Id, 0)
 		})
 
 		It("should call the correct plugin to create volumes", func() {
@@ -284,7 +284,7 @@ var _ = Describe("Manager", func() {
 
 			Expect(v).ToNot(BeNil())
 			Expect(v.VolumeInfo).ToNot(BeNil())
-			Expect(v.VolumeInfo.VolumeID).To(Equal("csi_someVolume"))
+			Expect(v.VolumeInfo.VolumeId).To(Equal("csi_someVolume"))
 			Expect(v.VolumeInfo.VolumeContext).To(Equal(
 				map[string]string{"exists": "yes"},
 			))
@@ -314,47 +314,47 @@ var _ = Describe("Manager", func() {
 
 			nodes = append(nodes,
 				&api.Node{
-					ID: "nodeID1",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Id: "nodeID1",
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "node1",
 						},
 					},
 					Description: &api.NodeDescription{
-						CSIInfo: []*api.NodeCSIInfo{
+						CsiInfo: []*api.NodeCSIInfo{
 							{
 								PluginName: "newPlugin",
-								NodeID:     "newPluginNode1",
+								NodeId:     "newPluginNode1",
 							}, {
 								PluginName: "differentPlugin",
-								NodeID:     "differentPluginNode1",
+								NodeId:     "differentPluginNode1",
 							},
 						},
 					},
 				},
 				&api.Node{
-					ID: "nodeID2",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Id: "nodeID2",
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "node2",
 						},
 					},
 					Description: &api.NodeDescription{
-						CSIInfo: []*api.NodeCSIInfo{
+						CsiInfo: []*api.NodeCSIInfo{
 							{
 								PluginName: "newPlugin",
-								NodeID:     "newPluginNode2",
+								NodeId:     "newPluginNode2",
 							}, {
 								PluginName: "differentPlugin",
-								NodeID:     "differentPluginNode2",
+								NodeId:     "differentPluginNode2",
 							},
 						},
 					},
 				},
 				&api.Node{
-					ID: "nodeIDextra",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Id: "nodeIDextra",
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "nodeExtra",
 						},
 					},
@@ -369,20 +369,20 @@ var _ = Describe("Manager", func() {
 		It("should add new nodes to the plugins", func() {
 			err := s.Update(func(tx store.Tx) error {
 				return store.CreateNode(tx, &api.Node{
-					ID: "nodeID3",
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Id: "nodeID3",
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: "node3",
 						},
 					},
 					Description: &api.NodeDescription{
-						CSIInfo: []*api.NodeCSIInfo{
+						CsiInfo: []*api.NodeCSIInfo{
 							{
 								PluginName: "newPlugin",
-								NodeID:     "newPluginNode3",
+								NodeId:     "newPluginNode3",
 							}, {
 								PluginName: "differentPlugin",
-								NodeID:     "differentPluginNode3",
+								NodeId:     "differentPluginNode3",
 							},
 						},
 					},
@@ -392,7 +392,7 @@ var _ = Describe("Manager", func() {
 
 			passEvents(func(ev events.Event) bool {
 				e, ok := ev.(api.EventCreateNode)
-				return ok && e.Node.ID == "nodeID3"
+				return ok && e.Node.Id == "nodeID3"
 			})
 
 			Expect(pluginMaker.plugins["newPlugin"].swarmToCSI).To(SatisfyAll(
@@ -414,10 +414,10 @@ var _ = Describe("Manager", func() {
 			err := s.Update(func(tx store.Tx) error {
 				node := store.GetNode(tx, "nodeIDextra")
 				node.Description = &api.NodeDescription{
-					CSIInfo: []*api.NodeCSIInfo{
+					CsiInfo: []*api.NodeCSIInfo{
 						{
 							PluginName: "differentPlugin",
-							NodeID:     "differentPluginNodeExtra",
+							NodeId:     "differentPluginNodeExtra",
 						},
 					},
 				}
@@ -427,7 +427,7 @@ var _ = Describe("Manager", func() {
 
 			passEvents(func(ev events.Event) bool {
 				e, ok := ev.(api.EventUpdateNode)
-				return ok && e.Node.ID == "nodeIDextra"
+				return ok && e.Node.Id == "nodeIDextra"
 			})
 
 			Expect(pluginMaker.plugins["newPlugin"].swarmToCSI).To(SatisfyAll(
@@ -479,45 +479,45 @@ var _ = Describe("Manager", func() {
 
 			nodes = append(nodes,
 				&api.Node{
-					ID: "node1",
+					Id: "node1",
 					Description: &api.NodeDescription{
-						CSIInfo: []*api.NodeCSIInfo{
+						CsiInfo: []*api.NodeCSIInfo{
 							{
 								PluginName: "plug1",
-								NodeID:     "plug1Node1",
+								NodeId:     "plug1Node1",
 							},
 						},
 					},
 				},
 				&api.Node{
-					ID: "node2",
+					Id: "node2",
 					Description: &api.NodeDescription{
-						CSIInfo: []*api.NodeCSIInfo{
+						CsiInfo: []*api.NodeCSIInfo{
 							{
 								PluginName: "plug1",
-								NodeID:     "plug1Node2",
+								NodeId:     "plug1Node2",
 							},
 						},
 					},
 				},
 				&api.Node{
-					ID: "node3",
+					Id: "node3",
 					Description: &api.NodeDescription{
-						CSIInfo: []*api.NodeCSIInfo{
+						CsiInfo: []*api.NodeCSIInfo{
 							{
 								PluginName: "plug1",
-								NodeID:     "plug1Node3",
+								NodeId:     "plug1Node3",
 							},
 						},
 					},
 				},
 				&api.Node{
-					ID: "node4",
+					Id: "node4",
 					Description: &api.NodeDescription{
-						CSIInfo: []*api.NodeCSIInfo{
+						CsiInfo: []*api.NodeCSIInfo{
 							{
 								PluginName: "plug1",
-								NodeID:     "plug1Node4",
+								NodeId:     "plug1Node4",
 							},
 						},
 					},
@@ -525,9 +525,9 @@ var _ = Describe("Manager", func() {
 			)
 
 			v1 = &api.Volume{
-				ID: "volumeID1",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Id: "volumeID1",
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volume1",
 					},
 					Driver: &api.Driver{
@@ -536,21 +536,21 @@ var _ = Describe("Manager", func() {
 				},
 				VolumeInfo: &api.VolumeInfo{
 					VolumeContext: map[string]string{"foo": "bar"},
-					VolumeID:      "plug1VolID1",
+					VolumeId:      "plug1VolID1",
 				},
 				PublishStatus: []*api.VolumePublishStatus{
 					{
-						NodeID: "node1",
+						NodeId: "node1",
 						State:  api.VolumePublishStatus_PENDING_PUBLISH,
 					}, {
-						NodeID:         "node3",
+						NodeId:         "node3",
 						PublishContext: map[string]string{"unpublish": "thisone"},
 						State:          api.VolumePublishStatus_PENDING_UNPUBLISH,
 					}, {
-						NodeID: "node2",
+						NodeId: "node2",
 						State:  api.VolumePublishStatus_PENDING_PUBLISH,
 					}, {
-						NodeID:         "node4",
+						NodeId:         "node4",
 						PublishContext: map[string]string{"unpublish": "thisone"},
 						State:          api.VolumePublishStatus_PENDING_UNPUBLISH,
 					},
@@ -570,7 +570,7 @@ var _ = Describe("Manager", func() {
 		})
 
 		It("should call ControllerPublishVolume for each pending PublishStatus", func() {
-			vm.processVolume(ctx, v1.ID, 0)
+			vm.processVolume(ctx, v1.Id, 0)
 
 			// node1 and node2 should be published, and node3 and node4 should
 			// be deleted
@@ -584,12 +584,12 @@ var _ = Describe("Manager", func() {
 					},
 					ConsistOf(
 						&api.VolumePublishStatus{
-							NodeID:         "node1",
+							NodeId:         "node1",
 							State:          api.VolumePublishStatus_PUBLISHED,
 							PublishContext: map[string]string{"faked": "yeah"},
 						},
 						&api.VolumePublishStatus{
-							NodeID:         "node2",
+							NodeId:         "node2",
 							State:          api.VolumePublishStatus_PUBLISHED,
 							PublishContext: map[string]string{"faked": "yeah"},
 						},
@@ -598,16 +598,16 @@ var _ = Describe("Manager", func() {
 			}
 
 			s.View(func(tx store.ReadTx) {
-				v1 = store.GetVolume(tx, v1.ID)
+				v1 = store.GetVolume(tx, v1.Id)
 			})
 			Expect(v1).To(haveBeenPublished())
 
 			// verify, additionally, that ControllerPublishVolume has actually
 			// been called
-			Expect(pluginMaker.plugins["plug1"].volumesPublished[v1.ID]).To(
+			Expect(pluginMaker.plugins["plug1"].volumesPublished[v1.Id]).To(
 				ConsistOf("node1", "node2"),
 			)
-			Expect(pluginMaker.plugins["plug1"].volumesUnpublished[v1.ID]).To(
+			Expect(pluginMaker.plugins["plug1"].volumesUnpublished[v1.Id]).To(
 				ConsistOf("node3", "node4"),
 			)
 
@@ -623,7 +623,7 @@ var _ = Describe("Manager", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			vm.processVolume(ctx, v1.ID, 0)
+			vm.processVolume(ctx, v1.Id, 0)
 
 			By("still updating and committing the volume to the store")
 			var (
@@ -632,13 +632,13 @@ var _ = Describe("Manager", func() {
 			)
 
 			s.View(func(tx store.ReadTx) {
-				updatedVolume = store.GetVolume(tx, v1.ID)
+				updatedVolume = store.GetVolume(tx, v1.Id)
 			})
 			Expect(updatedVolume).ToNot(BeNil())
 			Expect(updatedVolume.PublishStatus).To(HaveLen(3))
 
 			for _, status := range updatedVolume.PublishStatus {
-				switch status.NodeID {
+				switch status.NodeId {
 				case "node1":
 					nodeStatus1 = status
 				case "node2":
@@ -681,18 +681,18 @@ var _ = Describe("Manager", func() {
 			// do creation after initialization to avoid init enqueuing the
 			// volume
 			volume := &api.Volume{
-				ID: "volumeID",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Id: "volumeID",
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volumeName",
 					},
 					Driver: &api.Driver{
 						Name: "plug",
 					},
-					Availability: api.VolumeAvailabilityDrain,
+					Availability: api.VolumeSpec_DRAIN,
 				},
 				VolumeInfo: &api.VolumeInfo{
-					VolumeID: "plugID",
+					VolumeId: "plugID",
 				},
 			}
 

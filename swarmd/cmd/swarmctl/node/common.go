@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
@@ -34,7 +33,7 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 	if err != nil {
 		return err
 	}
-	spec := &node.Spec
+	spec := node.Spec
 
 	if spec.Availability == availability {
 		return errNoChange
@@ -43,8 +42,8 @@ func changeNodeAvailability(cmd *cobra.Command, args []string, availability api.
 	spec.Availability = availability
 
 	_, err = c.UpdateNode(common.Context(cmd), &api.UpdateNodeRequest{
-		NodeID:      node.ID,
-		NodeVersion: &node.Meta.Version,
+		NodeId:      node.Id,
+		NodeVersion: node.Meta.Version,
 		Spec:        spec,
 	})
 
@@ -68,7 +67,7 @@ func changeNodeRole(cmd *cobra.Command, args []string, role api.NodeRole) error 
 	if err != nil {
 		return err
 	}
-	spec := &node.Spec
+	spec := node.Spec
 
 	if spec.DesiredRole == role {
 		return errNoChange
@@ -77,8 +76,8 @@ func changeNodeRole(cmd *cobra.Command, args []string, role api.NodeRole) error 
 	spec.DesiredRole = role
 
 	_, err = c.UpdateNode(common.Context(cmd), &api.UpdateNodeRequest{
-		NodeID:      node.ID,
-		NodeVersion: &node.Meta.Version,
+		NodeId:      node.Id,
+		NodeVersion: node.Meta.Version,
 		Spec:        spec,
 	})
 
@@ -87,7 +86,7 @@ func changeNodeRole(cmd *cobra.Command, args []string, role api.NodeRole) error 
 
 func getNode(ctx context.Context, c api.ControlClient, input string) (*api.Node, error) {
 	// GetNode to match via full ID.
-	rg, err := c.GetNode(ctx, &api.GetNodeRequest{NodeID: input})
+	rg, err := c.GetNode(ctx, &api.GetNodeRequest{NodeId: input})
 	if err != nil {
 		// If any error (including NotFound), ListServices to match via full name.
 		rl, err := c.ListNodes(ctx,
@@ -147,17 +146,17 @@ func updateNode(cmd *cobra.Command, args []string) error {
 			if len(parts) != 2 {
 				return fmt.Errorf("malformed label for node %s", l)
 			}
-			spec.Annotations.Labels[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+			spec.GetAnnotations().GetLabels()[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 		}
 	}
 
-	if reflect.DeepEqual(spec, &node.Spec) {
+	if spec.EqualVT(node.Spec) {
 		return errNoChange
 	}
 
 	_, err = c.UpdateNode(common.Context(cmd), &api.UpdateNodeRequest{
-		NodeID:      node.ID,
-		NodeVersion: &node.Meta.Version,
+		NodeId:      node.Id,
+		NodeVersion: node.Meta.Version,
 		Spec:        spec,
 	})
 

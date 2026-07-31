@@ -39,13 +39,12 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 		return nil, err
 	}
 
-	plugins := map[api.PluginDescription]struct{}{}
+	// api.PluginDescription is a protobuf message, which cannot be a map key.
+	type pluginKey struct{ typ, name string }
+	plugins := map[pluginKey]struct{}{}
 	addPlugins := func(typ string, names []string) {
 		for _, name := range names {
-			plugins[api.PluginDescription{
-				Type: typ,
-				Name: name,
-			}] = struct{}{}
+			plugins[pluginKey{typ: typ, name: name}] = struct{}{}
 		}
 	}
 
@@ -71,18 +70,15 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 					} else if typ.Capability == "networkdriver" {
 						plgnTyp = "Network"
 					}
-					plugins[api.PluginDescription{
-						Type: plgnTyp,
-						Name: plgn.Name,
-					}] = struct{}{}
+					plugins[pluginKey{typ: plgnTyp, name: plgn.Name}] = struct{}{}
 				}
 			}
 		}
 	}
 
-	pluginFields := make([]api.PluginDescription, 0, len(plugins))
+	pluginFields := make([]*api.PluginDescription, 0, len(plugins))
 	for k := range plugins {
-		pluginFields = append(pluginFields, k)
+		pluginFields = append(pluginFields, &api.PluginDescription{Type: k.typ, Name: k.name})
 	}
 	sort.Sort(sortedPlugins(pluginFields))
 
@@ -101,7 +97,7 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 		Hostname: info.Name,
 		Platform: &api.Platform{
 			Architecture: info.Architecture,
-			OS:           info.OSType,
+			Os:           info.OSType,
 		},
 		Engine: &api.EngineDescription{
 			EngineVersion: info.ServerVersion,
@@ -109,7 +105,7 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 			Plugins:       pluginFields,
 		},
 		Resources: &api.Resources{
-			NanoCPUs:    int64(info.NCPU) * 1e9,
+			NanoCpus:    int64(info.NCPU) * 1e9,
 			MemoryBytes: info.MemTotal,
 			Generic:     e.genericResources,
 		},
@@ -149,7 +145,7 @@ func (e *executor) Secrets() exec.SecretsManager {
 	return e.secrets
 }
 
-type sortedPlugins []api.PluginDescription
+type sortedPlugins []*api.PluginDescription
 
 func (sp sortedPlugins) Len() int { return len(sp) }
 

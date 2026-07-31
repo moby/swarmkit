@@ -36,10 +36,8 @@ func TestStoragePutGet(t *testing.T) {
 	tasks := genTasks(20)
 
 	assert.NoError(t, db.Update(func(tx *bolt.Tx) error {
-		for i, task := range tasks {
+		for _, task := range tasks {
 			assert.NoError(t, PutTask(tx, task))
-			// remove status to make comparison work
-			tasks[i].Status = api.TaskStatus{}
 		}
 
 		return nil
@@ -47,9 +45,12 @@ func TestStoragePutGet(t *testing.T) {
 
 	assert.NoError(t, db.View(func(tx *bolt.Tx) error {
 		for _, task := range tasks {
-			retrieved, err := GetTask(tx, task.ID)
+			retrieved, err := GetTask(tx, task.Id)
 			assert.NoError(t, err)
-			assert.Equal(t, task, retrieved)
+			// PutTask stores the task with its status blanked out.
+			want := task.Copy()
+			want.Status = nil
+			assert.True(t, want.EqualVT(retrieved), "task %s round-tripped unequal", task.Id)
 		}
 
 		return nil
@@ -66,8 +67,8 @@ func TestStoragePutGetStatusAssigned(t *testing.T) {
 	assert.NoError(t, db.Update(func(tx *bolt.Tx) error {
 		for _, task := range tasks {
 			assert.NoError(t, PutTask(tx, task))
-			assert.NoError(t, PutTaskStatus(tx, task.ID, &task.Status))
-			assert.NoError(t, SetTaskAssignment(tx, task.ID, true))
+			assert.NoError(t, PutTaskStatus(tx, task.Id, task.Status))
+			assert.NoError(t, SetTaskAssignment(tx, task.Id, true))
 		}
 
 		return nil
@@ -75,17 +76,20 @@ func TestStoragePutGetStatusAssigned(t *testing.T) {
 
 	assert.NoError(t, db.View(func(tx *bolt.Tx) error {
 		for _, task := range tasks {
-			status, err := GetTaskStatus(tx, task.ID)
+			status, err := GetTaskStatus(tx, task.Id)
 			assert.NoError(t, err)
-			assert.Equal(t, &task.Status, status)
+			assert.True(t, task.Status.EqualVT(status), "status for %s round-tripped unequal", task.Id)
 
-			retrieved, err := GetTask(tx, task.ID)
+			retrieved, err := GetTask(tx, task.Id)
 			assert.NoError(t, err)
 
-			task.Status = api.TaskStatus{}
-			assert.Equal(t, task, retrieved)
+			// PutTask stores the task with its status blanked out. Compare
+			// against a copy: the status is still needed below.
+			want := task.Copy()
+			want.Status = nil
+			assert.True(t, want.EqualVT(retrieved), "task %s round-tripped unequal", task.Id)
 
-			assert.True(t, TaskAssigned(tx, task.ID))
+			assert.True(t, TaskAssigned(tx, task.Id))
 		}
 
 		return nil
@@ -95,10 +99,10 @@ func TestStoragePutGetStatusAssigned(t *testing.T) {
 	assert.NoError(t, db.Update(func(tx *bolt.Tx) error {
 		for i, task := range tasks {
 			task.Status.State++
-			assert.NoError(t, PutTaskStatus(tx, task.ID, &task.Status))
+			assert.NoError(t, PutTaskStatus(tx, task.Id, task.Status))
 
 			if i%2 == 0 {
-				assert.NoError(t, SetTaskAssignment(tx, task.ID, false))
+				assert.NoError(t, SetTaskAssignment(tx, task.Id, false))
 			}
 		}
 
@@ -107,20 +111,23 @@ func TestStoragePutGetStatusAssigned(t *testing.T) {
 
 	assert.NoError(t, db.View(func(tx *bolt.Tx) error {
 		for i, task := range tasks {
-			status, err := GetTaskStatus(tx, task.ID)
+			status, err := GetTaskStatus(tx, task.Id)
 			assert.NoError(t, err)
-			assert.Equal(t, &task.Status, status)
+			assert.True(t, task.Status.EqualVT(status), "status for %s round-tripped unequal", task.Id)
 
-			retrieved, err := GetTask(tx, task.ID)
+			retrieved, err := GetTask(tx, task.Id)
 			assert.NoError(t, err)
 
-			task.Status = api.TaskStatus{}
-			assert.Equal(t, task, retrieved)
+			// PutTask stores the task with its status blanked out. Compare
+			// against a copy: the status is still needed below.
+			want := task.Copy()
+			want.Status = nil
+			assert.True(t, want.EqualVT(retrieved), "task %s round-tripped unequal", task.Id)
 
 			if i%2 == 0 {
-				assert.False(t, TaskAssigned(tx, task.ID))
+				assert.False(t, TaskAssigned(tx, task.Id))
 			} else {
-				assert.True(t, TaskAssigned(tx, task.ID))
+				assert.True(t, TaskAssigned(tx, task.Id))
 			}
 
 		}
@@ -142,10 +149,10 @@ func genTasks(n int) []*api.Task {
 
 func genTask() *api.Task {
 	return &api.Task{
-		ID:        identity.NewID(),
-		ServiceID: identity.NewID(),
-		Status:    *genTaskStatus(),
-		Spec: api.TaskSpec{
+		Id:        identity.NewID(),
+		ServiceId: identity.NewID(),
+		Status:    genTaskStatus(),
+		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image:   "foo",
@@ -157,11 +164,11 @@ func genTask() *api.Task {
 }
 
 var taskStates = []api.TaskState{
-	api.TaskStateAssigned, api.TaskStateAccepted,
-	api.TaskStatePreparing, api.TaskStateReady,
-	api.TaskStateStarting, api.TaskStateRunning,
-	api.TaskStateCompleted, api.TaskStateFailed,
-	api.TaskStateRejected, api.TaskStateShutdown,
+	api.TaskState_ASSIGNED, api.TaskState_ACCEPTED,
+	api.TaskState_PREPARING, api.TaskState_READY,
+	api.TaskState_STARTING, api.TaskState_RUNNING,
+	api.TaskState_COMPLETE, api.TaskState_FAILED,
+	api.TaskState_REJECTED, api.TaskState_SHUTDOWN,
 }
 
 func genTaskStatus() *api.TaskStatus {
@@ -196,5 +203,5 @@ func storageTestEnv(t *testing.T) (*bolt.DB, func()) {
 type tasksByID []*api.Task
 
 func (ts tasksByID) Len() int           { return len(ts) }
-func (ts tasksByID) Less(i, j int) bool { return ts[i].ID < ts[j].ID }
+func (ts tasksByID) Less(i, j int) bool { return ts[i].Id < ts[j].Id }
 func (ts tasksByID) Swap(i, j int)      { ts[i], ts[j] = ts[j], ts[i] }

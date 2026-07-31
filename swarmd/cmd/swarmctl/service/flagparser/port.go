@@ -32,7 +32,7 @@ func parsePorts(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			PublishedPort: swarmPort,
 			// In swarmctl all ports are by default
 			// PublishModeHost
-			PublishMode: api.PublishModeHost,
+			PublishMode: api.PortConfig_HOST,
 		})
 	}
 
@@ -44,7 +44,7 @@ func parsePorts(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 }
 
 func parsePortConfig(portConfig string) (string, api.PortConfig_Protocol, uint32, uint32, error) {
-	protocol := api.ProtocolTCP
+	protocol := api.PortConfig_TCP
 	parts := strings.Split(portConfig, ":")
 	if len(parts) < 2 {
 		return "", protocol, 0, 0, errors.New("insufficient parameters in port configuration")
@@ -95,5 +95,5 @@ func parsePortSpec(portSpec string) (api.PortConfig_Protocol, uint32, error) {
 		return api.PortConfig_Protocol(protocol), uint32(port), nil
 	}
 
-	return api.ProtocolTCP, uint32(port), nil
+	return api.PortConfig_TCP, uint32(port), nil
 }

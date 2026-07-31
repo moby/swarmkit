@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/testutils"
 	"github.com/moby/swarmkit/v2/manager/state"
@@ -14,57 +13,58 @@ import (
 	"github.com/moby/swarmkit/v2/protobuf/ptypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 )
 
 var (
 	node1 = &api.Node{
-		ID: "nodeid1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Id: "nodeid1",
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Availability: api.NodeAvailabilityActive,
+			Availability: api.NodeSpec_ACTIVE,
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Description: &api.NodeDescription{
 			Hostname: "name1",
 		},
-		Role: api.NodeRoleWorker,
+		Role: api.NodeRole_WORKER,
 	}
 	node2 = &api.Node{
-		ID: "nodeid2",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Id: "nodeid2",
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "name2",
 			},
-			Availability: api.NodeAvailabilityActive,
+			Availability: api.NodeSpec_ACTIVE,
 		},
-		Status: api.NodeStatus{
+		Status: &api.NodeStatus{
 			State: api.NodeStatus_READY,
 		},
 		Description: &api.NodeDescription{
 			Hostname: "name2",
 		},
-		Role: api.NodeRoleWorker,
+		Role: api.NodeRole_WORKER,
 	}
 
 	restartDelay = 50 * time.Millisecond
 
 	service1 = &api.Service{
-		ID: "serviceid1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "serviceid1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Condition: api.RestartPolicy_ANY,
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
 			Mode: &api.ServiceSpec_Global{
@@ -74,12 +74,12 @@ var (
 	}
 
 	service2 = &api.Service{
-		ID: "serviceid2",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "serviceid2",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name2",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
@@ -91,17 +91,17 @@ var (
 	}
 
 	serviceNoRestart = &api.Service{
-		ID: "serviceid3",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "serviceid3",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "norestart",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnNone,
+					Condition: api.RestartPolicy_NONE,
 				},
 			},
 			Mode: &api.ServiceSpec_Global{
@@ -143,9 +143,9 @@ func TestSetup(t *testing.T) {
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
 
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
-	assert.Equal(t, observedTask1.NodeID, "nodeid1")
+	assert.Equal(t, observedTask1.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask1.GetServiceAnnotations().GetName(), "name1")
+	assert.Equal(t, observedTask1.NodeId, "nodeid1")
 }
 
 func TestAddNode(t *testing.T) {
@@ -163,9 +163,9 @@ func TestAddNode(t *testing.T) {
 
 	addNode(t, store, node2)
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
-	assert.Equal(t, observedTask2.NodeID, "nodeid2")
+	assert.Equal(t, observedTask2.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask2.GetServiceAnnotations().GetName(), "name1")
+	assert.Equal(t, observedTask2.NodeId, "nodeid2")
 }
 
 func TestDeleteNode(t *testing.T) {
@@ -184,8 +184,8 @@ func TestDeleteNode(t *testing.T) {
 	deleteNode(t, store, node1)
 	// task should be set to dead
 	observedTask := testutils.WatchTaskDelete(t, watch)
-	assert.Equal(t, observedTask.ServiceAnnotations.Name, "name1")
-	assert.Equal(t, observedTask.NodeID, "nodeid1")
+	assert.Equal(t, observedTask.GetServiceAnnotations().GetName(), "name1")
+	assert.Equal(t, observedTask.NodeId, "nodeid1")
 }
 
 func TestNodeAvailability(t *testing.T) {
@@ -204,12 +204,12 @@ func TestNodeAvailability(t *testing.T) {
 	testutils.WatchTaskCreate(t, watch)
 
 	// set node1 to drain
-	updateNodeAvailability(t, store, node1, api.NodeAvailabilityDrain)
+	updateNodeAvailability(t, store, node1, api.NodeSpec_DRAIN)
 
 	// task should be set to dead
 	observedTask1 := testutils.WatchShutdownTask(t, watch)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
-	assert.Equal(t, observedTask1.NodeID, "nodeid1")
+	assert.Equal(t, observedTask1.GetServiceAnnotations().GetName(), "name1")
+	assert.Equal(t, observedTask1.NodeId, "nodeid1")
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	// updating the service shouldn't restart the task
@@ -223,21 +223,21 @@ func TestNodeAvailability(t *testing.T) {
 	}
 
 	// set node1 to active
-	updateNodeAvailability(t, store, node1, api.NodeAvailabilityActive)
+	updateNodeAvailability(t, store, node1, api.NodeSpec_ACTIVE)
 	// task should be added back
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
-	assert.Equal(t, observedTask2.NodeID, "nodeid1")
+	assert.Equal(t, observedTask2.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask2.GetServiceAnnotations().GetName(), "name1")
+	assert.Equal(t, observedTask2.NodeId, "nodeid1")
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	// set node1 to pause
-	updateNodeAvailability(t, store, node1, api.NodeAvailabilityPause)
+	updateNodeAvailability(t, store, node1, api.NodeSpec_PAUSE)
 
 	failTask(t, store, observedTask2)
 	observedTask3 := testutils.WatchShutdownTask(t, watch)
-	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
-	assert.Equal(t, observedTask3.NodeID, "nodeid1")
+	assert.Equal(t, observedTask3.GetServiceAnnotations().GetName(), "name1")
+	assert.Equal(t, observedTask3.NodeId, "nodeid1")
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	// updating the service shouldn't restart the task
@@ -272,8 +272,8 @@ func TestNodeState(t *testing.T) {
 
 	// task should be set to dead
 	observedTask1 := testutils.WatchShutdownTask(t, watch)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
-	assert.Equal(t, observedTask1.NodeID, "nodeid1")
+	assert.Equal(t, observedTask1.GetServiceAnnotations().GetName(), "name1")
+	assert.Equal(t, observedTask1.NodeId, "nodeid1")
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	// updating the service shouldn't restart the task
@@ -290,9 +290,9 @@ func TestNodeState(t *testing.T) {
 	updateNodeState(t, store, node1, api.NodeStatus_READY)
 	// task should be added back
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
-	assert.Equal(t, observedTask2.NodeID, "nodeid1")
+	assert.Equal(t, observedTask2.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask2.GetServiceAnnotations().GetName(), "name1")
+	assert.Equal(t, observedTask2.NodeId, "nodeid1")
 }
 
 func TestAddService(t *testing.T) {
@@ -310,9 +310,9 @@ func TestAddService(t *testing.T) {
 
 	addService(t, store, service2)
 	observedTask := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.ServiceAnnotations.Name, "name2")
-	assert.True(t, observedTask.NodeID == "nodeid1")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.GetServiceAnnotations().GetName(), "name2")
+	assert.True(t, observedTask.NodeId == "nodeid1")
 }
 
 func TestDeleteService(t *testing.T) {
@@ -331,8 +331,8 @@ func TestDeleteService(t *testing.T) {
 	deleteService(t, store, service1)
 	// task should be deleted
 	observedTask := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask.ServiceAnnotations.Name, "name1")
-	assert.Equal(t, observedTask.NodeID, "nodeid1")
+	assert.Equal(t, observedTask.GetServiceAnnotations().GetName(), "name1")
+	assert.Equal(t, observedTask.NodeId, "nodeid1")
 }
 
 func TestRemoveTask(t *testing.T) {
@@ -351,9 +351,9 @@ func TestRemoveTask(t *testing.T) {
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
 	testutils.Expect(t, watch, state.EventCommit{})
 
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
-	assert.Equal(t, observedTask1.NodeID, "nodeid1")
+	assert.Equal(t, observedTask1.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask1.GetServiceAnnotations().GetName(), "name1")
+	assert.Equal(t, observedTask1.NodeId, "nodeid1")
 
 	deleteTask(t, store, observedTask1)
 	testutils.Expect(t, watch, api.EventDeleteTask{})
@@ -383,9 +383,9 @@ func TestTaskFailure(t *testing.T) {
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
 
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
-	assert.Equal(t, observedTask1.NodeID, "nodeid1")
+	assert.Equal(t, observedTask1.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask1.GetServiceAnnotations().GetName(), "name1")
+	assert.Equal(t, observedTask1.NodeId, "nodeid1")
 
 	failTask(t, store, observedTask1)
 
@@ -393,9 +393,9 @@ func TestTaskFailure(t *testing.T) {
 
 	// the task should be recreated
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
-	assert.Equal(t, observedTask2.NodeID, "nodeid1")
+	assert.Equal(t, observedTask2.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask2.GetServiceAnnotations().GetName(), "name1")
+	assert.Equal(t, observedTask2.NodeId, "nodeid1")
 	testutils.Expect(t, watch, state.EventCommit{})
 	testutils.Expect(t, watch, api.EventUpdateTask{}) // ready->running
 	testutils.Expect(t, watch, state.EventCommit{})
@@ -406,16 +406,16 @@ func TestTaskFailure(t *testing.T) {
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	observedTask3 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "norestart")
-	assert.Equal(t, observedTask3.NodeID, "nodeid1")
+	assert.Equal(t, observedTask3.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask3.GetServiceAnnotations().GetName(), "norestart")
+	assert.Equal(t, observedTask3.NodeId, "nodeid1")
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	failTask(t, store, observedTask3)
 	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
 	observedTask4 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask4.DesiredState, api.TaskStateShutdown)
+	assert.Equal(t, observedTask4.DesiredState, api.TaskState_SHUTDOWN)
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	// the task should not be recreated
@@ -443,9 +443,9 @@ func TestTaskFailure(t *testing.T) {
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	observedTask5 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask5.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask5.ServiceAnnotations.Name, "norestart")
-	assert.Equal(t, observedTask5.NodeID, "nodeid1")
+	assert.Equal(t, observedTask5.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask5.GetServiceAnnotations().GetName(), "norestart")
+	assert.Equal(t, observedTask5.NodeId, "nodeid1")
 	testutils.Expect(t, watch, state.EventCommit{})
 }
 
@@ -458,10 +458,10 @@ func addService(t *testing.T, s *store.MemoryStore, service *api.Service) {
 
 func updateService(t *testing.T, s *store.MemoryStore, service *api.Service, force bool) {
 	s.Update(func(tx store.Tx) error {
-		service := store.GetService(tx, service.ID)
+		service := store.GetService(tx, service.Id)
 		require.NotNil(t, service)
 		if force {
-			service.Spec.Task.ForceUpdate++
+			service.Spec.GetTask().ForceUpdate++
 		}
 		assert.NoError(t, store.UpdateService(tx, service))
 		return nil
@@ -470,7 +470,7 @@ func updateService(t *testing.T, s *store.MemoryStore, service *api.Service, for
 
 func deleteService(t *testing.T, s *store.MemoryStore, service *api.Service) {
 	s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteService(tx, service.ID))
+		assert.NoError(t, store.DeleteService(tx, service.Id))
 		return nil
 	})
 }
@@ -484,7 +484,7 @@ func addNode(t *testing.T, s *store.MemoryStore, node *api.Node) {
 
 func updateNodeAvailability(t *testing.T, s *store.MemoryStore, node *api.Node, avail api.NodeSpec_Availability) {
 	s.Update(func(tx store.Tx) error {
-		node := store.GetNode(tx, node.ID)
+		node := store.GetNode(tx, node.Id)
 		require.NotNil(t, node)
 		node.Spec.Availability = avail
 		assert.NoError(t, store.UpdateNode(tx, node))
@@ -494,7 +494,7 @@ func updateNodeAvailability(t *testing.T, s *store.MemoryStore, node *api.Node, 
 
 func updateNodeState(t *testing.T, s *store.MemoryStore, node *api.Node, state api.NodeStatus_State) {
 	s.Update(func(tx store.Tx) error {
-		node := store.GetNode(tx, node.ID)
+		node := store.GetNode(tx, node.Id)
 		require.NotNil(t, node)
 		node.Status.State = state
 		assert.NoError(t, store.UpdateNode(tx, node))
@@ -504,7 +504,7 @@ func updateNodeState(t *testing.T, s *store.MemoryStore, node *api.Node, state a
 
 func deleteNode(t *testing.T, s *store.MemoryStore, node *api.Node) {
 	s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteNode(tx, node.ID))
+		assert.NoError(t, store.DeleteNode(tx, node.Id))
 		return nil
 	})
 }
@@ -518,16 +518,16 @@ func addTask(t *testing.T, s *store.MemoryStore, task *api.Task) {
 
 func deleteTask(t *testing.T, s *store.MemoryStore, task *api.Task) {
 	s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteTask(tx, task.ID))
+		assert.NoError(t, store.DeleteTask(tx, task.Id))
 		return nil
 	})
 }
 
 func failTask(t *testing.T, s *store.MemoryStore, task *api.Task) {
 	s.Update(func(tx store.Tx) error {
-		task := store.GetTask(tx, task.ID)
+		task := store.GetTask(tx, task.Id)
 		require.NotNil(t, task)
-		task.Status.State = api.TaskStateFailed
+		task.Status.State = api.TaskState_FAILED
 		assert.NoError(t, store.UpdateTask(tx, task))
 		return nil
 	})
@@ -546,26 +546,26 @@ func TestInitializationRejectedTasks(t *testing.T) {
 	tasks := []*api.Task{
 		// nodeid1 has a rejected task for serviceid1
 		{
-			ID:           "task1",
+			Id:           "task1",
 			Slot:         0,
-			DesiredState: api.TaskStateReady,
-			Status: api.TaskStatus{
-				State: api.TaskStateRejected,
+			DesiredState: api.TaskState_READY,
+			Status: &api.TaskStatus{
+				State: api.TaskState_REJECTED,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Condition: api.RestartPolicy_ANY,
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task1",
 			},
-			ServiceID: "serviceid1",
-			NodeID:    "nodeid1",
+			ServiceId: "serviceid1",
+			NodeId:    "nodeid1",
 		},
 	}
 	for _, task := range tasks {
@@ -584,14 +584,14 @@ func TestInitializationRejectedTasks(t *testing.T) {
 	})
 
 	observedTask1 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask1.ID, "task1")
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateRejected)
-	assert.Equal(t, observedTask1.DesiredState, api.TaskStateShutdown)
+	assert.Equal(t, observedTask1.Id, "task1")
+	assert.Equal(t, observedTask1.Status.GetState(), api.TaskState_REJECTED)
+	assert.Equal(t, observedTask1.DesiredState, api.TaskState_SHUTDOWN)
 
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask2.NodeID, "nodeid1")
-	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.DesiredState, api.TaskStateReady)
+	assert.Equal(t, observedTask2.NodeId, "nodeid1")
+	assert.Equal(t, observedTask2.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask2.DesiredState, api.TaskState_READY)
 }
 
 func TestInitializationFailedTasks(t *testing.T) {
@@ -608,27 +608,27 @@ func TestInitializationFailedTasks(t *testing.T) {
 	tasks := []*api.Task{
 		// nodeid1 has a failed task for serviceid1
 		{
-			ID:           "task1",
+			Id:           "task1",
 			Slot:         0,
-			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
-				State:     api.TaskStateFailed,
+			DesiredState: api.TaskState_RUNNING,
+			Status: &api.TaskStatus{
+				State:     api.TaskState_FAILED,
 				Timestamp: ptypes.MustTimestampProto(before),
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Condition: api.RestartPolicy_ANY,
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task1",
 			},
-			ServiceID: "serviceid1",
-			NodeID:    "nodeid1",
+			ServiceId: "serviceid1",
+			NodeId:    "nodeid1",
 		},
 	}
 	for _, task := range tasks {
@@ -647,19 +647,19 @@ func TestInitializationFailedTasks(t *testing.T) {
 	})
 
 	observedTask1 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask1.ID, "task1")
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateFailed)
-	assert.Equal(t, observedTask1.DesiredState, api.TaskStateShutdown)
+	assert.Equal(t, observedTask1.Id, "task1")
+	assert.Equal(t, observedTask1.Status.GetState(), api.TaskState_FAILED)
+	assert.Equal(t, observedTask1.DesiredState, api.TaskState_SHUTDOWN)
 
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask2.NodeID, "nodeid1")
-	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.DesiredState, api.TaskStateReady)
+	assert.Equal(t, observedTask2.NodeId, "nodeid1")
+	assert.Equal(t, observedTask2.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask2.DesiredState, api.TaskState_READY)
 
 	observedTask3 := testutils.WatchTaskUpdate(t, watch)
 	after := time.Now()
-	assert.Equal(t, observedTask3.NodeID, "nodeid1")
-	assert.Equal(t, observedTask3.DesiredState, api.TaskStateRunning)
+	assert.Equal(t, observedTask3.NodeId, "nodeid1")
+	assert.Equal(t, observedTask3.DesiredState, api.TaskState_RUNNING)
 
 	if after.Sub(before) < restartDelay {
 		t.Fatalf("restart delay should have elapsed. Got: %v", after.Sub(before))
@@ -679,48 +679,48 @@ func TestInitializationExtraTask(t *testing.T) {
 	tasks := []*api.Task{
 		// nodeid1 has 2 tasks for serviceid1
 		{
-			ID:           "task1",
+			Id:           "task1",
 			Slot:         0,
-			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			DesiredState: api.TaskState_RUNNING,
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Condition: api.RestartPolicy_ANY,
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task1",
 			},
-			ServiceID: "serviceid1",
-			NodeID:    "nodeid1",
+			ServiceId: "serviceid1",
+			NodeId:    "nodeid1",
 		},
 		{
-			ID:           "task2",
+			Id:           "task2",
 			Slot:         0,
-			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			DesiredState: api.TaskState_RUNNING,
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Condition: api.RestartPolicy_ANY,
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task2",
 			},
-			ServiceID: "serviceid1",
-			NodeID:    "nodeid1",
+			ServiceId: "serviceid1",
+			NodeId:    "nodeid1",
 		},
 	}
 	for _, task := range tasks {
@@ -739,9 +739,9 @@ func TestInitializationExtraTask(t *testing.T) {
 	})
 
 	observedTask1 := testutils.WatchTaskUpdate(t, watch)
-	assert.True(t, observedTask1.ID == "task1" || observedTask1.ID == "task2")
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateRunning)
-	assert.Equal(t, observedTask1.DesiredState, api.TaskStateShutdown)
+	assert.True(t, observedTask1.Id == "task1" || observedTask1.Id == "task2")
+	assert.Equal(t, observedTask1.Status.GetState(), api.TaskState_RUNNING)
+	assert.Equal(t, observedTask1.DesiredState, api.TaskState_SHUTDOWN)
 
 	var deadCnt, liveCnt int
 	var err error
@@ -749,11 +749,11 @@ func TestInitializationExtraTask(t *testing.T) {
 		var tasks []*api.Task
 		tasks, err = store.FindTasks(readTx, store.ByServiceID("serviceid1"))
 		for _, task := range tasks {
-			if task.DesiredState == api.TaskStateShutdown {
-				assert.Equal(t, task.ID, observedTask1.ID)
+			if task.DesiredState == api.TaskState_SHUTDOWN {
+				assert.Equal(t, task.Id, observedTask1.Id)
 				deadCnt++
 			} else {
-				assert.Equal(t, task.DesiredState, api.TaskStateRunning)
+				assert.Equal(t, task.DesiredState, api.TaskState_RUNNING)
 				liveCnt++
 			}
 		}
@@ -777,30 +777,30 @@ func TestInitializationMultipleServices(t *testing.T) {
 	tasks := []*api.Task{
 		// nodeid1 has 1 task for serviceid1 and 1 task for serviceid2
 		{
-			ID:           "task1",
-			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			Id:           "task1",
+			DesiredState: api.TaskState_RUNNING,
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			Spec: service1.Spec.Task,
-			ServiceAnnotations: api.Annotations{
+			Spec: service1.Spec.GetTask(),
+			ServiceAnnotations: &api.Annotations{
 				Name: "task1",
 			},
-			ServiceID: "serviceid1",
-			NodeID:    "nodeid1",
+			ServiceId: "serviceid1",
+			NodeId:    "nodeid1",
 		},
 		{
-			ID:           "task2",
-			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			Id:           "task2",
+			DesiredState: api.TaskState_RUNNING,
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			Spec: service2.Spec.Task,
-			ServiceAnnotations: api.Annotations{
+			Spec: service2.Spec.GetTask(),
+			ServiceAnnotations: &api.Annotations{
 				Name: "task2",
 			},
-			ServiceID: "serviceid2",
-			NodeID:    "nodeid1",
+			ServiceId: "serviceid2",
+			NodeId:    "nodeid1",
 		},
 	}
 	for _, task := range tasks {
@@ -831,21 +831,21 @@ func TestInitializationMultipleServices(t *testing.T) {
 		s1 := store.GetService(tx, "serviceid1")
 		require.NotNil(t, s1)
 
-		s1.Spec.Task.Restart.Delay = gogotypes.DurationProto(70 * time.Millisecond)
+		s1.Spec.GetTask().Restart.Delay = durationpb.New(70 * time.Millisecond)
 
 		assert.NoError(t, store.UpdateService(tx, s1))
 		return nil
 	})
 
 	observedCreation1 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, "serviceid1", observedCreation1.ServiceID)
-	assert.Equal(t, "nodeid1", observedCreation1.NodeID)
-	assert.Equal(t, api.TaskStateReady, observedCreation1.DesiredState)
+	assert.Equal(t, "serviceid1", observedCreation1.ServiceId)
+	assert.Equal(t, "nodeid1", observedCreation1.NodeId)
+	assert.Equal(t, api.TaskState_READY, observedCreation1.DesiredState)
 
 	observedUpdate1 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, "serviceid1", observedUpdate1.ServiceID)
-	assert.Equal(t, "nodeid1", observedUpdate1.NodeID)
-	assert.Equal(t, api.TaskStateShutdown, observedUpdate1.DesiredState)
+	assert.Equal(t, "serviceid1", observedUpdate1.ServiceId)
+	assert.Equal(t, "nodeid1", observedUpdate1.NodeId)
+	assert.Equal(t, api.TaskState_SHUTDOWN, observedUpdate1.DesiredState)
 
 	// Nothing else should happen
 	select {
@@ -860,7 +860,7 @@ func TestInitializationMultipleServices(t *testing.T) {
 		t2 := store.GetTask(tx, "task2")
 		require.NotNil(t, t2)
 
-		t2.Status.State = api.TaskStateFailed
+		t2.Status.State = api.TaskState_FAILED
 
 		assert.NoError(t, store.UpdateTask(tx, t2))
 		return nil
@@ -870,14 +870,14 @@ func TestInitializationMultipleServices(t *testing.T) {
 	<-watch
 
 	observedUpdate2 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, "serviceid2", observedUpdate2.ServiceID)
-	assert.Equal(t, "nodeid1", observedUpdate2.NodeID)
-	assert.Equal(t, api.TaskStateShutdown, observedUpdate2.DesiredState)
+	assert.Equal(t, "serviceid2", observedUpdate2.ServiceId)
+	assert.Equal(t, "nodeid1", observedUpdate2.NodeId)
+	assert.Equal(t, api.TaskState_SHUTDOWN, observedUpdate2.DesiredState)
 
 	observedCreation2 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, "serviceid2", observedCreation2.ServiceID)
-	assert.Equal(t, "nodeid1", observedCreation2.NodeID)
-	assert.Equal(t, api.TaskStateReady, observedCreation2.DesiredState)
+	assert.Equal(t, "serviceid2", observedCreation2.ServiceId)
+	assert.Equal(t, "nodeid1", observedCreation2.NodeId)
+	assert.Equal(t, api.TaskState_READY, observedCreation2.DesiredState)
 
 	// Nothing else should happen
 	select {
@@ -900,48 +900,48 @@ func TestInitializationTaskWithoutService(t *testing.T) {
 	tasks := []*api.Task{
 		// nodeid1 has 1 task for serviceid1 and 1 task for serviceid2
 		{
-			ID:           "task1",
+			Id:           "task1",
 			Slot:         0,
-			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			DesiredState: api.TaskState_RUNNING,
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Condition: api.RestartPolicy_ANY,
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task1",
 			},
-			ServiceID: "serviceid1",
-			NodeID:    "nodeid1",
+			ServiceId: "serviceid1",
+			NodeId:    "nodeid1",
 		},
 		{
-			ID:           "task2",
+			Id:           "task2",
 			Slot:         0,
-			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			DesiredState: api.TaskState_RUNNING,
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Condition: api.RestartPolicy_ANY,
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task2",
 			},
-			ServiceID: "serviceid2",
-			NodeID:    "nodeid1",
+			ServiceId: "serviceid2",
+			NodeId:    "nodeid1",
 		},
 	}
 	for _, task := range tasks {
@@ -960,9 +960,9 @@ func TestInitializationTaskWithoutService(t *testing.T) {
 	})
 
 	observedTask1 := testutils.WatchTaskDelete(t, watch)
-	assert.Equal(t, observedTask1.ID, "task2")
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateRunning)
-	assert.Equal(t, observedTask1.DesiredState, api.TaskStateRunning)
+	assert.Equal(t, observedTask1.Id, "task2")
+	assert.Equal(t, observedTask1.Status.GetState(), api.TaskState_RUNNING)
+	assert.Equal(t, observedTask1.DesiredState, api.TaskState_RUNNING)
 }
 
 func TestInitializationTaskOnDrainedNode(t *testing.T) {
@@ -973,33 +973,33 @@ func TestInitializationTaskOnDrainedNode(t *testing.T) {
 
 	// create nodes, services and tasks in store directly
 	// where orchestrator runs, it should fix tasks to declarative state
-	n1 := *node1
-	n1.Spec.Availability = api.NodeAvailabilityDrain
-	addNode(t, s, &n1)
+	n1 := node1.Copy()
+	n1.Spec.Availability = api.NodeSpec_DRAIN
+	addNode(t, s, n1)
 	addService(t, s, service1)
 	tasks := []*api.Task{
 		// nodeid1 has 1 task for serviceid1
 		{
-			ID:           "task1",
+			Id:           "task1",
 			Slot:         0,
-			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			DesiredState: api.TaskState_RUNNING,
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Condition: api.RestartPolicy_ANY,
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task1",
 			},
-			ServiceID: "serviceid1",
-			NodeID:    "nodeid1",
+			ServiceId: "serviceid1",
+			NodeId:    "nodeid1",
 		},
 	}
 	for _, task := range tasks {
@@ -1018,9 +1018,9 @@ func TestInitializationTaskOnDrainedNode(t *testing.T) {
 	})
 
 	observedTask1 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask1.ID, "task1")
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateRunning)
-	assert.Equal(t, observedTask1.DesiredState, api.TaskStateShutdown)
+	assert.Equal(t, observedTask1.Id, "task1")
+	assert.Equal(t, observedTask1.Status.GetState(), api.TaskState_RUNNING)
+	assert.Equal(t, observedTask1.DesiredState, api.TaskState_SHUTDOWN)
 
 	var deadCnt, liveCnt int
 	var err error
@@ -1028,7 +1028,7 @@ func TestInitializationTaskOnDrainedNode(t *testing.T) {
 		var tasks []*api.Task
 		tasks, err = store.FindTasks(readTx, store.ByServiceID("serviceid1"))
 		for _, task := range tasks {
-			if task.DesiredState == api.TaskStateShutdown {
+			if task.DesiredState == api.TaskState_SHUTDOWN {
 				deadCnt++
 			} else {
 				liveCnt++
@@ -1052,26 +1052,26 @@ func TestInitializationTaskOnNonexistentNode(t *testing.T) {
 	tasks := []*api.Task{
 		// 1 task for serviceid1 on nonexistent nodeid1
 		{
-			ID:           "task1",
+			Id:           "task1",
 			Slot:         0,
-			DesiredState: api.TaskStateRunning,
-			Status: api.TaskStatus{
-				State: api.TaskStateRunning,
+			DesiredState: api.TaskState_RUNNING,
+			Status: &api.TaskStatus{
+				State: api.TaskState_RUNNING,
 			},
-			Spec: api.TaskSpec{
+			Spec: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(restartDelay),
+					Condition: api.RestartPolicy_ANY,
+					Delay:     durationpb.New(restartDelay),
 				},
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "task1",
 			},
-			ServiceID: "serviceid1",
-			NodeID:    "nodeid1",
+			ServiceId: "serviceid1",
+			NodeId:    "nodeid1",
 		},
 	}
 	for _, task := range tasks {
@@ -1090,9 +1090,9 @@ func TestInitializationTaskOnNonexistentNode(t *testing.T) {
 	})
 
 	observedTask1 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask1.ID, "task1")
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateRunning)
-	assert.Equal(t, observedTask1.DesiredState, api.TaskStateShutdown)
+	assert.Equal(t, observedTask1.Id, "task1")
+	assert.Equal(t, observedTask1.Status.GetState(), api.TaskState_RUNNING)
+	assert.Equal(t, observedTask1.DesiredState, api.TaskState_SHUTDOWN)
 
 	var deadCnt, liveCnt int
 	var err error
@@ -1100,7 +1100,7 @@ func TestInitializationTaskOnNonexistentNode(t *testing.T) {
 		var tasks []*api.Task
 		tasks, err = store.FindTasks(readTx, store.ByServiceID("serviceid1"))
 		for _, task := range tasks {
-			if task.DesiredState == api.TaskStateShutdown {
+			if task.DesiredState == api.TaskState_SHUTDOWN {
 				deadCnt++
 			} else {
 				liveCnt++
@@ -1122,23 +1122,23 @@ func TestInitializationRestartHistory(t *testing.T) {
 	addNode(t, s, node1)
 
 	service := &api.Service{
-		ID: "serviceid1",
+		Id: "serviceid1",
 		SpecVersion: &api.Version{
 			Index: 2,
 		},
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{},
 				},
 				Restart: &api.RestartPolicy{
-					Condition:   api.RestartOnAny,
-					Delay:       gogotypes.DurationProto(restartDelay),
+					Condition:   api.RestartPolicy_ANY,
+					Delay:       durationpb.New(restartDelay),
 					MaxAttempts: 3,
-					Window:      gogotypes.DurationProto(10 * time.Minute),
+					Window:      durationpb.New(10 * time.Minute),
 				},
 			},
 			Mode: &api.ServiceSpec_Global{
@@ -1153,94 +1153,94 @@ func TestInitializationRestartHistory(t *testing.T) {
 	tasks := []*api.Task{
 		// old spec versions should be ignored for restart tracking
 		{
-			ID: "oldspec",
-			Meta: api.Meta{
+			Id: "oldspec",
+			Meta: &api.Meta{
 				CreatedAt: ptypes.MustTimestampProto(now.Add(-5 * time.Minute)),
 			},
-			DesiredState: api.TaskStateShutdown,
+			DesiredState: api.TaskState_SHUTDOWN,
 			SpecVersion: &api.Version{
 				Index: 1,
 			},
-			Status: api.TaskStatus{
-				State:     api.TaskStateShutdown,
+			Status: &api.TaskStatus{
+				State:     api.TaskState_SHUTDOWN,
 				Timestamp: ptypes.MustTimestampProto(now.Add(-5 * time.Minute)),
 			},
-			Spec:      service.Spec.Task,
-			ServiceID: "serviceid1",
-			NodeID:    "nodeid1",
+			Spec:      service.Spec.GetTask(),
+			ServiceId: "serviceid1",
+			NodeId:    "nodeid1",
 		},
 		// this is the first task with the current spec version
 		{
-			ID: "firstcurrent",
-			Meta: api.Meta{
+			Id: "firstcurrent",
+			Meta: &api.Meta{
 				CreatedAt: ptypes.MustTimestampProto(now.Add(-12 * time.Minute)),
 			},
-			DesiredState: api.TaskStateShutdown,
+			DesiredState: api.TaskState_SHUTDOWN,
 			SpecVersion: &api.Version{
 				Index: 2,
 			},
-			Status: api.TaskStatus{
-				State:     api.TaskStateFailed,
+			Status: &api.TaskStatus{
+				State:     api.TaskState_FAILED,
 				Timestamp: ptypes.MustTimestampProto(now.Add(-12 * time.Minute)),
 			},
-			Spec:      service.Spec.Task,
-			ServiceID: "serviceid1",
-			NodeID:    "nodeid1",
+			Spec:      service.Spec.GetTask(),
+			ServiceId: "serviceid1",
+			NodeId:    "nodeid1",
 		},
 
 		// this task falls outside the restart window
 		{
-			ID: "outsidewindow",
-			Meta: api.Meta{
+			Id: "outsidewindow",
+			Meta: &api.Meta{
 				CreatedAt: ptypes.MustTimestampProto(now.Add(-11 * time.Minute)),
 			},
-			DesiredState: api.TaskStateShutdown,
+			DesiredState: api.TaskState_SHUTDOWN,
 			SpecVersion: &api.Version{
 				Index: 2,
 			},
-			Status: api.TaskStatus{
-				State:     api.TaskStateFailed,
+			Status: &api.TaskStatus{
+				State:     api.TaskState_FAILED,
 				Timestamp: ptypes.MustTimestampProto(now.Add(-11 * time.Minute)),
 			},
-			Spec:      service.Spec.Task,
-			ServiceID: "serviceid1",
-			NodeID:    "nodeid1",
+			Spec:      service.Spec.GetTask(),
+			ServiceId: "serviceid1",
+			NodeId:    "nodeid1",
 		},
 		// first task inside restart window
 		{
-			ID: "firstinside",
-			Meta: api.Meta{
+			Id: "firstinside",
+			Meta: &api.Meta{
 				CreatedAt: ptypes.MustTimestampProto(now.Add(-9 * time.Minute)),
 			},
-			DesiredState: api.TaskStateShutdown,
+			DesiredState: api.TaskState_SHUTDOWN,
 			SpecVersion: &api.Version{
 				Index: 2,
 			},
-			Status: api.TaskStatus{
-				State:     api.TaskStateFailed,
+			Status: &api.TaskStatus{
+				State:     api.TaskState_FAILED,
 				Timestamp: ptypes.MustTimestampProto(now.Add(-9 * time.Minute)),
 			},
-			Spec:      service.Spec.Task,
-			ServiceID: "serviceid1",
-			NodeID:    "nodeid1",
+			Spec:      service.Spec.GetTask(),
+			ServiceId: "serviceid1",
+			NodeId:    "nodeid1",
 		},
 		// second task inside restart window, currently running
 		{
-			ID: "secondinside",
-			Meta: api.Meta{
+			Id: "secondinside",
+			Meta: &api.Meta{
 				CreatedAt: ptypes.MustTimestampProto(now.Add(-8 * time.Minute)),
 			},
-			DesiredState: api.TaskStateRunning,
+			DesiredState: api.TaskState_RUNNING,
 			SpecVersion: &api.Version{
 				Index: 2,
 			},
-			Status: api.TaskStatus{
-				State:     api.TaskStateRunning,
+			Status: &api.TaskStatus{
+				State:     api.TaskState_RUNNING,
 				Timestamp: ptypes.MustTimestampProto(now.Add(-8 * time.Minute)),
 			},
-			Spec:      service.Spec.Task,
-			ServiceID: "serviceid1",
-			NodeID:    "nodeid1",
+			Spec:      service.Spec.GetTask(),
+			ServiceId: "serviceid1",
+			NodeId:    "nodeid1",
 		},
 	}
 	for _, task := range tasks {
@@ -1262,7 +1262,7 @@ func TestInitializationRestartHistory(t *testing.T) {
 	s.Update(func(tx store.Tx) error {
 		task := store.GetTask(tx, "secondinside")
 		require.NotNil(t, task)
-		task.Status.State = api.TaskStateFailed
+		task.Status.State = api.TaskState_FAILED
 		task.Status.Timestamp = ptypes.MustTimestampProto(time.Now())
 		assert.NoError(t, store.UpdateTask(tx, task))
 		return nil
@@ -1272,23 +1272,23 @@ func TestInitializationRestartHistory(t *testing.T) {
 	// It should restart, because this will only be the third restart
 	// attempt within the time window.
 	observedTask1 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, "secondinside", observedTask1.ID)
-	assert.Equal(t, api.TaskStateFailed, observedTask1.Status.State)
+	assert.Equal(t, "secondinside", observedTask1.Id)
+	assert.Equal(t, api.TaskState_FAILED, observedTask1.Status.GetState())
 
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask2.NodeID, "nodeid1")
-	assert.Equal(t, api.TaskStateNew, observedTask2.Status.State)
-	assert.Equal(t, api.TaskStateReady, observedTask2.DesiredState)
+	assert.Equal(t, observedTask2.NodeId, "nodeid1")
+	assert.Equal(t, api.TaskState_NEW, observedTask2.Status.GetState())
+	assert.Equal(t, api.TaskState_READY, observedTask2.DesiredState)
 
 	observedTask3 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask2.ID, observedTask3.ID)
-	assert.Equal(t, api.TaskStateRunning, observedTask3.DesiredState)
+	assert.Equal(t, observedTask2.Id, observedTask3.Id)
+	assert.Equal(t, api.TaskState_RUNNING, observedTask3.DesiredState)
 
 	// Reject the new task
 	s.Update(func(tx store.Tx) error {
-		task := store.GetTask(tx, observedTask2.ID)
+		task := store.GetTask(tx, observedTask2.Id)
 		require.NotNil(t, task)
-		task.Status.State = api.TaskStateRejected
+		task.Status.State = api.TaskState_REJECTED
 		task.Status.Timestamp = ptypes.MustTimestampProto(time.Now())
 		assert.NoError(t, store.UpdateTask(tx, task))
 		return nil

@@ -86,7 +86,7 @@ func ParseAddSecret(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) 
 
 		foundSecrets := make(map[string]*api.Secret)
 		for _, secret := range r.Secrets {
-			foundSecrets[secret.Spec.Annotations.Name] = secret
+			foundSecrets[secret.GetSpec().GetAnnotations().GetName()] = secret
 		}
 
 		for _, secretRef := range needSecrets {
@@ -95,7 +95,7 @@ func ParseAddSecret(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) 
 				return fmt.Errorf("secret not found: %s", secretRef.SecretName)
 			}
 
-			secretRef.SecretID = secret.ID
+			secretRef.SecretId = secret.Id
 			container.Secrets = append(container.Secrets, secretRef)
 		}
 	}

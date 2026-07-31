@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/docker/go-events"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/testutils"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 )
 
 func TestUpdaterRollback(t *testing.T) {
@@ -70,30 +70,30 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 				return
 			}
 			task := e.(api.EventUpdateTask).Task
-			if task.DesiredState == task.Status.State {
+			if task.DesiredState == task.Status.GetState() {
 				continue
 			}
 			// This used to have a 3rd clause,
-			// "&& task.Status.State != api.TaskStateRunning"
+			// "&& task.Status.GetState() != api.TaskState_RUNNING"
 			// however, this is unneeded. If DesiredState is Running, then
 			// actual state cannot be Running, because that would get caught
 			// in the condition about (DesiredState == State)
-			if task.DesiredState == api.TaskStateRunning && task.Status.State != api.TaskStateFailed {
+			if task.DesiredState == api.TaskState_RUNNING && task.Status.GetState() != api.TaskState_FAILED {
 				err := s.Update(func(tx store.Tx) error {
-					task = store.GetTask(tx, task.ID)
+					task = store.GetTask(tx, task.Id)
 					// lock mutex governing access to failImage1.
 					failMu.Lock()
 					defer failMu.Unlock()
 					// we should start failing tasks with image1 only after1
-					if task.Spec.GetContainer().Image == "image1" && failImage1 {
+					if task.Spec.GetContainer().GetImage() == "image1" && failImage1 {
 						// only fail the task if we can read from failImage1
 						// (which will only be true if it's closed)
-						task.Status.State = api.TaskStateFailed
+						task.Status.State = api.TaskState_FAILED
 						failedLast = true
-					} else if task.Spec.GetContainer().Image == "image2" && !failedLast {
+					} else if task.Spec.GetContainer().GetImage() == "image2" && !failedLast {
 						// Never fail two image2 tasks in a row, so there's a mix of
 						// failed and successful tasks for the rollback.
-						task.Status.State = api.TaskStateFailed
+						task.Status.State = api.TaskState_FAILED
 						failedLast = true
 					} else {
 						task.Status.State = task.DesiredState
@@ -102,9 +102,9 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 					return store.UpdateTask(tx, task)
 				})
 				assert.NoError(t, err)
-			} else if task.DesiredState > api.TaskStateRunning {
+			} else if task.DesiredState > api.TaskState_RUNNING {
 				err := s.Update(func(tx store.Tx) error {
-					task = store.GetTask(tx, task.ID)
+					task = store.GetTask(tx, task.Id)
 					task.Status.State = task.DesiredState
 					return store.UpdateTask(tx, task)
 				})
@@ -118,19 +118,19 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	// starts up.
 	err := s.Update(func(tx store.Tx) error {
 		s1 := &api.Service{
-			ID: "id1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Id: "id1",
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Image: "image1",
 						},
 					},
 					Restart: &api.RestartPolicy{
-						Condition: api.RestartOnNone,
+						Condition: api.RestartPolicy_NONE,
 					},
 				},
 				Mode: &api.ServiceSpec_Replicated{
@@ -141,21 +141,21 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 				Update: &api.UpdateConfig{
 					FailureAction:   api.UpdateConfig_ROLLBACK,
 					Parallelism:     1,
-					Delay:           10 * time.Millisecond,
+					Delay:           durationpb.New(10 * time.Millisecond),
 					MaxFailureRatio: 0.4,
 				},
 				Rollback: &api.UpdateConfig{
 					FailureAction:   rollbackFailureAction,
 					Parallelism:     1,
-					Delay:           10 * time.Millisecond,
+					Delay:           durationpb.New(10 * time.Millisecond),
 					MaxFailureRatio: 0.4,
 				},
 			},
 		}
 
 		if setMonitor {
-			s1.Spec.Update.Monitor = gogotypes.DurationProto(500 * time.Millisecond)
-			s1.Spec.Rollback.Monitor = gogotypes.DurationProto(500 * time.Millisecond)
+			s1.Spec.Update.Monitor = durationpb.New(500 * time.Millisecond)
+			s1.Spec.Rollback.Monitor = durationpb.New(500 * time.Millisecond)
 		}
 		if useSpecVersion {
 			s1.SpecVersion = &api.Version{
@@ -184,20 +184,20 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	}()
 
 	observedTask := testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image1")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image1")
 
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image1")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image1")
 
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image1")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image1")
 
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image1")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image1")
 
 	// Start a rolling update
 	err = s.Update(func(tx store.Tx) error {
@@ -206,7 +206,7 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 		s1.PreviousSpec = s1.Spec.Copy()
 		s1.PreviousSpecVersion = s1.SpecVersion.Copy()
 		s1.UpdateStatus = nil
-		s1.Spec.Task.GetContainer().Image = "image2"
+		s1.Spec.GetTask().GetContainer().Image = "image2"
 		if s1.SpecVersion != nil {
 			s1.SpecVersion.Index = 2
 		}
@@ -218,16 +218,16 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	// Should see three tasks started, then a rollback
 
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image2")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image2")
 
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image2")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image2")
 
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image2")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image2")
 
 	// Should get to the ROLLBACK_STARTED state
 	for {
@@ -247,16 +247,16 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	}
 
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image1")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image1")
 
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image1")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image1")
 
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image1")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image1")
 
 	if !setMonitor {
 		// Exit early in this case, since it would take a long time for
@@ -292,7 +292,7 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 		s1.PreviousSpec = s1.Spec.Copy()
 		s1.PreviousSpecVersion = s1.SpecVersion.Copy()
 		s1.UpdateStatus = nil
-		s1.Spec.Task.GetContainer().Image = "image2"
+		s1.Spec.GetTask().GetContainer().Image = "image2"
 		if s1.SpecVersion != nil {
 			s1.SpecVersion.Index = 2
 		}
@@ -304,16 +304,16 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	// Should see three tasks started, then a rollback
 
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image2")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image2")
 
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image2")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image2")
 
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image2")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image2")
 
 	// Should get to the ROLLBACK_STARTED state
 	for {
@@ -333,16 +333,16 @@ func testUpdaterRollback(t *testing.T, rollbackFailureAction api.UpdateConfig_Fa
 	}
 
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image1")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image1")
 
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image1")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image1")
 
 	observedTask = testutils.WatchTaskCreate(t, watchCreate)
-	assert.Equal(t, observedTask.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask.Spec.GetContainer().Image, "image1")
+	assert.Equal(t, observedTask.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask.Spec.GetContainer().GetImage(), "image1")
 
 	switch rollbackFailureAction {
 	case api.UpdateConfig_PAUSE:

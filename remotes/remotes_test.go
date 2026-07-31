@@ -8,25 +8,25 @@ import (
 )
 
 func TestRemotesSimple(t *testing.T) {
-	peers := []api.Peer{{Addr: "one"}, {Addr: "two"}, {Addr: "three"}}
+	peers := []*api.Peer{{Addr: "one"}, {Addr: "two"}, {Addr: "three"}}
 	remotes := NewRemotes(peers...)
 	index := remotes.Weights()
 
-	seen := make(map[api.Peer]int)
+	seen := make(map[PeerKey]int)
 	for range len(peers) * 10 {
 		next, err := remotes.Select()
 		if err != nil {
 			t.Fatalf("error selecting remote: %v", err)
 		}
 
-		if _, ok := index[next]; !ok {
+		if _, ok := index[NewPeerKey(next)]; !ok {
 			t.Fatalf("unexpected remote returned: %q", next)
 		}
-		seen[next]++
+		seen[NewPeerKey(next)]++
 	}
 
 	for _, peer := range peers {
-		if _, ok := seen[peer]; !ok {
+		if _, ok := seen[NewPeerKey(peer)]; !ok {
 			t.Fatalf("%q not returned after several selection attempts", peer)
 		}
 	}
@@ -50,7 +50,7 @@ func TestRemotesSimple(t *testing.T) {
 		}
 
 		if weight != value {
-			t.Fatalf("all weights should be same %q: %v != %v, %v", peer, weight, value, weights)
+			t.Fatalf("all weights should be same %v: %v != %v, %v", peer, weight, value, weights)
 		}
 	}
 }
@@ -66,7 +66,7 @@ func TestRemotesEmpty(t *testing.T) {
 }
 
 func TestRemotesExclude(t *testing.T) {
-	peers := []api.Peer{{Addr: "one"}, {Addr: "two"}, {Addr: "three"}}
+	peers := []*api.Peer{{Addr: "one"}, {Addr: "two"}, {Addr: "three"}}
 	excludes := []string{"one", "two", "three"}
 	remotes := NewRemotes(peers...)
 
@@ -83,7 +83,7 @@ func TestRemotesExclude(t *testing.T) {
 			t.Fatalf("error selecting remote: %v", err)
 		}
 
-		if next == peers[0] {
+		if NewPeerKey(next) == NewPeerKey(peers[0]) {
 			t.Fatal("select an excluded peer")
 		}
 	}
@@ -95,7 +95,7 @@ func TestRemotesExclude(t *testing.T) {
 			t.Fatalf("error selecting remote: %v", err)
 		}
 
-		if next != peers[0] {
+		if NewPeerKey(next) != NewPeerKey(peers[0]) {
 			t.Fatalf("select an excluded peer: %v", next)
 		}
 	}
@@ -106,56 +106,58 @@ func TestRemotesExclude(t *testing.T) {
 // value.
 func TestRemotesConvergence(t *testing.T) {
 	remotes := NewRemotes()
-	remotes.Observe(api.Peer{Addr: "one"}, DefaultObservationWeight)
+	remotes.Observe(&api.Peer{Addr: "one"}, DefaultObservationWeight)
+
+	one := PeerKey{Addr: "one"}
 
 	// zero weighted against 1
-	if float64(remotes.Weights()[api.Peer{Addr: "one"}]) < remoteWeightSmoothingFactor {
-		t.Fatalf("unexpected weight: %v < %v", remotes.Weights()[api.Peer{Addr: "one"}], remoteWeightSmoothingFactor)
+	if float64(remotes.Weights()[one]) < remoteWeightSmoothingFactor {
+		t.Fatalf("unexpected weight: %v < %v", remotes.Weights()[one], remoteWeightSmoothingFactor)
 	}
 
 	// crank it up
 	for range 10 {
-		remotes.Observe(api.Peer{Addr: "one"}, DefaultObservationWeight)
+		remotes.Observe(&api.Peer{Addr: "one"}, DefaultObservationWeight)
 	}
 
-	if float64(remotes.Weights()[api.Peer{Addr: "one"}]) < remoteWeightSmoothingFactor {
-		t.Fatalf("did not converge towards 1: %v < %v", remotes.Weights()[api.Peer{Addr: "one"}], remoteWeightSmoothingFactor)
+	if float64(remotes.Weights()[one]) < remoteWeightSmoothingFactor {
+		t.Fatalf("did not converge towards 1: %v < %v", remotes.Weights()[one], remoteWeightSmoothingFactor)
 	}
 
-	if remotes.Weights()[api.Peer{Addr: "one"}] > remoteWeightMax {
-		t.Fatalf("should never go over towards %v: %v > %v", remoteWeightMax, remotes.Weights()[api.Peer{Addr: "one"}], 1.0)
+	if remotes.Weights()[one] > remoteWeightMax {
+		t.Fatalf("should never go over towards %v: %v > %v", remoteWeightMax, remotes.Weights()[one], 1.0)
 	}
 
 	// provided a poor review
-	remotes.Observe(api.Peer{Addr: "one"}, -DefaultObservationWeight)
+	remotes.Observe(&api.Peer{Addr: "one"}, -DefaultObservationWeight)
 
-	if remotes.Weights()[api.Peer{Addr: "one"}] > 0 {
-		t.Fatalf("should be below zero: %v", remotes.Weights()[api.Peer{Addr: "one"}])
+	if remotes.Weights()[one] > 0 {
+		t.Fatalf("should be below zero: %v", remotes.Weights()[one])
 	}
 
 	// The remote should be heavily downweighted but not completely to -1
 	expected := (-remoteWeightSmoothingFactor + (1 - remoteWeightSmoothingFactor))
 	epsilon := -1e-5
-	if float64(remotes.Weights()[api.Peer{Addr: "one"}]) < expected+epsilon {
-		t.Fatalf("weight should not drop so quickly: %v < %v", remotes.Weights()[api.Peer{Addr: "one"}], expected)
+	if float64(remotes.Weights()[one]) < expected+epsilon {
+		t.Fatalf("weight should not drop so quickly: %v < %v", remotes.Weights()[one], expected)
 	}
 }
 
 func TestRemotesZeroWeights(t *testing.T) {
 	remotes := NewRemotes()
-	peers := []api.Peer{{Addr: "one"}, {Addr: "two"}, {Addr: "three"}}
+	peers := []*api.Peer{{Addr: "one"}, {Addr: "two"}, {Addr: "three"}}
 	for _, peer := range peers {
 		remotes.Observe(peer, 0)
 	}
 
-	seen := map[api.Peer]struct{}{}
+	seen := map[PeerKey]struct{}{}
 	for range 1000 {
 		peer, err := remotes.Select()
 		if err != nil {
 			t.Fatalf("unexpected error from Select: %v", err)
 		}
 
-		seen[peer] = struct{}{}
+		seen[NewPeerKey(peer)] = struct{}{}
 	}
 
 	for peer := range remotes.Weights() {
@@ -165,9 +167,9 @@ func TestRemotesZeroWeights(t *testing.T) {
 	}
 
 	// Pump up number 3!
-	remotes.Observe(api.Peer{Addr: "three"}, DefaultObservationWeight)
+	remotes.Observe(&api.Peer{Addr: "three"}, DefaultObservationWeight)
 
-	count := map[api.Peer]int{}
+	count := map[PeerKey]int{}
 	for range 100 {
 		// basically, we expect the same one to return
 		peer, err := remotes.Select()
@@ -175,26 +177,26 @@ func TestRemotesZeroWeights(t *testing.T) {
 			t.Fatalf("unexpected error from Select: %v", err)
 		}
 
-		count[peer]++
+		count[NewPeerKey(peer)]++
 
 		// keep observing three
-		remotes.Observe(api.Peer{Addr: "three"}, DefaultObservationWeight)
+		remotes.Observe(&api.Peer{Addr: "three"}, DefaultObservationWeight)
 	}
 
 	// here, we ensure that three is at least three times more likely to be
 	// selected. This is somewhat arbitrary.
-	if count[api.Peer{Addr: "three"}] <= count[api.Peer{Addr: "one"}]*3 || count[api.Peer{Addr: "three"}] <= count[api.Peer{Addr: "two"}] {
+	if count[PeerKey{Addr: "three"}] <= count[PeerKey{Addr: "one"}]*3 || count[PeerKey{Addr: "three"}] <= count[PeerKey{Addr: "two"}] {
 		t.Fatal("three should outpace one and two")
 	}
 }
 
 func TestRemotesLargeRanges(t *testing.T) {
-	peers := []api.Peer{{Addr: "one"}, {Addr: "two"}, {Addr: "three"}}
-	index := make(map[api.Peer]struct{}, len(peers))
+	peers := []*api.Peer{{Addr: "one"}, {Addr: "two"}, {Addr: "three"}}
+	index := make(map[PeerKey]struct{}, len(peers))
 	remotes := NewRemotes(peers...)
 
 	for _, peer := range peers {
-		index[peer] = struct{}{}
+		index[NewPeerKey(peer)] = struct{}{}
 	}
 
 	remotes.Observe(peers[0], 0)
@@ -202,21 +204,21 @@ func TestRemotesLargeRanges(t *testing.T) {
 	remotes.Observe(peers[2], math.MinInt32)
 	remotes.Observe(peers[2], remoteWeightMax) // three bounces back!
 
-	seen := make(map[api.Peer]int)
+	seen := make(map[PeerKey]int)
 	for range len(peers) * remoteWeightMax * 4 {
 		next, err := remotes.Select()
 		if err != nil {
 			t.Fatalf("error selecting remote: %v", err)
 		}
 
-		if _, ok := index[next]; !ok {
+		if _, ok := index[NewPeerKey(next)]; !ok {
 			t.Fatalf("unexpected remote returned: %q", next)
 		}
-		seen[next]++
+		seen[NewPeerKey(next)]++
 	}
 
 	for _, peer := range peers {
-		if _, ok := seen[peer]; !ok {
+		if _, ok := seen[NewPeerKey(peer)]; !ok {
 			t.Fatalf("%q not returned after several selection attempts, %v", peer, remotes)
 		}
 	}
@@ -229,12 +231,12 @@ func TestRemotesLargeRanges(t *testing.T) {
 }
 
 func TestRemotesDownweight(t *testing.T) {
-	peers := []api.Peer{{Addr: "one"}, {Addr: "two"}, {Addr: "three"}}
-	index := make(map[api.Peer]struct{}, len(peers))
+	peers := []*api.Peer{{Addr: "one"}, {Addr: "two"}, {Addr: "three"}}
+	index := make(map[PeerKey]struct{}, len(peers))
 	remotes := NewRemotes(peers...)
 
 	for _, peer := range peers {
-		index[peer] = struct{}{}
+		index[NewPeerKey(peer)] = struct{}{}
 	}
 
 	for _, p := range peers {
@@ -251,7 +253,7 @@ func TestRemotesDownweight(t *testing.T) {
 		if err != nil {
 			t.Fatalf("error selecting remote: %v", err)
 		}
-		if p == peers[0] {
+		if NewPeerKey(p) == NewPeerKey(peers[0]) {
 			chosen++
 		}
 	}
@@ -265,9 +267,9 @@ func TestRemotesDownweight(t *testing.T) {
 // TestRemotesPractical ensures that under a single poor observation, such as
 // an error, the likelihood of selecting the node dramatically decreases.
 func TestRemotesPractical(t *testing.T) {
-	peers := []api.Peer{{Addr: "one"}, {Addr: "two"}, {Addr: "three"}}
+	peers := []*api.Peer{{Addr: "one"}, {Addr: "two"}, {Addr: "three"}}
 	remotes := NewRemotes(peers...)
-	seen := map[api.Peer]int{}
+	seen := map[PeerKey]int{}
 	selections := 1000
 	tolerance := 0.20 // allow 20% delta to reduce test failure probability
 
@@ -279,7 +281,7 @@ func TestRemotesPractical(t *testing.T) {
 		}
 
 		remotes.Observe(peer, DefaultObservationWeight)
-		seen[peer]++
+		seen[NewPeerKey(peer)]++
 	}
 
 	expected, delta := selections/len(peers), int(tolerance*float64(selections))
@@ -293,14 +295,14 @@ func TestRemotesPractical(t *testing.T) {
 	// one bad observation should mark the node as bad
 	remotes.Observe(peers[0], -DefaultObservationWeight)
 
-	seen = map[api.Peer]int{} // result
+	seen = map[PeerKey]int{} // result
 	for range selections {
 		peer, err := remotes.Select()
 		if err != nil {
 			t.Fatalf("error selecting peer: %v", err)
 		}
 
-		seen[peer]++
+		seen[NewPeerKey(peer)]++
 	}
 
 	tolerance = 0.10 // switch to 10% tolerance for two peers
@@ -308,7 +310,7 @@ func TestRemotesPractical(t *testing.T) {
 	expected, delta = selections/(len(peers)-1), int(tolerance*float64(selections))
 	low, high = expected-delta, expected+delta
 	for peer, count := range seen {
-		if peer == peers[0] {
+		if peer == NewPeerKey(peers[0]) {
 			// we have an *extremely* low probability of selecting this node
 			// (like 0.005%) once. Selecting this more than a few times will
 			// fail the test.
@@ -323,7 +325,7 @@ func TestRemotesPractical(t *testing.T) {
 	}
 }
 
-var peers = []api.Peer{
+var peers = []*api.Peer{
 	{Addr: "one"}, {Addr: "two"}, {Addr: "three"},
 	{Addr: "four"}, {Addr: "five"}, {Addr: "six"},
 	{Addr: "seven0"}, {Addr: "eight0"}, {Addr: "nine0"},
@@ -350,7 +352,7 @@ func BenchmarkRemotesSelect27(b *testing.B) {
 	benchmarkRemotesSelect(b, peers[:27]...)
 }
 
-func benchmarkRemotesSelect(b *testing.B, peers ...api.Peer) {
+func benchmarkRemotesSelect(b *testing.B, peers ...*api.Peer) {
 	remotes := NewRemotes(peers...)
 
 	for b.Loop() {
@@ -377,7 +379,7 @@ func BenchmarkRemotesObserve27(b *testing.B) {
 	benchmarkRemotesObserve(b, peers[:27]...)
 }
 
-func benchmarkRemotesObserve(b *testing.B, peers ...api.Peer) {
+func benchmarkRemotesObserve(b *testing.B, peers ...*api.Peer) {
 	remotes := NewRemotes(peers...)
 
 	for i := range b.N {

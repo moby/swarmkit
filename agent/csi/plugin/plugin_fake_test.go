@@ -33,7 +33,7 @@ func (f *fakeNodePlugin) NodeGetInfo(ctx context.Context) (*api.NodeCSIInfo, err
 	}
 	return &api.NodeCSIInfo{
 		PluginName: f.name,
-		NodeID:     fmt.Sprintf("node_%s", f.name),
+		NodeId:     fmt.Sprintf("node_%s", f.name),
 	}, nil
 }
 

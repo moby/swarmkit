@@ -47,14 +47,14 @@ func printNetworkSummary(network *api.Network) {
 		_ = w.Flush()
 	}()
 
-	spec := &network.Spec
-	common.FprintfIfNotEmpty(w, "ID\t: %s\n", network.ID)
-	common.FprintfIfNotEmpty(w, "Name\t: %s\n", spec.Annotations.Name)
+	spec := network.Spec
+	common.FprintfIfNotEmpty(w, "ID\t: %s\n", network.Id)
+	common.FprintfIfNotEmpty(w, "Name\t: %s\n", spec.GetAnnotations().GetName())
 
 	fmt.Fprintln(w, "Spec:\t")
-	if len(spec.Annotations.Labels) > 0 {
+	if len(spec.GetAnnotations().GetLabels()) > 0 {
 		fmt.Fprintln(w, "  Labels:\t")
-		for k, v := range spec.Annotations.Labels {
+		for k, v := range spec.GetAnnotations().GetLabels() {
 			fmt.Fprintf(w, "    %s = %s\n", k, v)
 		}
 	}
@@ -73,7 +73,7 @@ func printNetworkSummary(network *api.Network) {
 		}
 	}
 
-	ipam := network.IPAM
+	ipam := network.Ipam
 	if ipam != nil {
 		fmt.Fprintln(w, "IPAM:\t")
 		if ipam.Driver != nil {

@@ -648,24 +648,24 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 	// the CA server is going to start off with a cert issued by the second CA, cross-signed by the first CA, and then
 	// rotate to one issued by the third CA, cross-signed by the second.
 	tempdir := t.TempDir()
-	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, api.RootCA{
-		CACert: certs[0],
-		CAKey:  keys[0],
+	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, &api.RootCA{
+		CaCert: certs[0],
+		CaKey:  keys[0],
 		RootRotation: &api.RootRotation{
-			CACert:            crossSigneds[1],
-			CAKey:             keys[1],
-			CrossSignedCACert: crossSigneds[1],
+			CaCert:            crossSigneds[1],
+			CaKey:             keys[1],
+			CrossSignedCaCert: crossSigneds[1],
 		},
 	}, nil)
 	defer tc.Stop()
 	require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
 		cluster := store.GetCluster(tx, tc.Organization)
-		cluster.RootCA.CACert = certs[1]
-		cluster.RootCA.CAKey = keys[1]
-		cluster.RootCA.RootRotation = &api.RootRotation{
-			CACert:            certs[2],
-			CAKey:             keys[2],
-			CrossSignedCACert: crossSigneds[2],
+		cluster.RootCa.CaCert = certs[1]
+		cluster.RootCa.CaKey = keys[1]
+		cluster.RootCa.RootRotation = &api.RootRotation{
+			CaCert:            certs[2],
+			CaKey:             keys[2],
+			CrossSignedCaCert: crossSigneds[2],
 		}
 		return store.UpdateCluster(tx, cluster)
 	}))
@@ -697,13 +697,13 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 		expectedRoot  []byte
 	}{
 		{
-			role:          api.NodeRoleWorker,
+			role:          api.NodeRole_WORKER,
 			initialRootCA: &cas[0],
 			issuingRootCA: &cas[1],
 			expectedRoot:  certs[1],
 		},
 		{
-			role:          api.NodeRoleManager,
+			role:          api.NodeRole_MANAGER,
 			initialRootCA: &cas[0],
 			issuingRootCA: &cas[1],
 		},
@@ -719,11 +719,11 @@ func TestRenewTLSConfigUpdatesRootOnUnknownAuthError(t *testing.T) {
 			require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
 				return store.CreateNode(tx, &api.Node{
 					Role: testCase.role,
-					ID:   nodeID,
-					Spec: api.NodeSpec{
+					Id:   nodeID,
+					Spec: &api.NodeSpec{
 						DesiredRole:  testCase.role,
-						Membership:   api.NodeMembershipAccepted,
-						Availability: api.NodeAvailabilityActive,
+						Membership:   api.NodeSpec_ACCEPTED,
+						Availability: api.NodeSpec_ACTIVE,
 					},
 				})
 			}))
@@ -760,9 +760,9 @@ func TestRenewTLSConfigUpdatesRootNonUnknownAuthError(t *testing.T) {
 	require.NoError(t, err)
 
 	tempdir := t.TempDir()
-	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, api.RootCA{
-		CACert: cert,
-		CAKey:  key,
+	tc := cautils.NewTestCAFromAPIRootCA(t, tempdir, &api.RootCA{
+		CaCert: cert,
+		CaKey:  key,
 	}, nil)
 	defer tc.Stop()
 
@@ -778,16 +778,16 @@ func TestRenewTLSConfigUpdatesRootNonUnknownAuthError(t *testing.T) {
 		defer cancel()
 		event := <-updates // we want to skip the first node, which is the test CA
 		n := event.(api.EventCreateNode).Node
-		if n.Certificate.Status.State == api.IssuanceStatePending {
+		if n.Certificate.GetStatus().GetState() == api.IssuanceStatus_PENDING {
 			signErr <- tc.MemoryStore.Update(func(tx store.Tx) error {
-				node := store.GetNode(tx, n.ID)
-				certChain, err := rootCA.ParseValidateAndSignCSR(node.Certificate.CSR, node.Certificate.CN, ca.WorkerRole, tc.Organization)
+				node := store.GetNode(tx, n.Id)
+				certChain, err := rootCA.ParseValidateAndSignCSR(node.Certificate.GetCsr(), node.Certificate.GetCn(), ca.WorkerRole, tc.Organization)
 				if err != nil {
 					return err
 				}
 				node.Certificate.Certificate = cautils.ReDateCert(t, certChain, cert, key, time.Now().Add(-5*time.Hour), time.Now().Add(-4*time.Hour))
-				node.Certificate.Status = api.IssuanceStatus{
-					State: api.IssuanceStateIssued,
+				node.Certificate.Status = &api.IssuanceStatus{
+					State: api.IssuanceStatus_ISSUED,
 				}
 				return store.UpdateNode(tx, node)
 			})

@@ -114,7 +114,7 @@ var _ = Describe("Integration between the controlapi and jobs orchestrator", fun
 
 	It("should create the requisite tasks for a new replicated job", func() {
 		spec := &api.ServiceSpec{
-			Annotations: api.Annotations{
+			Annotations: &api.Annotations{
 				Name: "testService",
 			},
 			Mode: &api.ServiceSpec_ReplicatedJob{
@@ -123,7 +123,7 @@ var _ = Describe("Integration between the controlapi and jobs orchestrator", fun
 					TotalCompletions: 5,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Image: "image",
@@ -149,9 +149,9 @@ var _ = Describe("Integration between the controlapi and jobs orchestrator", fun
 				context.Background(),
 				&api.ListTasksRequest{
 					Filters: &api.ListTasksRequest_Filters{
-						ServiceIDs: []string{resp.Service.ID},
+						ServiceIds: []string{resp.Service.Id},
 						DesiredStates: []api.TaskState{
-							api.TaskStateCompleted,
+							api.TaskState_COMPLETE,
 						},
 					},
 				},

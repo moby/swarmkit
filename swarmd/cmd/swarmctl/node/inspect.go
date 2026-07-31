@@ -21,33 +21,33 @@ func printNodeSummary(node *api.Node) {
 		// Ignore flushing errors - there's nothing we can do.
 		_ = w.Flush()
 	}()
-	spec := &node.Spec
+	spec := node.Spec
 	desc := node.Description
 	if desc == nil {
 		desc = &api.NodeDescription{}
 	}
-	common.FprintfIfNotEmpty(w, "ID\t: %s\n", node.ID)
+	common.FprintfIfNotEmpty(w, "ID\t: %s\n", node.Id)
 	if node.Description != nil {
 		common.FprintfIfNotEmpty(w, "Hostname\t: %s\n", node.Description.Hostname)
 	}
-	if len(spec.Annotations.Labels) != 0 {
+	if len(spec.GetAnnotations().GetLabels()) != 0 {
 		fmt.Fprint(w, "Node Labels\t:")
 		// sort label output for readability
 		var keys []string
-		for k := range spec.Annotations.Labels {
+		for k := range spec.GetAnnotations().GetLabels() {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			fmt.Fprintf(w, " %s=%s", k, spec.Annotations.Labels[k])
+			fmt.Fprintf(w, " %s=%s", k, spec.GetAnnotations().GetLabels()[k])
 		}
 		fmt.Fprintln(w)
 	}
 	fmt.Fprintln(w, "Status:\t")
-	common.FprintfIfNotEmpty(w, "  State\t: %s\n", node.Status.State.String())
-	common.FprintfIfNotEmpty(w, "  Message\t: %s\n", node.Status.Message)
+	common.FprintfIfNotEmpty(w, "  State\t: %s\n", node.Status.GetState().String())
+	common.FprintfIfNotEmpty(w, "  Message\t: %s\n", node.Status.GetMessage())
 	common.FprintfIfNotEmpty(w, "  Availability\t: %s\n", spec.Availability.String())
-	common.FprintfIfNotEmpty(w, "  Address\t: %s\n", node.Status.Addr)
+	common.FprintfIfNotEmpty(w, "  Address\t: %s\n", node.Status.GetAddr())
 
 	if node.ManagerStatus != nil {
 		fmt.Fprintln(w, "Manager status:\t")
@@ -62,13 +62,13 @@ func printNodeSummary(node *api.Node) {
 
 	if desc.Platform != nil {
 		fmt.Fprintln(w, "Platform:\t")
-		common.FprintfIfNotEmpty(w, "  Operating System\t: %s\n", desc.Platform.OS)
+		common.FprintfIfNotEmpty(w, "  Operating System\t: %s\n", desc.Platform.Os)
 		common.FprintfIfNotEmpty(w, "  Architecture\t: %s\n", desc.Platform.Architecture)
 	}
 
 	if desc.Resources != nil {
 		fmt.Fprintln(w, "Resources:\t")
-		fmt.Fprintf(w, "  CPUs\t: %d\n", desc.Resources.NanoCPUs/1e9)
+		fmt.Fprintf(w, "  CPUs\t: %d\n", desc.Resources.NanoCpus/1e9)
 		fmt.Fprintf(w, "  Memory\t: %s\n", humanize.IBytes(uint64(desc.Resources.MemoryBytes)))
 		fmt.Fprintln(w, "  Generic Resources:\t")
 		for _, r := range desc.Resources.Generic {
@@ -147,7 +147,7 @@ var (
 			r, err := c.ListTasks(common.Context(cmd),
 				&api.ListTasksRequest{
 					Filters: &api.ListTasksRequest_Filters{
-						NodeIDs: []string{node.ID},
+						NodeIds: []string{node.Id},
 					},
 				})
 			if err != nil {

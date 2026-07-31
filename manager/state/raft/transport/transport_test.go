@@ -9,26 +9,27 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 const testSnapSize = 1 << 20 // 1 MB
 
 // Build a snapshot message where each byte in the data is of the value (index % sizeof(byte))
-func newSnapshotMessage(from uint64, to uint64) raftpb.Message {
+func newSnapshotMessage(from uint64, to uint64) *raftpb.Message {
 	data := make([]byte, testSnapSize)
 	for i := range testSnapSize {
 		data[i] = byte(i % (1 << 8))
 	}
 
-	return raftpb.Message{
-		Type: raftpb.MsgSnap,
-		From: from,
-		To:   to,
+	return &raftpb.Message{
+		Type: raftpb.MsgSnap.Enum(),
+		From: proto.Uint64(from),
+		To:   proto.Uint64(to),
 		Snapshot: &raftpb.Snapshot{
 			Data: data,
 			// Include the snapshot size in the Index field for testing.
-			Metadata: raftpb.SnapshotMetadata{
-				Index: uint64(len(data)),
+			Metadata: &raftpb.SnapshotMetadata{
+				Index: proto.Uint64(uint64(len(data))),
 			},
 		},
 	}
@@ -36,13 +37,14 @@ func newSnapshotMessage(from uint64, to uint64) raftpb.Message {
 
 // Verify that the snapshot data where each byte is of the value (index % sizeof(byte)).
 func verifySnapshot(raftMsg *raftpb.Message) bool {
-	for i, b := range raftMsg.Snapshot.Data {
+	data := raftMsg.GetSnapshot().GetData()
+	for i, b := range data {
 		if int(b) != i%(1<<8) {
 			return false
 		}
 	}
 
-	return len(raftMsg.Snapshot.Data) == int(raftMsg.Snapshot.Metadata.Index)
+	return len(data) == int(raftMsg.GetSnapshot().GetMetadata().GetIndex())
 }
 
 func sendMessages(ctx context.Context, c *mockCluster, from uint64, to []uint64, msgType raftpb.MessageType) error {
@@ -52,10 +54,10 @@ func sendMessages(ctx context.Context, c *mockCluster, from uint64, to []uint64,
 		if msgType == raftpb.MsgSnap {
 			err = c.Get(from).tr.Send(newSnapshotMessage(from, id))
 		} else {
-			err = c.Get(from).tr.Send(raftpb.Message{
-				Type: msgType,
-				From: from,
-				To:   id,
+			err = c.Get(from).tr.Send(&raftpb.Message{
+				Type: msgType.Enum(),
+				From: proto.Uint64(from),
+				To:   proto.Uint64(id),
 			})
 		}
 		if firstErr == nil {
@@ -74,8 +76,8 @@ func testSend(ctx context.Context, c *mockCluster, from uint64, to []uint64, msg
 		for _, id := range to {
 			select {
 			case msg := <-c.Get(id).processedMessages:
-				assert.Equal(t, msg.To, id)
-				assert.Equal(t, msg.From, from)
+				assert.Equal(t, msg.GetTo(), id)
+				assert.Equal(t, msg.GetFrom(), from)
 			case <-ctx.Done():
 				t.Fatal(ctx.Err())
 			}
@@ -120,21 +122,21 @@ func TestSplitSnapshotDataDoesNotMutateInput(t *testing.T) {
 	for i := range data {
 		data[i] = byte(i % (1 << 8))
 	}
-	m := raftpb.Message{
-		Type: raftpb.MsgSnap,
-		From: 1,
-		To:   2,
+	m := &raftpb.Message{
+		Type: raftpb.MsgSnap.Enum(),
+		From: proto.Uint64(1),
+		To:   proto.Uint64(2),
 		Snapshot: &raftpb.Snapshot{
 			Data: data,
-			Metadata: raftpb.SnapshotMetadata{
-				Index: uint64(len(data)),
+			Metadata: &raftpb.SnapshotMetadata{
+				Index: proto.Uint64(uint64(len(data))),
 			},
 		},
 	}
 	origData := m.Snapshot.Data
 	origLen, origCap := len(origData), cap(origData)
 
-	msgs := splitSnapshotData(ctx, &m)
+	msgs := splitSnapshotData(ctx, m)
 	require.Greater(t, len(msgs), 1, "data larger than GRPCMaxMsgSize must split into multiple chunks")
 
 	// Chunks must reassemble to the original data.
@@ -251,8 +253,8 @@ func TestSendUnknown(t *testing.T) {
 
 	select {
 	case msg := <-c.Get(2).processedMessages:
-		assert.Equal(t, msg.To, uint64(2))
-		assert.Equal(t, msg.From, uint64(1))
+		assert.Equal(t, msg.GetTo(), uint64(2))
+		assert.Equal(t, msg.GetFrom(), uint64(1))
 	case <-msgCtx.Done():
 		t.Fatal(msgCtx.Err())
 	}

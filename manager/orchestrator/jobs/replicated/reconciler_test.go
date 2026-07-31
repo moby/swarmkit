@@ -17,8 +17,8 @@ type fakeRestartSupervisor struct {
 	tasks []string
 }
 
-func (f *fakeRestartSupervisor) Restart(_ context.Context, _ store.Tx, _ *api.Cluster, _ *api.Service, task api.Task) error {
-	f.tasks = append(f.tasks, task.ID)
+func (f *fakeRestartSupervisor) Restart(_ context.Context, _ store.Tx, _ *api.Cluster, _ *api.Service, task *api.Task) error {
+	f.tasks = append(f.tasks, task.Id)
 	return nil
 }
 
@@ -103,8 +103,9 @@ var _ = Describe("Replicated Job reconciler", func() {
 			maxConcurrent = 10
 			totalCompletions = 30
 			service = &api.Service{
-				ID: serviceID,
-				Spec: api.ServiceSpec{
+				Id: serviceID,
+				Spec: &api.ServiceSpec{
+					Task: &api.TaskSpec{},
 					Mode: &api.ServiceSpec_ReplicatedJob{
 						ReplicatedJob: &api.ReplicatedJob{
 							MaxConcurrent:    maxConcurrent,
@@ -113,17 +114,17 @@ var _ = Describe("Replicated Job reconciler", func() {
 					},
 				},
 				JobStatus: &api.JobStatus{
-					JobIteration: api.Version{Index: 0},
+					JobIteration: &api.Version{Index: 0},
 				},
 			}
 
 			cluster = &api.Cluster{
-				ID: "someCluster",
-				Spec: api.ClusterSpec{
-					Annotations: api.Annotations{
+				Id: "someCluster",
+				Spec: &api.ClusterSpec{
+					Annotations: &api.Annotations{
 						Name: "someCluster",
 					},
-					TaskDefaults: api.TaskDefaults{
+					TaskDefaults: &api.TaskDefaults{
 						LogDriver: &api.Driver{
 							Name: "someDriver",
 						},
@@ -170,7 +171,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 					// get the service, and bump ForceUpdate and the job
 					// iteration
 					service := store.GetService(tx, serviceID)
-					service.Spec.Task.ForceUpdate++
+					service.Spec.GetTask().ForceUpdate++
 					service.JobStatus.JobIteration.Index++
 					// we don't actually look at LastExecution in the
 					// replicated reconciler so we don't bother to set it here.
@@ -194,7 +195,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 					Expect(task.JobIteration).ToNot(BeNil())
 					// first iteration of the job should have index 0
 					if task.JobIteration.Index == 0 {
-						Expect(task.DesiredState).To(Equal(api.TaskStateRemove))
+						Expect(task.DesiredState).To(Equal(api.TaskState_REMOVE))
 						count++
 					}
 				}
@@ -207,7 +208,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 				for _, task := range tasks {
 					Expect(task.JobIteration).ToNot(BeNil())
 					if task.JobIteration.Index == 1 {
-						Expect(task.DesiredState).To(Equal(api.TaskStateCompleted))
+						Expect(task.DesiredState).To(Equal(api.TaskState_COMPLETE))
 						count++
 					}
 				}
@@ -242,7 +243,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 					Expect(tasks).To(HaveLen(int(maxConcurrent)))
 
 					for _, task := range tasks {
-						Expect(task.ServiceID).To(Equal(service.ID))
+						Expect(task.ServiceId).To(Equal(service.Id))
 						Expect(task.JobIteration).ToNot(BeNil())
 						Expect(task.JobIteration.Index).To(Equal(uint64(0)))
 					}
@@ -261,7 +262,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 				It("should set the desired state of each task to COMPLETE", func() {
 					tasks := AllTasks(s)
 					for _, task := range tasks {
-						Expect(task.DesiredState).To(Equal(api.TaskStateCompleted))
+						Expect(task.DesiredState).To(Equal(api.TaskState_COMPLETE))
 					}
 				})
 
@@ -269,7 +270,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 					tasks := AllTasks(s)
 					Expect(tasks).ToNot(BeEmpty())
 
-					Expect(tasks[0].LogDriver).To(Equal(cluster.Spec.TaskDefaults.LogDriver))
+					Expect(tasks[0].LogDriver).To(Equal(cluster.Spec.GetTaskDefaults().GetLogDriver()))
 				})
 			})
 
@@ -282,7 +283,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 						for i := uint64(0); i < 12; i += 2 {
 							task := orchestrator.NewTask(cluster, service, i, "")
 							task.JobIteration = &api.Version{}
-							task.DesiredState = api.TaskStateCompleted
+							task.DesiredState = api.TaskState_COMPLETE
 
 							if err := store.CreateTask(tx, task); err != nil {
 								return err
@@ -311,7 +312,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 						for i := range maxConcurrent {
 							task := orchestrator.NewTask(cluster, service, i, "")
 							task.JobIteration = &api.Version{}
-							task.DesiredState = api.TaskStateShutdown
+							task.DesiredState = api.TaskState_SHUTDOWN
 
 							if err := store.CreateTask(tx, task); err != nil {
 								return err
@@ -348,8 +349,8 @@ var _ = Describe("Replicated Job reconciler", func() {
 						for i := range maxConcurrent {
 							task := orchestrator.NewTask(cluster, service, i, "")
 							task.JobIteration = &api.Version{}
-							task.DesiredState = api.TaskStateCompleted
-							task.Status.State = api.TaskStateCompleted
+							task.DesiredState = api.TaskState_COMPLETE
+							task.Status.State = api.TaskState_COMPLETE
 							if err := store.CreateTask(tx, task); err != nil {
 								return err
 							}
@@ -362,9 +363,9 @@ var _ = Describe("Replicated Job reconciler", func() {
 						for i := startSlot; i < endSlot; i++ {
 							task := orchestrator.NewTask(cluster, service, i, "")
 							task.JobIteration = &api.Version{}
-							task.DesiredState = api.TaskStateCompleted
-							task.Status.State = api.TaskStateFailed
-							failingTasks = append(failingTasks, task.ID)
+							task.DesiredState = api.TaskState_COMPLETE
+							task.Status.State = api.TaskState_FAILED
+							failingTasks = append(failingTasks, task.Id)
 							if err := store.CreateTask(tx, task); err != nil {
 								return err
 							}
@@ -390,14 +391,14 @@ var _ = Describe("Replicated Job reconciler", func() {
 				It("should not replace the failing tasks", func() {
 					s.View(func(tx store.ReadTx) {
 						// Get all tasks that are in desired state Completed
-						tasks, err := store.FindTasks(tx, store.ByDesiredState(api.TaskStateCompleted))
+						tasks, err := store.FindTasks(tx, store.ByDesiredState(api.TaskState_COMPLETE))
 						Expect(err).ToNot(HaveOccurred())
 
 						// count the tasks that are currently active. use type
 						// uint64 to make comparison with maxConcurrent easier.
 						activeTasks := uint64(0)
 						for _, task := range tasks {
-							if task.Status.State != api.TaskStateCompleted {
+							if task.Status.GetState() != api.TaskState_COMPLETE {
 								activeTasks++
 							}
 						}
@@ -410,7 +411,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 						// here we might as well do this sanity check
 						var newTasks uint64
 						for _, task := range tasks {
-							if task.Status.State == api.TaskStateNew {
+							if task.Status.GetState() == api.TaskState_NEW {
 								newTasks++
 							}
 						}
@@ -433,8 +434,8 @@ var _ = Describe("Replicated Job reconciler", func() {
 
 							task := orchestrator.NewTask(nil, service, i, "")
 							task.JobIteration = &api.Version{}
-							task.Status.State = api.TaskStateCompleted
-							task.DesiredState = api.TaskStateCompleted
+							task.Status.State = api.TaskState_COMPLETE
+							task.DesiredState = api.TaskState_COMPLETE
 
 							if err := store.CreateTask(tx, task); err != nil {
 								return err
@@ -449,7 +450,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 				It("should create no more than the tasks needed to reach TotalCompletions", func() {
 					var newTasks []*api.Task
 					s.View(func(tx store.ReadTx) {
-						newTasks, _ = store.FindTasks(tx, store.ByTaskState(api.TaskStateNew))
+						newTasks, _ = store.FindTasks(tx, store.ByTaskState(api.TaskState_NEW))
 					})
 
 					Expect(newTasks).To(HaveLen(10))
@@ -489,8 +490,9 @@ var _ = Describe("Replicated Job reconciler", func() {
 			totalCompletions := uint64(20)
 			err := s.Update(func(tx store.Tx) error {
 				service := &api.Service{
-					ID: "someService",
-					Spec: api.ServiceSpec{
+					Id: "someService",
+					Spec: &api.ServiceSpec{
+						Task: &api.TaskSpec{},
 						Mode: &api.ServiceSpec_ReplicatedJob{
 							ReplicatedJob: &api.ReplicatedJob{
 								MaxConcurrent:    maxConcurrent,
@@ -506,7 +508,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 				for range totalCompletions + 10 {
 					task := orchestrator.NewTask(nil, service, 0, "")
 					task.JobIteration = &api.Version{}
-					task.DesiredState = api.TaskStateCompleted
+					task.DesiredState = api.TaskState_COMPLETE
 
 					if err := store.CreateTask(tx, task); err != nil {
 						return err

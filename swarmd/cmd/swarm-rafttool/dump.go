@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/moby/swarmkit/v2/manager/state/raft/storage"
@@ -15,6 +15,8 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 )
 
 func loadData(swarmdir, unlockKey string) (*storage.WALData, *raftpb.Snapshot, error) {
@@ -65,10 +67,10 @@ func loadData(swarmdir, unlockKey string) (*storage.WALData, *raftpb.Snapshot, e
 	if snapshot != nil {
 		walsnap.Index = snapshot.Metadata.Index
 		walsnap.Term = snapshot.Metadata.Term
-		walsnap.ConfState = &snapshot.Metadata.ConfState
+		walsnap.ConfState = snapshot.Metadata.ConfState
 	}
 
-	wal, walData, err := storage.ReadRepairWAL(context.Background(), walDir, walsnap, walFactory)
+	wal, walData, err := storage.ReadRepairWAL(context.Background(), walDir, &walsnap, walFactory)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -84,9 +86,9 @@ func dumpWAL(swarmdir, unlockKey string, start, end uint64, redact bool) error {
 	}
 
 	for _, ent := range walData.Entries {
-		if (start == 0 || ent.Index >= start) && (end == 0 || ent.Index <= end) {
-			fmt.Printf("Entry Index=%d, Term=%d, Type=%s:\n", ent.Index, ent.Term, ent.Type.String())
-			switch ent.Type {
+		if (start == 0 || ent.GetIndex() >= start) && (end == 0 || ent.GetIndex() <= end) {
+			fmt.Printf("Entry Index=%d, Term=%d, Type=%s:\n", ent.GetIndex(), ent.GetTerm(), ent.GetType().String())
+			switch ent.GetType() {
 			case raftpb.EntryConfChange:
 				cc := &raftpb.ConfChange{}
 				err := proto.Unmarshal(ent.Data, cc)
@@ -94,8 +96,8 @@ func dumpWAL(swarmdir, unlockKey string, start, end uint64, redact bool) error {
 					return err
 				}
 
-				fmt.Println("Conf change type:", cc.Type.String())
-				fmt.Printf("Node ID: %x\n\n", cc.NodeID)
+				fmt.Println("Conf change type:", cc.GetType().String())
+				fmt.Printf("Node ID: %x\n\n", cc.GetNodeId())
 
 			case raftpb.EntryNormal:
 				r := &api.InternalRaftRequest{}
@@ -112,8 +114,8 @@ func dumpWAL(swarmdir, unlockKey string, start, end uint64, redact bool) error {
 						case *api.StoreAction_Cluster:
 							actype.Cluster.UnlockKeys = []*api.EncryptionKey{}
 							actype.Cluster.NetworkBootstrapKeys = []*api.EncryptionKey{}
-							actype.Cluster.RootCA = api.RootCA{}
-							actype.Cluster.Spec.CAConfig = api.CAConfig{}
+							actype.Cluster.RootCa = &api.RootCA{}
+							actype.Cluster.Spec.CaConfig = &api.CAConfig{}
 						case *api.StoreAction_Secret:
 							actype.Secret.Spec.Data = []byte("SECRET REDACTED")
 						case *api.StoreAction_Config:
@@ -126,7 +128,7 @@ func dumpWAL(swarmdir, unlockKey string, start, end uint64, redact bool) error {
 								}
 							}
 						case *api.StoreAction_Service:
-							if container := actype.Service.Spec.Task.GetContainer(); container != nil {
+							if container := actype.Service.Spec.GetTask().GetContainer(); container != nil {
 								container.Env = []string{"ENVVARS REDACTED"}
 								if container.PullOptions != nil {
 									container.PullOptions.RegistryAuth = "REDACTED"
@@ -136,7 +138,7 @@ func dumpWAL(swarmdir, unlockKey string, start, end uint64, redact bool) error {
 					}
 				}
 
-				if err := proto.MarshalText(os.Stdout, r); err != nil {
+				if err := printText(os.Stdout, r); err != nil {
 					return err
 				}
 				fmt.Println()
@@ -167,7 +169,7 @@ func dumpSnapshot(swarmdir, unlockKey string, redact bool) error {
 
 	fmt.Println("Active members:")
 	for _, member := range s.Membership.Members {
-		fmt.Printf(" NodeID=%s, RaftID=%x, Addr=%s\n", member.NodeID, member.RaftID, member.Addr)
+		fmt.Printf(" NodeID=%s, RaftID=%x, Addr=%s\n", member.NodeId, member.RaftId, member.Addr)
 	}
 	fmt.Println()
 
@@ -181,10 +183,10 @@ func dumpSnapshot(swarmdir, unlockKey string, redact bool) error {
 		for _, cluster := range s.Store.Clusters {
 			if cluster != nil {
 				// expunge everything that may have key material
-				cluster.RootCA = api.RootCA{}
+				cluster.RootCa = &api.RootCA{}
 				cluster.NetworkBootstrapKeys = []*api.EncryptionKey{}
 				cluster.UnlockKeys = []*api.EncryptionKey{}
-				cluster.Spec.CAConfig = api.CAConfig{}
+				cluster.Spec.CaConfig = &api.CAConfig{}
 			}
 		}
 		for _, secret := range s.Store.Secrets {
@@ -209,7 +211,7 @@ func dumpSnapshot(swarmdir, unlockKey string, redact bool) error {
 		}
 		for _, service := range s.Store.Services {
 			if service != nil {
-				if container := service.Spec.Task.GetContainer(); container != nil {
+				if container := service.Spec.GetTask().GetContainer(); container != nil {
 					container.Env = []string{"ENVVARS REDACTED"}
 					if container.PullOptions != nil {
 						container.PullOptions.RegistryAuth = "REDACTED"
@@ -220,7 +222,7 @@ func dumpSnapshot(swarmdir, unlockKey string, redact bool) error {
 	}
 
 	fmt.Println("Objects:")
-	if err := proto.MarshalText(os.Stdout, &s.Store); err != nil {
+	if err := printText(os.Stdout, s.Store); err != nil {
 		return err
 	}
 	fmt.Println()
@@ -258,24 +260,24 @@ func dumpObject(swarmdir, unlockKey, objType string, selector objSelector) error
 
 	if snapshot != nil {
 		var s api.Snapshot
-		if err := s.Unmarshal(snapshot.Data); err != nil {
+		if err := s.UnmarshalVT(snapshot.Data); err != nil {
 			return err
 		}
 		if s.Version != api.Snapshot_V0 {
 			return fmt.Errorf("unrecognized snapshot version %d", s.Version)
 		}
 
-		if err := memStore.Restore(&s.Store); err != nil {
+		if err := memStore.Restore(s.Store); err != nil {
 			return err
 		}
 	}
 
 	for _, ent := range walData.Entries {
-		if snapshot != nil && ent.Index <= snapshot.Metadata.Index {
+		if snapshot != nil && ent.GetIndex() <= snapshot.GetMetadata().GetIndex() {
 			continue
 		}
 
-		if ent.Type != raftpb.EntryNormal {
+		if ent.GetType() != raftpb.EntryNormal {
 			continue
 		}
 
@@ -453,11 +455,25 @@ func dumpObject(swarmdir, unlockKey, objType string, selector objSelector) error
 	}
 
 	for _, object := range objects {
-		if err := proto.MarshalText(os.Stdout, object); err != nil {
+		if err := printText(os.Stdout, object); err != nil {
 			return err
 		}
 		fmt.Println()
 	}
 
 	return nil
+}
+
+// printText writes m to w in the protobuf text format.
+//
+// It replaces gogo's proto.MarshalText, which the official runtime does not
+// provide; prototext deliberately produces unstable output, so this is only
+// ever used for human consumption.
+func printText(w io.Writer, m proto.Message) error {
+	b, err := prototext.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(m)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(b)
+	return err
 }

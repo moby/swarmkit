@@ -46,8 +46,8 @@ var (
 				}()
 				common.PrintHeader(w, "ID", "Name", "Membership", "Status", "Availability", "Manager Status")
 				output = func(n *api.Node) {
-					spec := &n.Spec
-					name := spec.Annotations.Name
+					spec := n.Spec
+					name := spec.GetAnnotations().GetName()
 					availability := spec.Availability.String()
 					membership := spec.Membership.String()
 
@@ -61,21 +61,21 @@ var (
 							reachability = reachability + " *"
 						}
 					}
-					if reachability == "" && spec.DesiredRole == api.NodeRoleManager {
+					if reachability == "" && spec.DesiredRole == api.NodeRole_MANAGER {
 						reachability = "UNKNOWN"
 					}
 
 					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
-						n.ID,
+						n.Id,
 						name,
 						membership,
-						n.Status.State.String(),
+						n.Status.GetState().String(),
 						availability,
 						reachability,
 					)
 				}
 			} else {
-				output = func(n *api.Node) { fmt.Println(n.ID) }
+				output = func(n *api.Node) { fmt.Println(n.Id) }
 			}
 
 			for _, n := range r.Nodes {

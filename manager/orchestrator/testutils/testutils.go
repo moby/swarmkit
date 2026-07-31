@@ -82,7 +82,7 @@ func WatchShutdownTask(t *testing.T, watch chan events.Event) *api.Task {
 	for {
 		select {
 		case event := <-watch:
-			if task, ok := event.(api.EventUpdateTask); ok && task.Task.DesiredState == api.TaskStateShutdown {
+			if task, ok := event.(api.EventUpdateTask); ok && task.Task.DesiredState == api.TaskState_SHUTDOWN {
 				return task.Task
 			}
 			if _, ok := event.(api.EventCreateTask); ok {

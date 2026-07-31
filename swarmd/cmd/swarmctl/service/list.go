@@ -42,8 +42,8 @@ var (
 			}
 			liveNodes := make(map[string]struct{})
 			for _, n := range nr.Nodes {
-				if n.Status.State != api.NodeStatus_DOWN {
-					liveNodes[n.ID] = struct{}{}
+				if n.Status.GetState() != api.NodeStatus_DOWN {
+					liveNodes[n.Id] = struct{}{}
 				}
 			}
 
@@ -57,9 +57,9 @@ var (
 
 				running := map[string]int{}
 				for _, task := range tr.Tasks {
-					if _, nodeLive := liveNodes[task.NodeID]; nodeLive &&
-						task.Status.State == api.TaskStateRunning {
-						running[task.ServiceID]++
+					if _, nodeLive := liveNodes[task.NodeId]; nodeLive &&
+						task.Status.GetState() == api.TaskState_RUNNING {
+						running[task.ServiceId]++
 					}
 				}
 
@@ -74,19 +74,19 @@ var (
 					var reference string
 
 					if spec.Task.GetContainer() != nil {
-						reference = spec.Task.GetContainer().Image
+						reference = spec.Task.GetContainer().GetImage()
 					}
 
 					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
-						s.ID,
-						spec.Annotations.Name,
+						s.Id,
+						spec.GetAnnotations().GetName(),
 						reference,
-						getServiceReplicasTxt(s, running[s.ID]),
+						getServiceReplicasTxt(s, running[s.Id]),
 					)
 				}
 
 			} else {
-				output = func(j *api.Service) { fmt.Println(j.ID) }
+				output = func(j *api.Service) { fmt.Println(j.Id) }
 			}
 
 			for _, j := range r.Services {

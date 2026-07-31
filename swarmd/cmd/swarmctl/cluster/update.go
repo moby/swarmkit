@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/cli"
 	"github.com/spf13/cobra"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 )
 
 var (
@@ -39,7 +39,7 @@ var (
 			}
 
 			flags := cmd.Flags()
-			spec := &cluster.Spec
+			spec := cluster.Spec
 			var rotation api.KeyRotation
 
 			if flags.Changed("certexpiry") {
@@ -47,11 +47,11 @@ var (
 				if err != nil {
 					return err
 				}
-				ceProtoPeriod := gogotypes.DurationProto(cePeriod)
-				spec.CAConfig.NodeCertExpiry = ceProtoPeriod
+				ceProtoPeriod := durationpb.New(cePeriod)
+				spec.CaConfig.NodeCertExpiry = ceProtoPeriod
 			}
 			if flags.Changed("external-ca") {
-				spec.CAConfig.ExternalCAs = externalCAOpt.Value()
+				spec.CaConfig.ExternalCas = externalCAOpt.Value()
 			}
 			if flags.Changed("taskhistory") {
 				taskHistory, err := flags.GetInt64("taskhistory")
@@ -65,7 +65,7 @@ var (
 				if err != nil {
 					return err
 				}
-				spec.Dispatcher.HeartbeatPeriod = gogotypes.DurationProto(hbPeriod)
+				spec.Dispatcher.HeartbeatPeriod = durationpb.New(hbPeriod)
 			}
 			if flags.Changed("rotate-join-token") {
 				rotateJoinToken, err := flags.GetString("rotate-join-token")
@@ -102,15 +102,15 @@ var (
 			spec.TaskDefaults.LogDriver = driver
 
 			r, err := c.UpdateCluster(common.Context(cmd), &api.UpdateClusterRequest{
-				ClusterID:      cluster.ID,
-				ClusterVersion: &cluster.Meta.Version,
+				ClusterId:      cluster.Id,
+				ClusterVersion: cluster.Meta.Version,
 				Spec:           spec,
-				Rotation:       rotation,
+				Rotation:       &rotation,
 			})
 			if err != nil {
 				return err
 			}
-			fmt.Println(r.Cluster.ID)
+			fmt.Println(r.Cluster.Id)
 
 			if rotation.ManagerUnlockKey {
 				return displayUnlockKey(cmd)

@@ -59,8 +59,8 @@ func TestForceRenewExpectedRole(t *testing.T) {
 			node := store.GetNode(tx, nodeConfig.ClientTLSCreds.NodeID())
 			require.NotNil(t, node)
 
-			node.Spec.DesiredRole = api.NodeRoleWorker
-			node.Role = api.NodeRoleWorker
+			node.Spec.DesiredRole = api.NodeRole_WORKER
+			node.Role = api.NodeRole_WORKER
 
 			return store.UpdateNode(tx, node)
 		})

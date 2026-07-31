@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/service/flagparser"
@@ -61,19 +60,19 @@ var (
 				return err
 			}
 
-			if reflect.DeepEqual(spec, &service.Spec) {
+			if spec.EqualVT(service.Spec) {
 				return errors.New("no changes detected")
 			}
 
 			r, err := c.UpdateService(common.Context(cmd), &api.UpdateServiceRequest{
-				ServiceID:      service.ID,
-				ServiceVersion: &service.Meta.Version,
+				ServiceId:      service.Id,
+				ServiceVersion: service.Meta.Version,
 				Spec:           spec,
 			})
 			if err != nil {
 				return err
 			}
-			fmt.Println(r.Service.ID)
+			fmt.Println(r.Service.Id)
 			return nil
 		},
 	}

@@ -21,7 +21,7 @@ func TestWatch(t *testing.T) {
 		Entries: []*api.WatchRequest_WatchEntry{
 			{
 				Kind:   "node",
-				Action: api.WatchActionKindCreate,
+				Action: api.WatchActionKind_WATCH_ACTION_CREATE,
 			},
 		},
 	})
@@ -30,14 +30,14 @@ func TestWatch(t *testing.T) {
 	// Should receive an initial message that indicates the watch is ready
 	msg, err := watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, &api.WatchMessage{}, msg)
+	assert.True(t, (&api.WatchMessage{}).EqualVT(msg), "expected an empty watch message")
 
-	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	createNode(t, ts, "id1", api.NodeRole_MANAGER, api.NodeSpec_ACCEPTED, api.NodeStatus_READY)
 	msg, err = watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, api.WatchActionKindCreate, msg.Events[0].Action)
+	assert.Equal(t, api.WatchActionKind_WATCH_ACTION_CREATE, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
-	assert.Equal(t, "id1", msg.Events[0].Object.GetNode().ID)
+	assert.Equal(t, "id1", msg.Events[0].Object.GetNode().GetId())
 
 	watch.CloseSend()
 
@@ -47,7 +47,7 @@ func TestWatch(t *testing.T) {
 		Entries: []*api.WatchRequest_WatchEntry{
 			{
 				Kind:   "node",
-				Action: api.WatchActionKindCreate,
+				Action: api.WatchActionKind_WATCH_ACTION_CREATE,
 				Filters: []*api.SelectBy{
 					{
 						By: &api.SelectBy_NamePrefix{
@@ -66,11 +66,11 @@ func TestWatch(t *testing.T) {
 			},
 			{
 				Kind:   "node",
-				Action: api.WatchActionKindCreate,
+				Action: api.WatchActionKind_WATCH_ACTION_CREATE,
 				Filters: []*api.SelectBy{
 					{
 						By: &api.SelectBy_Role{
-							Role: api.NodeRoleManager,
+							Role: api.NodeRole_MANAGER,
 						},
 					},
 				},
@@ -82,29 +82,29 @@ func TestWatch(t *testing.T) {
 	// Should receive an initial message that indicates the watch is ready
 	msg, err = watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, &api.WatchMessage{}, msg)
+	assert.True(t, (&api.WatchMessage{}).EqualVT(msg), "expected an empty watch message")
 
-	createNode(t, ts, "id2", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	createNode(t, ts, "id2", api.NodeRole_MANAGER, api.NodeSpec_ACCEPTED, api.NodeStatus_READY)
 	msg, err = watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, api.WatchActionKindCreate, msg.Events[0].Action)
+	assert.Equal(t, api.WatchActionKind_WATCH_ACTION_CREATE, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
-	assert.Equal(t, "id2", msg.Events[0].Object.GetNode().ID)
+	assert.Equal(t, "id2", msg.Events[0].Object.GetNode().GetId())
 
 	// Shouldn't be seen by the watch
-	createNode(t, ts, "id3", api.NodeRoleWorker, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	createNode(t, ts, "id3", api.NodeRole_WORKER, api.NodeSpec_ACCEPTED, api.NodeStatus_READY)
 
 	// Shouldn't be seen either - no hostname
 	node := &api.Node{
-		ID: "id4",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
-				Indices: []api.IndexEntry{
+		Id: "id4",
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
+				Indices: []*api.IndexEntry{
 					{Key: "myindex", Val: "myval"},
 				},
 			},
 		},
-		Role: api.NodeRoleWorker,
+		Role: api.NodeRole_WORKER,
 	}
 	err = ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateNode(tx, node)
@@ -113,18 +113,18 @@ func TestWatch(t *testing.T) {
 
 	// Shouldn't be seen either - hostname doesn't match filter
 	node = &api.Node{
-		ID: "id5",
+		Id: "id5",
 		Description: &api.NodeDescription{
 			Hostname: "west-40",
 		},
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
-				Indices: []api.IndexEntry{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
+				Indices: []*api.IndexEntry{
 					{Key: "myindex", Val: "myval"},
 				},
 			},
 		},
-		Role: api.NodeRoleWorker,
+		Role: api.NodeRole_WORKER,
 	}
 	err = ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateNode(tx, node)
@@ -133,18 +133,18 @@ func TestWatch(t *testing.T) {
 
 	// This one should be seen
 	node = &api.Node{
-		ID: "id6",
+		Id: "id6",
 		Description: &api.NodeDescription{
 			Hostname: "east-95",
 		},
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
-				Indices: []api.IndexEntry{
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
+				Indices: []*api.IndexEntry{
 					{Key: "myindex", Val: "myval"},
 				},
 			},
 		},
-		Role: api.NodeRoleWorker,
+		Role: api.NodeRole_WORKER,
 	}
 	err = ts.Store.Update(func(tx store.Tx) error {
 		return store.CreateNode(tx, node)
@@ -153,9 +153,9 @@ func TestWatch(t *testing.T) {
 
 	msg, err = watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, api.WatchActionKindCreate, msg.Events[0].Action)
+	assert.Equal(t, api.WatchActionKind_WATCH_ACTION_CREATE, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
-	assert.Equal(t, "id6", msg.Events[0].Object.GetNode().ID)
+	assert.Equal(t, "id6", msg.Events[0].Object.GetNode().GetId())
 
 	watch.CloseSend()
 }
@@ -171,7 +171,7 @@ func TestWatchMultipleActions(t *testing.T) {
 		Entries: []*api.WatchRequest_WatchEntry{
 			{
 				Kind:   "node",
-				Action: api.WatchActionKindCreate | api.WatchActionKindRemove,
+				Action: api.WatchActionKind_WATCH_ACTION_CREATE | api.WatchActionKind_WATCH_ACTION_REMOVE,
 			},
 		},
 	})
@@ -180,20 +180,20 @@ func TestWatchMultipleActions(t *testing.T) {
 	// Should receive an initial message that indicates the watch is ready
 	msg, err := watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, &api.WatchMessage{}, msg)
+	assert.True(t, (&api.WatchMessage{}).EqualVT(msg), "expected an empty watch message")
 
-	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	createNode(t, ts, "id1", api.NodeRole_MANAGER, api.NodeSpec_ACCEPTED, api.NodeStatus_READY)
 	msg, err = watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, api.WatchActionKindCreate, msg.Events[0].Action)
+	assert.Equal(t, api.WatchActionKind_WATCH_ACTION_CREATE, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
-	assert.Equal(t, "id1", msg.Events[0].Object.GetNode().ID)
+	assert.Equal(t, "id1", msg.Events[0].Object.GetNode().GetId())
 
 	// Update should not be seen
 	err = ts.Store.Update(func(tx store.Tx) error {
 		node := store.GetNode(tx, "id1")
 		require.NotNil(t, node)
-		node.Role = api.NodeRoleWorker
+		node.Role = api.NodeRole_WORKER
 		return store.UpdateNode(tx, node)
 	})
 	assert.NoError(t, err)
@@ -205,9 +205,9 @@ func TestWatchMultipleActions(t *testing.T) {
 	assert.NoError(t, err)
 	msg, err = watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, api.WatchActionKindRemove, msg.Events[0].Action)
+	assert.Equal(t, api.WatchActionKind_WATCH_ACTION_REMOVE, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
-	assert.Equal(t, "id1", msg.Events[0].Object.GetNode().ID)
+	assert.Equal(t, "id1", msg.Events[0].Object.GetNode().GetId())
 
 	watch.CloseSend()
 }
@@ -223,7 +223,7 @@ func TestWatchIncludeOldObject(t *testing.T) {
 		Entries: []*api.WatchRequest_WatchEntry{
 			{
 				Kind:   "node",
-				Action: api.WatchActionKindUpdate,
+				Action: api.WatchActionKind_WATCH_ACTION_UPDATE,
 			},
 		},
 		IncludeOldObject: true,
@@ -233,27 +233,27 @@ func TestWatchIncludeOldObject(t *testing.T) {
 	// Should receive an initial message that indicates the watch is ready
 	msg, err := watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, &api.WatchMessage{}, msg)
+	assert.True(t, (&api.WatchMessage{}).EqualVT(msg), "expected an empty watch message")
 
-	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	createNode(t, ts, "id1", api.NodeRole_MANAGER, api.NodeSpec_ACCEPTED, api.NodeStatus_READY)
 
 	err = ts.Store.Update(func(tx store.Tx) error {
 		node := store.GetNode(tx, "id1")
 		require.NotNil(t, node)
-		node.Role = api.NodeRoleWorker
+		node.Role = api.NodeRole_WORKER
 		return store.UpdateNode(tx, node)
 	})
 	assert.NoError(t, err)
 
 	msg, err = watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, api.WatchActionKindUpdate, msg.Events[0].Action)
+	assert.Equal(t, api.WatchActionKind_WATCH_ACTION_UPDATE, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
-	assert.Equal(t, "id1", msg.Events[0].Object.GetNode().ID)
-	assert.Equal(t, api.NodeRoleWorker, msg.Events[0].Object.GetNode().Role)
+	assert.Equal(t, "id1", msg.Events[0].Object.GetNode().GetId())
+	assert.Equal(t, api.NodeRole_WORKER, msg.Events[0].Object.GetNode().GetRole())
 	require.NotNil(t, msg.Events[0].OldObject.GetNode())
-	assert.Equal(t, "id1", msg.Events[0].OldObject.GetNode().ID)
-	assert.Equal(t, api.NodeRoleManager, msg.Events[0].OldObject.GetNode().Role)
+	assert.Equal(t, "id1", msg.Events[0].OldObject.GetNode().GetId())
+	assert.Equal(t, api.NodeRole_MANAGER, msg.Events[0].OldObject.GetNode().GetRole())
 
 	watch.CloseSend()
 }
@@ -264,41 +264,41 @@ func TestWatchResumeFrom(t *testing.T) {
 
 	ctx := context.Background()
 
-	createNode(t, ts, "id1", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
-	node2 := createNode(t, ts, "id2", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	createNode(t, ts, "id1", api.NodeRole_MANAGER, api.NodeSpec_ACCEPTED, api.NodeStatus_READY)
+	node2 := createNode(t, ts, "id2", api.NodeRole_MANAGER, api.NodeSpec_ACCEPTED, api.NodeStatus_READY)
 
 	// Watch for node creates, starting from after the first node creation.
 	watch, err := ts.Client.Watch(ctx, &api.WatchRequest{
 		Entries: []*api.WatchRequest_WatchEntry{
 			{
 				Kind:   "node",
-				Action: api.WatchActionKindCreate,
+				Action: api.WatchActionKind_WATCH_ACTION_CREATE,
 			},
 		},
-		ResumeFrom: &node2.Meta.Version,
+		ResumeFrom: node2.Meta.Version,
 	})
 	assert.NoError(t, err)
 
 	// Should receive an initial message that indicates the watch is ready
 	msg, err := watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, &api.WatchMessage{}, msg)
+	assert.True(t, (&api.WatchMessage{}).EqualVT(msg), "expected an empty watch message")
 
 	msg, err = watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, api.WatchActionKindCreate, msg.Events[0].Action)
+	assert.Equal(t, api.WatchActionKind_WATCH_ACTION_CREATE, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
-	assert.Equal(t, "id2", msg.Events[0].Object.GetNode().ID)
+	assert.Equal(t, "id2", msg.Events[0].Object.GetNode().GetId())
 	assert.Equal(t, node2.Meta.Version.Index+3, msg.Version.Index)
 
 	// Create a new node
-	node3 := createNode(t, ts, "id3", api.NodeRoleManager, api.NodeMembershipAccepted, api.NodeStatus_READY)
+	node3 := createNode(t, ts, "id3", api.NodeRole_MANAGER, api.NodeSpec_ACCEPTED, api.NodeStatus_READY)
 
 	msg, err = watch.Recv()
 	assert.NoError(t, err)
-	assert.Equal(t, api.WatchActionKindCreate, msg.Events[0].Action)
+	assert.Equal(t, api.WatchActionKind_WATCH_ACTION_CREATE, msg.Events[0].Action)
 	require.NotNil(t, msg.Events[0].Object.GetNode())
-	assert.Equal(t, "id3", msg.Events[0].Object.GetNode().ID)
+	assert.Equal(t, "id3", msg.Events[0].Object.GetNode().GetId())
 	assert.Equal(t, node3.Meta.Version.Index+3, msg.Version.Index)
 
 	watch.CloseSend()

@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"testing"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
+	anypb "google.golang.org/protobuf/types/known/anypb"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
+	"google.golang.org/protobuf/proto"
 )
 
 const testExtName = "testExtension"
@@ -35,7 +36,7 @@ func prepResource(t *testing.T, ts *testServer) *api.Resource {
 		Name:   "SomeName",
 		Labels: map[string]string{"some": "label"},
 	}
-	anyMsg, err := gogotypes.MarshalAny(anyContent)
+	anyMsg, err := anypb.New(anyContent)
 	require.NoError(t, err)
 
 	// first, create a valid resource, to ensure that that works
@@ -77,14 +78,14 @@ func TestCreateResource(t *testing.T) {
 				Name: "ValidResource",
 			},
 			Kind:    testExtName,
-			Payload: &gogotypes.Any{},
+			Payload: &anypb.Any{},
 		}
 
 		resp, err := ts.Client.CreateResource(context.Background(), req)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.NotNil(t, resp.Resource)
-		assert.NotEmpty(t, resp.Resource.ID)
+		assert.NotEmpty(t, resp.Resource.Id)
 		assert.NotZero(t, resp.Resource.Meta.Version.Index)
 	})
 
@@ -132,7 +133,7 @@ func TestCreateResource(t *testing.T) {
 					Name: "ValidResource",
 				},
 				Kind:    testExtName,
-				Payload: &gogotypes.Any{},
+				Payload: &anypb.Any{},
 			},
 			code: codes.AlreadyExists,
 		},
@@ -150,7 +151,7 @@ func TestUpdateResourceValid(t *testing.T) {
 	defer ts.Stop()
 
 	resource := prepResource(t, ts)
-	resourceID := resource.ID
+	resourceID := resource.Id
 
 	for _, tc := range []struct {
 		name string
@@ -168,14 +169,14 @@ func TestUpdateResourceValid(t *testing.T) {
 				newContent := &api.Annotations{
 					Name: "SomeNewName",
 				}
-				newMsg, err := gogotypes.MarshalAny(newContent)
+				newMsg, err := anypb.New(newContent)
 				require.NoError(t, err)
-				r.Annotations = *newAnnotations
+				r.Annotations = newAnnotations
 				r.Payload = newMsg
 
 				return &api.UpdateResourceRequest{
-					ResourceID:      resourceID,
-					ResourceVersion: &r.Meta.Version,
+					ResourceId:      resourceID,
+					ResourceVersion: r.Meta.Version,
 					Annotations:     newAnnotations,
 					Payload:         newMsg,
 				}
@@ -185,9 +186,9 @@ func TestUpdateResourceValid(t *testing.T) {
 			transform: func(t *testing.T, r *api.Resource) *api.UpdateResourceRequest {
 				r.Annotations.Labels = map[string]string{"onlyUpdating": "theseLabels"}
 				return &api.UpdateResourceRequest{
-					ResourceID:      r.ID,
-					ResourceVersion: &r.Meta.Version,
-					Annotations:     &r.Annotations,
+					ResourceId:      r.Id,
+					ResourceVersion: r.Meta.Version,
+					Annotations:     r.Annotations,
 				}
 			},
 		}, {
@@ -196,12 +197,12 @@ func TestUpdateResourceValid(t *testing.T) {
 				newContent := &api.Annotations{
 					Name: "OnlyUpdatingPayload",
 				}
-				newMsg, err := gogotypes.MarshalAny(newContent)
+				newMsg, err := anypb.New(newContent)
 				require.NoError(t, err)
 				r.Payload = newMsg
 				return &api.UpdateResourceRequest{
-					ResourceID:      resourceID,
-					ResourceVersion: &r.Meta.Version,
+					ResourceId:      resourceID,
+					ResourceVersion: r.Meta.Version,
 					Payload:         newMsg,
 				}
 			},
@@ -218,8 +219,8 @@ func TestUpdateResourceValid(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, resp)
 			require.NotNil(t, resp.Resource)
-			assert.Equal(t, resp.Resource.Payload, r.Payload)
-			assert.Equal(t, resp.Resource.Annotations, r.Annotations)
+			assert.True(t, proto.Equal(resp.Resource.Payload, r.Payload))
+			assert.True(t, resp.Resource.Annotations.EqualVT(r.Annotations))
 			assert.Equal(t, resp.Resource.Kind, testExtName)
 		})
 	}
@@ -239,35 +240,35 @@ func TestUpdateResourceInvalid(t *testing.T) {
 		{
 			name: "MissingID",
 			req: &api.UpdateResourceRequest{
-				ResourceID:      "",
-				ResourceVersion: &resource.Meta.Version,
+				ResourceId:      "",
+				ResourceVersion: resource.Meta.Version,
 			},
 			code: codes.InvalidArgument,
 		}, {
 			name: "MissingVersion",
 			req: &api.UpdateResourceRequest{
-				ResourceID: resource.ID,
+				ResourceId: resource.Id,
 			},
 			code: codes.InvalidArgument,
 		}, {
 			name: "NotFound",
 			req: &api.UpdateResourceRequest{
-				ResourceID:      "notreal",
-				ResourceVersion: &resource.Meta.Version,
+				ResourceId:      "notreal",
+				ResourceVersion: resource.Meta.Version,
 			},
 			code: codes.NotFound,
 		}, {
 			name: "IncorrectVersion",
 			req: &api.UpdateResourceRequest{
-				ResourceID:      resource.ID,
+				ResourceId:      resource.Id,
 				ResourceVersion: &api.Version{Index: 0},
 			},
 			code: codes.InvalidArgument,
 		}, {
 			name: "ChangedName",
 			req: &api.UpdateResourceRequest{
-				ResourceID:      resource.ID,
-				ResourceVersion: &resource.Meta.Version,
+				ResourceId:      resource.Id,
+				ResourceVersion: resource.Meta.Version,
 				Annotations: &api.Annotations{
 					Name: "different",
 				},
@@ -297,7 +298,7 @@ func TestGetResource(t *testing.T) {
 	// id which does not exist should return NotFound
 	resp, err = ts.Client.GetResource(
 		context.Background(),
-		&api.GetResourceRequest{ResourceID: "notreal"},
+		&api.GetResourceRequest{ResourceId: "notreal"},
 	)
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
@@ -305,7 +306,7 @@ func TestGetResource(t *testing.T) {
 	// ID which exists should return the resource
 	resp, err = ts.Client.GetResource(
 		context.Background(),
-		&api.GetResourceRequest{ResourceID: resource.ID},
+		&api.GetResourceRequest{ResourceId: resource.Id},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
@@ -328,7 +329,7 @@ func TestRemoveResource(t *testing.T) {
 	// id which does not exist should return NotFound
 	resp, err = ts.Client.RemoveResource(
 		context.Background(),
-		&api.RemoveResourceRequest{ResourceID: "notreal"},
+		&api.RemoveResourceRequest{ResourceId: "notreal"},
 	)
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
@@ -337,7 +338,7 @@ func TestRemoveResource(t *testing.T) {
 	// ID which exists should return the resource
 	resp, err = ts.Client.RemoveResource(
 		context.Background(),
-		&api.RemoveResourceRequest{ResourceID: resource.ID},
+		&api.RemoveResourceRequest{ResourceId: resource.Id},
 	)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
@@ -345,7 +346,7 @@ func TestRemoveResource(t *testing.T) {
 	// Trying to delete again should return not found
 	resp, err = ts.Client.RemoveResource(
 		context.Background(),
-		&api.RemoveResourceRequest{ResourceID: resource.ID},
+		&api.RemoveResourceRequest{ResourceId: resource.Id},
 	)
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
@@ -377,7 +378,7 @@ func TestListResources(t *testing.T) {
 
 		byName := make(map[string]*api.Resource)
 		for _, resource := range resp.Resources {
-			byName[resource.Annotations.Name] = resource
+			byName[resource.GetAnnotations().GetName()] = resource
 		}
 		return byName
 	}
@@ -403,7 +404,7 @@ func TestListResources(t *testing.T) {
 			},
 		)
 		require.NoError(t, err)
-		resourceNamesToID[resourceName] = resp.Resource.ID
+		resourceNamesToID[resourceName] = resp.Resource.Id
 	}
 
 	type listTestCase struct {
@@ -432,7 +433,7 @@ func TestListResources(t *testing.T) {
 		}, {
 			desc:     "multiple ID prefix filters are or-ed together",
 			expected: []string{"aaa", "bbb"},
-			filter: &api.ListResourcesRequest_Filters{IDPrefixes: []string{
+			filter: &api.ListResourcesRequest_Filters{IdPrefixes: []string{
 				resourceNamesToID["aaa"], resourceNamesToID["bbb"]},
 			},
 		}, {
@@ -441,7 +442,7 @@ func TestListResources(t *testing.T) {
 			filter: &api.ListResourcesRequest_Filters{
 				Names:        []string{"aaa", "ccc"},
 				NamePrefixes: []string{"aa", "bb"},
-				IDPrefixes:   []string{resourceNamesToID["aaa"], resourceNamesToID["ddd"]},
+				IdPrefixes:   []string{resourceNamesToID["aaa"], resourceNamesToID["ddd"]},
 			},
 		}, {
 			desc:     "all labels in the label map must be matched",
@@ -460,7 +461,7 @@ func TestListResources(t *testing.T) {
 			filter: &api.ListResourcesRequest_Filters{
 				Names:        []string{"aaa", "ccc"},
 				NamePrefixes: []string{"aa", "bb"},
-				IDPrefixes:   []string{resourceNamesToID["aaa"], resourceNamesToID["ddd"]},
+				IdPrefixes:   []string{resourceNamesToID["aaa"], resourceNamesToID["ddd"]},
 				Labels: map[string]string{
 					"mod2": "0",
 				},
@@ -485,7 +486,7 @@ func TestListResources(t *testing.T) {
 			filter: &api.ListResourcesRequest_Filters{
 				Names:        []string{"aaa", "abc"},
 				NamePrefixes: []string{"aa", "bb"},
-				IDPrefixes:   []string{resourceNamesToID["aaa"], resourceNamesToID["ddd"]},
+				IdPrefixes:   []string{resourceNamesToID["aaa"], resourceNamesToID["ddd"]},
 				Labels: map[string]string{
 					"mod2": "0",
 				},
@@ -500,7 +501,7 @@ func TestListResources(t *testing.T) {
 		for _, name := range expectation.expected {
 			assert.Contains(t, result, name, expectation.desc)
 			assert.NotNil(t, result[name], expectation.desc)
-			assert.Equal(t, resourceNamesToID[name], result[name].ID, expectation.desc)
+			assert.Equal(t, resourceNamesToID[name], result[name].Id, expectation.desc)
 		}
 	}
 }

@@ -12,7 +12,7 @@ var (
 		Use:   "demote <node ID>",
 		Short: "Demote a node from a manager to a worker",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := changeNodeRole(cmd, args, api.NodeRoleWorker); err != nil {
+			if err := changeNodeRole(cmd, args, api.NodeRole_WORKER); err != nil {
 				if err == errNoChange {
 					return fmt.Errorf("Node %s is already a worker", args[0])
 				}

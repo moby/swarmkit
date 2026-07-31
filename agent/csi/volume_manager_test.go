@@ -63,20 +63,20 @@ func TestTaskRestrictedVolumesProvider(t *testing.T) {
 			// create a new volumesManager each test.
 			volumesManager := NewFakeManager()
 
-			v := api.VolumeAssignment{
-				ID:     testCase.volumeID,
+			v := &api.VolumeAssignment{
+				Id:     testCase.volumeID,
 				Driver: &api.Driver{Name: driver},
 			}
 
 			volumesManager.Add(v)
 			volumesManager.pendingVolumes.Wait()
-			volumesManager.tryVolume(ctx, v.ID, 0)
+			volumesManager.tryVolume(ctx, v.Id, 0)
 
 			volumesGetter := Restrict(volumesManager, &api.Task{
-				ID: taskID,
+				Id: taskID,
 				Volumes: []*api.VolumeAttachment{
 					{
-						ID: "volume1",
+						Id: "volume1",
 					},
 				},
 			})

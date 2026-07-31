@@ -45,7 +45,7 @@ func TestReporter(t *testing.T) {
 					t.Fatal("encountered status twice")
 				}
 
-				if status.State == api.TaskStateCompleted {
+				if status.State == api.TaskState_COMPLETE {
 					wg.Done()
 				}
 
@@ -69,10 +69,10 @@ func TestReporter(t *testing.T) {
 	wg.Add(ntasks) // statuses will be reported!
 
 	for _, state := range []api.TaskState{
-		api.TaskStateAccepted,
-		api.TaskStatePreparing,
-		api.TaskStateReady,
-		api.TaskStateCompleted,
+		api.TaskState_ACCEPTED,
+		api.TaskState_PREPARING,
+		api.TaskState_READY,
+		api.TaskState_COMPLETE,
 	} {
 		for i := range ntasks {
 			taskID, status := fmt.Sprint(i), &api.TaskStatus{State: state}

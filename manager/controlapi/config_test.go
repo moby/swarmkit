@@ -15,7 +15,7 @@ import (
 
 func createConfigSpec(name string, data []byte, labels map[string]string) *api.ConfigSpec {
 	return &api.ConfigSpec{
-		Annotations: api.Annotations{Name: name, Labels: labels},
+		Annotations: &api.Annotations{Name: name, Labels: labels},
 		Data:        data,
 	}
 }
@@ -110,15 +110,15 @@ func TestCreateConfig(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Config)
-	assert.Equal(t, *creationSpec, resp.Config.Spec)
+	assert.True(t, creationSpec.EqualVT(resp.Config.Spec))
 
 	// for sanity, check that the stored config still has the config data
 	var storedConfig *api.Config
 	ts.Store.View(func(tx store.ReadTx) {
-		storedConfig = store.GetConfig(tx, resp.Config.ID)
+		storedConfig = store.GetConfig(tx, resp.Config.Id)
 	})
 	assert.NotNil(t, storedConfig)
-	assert.Equal(t, data, storedConfig.Spec.Data)
+	assert.Equal(t, data, storedConfig.Spec.GetData())
 
 	// ---- creating a config with the same name, even if it's the exact same spec, fails due to a name conflict ----
 	_, err = ts.Client.CreateConfig(context.Background(), &validSpecRequest)
@@ -136,7 +136,7 @@ func TestGetConfig(t *testing.T) {
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// ---- getting a non-existent config fails with NotFound ----
-	_, err = ts.Client.GetConfig(context.Background(), &api.GetConfigRequest{ConfigID: "12345"})
+	_, err = ts.Client.GetConfig(context.Background(), &api.GetConfigRequest{ConfigId: "12345"})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
@@ -147,7 +147,7 @@ func TestGetConfig(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	resp, err := ts.Client.GetConfig(context.Background(), &api.GetConfigRequest{ConfigID: config.ID})
+	resp, err := ts.Client.GetConfig(context.Background(), &api.GetConfigRequest{ConfigId: config.Id})
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Config)
@@ -171,16 +171,16 @@ func TestUpdateConfig(t *testing.T) {
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// getting a non-existent config fails with NotFound
-	_, err = ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{ConfigID: "1234adsaa", ConfigVersion: &api.Version{Index: 1}})
+	_, err = ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{ConfigId: "1234adsaa", ConfigVersion: &api.Version{Index: 1}})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// updating an existing config's data returns an error
 	config.Spec.Data = []byte{1}
 	resp, err := ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{
-		ConfigID:      config.ID,
-		Spec:          &config.Spec,
-		ConfigVersion: &config.Meta.Version,
+		ConfigId:      config.Id,
+		Spec:          config.Spec,
+		ConfigVersion: config.Meta.Version,
 	})
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
@@ -188,20 +188,20 @@ func TestUpdateConfig(t *testing.T) {
 	config.Spec.Data = nil
 	config.Spec.Annotations.Name = "AnotherName"
 	resp, err = ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{
-		ConfigID:      config.ID,
-		Spec:          &config.Spec,
-		ConfigVersion: &config.Meta.Version,
+		ConfigId:      config.Id,
+		Spec:          config.Spec,
+		ConfigVersion: config.Meta.Version,
 	})
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// updating the config with the original spec succeeds
 	config.Spec.Data = []byte("data")
 	config.Spec.Annotations.Name = "name"
-	assert.NotNil(t, config.Spec.Data)
+	assert.NotNil(t, config.Spec.GetData())
 	resp, err = ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{
-		ConfigID:      config.ID,
-		Spec:          &config.Spec,
-		ConfigVersion: &config.Meta.Version,
+		ConfigId:      config.Id,
+		Spec:          config.Spec,
+		ConfigVersion: config.Meta.Version,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
@@ -212,29 +212,29 @@ func TestUpdateConfig(t *testing.T) {
 	config.Spec.Annotations.Labels = newLabels
 	config.Spec.Data = nil
 	resp, err = ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{
-		ConfigID:      config.ID,
-		Spec:          &config.Spec,
-		ConfigVersion: &resp.Config.Meta.Version,
+		ConfigId:      config.Id,
+		Spec:          config.Spec,
+		ConfigVersion: resp.Config.Meta.Version,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Config)
-	assert.Equal(t, []byte("data"), resp.Config.Spec.Data)
-	assert.Equal(t, resp.Config.Spec.Annotations.Labels, newLabels)
+	assert.Equal(t, []byte("data"), resp.Config.Spec.GetData())
+	assert.Equal(t, resp.Config.GetSpec().GetAnnotations().GetLabels(), newLabels)
 
 	// updating a config with nil data and correct name succeeds again
 	config.Spec.Data = nil
 	config.Spec.Annotations.Name = "name"
 	resp, err = ts.Client.UpdateConfig(context.Background(), &api.UpdateConfigRequest{
-		ConfigID:      config.ID,
-		Spec:          &config.Spec,
-		ConfigVersion: &resp.Config.Meta.Version,
+		ConfigId:      config.Id,
+		Spec:          config.Spec,
+		ConfigVersion: resp.Config.Meta.Version,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.NotNil(t, resp.Config)
-	assert.Equal(t, []byte("data"), resp.Config.Spec.Data)
-	assert.Equal(t, resp.Config.Spec.Annotations.Labels, newLabels)
+	assert.Equal(t, []byte("data"), resp.Config.Spec.GetData())
+	assert.Equal(t, resp.Config.GetSpec().GetAnnotations().GetLabels(), newLabels)
 }
 
 func TestRemoveUnusedConfig(t *testing.T) {
@@ -253,12 +253,12 @@ func TestRemoveUnusedConfig(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	resp, err := ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigID: config.ID})
+	resp, err := ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigId: config.Id})
 	assert.NoError(t, err)
-	assert.Equal(t, api.RemoveConfigResponse{}, *resp)
+	assert.True(t, (&api.RemoveConfigResponse{}).EqualVT(resp))
 
 	// ---- it was really removed because attempting to remove it again fails with a NotFound ----
-	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigID: config.ID})
+	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigId: config.Id})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
@@ -281,8 +281,8 @@ func TestRemoveUsedConfig(t *testing.T) {
 	service := createSpec("service1", "image", 1)
 	configRefs := []*api.ConfigReference{
 		{
-			ConfigName: resp.Config.Spec.Annotations.Name,
-			ConfigID:   resp.Config.ID,
+			ConfigName: resp.Config.GetSpec().GetAnnotations().GetName(),
+			ConfigId:   resp.Config.Id,
 			Target: &api.ConfigReference_File{
 				File: &api.FileTarget{
 					Name: "target.txt",
@@ -300,16 +300,16 @@ func TestRemoveUsedConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	// removing a config that exists but is in use fails
-	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigID: resp.Config.ID})
+	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigId: resp.Config.Id})
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 	assert.Regexp(t, "service[1-2], service[1-2]", testutils.ErrorDesc(err))
 
 	// removing a config that exists but is not in use succeeds
-	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigID: resp2.Config.ID})
+	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigId: resp2.Config.Id})
 	assert.NoError(t, err)
 
 	// it was really removed because attempting to remove it again fails with a NotFound
-	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigID: resp2.Config.ID})
+	_, err = ts.Client.RemoveConfig(context.Background(), &api.RemoveConfigRequest{ConfigId: resp2.Config.Id})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 }
@@ -324,7 +324,7 @@ func TestListConfigs(t *testing.T) {
 
 		byName := make(map[string]*api.Config)
 		for _, config := range resp.Configs {
-			byName[config.Spec.Annotations.Name] = config
+			byName[config.GetSpec().GetAnnotations().GetName()] = config
 		}
 		return byName
 	}
@@ -345,7 +345,7 @@ func TestListConfigs(t *testing.T) {
 			return store.CreateConfig(tx, config)
 		})
 		assert.NoError(t, err)
-		configNamesToID[configName] = config.ID
+		configNamesToID[configName] = config.Id
 	}
 
 	// ---- build up our list of expectations for what configs get filtered ----
@@ -380,7 +380,7 @@ func TestListConfigs(t *testing.T) {
 		{
 			desc:     "multiple ID prefix filters are or-ed together",
 			expected: []string{"aaa", "bbb"},
-			filter: &api.ListConfigsRequest_Filters{IDPrefixes: []string{
+			filter: &api.ListConfigsRequest_Filters{IdPrefixes: []string{
 				configNamesToID["aaa"], configNamesToID["bbb"]},
 			},
 		},
@@ -390,7 +390,7 @@ func TestListConfigs(t *testing.T) {
 			filter: &api.ListConfigsRequest_Filters{
 				Names:        []string{"aaa", "ccc"},
 				NamePrefixes: []string{"aa", "bb"},
-				IDPrefixes:   []string{configNamesToID["aaa"], configNamesToID["ddd"]},
+				IdPrefixes:   []string{configNamesToID["aaa"], configNamesToID["ddd"]},
 			},
 		},
 		{
@@ -411,7 +411,7 @@ func TestListConfigs(t *testing.T) {
 			filter: &api.ListConfigsRequest_Filters{
 				Names:        []string{"aaa", "ccc"},
 				NamePrefixes: []string{"aa", "bb"},
-				IDPrefixes:   []string{configNamesToID["aaa"], configNamesToID["ddd"]},
+				IdPrefixes:   []string{configNamesToID["aaa"], configNamesToID["ddd"]},
 				Labels: map[string]string{
 					"mod2": "0",
 				},
@@ -427,8 +427,8 @@ func TestListConfigs(t *testing.T) {
 		for _, name := range expectation.expected {
 			assert.Contains(t, result, name, expectation.desc)
 			assert.NotNil(t, result[name], expectation.desc)
-			assert.Equal(t, configNamesToID[name], result[name].ID, expectation.desc)
-			assert.NotNil(t, result[name].Spec.Data)
+			assert.Equal(t, configNamesToID[name], result[name].Id, expectation.desc)
+			assert.NotNil(t, result[name].Spec.GetData())
 		}
 	}
 }

@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
@@ -42,7 +41,7 @@ func TestRestartRootCA(t *testing.T) {
 	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
-	_, err := tc.NodeCAClients[0].NodeCertificateStatus(tc.Context, &api.NodeCertificateStatusRequest{NodeID: "foo"})
+	_, err := tc.NodeCAClients[0].NodeCertificateStatus(tc.Context, &api.NodeCertificateStatusRequest{NodeId: "foo"})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
@@ -51,7 +50,7 @@ func TestRestartRootCA(t *testing.T) {
 
 	<-tc.CAServer.Ready()
 
-	_, err = tc.NodeCAClients[0].NodeCertificateStatus(tc.Context, &api.NodeCertificateStatusRequest{NodeID: "foo"})
+	_, err = tc.NodeCAClients[0].NodeCertificateStatus(tc.Context, &api.NodeCertificateStatusRequest{NodeId: "foo"})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 }
@@ -63,18 +62,18 @@ func TestIssueNodeCertificate(t *testing.T) {
 	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
-	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Token: tc.WorkerToken}
+	issueRequest := &api.IssueNodeCertificateRequest{Csr: csr, Token: tc.WorkerToken}
 	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.NoError(t, err)
-	assert.NotNil(t, issueResponse.NodeID)
-	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
+	assert.NotNil(t, issueResponse.NodeId)
+	assert.Equal(t, api.NodeSpec_ACCEPTED, issueResponse.NodeMembership)
 
-	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
+	statusRequest := &api.NodeCertificateStatusRequest{NodeId: issueResponse.NodeId}
 	statusResponse, err := tc.NodeCAClients[0].NodeCertificateStatus(tc.Context, statusRequest)
 	require.NoError(t, err)
-	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
-	assert.NotNil(t, statusResponse.Certificate.Certificate)
-	assert.Equal(t, api.NodeRoleWorker, statusResponse.Certificate.Role)
+	assert.Equal(t, api.IssuanceStatus_ISSUED, statusResponse.Status.GetState())
+	assert.NotNil(t, statusResponse.Certificate.GetCertificate())
+	assert.Equal(t, api.NodeRole_WORKER, statusResponse.Certificate.GetRole())
 }
 
 func TestForceRotationIsNoop(t *testing.T) {
@@ -85,27 +84,27 @@ func TestForceRotationIsNoop(t *testing.T) {
 	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
-	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Token: tc.WorkerToken}
+	issueRequest := &api.IssueNodeCertificateRequest{Csr: csr, Token: tc.WorkerToken}
 	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.NoError(t, err)
-	assert.NotNil(t, issueResponse.NodeID)
-	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
+	assert.NotNil(t, issueResponse.NodeId)
+	assert.Equal(t, api.NodeSpec_ACCEPTED, issueResponse.NodeMembership)
 
 	// Check that the Certificate is successfully issued
-	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
+	statusRequest := &api.NodeCertificateStatusRequest{NodeId: issueResponse.NodeId}
 	statusResponse, err := tc.NodeCAClients[0].NodeCertificateStatus(tc.Context, statusRequest)
 	require.NoError(t, err)
-	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
-	assert.NotNil(t, statusResponse.Certificate.Certificate)
-	assert.Equal(t, api.NodeRoleWorker, statusResponse.Certificate.Role)
+	assert.Equal(t, api.IssuanceStatus_ISSUED, statusResponse.Status.GetState())
+	assert.NotNil(t, statusResponse.Certificate.GetCertificate())
+	assert.Equal(t, api.NodeRole_WORKER, statusResponse.Certificate.GetRole())
 
 	// Update the certificate status to IssuanceStateRotate which should be a server-side noop
 	err = tc.MemoryStore.Update(func(tx store.Tx) error {
 		// Attempt to retrieve the node with nodeID
-		node := store.GetNode(tx, issueResponse.NodeID)
+		node := store.GetNode(tx, issueResponse.NodeId)
 		assert.NotNil(t, node)
 
-		node.Certificate.Status.State = api.IssuanceStateRotate
+		node.Certificate.Status.State = api.IssuanceStatus_ROTATE
 		return store.UpdateNode(tx, node)
 	})
 	assert.NoError(t, err)
@@ -115,9 +114,9 @@ func TestForceRotationIsNoop(t *testing.T) {
 
 	statusNewResponse, err := tc.NodeCAClients[0].NodeCertificateStatus(tc.Context, statusRequest)
 	require.NoError(t, err)
-	assert.Equal(t, statusResponse.Certificate.Certificate, statusNewResponse.Certificate.Certificate)
-	assert.Equal(t, api.IssuanceStateRotate, statusNewResponse.Certificate.Status.State)
-	assert.Equal(t, api.NodeRoleWorker, statusNewResponse.Certificate.Role)
+	assert.Equal(t, statusResponse.Certificate.GetCertificate(), statusNewResponse.Certificate.GetCertificate())
+	assert.Equal(t, api.IssuanceStatus_ROTATE, statusNewResponse.Certificate.GetStatus().GetState())
+	assert.Equal(t, api.NodeRole_WORKER, statusNewResponse.Certificate.GetRole())
 }
 
 func TestIssueNodeCertificateBrokenCA(t *testing.T) {
@@ -137,18 +136,18 @@ func TestIssueNodeCertificateBrokenCA(t *testing.T) {
 		time.Sleep(250 * time.Millisecond)
 		tc.ExternalSigningServer.Deflake()
 	}()
-	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Token: tc.WorkerToken}
+	issueRequest := &api.IssueNodeCertificateRequest{Csr: csr, Token: tc.WorkerToken}
 	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.NoError(t, err)
-	assert.NotNil(t, issueResponse.NodeID)
-	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
+	assert.NotNil(t, issueResponse.NodeId)
+	assert.Equal(t, api.NodeSpec_ACCEPTED, issueResponse.NodeMembership)
 
-	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
+	statusRequest := &api.NodeCertificateStatusRequest{NodeId: issueResponse.NodeId}
 	statusResponse, err := tc.NodeCAClients[0].NodeCertificateStatus(tc.Context, statusRequest)
 	require.NoError(t, err)
-	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
-	assert.NotNil(t, statusResponse.Certificate.Certificate)
-	assert.Equal(t, api.NodeRoleWorker, statusResponse.Certificate.Role)
+	assert.Equal(t, api.IssuanceStatus_ISSUED, statusResponse.Status.GetState())
+	assert.NotNil(t, statusResponse.Certificate.GetCertificate())
+	assert.Equal(t, api.NodeRole_WORKER, statusResponse.Certificate.GetRole())
 
 }
 
@@ -156,18 +155,18 @@ func TestIssueNodeCertificateWithInvalidCSR(t *testing.T) {
 	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
 
-	issueRequest := &api.IssueNodeCertificateRequest{CSR: []byte("random garbage"), Token: tc.WorkerToken}
+	issueRequest := &api.IssueNodeCertificateRequest{Csr: []byte("random garbage"), Token: tc.WorkerToken}
 	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.NoError(t, err)
-	assert.NotNil(t, issueResponse.NodeID)
-	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
+	assert.NotNil(t, issueResponse.NodeId)
+	assert.Equal(t, api.NodeSpec_ACCEPTED, issueResponse.NodeMembership)
 
-	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
+	statusRequest := &api.NodeCertificateStatusRequest{NodeId: issueResponse.NodeId}
 	statusResponse, err := tc.NodeCAClients[0].NodeCertificateStatus(tc.Context, statusRequest)
 	require.NoError(t, err)
-	assert.Equal(t, api.IssuanceStateFailed, statusResponse.Status.State)
-	assert.Contains(t, statusResponse.Status.Err, "CSR Decode failed")
-	assert.Nil(t, statusResponse.Certificate.Certificate)
+	assert.Equal(t, api.IssuanceStatus_FAILED, statusResponse.Status.GetState())
+	assert.Contains(t, statusResponse.Status.GetErr(), "CSR Decode failed")
+	assert.Nil(t, statusResponse.Certificate.GetCertificate())
 }
 
 func TestIssueNodeCertificateWorkerRenewal(t *testing.T) {
@@ -177,19 +176,19 @@ func TestIssueNodeCertificateWorkerRenewal(t *testing.T) {
 	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
-	role := api.NodeRoleWorker
-	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
+	role := api.NodeRole_WORKER
+	issueRequest := &api.IssueNodeCertificateRequest{Csr: csr, Role: role}
 	issueResponse, err := tc.NodeCAClients[1].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.NoError(t, err)
-	assert.NotNil(t, issueResponse.NodeID)
-	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
+	assert.NotNil(t, issueResponse.NodeId)
+	assert.Equal(t, api.NodeSpec_ACCEPTED, issueResponse.NodeMembership)
 
-	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
+	statusRequest := &api.NodeCertificateStatusRequest{NodeId: issueResponse.NodeId}
 	statusResponse, err := tc.NodeCAClients[1].NodeCertificateStatus(tc.Context, statusRequest)
 	require.NoError(t, err)
-	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
-	assert.NotNil(t, statusResponse.Certificate.Certificate)
-	assert.Equal(t, role, statusResponse.Certificate.Role)
+	assert.Equal(t, api.IssuanceStatus_ISSUED, statusResponse.Status.GetState())
+	assert.NotNil(t, statusResponse.Certificate.GetCertificate())
+	assert.Equal(t, role, statusResponse.Certificate.GetRole())
 }
 
 func TestIssueNodeCertificateManagerRenewal(t *testing.T) {
@@ -200,19 +199,19 @@ func TestIssueNodeCertificateManagerRenewal(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, csr)
 
-	role := api.NodeRoleManager
-	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
+	role := api.NodeRole_MANAGER
+	issueRequest := &api.IssueNodeCertificateRequest{Csr: csr, Role: role}
 	issueResponse, err := tc.NodeCAClients[2].IssueNodeCertificate(tc.Context, issueRequest)
 	require.NoError(t, err)
-	assert.NotNil(t, issueResponse.NodeID)
-	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
+	assert.NotNil(t, issueResponse.NodeId)
+	assert.Equal(t, api.NodeSpec_ACCEPTED, issueResponse.NodeMembership)
 
-	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
+	statusRequest := &api.NodeCertificateStatusRequest{NodeId: issueResponse.NodeId}
 	statusResponse, err := tc.NodeCAClients[2].NodeCertificateStatus(tc.Context, statusRequest)
 	require.NoError(t, err)
-	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
-	assert.NotNil(t, statusResponse.Certificate.Certificate)
-	assert.Equal(t, role, statusResponse.Certificate.Role)
+	assert.Equal(t, api.IssuanceStatus_ISSUED, statusResponse.Status.GetState())
+	assert.NotNil(t, statusResponse.Certificate.GetCertificate())
+	assert.Equal(t, role, statusResponse.Certificate.GetRole())
 }
 
 func TestIssueNodeCertificateWorkerFromDifferentOrgRenewal(t *testing.T) {
@@ -224,7 +223,7 @@ func TestIssueNodeCertificateWorkerFromDifferentOrgRenewal(t *testing.T) {
 
 	// Since we're using a client that has a different Organization, this request will be treated
 	// as a new certificate request, not allowing auto-renewal. Therefore, the request will fail.
-	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr}
+	issueRequest := &api.IssueNodeCertificateRequest{Csr: csr}
 	_, err = tc.NodeCAClients[3].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.Error(t, err)
 }
@@ -236,33 +235,33 @@ func TestNodeCertificateRenewalsDoNotRequireToken(t *testing.T) {
 	csr, _, err := ca.GenerateNewCSR()
 	assert.NoError(t, err)
 
-	role := api.NodeRoleManager
-	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
+	role := api.NodeRole_MANAGER
+	issueRequest := &api.IssueNodeCertificateRequest{Csr: csr, Role: role}
 	issueResponse, err := tc.NodeCAClients[2].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.NoError(t, err)
-	assert.NotNil(t, issueResponse.NodeID)
-	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
+	assert.NotNil(t, issueResponse.NodeId)
+	assert.Equal(t, api.NodeSpec_ACCEPTED, issueResponse.NodeMembership)
 
-	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
+	statusRequest := &api.NodeCertificateStatusRequest{NodeId: issueResponse.NodeId}
 	statusResponse, err := tc.NodeCAClients[2].NodeCertificateStatus(tc.Context, statusRequest)
 	assert.NoError(t, err)
-	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
-	assert.NotNil(t, statusResponse.Certificate.Certificate)
-	assert.Equal(t, role, statusResponse.Certificate.Role)
+	assert.Equal(t, api.IssuanceStatus_ISSUED, statusResponse.Status.GetState())
+	assert.NotNil(t, statusResponse.Certificate.GetCertificate())
+	assert.Equal(t, role, statusResponse.Certificate.GetRole())
 
-	role = api.NodeRoleWorker
-	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
+	role = api.NodeRole_WORKER
+	issueRequest = &api.IssueNodeCertificateRequest{Csr: csr, Role: role}
 	issueResponse, err = tc.NodeCAClients[1].IssueNodeCertificate(tc.Context, issueRequest)
 	require.NoError(t, err)
-	assert.NotNil(t, issueResponse.NodeID)
-	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
+	assert.NotNil(t, issueResponse.NodeId)
+	assert.Equal(t, api.NodeSpec_ACCEPTED, issueResponse.NodeMembership)
 
-	statusRequest = &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
+	statusRequest = &api.NodeCertificateStatusRequest{NodeId: issueResponse.NodeId}
 	statusResponse, err = tc.NodeCAClients[2].NodeCertificateStatus(tc.Context, statusRequest)
 	require.NoError(t, err)
-	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
-	assert.NotNil(t, statusResponse.Certificate.Certificate)
-	assert.Equal(t, role, statusResponse.Certificate.Role)
+	assert.Equal(t, api.IssuanceStatus_ISSUED, statusResponse.Status.GetState())
+	assert.NotNil(t, statusResponse.Certificate.GetCertificate())
+	assert.Equal(t, role, statusResponse.Certificate.GetRole())
 }
 
 func TestNewNodeCertificateRequiresToken(t *testing.T) {
@@ -275,35 +274,35 @@ func TestNewNodeCertificateRequiresToken(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Issuance fails if no secret is provided
-	role := api.NodeRoleManager
-	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
+	role := api.NodeRole_MANAGER
+	issueRequest := &api.IssueNodeCertificateRequest{Csr: csr, Role: role}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
-	role = api.NodeRoleWorker
-	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
+	role = api.NodeRole_WORKER
+	issueRequest = &api.IssueNodeCertificateRequest{Csr: csr, Role: role}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	// Issuance fails if wrong secret is provided
-	role = api.NodeRoleManager
-	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: "invalid-secret"}
+	role = api.NodeRole_MANAGER
+	issueRequest = &api.IssueNodeCertificateRequest{Csr: csr, Role: role, Token: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
-	role = api.NodeRoleWorker
-	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: "invalid-secret"}
+	role = api.NodeRole_WORKER
+	issueRequest = &api.IssueNodeCertificateRequest{Csr: csr, Role: role, Token: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	// Issuance succeeds if correct token is provided
-	role = api.NodeRoleManager
-	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: tc.ManagerToken}
+	role = api.NodeRole_MANAGER
+	issueRequest = &api.IssueNodeCertificateRequest{Csr: csr, Role: role, Token: tc.ManagerToken}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.NoError(t, err)
 
-	role = api.NodeRoleWorker
-	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: tc.WorkerToken}
+	role = api.NodeRole_WORKER
+	issueRequest = &api.IssueNodeCertificateRequest{Csr: csr, Role: role, Token: tc.WorkerToken}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.NoError(t, err)
 
@@ -315,17 +314,17 @@ func TestNewNodeCertificateRequiresToken(t *testing.T) {
 	assert.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
 		clusters, _ := store.FindClusters(tx, store.ByName(store.DefaultClusterName))
 		newWorkerToken = ca.GenerateJoinToken(&tc.RootCA, false)
-		clusters[0].RootCA.JoinTokens.Worker = newWorkerToken
+		clusters[0].RootCa.GetJoinTokens().Worker = newWorkerToken
 		newManagerToken = ca.GenerateJoinToken(&tc.RootCA, false)
-		clusters[0].RootCA.JoinTokens.Manager = newManagerToken
+		clusters[0].RootCa.GetJoinTokens().Manager = newManagerToken
 		return store.UpdateCluster(tx, clusters[0])
 	}))
 
 	// updating the join token may take a little bit in order to register on the CA server, so poll
 	assert.NoError(t, testutils.PollFunc(nil, func() error {
 		// Old token should fail
-		role = api.NodeRoleManager
-		issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: tc.ManagerToken}
+		role = api.NodeRole_MANAGER
+		issueRequest = &api.IssueNodeCertificateRequest{Csr: csr, Role: role, Token: tc.ManagerToken}
 		_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 		if err == nil {
 			return fmt.Errorf("join token not updated yet")
@@ -336,19 +335,19 @@ func TestNewNodeCertificateRequiresToken(t *testing.T) {
 	// Old token should fail
 	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
-	role = api.NodeRoleWorker
-	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: tc.WorkerToken}
+	role = api.NodeRole_WORKER
+	issueRequest = &api.IssueNodeCertificateRequest{Csr: csr, Role: role, Token: tc.WorkerToken}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	// New token should succeed
-	role = api.NodeRoleManager
-	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: newManagerToken}
+	role = api.NodeRole_MANAGER
+	issueRequest = &api.IssueNodeCertificateRequest{Csr: csr, Role: role, Token: newManagerToken}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.NoError(t, err)
 
-	role = api.NodeRoleWorker
-	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: newWorkerToken}
+	role = api.NodeRole_WORKER
+	issueRequest = &api.IssueNodeCertificateRequest{Csr: csr, Role: role, Token: newWorkerToken}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.NoError(t, err)
 }
@@ -361,13 +360,13 @@ func TestNewNodeCertificateBadToken(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Issuance fails if wrong secret is provided
-	role := api.NodeRoleManager
-	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: "invalid-secret"}
+	role := api.NodeRole_MANAGER
+	issueRequest := &api.IssueNodeCertificateRequest{Csr: csr, Role: role, Token: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
-	role = api.NodeRoleWorker
-	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: "invalid-secret"}
+	role = api.NodeRole_WORKER
+	issueRequest = &api.IssueNodeCertificateRequest{Csr: csr, Role: role, Token: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
 	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 }
@@ -392,7 +391,7 @@ func TestGetUnlockKey(t *testing.T) {
 
 	// Update the unlock key
 	require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
-		cluster = store.GetCluster(tx, cluster.ID)
+		cluster = store.GetCluster(tx, cluster.Id)
 		cluster.Spec.EncryptionConfig.AutoLockManagers = true
 		cluster.UnlockKeys = []*api.EncryptionKey{{
 			Subsystem: ca.ManagerRole,
@@ -402,7 +401,7 @@ func TestGetUnlockKey(t *testing.T) {
 	}))
 
 	tc.MemoryStore.View(func(tx store.ReadTx) {
-		cluster = store.GetCluster(tx, cluster.ID)
+		cluster = store.GetCluster(tx, cluster.Id)
 	})
 
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
@@ -491,19 +490,19 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 
 	fakeClusterSpec := func(rootCerts, key []byte, rotation *api.RootRotation, externalCAs []*api.ExternalCA) *api.Cluster {
 		return &api.Cluster{
-			RootCA: api.RootCA{
-				CACert:     rootCerts,
-				CAKey:      key,
-				CACertHash: "hash",
-				JoinTokens: api.JoinTokens{
+			RootCa: &api.RootCA{
+				CaCert:     rootCerts,
+				CaKey:      key,
+				CaCertHash: "hash",
+				JoinTokens: &api.JoinTokens{
 					Worker:  "SWMTKN-1-worker",
 					Manager: "SWMTKN-1-manager",
 				},
 				RootRotation: rotation,
 			},
-			Spec: api.ClusterSpec{
-				CAConfig: api.CAConfig{
-					ExternalCAs: externalCAs,
+			Spec: &api.ClusterSpec{
+				CaConfig: &api.CAConfig{
+					ExternalCas: externalCAs,
 				},
 			},
 		}
@@ -526,8 +525,8 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 	for i, testCase := range []clusterObjToUpdate{
 		{
 			clusterObj: fakeClusterSpec(tc.RootCA.Certs, nil, nil, []*api.ExternalCA{{
-				Protocol: api.ExternalCA_CAProtocolCFSSL,
-				URL:      tc.ExternalSigningServer.URL,
+				Protocol: api.ExternalCA_CFSSL,
+				Url:      tc.ExternalSigningServer.URL,
 				// without a CA cert, the URL gets successfully added, and there should be no error connecting to it
 			}}),
 			rootCARoots:          tc.RootCA.Certs,
@@ -535,13 +534,13 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 		},
 		{
 			clusterObj: fakeClusterSpec(tc.RootCA.Certs, nil, &api.RootRotation{
-				CACert:            cert,
-				CAKey:             key,
-				CrossSignedCACert: crossSigned,
+				CaCert:            cert,
+				CaKey:             key,
+				CrossSignedCaCert: crossSigned,
 			}, []*api.ExternalCA{
 				{
-					Protocol: api.ExternalCA_CAProtocolCFSSL,
-					URL:      tc.ExternalSigningServer.URL,
+					Protocol: api.ExternalCA_CFSSL,
+					Url:      tc.ExternalSigningServer.URL,
 					// without a CA cert, we count this as the old tc.RootCA.Certs, and this should be ignored because we want the new root
 				},
 			}),
@@ -552,18 +551,18 @@ func TestCAServerUpdateRootCA(t *testing.T) {
 		},
 		{
 			clusterObj: fakeClusterSpec(tc.RootCA.Certs, nil, &api.RootRotation{
-				CACert:            cert,
-				CrossSignedCACert: crossSigned,
+				CaCert:            cert,
+				CrossSignedCaCert: crossSigned,
 			}, []*api.ExternalCA{
 				{
-					Protocol: api.ExternalCA_CAProtocolCFSSL,
-					URL:      tc.ExternalSigningServer.URL,
+					Protocol: api.ExternalCA_CFSSL,
+					Url:      tc.ExternalSigningServer.URL,
 					// without a CA cert, we count this as the old tc.RootCA.Certs
 				},
 				{
-					Protocol: api.ExternalCA_CAProtocolCFSSL,
-					URL:      externalServer.URL,
-					CACert:   append(cert, '\n'),
+					Protocol: api.ExternalCA_CFSSL,
+					Url:      externalServer.URL,
+					CaCert:   append(cert, '\n'),
 				},
 			}),
 			rootCARoots:          tc.RootCA.Certs,
@@ -640,8 +639,8 @@ func (r *rootRotationTester) convergeWantedNodes(wantNodes map[string]*api.Node,
 			return err
 		}
 		for _, node := range nodes {
-			if _, inWanted := wantNodes[node.ID]; !inWanted {
-				if err := store.DeleteNode(tx, node.ID); err != nil {
+			if _, inWanted := wantNodes[node.Id]; !inWanted {
+				if err := store.DeleteNode(tx, node.Id); err != nil {
 					return err
 				}
 			}
@@ -656,34 +655,34 @@ func (r *rootRotationTester) convergeRootCA(wantRootCA *api.RootCA, descr string
 		if err != nil || len(clusters) != 1 {
 			return errors.Wrap(err, "unable to find cluster")
 		}
-		clusters[0].RootCA = *wantRootCA
+		clusters[0].RootCa = wantRootCA
 		return store.UpdateCluster(tx, clusters[0])
 	}), descr)
 }
 
 func getFakeAPINode(t *testing.T, id string, state api.IssuanceStatus_State, tlsInfo *api.NodeTLSInfo, member bool) *api.Node {
 	node := &api.Node{
-		ID: id,
-		Certificate: api.Certificate{
-			Status: api.IssuanceStatus{
+		Id: id,
+		Certificate: &api.Certificate{
+			Status: &api.IssuanceStatus{
 				State: state,
 			},
 		},
-		Spec: api.NodeSpec{
-			Membership: api.NodeMembershipAccepted,
+		Spec: &api.NodeSpec{
+			Membership: api.NodeSpec_ACCEPTED,
 		},
 	}
 	if !member {
-		node.Spec.Membership = api.NodeMembershipPending
+		node.Spec.Membership = api.NodeSpec_PENDING
 	}
 	// the CA server will immediately pick these up, so generate CSRs for the CA server to sign
-	if state == api.IssuanceStateRenew || state == api.IssuanceStatePending {
+	if state == api.IssuanceStatus_RENEW || state == api.IssuanceStatus_PENDING {
 		csr, _, err := ca.GenerateNewCSR()
 		require.NoError(t, err)
-		node.Certificate.CSR = csr
+		node.Certificate.Csr = csr
 	}
 	if tlsInfo != nil {
-		node.Description = &api.NodeDescription{TLSInfo: tlsInfo}
+		node.Description = &api.NodeDescription{TlsInfo: tlsInfo}
 	}
 	return node
 }
@@ -766,32 +765,32 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				"a new cert.  Any renew/pending nodes will have certs issued, but because the TLS info is nil, they will " +
 				`go "rotate" state`),
 			nodes: map[string]*api.Node{
-				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
-				"1": getFakeAPINode(t, "1", api.IssuanceStateIssued, nil, true),
-				"2": getFakeAPINode(t, "2", api.IssuanceStateRenew, nil, true),
-				"3": getFakeAPINode(t, "3", api.IssuanceStateRotate, nil, true),
-				"4": getFakeAPINode(t, "4", api.IssuanceStatePending, nil, true),
-				"5": getFakeAPINode(t, "5", api.IssuanceStateFailed, nil, true),
-				"6": getFakeAPINode(t, "6", api.IssuanceStateIssued, nil, false),
+				"0": getFakeAPINode(t, "0", api.IssuanceStatus_PENDING, nil, false),
+				"1": getFakeAPINode(t, "1", api.IssuanceStatus_ISSUED, nil, true),
+				"2": getFakeAPINode(t, "2", api.IssuanceStatus_RENEW, nil, true),
+				"3": getFakeAPINode(t, "3", api.IssuanceStatus_ROTATE, nil, true),
+				"4": getFakeAPINode(t, "4", api.IssuanceStatus_PENDING, nil, true),
+				"5": getFakeAPINode(t, "5", api.IssuanceStatus_FAILED, nil, true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStatus_ISSUED, nil, false),
 			},
 			rootCA: &api.RootCA{
-				CACert:     startCluster.RootCA.CACert,
-				CAKey:      startCluster.RootCA.CAKey,
-				CACertHash: startCluster.RootCA.CACertHash,
+				CaCert:     startCluster.RootCa.GetCaCert(),
+				CaKey:      startCluster.RootCa.GetCaKey(),
+				CaCertHash: startCluster.RootCa.GetCaCertHash(),
 				RootRotation: &api.RootRotation{
-					CACert:            rotationCerts[0],
-					CAKey:             rotationKeys[0],
-					CrossSignedCACert: rotationCrossSigned[0],
+					CaCert:            rotationCerts[0],
+					CaKey:             rotationKeys[0],
+					CrossSignedCaCert: rotationCrossSigned[0],
 				},
 			},
 			expectedNodes: map[string]*api.Node{
-				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
-				"1": getFakeAPINode(t, "1", api.IssuanceStateRotate, nil, true),
-				"2": getFakeAPINode(t, "2", api.IssuanceStateRotate, nil, true),
-				"3": getFakeAPINode(t, "3", api.IssuanceStateRotate, nil, true),
-				"4": getFakeAPINode(t, "4", api.IssuanceStateRotate, nil, true),
-				"5": getFakeAPINode(t, "5", api.IssuanceStateRotate, nil, true),
-				"6": getFakeAPINode(t, "6", api.IssuanceStateRotate, nil, false),
+				"0": getFakeAPINode(t, "0", api.IssuanceStatus_PENDING, nil, false),
+				"1": getFakeAPINode(t, "1", api.IssuanceStatus_ROTATE, nil, true),
+				"2": getFakeAPINode(t, "2", api.IssuanceStatus_ROTATE, nil, true),
+				"3": getFakeAPINode(t, "3", api.IssuanceStatus_ROTATE, nil, true),
+				"4": getFakeAPINode(t, "4", api.IssuanceStatus_ROTATE, nil, true),
+				"5": getFakeAPINode(t, "5", api.IssuanceStatus_ROTATE, nil, true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStatus_ROTATE, nil, false),
 			},
 		},
 		{
@@ -799,63 +798,63 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				"(going by the TLS info), which shouldn't really happen.  the rotation reconciliation " +
 				"will tell the wrong ones to rotate a second time"),
 			nodes: map[string]*api.Node{
-				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
-				"1": getFakeAPINode(t, "1", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"2": getFakeAPINode(t, "2", api.IssuanceStateIssued, oldNodeTLSInfo, true),
-				"3": getFakeAPINode(t, "3", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"4": getFakeAPINode(t, "4", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"5": getFakeAPINode(t, "5", api.IssuanceStateIssued, oldNodeTLSInfo, true),
-				"6": getFakeAPINode(t, "6", api.IssuanceStateIssued, oldNodeTLSInfo, false),
+				"0": getFakeAPINode(t, "0", api.IssuanceStatus_PENDING, nil, false),
+				"1": getFakeAPINode(t, "1", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"2": getFakeAPINode(t, "2", api.IssuanceStatus_ISSUED, oldNodeTLSInfo, true),
+				"3": getFakeAPINode(t, "3", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"4": getFakeAPINode(t, "4", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"5": getFakeAPINode(t, "5", api.IssuanceStatus_ISSUED, oldNodeTLSInfo, true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStatus_ISSUED, oldNodeTLSInfo, false),
 			},
 			rootCA: &api.RootCA{ // no change in root CA from previous
-				CACert:     startCluster.RootCA.CACert,
-				CAKey:      startCluster.RootCA.CAKey,
-				CACertHash: startCluster.RootCA.CACertHash,
+				CaCert:     startCluster.RootCa.GetCaCert(),
+				CaKey:      startCluster.RootCa.GetCaKey(),
+				CaCertHash: startCluster.RootCa.GetCaCertHash(),
 				RootRotation: &api.RootRotation{
-					CACert:            rotationCerts[0],
-					CAKey:             rotationKeys[0],
-					CrossSignedCACert: rotationCrossSigned[0],
+					CaCert:            rotationCerts[0],
+					CaKey:             rotationKeys[0],
+					CrossSignedCaCert: rotationCrossSigned[0],
 				},
 			},
 			expectedNodes: map[string]*api.Node{
-				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
-				"1": getFakeAPINode(t, "1", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"2": getFakeAPINode(t, "2", api.IssuanceStateRotate, oldNodeTLSInfo, true),
-				"3": getFakeAPINode(t, "3", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"4": getFakeAPINode(t, "4", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"5": getFakeAPINode(t, "5", api.IssuanceStateRotate, oldNodeTLSInfo, true),
-				"6": getFakeAPINode(t, "6", api.IssuanceStateRotate, oldNodeTLSInfo, false),
+				"0": getFakeAPINode(t, "0", api.IssuanceStatus_PENDING, nil, false),
+				"1": getFakeAPINode(t, "1", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"2": getFakeAPINode(t, "2", api.IssuanceStatus_ROTATE, oldNodeTLSInfo, true),
+				"3": getFakeAPINode(t, "3", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"4": getFakeAPINode(t, "4", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"5": getFakeAPINode(t, "5", api.IssuanceStatus_ROTATE, oldNodeTLSInfo, true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStatus_ROTATE, oldNodeTLSInfo, false),
 			},
 		},
 		{
 			descr: ("New nodes that are added will also be picked up and told to rotate"),
 			nodes: map[string]*api.Node{
-				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
-				"1": getFakeAPINode(t, "1", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"3": getFakeAPINode(t, "3", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"4": getFakeAPINode(t, "4", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"5": getFakeAPINode(t, "5", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"6": getFakeAPINode(t, "6", api.IssuanceStateIssued, rotationTLSInfo[0], false),
-				"7": getFakeAPINode(t, "7", api.IssuanceStateRenew, nil, true),
+				"0": getFakeAPINode(t, "0", api.IssuanceStatus_PENDING, nil, false),
+				"1": getFakeAPINode(t, "1", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"3": getFakeAPINode(t, "3", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"4": getFakeAPINode(t, "4", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"5": getFakeAPINode(t, "5", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], false),
+				"7": getFakeAPINode(t, "7", api.IssuanceStatus_RENEW, nil, true),
 			},
 			rootCA: &api.RootCA{ // no change in root CA from previous
-				CACert:     startCluster.RootCA.CACert,
-				CAKey:      startCluster.RootCA.CAKey,
-				CACertHash: startCluster.RootCA.CACertHash,
+				CaCert:     startCluster.RootCa.GetCaCert(),
+				CaKey:      startCluster.RootCa.GetCaKey(),
+				CaCertHash: startCluster.RootCa.GetCaCertHash(),
 				RootRotation: &api.RootRotation{
-					CACert:            rotationCerts[0],
-					CAKey:             rotationKeys[0],
-					CrossSignedCACert: rotationCrossSigned[0],
+					CaCert:            rotationCerts[0],
+					CaKey:             rotationKeys[0],
+					CrossSignedCaCert: rotationCrossSigned[0],
 				},
 			},
 			expectedNodes: map[string]*api.Node{
-				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
-				"1": getFakeAPINode(t, "1", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"3": getFakeAPINode(t, "3", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"4": getFakeAPINode(t, "4", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"5": getFakeAPINode(t, "5", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"6": getFakeAPINode(t, "6", api.IssuanceStateIssued, rotationTLSInfo[0], false),
-				"7": getFakeAPINode(t, "7", api.IssuanceStateRotate, nil, true),
+				"0": getFakeAPINode(t, "0", api.IssuanceStatus_PENDING, nil, false),
+				"1": getFakeAPINode(t, "1", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"3": getFakeAPINode(t, "3", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"4": getFakeAPINode(t, "4", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"5": getFakeAPINode(t, "5", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], false),
+				"7": getFakeAPINode(t, "7", api.IssuanceStatus_ROTATE, nil, true),
 			},
 		},
 		{
@@ -863,62 +862,62 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				"different cert, all the nodes with the old root rotation cert will be told " +
 				"to rotate again."),
 			nodes: map[string]*api.Node{
-				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
-				"1": getFakeAPINode(t, "1", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"3": getFakeAPINode(t, "3", api.IssuanceStateIssued, rotationTLSInfo[1], true),
-				"4": getFakeAPINode(t, "4", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"5": getFakeAPINode(t, "5", api.IssuanceStateIssued, oldNodeTLSInfo, true),
-				"6": getFakeAPINode(t, "6", api.IssuanceStateIssued, rotationTLSInfo[0], true),
-				"7": getFakeAPINode(t, "7", api.IssuanceStateIssued, rotationTLSInfo[0], false),
+				"0": getFakeAPINode(t, "0", api.IssuanceStatus_PENDING, nil, false),
+				"1": getFakeAPINode(t, "1", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"3": getFakeAPINode(t, "3", api.IssuanceStatus_ISSUED, rotationTLSInfo[1], true),
+				"4": getFakeAPINode(t, "4", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"5": getFakeAPINode(t, "5", api.IssuanceStatus_ISSUED, oldNodeTLSInfo, true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], true),
+				"7": getFakeAPINode(t, "7", api.IssuanceStatus_ISSUED, rotationTLSInfo[0], false),
 			},
 			rootCA: &api.RootCA{ // new root rotation
-				CACert:     startCluster.RootCA.CACert,
-				CAKey:      startCluster.RootCA.CAKey,
-				CACertHash: startCluster.RootCA.CACertHash,
+				CaCert:     startCluster.RootCa.GetCaCert(),
+				CaKey:      startCluster.RootCa.GetCaKey(),
+				CaCertHash: startCluster.RootCa.GetCaCertHash(),
 				RootRotation: &api.RootRotation{
-					CACert:            rotationCerts[1],
-					CAKey:             rotationKeys[1],
-					CrossSignedCACert: rotationCrossSigned[1],
+					CaCert:            rotationCerts[1],
+					CaKey:             rotationKeys[1],
+					CrossSignedCaCert: rotationCrossSigned[1],
 				},
 			},
 			expectedNodes: map[string]*api.Node{
-				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
-				"1": getFakeAPINode(t, "1", api.IssuanceStateRotate, rotationTLSInfo[0], true),
-				"3": getFakeAPINode(t, "3", api.IssuanceStateIssued, rotationTLSInfo[1], true),
-				"4": getFakeAPINode(t, "4", api.IssuanceStateRotate, rotationTLSInfo[0], true),
-				"5": getFakeAPINode(t, "5", api.IssuanceStateRotate, oldNodeTLSInfo, true),
-				"6": getFakeAPINode(t, "6", api.IssuanceStateRotate, rotationTLSInfo[0], true),
-				"7": getFakeAPINode(t, "7", api.IssuanceStateRotate, rotationTLSInfo[0], false),
+				"0": getFakeAPINode(t, "0", api.IssuanceStatus_PENDING, nil, false),
+				"1": getFakeAPINode(t, "1", api.IssuanceStatus_ROTATE, rotationTLSInfo[0], true),
+				"3": getFakeAPINode(t, "3", api.IssuanceStatus_ISSUED, rotationTLSInfo[1], true),
+				"4": getFakeAPINode(t, "4", api.IssuanceStatus_ROTATE, rotationTLSInfo[0], true),
+				"5": getFakeAPINode(t, "5", api.IssuanceStatus_ROTATE, oldNodeTLSInfo, true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStatus_ROTATE, rotationTLSInfo[0], true),
+				"7": getFakeAPINode(t, "7", api.IssuanceStatus_ROTATE, rotationTLSInfo[0], false),
 			},
 		},
 		{
 			descr: ("Once all nodes have rotated to their desired TLS info (even if it's because " +
 				"a node with the wrong TLS info has been removed, the root rotation is completed."),
 			nodes: map[string]*api.Node{
-				"0": getFakeAPINode(t, "0", api.IssuanceStateIssued, rotationTLSInfo[1], false),
-				"1": getFakeAPINode(t, "1", api.IssuanceStateIssued, rotationTLSInfo[1], true),
-				"3": getFakeAPINode(t, "3", api.IssuanceStateIssued, rotationTLSInfo[1], true),
-				"4": getFakeAPINode(t, "4", api.IssuanceStateIssued, rotationTLSInfo[1], true),
-				"6": getFakeAPINode(t, "6", api.IssuanceStateIssued, rotationTLSInfo[1], true),
+				"0": getFakeAPINode(t, "0", api.IssuanceStatus_ISSUED, rotationTLSInfo[1], false),
+				"1": getFakeAPINode(t, "1", api.IssuanceStatus_ISSUED, rotationTLSInfo[1], true),
+				"3": getFakeAPINode(t, "3", api.IssuanceStatus_ISSUED, rotationTLSInfo[1], true),
+				"4": getFakeAPINode(t, "4", api.IssuanceStatus_ISSUED, rotationTLSInfo[1], true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStatus_ISSUED, rotationTLSInfo[1], true),
 			},
 			rootCA: &api.RootCA{
 				// no change in root CA from previous - even if root rotation gets completed after
 				// the nodes are first set, and we just add the root rotation again because of this
 				// test order, because the TLS info is correct for all nodes it will be completed again
 				// anyway)
-				CACert:     startCluster.RootCA.CACert,
-				CAKey:      startCluster.RootCA.CAKey,
-				CACertHash: startCluster.RootCA.CACertHash,
+				CaCert:     startCluster.RootCa.GetCaCert(),
+				CaKey:      startCluster.RootCa.GetCaKey(),
+				CaCertHash: startCluster.RootCa.GetCaCertHash(),
 				RootRotation: &api.RootRotation{
-					CACert:            rotationCerts[1],
-					CAKey:             rotationKeys[1],
-					CrossSignedCACert: rotationCrossSigned[1],
+					CaCert:            rotationCerts[1],
+					CaKey:             rotationKeys[1],
+					CrossSignedCaCert: rotationCrossSigned[1],
 				},
 			},
 			expectedRootCA: &api.RootCA{
-				CACert:     rotationCerts[1],
-				CAKey:      rotationKeys[1],
-				CACertHash: digest.FromBytes(rotationCerts[1]).String(),
+				CaCert:     rotationCerts[1],
+				CaKey:      rotationKeys[1],
+				CaCertHash: digest.FromBytes(rotationCerts[1]).String(),
 				// ignore the join tokens - we aren't comparing them
 			},
 		},
@@ -927,30 +926,30 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				"it will start reconciling the nodes as soon as it's started up again"),
 			caServerRestart: true,
 			nodes: map[string]*api.Node{
-				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
-				"1": getFakeAPINode(t, "1", api.IssuanceStateIssued, rotationTLSInfo[1], true),
-				"3": getFakeAPINode(t, "3", api.IssuanceStateIssued, rotationTLSInfo[1], true),
-				"4": getFakeAPINode(t, "4", api.IssuanceStateIssued, rotationTLSInfo[1], true),
-				"6": getFakeAPINode(t, "6", api.IssuanceStateIssued, rotationTLSInfo[1], true),
-				"7": getFakeAPINode(t, "7", api.IssuanceStateIssued, rotationTLSInfo[1], false),
+				"0": getFakeAPINode(t, "0", api.IssuanceStatus_PENDING, nil, false),
+				"1": getFakeAPINode(t, "1", api.IssuanceStatus_ISSUED, rotationTLSInfo[1], true),
+				"3": getFakeAPINode(t, "3", api.IssuanceStatus_ISSUED, rotationTLSInfo[1], true),
+				"4": getFakeAPINode(t, "4", api.IssuanceStatus_ISSUED, rotationTLSInfo[1], true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStatus_ISSUED, rotationTLSInfo[1], true),
+				"7": getFakeAPINode(t, "7", api.IssuanceStatus_ISSUED, rotationTLSInfo[1], false),
 			},
 			rootCA: &api.RootCA{
-				CACert:     startCluster.RootCA.CACert,
-				CAKey:      startCluster.RootCA.CAKey,
-				CACertHash: startCluster.RootCA.CACertHash,
+				CaCert:     startCluster.RootCa.GetCaCert(),
+				CaKey:      startCluster.RootCa.GetCaKey(),
+				CaCertHash: startCluster.RootCa.GetCaCertHash(),
 				RootRotation: &api.RootRotation{
-					CACert:            rotationCerts[0],
-					CAKey:             rotationKeys[0],
-					CrossSignedCACert: rotationCrossSigned[0],
+					CaCert:            rotationCerts[0],
+					CaKey:             rotationKeys[0],
+					CrossSignedCaCert: rotationCrossSigned[0],
 				},
 			},
 			expectedNodes: map[string]*api.Node{
-				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
-				"1": getFakeAPINode(t, "1", api.IssuanceStateRotate, rotationTLSInfo[1], true),
-				"3": getFakeAPINode(t, "3", api.IssuanceStateRotate, rotationTLSInfo[1], true),
-				"4": getFakeAPINode(t, "4", api.IssuanceStateRotate, rotationTLSInfo[1], true),
-				"6": getFakeAPINode(t, "6", api.IssuanceStateRotate, rotationTLSInfo[1], true),
-				"7": getFakeAPINode(t, "7", api.IssuanceStateRotate, rotationTLSInfo[1], false),
+				"0": getFakeAPINode(t, "0", api.IssuanceStatus_PENDING, nil, false),
+				"1": getFakeAPINode(t, "1", api.IssuanceStatus_ROTATE, rotationTLSInfo[1], true),
+				"3": getFakeAPINode(t, "3", api.IssuanceStatus_ROTATE, rotationTLSInfo[1], true),
+				"4": getFakeAPINode(t, "4", api.IssuanceStatus_ROTATE, rotationTLSInfo[1], true),
+				"6": getFakeAPINode(t, "6", api.IssuanceStatus_ROTATE, rotationTLSInfo[1], true),
+				"7": getFakeAPINode(t, "7", api.IssuanceStatus_ROTATE, rotationTLSInfo[1], false),
 			},
 		},
 	}
@@ -967,7 +966,7 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 			startCAServer(rt.tc.Context, rt.tc.CAServer)
 		} else {
 			// otherwise, start the CA in the state where there is no root rotation, and start a root rotation
-			rt.convergeRootCA(&startCluster.RootCA, testcase.descr) // no root rotation
+			rt.convergeRootCA(startCluster.RootCa, testcase.descr) // no root rotation
 			startCAServer(rt.tc.Context, rt.tc.CAServer)
 			rt.convergeRootCA(testcase.rootCA, testcase.descr)
 		}
@@ -996,31 +995,31 @@ func TestRootRotationReconciliationWithChanges(t *testing.T) {
 				return errors.New("no cluster found")
 			}
 
-			if !equality.RootCAEqualStable(&cluster.RootCA, testcase.expectedRootCA) {
-				return fmt.Errorf("root CAs not equal:\n\texpected: %v\n\tactual: %v", *testcase.expectedRootCA, cluster.RootCA)
+			if !equality.RootCAEqualStable(cluster.RootCa, testcase.expectedRootCA) {
+				return fmt.Errorf("root CAs not equal:\n\texpected: %v\n\tactual: %v", testcase.expectedRootCA, cluster.RootCa)
 			}
 			if len(nodes) != len(testcase.expectedNodes) {
 				return fmt.Errorf("number of expected nodes (%d) does not equal number of actual nodes (%d)",
 					len(testcase.expectedNodes), len(nodes))
 			}
 			for _, node := range nodes {
-				expected, ok := testcase.expectedNodes[node.ID]
+				expected, ok := testcase.expectedNodes[node.Id]
 				if !ok {
-					return fmt.Errorf("node %s is present and was unexpected", node.ID)
+					return fmt.Errorf("node %s is present and was unexpected", node.Id)
 				}
-				if !reflect.DeepEqual(expected.Description, node.Description) {
-					return fmt.Errorf("the node description of node %s is not expected:\n\texpected: %v\n\tactual: %v", node.ID,
+				if !expected.GetDescription().EqualVT(node.GetDescription()) {
+					return fmt.Errorf("the node description of node %s is not expected:\n\texpected: %v\n\tactual: %v", node.Id,
 						expected.Description, node.Description)
 				}
-				if !reflect.DeepEqual(expected.Certificate.Status, node.Certificate.Status) {
-					return fmt.Errorf("the certificate status of node %s is not expected:\n\texpected: %v\n\tactual: %v", node.ID,
+				if !expected.GetCertificate().GetStatus().EqualVT(node.GetCertificate().GetStatus()) {
+					return fmt.Errorf("the certificate status of node %s is not expected:\n\texpected: %v\n\tactual: %v", node.Id,
 						expected.Certificate, node.Certificate)
 				}
 
 				// ensure that the security config's root CA object has the same expected key
-				expectedKey := testcase.expectedRootCA.CAKey
+				expectedKey := testcase.expectedRootCA.CaKey
 				if testcase.expectedRootCA.RootRotation != nil {
-					expectedKey = testcase.expectedRootCA.RootRotation.CAKey
+					expectedKey = testcase.expectedRootCA.RootRotation.CaKey
 				}
 				s, err := rt.tc.CAServer.RootCA().Signer()
 				if err != nil {
@@ -1076,19 +1075,19 @@ func TestRootRotationReconciliationNoChanges(t *testing.T) {
 			descr: ("If all nodes have the right TLS info or are already rotated, rotating, or pending, " +
 				"there will be no changes needed"),
 			nodes: map[string]*api.Node{
-				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
-				"1": getFakeAPINode(t, "1", api.IssuanceStateIssued, rotationTLSInfo, true),
-				"2": getFakeAPINode(t, "2", api.IssuanceStateRotate, oldNodeTLSInfo, true),
-				"3": getFakeAPINode(t, "3", api.IssuanceStateRotate, rotationTLSInfo, false),
+				"0": getFakeAPINode(t, "0", api.IssuanceStatus_PENDING, nil, false),
+				"1": getFakeAPINode(t, "1", api.IssuanceStatus_ISSUED, rotationTLSInfo, true),
+				"2": getFakeAPINode(t, "2", api.IssuanceStatus_ROTATE, oldNodeTLSInfo, true),
+				"3": getFakeAPINode(t, "3", api.IssuanceStatus_ROTATE, rotationTLSInfo, false),
 			},
 			rootCA: &api.RootCA{ // no change in root CA from previous
-				CACert:     startCluster.RootCA.CACert,
-				CAKey:      startCluster.RootCA.CAKey,
-				CACertHash: startCluster.RootCA.CACertHash,
+				CaCert:     startCluster.RootCa.GetCaCert(),
+				CaKey:      startCluster.RootCa.GetCaKey(),
+				CaCertHash: startCluster.RootCa.GetCaCertHash(),
 				RootRotation: &api.RootRotation{
-					CACert:            rotationCert,
-					CAKey:             rotationKey,
-					CrossSignedCACert: rotationCrossSigned,
+					CaCert:            rotationCert,
+					CaKey:             rotationKey,
+					CrossSignedCaCert: rotationCrossSigned,
 				},
 			},
 		},
@@ -1098,15 +1097,15 @@ func TestRootRotationReconciliationNoChanges(t *testing.T) {
 				"in the process of getting a new cert.  Even if they're issued by a different issuer, they will be " +
 				"left alone because they'll have an interemdiate that chains up to the old issuer."),
 			nodes: map[string]*api.Node{
-				"0": getFakeAPINode(t, "0", api.IssuanceStatePending, nil, false),
-				"1": getFakeAPINode(t, "1", api.IssuanceStateIssued, rotationTLSInfo, true),
-				"2": getFakeAPINode(t, "2", api.IssuanceStateRotate, oldNodeTLSInfo, true),
-				"3": getFakeAPINode(t, "3", api.IssuanceStateRotate, oldNodeTLSInfo, false),
+				"0": getFakeAPINode(t, "0", api.IssuanceStatus_PENDING, nil, false),
+				"1": getFakeAPINode(t, "1", api.IssuanceStatus_ISSUED, rotationTLSInfo, true),
+				"2": getFakeAPINode(t, "2", api.IssuanceStatus_ROTATE, oldNodeTLSInfo, true),
+				"3": getFakeAPINode(t, "3", api.IssuanceStatus_ROTATE, oldNodeTLSInfo, false),
 			},
 			rootCA: &api.RootCA{ // no change in root CA from previous
-				CACert:     startCluster.RootCA.CACert,
-				CAKey:      startCluster.RootCA.CAKey,
-				CACertHash: startCluster.RootCA.CACertHash,
+				CaCert:     startCluster.RootCa.GetCaCert(),
+				CaKey:      startCluster.RootCa.GetCaKey(),
+				CaCertHash: startCluster.RootCa.GetCaCertHash(),
 			},
 		},
 	}
@@ -1115,7 +1114,7 @@ func TestRootRotationReconciliationNoChanges(t *testing.T) {
 		// stop the CA server, get the cluster to the state we want (correct root CA, correct nodes, etc.)
 		rt.tc.CAServer.Stop()
 		rt.convergeWantedNodes(testcase.nodes, testcase.descr)
-		rt.convergeRootCA(&startCluster.RootCA, testcase.descr) // no root rotation
+		rt.convergeRootCA(startCluster.RootCa, testcase.descr) // no root rotation
 		startCAServer(rt.tc.Context, rt.tc.CAServer)
 		rt.convergeRootCA(testcase.rootCA, testcase.descr)
 
@@ -1133,19 +1132,19 @@ func TestRootRotationReconciliationNoChanges(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, cluster)
-		require.Equal(t, cluster.RootCA, *testcase.rootCA, testcase.descr)
+		require.True(t, cluster.RootCa.EqualVT(testcase.rootCA), testcase.descr)
 		require.Len(t, nodes, len(testcase.nodes), testcase.descr)
 		for _, node := range nodes {
-			expected, ok := testcase.nodes[node.ID]
-			require.True(t, ok, "node %s: %s", node.ID, testcase.descr)
-			require.Equal(t, expected.Description, node.Description, "node %s: %s", node.ID, testcase.descr)
-			require.Equal(t, expected.Certificate.Status, node.Certificate.Status, "node %s: %s", node.ID, testcase.descr)
+			expected, ok := testcase.nodes[node.Id]
+			require.True(t, ok, "node %s: %s", node.Id, testcase.descr)
+			require.Equal(t, expected.Description, node.Description, "node %s: %s", node.Id, testcase.descr)
+			require.Equal(t, expected.Certificate.GetStatus(), node.Certificate.GetStatus(), "node %s: %s", node.Id, testcase.descr)
 		}
 
 		// ensure that the server's root CA object has the same expected key
-		expectedKey := testcase.rootCA.CAKey
+		expectedKey := testcase.rootCA.CaKey
 		if testcase.rootCA.RootRotation != nil {
-			expectedKey = testcase.rootCA.RootRotation.CAKey
+			expectedKey = testcase.rootCA.RootRotation.CaKey
 		}
 		s, err := rt.tc.CAServer.RootCA().Signer()
 		require.NoError(t, err, testcase.descr)
@@ -1204,7 +1203,7 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 	nodes := make(map[string]*api.Node)
 	for i := range 5 {
 		nodeID := fmt.Sprintf("%d", i)
-		nodes[nodeID] = getFakeAPINode(t, nodeID, api.IssuanceStateIssued, oldNodeTLSInfo, true)
+		nodes[nodeID] = getFakeAPINode(t, nodeID, api.IssuanceStatus_ISSUED, oldNodeTLSInfo, true)
 	}
 	rt.convergeWantedNodes(nodes, "setting up nodes for root rotation race condition test")
 
@@ -1223,22 +1222,22 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 			if cluster == nil {
 				return errors.New("cluster has disappeared")
 			}
-			rootCA := cluster.RootCA.Copy()
-			caRootCA, err = ca.NewRootCA(rootCA.CACert, rootCA.CACert, rootCA.CAKey, ca.DefaultNodeCertExpiration, nil)
+			rootCA := cluster.RootCa.Copy()
+			caRootCA, err = ca.NewRootCA(rootCA.CaCert, rootCA.CaCert, rootCA.CaKey, ca.DefaultNodeCertExpiration, nil)
 			if err != nil {
 				return err
 			}
 			rotationCrossSigned, rotationTLSInfo = getRotationInfo(t, rotationCert, &caRootCA)
 			rootCA.RootRotation = &api.RootRotation{
-				CACert:            rotationCert,
-				CAKey:             rotationKey,
-				CrossSignedCACert: rotationCrossSigned,
+				CaCert:            rotationCert,
+				CaKey:             rotationKey,
+				CrossSignedCaCert: rotationCrossSigned,
 			}
-			cluster.RootCA = *rootCA
+			cluster.RootCa = rootCA
 			return store.UpdateCluster(tx, cluster)
 		}))
 		for _, node := range nodes {
-			node.Description.TLSInfo = rotationTLSInfo
+			node.Description.TlsInfo = rotationTLSInfo
 		}
 		rt.convergeWantedNodes(nodes, fmt.Sprintf("iteration %d", i))
 	}
@@ -1251,13 +1250,13 @@ func TestRootRotationReconciliationRace(t *testing.T) {
 		if cluster == nil {
 			return errors.New("cluster has disappeared")
 		}
-		if cluster.RootCA.RootRotation != nil {
+		if cluster.RootCa.GetRootRotation() != nil {
 			return errors.New("root rotation is still present")
 		}
-		if !bytes.Equal(cluster.RootCA.CACert, rotationCert) {
+		if !bytes.Equal(cluster.RootCa.GetCaCert(), rotationCert) {
 			return errors.New("expected root cert is wrong")
 		}
-		if !bytes.Equal(cluster.RootCA.CAKey, rotationKey) {
+		if !bytes.Equal(cluster.RootCa.GetCaKey(), rotationKey) {
 			return errors.New("expected root key is wrong")
 		}
 		for i, server := range otherServers {
@@ -1309,7 +1308,7 @@ func TestRootRotationReconciliationThrottled(t *testing.T) {
 		for i := len(nodes); i < ca.IssuanceStateRotateMaxBatchSize*2; i++ {
 			nodeID := fmt.Sprintf("%d", i)
 			err := batch.Update(func(tx store.Tx) error {
-				return store.CreateNode(tx, getFakeAPINode(t, nodeID, api.IssuanceStateIssued, nil, true))
+				return store.CreateNode(tx, getFakeAPINode(t, nodeID, api.IssuanceStatus_ISSUED, nil, true))
 			})
 			if err != nil {
 				return err
@@ -1328,13 +1327,13 @@ func TestRootRotationReconciliationThrottled(t *testing.T) {
 		if cluster == nil {
 			return errors.New("cluster has disappeared")
 		}
-		rootCA := cluster.RootCA.Copy()
+		rootCA := cluster.RootCa.Copy()
 		rootCA.RootRotation = &api.RootRotation{
-			CACert:            rotationCert,
-			CAKey:             rotationKey,
-			CrossSignedCACert: rotationCrossSigned,
+			CaCert:            rotationCert,
+			CaKey:             rotationKey,
+			CrossSignedCaCert: rotationCrossSigned,
 		}
-		cluster.RootCA = *rootCA
+		cluster.RootCa = rootCA
 		return store.UpdateCluster(tx, cluster)
 	}))
 
@@ -1344,7 +1343,7 @@ func TestRootRotationReconciliationThrottled(t *testing.T) {
 		})
 		var issuanceRotate int
 		for _, n := range nodes {
-			if n.Certificate.Status.State == api.IssuanceStateRotate {
+			if n.Certificate.GetStatus().GetState() == api.IssuanceStatus_ROTATE {
 				issuanceRotate += 1
 			}
 		}

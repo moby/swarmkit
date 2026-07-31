@@ -109,9 +109,9 @@ func NewTestCA(t *testing.T, krwGenerators ...func(ca.CertPaths) *ca.KeyReadWrit
 	if t != nil {
 		require.NoError(t, err)
 	}
-	apiRootCA := api.RootCA{
-		CACert: cert,
-		CAKey:  key,
+	apiRootCA := &api.RootCA{
+		CaCert: cert,
+		CaKey:  key,
 	}
 
 	return newTestCA(t, tempdir, apiRootCA, krwGenerators, false)
@@ -129,9 +129,9 @@ func NewFIPSTestCA(t *testing.T) *TestCA {
 	if t != nil {
 		require.NoError(t, err)
 	}
-	apiRootCA := api.RootCA{
-		CACert: cert,
-		CAKey:  key,
+	apiRootCA := &api.RootCA{
+		CaCert: cert,
+		CaKey:  key,
 	}
 
 	return newTestCA(t, tempdir, apiRootCA, nil, true)
@@ -140,11 +140,11 @@ func NewFIPSTestCA(t *testing.T) *TestCA {
 // NewTestCAFromAPIRootCA is a helper method that creates a TestCA and a bunch of default
 // connections and security configs, given a temp directory and an api.RootCA to use for creating
 // a cluster and for signing.
-func NewTestCAFromAPIRootCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenerators []func(ca.CertPaths) *ca.KeyReadWriter) *TestCA {
+func NewTestCAFromAPIRootCA(t *testing.T, tempBaseDir string, apiRootCA *api.RootCA, krwGenerators []func(ca.CertPaths) *ca.KeyReadWriter) *TestCA {
 	return newTestCA(t, tempBaseDir, apiRootCA, krwGenerators, false)
 }
 
-func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenerators []func(ca.CertPaths) *ca.KeyReadWriter, fips bool) *TestCA {
+func newTestCA(t *testing.T, tempBaseDir string, apiRootCA *api.RootCA, krwGenerators []func(ca.CertPaths) *ca.KeyReadWriter, fips bool) *TestCA {
 	s := store.NewMemoryStore(&stateutils.MockProposer{})
 
 	paths := ca.NewConfigPaths(tempBaseDir)
@@ -162,10 +162,10 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 
 	if apiRootCA.RootRotation != nil {
 		rootCA, err = ca.NewRootCA(
-			apiRootCA.CACert, apiRootCA.RootRotation.CACert, apiRootCA.RootRotation.CAKey, ca.DefaultNodeCertExpiration, apiRootCA.RootRotation.CrossSignedCACert)
+			apiRootCA.CaCert, apiRootCA.RootRotation.CaCert, apiRootCA.RootRotation.CaKey, ca.DefaultNodeCertExpiration, apiRootCA.RootRotation.CrossSignedCaCert)
 	} else {
 		rootCA, err = ca.NewRootCA(
-			apiRootCA.CACert, apiRootCA.CACert, apiRootCA.CAKey, ca.DefaultNodeCertExpiration, nil)
+			apiRootCA.CaCert, apiRootCA.CaCert, apiRootCA.CaKey, ca.DefaultNodeCertExpiration, nil)
 
 	}
 	if t != nil {
@@ -173,7 +173,7 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 	}
 
 	// Write the root certificate to disk, using decent permissions
-	err = ioutils.AtomicWriteFile(paths.RootCA.Cert, apiRootCA.CACert, 0o644)
+	err = ioutils.AtomicWriteFile(paths.RootCA.Cert, apiRootCA.CaCert, 0o644)
 	if t != nil {
 		require.NoError(t, err)
 	}
@@ -183,14 +183,14 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 		var extRootCA ca.RootCA
 		if apiRootCA.RootRotation != nil {
 			extRootCA, err = ca.NewRootCA(
-				apiRootCA.RootRotation.CACert, apiRootCA.RootRotation.CACert, apiRootCA.RootRotation.CAKey, ca.DefaultNodeCertExpiration, nil)
+				apiRootCA.RootRotation.CaCert, apiRootCA.RootRotation.CaCert, apiRootCA.RootRotation.CaKey, ca.DefaultNodeCertExpiration, nil)
 			// remove the key from the API root CA so that once the CA server starts up, it won't have a local signer
-			apiRootCA.RootRotation.CAKey = nil
+			apiRootCA.RootRotation.CaKey = nil
 		} else {
 			extRootCA, err = ca.NewRootCA(
-				apiRootCA.CACert, apiRootCA.CACert, apiRootCA.CAKey, ca.DefaultNodeCertExpiration, nil)
+				apiRootCA.CaCert, apiRootCA.CaCert, apiRootCA.CaKey, ca.DefaultNodeCertExpiration, nil)
 			// remove the key from the API root CA so that once the CA server starts up, it won't have a local signer
-			apiRootCA.CAKey = nil
+			apiRootCA.CaKey = nil
 		}
 		if t != nil {
 			require.NoError(t, err)
@@ -203,9 +203,9 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 
 		externalCAs = []*api.ExternalCA{
 			{
-				Protocol: api.ExternalCA_CAProtocolCFSSL,
-				URL:      externalSigningServer.URL,
-				CACert:   extRootCA.Certs,
+				Protocol: api.ExternalCA_CFSSL,
+				Url:      externalSigningServer.URL,
+				CaCert:   extRootCA.Certs,
 			},
 		}
 	}
@@ -283,7 +283,7 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 
 	// Wait for caServer to be ready to serve
 	<-caServer.Ready()
-	remotes := remotes.NewRemotes(api.Peer{Addr: l.Addr().String()})
+	remotes := remotes.NewRemotes(&api.Peer{Addr: l.Addr().String()})
 
 	caClients := []api.CAClient{api.NewCAClient(conn1), api.NewCAClient(conn2), api.NewCAClient(conn3)}
 	nodeCAClients := []api.NodeCAClient{api.NewNodeCAClient(conn1), api.NewNodeCAClient(conn2), api.NewNodeCAClient(conn3), api.NewNodeCAClient(conn4)}
@@ -304,8 +304,8 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 		Server:                 grpcServer,
 		ServingSecurityConfig:  managerConfig,
 		CAServer:               caServer,
-		WorkerToken:            clusterObj.RootCA.JoinTokens.Worker,
-		ManagerToken:           clusterObj.RootCA.JoinTokens.Manager,
+		WorkerToken:            clusterObj.RootCa.GetJoinTokens().GetWorker(),
+		ManagerToken:           clusterObj.RootCa.GetJoinTokens().GetManager(),
 		ConnBroker:             connectionbroker.New(remotes),
 		KeyReadWriter:          krw,
 		ctxCancel:              ctxCancel,
@@ -318,19 +318,19 @@ func createNode(s *store.MemoryStore, nodeID, role string, csr, cert []byte) err
 
 	err := s.Update(func(tx store.Tx) error {
 		node := &api.Node{
-			ID: nodeID,
-			Certificate: api.Certificate{
-				CSR:  csr,
-				CN:   nodeID,
+			Id: nodeID,
+			Certificate: &api.Certificate{
+				Csr:  csr,
+				Cn:   nodeID,
 				Role: apiRole,
-				Status: api.IssuanceStatus{
-					State: api.IssuanceStateIssued,
+				Status: &api.IssuanceStatus{
+					State: api.IssuanceStatus_ISSUED,
 				},
 				Certificate: cert,
 			},
-			Spec: api.NodeSpec{
+			Spec: &api.NodeSpec{
 				DesiredRole: apiRole,
-				Membership:  api.NodeMembershipAccepted,
+				Membership:  api.NodeSpec_ACCEPTED,
 			},
 			Role: apiRole,
 		}
@@ -410,26 +410,40 @@ func genSecurityConfig(s *store.MemoryStore, rootCA ca.RootCA, krw *ca.KeyReadWr
 	})
 }
 
-func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, apiRootCA api.RootCA, caRootCA *ca.RootCA, externalCAs ...*api.ExternalCA) *api.Cluster {
+func createClusterObject(t *testing.T, s *store.MemoryStore, clusterID string, apiRootCA *api.RootCA, caRootCA *ca.RootCA, externalCAs ...*api.ExternalCA) *api.Cluster {
 	fips := strings.HasPrefix(clusterID, "FIPS.")
 	cluster := &api.Cluster{
-		ID: clusterID,
-		Spec: api.ClusterSpec{
-			Annotations: api.Annotations{
+		Id: clusterID,
+		Spec: &api.ClusterSpec{
+			Annotations: &api.Annotations{
 				Name: store.DefaultClusterName,
 			},
-			CAConfig: api.CAConfig{
-				ExternalCAs: externalCAs,
+			CaConfig: &api.CAConfig{
+				ExternalCas: externalCAs,
 			},
+			// These were non-nullable embedded messages before the move to
+			// protoc-gen-go, so callers could always reach through them.
+			// Populate them so a test cluster still behaves that way.
+			AcceptancePolicy: &api.AcceptancePolicy{},
+			Orchestration:    &api.OrchestrationConfig{},
+			Raft:             &api.RaftConfig{},
+			Dispatcher:       &api.DispatcherConfig{},
+			TaskDefaults:     &api.TaskDefaults{},
+			EncryptionConfig: &api.EncryptionConfig{},
 		},
-		RootCA: apiRootCA,
-		FIPS:   fips,
+		RootCa: apiRootCA,
+		Fips:   fips,
 	}
-	if cluster.RootCA.JoinTokens.Worker == "" {
-		cluster.RootCA.JoinTokens.Worker = ca.GenerateJoinToken(caRootCA, fips)
+	// JoinTokens is a pointer now, so a caller that did not set it leaves it
+	// nil rather than zero.
+	if cluster.RootCa.GetJoinTokens() == nil {
+		cluster.RootCa.JoinTokens = &api.JoinTokens{}
 	}
-	if cluster.RootCA.JoinTokens.Manager == "" {
-		cluster.RootCA.JoinTokens.Manager = ca.GenerateJoinToken(caRootCA, fips)
+	if cluster.RootCa.GetJoinTokens().GetWorker() == "" {
+		cluster.RootCa.GetJoinTokens().Worker = ca.GenerateJoinToken(caRootCA, fips)
+	}
+	if cluster.RootCa.GetJoinTokens().GetManager() == "" {
+		cluster.RootCa.GetJoinTokens().Manager = ca.GenerateJoinToken(caRootCA, fips)
 	}
 	err := s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, cluster)

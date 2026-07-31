@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -91,24 +90,24 @@ func pollClusterReady(t *testing.T, c *testCluster, numWorker, numManager int) {
 		var mCount int
 		var leaderFound bool
 		for _, n := range res.Nodes {
-			if n.Status.State != api.NodeStatus_READY {
-				return fmt.Errorf("node %s with desired role %s isn't ready, status %s, message %s", n.ID, n.Spec.DesiredRole, n.Status.State, n.Status.Message)
+			if n.Status.GetState() != api.NodeStatus_READY {
+				return fmt.Errorf("node %s with desired role %s isn't ready, status %s, message %s", n.Id, n.Spec.GetDesiredRole(), n.Status.GetState(), n.Status.GetMessage())
 			}
-			if n.Spec.Membership != api.NodeMembershipAccepted {
-				return fmt.Errorf("node %s with desired role %s isn't accepted to cluster, membership %s", n.ID, n.Spec.DesiredRole, n.Spec.Membership)
+			if n.Spec.GetMembership() != api.NodeSpec_ACCEPTED {
+				return fmt.Errorf("node %s with desired role %s isn't accepted to cluster, membership %s", n.Id, n.Spec.GetDesiredRole(), n.Spec.GetMembership())
 			}
-			if n.Certificate.Role != n.Spec.DesiredRole {
-				return fmt.Errorf("node %s had different roles in spec and certificate, %s and %s respectively", n.ID, n.Spec.DesiredRole, n.Certificate.Role)
+			if n.Certificate.GetRole() != n.Spec.GetDesiredRole() {
+				return fmt.Errorf("node %s had different roles in spec and certificate, %s and %s respectively", n.Id, n.Spec.GetDesiredRole(), n.Certificate.GetRole())
 			}
-			if n.Certificate.Status.State != api.IssuanceStateIssued {
-				return fmt.Errorf("node %s with desired role %s has no issued certificate, issuance state %s", n.ID, n.Spec.DesiredRole, n.Certificate.Status.State)
+			if n.Certificate.GetStatus().GetState() != api.IssuanceStatus_ISSUED {
+				return fmt.Errorf("node %s with desired role %s has no issued certificate, issuance state %s", n.Id, n.Spec.GetDesiredRole(), n.Certificate.GetStatus().GetState())
 			}
-			if n.Role == api.NodeRoleManager {
+			if n.Role == api.NodeRole_MANAGER {
 				if n.ManagerStatus == nil {
-					return fmt.Errorf("manager node %s has no ManagerStatus field", n.ID)
+					return fmt.Errorf("manager node %s has no ManagerStatus field", n.Id)
 				}
 				if n.ManagerStatus.Reachability != api.RaftMemberStatus_REACHABLE {
-					return fmt.Errorf("manager node %s has reachable status: %s", n.ID, n.ManagerStatus.Reachability)
+					return fmt.Errorf("manager node %s has reachable status: %s", n.Id, n.ManagerStatus.Reachability)
 				}
 				mCount++
 				if n.ManagerStatus.Leader {
@@ -116,11 +115,11 @@ func pollClusterReady(t *testing.T, c *testCluster, numWorker, numManager int) {
 				}
 			} else {
 				if n.ManagerStatus != nil {
-					return fmt.Errorf("worker node %s should not have manager status, returned %s", n.ID, n.ManagerStatus)
+					return fmt.Errorf("worker node %s should not have manager status, returned %s", n.Id, n.ManagerStatus)
 				}
 			}
-			if n.Description.TLSInfo == nil {
-				return fmt.Errorf("node %s has not reported its TLS info yet", n.ID)
+			if n.Description.TlsInfo == nil {
+				return fmt.Errorf("node %s has not reported its TLS info yet", n.Id)
 			}
 		}
 		if !leaderFound {
@@ -142,7 +141,7 @@ func pollClusterReady(t *testing.T, c *testCluster, numWorker, numManager int) {
 func pollServiceReady(t *testing.T, c *testCluster, sid string, replicas int) {
 	pollFunc := func() error {
 		req := &api.ListTasksRequest{Filters: &api.ListTasksRequest_Filters{
-			ServiceIDs: []string{sid},
+			ServiceIds: []string{sid},
 		}}
 		res, err := c.api.ListTasks(context.Background(), req)
 		require.NoError(t, err)
@@ -153,10 +152,10 @@ func pollServiceReady(t *testing.T, c *testCluster, sid string, replicas int) {
 		var running int
 		var states []string
 		for _, task := range res.Tasks {
-			if task.Status.State == api.TaskStateRunning {
+			if task.Status.GetState() == api.TaskState_RUNNING {
 				running++
 			}
-			states = append(states, fmt.Sprintf("[task %s: %s]", task.ID, task.Status.State))
+			states = append(states, fmt.Sprintf("[task %s: %s]", task.Id, task.Status.GetState()))
 		}
 		if running != replicas {
 			return fmt.Errorf("only %d running tasks, but expecting %d replicas: %s", running, replicas, strings.Join(states, ", "))
@@ -251,7 +250,7 @@ func TestNodeOps(t *testing.T) {
 	// demote leader
 	leader, err := cl.Leader()
 	require.NoError(t, err)
-	require.NoError(t, cl.SetNodeRole(leader.node.NodeID(), api.NodeRoleWorker))
+	require.NoError(t, cl.SetNodeRole(leader.node.NodeID(), api.NodeRole_WORKER))
 	// agents 2, managers 2
 	numWorker++
 	numManager--
@@ -272,7 +271,7 @@ func TestNodeOps(t *testing.T) {
 	pollClusterReady(t, cl, numWorker, numManager)
 
 	// promote old leader back
-	require.NoError(t, cl.SetNodeRole(leader.node.NodeID(), api.NodeRoleManager))
+	require.NoError(t, cl.SetNodeRole(leader.node.NodeID(), api.NodeRole_MANAGER))
 	numWorker--
 	numManager++
 	// agents 0, managers 3
@@ -336,14 +335,14 @@ func TestDemotePromote(t *testing.T) {
 			break
 		}
 	}
-	require.NoError(t, cl.SetNodeRole(manager.node.NodeID(), api.NodeRoleWorker))
+	require.NoError(t, cl.SetNodeRole(manager.node.NodeID(), api.NodeRole_WORKER))
 	// agents 2, managers 2
 	numWorker++
 	numManager--
 	pollClusterReady(t, cl, numWorker, numManager)
 
 	// promote same node
-	require.NoError(t, cl.SetNodeRole(manager.node.NodeID(), api.NodeRoleManager))
+	require.NoError(t, cl.SetNodeRole(manager.node.NodeID(), api.NodeRole_MANAGER))
 	// agents 1, managers 3
 	numWorker--
 	numManager++
@@ -366,14 +365,14 @@ func TestPromoteDemote(t *testing.T) {
 			break
 		}
 	}
-	require.NoError(t, cl.SetNodeRole(worker.node.NodeID(), api.NodeRoleManager))
+	require.NoError(t, cl.SetNodeRole(worker.node.NodeID(), api.NodeRole_MANAGER))
 	// agents 0, managers 4
 	numWorker--
 	numManager++
 	pollClusterReady(t, cl, numWorker, numManager)
 
 	// demote same node
-	require.NoError(t, cl.SetNodeRole(worker.node.NodeID(), api.NodeRoleWorker))
+	require.NoError(t, cl.SetNodeRole(worker.node.NodeID(), api.NodeRole_WORKER))
 	// agents 1, managers 3
 	numWorker++
 	numManager--
@@ -391,14 +390,14 @@ func TestDemotePromoteLeader(t *testing.T) {
 
 	leader, err := cl.Leader()
 	require.NoError(t, err)
-	require.NoError(t, cl.SetNodeRole(leader.node.NodeID(), api.NodeRoleWorker))
+	require.NoError(t, cl.SetNodeRole(leader.node.NodeID(), api.NodeRole_WORKER))
 	// agents 2, managers 2
 	numWorker++
 	numManager--
 	pollClusterReady(t, cl, numWorker, numManager)
 
 	// promote former leader back
-	require.NoError(t, cl.SetNodeRole(leader.node.NodeID(), api.NodeRoleManager))
+	require.NoError(t, cl.SetNodeRole(leader.node.NodeID(), api.NodeRole_MANAGER))
 	// agents 1, managers 3
 	numWorker--
 	numManager++
@@ -416,7 +415,7 @@ func TestDemoteToSingleManager(t *testing.T) {
 
 	leader, err := cl.Leader()
 	require.NoError(t, err)
-	require.NoError(t, cl.SetNodeRole(leader.node.NodeID(), api.NodeRoleWorker))
+	require.NoError(t, cl.SetNodeRole(leader.node.NodeID(), api.NodeRole_WORKER))
 	// agents 2, managers 2
 	numWorker++
 	numManager--
@@ -424,7 +423,7 @@ func TestDemoteToSingleManager(t *testing.T) {
 
 	leader, err = cl.Leader()
 	require.NoError(t, err)
-	require.NoError(t, cl.SetNodeRole(leader.node.NodeID(), api.NodeRoleWorker))
+	require.NoError(t, cl.SetNodeRole(leader.node.NodeID(), api.NodeRole_WORKER))
 	// agents 3, managers 1
 	numWorker++
 	numManager--
@@ -442,7 +441,7 @@ func TestDemoteLeader(t *testing.T) {
 
 	leader, err := cl.Leader()
 	require.NoError(t, err)
-	require.NoError(t, cl.SetNodeRole(leader.node.NodeID(), api.NodeRoleWorker))
+	require.NoError(t, cl.SetNodeRole(leader.node.NodeID(), api.NodeRole_WORKER))
 	// agents 2, managers 2
 	numWorker++
 	numManager--
@@ -475,10 +474,10 @@ func TestDemoteDownedManager(t *testing.T) {
 
 	nodeID := demotee.node.NodeID()
 
-	resp, err := cl.api.GetNode(context.Background(), &api.GetNodeRequest{NodeID: nodeID})
+	resp, err := cl.api.GetNode(context.Background(), &api.GetNodeRequest{NodeId: nodeID})
 	require.NoError(t, err)
 	spec := resp.Node.Spec.Copy()
-	spec.DesiredRole = api.NodeRoleWorker
+	spec.DesiredRole = api.NodeRole_WORKER
 
 	// stop the node, then demote it, and start it back up again so when it comes back up it has to realize
 	// it's not running anymore
@@ -488,9 +487,9 @@ func TestDemoteDownedManager(t *testing.T) {
 	// the node is currently down
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
 		_, err := cl.api.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-			NodeID:      nodeID,
+			NodeId:      nodeID,
 			Spec:        spec,
-			NodeVersion: &resp.Node.Meta.Version,
+			NodeVersion: resp.Node.Meta.Version,
 		})
 		return err
 	}, opsTimeout))
@@ -533,12 +532,12 @@ func TestRestartLeader(t *testing.T) {
 			return err
 		}
 		for _, node := range resp.Nodes {
-			if node.ID == origLeaderID {
+			if node.Id == origLeaderID {
 				continue
 			}
-			require.False(t, node.Status.State == api.NodeStatus_DOWN, "nodes shouldn't go to down")
-			if node.Status.State != api.NodeStatus_READY {
-				return errors.Errorf("node %s is still not ready", node.ID)
+			require.False(t, node.Status.GetState() == api.NodeStatus_DOWN, "nodes shouldn't go to down")
+			if node.Status.GetState() != api.NodeStatus_READY {
+				return errors.Errorf("node %s is still not ready", node.Id)
 			}
 		}
 		return nil
@@ -618,7 +617,7 @@ func pollRootRotationDone(t *testing.T, cl *testCluster) {
 		if err != nil {
 			return err
 		}
-		if clusterInfo.RootCA.RootRotation != nil {
+		if clusterInfo.RootCa.GetRootRotation() != nil {
 			return errors.New("root rotation not done")
 		}
 		return nil
@@ -650,19 +649,19 @@ func TestSuccessfulRootRotation(t *testing.T) {
 		)
 		for _, n := range resp.Nodes {
 			if oldTLSInfo != nil {
-				require.Equal(t, oldTLSInfo, n.Description.TLSInfo)
+				require.Equal(t, oldTLSInfo, n.Description.TlsInfo)
 			} else {
-				oldTLSInfo = n.Description.TLSInfo
+				oldTLSInfo = n.Description.TlsInfo
 			}
-			if n.Role == api.NodeRoleManager {
+			if n.Role == api.NodeRole_MANAGER {
 				if !n.ManagerStatus.Leader && downManagerID == "" {
-					downManagerID = n.ID
-					require.NoError(t, cl.nodes[n.ID].Pause(false))
+					downManagerID = n.Id
+					require.NoError(t, cl.nodes[n.Id].Pause(false))
 				}
 				continue
 			}
-			downWorkerIDs = append(downWorkerIDs, n.ID)
-			require.NoError(t, cl.nodes[n.ID].Pause(false))
+			downWorkerIDs = append(downWorkerIDs, n.Id)
+			require.NoError(t, cl.nodes[n.Id].Pause(false))
 		}
 
 		// perform a root rotation, and wait until all the nodes that are up have newly issued certs
@@ -676,8 +675,8 @@ func TestSuccessfulRootRotation(t *testing.T) {
 				return err
 			}
 			for _, n := range resp.Nodes {
-				isDown := n.ID == downManagerID || n.ID == downWorkerIDs[0] || n.ID == downWorkerIDs[1]
-				if reflect.DeepEqual(n.Description.TLSInfo, oldTLSInfo) != isDown {
+				isDown := n.Id == downManagerID || n.Id == downWorkerIDs[0] || n.Id == downWorkerIDs[1]
+				if n.GetDescription().GetTlsInfo().EqualVT(oldTLSInfo) != isDown {
 					return fmt.Errorf("expected TLS info to have changed: %v", !isDown)
 				}
 			}
@@ -687,7 +686,7 @@ func TestSuccessfulRootRotation(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			require.NotNil(t, clusterInfo.RootCA.RootRotation) // if root rotation is already done, fail and finish the test here
+			require.NotNil(t, clusterInfo.RootCa.GetRootRotation()) // if root rotation is already done, fail and finish the test here
 			return nil
 		}, opsTimeout))
 
@@ -711,7 +710,7 @@ func TestSuccessfulRootRotation(t *testing.T) {
 			var newTLSInfo *api.NodeTLSInfo
 			for _, n := range resp.Nodes {
 				if newTLSInfo == nil {
-					newTLSInfo = n.Description.TLSInfo
+					newTLSInfo = n.Description.TlsInfo
 					if bytes.Equal(newTLSInfo.CertIssuerPublicKey, oldTLSInfo.CertIssuerPublicKey) ||
 						bytes.Equal(newTLSInfo.CertIssuerSubject, oldTLSInfo.CertIssuerSubject) {
 						return errors.New("expecting the issuer to have changed")
@@ -719,11 +718,11 @@ func TestSuccessfulRootRotation(t *testing.T) {
 					if !bytes.Equal(newTLSInfo.TrustRoot, newRootCert) {
 						return errors.New("expecting the the root certificate to have changed")
 					}
-				} else if !reflect.DeepEqual(newTLSInfo, n.Description.TLSInfo) {
-					return fmt.Errorf("the nodes have not converged yet, particularly %s", n.ID)
+				} else if !newTLSInfo.EqualVT(n.GetDescription().GetTlsInfo()) {
+					return fmt.Errorf("the nodes have not converged yet, particularly %s", n.Id)
 				}
 
-				if n.Certificate.Status.State != api.IssuanceStateIssued {
+				if n.Certificate.GetStatus().GetState() != api.IssuanceStatus_ISSUED {
 					return errors.New("nodes have yet to finish renewing their TLS certificates")
 				}
 			}
@@ -746,9 +745,9 @@ func TestRepeatedRootRotation(t *testing.T) {
 	var oldTLSInfo *api.NodeTLSInfo
 	for _, n := range resp.Nodes {
 		if oldTLSInfo != nil {
-			require.Equal(t, oldTLSInfo, n.Description.TLSInfo)
+			require.Equal(t, oldTLSInfo, n.Description.TlsInfo)
 		} else {
-			oldTLSInfo = n.Description.TLSInfo
+			oldTLSInfo = n.Description.TlsInfo
 		}
 	}
 
@@ -770,13 +769,13 @@ func TestRepeatedRootRotation(t *testing.T) {
 			return nil
 		}
 		for _, n := range resp.Nodes {
-			if reflect.DeepEqual(n.Description.TLSInfo, oldTLSInfo) {
+			if n.GetDescription().GetTlsInfo().EqualVT(oldTLSInfo) {
 				return errors.New("nodes have not changed TLS info")
 			}
-			if n.Certificate.Status.State != api.IssuanceStateIssued {
+			if n.Certificate.GetStatus().GetState() != api.IssuanceStatus_ISSUED {
 				return errors.New("nodes have yet to finish renewing their TLS certificates")
 			}
-			if !bytes.Equal(n.Description.TLSInfo.TrustRoot, newRootCert) {
+			if !bytes.Equal(n.Description.TlsInfo.TrustRoot, newRootCert) {
 				return errors.New("nodes do not all trust the new root yet")
 			}
 		}
@@ -824,7 +823,7 @@ func TestNodeRejoins(t *testing.T) {
 	krw := ca.NewKeyReadWriter(paths.Node, nil, &manager.RaftDEKData{}) // make sure the key headers are preserved
 	_, _, err = krw.Read()
 	require.NoError(t, err)
-	_, _, err = newRootCA.IssueAndSaveNewCertificates(krw, nodeID, ca.WorkerRole, clusterInfo.ID)
+	_, _, err = newRootCA.IssueAndSaveNewCertificates(krw, nodeID, ca.WorkerRole, clusterInfo.Id)
 	require.NoError(t, err)
 
 	worker.config.JoinAddr, err = leader.node.RemoteAPIAddr()
@@ -849,8 +848,8 @@ func TestNodeJoinWithWrongCerts(t *testing.T) {
 	require.NoError(t, err)
 
 	tokens := map[string]string{
-		ca.WorkerRole:  clusterInfo.RootCA.JoinTokens.Worker,
-		ca.ManagerRole: clusterInfo.RootCA.JoinTokens.Manager,
+		ca.WorkerRole:  clusterInfo.RootCa.GetJoinTokens().GetWorker(),
+		ca.ManagerRole: clusterInfo.RootCa.GetJoinTokens().GetManager(),
 	}
 
 	rootCA, err := ca.CreateRootCA("rootCA")
@@ -861,7 +860,7 @@ func TestNodeJoinWithWrongCerts(t *testing.T) {
 		require.NoError(t, err)
 		nodeID := identity.NewID()
 		require.NoError(t,
-			generateCerts(node.stateDir, &rootCA, nodeID, role, clusterInfo.ID, false))
+			generateCerts(node.stateDir, &rootCA, nodeID, role, clusterInfo.Id, false))
 		cl.counter++
 		cl.nodes[nodeID] = node
 		cl.nodesOrder[nodeID] = cl.counter
@@ -891,7 +890,7 @@ func TestMixedFIPSClusterNonMandatoryFIPS(t *testing.T) {
 	require.NoError(t, err)
 	clusterInfo, err := cl.GetClusterInfo()
 	require.NoError(t, err)
-	for _, token := range []string{clusterInfo.RootCA.JoinTokens.Worker, clusterInfo.RootCA.JoinTokens.Manager} {
+	for _, token := range []string{clusterInfo.RootCa.GetJoinTokens().GetWorker(), clusterInfo.RootCa.GetJoinTokens().GetManager()} {
 		node, err := newTestNode(joinAddr, token, false, true)
 		require.NoError(t, err)
 		require.NoError(t, cl.AddNode(node))
@@ -972,7 +971,7 @@ func TestMixedFIPSClusterMandatoryFIPS(t *testing.T) {
 	require.NoError(t, err)
 	clusterInfo, err := cl.GetClusterInfo()
 	require.NoError(t, err)
-	for _, token := range []string{clusterInfo.RootCA.JoinTokens.Worker, clusterInfo.RootCA.JoinTokens.Manager} {
+	for _, token := range []string{clusterInfo.RootCa.GetJoinTokens().GetWorker(), clusterInfo.RootCa.GetJoinTokens().GetManager()} {
 		n, err := newTestNode(joinAddr, token, false, false)
 		require.NoError(t, err)
 		require.Equal(t, node.ErrMandatoryFIPS, cl.AddNode(n))
