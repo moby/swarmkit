@@ -2115,9 +2115,7 @@ func BenchmarkNodeConcurrency(b *testing.B) {
 	// Run 5 writer goroutines and 5 reader goroutines
 	var wg sync.WaitGroup
 	for c := range 5 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for i := range b.N {
 				_ = s.Update(func(tx1 Tx) error {
 					_ = UpdateNode(tx1, &api.Node{
@@ -2131,19 +2129,17 @@ func BenchmarkNodeConcurrency(b *testing.B) {
 					return nil
 				})
 			}
-		}()
+		})
 	}
 
 	for range 5 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			s.View(func(tx1 ReadTx) {
 				for i := range b.N {
 					_ = GetNode(tx1, nodeIDs[i%benchmarkNumNodes])
 				}
 			})
-		}()
+		})
 	}
 
 	wg.Wait()

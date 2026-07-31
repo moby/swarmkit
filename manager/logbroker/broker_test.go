@@ -72,15 +72,12 @@ func TestLogBrokerLogs(t *testing.T) {
 			taskID := fmt.Sprintf("%v.task-%v", serviceID, task)
 
 			for node := range nNodes {
-				nodeID := fmt.Sprintf("node-%v", node)
-
 				if (task+1)%(node+1) != 0 {
 					continue
 				}
 				messagesExpected += nLogMessagesPerTask
 
-				wg.Add(1)
-				go func(nodeID, serviceID, taskID string) {
+				wg.Go(func() {
 					<-hold
 
 					// Each goroutine gets its own publisher
@@ -90,7 +87,6 @@ func TestLogBrokerLogs(t *testing.T) {
 					defer func() {
 						_, err := publisher.CloseAndRecv()
 						require.NoError(t, err)
-						wg.Done()
 					}()
 
 					msgctx := api.LogContext{
@@ -104,7 +100,7 @@ func TestLogBrokerLogs(t *testing.T) {
 							Messages:       []api.LogMessage{newLogMessage(msgctx, "log message number %d", i)},
 						}))
 					}
-				}(nodeID, serviceID, taskID)
+				})
 			}
 		}
 	}

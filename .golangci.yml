@@ -7,12 +7,14 @@ run:
 linters: 
   default: none
   enable:
-    - misspell
+    - ginkgolinter
+    - govet
     - ineffassign
+    - misspell
+    - modernize
     - revive
     - unconvert
     - unused
-    - govet
   settings:
     govet:
       enable:
