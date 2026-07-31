@@ -212,6 +212,12 @@ func (p *plugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string
 	if v.VolumeInfo == nil {
 		return nil, errors.New("VolumeInfo must not be nil")
 	}
+
+	c, err := p.client(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if !p.publisher {
 		return nil, nil
 	}
@@ -222,10 +228,6 @@ func (p *plugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string
 	}
 
 	req := p.makeControllerPublishVolumeRequest(v, nodeID)
-	c, err := p.client(ctx)
-	if err != nil {
-		return nil, err
-	}
 	resp, err := c.ControllerPublishVolume(ctx, req)
 
 	if err != nil {
@@ -241,15 +243,17 @@ func (p *plugin) UnpublishVolume(ctx context.Context, v *api.Volume, nodeID stri
 	if v.VolumeInfo == nil {
 		return errors.New("VolumeInfo must not be nil")
 	}
+
+	c, err := p.client(ctx)
+	if err != nil {
+		return err
+	}
+
 	if !p.publisher {
 		return nil
 	}
 
 	req := p.makeControllerUnpublishVolumeRequest(v, nodeID)
-	c, err := p.client(ctx)
-	if err != nil {
-		return err
-	}
 
 	// response of the RPC intentionally left blank
 	_, err = c.ControllerUnpublishVolume(ctx, req)
