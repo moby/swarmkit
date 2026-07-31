@@ -626,8 +626,8 @@ func (n *Node) Run(ctx context.Context) error {
 						Data: msg.GetSnapshot().GetData(),
 						Metadata: &raftpb.SnapshotMetadata{
 							ConfState: n.confState,
-							Index:     proto.Uint64(meta.GetIndex()),
-							Term:      proto.Uint64(meta.GetTerm()),
+							Index:     new(meta.GetIndex()),
+							Term:      new(meta.GetTerm()),
 						},
 					}
 				}
@@ -1110,7 +1110,7 @@ func (n *Node) addMember(ctx context.Context, addr string, raftID uint64, nodeID
 
 	cc := &raftpb.ConfChange{
 		Type:    raftpb.ConfChangeAddNode.Enum(),
-		NodeId:  proto.Uint64(raftID),
+		NodeId:  new(raftID),
 		Context: meta,
 	}
 
@@ -1137,7 +1137,7 @@ func (n *Node) updateNodeBlocking(ctx context.Context, id uint64, addr string) e
 
 	cc := &raftpb.ConfChange{
 		Type:    raftpb.ConfChangeUpdateNode.Enum(),
-		NodeId:  proto.Uint64(id),
+		NodeId:  new(id),
 		Context: meta,
 	}
 
@@ -1238,9 +1238,9 @@ func (n *Node) removeMember(ctx context.Context, id uint64) error {
 	}
 
 	cc := &raftpb.ConfChange{
-		Id:      proto.Uint64(id),
+		Id:      new(id),
 		Type:    raftpb.ConfChangeRemoveNode.Enum(),
-		NodeId:  proto.Uint64(id),
+		NodeId:  new(id),
 		Context: []byte(""),
 	}
 	return n.configure(ctx, cc)
@@ -1891,7 +1891,7 @@ func (n *Node) processInternalRaftRequest(ctx context.Context, r *api.InternalRa
 // then waits for it to be applied to the server. It will block
 // until the change is performed or there is an error.
 func (n *Node) configure(ctx context.Context, cc *raftpb.ConfChange) error {
-	cc.Id = proto.Uint64(n.reqIDGen.Next())
+	cc.Id = new(n.reqIDGen.Next())
 
 	ctx, cancel := context.WithCancel(ctx)
 	ch := n.wait.register(cc.GetId(), nil, cancel)
@@ -2082,7 +2082,7 @@ func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []*ra
 		}
 		cc := &raftpb.ConfChange{
 			Type:   raftpb.ConfChangeRemoveNode.Enum(),
-			NodeId: proto.Uint64(id),
+			NodeId: new(id),
 		}
 		data, err := proto.Marshal(cc)
 		if err != nil {
@@ -2091,8 +2091,8 @@ func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []*ra
 		e := &raftpb.Entry{
 			Type:  raftpb.EntryConfChange.Enum(),
 			Data:  data,
-			Term:  proto.Uint64(term),
-			Index: proto.Uint64(next),
+			Term:  new(term),
+			Index: new(next),
 		}
 		ents = append(ents, e)
 		next++
@@ -2105,7 +2105,7 @@ func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []*ra
 		}
 		cc := &raftpb.ConfChange{
 			Type:    raftpb.ConfChangeAddNode.Enum(),
-			NodeId:  proto.Uint64(self),
+			NodeId:  new(self),
 			Context: meta,
 		}
 		data, err := proto.Marshal(cc)
@@ -2115,8 +2115,8 @@ func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []*ra
 		e := &raftpb.Entry{
 			Type:  raftpb.EntryConfChange.Enum(),
 			Data:  data,
-			Term:  proto.Uint64(term),
-			Index: proto.Uint64(next),
+			Term:  new(term),
+			Index: new(next),
 		}
 		ents = append(ents, e)
 	}

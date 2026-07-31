@@ -13,7 +13,6 @@ import (
 	"github.com/moby/swarmkit/v2/node"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
-	"google.golang.org/protobuf/proto"
 )
 
 func certPaths(swarmdir string) *ca.SecurityConfigPaths {
@@ -100,8 +99,8 @@ func decryptRaftData(swarmdir, outdir, unlockKey string) error {
 	// yet: walpb.Snapshot is a proto2 message, and the WAL rejects a snapshot
 	// record whose index or term is absent (see walpb.ValidateSnapshotForWrite).
 	walsnap := walpb.Snapshot{
-		Index:     proto.Uint64(snap.GetMetadata().GetIndex()),
-		Term:      proto.Uint64(snap.GetMetadata().GetTerm()),
+		Index:     new(snap.GetMetadata().GetIndex()),
+		Term:      new(snap.GetMetadata().GetTerm()),
 		ConfState: snap.GetMetadata().GetConfState(),
 	}
 

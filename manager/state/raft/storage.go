@@ -152,7 +152,7 @@ func (n *Node) loadAndStart(ctx context.Context, forceNewCluster bool) error {
 			log.G(ctx).WithError(err).Fatal("failed to save WAL while forcing new cluster")
 		}
 		if len(toAppEnts) != 0 {
-			st.Commit = proto.Uint64(toAppEnts[len(toAppEnts)-1].GetIndex())
+			st.Commit = new(toAppEnts[len(toAppEnts)-1].GetIndex())
 		}
 	}
 

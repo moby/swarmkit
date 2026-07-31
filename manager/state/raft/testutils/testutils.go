@@ -24,7 +24,6 @@ import (
 	etcdraft "go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/proto"
 )
 
 // TestNode represents a raft test node
@@ -687,13 +686,13 @@ func NewSnapshotMessage(from, to uint64, size int) *raftpb.Message {
 
 	return &raftpb.Message{
 		Type: raftpb.MsgSnap.Enum(),
-		From: proto.Uint64(from),
-		To:   proto.Uint64(to),
+		From: new(from),
+		To:   new(to),
 		Snapshot: &raftpb.Snapshot{
 			Data: data,
 			// Include the snapshot size in the Index field for testing.
 			Metadata: &raftpb.SnapshotMetadata{
-				Index: proto.Uint64(uint64(len(data))),
+				Index: new(uint64(len(data))),
 			},
 		},
 	}

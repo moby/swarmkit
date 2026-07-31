@@ -15,7 +15,6 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
-	"google.golang.org/protobuf/proto"
 )
 
 // ErrNoWAL is returned if there are no WALs on disk
@@ -106,8 +105,8 @@ func (e *EncryptedRaftLogger) BootstrapFromDisk(ctx context.Context, oldEncrypti
 	// yet: walpb.Snapshot is a proto2 message, and the WAL rejects a snapshot
 	// record whose index or term is absent (see walpb.ValidateSnapshotForWrite).
 	walsnap := &walpb.Snapshot{
-		Index:     proto.Uint64(snapshot.GetMetadata().GetIndex()),
-		Term:      proto.Uint64(snapshot.GetMetadata().GetTerm()),
+		Index:     new(snapshot.GetMetadata().GetIndex()),
+		Term:      new(snapshot.GetMetadata().GetTerm()),
 		ConfState: snapshot.GetMetadata().GetConfState(),
 	}
 
@@ -200,8 +199,8 @@ func (e *EncryptedRaftLogger) RotateEncryptionKey(newKey []byte) {
 // SaveSnapshot actually saves a given snapshot to both the WAL and the snapshot.
 func (e *EncryptedRaftLogger) SaveSnapshot(snapshot *raftpb.Snapshot) error {
 	walsnap := &walpb.Snapshot{
-		Index:     proto.Uint64(snapshot.GetMetadata().GetIndex()),
-		Term:      proto.Uint64(snapshot.GetMetadata().GetTerm()),
+		Index:     new(snapshot.GetMetadata().GetIndex()),
+		Term:      new(snapshot.GetMetadata().GetTerm()),
 		ConfState: snapshot.GetMetadata().GetConfState(),
 	}
 
