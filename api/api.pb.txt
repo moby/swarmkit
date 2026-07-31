@@ -4021,10 +4021,6 @@ file {
       type_name: ".google.protobuf.FileDescriptorProto"
       json_name: "file"
     }
-    extension_range {
-      start: 536000000
-      end: 536000001
-    }
   }
   message_type {
     name: "FileDescriptorProto"
@@ -4117,14 +4113,6 @@ file {
       label: LABEL_OPTIONAL
       type: TYPE_STRING
       json_name: "syntax"
-    }
-    field {
-      name: "edition"
-      number: 14
-      label: LABEL_OPTIONAL
-      type: TYPE_ENUM
-      type_name: ".google.protobuf.Edition"
-      json_name: "edition"
     }
   }
   message_type {
@@ -4259,90 +4247,6 @@ file {
       type: TYPE_MESSAGE
       type_name: ".google.protobuf.UninterpretedOption"
       json_name: "uninterpretedOption"
-    }
-    field {
-      name: "declaration"
-      number: 2
-      label: LABEL_REPEATED
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.ExtensionRangeOptions.Declaration"
-      options {
-        retention: RETENTION_SOURCE
-      }
-      json_name: "declaration"
-    }
-    field {
-      name: "features"
-      number: 50
-      label: LABEL_OPTIONAL
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.FeatureSet"
-      json_name: "features"
-    }
-    field {
-      name: "verification"
-      number: 3
-      label: LABEL_OPTIONAL
-      type: TYPE_ENUM
-      type_name: ".google.protobuf.ExtensionRangeOptions.VerificationState"
-      default_value: "UNVERIFIED"
-      options {
-        retention: RETENTION_SOURCE
-      }
-      json_name: "verification"
-    }
-    nested_type {
-      name: "Declaration"
-      field {
-        name: "number"
-        number: 1
-        label: LABEL_OPTIONAL
-        type: TYPE_INT32
-        json_name: "number"
-      }
-      field {
-        name: "full_name"
-        number: 2
-        label: LABEL_OPTIONAL
-        type: TYPE_STRING
-        json_name: "fullName"
-      }
-      field {
-        name: "type"
-        number: 3
-        label: LABEL_OPTIONAL
-        type: TYPE_STRING
-        json_name: "type"
-      }
-      field {
-        name: "reserved"
-        number: 5
-        label: LABEL_OPTIONAL
-        type: TYPE_BOOL
-        json_name: "reserved"
-      }
-      field {
-        name: "repeated"
-        number: 6
-        label: LABEL_OPTIONAL
-        type: TYPE_BOOL
-        json_name: "repeated"
-      }
-      reserved_range {
-        start: 4
-        end: 5
-      }
-    }
-    enum_type {
-      name: "VerificationState"
-      value {
-        name: "DECLARATION"
-        number: 0
-      }
-      value {
-        name: "UNVERIFIED"
-        number: 1
-      }
     }
     extension_range {
       start: 1000
@@ -4513,12 +4417,12 @@ file {
         number: 1
       }
       value {
-        name: "LABEL_REPEATED"
-        number: 3
-      }
-      value {
         name: "LABEL_REQUIRED"
         number: 2
+      }
+      value {
+        name: "LABEL_REPEATED"
+        number: 3
       }
     }
   }
@@ -4780,6 +4684,14 @@ file {
       json_name: "pyGenericServices"
     }
     field {
+      name: "php_generic_services"
+      number: 42
+      label: LABEL_OPTIONAL
+      type: TYPE_BOOL
+      default_value: "false"
+      json_name: "phpGenericServices"
+    }
+    field {
       name: "deprecated"
       number: 23
       label: LABEL_OPTIONAL
@@ -4845,14 +4757,6 @@ file {
       json_name: "rubyPackage"
     }
     field {
-      name: "features"
-      number: 50
-      label: LABEL_OPTIONAL
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.FeatureSet"
-      json_name: "features"
-    }
-    field {
       name: "uninterpreted_option"
       number: 999
       label: LABEL_REPEATED
@@ -4880,14 +4784,9 @@ file {
       end: 536870912
     }
     reserved_range {
-      start: 42
-      end: 43
-    }
-    reserved_range {
       start: 38
       end: 39
     }
-    reserved_name: "php_generic_services"
   }
   message_type {
     name: "MessageOptions"
@@ -4923,24 +4822,6 @@ file {
       json_name: "mapEntry"
     }
     field {
-      name: "deprecated_legacy_json_field_conflicts"
-      number: 11
-      label: LABEL_OPTIONAL
-      type: TYPE_BOOL
-      options {
-        deprecated: true
-      }
-      json_name: "deprecatedLegacyJsonFieldConflicts"
-    }
-    field {
-      name: "features"
-      number: 12
-      label: LABEL_OPTIONAL
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.FeatureSet"
-      json_name: "features"
-    }
-    field {
       name: "uninterpreted_option"
       number: 999
       label: LABEL_REPEATED
@@ -4951,18 +4832,6 @@ file {
     extension_range {
       start: 1000
       end: 536870912
-    }
-    reserved_range {
-      start: 4
-      end: 5
-    }
-    reserved_range {
-      start: 5
-      end: 6
-    }
-    reserved_range {
-      start: 6
-      end: 7
     }
     reserved_range {
       start: 8
@@ -5009,14 +4878,6 @@ file {
       json_name: "lazy"
     }
     field {
-      name: "unverified_lazy"
-      number: 15
-      label: LABEL_OPTIONAL
-      type: TYPE_BOOL
-      default_value: "false"
-      json_name: "unverifiedLazy"
-    }
-    field {
       name: "deprecated"
       number: 3
       label: LABEL_OPTIONAL
@@ -5033,112 +4894,12 @@ file {
       json_name: "weak"
     }
     field {
-      name: "debug_redact"
-      number: 16
-      label: LABEL_OPTIONAL
-      type: TYPE_BOOL
-      default_value: "false"
-      json_name: "debugRedact"
-    }
-    field {
-      name: "retention"
-      number: 17
-      label: LABEL_OPTIONAL
-      type: TYPE_ENUM
-      type_name: ".google.protobuf.FieldOptions.OptionRetention"
-      json_name: "retention"
-    }
-    field {
-      name: "targets"
-      number: 19
-      label: LABEL_REPEATED
-      type: TYPE_ENUM
-      type_name: ".google.protobuf.FieldOptions.OptionTargetType"
-      json_name: "targets"
-    }
-    field {
-      name: "edition_defaults"
-      number: 20
-      label: LABEL_REPEATED
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.FieldOptions.EditionDefault"
-      json_name: "editionDefaults"
-    }
-    field {
-      name: "features"
-      number: 21
-      label: LABEL_OPTIONAL
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.FeatureSet"
-      json_name: "features"
-    }
-    field {
-      name: "feature_support"
-      number: 22
-      label: LABEL_OPTIONAL
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.FieldOptions.FeatureSupport"
-      json_name: "featureSupport"
-    }
-    field {
       name: "uninterpreted_option"
       number: 999
       label: LABEL_REPEATED
       type: TYPE_MESSAGE
       type_name: ".google.protobuf.UninterpretedOption"
       json_name: "uninterpretedOption"
-    }
-    nested_type {
-      name: "EditionDefault"
-      field {
-        name: "edition"
-        number: 3
-        label: LABEL_OPTIONAL
-        type: TYPE_ENUM
-        type_name: ".google.protobuf.Edition"
-        json_name: "edition"
-      }
-      field {
-        name: "value"
-        number: 2
-        label: LABEL_OPTIONAL
-        type: TYPE_STRING
-        json_name: "value"
-      }
-    }
-    nested_type {
-      name: "FeatureSupport"
-      field {
-        name: "edition_introduced"
-        number: 1
-        label: LABEL_OPTIONAL
-        type: TYPE_ENUM
-        type_name: ".google.protobuf.Edition"
-        json_name: "editionIntroduced"
-      }
-      field {
-        name: "edition_deprecated"
-        number: 2
-        label: LABEL_OPTIONAL
-        type: TYPE_ENUM
-        type_name: ".google.protobuf.Edition"
-        json_name: "editionDeprecated"
-      }
-      field {
-        name: "deprecation_warning"
-        number: 3
-        label: LABEL_OPTIONAL
-        type: TYPE_STRING
-        json_name: "deprecationWarning"
-      }
-      field {
-        name: "edition_removed"
-        number: 4
-        label: LABEL_OPTIONAL
-        type: TYPE_ENUM
-        type_name: ".google.protobuf.Edition"
-        json_name: "editionRemoved"
-      }
     }
     enum_type {
       name: "CType"
@@ -5170,64 +4931,6 @@ file {
         number: 2
       }
     }
-    enum_type {
-      name: "OptionRetention"
-      value {
-        name: "RETENTION_UNKNOWN"
-        number: 0
-      }
-      value {
-        name: "RETENTION_RUNTIME"
-        number: 1
-      }
-      value {
-        name: "RETENTION_SOURCE"
-        number: 2
-      }
-    }
-    enum_type {
-      name: "OptionTargetType"
-      value {
-        name: "TARGET_TYPE_UNKNOWN"
-        number: 0
-      }
-      value {
-        name: "TARGET_TYPE_FILE"
-        number: 1
-      }
-      value {
-        name: "TARGET_TYPE_EXTENSION_RANGE"
-        number: 2
-      }
-      value {
-        name: "TARGET_TYPE_MESSAGE"
-        number: 3
-      }
-      value {
-        name: "TARGET_TYPE_FIELD"
-        number: 4
-      }
-      value {
-        name: "TARGET_TYPE_ONEOF"
-        number: 5
-      }
-      value {
-        name: "TARGET_TYPE_ENUM"
-        number: 6
-      }
-      value {
-        name: "TARGET_TYPE_ENUM_ENTRY"
-        number: 7
-      }
-      value {
-        name: "TARGET_TYPE_SERVICE"
-        number: 8
-      }
-      value {
-        name: "TARGET_TYPE_METHOD"
-        number: 9
-      }
-    }
     extension_range {
       start: 1000
       end: 536870912
@@ -5236,21 +4939,9 @@ file {
       start: 4
       end: 5
     }
-    reserved_range {
-      start: 18
-      end: 19
-    }
   }
   message_type {
     name: "OneofOptions"
-    field {
-      name: "features"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.FeatureSet"
-      json_name: "features"
-    }
     field {
       name: "uninterpreted_option"
       number: 999
@@ -5282,24 +4973,6 @@ file {
       json_name: "deprecated"
     }
     field {
-      name: "deprecated_legacy_json_field_conflicts"
-      number: 6
-      label: LABEL_OPTIONAL
-      type: TYPE_BOOL
-      options {
-        deprecated: true
-      }
-      json_name: "deprecatedLegacyJsonFieldConflicts"
-    }
-    field {
-      name: "features"
-      number: 7
-      label: LABEL_OPTIONAL
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.FeatureSet"
-      json_name: "features"
-    }
-    field {
       name: "uninterpreted_option"
       number: 999
       label: LABEL_REPEATED
@@ -5327,30 +5000,6 @@ file {
       json_name: "deprecated"
     }
     field {
-      name: "features"
-      number: 2
-      label: LABEL_OPTIONAL
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.FeatureSet"
-      json_name: "features"
-    }
-    field {
-      name: "debug_redact"
-      number: 3
-      label: LABEL_OPTIONAL
-      type: TYPE_BOOL
-      default_value: "false"
-      json_name: "debugRedact"
-    }
-    field {
-      name: "feature_support"
-      number: 4
-      label: LABEL_OPTIONAL
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.FieldOptions.FeatureSupport"
-      json_name: "featureSupport"
-    }
-    field {
       name: "uninterpreted_option"
       number: 999
       label: LABEL_REPEATED
@@ -5365,14 +5014,6 @@ file {
   }
   message_type {
     name: "ServiceOptions"
-    field {
-      name: "features"
-      number: 34
-      label: LABEL_OPTIONAL
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.FeatureSet"
-      json_name: "features"
-    }
     field {
       name: "deprecated"
       number: 33
@@ -5412,14 +5053,6 @@ file {
       type_name: ".google.protobuf.MethodOptions.IdempotencyLevel"
       default_value: "IDEMPOTENCY_UNKNOWN"
       json_name: "idempotencyLevel"
-    }
-    field {
-      name: "features"
-      number: 35
-      label: LABEL_OPTIONAL
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.FeatureSet"
-      json_name: "features"
     }
     field {
       name: "uninterpreted_option"
@@ -5520,331 +5153,6 @@ file {
     }
   }
   message_type {
-    name: "FeatureSet"
-    field {
-      name: "field_presence"
-      number: 1
-      label: LABEL_OPTIONAL
-      type: TYPE_ENUM
-      type_name: ".google.protobuf.FeatureSet.FieldPresence"
-      options {
-        retention: RETENTION_RUNTIME
-        targets: TARGET_TYPE_FIELD
-        targets: TARGET_TYPE_FILE
-        edition_defaults {
-          value: "EXPLICIT"
-          edition: EDITION_LEGACY
-        }
-        edition_defaults {
-          value: "IMPLICIT"
-          edition: EDITION_PROTO3
-        }
-        edition_defaults {
-          value: "EXPLICIT"
-          edition: EDITION_2023
-        }
-        feature_support {
-          edition_introduced: EDITION_2023
-        }
-      }
-      json_name: "fieldPresence"
-    }
-    field {
-      name: "enum_type"
-      number: 2
-      label: LABEL_OPTIONAL
-      type: TYPE_ENUM
-      type_name: ".google.protobuf.FeatureSet.EnumType"
-      options {
-        retention: RETENTION_RUNTIME
-        targets: TARGET_TYPE_ENUM
-        targets: TARGET_TYPE_FILE
-        edition_defaults {
-          value: "CLOSED"
-          edition: EDITION_LEGACY
-        }
-        edition_defaults {
-          value: "OPEN"
-          edition: EDITION_PROTO3
-        }
-        feature_support {
-          edition_introduced: EDITION_2023
-        }
-      }
-      json_name: "enumType"
-    }
-    field {
-      name: "repeated_field_encoding"
-      number: 3
-      label: LABEL_OPTIONAL
-      type: TYPE_ENUM
-      type_name: ".google.protobuf.FeatureSet.RepeatedFieldEncoding"
-      options {
-        retention: RETENTION_RUNTIME
-        targets: TARGET_TYPE_FIELD
-        targets: TARGET_TYPE_FILE
-        edition_defaults {
-          value: "EXPANDED"
-          edition: EDITION_LEGACY
-        }
-        edition_defaults {
-          value: "PACKED"
-          edition: EDITION_PROTO3
-        }
-        feature_support {
-          edition_introduced: EDITION_2023
-        }
-      }
-      json_name: "repeatedFieldEncoding"
-    }
-    field {
-      name: "utf8_validation"
-      number: 4
-      label: LABEL_OPTIONAL
-      type: TYPE_ENUM
-      type_name: ".google.protobuf.FeatureSet.Utf8Validation"
-      options {
-        retention: RETENTION_RUNTIME
-        targets: TARGET_TYPE_FIELD
-        targets: TARGET_TYPE_FILE
-        edition_defaults {
-          value: "NONE"
-          edition: EDITION_LEGACY
-        }
-        edition_defaults {
-          value: "VERIFY"
-          edition: EDITION_PROTO3
-        }
-        feature_support {
-          edition_introduced: EDITION_2023
-        }
-      }
-      json_name: "utf8Validation"
-    }
-    field {
-      name: "message_encoding"
-      number: 5
-      label: LABEL_OPTIONAL
-      type: TYPE_ENUM
-      type_name: ".google.protobuf.FeatureSet.MessageEncoding"
-      options {
-        retention: RETENTION_RUNTIME
-        targets: TARGET_TYPE_FIELD
-        targets: TARGET_TYPE_FILE
-        edition_defaults {
-          value: "LENGTH_PREFIXED"
-          edition: EDITION_LEGACY
-        }
-        feature_support {
-          edition_introduced: EDITION_2023
-        }
-      }
-      json_name: "messageEncoding"
-    }
-    field {
-      name: "json_format"
-      number: 6
-      label: LABEL_OPTIONAL
-      type: TYPE_ENUM
-      type_name: ".google.protobuf.FeatureSet.JsonFormat"
-      options {
-        retention: RETENTION_RUNTIME
-        targets: TARGET_TYPE_MESSAGE
-        targets: TARGET_TYPE_ENUM
-        targets: TARGET_TYPE_FILE
-        edition_defaults {
-          value: "LEGACY_BEST_EFFORT"
-          edition: EDITION_LEGACY
-        }
-        edition_defaults {
-          value: "ALLOW"
-          edition: EDITION_PROTO3
-        }
-        feature_support {
-          edition_introduced: EDITION_2023
-        }
-      }
-      json_name: "jsonFormat"
-    }
-    enum_type {
-      name: "FieldPresence"
-      value {
-        name: "FIELD_PRESENCE_UNKNOWN"
-        number: 0
-      }
-      value {
-        name: "EXPLICIT"
-        number: 1
-      }
-      value {
-        name: "IMPLICIT"
-        number: 2
-      }
-      value {
-        name: "LEGACY_REQUIRED"
-        number: 3
-      }
-    }
-    enum_type {
-      name: "EnumType"
-      value {
-        name: "ENUM_TYPE_UNKNOWN"
-        number: 0
-      }
-      value {
-        name: "OPEN"
-        number: 1
-      }
-      value {
-        name: "CLOSED"
-        number: 2
-      }
-    }
-    enum_type {
-      name: "RepeatedFieldEncoding"
-      value {
-        name: "REPEATED_FIELD_ENCODING_UNKNOWN"
-        number: 0
-      }
-      value {
-        name: "PACKED"
-        number: 1
-      }
-      value {
-        name: "EXPANDED"
-        number: 2
-      }
-    }
-    enum_type {
-      name: "Utf8Validation"
-      value {
-        name: "UTF8_VALIDATION_UNKNOWN"
-        number: 0
-      }
-      value {
-        name: "VERIFY"
-        number: 2
-      }
-      value {
-        name: "NONE"
-        number: 3
-      }
-      reserved_range {
-        start: 1
-        end: 1
-      }
-    }
-    enum_type {
-      name: "MessageEncoding"
-      value {
-        name: "MESSAGE_ENCODING_UNKNOWN"
-        number: 0
-      }
-      value {
-        name: "LENGTH_PREFIXED"
-        number: 1
-      }
-      value {
-        name: "DELIMITED"
-        number: 2
-      }
-    }
-    enum_type {
-      name: "JsonFormat"
-      value {
-        name: "JSON_FORMAT_UNKNOWN"
-        number: 0
-      }
-      value {
-        name: "ALLOW"
-        number: 1
-      }
-      value {
-        name: "LEGACY_BEST_EFFORT"
-        number: 2
-      }
-    }
-    extension_range {
-      start: 1000
-      end: 9995
-    }
-    extension_range {
-      start: 9995
-      end: 10000
-    }
-    extension_range {
-      start: 10000
-      end: 10001
-    }
-    reserved_range {
-      start: 999
-      end: 1000
-    }
-  }
-  message_type {
-    name: "FeatureSetDefaults"
-    field {
-      name: "defaults"
-      number: 1
-      label: LABEL_REPEATED
-      type: TYPE_MESSAGE
-      type_name: ".google.protobuf.FeatureSetDefaults.FeatureSetEditionDefault"
-      json_name: "defaults"
-    }
-    field {
-      name: "minimum_edition"
-      number: 4
-      label: LABEL_OPTIONAL
-      type: TYPE_ENUM
-      type_name: ".google.protobuf.Edition"
-      json_name: "minimumEdition"
-    }
-    field {
-      name: "maximum_edition"
-      number: 5
-      label: LABEL_OPTIONAL
-      type: TYPE_ENUM
-      type_name: ".google.protobuf.Edition"
-      json_name: "maximumEdition"
-    }
-    nested_type {
-      name: "FeatureSetEditionDefault"
-      field {
-        name: "edition"
-        number: 3
-        label: LABEL_OPTIONAL
-        type: TYPE_ENUM
-        type_name: ".google.protobuf.Edition"
-        json_name: "edition"
-      }
-      field {
-        name: "overridable_features"
-        number: 4
-        label: LABEL_OPTIONAL
-        type: TYPE_MESSAGE
-        type_name: ".google.protobuf.FeatureSet"
-        json_name: "overridableFeatures"
-      }
-      field {
-        name: "fixed_features"
-        number: 5
-        label: LABEL_OPTIONAL
-        type: TYPE_MESSAGE
-        type_name: ".google.protobuf.FeatureSet"
-        json_name: "fixedFeatures"
-      }
-      reserved_range {
-        start: 1
-        end: 2
-      }
-      reserved_range {
-        start: 2
-        end: 3
-      }
-      reserved_name: "features"
-    }
-  }
-  message_type {
     name: "SourceCodeInfo"
     field {
       name: "location"
@@ -5898,10 +5206,6 @@ file {
         json_name: "leadingDetachedComments"
       }
     }
-    extension_range {
-      start: 536000000
-      end: 536000001
-    }
   }
   message_type {
     name: "GeneratedCodeInfo"
@@ -5946,80 +5250,6 @@ file {
         type: TYPE_INT32
         json_name: "end"
       }
-      field {
-        name: "semantic"
-        number: 5
-        label: LABEL_OPTIONAL
-        type: TYPE_ENUM
-        type_name: ".google.protobuf.GeneratedCodeInfo.Annotation.Semantic"
-        json_name: "semantic"
-      }
-      enum_type {
-        name: "Semantic"
-        value {
-          name: "NONE"
-          number: 0
-        }
-        value {
-          name: "SET"
-          number: 1
-        }
-        value {
-          name: "ALIAS"
-          number: 2
-        }
-      }
-    }
-  }
-  enum_type {
-    name: "Edition"
-    value {
-      name: "EDITION_UNKNOWN"
-      number: 0
-    }
-    value {
-      name: "EDITION_LEGACY"
-      number: 900
-    }
-    value {
-      name: "EDITION_PROTO2"
-      number: 998
-    }
-    value {
-      name: "EDITION_PROTO3"
-      number: 999
-    }
-    value {
-      name: "EDITION_2023"
-      number: 1000
-    }
-    value {
-      name: "EDITION_2024"
-      number: 1001
-    }
-    value {
-      name: "EDITION_1_TEST_ONLY"
-      number: 1
-    }
-    value {
-      name: "EDITION_2_TEST_ONLY"
-      number: 2
-    }
-    value {
-      name: "EDITION_99997_TEST_ONLY"
-      number: 99997
-    }
-    value {
-      name: "EDITION_99998_TEST_ONLY"
-      number: 99998
-    }
-    value {
-      name: "EDITION_99999_TEST_ONLY"
-      number: 99999
-    }
-    value {
-      name: "EDITION_MAX"
-      number: 2147483647
     }
   }
   options {
