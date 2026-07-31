@@ -183,6 +183,11 @@ github.com/planetscale/vtprotobuf/features/size
 github.com/planetscale/vtprotobuf/features/unmarshal
 github.com/planetscale/vtprotobuf/generator
 github.com/planetscale/vtprotobuf/generator/pattern
+github.com/planetscale/vtprotobuf/protohelpers
+github.com/planetscale/vtprotobuf/types/known/anypb
+github.com/planetscale/vtprotobuf/types/known/durationpb
+github.com/planetscale/vtprotobuf/types/known/timestamppb
+github.com/planetscale/vtprotobuf/types/known/wrapperspb
 github.com/planetscale/vtprotobuf/vtproto
 # github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 ## explicit
