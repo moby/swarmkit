@@ -26,7 +26,12 @@ func writeFakeRaftData(t *testing.T, stateDir string, snapshot *raftpb.Snapshot,
 	walDir := filepath.Join(stateDir, "raft", "wal-v3-encrypted")
 	require.NoError(t, os.MkdirAll(snapDir, 0o755))
 
-	wsn := walpb.Snapshot{}
+	// Index and Term must be set explicitly even when there is no snapshot:
+	// the WAL rejects a snapshot record without them.
+	wsn := walpb.Snapshot{
+		Index: new(uint64),
+		Term:  new(uint64),
+	}
 	if snapshot != nil {
 		require.NoError(t, sf.New(snapDir).SaveSnap(snapshot))
 
@@ -52,12 +57,12 @@ func writeFakeRaftData(t *testing.T, stateDir string, snapshot *raftpb.Snapshot,
 	require.NoError(t, walWriter.Close())
 }
 
-func TestDecrypt(t *testing.T) {
+func setupDecryptTest(t *testing.T) (string, []byte, string) {
+	t.Helper()
+
 	kek := []byte("kek")
 	dek := []byte("dek")
-	unlockKey := encryption.HumanReadableKey(kek)
 
-	// write a key to disk, else we won't be able to decrypt anything
 	tempdir := t.TempDir()
 	paths := certPaths(tempdir)
 	krw := ca.NewKeyReadWriter(paths.Node, kek,
@@ -65,6 +70,13 @@ func TestDecrypt(t *testing.T) {
 	cert, key, err := testutils.CreateRootCertAndKey("not really a root, just need cert and key")
 	require.NoError(t, err)
 	require.NoError(t, krw.Write(cert, key, nil))
+
+	return tempdir, dek, encryption.HumanReadableKey(kek)
+}
+
+func TestDecrypt(t *testing.T) {
+	// write a key to disk, else we won't be able to decrypt anything
+	tempdir, dek, unlockKey := setupDecryptTest(t)
 
 	// create the encrypted v3 directory
 	origSnapshot := raftpb.Snapshot{
@@ -81,7 +93,7 @@ func TestDecrypt(t *testing.T) {
 
 	outdir := filepath.Join(tempdir, "outdir")
 	// if we use the wrong unlock key, we can't actually decrypt anything.  The output directory won't get created.
-	err = decryptRaftData(tempdir, outdir, "")
+	err := decryptRaftData(tempdir, outdir, "")
 	require.IsType(t, ca.ErrInvalidKEK{}, err)
 	require.False(t, fileutil.Exist(outdir))
 
@@ -100,6 +112,29 @@ func TestDecrypt(t *testing.T) {
 	require.NoError(t, err)
 	metadata, _, entries, err := walreader.ReadAll()
 	require.NoError(t, err)
+	require.NoError(t, walreader.Close())
+	require.Equal(t, []byte("v3metadata"), metadata)
+	require.Len(t, entries, 5)
+}
+
+func TestDecryptWithoutSnapshot(t *testing.T) {
+	tempdir, dek, unlockKey := setupDecryptTest(t)
+
+	e, d := encryption.Defaults(dek, false)
+	writeFakeRaftData(t, tempdir, nil, storage.NewWALFactory(e, d), storage.NewSnapFactory(e, d))
+
+	outdir := filepath.Join(tempdir, "outdir")
+	require.NoError(t, decryptRaftData(tempdir, outdir, unlockKey))
+
+	// A WAL with no snapshot is written with an explicit zero index and term.
+	walreader, err := storage.OriginalWAL.Open(
+		filepath.Join(outdir, "wal-decrypted"),
+		&walpb.Snapshot{Index: new(uint64), Term: new(uint64)},
+	)
+	require.NoError(t, err)
+	metadata, _, entries, err := walreader.ReadAll()
+	require.NoError(t, err)
+	require.NoError(t, walreader.Close())
 	require.Equal(t, []byte("v3metadata"), metadata)
 	require.Len(t, entries, 5)
 }
