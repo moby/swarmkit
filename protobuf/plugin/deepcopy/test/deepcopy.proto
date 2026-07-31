@@ -2,26 +2,7 @@ syntax = "proto3";
 
 package test;
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-
-option (gogoproto.goproto_stringer_all) = false;
-option (gogoproto.goproto_enum_prefix_all) = false;
-option (gogoproto.goproto_getters_all) = false;
-option (gogoproto.gostring_all) = false;
-option (gogoproto.face_all) = false;
-option (gogoproto.unmarshaler_all) = false;
-option (gogoproto.marshaler_all) = false;
-option (gogoproto.sizer_all) = false;
-option (gogoproto.protosizer_all) = false;
-option (gogoproto.goproto_enum_stringer_all) = false;
-option (gogoproto.enum_stringer_all) = false;
-option (gogoproto.unsafe_marshaler_all) = false;
-option (gogoproto.unsafe_unmarshaler_all) = false;
-
-
-option (gogoproto.testgen_all) = true;
-option (gogoproto.populate_all) = true;
-option (gogoproto.equal_all) = true;
+option go_package = "github.com/moby/swarmkit/v2/protobuf/plugin/deepcopy/test";
 
 message BasicScalar {
 	double Field1 = 1;
@@ -88,20 +69,20 @@ message RepeatedExternalStruct {
 }
 
 message NonNullableExternalStruct {
-	BasicScalar Field1 = 1 [(gogoproto.nullable) = false];
-	RepeatedScalar Field2 = 2 [(gogoproto.nullable) = false];
-	RepeatedScalarPacked Field3 = 3 [(gogoproto.nullable) = false];
+	BasicScalar Field1 = 1;
+	RepeatedScalar Field2 = 2;
+	RepeatedScalarPacked Field3 = 3;
 }
 
 message RepeatedNonNullableExternalStruct {
-	repeated BasicScalar Field1 = 1 [(gogoproto.nullable) = false];
-	repeated RepeatedScalar Field2 = 2 [(gogoproto.nullable) = false];
-	repeated RepeatedScalarPacked Field3 = 3 [(gogoproto.nullable) = false];
+	repeated BasicScalar Field1 = 1;
+	repeated RepeatedScalar Field2 = 2;
+	repeated RepeatedScalarPacked Field3 = 3;
 }
 
 message MapStruct {
 	map <string, BasicScalar> nullable_map = 1;
-	map <string, BasicScalar> nonnullable_map = 2 [(gogoproto.nullable) = false];
+	map <string, BasicScalar> nonnullable_map = 2;
 }
 
 message OneOf {
