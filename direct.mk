@@ -12,7 +12,7 @@ PACKAGES = $(shell go list ./...)
 INTEGRATION_PACKAGE = $(shell go list ./integration)
 
 # Project binaries.
-COMMANDS=swarm-bench protoc-gen-gogoswarm
+COMMANDS=swarm-bench protoc-gen-swarm
 BINARIES=$(addprefix bin/,$(COMMANDS))
 SWARMD_COMMANDS=swarmd swarmctl swarm-rafttool
 SWARMD_BINARIES=$(addprefix swarmd/bin/,$(SWARMD_COMMANDS))
@@ -43,7 +43,6 @@ setup: ## install dependencies
 	@echo "🐳 $@"
 	# install golangci-lint to ./bin/golangci-lint
 	@curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/v2.1.5/install.sh | sh -s v2.1.5
-	@go install tool github.com/containerd/protobuild
 
 .PHONY: generate
 generate: protos
@@ -51,9 +50,9 @@ generate: protos
 	@PATH=${ROOTDIR}/bin:${GOBIN}:${PATH} go generate -x ${PACKAGES}
 
 .PHONY: protos
-protos: bin/protoc-gen-gogoswarm ## generate protobuf
+protos: ## generate protobuf
 	@echo "🐳 $@"
-	@PATH=${ROOTDIR}/bin:${GOBIN}:${PATH} protobuild ${PACKAGES}
+	@./hack/generate-protos.sh
 
 .PHONY: checkprotos
 checkprotos: generate ## check if protobufs needs to be generated again
@@ -72,8 +71,6 @@ check: ## Run various source code validation tools
 fmt-proto:
 	@test -z "$$(find . -path ./vendor -prune -o ! -name timestamp.proto ! -name duration.proto -name '*.proto' -type f -exec grep -Hn -e "^ " {} \; | tee /dev/stderr)" || \
 		(echo "👹 please indent proto files with tabs only" && false)
-	@test -z "$$(find . -path ./vendor -prune -o -name '*.proto' -type f -exec grep -Hn "Meta meta = " {} \; | grep -v '(gogoproto.nullable) = false' | tee /dev/stderr)" || \
-		(echo "👹 meta fields in proto files must have option (gogoproto.nullable) = false" && false)
 
 .PHONY: build
 build: ## build the go packages
@@ -154,8 +151,3 @@ dep-validate: go-mod-vendor
 go-mod-vendor:
 	@go mod tidy
 	@go mod vendor
-	@# ensure that key protobuf spec files are in vendor dir
-	@module=github.com/gogo/protobuf ; \
-		prefix=$$(go env GOMODCACHE)/$${module} ; \
-		version=$$(go list -m -f '{{.Version}}' $${module}) ; \
-		cp -a $${prefix}@$${version}/protobuf vendor/$${module}/ && chmod -R u+w vendor/$${module}

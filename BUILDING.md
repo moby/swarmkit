@@ -36,7 +36,7 @@ build:
     🐳 bin/swarmd
     🐳 bin/swarmctl
     🐳 bin/swarm-bench
-    🐳 bin/protoc-gen-gogoswarm
+    🐳 bin/protoc-gen-swarm
     🐳 binaries
     🐳 vet
     🐳 lint
@@ -44,7 +44,7 @@ build:
     github.com/moby/swarmkit
     github.com/moby/swarmkit/vendor/github.com/davecgh/go-spew/spew
     github.com/moby/swarmkit/vendor/github.com/pmezard/go-difflib/difflib
-    github.com/moby/swarmkit/cmd/protoc-gen-gogoswarm
+    github.com/moby/swarmkit/cmd/protoc-gen-swarm
     github.com/moby/swarmkit/cmd/swarm-bench
     github.com/moby/swarmkit/cmd/swarmctl
     github.com/moby/swarmkit/vendor/github.com/stretchr/testify/assert

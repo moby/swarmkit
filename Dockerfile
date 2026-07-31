@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG GO_VERSION=1.25
+ARG GO_VERSION=1.26
 ARG BASE_DEBIAN_DISTRO="bookworm"
 ARG GOLANG_IMAGE="golang:${GO_VERSION}-${BASE_DEBIAN_DISTRO}"
 
@@ -45,16 +45,6 @@ RUN --mount=type=bind,target=.,rw \
   fi
 EOT
 
-FROM gobase AS protoc-gen-gogoswarm
-RUN --mount=type=bind,target=.,rw \
-    --mount=type=cache,target=/root/.cache \
-    make bin/protoc-gen-gogoswarm && mv bin/protoc-gen-gogoswarm /usr/local/bin/
-
-FROM gobase AS protobuild
-RUN --mount=type=bind,target=. \
-    --mount=type=cache,target=/root/.cache \
-    go install tool github.com/containerd/protobuild
-
 FROM gobase AS generate-base
 RUN apt-get --no-install-recommends install -y unzip
 ARG PROTOC_VERSION
@@ -69,14 +59,13 @@ EOT
 
 FROM generate-base AS generate-build
 RUN --mount=type=bind,target=.,rw \
-    --mount=from=packages,source=/tmp/packages,target=/tmp/packages \
-    --mount=from=protobuild,source=/go/bin/protobuild,target=/usr/bin/protobuild \
-    --mount=from=protoc-gen-gogoswarm,source=/usr/local/bin/protoc-gen-gogoswarm,target=/usr/bin/protoc-gen-gogoswarm <<EOT
+    --mount=type=cache,target=/root/.cache \
+    --mount=from=packages,source=/tmp/packages,target=/tmp/packages <<EOT
   set -ex
-  protobuild $(cat /tmp/packages/packages)
+  ./hack/generate-protos.sh
   go generate -mod=vendor -x $(cat /tmp/packages/packages)
   mkdir /out
-  git ls-files -m --others -- ':!vendor' '**/*.pb.go' | tar -cf - --files-from - | tar -C /out -xf -
+  git ls-files -m --others -- ':!vendor' '**/*.pb.go' 'api/api.pb.txt' | tar -cf - --files-from - | tar -C /out -xf -
 EOT
 
 FROM scratch AS generate-update
