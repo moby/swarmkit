@@ -22,22 +22,20 @@ type Config struct {
 
 // Benchmark represents a benchmark session.
 type Benchmark struct {
-	cfg       *Config
-	collector *Collector
+	cfg *Config
 }
 
 // NewBenchmark creates a new benchmark session with the given configuration.
 func NewBenchmark(cfg *Config) *Benchmark {
-	return &Benchmark{
-		cfg:       cfg,
-		collector: NewCollector(),
-	}
+	return &Benchmark{cfg: cfg}
 }
 
 // Run starts the benchmark session and waits for it to be completed.
 func (b *Benchmark) Run(ctx context.Context) error {
+	collector := new(Collector)
+
 	fmt.Printf("Listening for incoming connections at %s:%d\n", b.cfg.IP, b.cfg.Port)
-	if err := b.collector.Listen(b.cfg.Port); err != nil {
+	if err := collector.Listen(b.cfg.Port); err != nil {
 		return err
 	}
 	j, err := b.launch(ctx)
@@ -53,7 +51,7 @@ func (b *Benchmark) Run(ctx context.Context) error {
 			select {
 			case <-time.After(5 * time.Second):
 				fmt.Printf("\n%s: Progression report\n", time.Now())
-				b.collector.Stats(os.Stdout, time.Second)
+				collector.Stats(os.Stdout, b.cfg.Unit)
 			case <-doneCh:
 				return
 			}
@@ -61,11 +59,11 @@ func (b *Benchmark) Run(ctx context.Context) error {
 	}()
 
 	fmt.Println("Collecting metrics...")
-	b.collector.Collect(ctx, b.cfg.Count)
+	collector.Collect(ctx, b.cfg.Count)
 	doneCh <- struct{}{}
 
 	fmt.Printf("\n%s: Benchmark completed\n", time.Now())
-	b.collector.Stats(os.Stdout, time.Second)
+	collector.Stats(os.Stdout, b.cfg.Unit)
 
 	return nil
 }

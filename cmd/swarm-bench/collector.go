@@ -4,18 +4,22 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"net"
+	"slices"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/moby/swarmkit/v2/log"
-	"github.com/rcrowley/go-metrics"
 )
 
 // Collector waits for tasks to phone home while collecting statistics.
 type Collector struct {
-	t  metrics.Timer
-	ln net.Listener
+	mu        sync.Mutex
+	start     time.Time
+	durations []time.Duration
+	ln        net.Listener
 }
 
 // Listen starts listening on a TCP port. Tasks have to connect to this address
@@ -29,45 +33,87 @@ func (c *Collector) Listen(port int) error {
 // Collect blocks until `count` tasks phoned home.
 func (c *Collector) Collect(ctx context.Context, count uint64) {
 	start := time.Now()
-	for range count {
+
+	c.mu.Lock()
+	c.start = start
+	capacity := 0
+	if count <= uint64(^uint(0)>>1) {
+		capacity = int(count)
+	}
+	c.durations = make([]time.Duration, 0, capacity)
+	c.mu.Unlock()
+
+	for collected := uint64(0); collected < count; {
 		conn, err := c.ln.Accept()
 		if err != nil {
 			log.G(ctx).WithError(err).Error("failure accepting connection")
 			continue
 		}
-		c.t.UpdateSince(start)
-		conn.Close()
+		c.mu.Lock()
+		c.durations = append(c.durations, time.Since(start))
+		c.mu.Unlock()
+		collected++
+		_ = conn.Close()
 	}
 }
 
 // Stats prints various statistics related to the collection.
 func (c *Collector) Stats(w io.Writer, unit time.Duration) {
+	c.mu.Lock()
+	values := slices.Clone(c.durations)
+	start := c.start
+	c.mu.Unlock()
+
+	slices.Sort(values)
+
+	fmt.Fprintln(w, "stats:")
+	fmt.Fprintf(w, "  count:       %9d\n", len(values))
+
+	if len(values) == 0 {
+		return
+	}
+
 	du := float64(unit)
 	duSuffix := unit.String()[1:]
 
-	t := c.t.Snapshot()
-	ps := t.Percentiles([]float64{0.5, 0.75, 0.95, 0.99, 0.999})
+	var sum float64
+	for _, value := range values {
+		sum += float64(value)
+	}
+	mean := sum / float64(len(values))
 
-	fmt.Fprintln(w, "stats:")
-	fmt.Fprintf(w, "  count:       %9d\n", t.Count())
-	fmt.Fprintf(w, "  min:         %12.2f%s\n", float64(t.Min())/du, duSuffix)
-	fmt.Fprintf(w, "  max:         %12.2f%s\n", float64(t.Max())/du, duSuffix)
-	fmt.Fprintf(w, "  mean:        %12.2f%s\n", t.Mean()/du, duSuffix)
-	fmt.Fprintf(w, "  stddev:      %12.2f%s\n", t.StdDev()/du, duSuffix)
-	fmt.Fprintf(w, "  median:      %12.2f%s\n", ps[0]/du, duSuffix)
-	fmt.Fprintf(w, "  75%%:         %12.2f%s\n", ps[1]/du, duSuffix)
-	fmt.Fprintf(w, "  95%%:         %12.2f%s\n", ps[2]/du, duSuffix)
-	fmt.Fprintf(w, "  99%%:         %12.2f%s\n", ps[3]/du, duSuffix)
-	fmt.Fprintf(w, "  99.9%%:       %12.2f%s\n", ps[4]/du, duSuffix)
-	fmt.Fprintf(w, "  1-min rate:  %12.2f\n", t.Rate1())
-	fmt.Fprintf(w, "  5-min rate:  %12.2f\n", t.Rate5())
-	fmt.Fprintf(w, "  15-min rate: %12.2f\n", t.Rate15())
-	fmt.Fprintf(w, "  mean rate:   %12.2f\n", t.RateMean())
+	var variance float64
+	for _, value := range values {
+		delta := float64(value) - mean
+		variance += delta * delta
+	}
+	stddev := math.Sqrt(variance / float64(len(values)))
+	fmt.Fprintf(w, "  min:         %12.2f%s\n", float64(values[0])/du, duSuffix)
+	fmt.Fprintf(w, "  max:         %12.2f%s\n", float64(values[len(values)-1])/du, duSuffix)
+	fmt.Fprintf(w, "  mean:        %12.2f%s\n", mean/du, duSuffix)
+	fmt.Fprintf(w, "  stddev:      %12.2f%s\n", stddev/du, duSuffix)
+	fmt.Fprintf(w, "  median:      %12.2f%s\n", percentile(values, 0.5)/du, duSuffix)
+	fmt.Fprintf(w, "  75%%:         %12.2f%s\n", percentile(values, 0.75)/du, duSuffix)
+	fmt.Fprintf(w, "  95%%:         %12.2f%s\n", percentile(values, 0.95)/du, duSuffix)
+	fmt.Fprintf(w, "  99%%:         %12.2f%s\n", percentile(values, 0.99)/du, duSuffix)
+	fmt.Fprintf(w, "  99.9%%:       %12.2f%s\n", percentile(values, 0.999)/du, duSuffix)
+	fmt.Fprintf(w, "  rate:        %12.2f tasks/s\n", float64(len(values))/time.Since(start).Seconds())
 }
 
-// NewCollector creates and returns a collector.
-func NewCollector() *Collector {
-	return &Collector{
-		t: metrics.NewTimer(),
+func percentile(sorted []time.Duration, p float64) float64 {
+	if len(sorted) == 0 {
+		return 0
 	}
+
+	pos := p * float64(len(sorted)+1)
+	if pos < 1 {
+		return float64(sorted[0])
+	}
+	if pos >= float64(len(sorted)) {
+		return float64(sorted[len(sorted)-1])
+	}
+
+	lower := float64(sorted[int(pos)-1])
+	upper := float64(sorted[int(pos)])
+	return lower + (pos-math.Floor(pos))*(upper-lower)
 }
