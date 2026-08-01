@@ -10,10 +10,8 @@ import (
 	"os"
 	"os/signal"
 
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	engineapi "github.com/moby/moby/client"
-	"github.com/moby/swarmkit/swarmd/dockerexec"
-	"github.com/moby/swarmkit/swarmd/internal/defaults"
+	prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/moby/moby/client"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/genericresource"
 	"github.com/moby/swarmkit/v2/cli"
@@ -24,6 +22,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+
+	"github.com/moby/swarmkit/swarmd/dockerexec"
+	"github.com/moby/swarmkit/swarmd/internal/defaults"
 )
 
 var externalCAOpt cli.ExternalCAOpt
@@ -171,14 +172,12 @@ var (
 				return err
 			}
 
-			client, err := engineapi.New(
-				engineapi.WithHost(engineAddr),
-			)
+			apiClient, err := client.New(client.WithHost(engineAddr))
 			if err != nil {
 				return err
 			}
 
-			executor := dockerexec.NewExecutor(client, resources)
+			executor := dockerexec.NewExecutor(apiClient, resources)
 
 			if debugAddr != "" {
 				go func() {
@@ -191,7 +190,7 @@ var (
 
 			if metricsAddr != "" {
 				// This allows to measure latency distribution.
-				grpc_prometheus.EnableHandlingTimeHistogram()
+				prometheus.EnableHandlingTimeHistogram()
 
 				l, err := net.Listen("tcp", metricsAddr)
 				if err != nil {
@@ -235,7 +234,7 @@ var (
 			signal.Notify(c, os.Interrupt)
 			go func() {
 				<-c
-				n.Stop(ctx)
+				_ = n.Stop(ctx)
 			}()
 
 			go func() {

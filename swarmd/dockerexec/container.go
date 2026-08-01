@@ -12,11 +12,12 @@ import (
 
 	"github.com/docker/go-units"
 	gogotypes "github.com/gogo/protobuf/types"
-	enginecontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/events"
-	enginemount "github.com/moby/moby/api/types/mount"
+	"github.com/moby/moby/api/types/mount"
 	"github.com/moby/moby/api/types/network"
-	engineapi "github.com/moby/moby/client"
+	"github.com/moby/moby/client"
+
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/genericresource"
@@ -48,12 +49,12 @@ func newContainerConfig(n *api.NodeDescription, t *api.Task) (*containerConfig, 
 }
 
 func (c *containerConfig) setTask(n *api.NodeDescription, t *api.Task) error {
-	container := t.Spec.GetContainer()
-	if container == nil {
+	ctr := t.Spec.GetContainer()
+	if ctr == nil {
 		return exec.ErrRuntimeUnsupported
 	}
 
-	if container.Image == "" {
+	if ctr.Image == "" {
 		return ErrImageRequired
 	}
 
@@ -122,7 +123,7 @@ func (c *containerConfig) portBindings() network.PortMap {
 	return portBindings
 }
 
-func (c *containerConfig) isolation() enginecontainer.Isolation {
+func (c *containerConfig) isolation() container.Isolation {
 	switch c.spec().Isolation {
 	case api.ContainerIsolationDefault:
 		return "default"
@@ -153,11 +154,11 @@ func (c *containerConfig) exposedPorts() network.PortSet {
 	return exposedPorts
 }
 
-func (c *containerConfig) config() *enginecontainer.Config {
+func (c *containerConfig) config() *container.Config {
 	genericEnvs := genericresource.EnvFormat(c.task.AssignedGenericResources, "DOCKER_RESOURCE")
 	env := append(c.spec().Env, genericEnvs...)
 
-	config := &enginecontainer.Config{
+	config := &container.Config{
 		Labels:       c.labels(),
 		StopSignal:   c.spec().StopSignal,
 		User:         c.spec().User,
@@ -186,7 +187,7 @@ func (c *containerConfig) config() *enginecontainer.Config {
 	return config
 }
 
-func (c *containerConfig) healthcheck() *enginecontainer.HealthConfig {
+func (c *containerConfig) healthcheck() *container.HealthConfig {
 	hcSpec := c.spec().Healthcheck
 	if hcSpec == nil {
 		return nil
@@ -195,7 +196,7 @@ func (c *containerConfig) healthcheck() *enginecontainer.HealthConfig {
 	timeout, _ := gogotypes.DurationFromProto(hcSpec.Timeout)
 	startPeriod, _ := gogotypes.DurationFromProto(hcSpec.StartPeriod)
 	startInterval, _ := gogotypes.DurationFromProto(hcSpec.StartInterval)
-	return &enginecontainer.HealthConfig{
+	return &container.HealthConfig{
 		Test:          hcSpec.Test,
 		Interval:      interval,
 		Timeout:       timeout,
@@ -205,8 +206,8 @@ func (c *containerConfig) healthcheck() *enginecontainer.HealthConfig {
 	}
 }
 
-func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
-	hc := &enginecontainer.HostConfig{
+func (c *containerConfig) hostConfig() *container.HostConfig {
+	hc := &container.HostConfig{
 		Resources:    c.resources(),
 		Mounts:       c.mounts(),
 		Tmpfs:        c.tmpfs(),
@@ -234,7 +235,7 @@ func (c *containerConfig) hostConfig() *enginecontainer.HostConfig {
 	}
 
 	if c.task.LogDriver != nil {
-		hc.LogConfig = enginecontainer.LogConfig{
+		hc.LogConfig = container.LogConfig{
 			Type:   c.task.LogDriver.Name,
 			Config: c.task.LogDriver.Options,
 		}
@@ -283,16 +284,16 @@ func (c *containerConfig) tmpfs() map[string]string {
 	return r
 }
 
-func (c *containerConfig) mounts() []enginemount.Mount {
-	var r []enginemount.Mount
-	for _, mount := range c.spec().Mounts {
-		r = append(r, convertMount(mount))
+func (c *containerConfig) mounts() []mount.Mount {
+	var r []mount.Mount
+	for _, mnt := range c.spec().Mounts {
+		r = append(r, convertMount(mnt))
 	}
 	return r
 }
 
-func convertMount(m api.Mount) enginemount.Mount {
-	mount := enginemount.Mount{
+func convertMount(m api.Mount) mount.Mount {
+	mnt := mount.Mount{
 		Source:   m.Source,
 		Target:   m.Target,
 		ReadOnly: m.ReadOnly,
@@ -300,15 +301,15 @@ func convertMount(m api.Mount) enginemount.Mount {
 
 	switch m.Type {
 	case api.MountTypeBind:
-		mount.Type = enginemount.TypeBind
+		mnt.Type = mount.TypeBind
 	case api.MountTypeVolume:
-		mount.Type = enginemount.TypeVolume
+		mnt.Type = mount.TypeVolume
 	case api.MountTypeNamedPipe:
-		mount.Type = enginemount.TypeNamedPipe
+		mnt.Type = mount.TypeNamedPipe
 	}
 
 	if m.BindOptions != nil {
-		mount.BindOptions = &enginemount.BindOptions{
+		mnt.BindOptions = &mount.BindOptions{
 			NonRecursive:           m.BindOptions.NonRecursive,
 			CreateMountpoint:       m.BindOptions.CreateMountpoint,
 			ReadOnlyNonRecursive:   m.BindOptions.ReadOnlyNonRecursive,
@@ -316,35 +317,35 @@ func convertMount(m api.Mount) enginemount.Mount {
 		}
 		switch m.BindOptions.Propagation {
 		case api.MountPropagationRPrivate:
-			mount.BindOptions.Propagation = enginemount.PropagationRPrivate
+			mnt.BindOptions.Propagation = mount.PropagationRPrivate
 		case api.MountPropagationPrivate:
-			mount.BindOptions.Propagation = enginemount.PropagationPrivate
+			mnt.BindOptions.Propagation = mount.PropagationPrivate
 		case api.MountPropagationRSlave:
-			mount.BindOptions.Propagation = enginemount.PropagationRSlave
+			mnt.BindOptions.Propagation = mount.PropagationRSlave
 		case api.MountPropagationSlave:
-			mount.BindOptions.Propagation = enginemount.PropagationSlave
+			mnt.BindOptions.Propagation = mount.PropagationSlave
 		case api.MountPropagationRShared:
-			mount.BindOptions.Propagation = enginemount.PropagationRShared
+			mnt.BindOptions.Propagation = mount.PropagationRShared
 		case api.MountPropagationShared:
-			mount.BindOptions.Propagation = enginemount.PropagationShared
+			mnt.BindOptions.Propagation = mount.PropagationShared
 		}
 	}
 
 	if m.VolumeOptions != nil {
-		mount.VolumeOptions = &enginemount.VolumeOptions{
+		mnt.VolumeOptions = &mount.VolumeOptions{
 			NoCopy: m.VolumeOptions.NoCopy,
 			// TODO: uncomment after 26.0 vendor
 			// Subpath: m.VolumeOptions.Subpath,
 			Labels: maps.Clone(m.VolumeOptions.Labels),
 		}
 		if m.VolumeOptions.DriverConfig != nil {
-			mount.VolumeOptions.DriverConfig = &enginemount.Driver{
+			mnt.VolumeOptions.DriverConfig = &mount.Driver{
 				Name:    m.VolumeOptions.DriverConfig.Name,
 				Options: maps.Clone(m.VolumeOptions.DriverConfig.Options),
 			}
 		}
 	}
-	return mount
+	return mnt
 }
 
 func getMountMask(m *api.Mount) string {
@@ -412,7 +413,7 @@ func getMountMask(m *api.Mount) string {
 }
 
 // This handles the case of volumes that are defined inside a service Mount
-func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *engineapi.VolumeCreateOptions {
+func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *client.VolumeCreateOptions {
 	var (
 		driverName string
 		driverOpts map[string]string
@@ -426,7 +427,7 @@ func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *engineapi.Volum
 	}
 
 	// FIXME: do we need the ClusterVolumeSpec here?
-	return &engineapi.VolumeCreateOptions{
+	return &client.VolumeCreateOptions{
 		Name:       mount.Source,
 		Driver:     driverName,
 		DriverOpts: driverOpts,
@@ -434,8 +435,8 @@ func (c *containerConfig) volumeCreateRequest(mount *api.Mount) *engineapi.Volum
 	}
 }
 
-func (c *containerConfig) resources() enginecontainer.Resources {
-	resources := enginecontainer.Resources{}
+func (c *containerConfig) resources() container.Resources {
+	resources := container.Resources{}
 
 	// set pids limit
 	pidsLimit := c.spec().PidsLimit
@@ -541,13 +542,13 @@ func (c *containerConfig) networks() []string {
 	return networks
 }
 
-func (c *containerConfig) networkCreateOptions(name string) (engineapi.NetworkCreateOptions, error) {
+func (c *containerConfig) networkCreateOptions(name string) (client.NetworkCreateOptions, error) {
 	na, ok := c.networksAttachments[name]
 	if !ok {
-		return engineapi.NetworkCreateOptions{}, errors.New("container: unknown network referenced")
+		return client.NetworkCreateOptions{}, errors.New("container: unknown network referenced")
 	}
 
-	options := engineapi.NetworkCreateOptions{
+	options := client.NetworkCreateOptions{
 		Driver: na.Network.DriverState.Name,
 		IPAM: &network.IPAM{
 			Driver: na.Network.IPAM.Driver.Name,
@@ -578,8 +579,8 @@ func (c *containerConfig) networkCreateOptions(name string) (engineapi.NetworkCr
 	return options, nil
 }
 
-func (c containerConfig) eventFilter() engineapi.Filters {
-	return make(engineapi.Filters).
+func (c containerConfig) eventFilter() client.Filters {
+	return make(client.Filters).
 		Add("type", string(events.ContainerEventType)).
 		Add("name", c.name()).
 		Add("label", fmt.Sprintf("%v.task.id=%v", systemLabelPrefix, c.task.ID))

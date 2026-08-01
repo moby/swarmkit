@@ -11,24 +11,25 @@ import (
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/events"
-	engineapi "github.com/moby/moby/client"
+	"github.com/moby/moby/client"
+	"github.com/pkg/errors"
+	"golang.org/x/time/rate"
+
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
-	"github.com/pkg/errors"
-	"golang.org/x/time/rate"
 )
 
 // containerAdapter conducts remote operations for a container. All calls
 // are mostly naked calls to the client API, seeded with information from
 // containerConfig.
 type containerAdapter struct {
-	client    engineapi.APIClient
+	client    client.APIClient
 	container *containerConfig
 	secrets   exec.SecretGetter
 }
 
-func newContainerAdapter(client engineapi.APIClient, nodeDescription *api.NodeDescription, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
+func newContainerAdapter(client client.APIClient, nodeDescription *api.NodeDescription, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
 	ctnr, err := newContainerConfig(nodeDescription, task)
 	if err != nil {
 		return nil, err
@@ -43,14 +44,14 @@ func newContainerAdapter(client engineapi.APIClient, nodeDescription *api.NodeDe
 
 func noopPrivilegeFn(context.Context) (string, error) { return "", nil }
 
-func (c *containerConfig) imagePullOptions() engineapi.ImagePullOptions {
+func (c *containerConfig) imagePullOptions() client.ImagePullOptions {
 	var registryAuth string
 
 	if c.spec().PullOptions != nil {
 		registryAuth = c.spec().PullOptions.RegistryAuth
 	}
 
-	return engineapi.ImagePullOptions{
+	return client.ImagePullOptions{
 		// if the image needs to be pulled, the auth config will be retrieved and updated
 		RegistryAuth:  registryAuth,
 		PrivilegeFunc: noopPrivilegeFn,
@@ -129,7 +130,7 @@ func (c *containerAdapter) createNetworks(ctx context.Context) error {
 
 func (c *containerAdapter) removeNetworks(ctx context.Context) error {
 	for _, nid := range c.container.networks() {
-		if _, err := c.client.NetworkRemove(ctx, nid, engineapi.NetworkRemoveOptions{}); err != nil {
+		if _, err := c.client.NetworkRemove(ctx, nid, client.NetworkRemoveOptions{}); err != nil {
 			if isActiveEndpointError(err) {
 				continue
 			}
@@ -143,7 +144,7 @@ func (c *containerAdapter) removeNetworks(ctx context.Context) error {
 }
 
 func (c *containerAdapter) create(ctx context.Context) error {
-	_, err := c.client.ContainerCreate(ctx, engineapi.ContainerCreateOptions{
+	_, err := c.client.ContainerCreate(ctx, client.ContainerCreateOptions{
 		Config:           c.container.config(),
 		HostConfig:       c.container.hostConfig(),
 		NetworkingConfig: c.container.networkingConfig(),
@@ -155,12 +156,12 @@ func (c *containerAdapter) create(ctx context.Context) error {
 
 func (c *containerAdapter) start(ctx context.Context) error {
 	// TODO(nishanttotla): Consider adding checkpoint handling later
-	_, err := c.client.ContainerStart(ctx, c.container.name(), engineapi.ContainerStartOptions{})
+	_, err := c.client.ContainerStart(ctx, c.container.name(), client.ContainerStartOptions{})
 	return err
 }
 
 func (c *containerAdapter) inspect(ctx context.Context) (container.InspectResponse, error) {
-	res, err := c.client.ContainerInspect(ctx, c.container.name(), engineapi.ContainerInspectOptions{})
+	res, err := c.client.ContainerInspect(ctx, c.container.name(), client.ContainerInspectOptions{})
 	if err != nil {
 		return container.InspectResponse{}, err
 	}
@@ -183,7 +184,7 @@ func (c *containerAdapter) events(ctx context.Context) (<-chan events.Message, <
 	log.G(ctx).Debugf("waiting on events")
 	// TODO(stevvooe): For long running tasks, it is likely that we will have
 	// to restart this under failure.
-	res := c.client.Events(ctx, engineapi.EventsListOptions{
+	res := c.client.Events(ctx, client.EventsListOptions{
 		Since:   "0",
 		Filters: c.container.eventFilter(),
 	})
@@ -223,17 +224,17 @@ func (c *containerAdapter) shutdown(ctx context.Context) error {
 		stopgraceFromProto, _ := gogotypes.DurationFromProto(spec.StopGracePeriod)
 		stopgraceSeconds = int(stopgraceFromProto.Seconds())
 	}
-	_, err := c.client.ContainerStop(ctx, c.container.name(), engineapi.ContainerStopOptions{Timeout: &stopgraceSeconds})
+	_, err := c.client.ContainerStop(ctx, c.container.name(), client.ContainerStopOptions{Timeout: &stopgraceSeconds})
 	return err
 }
 
 func (c *containerAdapter) terminate(ctx context.Context) error {
-	_, err := c.client.ContainerKill(ctx, c.container.name(), engineapi.ContainerKillOptions{})
+	_, err := c.client.ContainerKill(ctx, c.container.name(), client.ContainerKillOptions{})
 	return err
 }
 
 func (c *containerAdapter) remove(ctx context.Context) error {
-	_, err := c.client.ContainerRemove(ctx, c.container.name(), engineapi.ContainerRemoveOptions{
+	_, err := c.client.ContainerRemove(ctx, c.container.name(), client.ContainerRemoveOptions{
 		RemoveVolumes: true,
 		Force:         true,
 	})
@@ -274,7 +275,7 @@ func (c *containerAdapter) logs(ctx context.Context, options api.LogSubscription
 		return nil, errors.New("logs not supported on services with TTY")
 	}
 
-	apiOptions := engineapi.ContainerLogsOptions{
+	apiOptions := client.ContainerLogsOptions{
 		Follow:     options.Follow,
 		Timestamps: true,
 		Details:    false,
