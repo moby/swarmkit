@@ -164,7 +164,7 @@ func (p *plugin) init(ctx context.Context) error {
 // CreateVolume wraps and abstracts the CSI CreateVolume logic and returns
 // the volume info, or an error.
 func (p *plugin) CreateVolume(ctx context.Context, v *api.Volume) (*api.VolumeInfo, error) {
-	c, err := p.Client(ctx)
+	c, err := p.client(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +195,7 @@ func (p *plugin) DeleteVolume(ctx context.Context, v *api.Volume) error {
 		VolumeId: v.VolumeInfo.VolumeID,
 		Secrets:  secrets,
 	}
-	c, err := p.Client(ctx)
+	c, err := p.client(ctx)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func (p *plugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string
 	}
 
 	req := p.makeControllerPublishVolumeRequest(v, nodeID)
-	c, err := p.Client(ctx)
+	c, err := p.client(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +239,7 @@ func (p *plugin) UnpublishVolume(ctx context.Context, v *api.Volume, nodeID stri
 	}
 
 	req := p.makeControllerUnpublishVolumeRequest(v, nodeID)
-	c, err := p.Client(ctx)
+	c, err := p.client(ctx)
 	if err != nil {
 		return err
 	}
@@ -266,12 +266,12 @@ func (p *plugin) RemoveNode(swarmID string) {
 	delete(p.csiToSwarm, csiID)
 }
 
-// Client retrieves a csi.ControllerClient for this plugin
+// client retrieves a csi.ControllerClient for this plugin
 //
 // If this is the first time client has been called and no client yet exists,
 // it will initialize the gRPC connection to the remote plugin and create a new
 // ControllerClient.
-func (p *plugin) Client(ctx context.Context) (csi.ControllerClient, error) {
+func (p *plugin) client(ctx context.Context) (csi.ControllerClient, error) {
 	if p.controllerClient == nil {
 		if err := p.connect(ctx); err != nil {
 			return nil, err
