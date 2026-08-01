@@ -11,7 +11,7 @@ import (
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/service"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/task"
 	"github.com/moby/swarmkit/swarmd/internal/defaults"
-	"github.com/moby/swarmkit/v2/version"
+	"github.com/moby/swarmkit/swarmd/version"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/status"
 )
