@@ -14,7 +14,7 @@ import (
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/events"
 	"github.com/moby/moby/api/types/network"
-	engineapi "github.com/moby/moby/client"
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"golang.org/x/time/rate"
 
@@ -41,7 +41,7 @@ type controller struct {
 var _ exec.Controller = &controller{}
 
 // newController returns a docker exec controller for the provided task.
-func newController(client engineapi.APIClient, nodeDescription *api.NodeDescription, task *api.Task, secrets exec.SecretGetter) (exec.Controller, error) {
+func newController(client client.APIClient, nodeDescription *api.NodeDescription, task *api.Task, secrets exec.SecretGetter) (exec.Controller, error) {
 	adapter, err := newContainerAdapter(client, nodeDescription, task, secrets)
 	if err != nil {
 		return nil, err
