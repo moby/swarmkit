@@ -6,7 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	engineapi "github.com/moby/moby/client"
+	"github.com/moby/moby/client"
+
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/agent/secrets"
 	"github.com/moby/swarmkit/v2/api"
@@ -14,7 +15,7 @@ import (
 )
 
 type executor struct {
-	client           engineapi.APIClient
+	client           client.APIClient
 	secrets          exec.SecretsManager
 	genericResources []*api.GenericResource
 	mutex            sync.Mutex // This mutex protects the following node field
@@ -22,7 +23,7 @@ type executor struct {
 }
 
 // NewExecutor returns an executor from the docker client.
-func NewExecutor(client engineapi.APIClient, genericResources []*api.GenericResource) exec.Executor {
+func NewExecutor(client client.APIClient, genericResources []*api.GenericResource) exec.Executor {
 	var executor = &executor{
 		client:           client,
 		secrets:          secrets.NewManager(),
@@ -33,7 +34,7 @@ func NewExecutor(client engineapi.APIClient, genericResources []*api.GenericReso
 
 // Describe returns the underlying node description from the docker client.
 func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
-	res, err := e.client.Info(ctx, engineapi.InfoOptions{})
+	res, err := e.client.Info(ctx, client.InfoOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +58,7 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 	addPlugins("Authorization", info.Plugins.Authorization)
 
 	// retrieve v2 plugins
-	v2plugins, err := e.client.PluginList(ctx, engineapi.PluginListOptions{})
+	v2plugins, err := e.client.PluginList(ctx, client.PluginListOptions{})
 	if err != nil {
 		log.L.WithError(err).Warning("PluginList operation failed")
 	} else {
