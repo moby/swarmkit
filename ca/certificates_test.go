@@ -35,7 +35,6 @@ import (
 	"github.com/moby/swarmkit/v2/remotes"
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/opencontainers/go-digest"
-	"github.com/phayes/permbits"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/status"
@@ -48,6 +47,14 @@ func init() {
 		Max:    1 * time.Hour,
 	}
 	ca.GetCertRetryInterval = 50 * time.Millisecond
+}
+
+func groupWrite(mode os.FileMode) bool {
+	return mode.Perm()&0o020 != 0
+}
+
+func otherWrite(mode os.FileMode) bool {
+	return mode.Perm()&0o002 != 0
 }
 
 func checkLeafCert(t *testing.T, certBytes []byte, issuerName, cn, ou, org string, additionalDNSNames ...string) []*x509.Certificate {
@@ -87,13 +94,13 @@ func TestCreateRootCASaveRootCA(t *testing.T) {
 	err = ca.SaveRootCA(rootCA, paths.RootCA)
 	assert.NoError(t, err)
 
-	perms, err := permbits.Stat(paths.RootCA.Cert)
+	fi, err := os.Stat(paths.RootCA.Cert)
 	assert.NoError(t, err)
-	assert.False(t, perms.GroupWrite())
-	assert.False(t, perms.OtherWrite())
+	assert.False(t, groupWrite(fi.Mode()))
+	assert.False(t, otherWrite(fi.Mode()))
 
-	_, err = permbits.Stat(paths.RootCA.Key)
-	assert.True(t, os.IsNotExist(err))
+	_, err = os.Stat(paths.RootCA.Key)
+	assert.ErrorIs(t, err, os.ErrNotExist)
 
 	// ensure that the cert that was written is already normalized
 	written, err := os.ReadFile(paths.RootCA.Cert)
@@ -318,10 +325,10 @@ func testRequestAndSaveNewCertificates(t *testing.T, tc *cautils.TestCA) (*ca.Is
 	require.NoError(t, err)
 	require.NotNil(t, tlsCert)
 	require.NotNil(t, issuerInfo)
-	perms, err := permbits.Stat(tc.Paths.Node.Cert)
+	fi, err := os.Stat(tc.Paths.Node.Cert)
 	require.NoError(t, err)
-	require.False(t, perms.GroupWrite())
-	require.False(t, perms.OtherWrite())
+	require.False(t, groupWrite(fi.Mode()))
+	require.False(t, otherWrite(fi.Mode()))
 
 	certs, err := os.ReadFile(tc.Paths.Node.Cert)
 	require.NoError(t, err)
@@ -461,10 +468,10 @@ func testIssueAndSaveNewCertificates(t *testing.T, rca *ca.RootCA) {
 		require.NotNil(t, cert)
 		require.Equal(t, issuer.RawSubjectPublicKeyInfo, issuerInfo.PublicKey)
 		require.Equal(t, issuer.RawSubject, issuerInfo.Subject)
-		perms, err := permbits.Stat(paths.Node.Cert)
+		fi, err := os.Stat(paths.Node.Cert)
 		require.NoError(t, err)
-		require.False(t, perms.GroupWrite())
-		require.False(t, perms.OtherWrite())
+		require.False(t, groupWrite(fi.Mode()))
+		require.False(t, otherWrite(fi.Mode()))
 
 		certBytes, err := os.ReadFile(paths.Node.Cert)
 		require.NoError(t, err)
