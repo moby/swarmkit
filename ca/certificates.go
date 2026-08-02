@@ -29,7 +29,7 @@ import (
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca/pkcs8"
 	"github.com/moby/swarmkit/v2/connectionbroker"
-	"github.com/moby/swarmkit/v2/ioutils"
+	"github.com/moby/sys/atomicwriter"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -906,7 +906,7 @@ func SaveRootCA(rootCA RootCA, paths CertPaths) error {
 	}
 
 	// If the root certificate got returned successfully, save the rootCA to disk.
-	return ioutils.AtomicWriteFile(paths.Cert, rootCA.Certs, 0o644)
+	return atomicwriter.WriteFile(paths.Cert, rootCA.Certs, 0o644)
 }
 
 // GenerateNewCSR returns a newly generated key and CSR signed with said key
