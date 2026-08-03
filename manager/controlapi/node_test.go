@@ -1129,3 +1129,30 @@ func TestOrphanNodeTasks(t *testing.T) {
 		}
 	})
 }
+
+// TestUpdateNodeSpecBackfillsAnnotations verifies that a NodeSpec accepted
+// without Annotations is stored with an empty one. Annotations was
+// non-nullable before the migration to the standard protobuf runtime, so API
+// consumers dereference it directly and must not observe nil on a stored
+// node.
+func TestUpdateNodeSpecBackfillsAnnotations(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+
+	node := createNode(t, ts, "id", api.NodeRole_WORKER, api.NodeSpec_ACCEPTED, api.NodeStatus_READY)
+
+	_, err := ts.Client.UpdateNode(context.Background(), &api.UpdateNodeRequest{
+		NodeId: node.Id,
+		Spec: &api.NodeSpec{
+			Membership:   api.NodeSpec_ACCEPTED,
+			Availability: api.NodeSpec_DRAIN,
+		},
+		NodeVersion: node.Meta.Version,
+	})
+	require.NoError(t, err)
+
+	r, err := ts.Client.GetNode(context.Background(), &api.GetNodeRequest{NodeId: node.Id})
+	require.NoError(t, err)
+	require.NotNil(t, r.Node.Spec, "stored node must have a Spec")
+	assert.NotNil(t, r.Node.Spec.Annotations, "stored node must have Spec.Annotations")
+}
