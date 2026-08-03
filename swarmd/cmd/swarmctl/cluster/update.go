@@ -40,6 +40,24 @@ var (
 
 			flags := cmd.Flags()
 			spec := cluster.Spec
+			// These submessages were non-nullable before the migration to the
+			// standard protobuf runtime; a server may still send a spec
+			// without them, and the assignments below dereference them.
+			if spec.CaConfig == nil {
+				spec.CaConfig = &api.CAConfig{}
+			}
+			if spec.Orchestration == nil {
+				spec.Orchestration = &api.OrchestrationConfig{}
+			}
+			if spec.Dispatcher == nil {
+				spec.Dispatcher = &api.DispatcherConfig{}
+			}
+			if spec.EncryptionConfig == nil {
+				spec.EncryptionConfig = &api.EncryptionConfig{}
+			}
+			if spec.TaskDefaults == nil {
+				spec.TaskDefaults = &api.TaskDefaults{}
+			}
 			var rotation api.KeyRotation
 
 			if flags.Changed("certexpiry") {

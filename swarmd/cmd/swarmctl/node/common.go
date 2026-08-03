@@ -140,6 +140,9 @@ func updateNode(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		// overwrite existing labels
+		if spec.Annotations == nil {
+			spec.Annotations = &api.Annotations{}
+		}
 		spec.Annotations.Labels = map[string]string{}
 		for _, l := range labels {
 			parts := strings.SplitN(l, "=", 2)

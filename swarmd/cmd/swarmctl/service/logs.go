@@ -74,8 +74,8 @@ var (
 					}
 
 					fmt.Fprintf(out, "%s@%s❯ ",
-						r.Resolve(api.Task{}, msg.Context.TaskId),
-						r.Resolve(api.Node{}, msg.Context.NodeId),
+						r.Resolve(api.Task{}, msg.GetContext().GetTaskId()),
+						r.Resolve(api.Node{}, msg.GetContext().GetNodeId()),
 					)
 					out.Write(msg.Data) // assume new line?
 				}
