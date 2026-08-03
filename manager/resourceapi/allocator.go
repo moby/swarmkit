@@ -62,6 +62,11 @@ func (ra *ResourceAllocator) AttachNetwork(ctx context.Context, request *api.Att
 	t := &api.Task{
 		Id:     identity.NewID(),
 		NodeId: nodeInfo.NodeID,
+		// Annotations and ServiceAnnotations were non-nullable before the
+		// migration to the standard protobuf runtime; keep them always
+		// present so API consumers can rely on the old object invariant.
+		Annotations:        &api.Annotations{},
+		ServiceAnnotations: &api.Annotations{},
 		Spec: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Attachment{
 				Attachment: &api.NetworkAttachmentSpec{

@@ -150,3 +150,24 @@ func TestTaskSort(t *testing.T) {
 		assert.Equal(t, "id_"+strconv.Itoa(i), task.Id)
 	}
 }
+
+// TestNewTask verifies that new tasks keep the message fields that were
+// non-nullable before the migration to the standard protobuf runtime; API
+// consumers dereference them directly and must not observe nil.
+func TestNewTask(t *testing.T) {
+	service := &api.Service{
+		Id: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
+				Name: "name1",
+			},
+			Task: &api.TaskSpec{},
+		},
+	}
+
+	task := NewTask(nil, service, 1, "node1")
+	assert.NotNil(t, task.Annotations, "task must have Annotations")
+	assert.NotNil(t, task.ServiceAnnotations, "task must have ServiceAnnotations")
+	assert.NotNil(t, task.Spec, "task must have a Spec")
+	assert.NotNil(t, task.Status, "task must have a Status")
+}
