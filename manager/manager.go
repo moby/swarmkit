@@ -615,7 +615,12 @@ func (m *Manager) Run(parent context.Context) error {
 	if err != nil {
 		return err
 	}
+	// ClusterSpec.Raft used to be a non-nullable field, so a cluster without
+	// one read back as an all-zero config, not as the defaults. Preserve that.
 	raftConfig := c.Spec.GetRaft()
+	if raftConfig == nil {
+		raftConfig = &api.RaftConfig{}
+	}
 
 	if err := m.watchForClusterChanges(ctx); err != nil {
 		return err
