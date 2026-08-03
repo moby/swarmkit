@@ -1213,6 +1213,11 @@ func defaultClusterObject(
 			Annotations: &api.Annotations{
 				Name: store.DefaultClusterName,
 			},
+			// AcceptancePolicy and TaskDefaults were non-nullable before the
+			// migration to the standard protobuf runtime; keep every
+			// ClusterSpec submessage always present so API consumers can rely
+			// on the old object invariant.
+			AcceptancePolicy: &api.AcceptancePolicy{},
 			Orchestration: &api.OrchestrationConfig{
 				TaskHistoryRetentionLimit: defaultTaskHistoryRetentionLimit,
 			},
@@ -1221,6 +1226,7 @@ func defaultClusterObject(
 			},
 			Raft:             raftCfg,
 			CaConfig:         initialCAConfig,
+			TaskDefaults:     &api.TaskDefaults{},
 			EncryptionConfig: encryptionConfig,
 		},
 		RootCa: &api.RootCA{

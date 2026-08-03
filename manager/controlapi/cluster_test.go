@@ -626,3 +626,39 @@ func TestExpireBlacklistedCerts(t *testing.T) {
 	_, hasFuture := cluster.BlacklistedCertificates["future"]
 	assert.True(t, hasFuture)
 }
+
+// TestUpdateClusterBackfillsSpec verifies that a ClusterSpec accepted without
+// its submessages is stored with all of them present. They were non-nullable
+// before the migration to the standard protobuf runtime, and consumers (such
+// as the raft config check on manager startup) dereference them directly.
+func TestUpdateClusterBackfillsSpec(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Stop()
+	cluster := createCluster(t, ts, "id", store.DefaultClusterName, &api.AcceptancePolicy{}, ts.Server.securityConfig.RootCA())
+
+	_, err := ts.Client.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
+		ClusterId: cluster.Id,
+		Spec: &api.ClusterSpec{
+			Annotations: &api.Annotations{Name: store.DefaultClusterName},
+		},
+		ClusterVersion: cluster.Meta.Version,
+	})
+	require.NoError(t, err)
+
+	var stored *api.Cluster
+	ts.Store.View(func(tx store.ReadTx) {
+		stored = store.GetCluster(tx, cluster.Id)
+	})
+	require.NotNil(t, stored)
+
+	spec := stored.Spec
+	require.NotNil(t, spec, "stored cluster must have a Spec")
+	assert.NotNil(t, spec.Annotations, "stored cluster must have Spec.Annotations")
+	assert.NotNil(t, spec.AcceptancePolicy, "stored cluster must have Spec.AcceptancePolicy")
+	assert.NotNil(t, spec.Orchestration, "stored cluster must have Spec.Orchestration")
+	assert.NotNil(t, spec.Raft, "stored cluster must have Spec.Raft")
+	assert.NotNil(t, spec.Dispatcher, "stored cluster must have Spec.Dispatcher")
+	assert.NotNil(t, spec.CaConfig, "stored cluster must have Spec.CaConfig")
+	assert.NotNil(t, spec.TaskDefaults, "stored cluster must have Spec.TaskDefaults")
+	assert.NotNil(t, spec.EncryptionConfig, "stored cluster must have Spec.EncryptionConfig")
+}
