@@ -74,6 +74,18 @@ func TestIssueNodeCertificate(t *testing.T) {
 	assert.Equal(t, api.IssuanceStatus_ISSUED, statusResponse.Status.GetState())
 	assert.NotNil(t, statusResponse.Certificate.GetCertificate())
 	assert.Equal(t, api.NodeRole_WORKER, statusResponse.Certificate.GetRole())
+
+	// The created node must keep the fields that were non-nullable before the
+	// migration to the standard protobuf runtime: API consumers such as
+	// dockerd's event processing dereference Spec.Annotations and Status
+	// directly and panic if the node exposes nil there.
+	var node *api.Node
+	tc.MemoryStore.View(func(tx store.ReadTx) {
+		node = store.GetNode(tx, issueResponse.NodeId)
+	})
+	require.NotNil(t, node)
+	assert.NotNil(t, node.Spec.Annotations, "node created by certificate issuance must have Spec.Annotations")
+	assert.NotNil(t, node.Status, "node created by certificate issuance must have Status")
 }
 
 func TestForceRotationIsNoop(t *testing.T) {

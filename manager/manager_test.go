@@ -432,3 +432,17 @@ func TestManagerLockUnlock(t *testing.T) {
 	// error.
 	<-done
 }
+
+// TestManagerNode verifies that the initial manager node keeps the message
+// fields that were non-nullable before the migration to the standard protobuf
+// runtime. API consumers such as dockerd's event processing dereference
+// Spec.Annotations and Status directly and panic if the node exposes nil
+// there.
+func TestManagerNode(t *testing.T) {
+	node := managerNode("node-id", api.NodeSpec_ACTIVE, 4789)
+	require.NotNil(t, node.Spec, "initial manager node must have a Spec")
+	require.NotNil(t, node.Spec.Annotations, "initial manager node must have Spec.Annotations")
+	require.NotNil(t, node.Status, "initial manager node must have a Status")
+	require.NotNil(t, node.Certificate, "initial manager node must have a Certificate")
+	require.NotNil(t, node.Certificate.Status, "initial manager node must have a Certificate.Status")
+}

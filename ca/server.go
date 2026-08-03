@@ -320,10 +320,16 @@ func (s *Server) IssueNodeCertificate(ctx context.Context, request *api.IssueNod
 					},
 				},
 				Spec: &api.NodeSpec{
+					// Annotations and Status were non-nullable before the
+					// migration to the standard protobuf runtime; keep them
+					// always present so API consumers can rely on the old
+					// object invariant.
+					Annotations:  &api.Annotations{},
 					DesiredRole:  role,
 					Membership:   api.NodeSpec_ACCEPTED,
 					Availability: request.Availability,
 				},
+				Status: &api.NodeStatus{},
 			}
 			node.VXLANUDPPort = clusters[0].VXLANUDPPort
 			return store.CreateNode(tx, node)

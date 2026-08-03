@@ -1252,10 +1252,15 @@ func managerNode(nodeID string, availability api.NodeSpec_Availability, vxlanPor
 			},
 		},
 		Spec: &api.NodeSpec{
+			// Annotations and Status were non-nullable before the migration
+			// to the standard protobuf runtime; keep them always present so
+			// API consumers can rely on the old object invariant.
+			Annotations:  &api.Annotations{},
 			DesiredRole:  api.NodeRole_MANAGER,
 			Membership:   api.NodeSpec_ACCEPTED,
 			Availability: availability,
 		},
+		Status:       &api.NodeStatus{},
 		VXLANUDPPort: vxlanPort,
 	}
 }
