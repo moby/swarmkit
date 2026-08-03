@@ -37,6 +37,10 @@ func New(store *store.MemoryStore) *ResourceAllocator {
 // - Returns `PermissionDenied` if the Network is not manually attachable.
 // - Returns an error if the creation fails.
 func (ra *ResourceAllocator) AttachNetwork(ctx context.Context, request *api.AttachNetworkRequest) (*api.AttachNetworkResponse, error) {
+	if request.Config == nil {
+		return nil, status.Error(codes.InvalidArgument, errInvalidArgument.Error())
+	}
+
 	nodeInfo, err := ca.RemoteNode(ctx)
 	if err != nil {
 		return nil, err
