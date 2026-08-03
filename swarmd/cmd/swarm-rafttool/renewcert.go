@@ -51,7 +51,12 @@ func renewCerts(swarmdir, unlockKey string) error {
 		if s.Version != api.Snapshot_V0 {
 			return fmt.Errorf("unrecognized snapshot version %d", s.Version)
 		}
-		cluster = s.Store.Clusters[0]
+		// The store used to be a non-nullable field; tolerate a snapshot
+		// without one (or without a cluster object) instead of panicking,
+		// since this tool inspects arbitrary state directories.
+		if clusters := s.GetStore().GetClusters(); len(clusters) > 0 {
+			cluster = clusters[0]
+		}
 	}
 
 	// It's possible there's no snapshot yet, or the cluster has been updated

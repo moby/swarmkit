@@ -115,11 +115,19 @@ func dumpWAL(swarmdir, unlockKey string, start, end uint64, redact bool) error {
 							actype.Cluster.UnlockKeys = []*api.EncryptionKey{}
 							actype.Cluster.NetworkBootstrapKeys = []*api.EncryptionKey{}
 							actype.Cluster.RootCa = &api.RootCA{}
-							actype.Cluster.Spec.CaConfig = &api.CAConfig{}
+							// The specs used to be non-nullable fields; there
+							// is nothing to redact in an absent one.
+							if actype.Cluster.Spec != nil {
+								actype.Cluster.Spec.CaConfig = &api.CAConfig{}
+							}
 						case *api.StoreAction_Secret:
-							actype.Secret.Spec.Data = []byte("SECRET REDACTED")
+							if actype.Secret.Spec != nil {
+								actype.Secret.Spec.Data = []byte("SECRET REDACTED")
+							}
 						case *api.StoreAction_Config:
-							actype.Config.Spec.Data = []byte("CONFIG REDACTED")
+							if actype.Config.Spec != nil {
+								actype.Config.Spec.Data = []byte("CONFIG REDACTED")
+							}
 						case *api.StoreAction_Task:
 							if container := actype.Task.Spec.GetContainer(); container != nil {
 								container.Env = []string{"ENVVARS REDACTED"}
@@ -168,38 +176,42 @@ func dumpSnapshot(swarmdir, unlockKey string, redact bool) error {
 	}
 
 	fmt.Println("Active members:")
-	for _, member := range s.Membership.Members {
+	for _, member := range s.GetMembership().GetMembers() {
 		fmt.Printf(" NodeID=%s, RaftID=%x, Addr=%s\n", member.NodeId, member.RaftId, member.Addr)
 	}
 	fmt.Println()
 
 	fmt.Println("Removed members:")
-	for _, member := range s.Membership.Removed {
+	for _, member := range s.GetMembership().GetRemoved() {
 		fmt.Printf(" RaftID=%x\n", member)
 	}
 	fmt.Println()
 
 	if redact {
-		for _, cluster := range s.Store.Clusters {
+		for _, cluster := range s.GetStore().GetClusters() {
 			if cluster != nil {
 				// expunge everything that may have key material
 				cluster.RootCa = &api.RootCA{}
 				cluster.NetworkBootstrapKeys = []*api.EncryptionKey{}
 				cluster.UnlockKeys = []*api.EncryptionKey{}
-				cluster.Spec.CaConfig = &api.CAConfig{}
+				// The specs used to be non-nullable fields; there is nothing
+				// to redact in an absent one.
+				if cluster.Spec != nil {
+					cluster.Spec.CaConfig = &api.CAConfig{}
+				}
 			}
 		}
-		for _, secret := range s.Store.Secrets {
-			if secret != nil {
+		for _, secret := range s.GetStore().GetSecrets() {
+			if secret != nil && secret.Spec != nil {
 				secret.Spec.Data = []byte("SECRET REDACTED")
 			}
 		}
-		for _, config := range s.Store.Configs {
-			if config != nil {
+		for _, config := range s.GetStore().GetConfigs() {
+			if config != nil && config.Spec != nil {
 				config.Spec.Data = []byte("CONFIG REDACTED")
 			}
 		}
-		for _, task := range s.Store.Tasks {
+		for _, task := range s.GetStore().GetTasks() {
 			if task != nil {
 				if container := task.Spec.GetContainer(); container != nil {
 					container.Env = []string{"ENVVARS REDACTED"}
@@ -209,7 +221,7 @@ func dumpSnapshot(swarmdir, unlockKey string, redact bool) error {
 				}
 			}
 		}
-		for _, service := range s.Store.Services {
+		for _, service := range s.GetStore().GetServices() {
 			if service != nil {
 				if container := service.Spec.GetTask().GetContainer(); container != nil {
 					container.Env = []string{"ENVVARS REDACTED"}
@@ -267,7 +279,14 @@ func dumpObject(swarmdir, unlockKey, objType string, selector objSelector) error
 			return fmt.Errorf("unrecognized snapshot version %d", s.Version)
 		}
 
-		if err := memStore.Restore(s.Store); err != nil {
+		// Snapshot.store used to be a non-nullable field; treat a snapshot
+		// without one as an empty store, the same way the raft restore path
+		// does.
+		storeSnapshot := s.Store
+		if storeSnapshot == nil {
+			storeSnapshot = &api.StoreSnapshot{}
+		}
+		if err := memStore.Restore(storeSnapshot); err != nil {
 			return err
 		}
 	}
