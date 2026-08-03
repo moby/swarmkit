@@ -14,15 +14,15 @@ message, showing only the fields described in this document, is presented below:
 // immutable and idempotent. Once it is dispatched to a node, it will not be
 // dispatched to another node.
 message Task {
-        string id = 1 [(gogoproto.customname) = "ID"];
+        string id = 1;
 
         // Spec defines the desired state of the task as specified by the user.
         // The system will honor this and will *never* modify it.
-        TaskSpec spec = 3 [(gogoproto.nullable) = false];
+        TaskSpec spec = 3;
 
         // ServiceID indicates the service under which this task is
         // orchestrated. This should almost always be set.
-        string service_id = 4 [(gogoproto.customname) = "ServiceID"];
+        string service_id = 4;
 
         // Slot is the service slot number for a task.
         // For example, if a replicated service has replicas = 2, there will be
@@ -31,13 +31,13 @@ message Task {
 
         // NodeID indicates the node to which the task is assigned. If this
         // field is empty or not set, the task is unassigned.
-        string node_id = 6 [(gogoproto.customname) = "NodeID"];
+        string node_id = 6;
 
-        TaskStatus status = 9 [(gogoproto.nullable) = false];
+        TaskStatus status = 9;
 
         // DesiredState is the target state for the task. It is set to
-        // TaskStateRunning when a task is first created, and changed to
-        // TaskStateShutdown if the manager wants to terminate the task. This
+        // TaskState_RUNNING when a task is first created, and changed to
+        // TaskState_SHUTDOWN if the manager wants to terminate the task. This
         // field is only written by the manager.
         TaskState desired_state = 10;
 }

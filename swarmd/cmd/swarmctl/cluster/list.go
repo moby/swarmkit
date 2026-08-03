@@ -49,13 +49,13 @@ var (
 					spec := s.Spec
 
 					fmt.Fprintf(w, "%s\t%s\n",
-						s.ID,
-						spec.Annotations.Name,
+						s.Id,
+						spec.GetAnnotations().GetName(),
 					)
 				}
 
 			} else {
-				output = func(j *api.Cluster) { fmt.Println(j.ID) }
+				output = func(j *api.Cluster) { fmt.Println(j.Id) }
 			}
 
 			for _, j := range r.Clusters {

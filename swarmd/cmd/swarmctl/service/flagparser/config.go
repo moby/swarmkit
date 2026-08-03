@@ -86,7 +86,7 @@ func ParseAddConfig(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) 
 
 		foundConfigs := make(map[string]*api.Config)
 		for _, config := range r.Configs {
-			foundConfigs[config.Spec.Annotations.Name] = config
+			foundConfigs[config.GetSpec().GetAnnotations().GetName()] = config
 		}
 
 		for _, configRef := range needConfigs {
@@ -95,7 +95,7 @@ func ParseAddConfig(cmd *cobra.Command, spec *api.ServiceSpec, flagName string) 
 				return fmt.Errorf("config not found: %s", configRef.ConfigName)
 			}
 
-			configRef.ConfigID = config.ID
+			configRef.ConfigId = config.Id
 			container.Configs = append(container.Configs, configRef)
 		}
 	}

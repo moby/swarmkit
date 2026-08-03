@@ -40,7 +40,7 @@ func TestFernet(t *testing.T) {
 	// both crypters can decrypt the other's text
 	for i, decrypter := range []Decrypter{crypter1, crypter2} {
 		for j, record := range []*api.MaybeEncryptedRecord{er1, er2} {
-			result, err := decrypter.Decrypt(*record)
+			result, err := decrypter.Decrypt(record)
 			require.NoError(t, err, "error decrypting ciphertext produced by cryptor %d using cryptor %d", j+1, i+1)
 			require.Equal(t, data, result)
 		}
@@ -55,9 +55,9 @@ func TestFernetInvalidAlgorithm(t *testing.T) {
 	crypter := NewFernet(key)
 	er, err := crypter.Encrypt([]byte("Hello again world"))
 	require.NoError(t, err)
-	er.Algorithm = api.MaybeEncryptedRecord_NotEncrypted
+	er.Algorithm = api.MaybeEncryptedRecord_NONE
 
-	_, err = crypter.Decrypt(*er)
+	_, err = crypter.Decrypt(er)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "not a Fernet message")
 }
@@ -72,6 +72,6 @@ func TestFernetCannotDecryptWithoutRightKey(t *testing.T) {
 	require.NoError(t, err)
 
 	crypter = NewFernet([]byte{})
-	_, err = crypter.Decrypt(*er)
+	_, err = crypter.Decrypt(er)
 	require.Error(t, err)
 }

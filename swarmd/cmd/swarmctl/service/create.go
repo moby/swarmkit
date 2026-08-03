@@ -34,7 +34,7 @@ var (
 						Replicas: 1,
 					},
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{},
 					},
@@ -53,7 +53,7 @@ var (
 			if err != nil {
 				return err
 			}
-			fmt.Println(r.Service.ID)
+			fmt.Println(r.Service.Id)
 			return nil
 		},
 	}

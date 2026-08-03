@@ -48,7 +48,7 @@ var createCmd = &cobra.Command{
 		}
 
 		spec := &api.ConfigSpec{
-			Annotations: api.Annotations{Name: args[0]},
+			Annotations: &api.Annotations{Name: args[0]},
 			Data:        configData,
 		}
 
@@ -56,7 +56,7 @@ var createCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(resp.Config.ID)
+		fmt.Println(resp.Config.Id)
 		return nil
 	},
 }

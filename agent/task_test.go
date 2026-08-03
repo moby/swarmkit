@@ -20,8 +20,8 @@ func init() {
 func TestTaskManager(t *testing.T) {
 	ctx := context.Background()
 	task := &api.Task{
-		Status:       api.TaskStatus{},
-		DesiredState: api.TaskStateAccepted,
+		Status:       &api.TaskStatus{},
+		DesiredState: api.TaskState_ACCEPTED,
 	}
 	accepted := make(chan struct{})
 	ready := make(chan struct{})
@@ -30,27 +30,27 @@ func TestTaskManager(t *testing.T) {
 
 	tm := newTaskManager(ctx, task, ctlr, statusReporterFunc(func(ctx context.Context, taskID string, status *api.TaskStatus) error {
 		switch status.State {
-		case api.TaskStateAccepted:
+		case api.TaskState_ACCEPTED:
 			select {
 			case <-accepted:
 			default:
 				close(accepted)
 			}
-		case api.TaskStatePreparing:
-		case api.TaskStateReady:
+		case api.TaskState_PREPARING:
+		case api.TaskState_READY:
 			select {
 			case <-ready:
 			default:
 				close(ready)
 			}
-		case api.TaskStateStarting:
-		case api.TaskStateRunning:
+		case api.TaskState_STARTING:
+		case api.TaskState_RUNNING:
 			select {
 			case <-ready:
 			default:
 				t.Fatal("should be running before ready")
 			}
-		case api.TaskStateCompleted:
+		case api.TaskState_COMPLETE:
 			select {
 			case <-shutdown:
 			default:
@@ -69,12 +69,12 @@ func TestTaskManager(t *testing.T) {
 	for {
 		select {
 		case <-acceptedWait:
-			task.DesiredState = api.TaskStateReady // proceed to ready
+			task.DesiredState = api.TaskState_READY // proceed to ready
 			assert.NoError(t, tm.Update(ctx, task))
 			acceptedWait = nil
 		case <-readyWait:
 			time.Sleep(time.Second)
-			task.DesiredState = api.TaskStateRunning // proceed to running.
+			task.DesiredState = api.TaskState_RUNNING // proceed to running.
 			assert.NoError(t, tm.Update(ctx, task))
 			readyWait = nil
 		case <-shutdownWait:

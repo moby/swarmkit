@@ -9,7 +9,7 @@ import (
 
 func getService(ctx context.Context, c api.ControlClient, input string) (*api.Service, error) {
 	// GetService to match via full ID.
-	rg, err := c.GetService(ctx, &api.GetServiceRequest{ServiceID: input})
+	rg, err := c.GetService(ctx, &api.GetServiceRequest{ServiceId: input})
 	if err != nil {
 		// If any error (including NotFound), ListServices to match via full name.
 		rl, err := c.ListServices(ctx,

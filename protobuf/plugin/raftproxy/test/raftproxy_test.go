@@ -16,6 +16,8 @@ import (
 
 type testRouteGuide struct{}
 
+func (testRouteGuide) mustEmbedUnimplementedRouteGuideServer() {}
+
 func (testRouteGuide) GetFeature(context.Context, *Point) (*Feature, error) {
 	panic("not implemented")
 }

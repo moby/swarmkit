@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"time"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/pflag"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 )
 
 func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 	if spec.Task.Restart == nil {
 		// set new service's restart policy as RestartOnAny
 		spec.Task.Restart = &api.RestartPolicy{
-			Condition: api.RestartOnAny,
+			Condition: api.RestartPolicy_ANY,
 		}
 	}
 
@@ -25,11 +25,11 @@ func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 
 		switch condition {
 		case "none":
-			spec.Task.Restart.Condition = api.RestartOnNone
+			spec.Task.Restart.Condition = api.RestartPolicy_NONE
 		case "failure":
-			spec.Task.Restart.Condition = api.RestartOnFailure
+			spec.Task.Restart.Condition = api.RestartPolicy_ON_FAILURE
 		case "any":
-			spec.Task.Restart.Condition = api.RestartOnAny
+			spec.Task.Restart.Condition = api.RestartPolicy_ANY
 		default:
 			return fmt.Errorf("invalid restart condition: %s", condition)
 		}
@@ -46,7 +46,7 @@ func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			return err
 		}
 
-		spec.Task.Restart.Delay = gogotypes.DurationProto(delayDuration)
+		spec.Task.Restart.Delay = durationpb.New(delayDuration)
 	}
 
 	if flags.Changed("restart-max-attempts") {
@@ -69,7 +69,7 @@ func parseRestart(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			return err
 		}
 
-		spec.Task.Restart.Window = gogotypes.DurationProto(windowDelay)
+		spec.Task.Restart.Window = durationpb.New(windowDelay)
 	}
 
 	return nil

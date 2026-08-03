@@ -95,7 +95,7 @@ func (c *testCluster) AddManager(lateBind bool, rootCA *ca.RootCA) error {
 		if err != nil {
 			return err
 		}
-		node, err := newTestNode(joinAddr, clusterInfo.RootCA.JoinTokens.Manager, false, c.fips)
+		node, err := newTestNode(joinAddr, clusterInfo.RootCa.GetJoinTokens().GetManager(), false, c.fips)
 		if err != nil {
 			return err
 		}
@@ -131,7 +131,7 @@ func (c *testCluster) AddAgent() error {
 	if err != nil {
 		return err
 	}
-	node, err := newTestNode(joinAddr, clusterInfo.RootCA.JoinTokens.Worker, false, c.fips)
+	node, err := newTestNode(joinAddr, clusterInfo.RootCa.GetJoinTokens().GetWorker(), false, c.fips)
 	if err != nil {
 		return err
 	}
@@ -189,13 +189,13 @@ func (c *testCluster) runNode(n *testNode, nodeOrder int) error {
 // CreateService creates dummy service.
 func (c *testCluster) CreateService(name string, instances int) (string, error) {
 	spec := &api.ServiceSpec{
-		Annotations: api.Annotations{Name: name},
+		Annotations: &api.Annotations{Name: name},
 		Mode: &api.ServiceSpec_Replicated{
 			Replicated: &api.ReplicatedService{
 				Replicas: uint64(instances),
 			},
 		},
-		Task: api.TaskSpec{
+		Task: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{Image: "alpine", Command: []string{"sh"}},
 			},
@@ -206,14 +206,14 @@ func (c *testCluster) CreateService(name string, instances int) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	return resp.Service.ID, nil
+	return resp.Service.Id, nil
 }
 
 // Leader returns TestNode for cluster leader.
 func (c *testCluster) Leader() (*testNode, error) {
 	resp, err := c.api.ListNodes(context.Background(), &api.ListNodesRequest{
 		Filters: &api.ListNodesRequest_Filters{
-			Roles: []api.NodeRole{api.NodeRoleManager},
+			Roles: []api.NodeRole{api.NodeRole_MANAGER},
 		},
 	})
 	if err != nil {
@@ -221,9 +221,9 @@ func (c *testCluster) Leader() (*testNode, error) {
 	}
 	for _, n := range resp.Nodes {
 		if n.ManagerStatus.Leader {
-			tn, ok := c.nodes[n.ID]
+			tn, ok := c.nodes[n.Id]
 			if !ok {
-				return nil, fmt.Errorf("leader id is %s, but it isn't found in test cluster object", n.ID)
+				return nil, fmt.Errorf("leader id is %s, but it isn't found in test cluster object", n.Id)
 			}
 			return tn, nil
 		}
@@ -239,7 +239,7 @@ func (c *testCluster) RemoveNode(id string, graceful bool) error {
 	}
 	// demote before removal
 	if node.IsManager() {
-		if err := c.SetNodeRole(id, api.NodeRoleWorker); err != nil {
+		if err := c.SetNodeRole(id, api.NodeRole_WORKER); err != nil {
 			return fmt.Errorf("demote manager: %v", err)
 		}
 
@@ -250,11 +250,11 @@ func (c *testCluster) RemoveNode(id string, graceful bool) error {
 	delete(c.nodes, id)
 	if graceful {
 		if err := testutils.PollFuncWithTimeout(nil, func() error {
-			resp, err := c.api.GetNode(context.Background(), &api.GetNodeRequest{NodeID: id})
+			resp, err := c.api.GetNode(context.Background(), &api.GetNodeRequest{NodeId: id})
 			if err != nil {
 				return fmt.Errorf("get node: %v", err)
 			}
-			if resp.Node.Status.State != api.NodeStatus_DOWN {
+			if resp.Node.Status.GetState() != api.NodeStatus_DOWN {
 				return fmt.Errorf("node %s is still not down", id)
 			}
 			return nil
@@ -262,7 +262,7 @@ func (c *testCluster) RemoveNode(id string, graceful bool) error {
 			return err
 		}
 	}
-	if _, err := c.api.RemoveNode(context.Background(), &api.RemoveNodeRequest{NodeID: id, Force: !graceful}); err != nil {
+	if _, err := c.api.RemoveNode(context.Background(), &api.RemoveNodeRequest{NodeId: id, Force: !graceful}); err != nil {
 		return fmt.Errorf("remove node: %v", err)
 	}
 	return nil
@@ -274,10 +274,10 @@ func (c *testCluster) SetNodeRole(id string, role api.NodeRole) error {
 	if !ok {
 		return fmt.Errorf("set node role: node %s not found", id)
 	}
-	if node.IsManager() && role == api.NodeRoleManager {
+	if node.IsManager() && role == api.NodeRole_MANAGER {
 		return fmt.Errorf("node is already manager")
 	}
-	if !node.IsManager() && role == api.NodeRoleWorker {
+	if !node.IsManager() && role == api.NodeRole_WORKER {
 		return fmt.Errorf("node is already worker")
 	}
 
@@ -286,16 +286,16 @@ func (c *testCluster) SetNodeRole(id string, role api.NodeRole) error {
 	for range 5 {
 		time.Sleep(initialTimeout)
 		initialTimeout += 500 * time.Millisecond
-		resp, err := c.api.GetNode(context.Background(), &api.GetNodeRequest{NodeID: id})
+		resp, err := c.api.GetNode(context.Background(), &api.GetNodeRequest{NodeId: id})
 		if err != nil {
 			return err
 		}
 		spec := resp.Node.Spec.Copy()
 		spec.DesiredRole = role
 		if _, err := c.api.UpdateNode(context.Background(), &api.UpdateNodeRequest{
-			NodeID:      id,
+			NodeId:      id,
 			Spec:        spec,
-			NodeVersion: &resp.Node.Meta.Version,
+			NodeVersion: resp.Node.Meta.Version,
 		}); err != nil {
 			// there possible problems on calling update node because redirecting
 			// node or leader might want to shut down
@@ -304,7 +304,7 @@ func (c *testCluster) SetNodeRole(id string, role api.NodeRole) error {
 			}
 			return err
 		}
-		if role == api.NodeRoleManager {
+		if role == api.NodeRole_MANAGER {
 			// wait to become manager
 			return testutils.PollFuncWithTimeout(nil, func() error {
 				if !node.IsManager() {
@@ -358,12 +358,12 @@ func (c *testCluster) RotateRootCA(cert, key []byte) error {
 			return err
 		}
 		newSpec := clusterInfo.Spec.Copy()
-		newSpec.CAConfig.SigningCACert = cert
-		newSpec.CAConfig.SigningCAKey = key
+		newSpec.CaConfig.SigningCaCert = cert
+		newSpec.CaConfig.SigningCaKey = key
 		_, err = c.api.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
-			ClusterID:      clusterInfo.ID,
+			ClusterId:      clusterInfo.Id,
 			Spec:           newSpec,
-			ClusterVersion: &clusterInfo.Meta.Version,
+			ClusterVersion: clusterInfo.Meta.Version,
 		})
 		return err
 	}, opsTimeout)
@@ -377,10 +377,10 @@ func (c *testCluster) RotateUnlockKey() error {
 			return err
 		}
 		_, err = c.api.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
-			ClusterID:      clusterInfo.ID,
-			Spec:           &clusterInfo.Spec,
-			ClusterVersion: &clusterInfo.Meta.Version,
-			Rotation: api.KeyRotation{
+			ClusterId:      clusterInfo.Id,
+			Spec:           clusterInfo.Spec,
+			ClusterVersion: clusterInfo.Meta.Version,
+			Rotation: &api.KeyRotation{
 				ManagerUnlockKey: true,
 			},
 		})
@@ -398,9 +398,9 @@ func (c *testCluster) AutolockManagers(autolock bool) error {
 		newSpec := clusterInfo.Spec.Copy()
 		newSpec.EncryptionConfig.AutoLockManagers = autolock
 		_, err = c.api.UpdateCluster(context.Background(), &api.UpdateClusterRequest{
-			ClusterID:      clusterInfo.ID,
+			ClusterId:      clusterInfo.Id,
 			Spec:           newSpec,
-			ClusterVersion: &clusterInfo.Meta.Version,
+			ClusterVersion: clusterInfo.Meta.Version,
 		})
 		return err
 	}, opsTimeout)

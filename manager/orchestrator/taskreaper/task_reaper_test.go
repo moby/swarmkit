@@ -12,13 +12,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/replicated"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/testutils"
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 )
 
 // TestTaskReaperInit tests that the task reaper correctly cleans up tasks when
@@ -32,11 +32,11 @@ func TestTaskReaperInit(t *testing.T) {
 
 	// Create the basic cluster with precooked tasks we need for the taskreaper
 	cluster := &api.Cluster{
-		Spec: api.ClusterSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ClusterSpec{
+			Annotations: &api.Annotations{
 				Name: store.DefaultClusterName,
 			},
-			Orchestration: api.OrchestrationConfig{
+			Orchestration: &api.OrchestrationConfig{
 				TaskHistoryRetentionLimit: 2,
 			},
 		},
@@ -44,12 +44,12 @@ func TestTaskReaperInit(t *testing.T) {
 
 	// this service is alive and active, has no tasks to clean up
 	service := &api.Service{
-		ID: "cleanservice",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "cleanservice",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "cleanservice",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				// the runtime spec isn't looked at and doesn't really need to
 				// be filled in
 				Runtime: &api.TaskSpec_Container{
@@ -66,92 +66,92 @@ func TestTaskReaperInit(t *testing.T) {
 
 	// Two clean tasks, these should not be removed
 	cleantask1 := &api.Task{
-		ID:           "cleantask1",
+		Id:           "cleantask1",
 		Slot:         1,
-		DesiredState: api.TaskStateRunning,
-		Status: api.TaskStatus{
-			State: api.TaskStateRunning,
+		DesiredState: api.TaskState_RUNNING,
+		Status: &api.TaskStatus{
+			State: api.TaskState_RUNNING,
 		},
-		ServiceID: "cleanservice",
+		ServiceId: "cleanservice",
 	}
 
 	cleantask2 := &api.Task{
-		ID:           "cleantask2",
+		Id:           "cleantask2",
 		Slot:         2,
-		DesiredState: api.TaskStateRunning,
-		Status: api.TaskStatus{
-			State: api.TaskStateRunning,
+		DesiredState: api.TaskState_RUNNING,
+		Status: &api.TaskStatus{
+			State: api.TaskState_RUNNING,
 		},
-		ServiceID: "cleanservice",
+		ServiceId: "cleanservice",
 	}
 
 	// this is an old task from when an earlier task failed. It should not be
 	// removed because it's retained history
 	retainedtask := &api.Task{
-		ID:           "retainedtask",
+		Id:           "retainedtask",
 		Slot:         1,
-		DesiredState: api.TaskStateShutdown,
-		Status: api.TaskStatus{
-			State: api.TaskStateFailed,
+		DesiredState: api.TaskState_SHUTDOWN,
+		Status: &api.TaskStatus{
+			State: api.TaskState_FAILED,
 		},
-		ServiceID: "cleanservice",
+		ServiceId: "cleanservice",
 	}
 
 	// This is a removed task after cleanservice was scaled down
 	removedtask := &api.Task{
-		ID:           "removedtask",
+		Id:           "removedtask",
 		Slot:         3,
-		DesiredState: api.TaskStateRemove,
-		Status: api.TaskStatus{
-			State: api.TaskStateShutdown,
+		DesiredState: api.TaskState_REMOVE,
+		Status: &api.TaskStatus{
+			State: api.TaskState_SHUTDOWN,
 		},
-		ServiceID: "cleanservice",
+		ServiceId: "cleanservice",
 	}
 
 	// some tasks belonging to a service that does not exist.
 	// this first one is sitll running and should not be cleaned up
 	terminaltask1 := &api.Task{
-		ID:           "terminaltask1",
+		Id:           "terminaltask1",
 		Slot:         1,
-		DesiredState: api.TaskStateRemove,
-		Status: api.TaskStatus{
-			State: api.TaskStateRunning,
+		DesiredState: api.TaskState_REMOVE,
+		Status: &api.TaskStatus{
+			State: api.TaskState_RUNNING,
 		},
-		ServiceID: "goneservice",
+		ServiceId: "goneservice",
 	}
 
 	// this second task is shutdown, and can be cleaned up
 	terminaltask2 := &api.Task{
-		ID:           "terminaltask2",
+		Id:           "terminaltask2",
 		Slot:         2,
-		DesiredState: api.TaskStateRemove,
-		Status: api.TaskStatus{
+		DesiredState: api.TaskState_REMOVE,
+		Status: &api.TaskStatus{
 			// use COMPLETE because it's the earliest terminal state
-			State: api.TaskStateCompleted,
+			State: api.TaskState_COMPLETE,
 		},
-		ServiceID: "goneservice",
+		ServiceId: "goneservice",
 	}
 
 	// this third task was never assigned, and should be removed
 	earlytask1 := &api.Task{
-		ID:           "earlytask1",
+		Id:           "earlytask1",
 		Slot:         3,
-		DesiredState: api.TaskStateRemove,
-		Status: api.TaskStatus{
-			State: api.TaskStatePending,
+		DesiredState: api.TaskState_REMOVE,
+		Status: &api.TaskStatus{
+			State: api.TaskState_PENDING,
 		},
-		ServiceID: "goneservice",
+		ServiceId: "goneservice",
 	}
 
 	// this fourth task was never assigned, and should be removed
 	earlytask2 := &api.Task{
-		ID:           "earlytask2",
+		Id:           "earlytask2",
 		Slot:         4,
-		DesiredState: api.TaskStateRemove,
-		Status: api.TaskStatus{
-			State: api.TaskStateNew,
+		DesiredState: api.TaskState_REMOVE,
+		Status: &api.TaskStatus{
+			State: api.TaskState_NEW,
 		},
-		ServiceID: "goneservice",
+		ServiceId: "goneservice",
 	}
 
 	err := s.Update(func(tx store.Tx) error {
@@ -209,12 +209,12 @@ func TestTaskHistory(t *testing.T) {
 
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
-			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Id: identity.NewID(),
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
-				Orchestration: api.OrchestrationConfig{
+				Orchestration: &api.OrchestrationConfig{
 					TaskHistoryRetentionLimit: 2,
 				},
 			},
@@ -235,9 +235,9 @@ func TestTaskHistory(t *testing.T) {
 	// starts up.
 	err := s.Update(func(tx store.Tx) error {
 		j1 := &api.Service{
-			ID: "id1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Id: "id1",
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 				Mode: &api.ServiceSpec_Replicated{
@@ -245,10 +245,10 @@ func TestTaskHistory(t *testing.T) {
 						Replicas: 2,
 					},
 				},
-				Task: api.TaskSpec{
+				Task: &api.TaskSpec{
 					Restart: &api.RestartPolicy{
-						Condition: api.RestartOnAny,
-						Delay:     gogotypes.DurationProto(0),
+						Condition: api.RestartPolicy_ANY,
+						Delay:     durationpb.New(0),
 					},
 				},
 			},
@@ -265,20 +265,20 @@ func TestTaskHistory(t *testing.T) {
 	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, observedTask1.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask1.GetServiceAnnotations().GetName(), "name1")
 
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, observedTask2.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask2.GetServiceAnnotations().GetName(), "name1")
 
 	// Fail both tasks. They should both get restarted.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status.State = api.TaskStateFailed
-	updatedTask1.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask1.Status.State = api.TaskState_FAILED
+	updatedTask1.ServiceAnnotations = &api.Annotations{Name: "original"}
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status.State = api.TaskStateFailed
-	updatedTask2.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask2.Status.State = api.TaskState_FAILED
+	updatedTask2.ServiceAnnotations = &api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
@@ -292,20 +292,20 @@ func TestTaskHistory(t *testing.T) {
 
 	testutils.Expect(t, watch, api.EventUpdateTask{})
 	observedTask3 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask3.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, observedTask3.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask3.GetServiceAnnotations().GetName(), "name1")
 
 	testutils.Expect(t, watch, api.EventUpdateTask{})
 	observedTask4 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask4.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, observedTask4.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask4.GetServiceAnnotations().GetName(), "name1")
 
 	// Fail these replacement tasks. Since TaskHistory is set to 2, this
 	// should cause the oldest tasks for each instance to get deleted.
 	updatedTask3 := observedTask3.Copy()
-	updatedTask3.Status.State = api.TaskStateFailed
+	updatedTask3.Status.State = api.TaskState_FAILED
 	updatedTask4 := observedTask4.Copy()
-	updatedTask4.Status.State = api.TaskStateFailed
+	updatedTask4.Status.State = api.TaskState_FAILED
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask3))
 		assert.NoError(t, store.UpdateTask(tx, updatedTask4))
@@ -315,10 +315,10 @@ func TestTaskHistory(t *testing.T) {
 	deletedTask1 := testutils.WatchTaskDelete(t, watch)
 	deletedTask2 := testutils.WatchTaskDelete(t, watch)
 
-	assert.Equal(t, api.TaskStateFailed, deletedTask1.Status.State)
-	assert.Equal(t, "original", deletedTask1.ServiceAnnotations.Name)
-	assert.Equal(t, api.TaskStateFailed, deletedTask2.Status.State)
-	assert.Equal(t, "original", deletedTask2.ServiceAnnotations.Name)
+	assert.Equal(t, api.TaskState_FAILED, deletedTask1.Status.GetState())
+	assert.Equal(t, "original", deletedTask1.GetServiceAnnotations().GetName())
+	assert.Equal(t, api.TaskState_FAILED, deletedTask2.Status.GetState())
+	assert.Equal(t, "original", deletedTask2.GetServiceAnnotations().GetName())
 
 	var foundTasks []*api.Task
 	s.View(func(tx store.ReadTx) {
@@ -340,12 +340,12 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
-			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Id: identity.NewID(),
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
-				Orchestration: api.OrchestrationConfig{
+				Orchestration: &api.OrchestrationConfig{
 					// set TaskHistoryRetentionLimit to a negative value, so
 					// that it is not considered in this test
 					TaskHistoryRetentionLimit: -1,
@@ -365,9 +365,9 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 	defer cancel()
 
 	service1 := &api.Service{
-		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -375,10 +375,10 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 					Replicas: 2,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(0),
+					Condition: api.RestartPolicy_ANY,
+					Delay:     durationpb.New(0),
 				},
 			},
 		},
@@ -398,20 +398,20 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, observedTask1.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask1.GetServiceAnnotations().GetName(), "name1")
 
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, observedTask2.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask2.GetServiceAnnotations().GetName(), "name1")
 
 	// Set both tasks to RUNNING, so the service is successfully running
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status.State = api.TaskStateRunning
-	updatedTask1.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask1.Status.State = api.TaskState_RUNNING
+	updatedTask1.ServiceAnnotations = &api.Annotations{Name: "original"}
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status.State = api.TaskStateRunning
-	updatedTask2.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask2.Status.State = api.TaskState_RUNNING
+	updatedTask2.ServiceAnnotations = &api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
@@ -432,15 +432,15 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 	})
 
 	observedTask3 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask3.DesiredState, api.TaskStateRemove)
-	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "original")
+	assert.Equal(t, observedTask3.DesiredState, api.TaskState_REMOVE)
+	assert.Equal(t, observedTask3.GetServiceAnnotations().GetName(), "original")
 
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	// Now the task for which desired state was set to REMOVE must be deleted by the task reaper.
 	// Shut this task down first (simulates shut down by agent)
 	updatedTask3 := observedTask3.Copy()
-	updatedTask3.Status.State = api.TaskStateShutdown
+	updatedTask3.Status.State = api.TaskState_SHUTDOWN
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask3))
 		return nil
@@ -448,8 +448,8 @@ func TestTaskStateRemoveOnScaledown(t *testing.T) {
 
 	deletedTask1 := testutils.WatchTaskDelete(t, watch)
 
-	assert.Equal(t, api.TaskStateShutdown, deletedTask1.Status.State)
-	assert.Equal(t, "original", deletedTask1.ServiceAnnotations.Name)
+	assert.Equal(t, api.TaskState_SHUTDOWN, deletedTask1.Status.GetState())
+	assert.Equal(t, "original", deletedTask1.GetServiceAnnotations().GetName())
 
 	var foundTasks []*api.Task
 	s.View(func(tx store.ReadTx) {
@@ -471,12 +471,12 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
-			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Id: identity.NewID(),
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
-				Orchestration: api.OrchestrationConfig{
+				Orchestration: &api.OrchestrationConfig{
 					// set TaskHistoryRetentionLimit to a negative value, so
 					// that it is not considered in this test
 					TaskHistoryRetentionLimit: -1,
@@ -495,9 +495,9 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	defer cancel()
 
 	service1 := &api.Service{
-		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -505,10 +505,10 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 					Replicas: 2,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Restart: &api.RestartPolicy{
-					Condition: api.RestartOnAny,
-					Delay:     gogotypes.DurationProto(0),
+					Condition: api.RestartPolicy_ANY,
+					Delay:     durationpb.New(0),
 				},
 			},
 		},
@@ -530,20 +530,20 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask1.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, observedTask1.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask1.GetServiceAnnotations().GetName(), "name1")
 
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, observedTask2.Status.State, api.TaskStateNew)
-	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, observedTask2.Status.GetState(), api.TaskState_NEW)
+	assert.Equal(t, observedTask2.GetServiceAnnotations().GetName(), "name1")
 
 	// Set both tasks to RUNNING, so the service is successfully running
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status.State = api.TaskStateRunning
-	updatedTask1.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask1.Status.State = api.TaskState_RUNNING
+	updatedTask1.ServiceAnnotations = &api.Annotations{Name: "original"}
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status.State = api.TaskStateRunning
-	updatedTask2.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask2.Status.State = api.TaskState_RUNNING
+	updatedTask2.ServiceAnnotations = &api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
@@ -557,25 +557,25 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 
 	// Delete the service. This should trigger both the task desired statuses to be set to REMOVE.
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteService(tx, service1.ID))
+		assert.NoError(t, store.DeleteService(tx, service1.Id))
 		return nil
 	})
 
 	observedTask3 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask3.DesiredState, api.TaskStateRemove)
-	assert.Equal(t, observedTask3.ServiceAnnotations.Name, "original")
+	assert.Equal(t, observedTask3.DesiredState, api.TaskState_REMOVE)
+	assert.Equal(t, observedTask3.GetServiceAnnotations().GetName(), "original")
 	observedTask4 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, observedTask4.DesiredState, api.TaskStateRemove)
-	assert.Equal(t, observedTask4.ServiceAnnotations.Name, "original")
+	assert.Equal(t, observedTask4.DesiredState, api.TaskState_REMOVE)
+	assert.Equal(t, observedTask4.GetServiceAnnotations().GetName(), "original")
 
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	// Now the tasks must be deleted by the task reaper.
 	// Shut them down first (simulates shut down by agent)
 	updatedTask3 := observedTask3.Copy()
-	updatedTask3.Status.State = api.TaskStateShutdown
+	updatedTask3.Status.State = api.TaskState_SHUTDOWN
 	updatedTask4 := observedTask4.Copy()
-	updatedTask4.Status.State = api.TaskStateShutdown
+	updatedTask4.Status.State = api.TaskState_SHUTDOWN
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask3))
 		assert.NoError(t, store.UpdateTask(tx, updatedTask4))
@@ -583,12 +583,12 @@ func TestTaskStateRemoveOnServiceRemoval(t *testing.T) {
 	})
 
 	deletedTask1 := testutils.WatchTaskDelete(t, watch)
-	assert.Equal(t, api.TaskStateShutdown, deletedTask1.Status.State)
-	assert.Equal(t, "original", deletedTask1.ServiceAnnotations.Name)
+	assert.Equal(t, api.TaskState_SHUTDOWN, deletedTask1.Status.GetState())
+	assert.Equal(t, "original", deletedTask1.GetServiceAnnotations().GetName())
 
 	deletedTask2 := testutils.WatchTaskDelete(t, watch)
-	assert.Equal(t, api.TaskStateShutdown, deletedTask2.Status.State)
-	assert.Equal(t, "original", deletedTask1.ServiceAnnotations.Name)
+	assert.Equal(t, api.TaskState_SHUTDOWN, deletedTask2.Status.GetState())
+	assert.Equal(t, "original", deletedTask1.GetServiceAnnotations().GetName())
 
 	var foundTasks []*api.Task
 	s.View(func(tx store.ReadTx) {
@@ -608,12 +608,12 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
-			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Id: identity.NewID(),
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
-				Orchestration: api.OrchestrationConfig{
+				Orchestration: &api.OrchestrationConfig{
 					// set TaskHistoryRetentionLimit to a negative value, so
 					// that it is not considered in this test
 					TaskHistoryRetentionLimit: -1,
@@ -632,9 +632,9 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	defer cancel()
 
 	service1 := &api.Service{
-		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -642,11 +642,11 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 					Replicas: 2,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Restart: &api.RestartPolicy{
 					// Turn off restart to get an accurate count on tasks.
-					Condition: api.RestartOnNone,
-					Delay:     gogotypes.DurationProto(0),
+					Condition: api.RestartPolicy_NONE,
+					Delay:     durationpb.New(0),
 				},
 			},
 		},
@@ -668,20 +668,20 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, api.TaskStateNew, observedTask1.Status.State)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, api.TaskState_NEW, observedTask1.Status.GetState())
+	assert.Equal(t, observedTask1.GetServiceAnnotations().GetName(), "name1")
 
 	observedTask2 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, api.TaskStateNew, observedTask2.Status.State)
-	assert.Equal(t, observedTask2.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, api.TaskState_NEW, observedTask2.Status.GetState())
+	assert.Equal(t, observedTask2.GetServiceAnnotations().GetName(), "name1")
 
 	// Set both task states to RUNNING.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status.State = api.TaskStateRunning
-	updatedTask1.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask1.Status.State = api.TaskState_RUNNING
+	updatedTask1.ServiceAnnotations = &api.Annotations{Name: "original"}
 	updatedTask2 := observedTask2.Copy()
-	updatedTask2.Status.State = api.TaskStateRunning
-	updatedTask2.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask2.Status.State = api.TaskState_RUNNING
+	updatedTask2.ServiceAnnotations = &api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		assert.NoError(t, store.UpdateTask(tx, updatedTask2))
@@ -696,13 +696,13 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 
 	// Set both tasks to COMPLETED.
 	updatedTask3 := observedTask1.Copy()
-	updatedTask3.DesiredState = api.TaskStateCompleted
-	updatedTask3.Status.State = api.TaskStateCompleted
-	updatedTask3.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask3.DesiredState = api.TaskState_COMPLETE
+	updatedTask3.Status.State = api.TaskState_COMPLETE
+	updatedTask3.ServiceAnnotations = &api.Annotations{Name: "original"}
 	updatedTask4 := observedTask2.Copy()
-	updatedTask4.DesiredState = api.TaskStateCompleted
-	updatedTask4.Status.State = api.TaskStateCompleted
-	updatedTask4.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask4.DesiredState = api.TaskState_COMPLETE
+	updatedTask4.Status.State = api.TaskState_COMPLETE
+	updatedTask4.ServiceAnnotations = &api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask3))
 		assert.NoError(t, store.UpdateTask(tx, updatedTask4))
@@ -712,37 +712,37 @@ func TestServiceRemoveDeadTasks(t *testing.T) {
 
 	// Verify state is set to COMPLETED
 	observedTask3 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, api.TaskStateCompleted, observedTask3.Status.State)
-	assert.Equal(t, "original", observedTask3.ServiceAnnotations.Name)
+	assert.Equal(t, api.TaskState_COMPLETE, observedTask3.Status.GetState())
+	assert.Equal(t, "original", observedTask3.GetServiceAnnotations().GetName())
 	observedTask4 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, api.TaskStateCompleted, observedTask4.Status.State)
-	assert.Equal(t, "original", observedTask4.ServiceAnnotations.Name)
+	assert.Equal(t, api.TaskState_COMPLETE, observedTask4.Status.GetState())
+	assert.Equal(t, "original", observedTask4.GetServiceAnnotations().GetName())
 
 	// Delete the service.
 	err = s.Update(func(tx store.Tx) error {
-		assert.NoError(t, store.DeleteService(tx, service1.ID))
+		assert.NoError(t, store.DeleteService(tx, service1.Id))
 		return nil
 	})
 
 	// Service delete should trigger both the task desired statuses
 	// to be set to REMOVE.
 	observedTask3 = testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, api.TaskStateRemove, observedTask3.DesiredState)
-	assert.Equal(t, "original", observedTask3.ServiceAnnotations.Name)
+	assert.Equal(t, api.TaskState_REMOVE, observedTask3.DesiredState)
+	assert.Equal(t, "original", observedTask3.GetServiceAnnotations().GetName())
 	observedTask4 = testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, api.TaskStateRemove, observedTask4.DesiredState)
-	assert.Equal(t, "original", observedTask4.ServiceAnnotations.Name)
+	assert.Equal(t, api.TaskState_REMOVE, observedTask4.DesiredState)
+	assert.Equal(t, "original", observedTask4.GetServiceAnnotations().GetName())
 
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	// Task reaper should see the event updates for desired state update
 	// to REMOVE and should deleted by the reaper.
 	deletedTask1 := testutils.WatchTaskDelete(t, watch)
-	assert.Equal(t, api.TaskStateCompleted, deletedTask1.Status.State)
-	assert.Equal(t, "original", deletedTask1.ServiceAnnotations.Name)
+	assert.Equal(t, api.TaskState_COMPLETE, deletedTask1.Status.GetState())
+	assert.Equal(t, "original", deletedTask1.GetServiceAnnotations().GetName())
 	deletedTask2 := testutils.WatchTaskDelete(t, watch)
-	assert.Equal(t, api.TaskStateCompleted, deletedTask2.Status.State)
-	assert.Equal(t, "original", deletedTask2.ServiceAnnotations.Name)
+	assert.Equal(t, api.TaskState_COMPLETE, deletedTask2.Status.GetState())
+	assert.Equal(t, "original", deletedTask2.GetServiceAnnotations().GetName())
 
 	var foundTasks []*api.Task
 	s.View(func(tx store.ReadTx) {
@@ -771,24 +771,24 @@ func TestTaskReaperBatching(t *testing.T) {
 		// we need a cluster object, because we need to set the retention limit
 		// to a low value
 		assert.NoError(t, store.CreateCluster(tx, &api.Cluster{
-			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Id: identity.NewID(),
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
-				Orchestration: api.OrchestrationConfig{
+				Orchestration: &api.OrchestrationConfig{
 					TaskHistoryRetentionLimit: 1,
 				},
 			},
 		}))
 
 		task1 = &api.Task{
-			ID:           "foo",
-			ServiceID:    "bar",
+			Id:           "foo",
+			ServiceId:    "bar",
 			Slot:         0,
-			DesiredState: api.TaskStateShutdown,
-			Status: api.TaskStatus{
-				State: api.TaskStateShutdown,
+			DesiredState: api.TaskState_SHUTDOWN,
+			Status: &api.TaskStatus{
+				State: api.TaskState_SHUTDOWN,
 			},
 		}
 		// we need to create all of the tasks used in this test, because we'll
@@ -796,12 +796,12 @@ func TestTaskReaperBatching(t *testing.T) {
 		assert.NoError(t, store.CreateTask(tx, task1))
 
 		task2 = &api.Task{
-			ID:           "foo2",
-			ServiceID:    "bar",
+			Id:           "foo2",
+			ServiceId:    "bar",
 			Slot:         1,
-			DesiredState: api.TaskStateShutdown,
-			Status: api.TaskStatus{
-				State: api.TaskStateShutdown,
+			DesiredState: api.TaskState_SHUTDOWN,
+			Status: &api.TaskStatus{
+				State: api.TaskState_SHUTDOWN,
 			},
 		}
 		assert.NoError(t, store.CreateTask(tx, task2))
@@ -809,14 +809,14 @@ func TestTaskReaperBatching(t *testing.T) {
 		tasks = make([]*api.Task, maxDirty+1)
 		for i := range maxDirty + 1 {
 			tasks[i] = &api.Task{
-				ID:        fmt.Sprintf("baz%v", i),
-				ServiceID: "bar",
+				Id:        fmt.Sprintf("baz%v", i),
+				ServiceId: "bar",
 				// every task in a different slot, so they don't get cleaned up
 				// based on exceeding the retention limit
 				Slot:         uint64(i),
-				DesiredState: api.TaskStateShutdown,
-				Status: api.TaskStatus{
-					State: api.TaskStateShutdown,
+				DesiredState: api.TaskState_SHUTDOWN,
+				Status: &api.TaskStatus{
+					State: api.TaskState_SHUTDOWN,
 				},
 			}
 			if err := store.CreateTask(tx, tasks[i]); err != nil {
@@ -825,12 +825,12 @@ func TestTaskReaperBatching(t *testing.T) {
 		}
 
 		task3 = &api.Task{
-			ID:           "foo3",
-			ServiceID:    "bar",
+			Id:           "foo3",
+			ServiceId:    "bar",
 			Slot:         2,
-			DesiredState: api.TaskStateShutdown,
-			Status: api.TaskStatus{
-				State: api.TaskStateShutdown,
+			DesiredState: api.TaskState_SHUTDOWN,
+			Status: &api.TaskStatus{
+				State: api.TaskState_SHUTDOWN,
 			},
 		}
 		assert.NoError(t, store.CreateTask(tx, task3))
@@ -855,7 +855,7 @@ func TestTaskReaperBatching(t *testing.T) {
 
 	// update task1 to die
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		task1.DesiredState = api.TaskStateRemove
+		task1.DesiredState = api.TaskState_REMOVE
 		return store.UpdateTask(tx, task1)
 	}))
 
@@ -876,7 +876,7 @@ func TestTaskReaperBatching(t *testing.T) {
 
 	// now make sure we'll tick again if we update another task to die
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		task2.DesiredState = api.TaskStateRemove
+		task2.DesiredState = api.TaskState_REMOVE
 		return store.UpdateTask(tx, task2)
 	}))
 
@@ -899,7 +899,7 @@ func TestTaskReaperBatching(t *testing.T) {
 	// and no more
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		for _, task := range tasks {
-			task.DesiredState = api.TaskStateRemove
+			task.DesiredState = api.TaskState_REMOVE
 			assert.NoError(t, store.UpdateTask(tx, task))
 		}
 		return nil
@@ -926,7 +926,7 @@ func TestTaskReaperBatching(t *testing.T) {
 	// now before we wrap up, make sure the task reaper still works off the
 	// timer
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
-		task3.DesiredState = api.TaskStateRemove
+		task3.DesiredState = api.TaskState_REMOVE
 		return store.UpdateTask(tx, task3)
 	}))
 
@@ -954,12 +954,12 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 
 	assert.NoError(t, s.Update(func(tx store.Tx) error {
 		store.CreateCluster(tx, &api.Cluster{
-			ID: identity.NewID(),
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Id: identity.NewID(),
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: store.DefaultClusterName,
 				},
-				Orchestration: api.OrchestrationConfig{
+				Orchestration: &api.OrchestrationConfig{
 					// set TaskHistoryRetentionLimit to a negative value, so
 					// that tasks are cleaned up right away.
 					TaskHistoryRetentionLimit: 1,
@@ -978,9 +978,9 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 	defer cancel()
 
 	service1 := &api.Service{
-		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -988,11 +988,11 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 					Replicas: 1,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Restart: &api.RestartPolicy{
 					// Turn off restart to get an accurate count on tasks.
-					Condition: api.RestartOnNone,
-					Delay:     gogotypes.DurationProto(0),
+					Condition: api.RestartPolicy_NONE,
+					Delay:     durationpb.New(0),
 				},
 			},
 		},
@@ -1014,13 +1014,13 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 	testutils.EnsureRuns(func() { taskReaper.Run(ctx) })
 
 	observedTask1 := testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, api.TaskStateNew, observedTask1.Status.State)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, api.TaskState_NEW, observedTask1.Status.GetState())
+	assert.Equal(t, observedTask1.GetServiceAnnotations().GetName(), "name1")
 
 	// Set the task state to PENDING to simulate allocation.
 	updatedTask1 := observedTask1.Copy()
-	updatedTask1.Status.State = api.TaskStatePending
-	updatedTask1.ServiceAnnotations = api.Annotations{Name: "original"}
+	updatedTask1.Status.State = api.TaskState_PENDING
+	updatedTask1.ServiceAnnotations = &api.Annotations{Name: "original"}
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateTask(tx, updatedTask1))
 		return nil
@@ -1031,7 +1031,7 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 	testutils.Expect(t, watch, api.EventUpdateTask{})
 	testutils.Expect(t, watch, state.EventCommit{})
 
-	service1.Spec.Task.ForceUpdate++
+	service1.Spec.GetTask().ForceUpdate++
 	// This should shutdown the previous task and create a new one.
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.UpdateService(tx, service1))
@@ -1042,19 +1042,19 @@ func TestServiceRemoveUnassignedTasks(t *testing.T) {
 
 	// New task should be created and old task marked for SHUTDOWN.
 	observedTask1 = testutils.WatchTaskCreate(t, watch)
-	assert.Equal(t, api.TaskStateNew, observedTask1.Status.State)
-	assert.Equal(t, observedTask1.ServiceAnnotations.Name, "name1")
+	assert.Equal(t, api.TaskState_NEW, observedTask1.Status.GetState())
+	assert.Equal(t, observedTask1.GetServiceAnnotations().GetName(), "name1")
 
 	observedTask3 := testutils.WatchTaskUpdate(t, watch)
-	assert.Equal(t, api.TaskStateShutdown, observedTask3.DesiredState)
-	assert.Equal(t, "original", observedTask3.ServiceAnnotations.Name)
+	assert.Equal(t, api.TaskState_SHUTDOWN, observedTask3.DesiredState)
+	assert.Equal(t, "original", observedTask3.GetServiceAnnotations().GetName())
 
 	testutils.Expect(t, watch, state.EventCommit{})
 
 	// Task reaper should delete the task previously marked for SHUTDOWN.
 	deletedTask1 := testutils.WatchTaskDelete(t, watch)
-	assert.Equal(t, api.TaskStatePending, deletedTask1.Status.State)
-	assert.Equal(t, "original", deletedTask1.ServiceAnnotations.Name)
+	assert.Equal(t, api.TaskState_PENDING, deletedTask1.Status.GetState())
+	assert.Equal(t, "original", deletedTask1.GetServiceAnnotations().GetName())
 
 	testutils.Expect(t, watch, state.EventCommit{})
 
@@ -1109,9 +1109,9 @@ func TestTick(t *testing.T) {
 
 	// Create a service in the store for the following test cases.
 	service1 := &api.Service{
-		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -1119,11 +1119,11 @@ func TestTick(t *testing.T) {
 					Replicas: 1,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Restart: &api.RestartPolicy{
 					// Turn off restart to get an accurate count on tasks.
-					Condition: api.RestartOnNone,
-					Delay:     gogotypes.DurationProto(0),
+					Condition: api.RestartPolicy_NONE,
+					Delay:     durationpb.New(0),
 				},
 			},
 		},
@@ -1131,9 +1131,9 @@ func TestTick(t *testing.T) {
 
 	// Create another service in the store for the following test cases.
 	service2 := &api.Service{
-		ID: "id2",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id2",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name2",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -1141,11 +1141,11 @@ func TestTick(t *testing.T) {
 					Replicas: 1,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Restart: &api.RestartPolicy{
 					// Turn off restart to get an accurate count on tasks.
-					Condition: api.RestartOnNone,
-					Delay:     gogotypes.DurationProto(0),
+					Condition: api.RestartPolicy_NONE,
+					Delay:     durationpb.New(0),
 				},
 			},
 		},
@@ -1174,27 +1174,27 @@ func TestTick(t *testing.T) {
 
 	// Create tasks for both services in the store.
 	task1 := &api.Task{
-		ID:           "id1task1",
+		Id:           "id1task1",
 		Slot:         1,
-		DesiredState: api.TaskStateShutdown,
-		Status: api.TaskStatus{
-			State: api.TaskStateShutdown,
+		DesiredState: api.TaskState_SHUTDOWN,
+		Status: &api.TaskStatus{
+			State: api.TaskState_SHUTDOWN,
 		},
-		ServiceID: "id1",
-		ServiceAnnotations: api.Annotations{
+		ServiceId: "id1",
+		ServiceAnnotations: &api.Annotations{
 			Name: "name1",
 		},
 	}
 
 	task2 := &api.Task{
-		ID:           "id2task1",
+		Id:           "id2task1",
 		Slot:         1,
-		DesiredState: api.TaskStateShutdown,
-		Status: api.TaskStatus{
-			State: api.TaskStateShutdown,
+		DesiredState: api.TaskState_SHUTDOWN,
+		Status: &api.TaskStatus{
+			State: api.TaskState_SHUTDOWN,
 		},
-		ServiceID: "id2",
-		ServiceAnnotations: api.Annotations{
+		ServiceId: "id2",
+		ServiceAnnotations: &api.Annotations{
 			Name: "name2",
 		},
 	}
@@ -1219,12 +1219,12 @@ func TestTick(t *testing.T) {
 	// Now test that tick() function cleans up the old tasks from the store.
 
 	// Create new tasks in the store for the same slots to simulate service update.
-	task1.Status.State = api.TaskStateNew
-	task1.DesiredState = api.TaskStateRunning
-	task1.ID = "id1task2"
-	task2.Status.State = api.TaskStateNew
-	task2.DesiredState = api.TaskStateRunning
-	task2.ID = "id2task2"
+	task1.Status.State = api.TaskState_NEW
+	task1.DesiredState = api.TaskState_RUNNING
+	task1.Id = "id1task2"
+	task2.Status.State = api.TaskState_NEW
+	task2.DesiredState = api.TaskState_RUNNING
+	task2.Id = "id2task2"
 	err = s.Update(func(tx store.Tx) error {
 		assert.NoError(t, store.CreateTask(tx, task1))
 		assert.NoError(t, store.CreateTask(tx, task2))
@@ -1242,16 +1242,16 @@ func TestTick(t *testing.T) {
 	assert.Zero(t, len(taskReaper.dirty))
 	// Task reaper should delete the task previously marked for SHUTDOWN.
 	deletedTask1 := testutils.WatchTaskDelete(t, watch)
-	assert.Equal(t, api.TaskStateShutdown, deletedTask1.Status.State)
-	assert.Equal(t, api.TaskStateShutdown, deletedTask1.DesiredState)
-	assert.True(t, deletedTask1.ServiceAnnotations.Name == "name1" ||
-		deletedTask1.ServiceAnnotations.Name == "name2")
+	assert.Equal(t, api.TaskState_SHUTDOWN, deletedTask1.Status.GetState())
+	assert.Equal(t, api.TaskState_SHUTDOWN, deletedTask1.DesiredState)
+	assert.True(t, deletedTask1.GetServiceAnnotations().GetName() == "name1" ||
+		deletedTask1.GetServiceAnnotations().GetName() == "name2")
 
 	deletedTask2 := testutils.WatchTaskDelete(t, watch)
-	assert.Equal(t, api.TaskStateShutdown, deletedTask2.Status.State)
-	assert.Equal(t, api.TaskStateShutdown, deletedTask2.DesiredState)
-	assert.True(t, deletedTask1.ServiceAnnotations.Name == "name1" ||
-		deletedTask1.ServiceAnnotations.Name == "name2")
+	assert.Equal(t, api.TaskState_SHUTDOWN, deletedTask2.Status.GetState())
+	assert.Equal(t, api.TaskState_SHUTDOWN, deletedTask2.DesiredState)
+	assert.True(t, deletedTask1.GetServiceAnnotations().GetName() == "name1" ||
+		deletedTask1.GetServiceAnnotations().GetName() == "name2")
 }
 
 // TestTickHistoryCleanup tests the condition the task reaper
@@ -1264,9 +1264,9 @@ func TestTickHistoryCleanup(t *testing.T) {
 	defer s.Close()
 	// Create a service.
 	service1 := &api.Service{
-		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -1274,11 +1274,11 @@ func TestTickHistoryCleanup(t *testing.T) {
 					Replicas: 1,
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Restart: &api.RestartPolicy{
 					// Turn off restart to get an accurate count on tasks.
-					Condition: api.RestartOnNone,
-					Delay:     gogotypes.DurationProto(0),
+					Condition: api.RestartPolicy_NONE,
+					Delay:     durationpb.New(0),
 				},
 			},
 		},
@@ -1305,14 +1305,14 @@ func TestTickHistoryCleanup(t *testing.T) {
 		if task == nil {
 			// create task3
 			task3 := &api.Task{
-				ID:           "id1task3",
+				Id:           "id1task3",
 				Slot:         1,
 				DesiredState: desiredState,
-				Status: api.TaskStatus{
+				Status: &api.TaskStatus{
 					State: actualState,
 				},
-				ServiceID: "id1",
-				ServiceAnnotations: api.Annotations{
+				ServiceId: "id1",
+				ServiceAnnotations: &api.Annotations{
 					Name: "name1",
 				},
 			}
@@ -1336,10 +1336,10 @@ func TestTickHistoryCleanup(t *testing.T) {
 	// Function to verify task was deleted.
 	waitForTaskDelete := func(desiredState api.TaskState, actualState api.TaskState) {
 		deletedTask1 := testutils.WatchTaskDelete(t, watch)
-		assert.Equal(t, actualState, deletedTask1.Status.State)
+		assert.Equal(t, actualState, deletedTask1.Status.GetState())
 		assert.Equal(t, desiredState, deletedTask1.DesiredState)
-		assert.Equal(t, "name1", deletedTask1.ServiceAnnotations.Name)
-		assert.Equal(t, "id1task3", deletedTask1.ID)
+		assert.Equal(t, "name1", deletedTask1.GetServiceAnnotations().GetName())
+		assert.Equal(t, "id1task3", deletedTask1.Id)
 	}
 
 	for _, testcase := range []struct {
@@ -1349,33 +1349,33 @@ func TestTickHistoryCleanup(t *testing.T) {
 		// Flag to indicate whether the task should have been deleted by tick().
 		cleanedUp bool
 	}{
-		{desired: api.TaskStateRunning, actual: api.TaskStateNew, cleanedUp: false},
-		{desired: api.TaskStateRunning, actual: api.TaskStatePending, cleanedUp: false},
-		{desired: api.TaskStateRunning, actual: api.TaskStateAssigned, cleanedUp: false},
-		{desired: api.TaskStateRunning, actual: api.TaskStateAccepted, cleanedUp: false},
-		{desired: api.TaskStateRunning, actual: api.TaskStatePreparing, cleanedUp: false},
-		{desired: api.TaskStateRunning, actual: api.TaskStateReady, cleanedUp: false},
-		{desired: api.TaskStateRunning, actual: api.TaskStateStarting, cleanedUp: false},
-		{desired: api.TaskStateRunning, actual: api.TaskStateRunning, cleanedUp: false},
-		{desired: api.TaskStateRunning, actual: api.TaskStateCompleted, cleanedUp: true},
-		{desired: api.TaskStateRunning, actual: api.TaskStateFailed, cleanedUp: true},
-		{desired: api.TaskStateRunning, actual: api.TaskStateRejected, cleanedUp: true},
-		{desired: api.TaskStateRunning, actual: api.TaskStateRemove, cleanedUp: true},
-		{desired: api.TaskStateRunning, actual: api.TaskStateOrphaned, cleanedUp: true},
+		{desired: api.TaskState_RUNNING, actual: api.TaskState_NEW, cleanedUp: false},
+		{desired: api.TaskState_RUNNING, actual: api.TaskState_PENDING, cleanedUp: false},
+		{desired: api.TaskState_RUNNING, actual: api.TaskState_ASSIGNED, cleanedUp: false},
+		{desired: api.TaskState_RUNNING, actual: api.TaskState_ACCEPTED, cleanedUp: false},
+		{desired: api.TaskState_RUNNING, actual: api.TaskState_PREPARING, cleanedUp: false},
+		{desired: api.TaskState_RUNNING, actual: api.TaskState_READY, cleanedUp: false},
+		{desired: api.TaskState_RUNNING, actual: api.TaskState_STARTING, cleanedUp: false},
+		{desired: api.TaskState_RUNNING, actual: api.TaskState_RUNNING, cleanedUp: false},
+		{desired: api.TaskState_RUNNING, actual: api.TaskState_COMPLETE, cleanedUp: true},
+		{desired: api.TaskState_RUNNING, actual: api.TaskState_FAILED, cleanedUp: true},
+		{desired: api.TaskState_RUNNING, actual: api.TaskState_REJECTED, cleanedUp: true},
+		{desired: api.TaskState_RUNNING, actual: api.TaskState_REMOVE, cleanedUp: true},
+		{desired: api.TaskState_RUNNING, actual: api.TaskState_ORPHANED, cleanedUp: true},
 
-		{desired: api.TaskStateShutdown, actual: api.TaskStateNew, cleanedUp: true},
-		{desired: api.TaskStateShutdown, actual: api.TaskStatePending, cleanedUp: true},
-		{desired: api.TaskStateShutdown, actual: api.TaskStateAssigned, cleanedUp: false},
-		{desired: api.TaskStateShutdown, actual: api.TaskStateAccepted, cleanedUp: false},
-		{desired: api.TaskStateShutdown, actual: api.TaskStatePreparing, cleanedUp: false},
-		{desired: api.TaskStateShutdown, actual: api.TaskStateReady, cleanedUp: false},
-		{desired: api.TaskStateShutdown, actual: api.TaskStateStarting, cleanedUp: false},
-		{desired: api.TaskStateShutdown, actual: api.TaskStateRunning, cleanedUp: false},
-		{desired: api.TaskStateShutdown, actual: api.TaskStateCompleted, cleanedUp: true},
-		{desired: api.TaskStateShutdown, actual: api.TaskStateFailed, cleanedUp: true},
-		{desired: api.TaskStateShutdown, actual: api.TaskStateRejected, cleanedUp: true},
-		{desired: api.TaskStateShutdown, actual: api.TaskStateRemove, cleanedUp: true},
-		{desired: api.TaskStateShutdown, actual: api.TaskStateOrphaned, cleanedUp: true},
+		{desired: api.TaskState_SHUTDOWN, actual: api.TaskState_NEW, cleanedUp: true},
+		{desired: api.TaskState_SHUTDOWN, actual: api.TaskState_PENDING, cleanedUp: true},
+		{desired: api.TaskState_SHUTDOWN, actual: api.TaskState_ASSIGNED, cleanedUp: false},
+		{desired: api.TaskState_SHUTDOWN, actual: api.TaskState_ACCEPTED, cleanedUp: false},
+		{desired: api.TaskState_SHUTDOWN, actual: api.TaskState_PREPARING, cleanedUp: false},
+		{desired: api.TaskState_SHUTDOWN, actual: api.TaskState_READY, cleanedUp: false},
+		{desired: api.TaskState_SHUTDOWN, actual: api.TaskState_STARTING, cleanedUp: false},
+		{desired: api.TaskState_SHUTDOWN, actual: api.TaskState_RUNNING, cleanedUp: false},
+		{desired: api.TaskState_SHUTDOWN, actual: api.TaskState_COMPLETE, cleanedUp: true},
+		{desired: api.TaskState_SHUTDOWN, actual: api.TaskState_FAILED, cleanedUp: true},
+		{desired: api.TaskState_SHUTDOWN, actual: api.TaskState_REJECTED, cleanedUp: true},
+		{desired: api.TaskState_SHUTDOWN, actual: api.TaskState_REMOVE, cleanedUp: true},
+		{desired: api.TaskState_SHUTDOWN, actual: api.TaskState_ORPHANED, cleanedUp: true},
 	} {
 		testfunc(testcase.desired, testcase.actual)
 		assert.Zero(t, len(taskReaper.dirty))

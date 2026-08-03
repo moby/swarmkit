@@ -13,7 +13,7 @@ import (
 // returned.
 func GetNetwork(ctx context.Context, c api.ControlClient, input string) (*api.Network, error) {
 	// GetService to match via full ID.
-	rg, err := c.GetNetwork(ctx, &api.GetNetworkRequest{NetworkID: input})
+	rg, err := c.GetNetwork(ctx, &api.GetNetworkRequest{NetworkId: input})
 	if err != nil {
 		// If any error (including NotFound), ListServices to match via full name.
 		rl, err := c.ListNetworks(ctx,
@@ -54,7 +54,7 @@ func ResolveServiceNetworks(ctx context.Context, c api.ControlClient, spec *api.
 		}
 
 		networks = append(networks, &api.NetworkAttachmentConfig{
-			Target: n.ID,
+			Target: n.Id,
 		})
 	}
 

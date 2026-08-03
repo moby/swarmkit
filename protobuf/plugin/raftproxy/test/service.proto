@@ -38,6 +38,8 @@ option objc_class_prefix = "RTG";
 
 package routeguide;
 
+option go_package = "github.com/moby/swarmkit/v2/protobuf/plugin/raftproxy/test";
+
 // Interface exported by the server.
 service RouteGuide {
 	// A simple RPC.

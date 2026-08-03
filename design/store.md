@@ -60,10 +60,10 @@ update, and delete objects:
 		t2 := &api.Task{
 			ID: "testTaskID2",
 			Status: api.TaskStatus{
-				State: api.TaskStateNew,
+				State: api.TaskState_NEW,
 			},
 			ServiceID:    "testServiceID2",
-			DesiredState: api.TaskStateRunning,
+			DesiredState: api.TaskState_RUNNING,
 		}
 		return store.CreateTask(tx, t2)
 	})
@@ -94,7 +94,7 @@ Here is an example of a batch operation:
 		for _, n := range nodes {
 			err := batch.Update(func(tx store.Tx) error {
 				// check if node is still here
-				node := store.GetNode(tx, n.ID)
+				node := store.GetNode(tx, n.Id)
 				if node == nil {
 					return nil
 				}
@@ -113,7 +113,7 @@ Here is an example of a batch operation:
 				return nil
 			})
 			if err != nil {
-				log.WithField("node", n.ID).WithError(err).Error(`failed to move node to "unknown" state`)
+				log.WithField("node", n.Id).WithError(err).Error(`failed to move node to "unknown" state`)
 			}
 		}
 		return nil

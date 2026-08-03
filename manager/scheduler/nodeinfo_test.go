@@ -10,7 +10,7 @@ import (
 
 func TestRemoveTask(t *testing.T) {
 	nodeResourceSpec := &api.Resources{
-		NanoCPUs:    100000,
+		NanoCpus:    100000,
 		MemoryBytes: 1000000,
 		Generic: append(
 			genericresource.NewSet("orange", "blue", "red", "green"),
@@ -24,15 +24,15 @@ func TestRemoveTask(t *testing.T) {
 
 	tasks := map[string]*api.Task{
 		"task1": {
-			ID: "task1",
+			Id: "task1",
 		},
 		"task2": {
-			ID: "task2",
+			Id: "task2",
 		},
 	}
 
 	available := api.Resources{
-		NanoCPUs:    100000,
+		NanoCpus:    100000,
 		MemoryBytes: 1000000,
 		Generic: append(
 			genericresource.NewSet("orange", "blue", "red"),
@@ -41,7 +41,7 @@ func TestRemoveTask(t *testing.T) {
 	}
 
 	taskRes := &api.Resources{
-		NanoCPUs:    5000,
+		NanoCpus:    5000,
 		MemoryBytes: 5000,
 		Generic: []*api.GenericResource{
 			genericresource.NewDiscrete("apple", 1),
@@ -50,8 +50,8 @@ func TestRemoveTask(t *testing.T) {
 	}
 
 	task1 := &api.Task{
-		ID: "task1",
-		Spec: api.TaskSpec{
+		Id: "task1",
+		Spec: &api.TaskSpec{
 			Resources: &api.ResourceRequirements{Reservations: taskRes},
 		},
 		AssignedGenericResources: append(
@@ -61,15 +61,15 @@ func TestRemoveTask(t *testing.T) {
 	}
 
 	task3 := &api.Task{
-		ID: "task3",
+		Id: "task3",
 	}
 
 	// nodeInfo has no tasks
-	nodeInfo := newNodeInfo(node, nil, available)
+	nodeInfo := newNodeInfo(node, nil, &available)
 	assert.False(t, nodeInfo.removeTask(task1))
 
 	// nodeInfo's tasks has taskID
-	nodeInfo = newNodeInfo(node, tasks, available)
+	nodeInfo = newNodeInfo(node, tasks, &available)
 	assert.True(t, nodeInfo.removeTask(task1))
 
 	// nodeInfo's tasks has no taskID
@@ -77,10 +77,10 @@ func TestRemoveTask(t *testing.T) {
 
 	nodeAvailableResources := nodeInfo.AvailableResources
 
-	cpuLeft := available.NanoCPUs + taskRes.NanoCPUs
+	cpuLeft := available.NanoCpus + taskRes.NanoCpus
 	memoryLeft := available.MemoryBytes + taskRes.MemoryBytes
 
-	assert.Equal(t, cpuLeft, nodeAvailableResources.NanoCPUs)
+	assert.Equal(t, cpuLeft, nodeAvailableResources.NanoCpus)
 	assert.Equal(t, memoryLeft, nodeAvailableResources.MemoryBytes)
 
 	assert.Equal(t, 4, len(nodeAvailableResources.Generic))
@@ -96,7 +96,7 @@ func TestRemoveTask(t *testing.T) {
 		)
 	}
 
-	assert.Equal(t, int64(6), apples[0].GetDiscreteResourceSpec().Value)
+	assert.Equal(t, int64(6), apples[0].GetDiscreteResourceSpec().GetValue())
 }
 
 func TestAddTask(t *testing.T) {
@@ -104,19 +104,19 @@ func TestAddTask(t *testing.T) {
 
 	tasks := map[string]*api.Task{
 		"task1": {
-			ID: "task1",
+			Id: "task1",
 		},
 		"task2": {
-			ID: "task2",
+			Id: "task2",
 		},
 	}
 
 	task1 := &api.Task{
-		ID: "task1",
+		Id: "task1",
 	}
 
 	available := api.Resources{
-		NanoCPUs:    100000,
+		NanoCpus:    100000,
 		MemoryBytes: 1000000,
 		Generic: append(
 			genericresource.NewSet("orange", "blue", "red"),
@@ -125,7 +125,7 @@ func TestAddTask(t *testing.T) {
 	}
 
 	taskRes := &api.Resources{
-		NanoCPUs:    5000,
+		NanoCpus:    5000,
 		MemoryBytes: 5000,
 		Generic: []*api.GenericResource{
 			genericresource.NewDiscrete("apple", 2),
@@ -134,13 +134,13 @@ func TestAddTask(t *testing.T) {
 	}
 
 	task3 := &api.Task{
-		ID: "task3",
-		Spec: api.TaskSpec{
+		Id: "task3",
+		Spec: &api.TaskSpec{
 			Resources: &api.ResourceRequirements{Reservations: taskRes},
 		},
 	}
 
-	nodeInfo := newNodeInfo(node, tasks, available)
+	nodeInfo := newNodeInfo(node, tasks, &available)
 
 	// add task with ID existing
 	assert.False(t, nodeInfo.addTask(task1))
@@ -154,10 +154,10 @@ func TestAddTask(t *testing.T) {
 	// Check resource consumption of node
 	nodeAvailableResources := nodeInfo.AvailableResources
 
-	cpuLeft := available.NanoCPUs - taskRes.NanoCPUs
+	cpuLeft := available.NanoCpus - taskRes.NanoCpus
 	memoryLeft := available.MemoryBytes - taskRes.MemoryBytes
 
-	assert.Equal(t, cpuLeft, nodeAvailableResources.NanoCPUs)
+	assert.Equal(t, cpuLeft, nodeAvailableResources.NanoCpus)
 	assert.Equal(t, memoryLeft, nodeAvailableResources.MemoryBytes)
 
 	apples := genericresource.GetResource("apple", nodeAvailableResources.Generic)
@@ -167,6 +167,6 @@ func TestAddTask(t *testing.T) {
 
 	o := oranges[0].GetNamedResourceSpec()
 	assert.True(t, o.Value == "blue" || o.Value == "red")
-	assert.Equal(t, int64(3), apples[0].GetDiscreteResourceSpec().Value)
+	assert.Equal(t, int64(3), apples[0].GetDiscreteResourceSpec().GetValue())
 
 }

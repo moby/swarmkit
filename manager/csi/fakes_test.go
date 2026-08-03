@@ -243,9 +243,9 @@ type fakePlugin struct {
 }
 
 func (f *fakePlugin) CreateVolume(ctx context.Context, v *api.Volume) (*api.VolumeInfo, error) {
-	f.volumesCreated[v.ID] = v
+	f.volumesCreated[v.Id] = v
 	return &api.VolumeInfo{
-		VolumeID: fmt.Sprintf("csi_%v", v.ID),
+		VolumeId: fmt.Sprintf("csi_%v", v.Id),
 		VolumeContext: map[string]string{
 			"exists": "yes",
 		},
@@ -254,32 +254,32 @@ func (f *fakePlugin) CreateVolume(ctx context.Context, v *api.Volume) (*api.Volu
 
 func (f *fakePlugin) DeleteVolume(ctx context.Context, v *api.Volume) error {
 	// always append the volume ID, even if we fail, so we know this was called
-	f.volumesDeleted = append(f.volumesDeleted, v.ID)
-	if msg, ok := v.Spec.Annotations.Labels[failDeleteLabel]; ok {
+	f.volumesDeleted = append(f.volumesDeleted, v.Id)
+	if msg, ok := v.GetSpec().GetAnnotations().GetLabels()[failDeleteLabel]; ok {
 		return fmt.Errorf("failing delete: %s", msg)
 	}
 	return nil
 }
 
 func (f *fakePlugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string) (map[string]string, error) {
-	if fail, ok := v.Spec.Annotations.Labels[failPublishLabel]; ok {
+	if fail, ok := v.GetSpec().GetAnnotations().GetLabels()[failPublishLabel]; ok {
 		if strings.Contains(fail, nodeID) {
 			return nil, fmt.Errorf("failing publish on %s since the label is set", nodeID)
 		}
 	}
-	f.volumesPublished[v.ID] = append(f.volumesPublished[v.ID], nodeID)
+	f.volumesPublished[v.Id] = append(f.volumesPublished[v.Id], nodeID)
 	return map[string]string{
 		"faked": "yeah",
 	}, nil
 }
 
 func (f *fakePlugin) UnpublishVolume(ctx context.Context, v *api.Volume, nodeID string) error {
-	if fail, ok := v.Spec.Annotations.Labels[failPublishLabel]; ok {
+	if fail, ok := v.GetSpec().GetAnnotations().GetLabels()[failPublishLabel]; ok {
 		if strings.Contains(fail, nodeID) {
 			return fmt.Errorf("failing unpublish on %s since the label is set", nodeID)
 		}
 	}
-	f.volumesUnpublished[v.ID] = append(f.volumesUnpublished[v.ID], nodeID)
+	f.volumesUnpublished[v.Id] = append(f.volumesUnpublished[v.Id], nodeID)
 	return nil
 }
 

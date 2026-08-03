@@ -31,44 +31,44 @@ var _ = Describe("VolumeEnforcer", func() {
 			// might as well recreate the whole system rigging in case we
 			// change things in the future
 			n = &api.Node{
-				ID: "node",
-				Status: api.NodeStatus{
+				Id: "node",
+				Status: &api.NodeStatus{
 					State: api.NodeStatus_READY,
 				},
 			}
 
 			v = &api.Volume{
-				ID: "volumeID",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Id: "volumeID",
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volume",
 					},
 					Driver: &api.Driver{
 						Name: "driver",
 					},
-					Availability: api.VolumeAvailabilityPause,
+					Availability: api.VolumeSpec_PAUSE,
 				},
 				VolumeInfo: &api.VolumeInfo{
-					VolumeID: "pluginID",
+					VolumeId: "pluginID",
 				},
 				PublishStatus: []*api.VolumePublishStatus{
 					{
-						NodeID: "node",
+						NodeId: "node",
 						State:  api.VolumePublishStatus_PUBLISHED,
 					},
 				},
 			}
 
 			t = &api.Task{
-				ID:     "task",
-				NodeID: "node",
-				Status: api.TaskStatus{
-					State: api.TaskStateRunning,
+				Id:     "task",
+				NodeId: "node",
+				Status: &api.TaskStatus{
+					State: api.TaskState_RUNNING,
 				},
-				DesiredState: api.TaskStateRunning,
+				DesiredState: api.TaskState_RUNNING,
 				Volumes: []*api.VolumeAttachment{
 					{
-						ID:     "volumeID",
+						Id:     "volumeID",
 						Source: "foo",
 						Target: "bar",
 					},
@@ -92,12 +92,12 @@ var _ = Describe("VolumeEnforcer", func() {
 
 			var nt *api.Task
 			s.View(func(tx store.ReadTx) {
-				nt = store.GetTask(tx, t.ID)
+				nt = store.GetTask(tx, t.Id)
 			})
 
 			Expect(nt).ToNot(BeNil())
-			Expect(nt.Status.State).To(Equal(api.TaskStateRunning))
-			Expect(nt.DesiredState).To(Equal(api.TaskStateRunning))
+			Expect(nt.Status.GetState()).To(Equal(api.TaskState_RUNNING))
+			Expect(nt.DesiredState).To(Equal(api.TaskState_RUNNING))
 		})
 
 		When("the Volume availability is DRAIN", func() {
@@ -107,8 +107,8 @@ var _ = Describe("VolumeEnforcer", func() {
 
 			BeforeEach(func() {
 				err := s.Update(func(tx store.Tx) error {
-					nv = store.GetVolume(tx, v.ID)
-					nv.Spec.Availability = api.VolumeAvailabilityDrain
+					nv = store.GetVolume(tx, v.Id)
+					nv.Spec.Availability = api.VolumeSpec_DRAIN
 					return store.UpdateVolume(tx, nv)
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -119,17 +119,17 @@ var _ = Describe("VolumeEnforcer", func() {
 
 				var nt *api.Task
 				s.View(func(tx store.ReadTx) {
-					nt = store.GetTask(tx, t.ID)
+					nt = store.GetTask(tx, t.Id)
 				})
 				Expect(nt).ToNot(BeNil())
-				Expect(nt.Status.State).To(Equal(api.TaskStateRejected), "task state is %s", nt.Status.State)
-				Expect(nt.DesiredState).To(Equal(api.TaskStateRunning), "task desired state is %s", nt.DesiredState)
+				Expect(nt.Status.GetState()).To(Equal(api.TaskState_REJECTED), "task state is %s", nt.Status.GetState())
+				Expect(nt.DesiredState).To(Equal(api.TaskState_RUNNING), "task desired state is %s", nt.DesiredState)
 			})
 
 			It("should skip tasks that are already shut down", func() {
 				err := s.Update(func(tx store.Tx) error {
-					nt := store.GetTask(tx, t.ID)
-					nt.Status.State = api.TaskStateCompleted
+					nt := store.GetTask(tx, t.Id)
+					nt.Status.State = api.TaskState_COMPLETE
 					return store.UpdateTask(tx, nt)
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -138,11 +138,11 @@ var _ = Describe("VolumeEnforcer", func() {
 
 				var nt *api.Task
 				s.View(func(tx store.ReadTx) {
-					nt = store.GetTask(tx, t.ID)
+					nt = store.GetTask(tx, t.Id)
 				})
 				Expect(nt).ToNot(BeNil())
-				Expect(nt.Status.State).To(Equal(api.TaskStateCompleted), "task state is %s", nt.Status.State)
-				Expect(nt.DesiredState).To(Equal(api.TaskStateRunning), "task desired state is %s", nt.DesiredState)
+				Expect(nt.Status.GetState()).To(Equal(api.TaskState_COMPLETE), "task state is %s", nt.Status.GetState())
+				Expect(nt.DesiredState).To(Equal(api.TaskState_RUNNING), "task desired state is %s", nt.DesiredState)
 			})
 		})
 	})

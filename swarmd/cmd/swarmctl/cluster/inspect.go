@@ -7,7 +7,6 @@ import (
 	"sort"
 	"text/tabwriter"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/cobra"
@@ -17,49 +16,51 @@ func printClusterSummary(cluster *api.Cluster) {
 	w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
 	defer w.Flush()
 
-	common.FprintfIfNotEmpty(w, "ID\t: %s\n", cluster.ID)
-	common.FprintfIfNotEmpty(w, "Name\t: %s\n", cluster.Spec.Annotations.Name)
+	common.FprintfIfNotEmpty(w, "ID\t: %s\n", cluster.Id)
+	common.FprintfIfNotEmpty(w, "Name\t: %s\n", cluster.GetSpec().GetAnnotations().GetName())
 	fmt.Fprintln(w, "Orchestration settings:")
-	fmt.Fprintf(w, "  Task history entries: %d\n", cluster.Spec.Orchestration.TaskHistoryRetentionLimit)
+	fmt.Fprintf(w, "  Task history entries: %d\n", cluster.Spec.GetOrchestration().GetTaskHistoryRetentionLimit())
 
-	heartbeatPeriod, err := gogotypes.DurationFromProto(cluster.Spec.Dispatcher.HeartbeatPeriod)
-	if err == nil {
+	// AsDuration cannot fail, so keep the "only print a valid period" behaviour
+	// by testing the timestamp explicitly.
+	if hb := cluster.Spec.GetDispatcher().GetHeartbeatPeriod(); hb.IsValid() {
+		heartbeatPeriod := hb.AsDuration()
 		fmt.Fprintln(w, "Dispatcher settings:")
 		fmt.Fprintf(w, "  Dispatcher heartbeat period: %s\n", heartbeatPeriod.String())
 	}
 
 	fmt.Fprintln(w, "Certificate Authority settings:")
-	if cluster.Spec.CAConfig.NodeCertExpiry != nil {
-		clusterDuration, err := gogotypes.DurationFromProto(cluster.Spec.CAConfig.NodeCertExpiry)
-		if err != nil {
+	if cluster.Spec.GetCaConfig().GetNodeCertExpiry() != nil {
+		if !cluster.Spec.GetCaConfig().GetNodeCertExpiry().IsValid() {
 			fmt.Fprintln(w, "  Certificate Validity Duration: [ERROR PARSING DURATION]")
 		} else {
+			clusterDuration := cluster.Spec.GetCaConfig().GetNodeCertExpiry().AsDuration()
 			fmt.Fprintf(w, "  Certificate Validity Duration: %s\n", clusterDuration.String())
 		}
 	}
-	if len(cluster.Spec.CAConfig.ExternalCAs) > 0 {
+	if len(cluster.Spec.GetCaConfig().GetExternalCas()) > 0 {
 		fmt.Fprintln(w, "  External CAs:")
-		for _, ca := range cluster.Spec.CAConfig.ExternalCAs {
-			fmt.Fprintf(w, "    %s: %s\n", ca.Protocol, ca.URL)
+		for _, ca := range cluster.Spec.GetCaConfig().GetExternalCas() {
+			fmt.Fprintf(w, "    %s: %s\n", ca.Protocol, ca.Url)
 		}
 	}
 
 	fmt.Fprintln(w, "  Join Tokens:")
-	fmt.Fprintln(w, "    Worker:", cluster.RootCA.JoinTokens.Worker)
-	fmt.Fprintln(w, "    Manager:", cluster.RootCA.JoinTokens.Manager)
+	fmt.Fprintln(w, "    Worker:", cluster.RootCa.GetJoinTokens().GetWorker())
+	fmt.Fprintln(w, "    Manager:", cluster.RootCa.GetJoinTokens().GetManager())
 
-	if cluster.Spec.TaskDefaults.LogDriver != nil {
-		fmt.Fprintf(w, "Default Log Driver\t: %s\n", cluster.Spec.TaskDefaults.LogDriver.Name)
+	if cluster.Spec.GetTaskDefaults().GetLogDriver() != nil {
+		fmt.Fprintf(w, "Default Log Driver\t: %s\n", cluster.Spec.GetTaskDefaults().GetLogDriver().Name)
 		var keys []string
 
-		if len(cluster.Spec.TaskDefaults.LogDriver.Options) != 0 {
-			for k := range cluster.Spec.TaskDefaults.LogDriver.Options {
+		if len(cluster.Spec.GetTaskDefaults().GetLogDriver().Options) != 0 {
+			for k := range cluster.Spec.GetTaskDefaults().GetLogDriver().Options {
 				keys = append(keys, k)
 			}
 			sort.Strings(keys)
 
 			for _, k := range keys {
-				v := cluster.Spec.TaskDefaults.LogDriver.Options[k]
+				v := cluster.Spec.GetTaskDefaults().GetLogDriver().Options[k]
 				if v != "" {
 					fmt.Fprintf(w, "  %s\t: %s\n", k, v)
 				} else {

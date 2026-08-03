@@ -13,7 +13,7 @@ func TestParseDiscrete(t *testing.T) {
 
 	apples := GetResource("apple", res)
 	assert.Equal(t, len(apples), 1)
-	assert.Equal(t, apples[0].GetDiscreteResourceSpec().Value, int64(3))
+	assert.Equal(t, apples[0].GetDiscreteResourceSpec().GetValue(), int64(3))
 
 	_, err = ParseCmd("apple=3\napple=4")
 	assert.Error(t, err)
@@ -50,5 +50,5 @@ func TestParseDiscreteAndStr(t *testing.T) {
 
 	apples := GetResource("apple", res)
 	assert.Equal(t, len(apples), 1)
-	assert.Equal(t, apples[0].GetDiscreteResourceSpec().Value, int64(3))
+	assert.Equal(t, apples[0].GetDiscreteResourceSpec().GetValue(), int64(3))
 }

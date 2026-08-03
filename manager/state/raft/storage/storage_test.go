@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestBootstrapFromDisk(t *testing.T) {
@@ -23,8 +24,8 @@ func TestBootstrapFromDisk(t *testing.T) {
 	require.NoError(t, err)
 
 	// everything should be saved with "key1"
-	_, entries, _ := makeWALData(0, 0, &confState)
-	err = logger.SaveEntries(raftpb.HardState{}, entries)
+	_, entries, _ := makeWALData(0, 0, confState)
+	err = logger.SaveEntries(&raftpb.HardState{}, entries)
 	require.NoError(t, err)
 	logger.Close(context.Background())
 
@@ -36,14 +37,14 @@ func TestBootstrapFromDisk(t *testing.T) {
 	readSnap, waldata, err := logger.BootstrapFromDisk(context.Background())
 	require.NoError(t, err)
 	require.Nil(t, readSnap)
-	require.Equal(t, entries, waldata.Entries)
+	requireEqualEntries(t, entries, waldata.Entries)
 
 	// save a snapshot
 	snapshot := fakeSnapshotData
 	err = logger.SaveSnapshot(snapshot)
 	require.NoError(t, err)
-	_, entries, _ = makeWALData(snapshot.Metadata.Index, snapshot.Metadata.Term, &snapshot.Metadata.ConfState)
-	err = logger.SaveEntries(raftpb.HardState{}, entries)
+	_, entries, _ = makeWALData(snapshot.GetMetadata().GetIndex(), snapshot.GetMetadata().GetTerm(), snapshot.GetMetadata().GetConfState())
+	err = logger.SaveEntries(&raftpb.HardState{}, entries)
 	require.NoError(t, err)
 	logger.Close(context.Background())
 
@@ -55,15 +56,15 @@ func TestBootstrapFromDisk(t *testing.T) {
 	readSnap, waldata, err = logger.BootstrapFromDisk(context.Background())
 	require.NoError(t, err)
 	require.NotNil(t, snapshot)
-	require.Equal(t, snapshot, *readSnap)
-	require.Equal(t, entries, waldata.Entries)
+	requireEqualProto(t, snapshot, readSnap)
+	requireEqualEntries(t, entries, waldata.Entries)
 
 	// start writing more wals and rotate in the middle
-	_, entries, _ = makeWALData(snapshot.Metadata.Index, snapshot.Metadata.Term, &snapshot.Metadata.ConfState)
-	err = logger.SaveEntries(raftpb.HardState{}, entries[:1])
+	_, entries, _ = makeWALData(snapshot.GetMetadata().GetIndex(), snapshot.GetMetadata().GetTerm(), snapshot.GetMetadata().GetConfState())
+	err = logger.SaveEntries(&raftpb.HardState{}, entries[:1])
 	require.NoError(t, err)
 	logger.RotateEncryptionKey([]byte("key2"))
-	err = logger.SaveEntries(raftpb.HardState{}, entries[1:])
+	err = logger.SaveEntries(&raftpb.HardState{}, entries[1:])
 	require.NoError(t, err)
 	logger.Close(context.Background())
 
@@ -85,8 +86,8 @@ func TestBootstrapFromDisk(t *testing.T) {
 	readSnap, waldata, err = logger.BootstrapFromDisk(context.Background(), []byte("key1"))
 	require.NoError(t, err)
 	require.NotNil(t, snapshot)
-	require.Equal(t, snapshot, *readSnap)
-	require.Equal(t, entries, waldata.Entries)
+	requireEqualProto(t, snapshot, readSnap)
+	requireEqualEntries(t, entries, waldata.Entries)
 }
 
 // Ensure that we can change encoding and not have a race condition
@@ -99,7 +100,8 @@ func TestRaftLoggerRace(t *testing.T) {
 	err := logger.BootstrapNew([]byte("metadata"))
 	require.NoError(t, err)
 
-	_, entries, _ := makeWALData(fakeSnapshotData.Metadata.Index, fakeSnapshotData.Metadata.Term, &fakeSnapshotData.Metadata.ConfState)
+	md := fakeSnapshotData.GetMetadata()
+	_, entries, _ := makeWALData(md.GetIndex(), md.GetTerm(), md.GetConfState())
 
 	done1 := make(chan error)
 	done2 := make(chan error)
@@ -109,7 +111,7 @@ func TestRaftLoggerRace(t *testing.T) {
 		done1 <- logger.SaveSnapshot(fakeSnapshotData)
 	}()
 	go func() {
-		done2 <- logger.SaveEntries(raftpb.HardState{}, entries)
+		done2 <- logger.SaveEntries(&raftpb.HardState{}, entries)
 	}()
 	go func() {
 		logger.RotateEncryptionKey([]byte("Hello 2"))
@@ -138,22 +140,27 @@ func TestMigrateToV3EncryptedForm(t *testing.T) {
 	tempdir := t.TempDir()
 	dek := []byte("key")
 
-	writeDataTo := func(suffix string, snapshot raftpb.Snapshot, walFactory WALFactory, snapFactory SnapFactory) []raftpb.Entry {
+	writeDataTo := func(suffix string, snapshot *raftpb.Snapshot, walFactory WALFactory, snapFactory SnapFactory) []*raftpb.Entry {
 		snapDir := filepath.Join(tempdir, "snap"+suffix)
 		walDir := filepath.Join(tempdir, "wal"+suffix)
 		require.NoError(t, os.MkdirAll(snapDir, 0o755))
 		require.NoError(t, snapFactory.New(snapDir).SaveSnap(snapshot))
 
-		_, entries, _ := makeWALData(snapshot.Metadata.Index, snapshot.Metadata.Term, &snapshot.Metadata.ConfState)
+		md := snapshot.GetMetadata()
+		_, entries, _ := makeWALData(md.GetIndex(), md.GetTerm(), md.GetConfState())
 		walWriter, err := walFactory.Create(walDir, []byte("metadata"))
 		require.NoError(t, err)
-		require.NoError(t, walWriter.SaveSnapshot(walpb.Snapshot{Index: snapshot.Metadata.Index, Term: snapshot.Metadata.Term, ConfState: &snapshot.Metadata.ConfState}))
-		require.NoError(t, walWriter.Save(raftpb.HardState{}, entries))
+		require.NoError(t, walWriter.SaveSnapshot(&walpb.Snapshot{
+			Index:     proto.Uint64(md.GetIndex()),
+			Term:      proto.Uint64(md.GetTerm()),
+			ConfState: md.GetConfState(),
+		}))
+		require.NoError(t, walWriter.Save(&raftpb.HardState{}, entries))
 		require.NoError(t, walWriter.Close())
 		return entries
 	}
 
-	requireLoadedData := func(expectedSnap raftpb.Snapshot, expectedEntries []raftpb.Entry) {
+	requireLoadedData := func(expectedSnap *raftpb.Snapshot, expectedEntries []*raftpb.Entry) {
 		logger := EncryptedRaftLogger{
 			StateDir:      tempdir,
 			EncryptionKey: dek,
@@ -161,19 +168,21 @@ func TestMigrateToV3EncryptedForm(t *testing.T) {
 		readSnap, waldata, err := logger.BootstrapFromDisk(context.Background())
 		require.NoError(t, err)
 		require.NotNil(t, readSnap)
-		require.Equal(t, expectedSnap, *readSnap)
-		require.Equal(t, expectedEntries, waldata.Entries)
+		requireEqualProto(t, expectedSnap, readSnap)
+		requireEqualEntries(t, expectedEntries, waldata.Entries)
 		logger.Close(context.Background())
 	}
 
-	v2Snapshot := fakeSnapshotData
-	v3Snapshot := fakeSnapshotData
-	v3Snapshot.Metadata.Index += 100
-	v3Snapshot.Metadata.Term += 10
+	// Clone rather than assign: raftpb.Snapshot is a pointer now, so these
+	// would otherwise all be the same message.
+	v2Snapshot := proto.Clone(fakeSnapshotData).(*raftpb.Snapshot)
+	v3Snapshot := proto.Clone(fakeSnapshotData).(*raftpb.Snapshot)
+	v3Snapshot.Metadata.Index = proto.Uint64(v3Snapshot.GetMetadata().GetIndex() + 100)
+	v3Snapshot.Metadata.Term = proto.Uint64(v3Snapshot.GetMetadata().GetTerm() + 10)
 	v3Snapshot.Metadata.ConfState = confState
-	v3EncryptedSnapshot := fakeSnapshotData
-	v3EncryptedSnapshot.Metadata.Index += 200
-	v3EncryptedSnapshot.Metadata.Term += 20
+	v3EncryptedSnapshot := proto.Clone(fakeSnapshotData).(*raftpb.Snapshot)
+	v3EncryptedSnapshot.Metadata.Index = proto.Uint64(v3EncryptedSnapshot.GetMetadata().GetIndex() + 200)
+	v3EncryptedSnapshot.Metadata.Term = proto.Uint64(v3EncryptedSnapshot.GetMetadata().GetTerm() + 20)
 	v3EncryptedSnapshot.Metadata.ConfState = confState
 
 	encoder, decoders := encryption.Defaults(dek, false)

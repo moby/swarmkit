@@ -13,7 +13,7 @@ func getConfig(ctx context.Context, c api.ControlClient, input string) (*api.Con
 		&api.ListConfigsRequest{
 			Filters: &api.ListConfigsRequest_Filters{
 				Names:      []string{input},
-				IDPrefixes: []string{input},
+				IdPrefixes: []string{input},
 			},
 		},
 	)
@@ -29,12 +29,12 @@ func getConfig(ctx context.Context, c api.ControlClient, input string) (*api.Con
 	default:
 		// ok, multiple matches.  Prefer exact ID over exact name.  If no exact matches, return an error
 		for _, s := range resp.Configs {
-			if s.ID == input {
+			if s.Id == input {
 				return s, nil
 			}
 		}
 		for _, s := range resp.Configs {
-			if s.Spec.Annotations.Name == input {
+			if s.GetSpec().GetAnnotations().GetName() == input {
 				return s, nil
 			}
 		}

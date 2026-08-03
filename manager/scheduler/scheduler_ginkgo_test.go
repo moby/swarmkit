@@ -100,16 +100,16 @@ var _ = Describe("Scheduler", func() {
 
 		BeforeEach(func() {
 			node = &api.Node{
-				ID: "nodeID1",
+				Id: "nodeID1",
 				Description: &api.NodeDescription{
-					CSIInfo: []*api.NodeCSIInfo{
+					CsiInfo: []*api.NodeCSIInfo{
 						{
 							PluginName: "somePlug",
-							NodeID:     "nodeCSI1",
+							NodeId:     "nodeCSI1",
 						},
 					},
 				},
-				Status: api.NodeStatus{
+				Status: &api.NodeStatus{
 					State: api.NodeStatus_READY,
 				},
 			}
@@ -119,17 +119,17 @@ var _ = Describe("Scheduler", func() {
 			// the service for a given task does not exist, we will remove that
 			// task and not retry it.
 			service = &api.Service{
-				ID: "service1",
-				Spec: api.ServiceSpec{
-					Annotations: api.Annotations{
+				Id: "service1",
+				Spec: &api.ServiceSpec{
+					Annotations: &api.Annotations{
 						Name: "service",
 					},
-					Task: api.TaskSpec{
+					Task: &api.TaskSpec{
 						Runtime: &api.TaskSpec_Container{
 							Container: &api.ContainerSpec{
-								Mounts: []api.Mount{
+								Mounts: []*api.Mount{
 									{
-										Type:   api.MountTypeCluster,
+										Type:   api.Mount_CLUSTER,
 										Source: "volume1",
 										Target: "/var/",
 									},
@@ -142,13 +142,13 @@ var _ = Describe("Scheduler", func() {
 			services = append(services, service)
 
 			task = &api.Task{
-				ID:           "task1",
-				ServiceID:    service.ID,
-				DesiredState: api.TaskStateRunning,
-				Status: api.TaskStatus{
-					State: api.TaskStatePending,
+				Id:           "task1",
+				ServiceId:    service.Id,
+				DesiredState: api.TaskState_RUNNING,
+				Status: &api.TaskStatus{
+					State: api.TaskState_PENDING,
 				},
-				Spec: service.Spec.Task,
+				Spec: service.Spec.GetTask(),
 			}
 
 			tasks = append(tasks, task)
@@ -169,9 +169,9 @@ var _ = Describe("Scheduler", func() {
 				// Ensure that the task state has advanced to assigned
 				WithTransform(
 					func(t *api.Task) api.TaskState {
-						return t.Status.State
+						return t.Status.GetState()
 					},
-					Equal(api.TaskStateAssigned),
+					Equal(api.TaskState_ASSIGNED),
 				),
 				// Ensure that the task has the assigned volumes
 				WithTransform(
@@ -182,7 +182,7 @@ var _ = Describe("Scheduler", func() {
 				),
 				WithTransform(
 					func(t *api.Task) string {
-						return t.NodeID
+						return t.NodeId
 					},
 					Equal(nodeID),
 				),
@@ -194,26 +194,26 @@ var _ = Describe("Scheduler", func() {
 				service.Spec.Mode = &api.ServiceSpec_Global{
 					Global: &api.GlobalService{},
 				}
-				task.NodeID = node.ID
+				task.NodeId = node.Id
 			})
 
 			It("should still choose a volume for the task", func() {
 				volume := &api.Volume{
-					ID: "volumeID1",
-					Spec: api.VolumeSpec{
-						Annotations: api.Annotations{
+					Id: "volumeID1",
+					Spec: &api.VolumeSpec{
+						Annotations: &api.Annotations{
 							Name: "volume1",
 						},
 						Driver: &api.Driver{
 							Name: "somePlug",
 						},
 						AccessMode: &api.VolumeAccessMode{
-							Scope:   api.VolumeScopeSingleNode,
-							Sharing: api.VolumeSharingNone,
+							Scope:   api.VolumeAccessMode_SINGLE_NODE,
+							Sharing: api.VolumeAccessMode_NONE,
 						},
 					},
 					VolumeInfo: &api.VolumeInfo{
-						VolumeID: "csi1",
+						VolumeId: "csi1",
 					},
 				}
 				// add a volume
@@ -225,7 +225,7 @@ var _ = Describe("Scheduler", func() {
 				// now update the volume we need to update the
 				// volume because we don't handle volumes at creation time.
 				err = s.Update(func(tx store.Tx) error {
-					v := store.GetVolume(tx, volume.ID)
+					v := store.GetVolume(tx, volume.Id)
 					return store.UpdateVolume(tx, v)
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -233,16 +233,16 @@ var _ = Describe("Scheduler", func() {
 				pollStore := func() *api.Task {
 					var t *api.Task
 					s.View(func(tx store.ReadTx) {
-						t = store.GetTask(tx, task.ID)
+						t = store.GetTask(tx, task.Id)
 					})
 					return t
 				}
 
 				Eventually(pollStore, 10*time.Second).Should(
 					haveProgressedWithVolume(
-						node.ID,
+						node.Id,
 						&api.VolumeAttachment{
-							ID:     "volumeID1",
+							Id:     "volumeID1",
 							Source: "volume1",
 							Target: "/var/",
 						},
@@ -254,7 +254,7 @@ var _ = Describe("Scheduler", func() {
 				pollStore := func() *api.Task {
 					var t *api.Task
 					s.View(func(tx store.ReadTx) {
-						t = store.GetTask(tx, task.ID)
+						t = store.GetTask(tx, task.Id)
 					})
 					return t
 				}
@@ -262,9 +262,9 @@ var _ = Describe("Scheduler", func() {
 				Consistently(pollStore, 10*time.Second).Should(
 					WithTransform(
 						func(t *api.Task) api.TaskState {
-							return t.Status.State
+							return t.Status.GetState()
 						},
-						Equal(api.TaskStatePending),
+						Equal(api.TaskState_PENDING),
 					),
 				)
 			})
@@ -272,21 +272,21 @@ var _ = Describe("Scheduler", func() {
 
 		It("should choose volumes for tasks", func() {
 			volume := &api.Volume{
-				ID: "volumeID1",
-				Spec: api.VolumeSpec{
-					Annotations: api.Annotations{
+				Id: "volumeID1",
+				Spec: &api.VolumeSpec{
+					Annotations: &api.Annotations{
 						Name: "volume1",
 					},
 					Driver: &api.Driver{
 						Name: "somePlug",
 					},
 					AccessMode: &api.VolumeAccessMode{
-						Scope:   api.VolumeScopeSingleNode,
-						Sharing: api.VolumeSharingNone,
+						Scope:   api.VolumeAccessMode_SINGLE_NODE,
+						Sharing: api.VolumeAccessMode_NONE,
 					},
 				},
 				VolumeInfo: &api.VolumeInfo{
-					VolumeID: "csi1",
+					VolumeId: "csi1",
 				},
 			}
 
@@ -299,7 +299,7 @@ var _ = Describe("Scheduler", func() {
 			// now update the volume we need to update the
 			// volume because we don't handle volumes at creation time.
 			err = s.Update(func(tx store.Tx) error {
-				v := store.GetVolume(tx, volume.ID)
+				v := store.GetVolume(tx, volume.Id)
 				return store.UpdateVolume(tx, v)
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -307,16 +307,16 @@ var _ = Describe("Scheduler", func() {
 			pollStore := func() *api.Task {
 				var t *api.Task
 				s.View(func(tx store.ReadTx) {
-					t = store.GetTask(tx, task.ID)
+					t = store.GetTask(tx, task.Id)
 				})
 				return t
 			}
 
 			Eventually(pollStore, 10*time.Second).Should(
 				haveProgressedWithVolume(
-					node.ID,
+					node.Id,
 					&api.VolumeAttachment{
-						ID:     "volumeID1",
+						Id:     "volumeID1",
 						Source: "volume1",
 						Target: "/var/",
 					},
@@ -326,7 +326,7 @@ var _ = Describe("Scheduler", func() {
 			pollVolume := func() *api.Volume {
 				var v *api.Volume
 				s.View(func(tx store.ReadTx) {
-					v = store.GetVolume(tx, volume.ID)
+					v = store.GetVolume(tx, volume.Id)
 				})
 				return v
 			}
@@ -343,7 +343,7 @@ var _ = Describe("Scheduler", func() {
 					},
 					ConsistOf(
 						&api.VolumePublishStatus{
-							NodeID: node.ID,
+							NodeId: node.Id,
 							State:  api.VolumePublishStatus_PENDING_PUBLISH,
 						},
 					),
@@ -356,7 +356,7 @@ var _ = Describe("Scheduler", func() {
 			pollStore := func() *api.Task {
 				var t *api.Task
 				s.View(func(tx store.ReadTx) {
-					t = store.GetTask(tx, task.ID)
+					t = store.GetTask(tx, task.Id)
 				})
 				return t
 			}
@@ -364,9 +364,9 @@ var _ = Describe("Scheduler", func() {
 			Consistently(pollStore, 10*time.Second).Should(
 				WithTransform(
 					func(t *api.Task) api.TaskState {
-						return t.Status.State
+						return t.Status.GetState()
 					},
-					Equal(api.TaskStatePending),
+					Equal(api.TaskState_PENDING),
 				),
 			)
 		})
@@ -376,22 +376,22 @@ var _ = Describe("Scheduler", func() {
 		BeforeEach(func() {
 			cannedNode := func(i int) *api.Node {
 				return &api.Node{
-					ID: fmt.Sprintf("nodeID%d", i),
-					Spec: api.NodeSpec{
-						Annotations: api.Annotations{
+					Id: fmt.Sprintf("nodeID%d", i),
+					Spec: &api.NodeSpec{
+						Annotations: &api.Annotations{
 							Name: fmt.Sprintf("node%d", i),
 						},
 					},
 					Description: &api.NodeDescription{
 						Hostname: fmt.Sprintf("nodeHost%d", i),
-						CSIInfo: []*api.NodeCSIInfo{
+						CsiInfo: []*api.NodeCSIInfo{
 							{
 								PluginName: "somePlug",
-								NodeID:     fmt.Sprintf("nodeCSI%d", i),
+								NodeId:     fmt.Sprintf("nodeCSI%d", i),
 							},
 						},
 					},
-					Status: api.NodeStatus{
+					Status: &api.NodeStatus{
 						State: api.NodeStatus_READY,
 					},
 				}
@@ -403,9 +403,9 @@ var _ = Describe("Scheduler", func() {
 
 			volumes = append(volumes,
 				&api.Volume{
-					ID: "volumeID1",
-					Spec: api.VolumeSpec{
-						Annotations: api.Annotations{
+					Id: "volumeID1",
+					Spec: &api.VolumeSpec{
+						Annotations: &api.Annotations{
 							Name: "volume1",
 						},
 						Group: "group1",
@@ -413,18 +413,18 @@ var _ = Describe("Scheduler", func() {
 							Name: "somePlug",
 						},
 						AccessMode: &api.VolumeAccessMode{
-							Scope:   api.VolumeScopeMultiNode,
-							Sharing: api.VolumeSharingAll,
+							Scope:   api.VolumeAccessMode_MULTI_NODE,
+							Sharing: api.VolumeAccessMode_ALL,
 						},
 					},
 					VolumeInfo: &api.VolumeInfo{
-						VolumeID: "csi1",
+						VolumeId: "csi1",
 					},
 				},
 				&api.Volume{
-					ID: "volumeID2",
-					Spec: api.VolumeSpec{
-						Annotations: api.Annotations{
+					Id: "volumeID2",
+					Spec: &api.VolumeSpec{
+						Annotations: &api.Annotations{
 							Name: "volume2",
 						},
 						Group: "group2",
@@ -432,18 +432,18 @@ var _ = Describe("Scheduler", func() {
 							Name: "somePlug",
 						},
 						AccessMode: &api.VolumeAccessMode{
-							Scope:   api.VolumeScopeSingleNode,
-							Sharing: api.VolumeSharingNone,
+							Scope:   api.VolumeAccessMode_SINGLE_NODE,
+							Sharing: api.VolumeAccessMode_NONE,
 						},
 					},
 					VolumeInfo: &api.VolumeInfo{
-						VolumeID: "csi2",
+						VolumeId: "csi2",
 					},
 				},
 				&api.Volume{
-					ID: "volumeID3",
-					Spec: api.VolumeSpec{
-						Annotations: api.Annotations{
+					Id: "volumeID3",
+					Spec: &api.VolumeSpec{
+						Annotations: &api.Annotations{
 							Name: "volume3",
 						},
 						Group: "group2",
@@ -451,35 +451,35 @@ var _ = Describe("Scheduler", func() {
 							Name: "somePlug",
 						},
 						AccessMode: &api.VolumeAccessMode{
-							Scope:   api.VolumeScopeSingleNode,
-							Sharing: api.VolumeSharingNone,
+							Scope:   api.VolumeAccessMode_SINGLE_NODE,
+							Sharing: api.VolumeAccessMode_NONE,
 						},
 					},
 					VolumeInfo: &api.VolumeInfo{
-						VolumeID: "csi3",
+						VolumeId: "csi3",
 					},
 				},
 			)
 
 			tasks = append(tasks,
 				&api.Task{
-					ID:     "runningTask",
-					NodeID: "nodeID0",
-					Status: api.TaskStatus{
-						State: api.TaskStateRunning,
+					Id:     "runningTask",
+					NodeId: "nodeID0",
+					Status: &api.TaskStatus{
+						State: api.TaskState_RUNNING,
 					},
-					DesiredState: api.TaskStateRunning,
-					Spec: api.TaskSpec{
+					DesiredState: api.TaskState_RUNNING,
+					Spec: &api.TaskSpec{
 						Runtime: &api.TaskSpec_Container{
 							Container: &api.ContainerSpec{
-								Mounts: []api.Mount{
+								Mounts: []*api.Mount{
 									{
-										Type:   api.MountTypeCluster,
+										Type:   api.Mount_CLUSTER,
 										Source: "volume1",
 										Target: "/var/",
 									},
 									{
-										Type:   api.MountTypeCluster,
+										Type:   api.Mount_CLUSTER,
 										Source: "group:group2",
 										Target: "/home/",
 									},
@@ -491,27 +491,27 @@ var _ = Describe("Scheduler", func() {
 						{
 							Source: "volume1",
 							Target: "/var/",
-							ID:     "volumeID1",
+							Id:     "volumeID1",
 						}, {
 							Source: "group:group2",
 							Target: "/home/",
-							ID:     "volumeID3",
+							Id:     "volumeID3",
 						},
 					},
 				},
 				&api.Task{
-					ID:     "shutdownTask",
-					NodeID: "nodeID1",
-					Status: api.TaskStatus{
-						State: api.TaskStateShutdown,
+					Id:     "shutdownTask",
+					NodeId: "nodeID1",
+					Status: &api.TaskStatus{
+						State: api.TaskState_SHUTDOWN,
 					},
-					DesiredState: api.TaskStateShutdown,
-					Spec: api.TaskSpec{
+					DesiredState: api.TaskState_SHUTDOWN,
+					Spec: &api.TaskSpec{
 						Runtime: &api.TaskSpec_Container{
 							Container: &api.ContainerSpec{
-								Mounts: []api.Mount{
+								Mounts: []*api.Mount{
 									{
-										Type:   api.MountTypeCluster,
+										Type:   api.Mount_CLUSTER,
 										Source: "volume1",
 										Target: "/foo/",
 									},
@@ -523,23 +523,23 @@ var _ = Describe("Scheduler", func() {
 						{
 							Source: "volume1",
 							Target: "/foo/",
-							ID:     "volumeID1",
+							Id:     "volumeID1",
 						},
 					},
 				},
 				&api.Task{
-					ID:     "pendingID",
-					NodeID: "nodeID2",
-					Status: api.TaskStatus{
-						State: api.TaskStatePending,
+					Id:     "pendingID",
+					NodeId: "nodeID2",
+					Status: &api.TaskStatus{
+						State: api.TaskState_PENDING,
 					},
-					DesiredState: api.TaskStateRunning,
-					Spec: api.TaskSpec{
+					DesiredState: api.TaskState_RUNNING,
+					Spec: &api.TaskSpec{
 						Runtime: &api.TaskSpec_Container{
 							Container: &api.ContainerSpec{
-								Mounts: []api.Mount{
+								Mounts: []*api.Mount{
 									{
-										Type:   api.MountTypeCluster,
+										Type:   api.Mount_CLUSTER,
 										Source: "group:group2",
 										Target: "/foo/",
 									},

@@ -63,29 +63,29 @@ func (f *fakeNodePlugin) GetPublishedPath(volumeID string) string {
 }
 
 func (f *fakeNodePlugin) NodeStageVolume(ctx context.Context, req *api.VolumeAssignment) error {
-	f.stagedVolumes[req.ID] = req
+	f.stagedVolumes[req.Id] = req
 	return nil
 }
 
 func (f *fakeNodePlugin) NodeUnstageVolume(ctx context.Context, req *api.VolumeAssignment) error {
-	if _, ok := f.stagedVolumes[req.ID]; !ok {
+	if _, ok := f.stagedVolumes[req.Id]; !ok {
 		return status.Error(codes.FailedPrecondition, "volume not staged")
 	}
 	return nil
 }
 
 func (f *fakeNodePlugin) NodePublishVolume(ctx context.Context, req *api.VolumeAssignment) error {
-	if _, ok := f.stagedVolumes[req.ID]; !ok {
+	if _, ok := f.stagedVolumes[req.Id]; !ok {
 		return status.Error(codes.FailedPrecondition, "volume not staged")
 	}
 	// the path here isn't important, because the path is an implementation
 	// detail. it just needs to be non-empty.
-	f.publishedVolumes[req.ID] = fmt.Sprintf("path_%s", req.ID)
+	f.publishedVolumes[req.Id] = fmt.Sprintf("path_%s", req.Id)
 	return nil
 }
 
 func (f *fakeNodePlugin) NodeUnpublishVolume(ctx context.Context, req *api.VolumeAssignment) error {
-	if _, ok := f.publishedVolumes[req.ID]; !ok {
+	if _, ok := f.publishedVolumes[req.Id]; !ok {
 		return status.Error(codes.FailedPrecondition, "volume not published")
 	}
 

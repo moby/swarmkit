@@ -74,7 +74,7 @@ func (f *fakeReconciler) IsRelatedService(s *api.Service) bool {
 	f.Lock()
 	defer f.Unlock()
 	if s != nil {
-		f.servicesRelated = append(f.servicesRelated, s.ID)
+		f.servicesRelated = append(f.servicesRelated, s.Id)
 	}
 	return true
 }
@@ -90,7 +90,7 @@ func (f *fakeReconciler) SlotTuple(_ *api.Task) orchestrator.SlotTuple {
 // a real restart.Supervisor is not instantiated in the unit tests.
 type fakeRestartSupervisor struct{}
 
-func (f *fakeRestartSupervisor) Restart(_ context.Context, _ store.Tx, _ *api.Cluster, _ *api.Service, _ api.Task) error {
+func (f *fakeRestartSupervisor) Restart(_ context.Context, _ store.Tx, _ *api.Cluster, _ *api.Service, _ *api.Task) error {
 	return nil
 }
 
@@ -119,6 +119,6 @@ func (f *fakeRestartSupervisor) ClearServiceHistory(_ string) {}
 // and call ih.IsRelatedService with that service, allowing a roundabout way
 // to ensure it's been called.
 func fakeCheckTasksFunc(_ context.Context, _ *store.MemoryStore, _ store.ReadTx, ih taskinit.InitHandler, _ restart.SupervisorInterface) error {
-	ih.IsRelatedService(&api.Service{ID: "fakeCheckTasksFuncCalled"})
+	ih.IsRelatedService(&api.Service{Id: "fakeCheckTasksFuncCalled"})
 	return nil
 }

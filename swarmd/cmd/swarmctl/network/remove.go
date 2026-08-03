@@ -32,7 +32,7 @@ var (
 			if err != nil {
 				return err
 			}
-			_, err = c.RemoveNetwork(common.Context(cmd), &api.RemoveNetworkRequest{NetworkID: network.ID})
+			_, err = c.RemoveNetwork(common.Context(cmd), &api.RemoveNetworkRequest{NetworkId: network.Id})
 			if err != nil {
 				return err
 			}

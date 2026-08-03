@@ -44,10 +44,10 @@ func TestCreateExtension(t *testing.T) {
 	// for sanity, check that the stored extension still has the extension data
 	var storedExtension *api.Extension
 	ts.Store.View(func(tx store.ReadTx) {
-		storedExtension = store.GetExtension(tx, resp.Extension.ID)
+		storedExtension = store.GetExtension(tx, resp.Extension.Id)
 	})
 	assert.NotNil(t, storedExtension)
-	assert.Equal(t, extensionName, storedExtension.Annotations.Name)
+	assert.Equal(t, extensionName, storedExtension.GetAnnotations().GetName())
 
 	// ---- creating an extension with the same name, even if it's the exact same spec, fails due to a name conflict ----
 	_, err = ts.Client.CreateExtension(context.Background(), &validRequest)
@@ -78,7 +78,7 @@ func TestGetExtension(t *testing.T) {
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
 	// ---- getting a non-existent extension fails with NotFound ----
-	_, err = ts.Client.GetExtension(context.Background(), &api.GetExtensionRequest{ExtensionID: "12345"})
+	_, err = ts.Client.GetExtension(context.Background(), &api.GetExtensionRequest{ExtensionId: "12345"})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 
@@ -89,11 +89,11 @@ func TestGetExtension(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 
-	resp1, err := ts.Client.GetExtension(context.Background(), &api.GetExtensionRequest{ExtensionID: resp.Extension.ID})
+	resp1, err := ts.Client.GetExtension(context.Background(), &api.GetExtensionRequest{ExtensionId: resp.Extension.Id})
 	assert.NoError(t, err)
 	assert.NotNil(t, resp1)
 	assert.NotNil(t, resp1)
-	assert.Equal(t, validRequest.Annotations.Name, resp1.Extension.Annotations.Name)
+	assert.Equal(t, validRequest.GetAnnotations().GetName(), resp1.Extension.GetAnnotations().GetName())
 }
 
 // Test removing an extension that has no resources of that kind present.
@@ -113,12 +113,12 @@ func TestRemoveUnreferencedExtension(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
 
-	resp1, err := ts.Client.RemoveExtension(context.Background(), &api.RemoveExtensionRequest{ExtensionID: resp.Extension.ID})
+	resp1, err := ts.Client.RemoveExtension(context.Background(), &api.RemoveExtensionRequest{ExtensionId: resp.Extension.Id})
 	assert.NoError(t, err)
-	assert.Equal(t, api.RemoveExtensionResponse{}, *resp1)
+	assert.True(t, (&api.RemoveExtensionResponse{}).EqualVT(resp1))
 
 	// ---- verify the extension was really removed because attempting to remove it again fails with a NotFound ----
-	_, err = ts.Client.RemoveExtension(context.Background(), &api.RemoveExtensionRequest{ExtensionID: resp.Extension.ID})
+	_, err = ts.Client.RemoveExtension(context.Background(), &api.RemoveExtensionRequest{ExtensionId: resp.Extension.Id})
 	assert.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err), testutils.ErrorDesc(err))
 

@@ -54,9 +54,9 @@ var _ = Describe("Replicated job orchestrator", func() {
 			err := s.Update(func(tx store.Tx) error {
 				for i := range 3 {
 					serviceReplicated := &api.Service{
-						ID: fmt.Sprintf("serviceReplicated%v", i),
-						Spec: api.ServiceSpec{
-							Annotations: api.Annotations{
+						Id: fmt.Sprintf("serviceReplicated%v", i),
+						Spec: &api.ServiceSpec{
+							Annotations: &api.Annotations{
 								Name: fmt.Sprintf("serviceReplicated%v", i),
 							},
 							Mode: &api.ServiceSpec_ReplicatedJob{
@@ -66,9 +66,9 @@ var _ = Describe("Replicated job orchestrator", func() {
 					}
 
 					serviceGlobal := &api.Service{
-						ID: fmt.Sprintf("serviceGlobal%v", i),
-						Spec: api.ServiceSpec{
-							Annotations: api.Annotations{
+						Id: fmt.Sprintf("serviceGlobal%v", i),
+						Spec: &api.ServiceSpec{
+							Annotations: &api.Annotations{
 								Name: fmt.Sprintf("serviceGlobal%v", i),
 							},
 							Mode: &api.ServiceSpec_GlobalJob{
@@ -125,9 +125,9 @@ var _ = Describe("Replicated job orchestrator", func() {
 				replicated.serviceErrors["errService"] = fmt.Errorf("someError")
 				err := s.Update(func(tx store.Tx) error {
 					errService := &api.Service{
-						ID: "errService",
-						Spec: api.ServiceSpec{
-							Annotations: api.Annotations{
+						Id: "errService",
+						Spec: &api.ServiceSpec{
+							Annotations: &api.Annotations{
 								Name: "errService",
 							},
 							Mode: &api.ServiceSpec_ReplicatedJob{
@@ -167,9 +167,9 @@ var _ = Describe("Replicated job orchestrator", func() {
 			err := s.Update(func(tx store.Tx) error {
 				for i := range 3 {
 					service := &api.Service{
-						ID: fmt.Sprintf("service%v", i),
-						Spec: api.ServiceSpec{
-							Annotations: api.Annotations{
+						Id: fmt.Sprintf("service%v", i),
+						Spec: &api.ServiceSpec{
+							Annotations: &api.Annotations{
 								Name: fmt.Sprintf("service%v", i),
 							},
 							Mode: &api.ServiceSpec_ReplicatedJob{
@@ -195,9 +195,9 @@ var _ = Describe("Replicated job orchestrator", func() {
 			err := s.Update(func(tx store.Tx) error {
 				for i := range 3 {
 					service := &api.Service{
-						ID: fmt.Sprintf("service%v", i),
-						Spec: api.ServiceSpec{
-							Annotations: api.Annotations{
+						Id: fmt.Sprintf("service%v", i),
+						Spec: &api.ServiceSpec{
+							Annotations: &api.Annotations{
 								Name: fmt.Sprintf("service%v", i),
 							},
 							Mode: &api.ServiceSpec_GlobalJob{
@@ -223,9 +223,9 @@ var _ = Describe("Replicated job orchestrator", func() {
 			BeforeEach(func() {
 				err := s.Update(func(tx store.Tx) error {
 					service := &api.Service{
-						ID: "serviceDelete",
-						Spec: api.ServiceSpec{
-							Annotations: api.Annotations{
+						Id: "serviceDelete",
+						Spec: &api.ServiceSpec{
+							Annotations: &api.Annotations{
 								Name: "serviceDelete",
 							},
 							Mode: &api.ServiceSpec_ReplicatedJob{
@@ -243,20 +243,20 @@ var _ = Describe("Replicated job orchestrator", func() {
 
 					// create some tasks, like the service was actually running
 					task1 := &api.Task{
-						ID:           "task1",
-						ServiceID:    "serviceDelete",
-						DesiredState: api.TaskStateCompleted,
-						Status: api.TaskStatus{
-							State: api.TaskStateCompleted,
+						Id:           "task1",
+						ServiceId:    "serviceDelete",
+						DesiredState: api.TaskState_COMPLETE,
+						Status: &api.TaskStatus{
+							State: api.TaskState_COMPLETE,
 						},
 					}
 
 					task2 := &api.Task{
-						ID:           "task2",
-						ServiceID:    "serviceDelete",
-						DesiredState: api.TaskStateCompleted,
-						Status: api.TaskStatus{
-							State: api.TaskStateRunning,
+						Id:           "task2",
+						ServiceId:    "serviceDelete",
+						DesiredState: api.TaskState_COMPLETE,
+						Status: &api.TaskStatus{
+							State: api.TaskState_RUNNING,
 						},
 					}
 
@@ -296,7 +296,7 @@ var _ = Describe("Replicated job orchestrator", func() {
 							}
 							return states
 						},
-						ConsistOf(api.TaskStateCompleted, api.TaskStateCompleted),
+						ConsistOf(api.TaskState_COMPLETE, api.TaskState_COMPLETE),
 					),
 				))
 			})
@@ -305,8 +305,9 @@ var _ = Describe("Replicated job orchestrator", func() {
 		When("receiving task events", func() {
 			BeforeEach(func() {
 				service := &api.Service{
-					ID: "service0",
-					Spec: api.ServiceSpec{
+					Id: "service0",
+					Spec: &api.ServiceSpec{
+						Task: &api.TaskSpec{},
 						Mode: &api.ServiceSpec_ReplicatedJob{
 							ReplicatedJob: &api.ReplicatedJob{},
 						},
@@ -319,11 +320,11 @@ var _ = Describe("Replicated job orchestrator", func() {
 					}
 
 					task := &api.Task{
-						ID:           "someTask",
-						ServiceID:    "service0",
-						DesiredState: api.TaskStateCompleted,
-						Status: api.TaskStatus{
-							State: api.TaskStatePreparing,
+						Id:           "someTask",
+						ServiceId:    "service0",
+						DesiredState: api.TaskState_COMPLETE,
+						Status: &api.TaskStatus{
+							State: api.TaskState_PREPARING,
 						},
 					}
 					return store.CreateTask(tx, task)
@@ -337,7 +338,7 @@ var _ = Describe("Replicated job orchestrator", func() {
 			It("should reconcile the service of a task that has entered a terminal state", func() {
 				err := s.Update(func(tx store.Tx) error {
 					task := store.GetTask(tx, "someTask")
-					task.Status.State = api.TaskStateFailed
+					task.Status.State = api.TaskState_FAILED
 					return store.UpdateTask(tx, task)
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -352,7 +353,7 @@ var _ = Describe("Replicated job orchestrator", func() {
 			It("should ignore tasks that are not in a terminal state", func() {
 				err := s.Update(func(tx store.Tx) error {
 					task := store.GetTask(tx, "someTask")
-					task.Status.State = api.TaskStateRunning
+					task.Status.State = api.TaskState_RUNNING
 					return store.UpdateTask(tx, task)
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -366,9 +367,9 @@ var _ = Describe("Replicated job orchestrator", func() {
 		It("should not reconcile anything after calling Stop", func() {
 			err := s.Update(func(tx store.Tx) error {
 				service := &api.Service{
-					ID: "service0",
-					Spec: api.ServiceSpec{
-						Annotations: api.Annotations{
+					Id: "service0",
+					Spec: &api.ServiceSpec{
+						Annotations: &api.Annotations{
 							Name: "service0",
 						},
 						Mode: &api.ServiceSpec_ReplicatedJob{
@@ -388,9 +389,9 @@ var _ = Describe("Replicated job orchestrator", func() {
 
 			err = s.Update(func(tx store.Tx) error {
 				service := &api.Service{
-					ID: "service1",
-					Spec: api.ServiceSpec{
-						Annotations: api.Annotations{
+					Id: "service1",
+					Spec: &api.ServiceSpec{
+						Annotations: &api.Annotations{
 							Name: "service1",
 						},
 						Mode: &api.ServiceSpec_ReplicatedJob{

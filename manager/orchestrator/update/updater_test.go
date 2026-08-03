@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/orchestrator"
 	"github.com/moby/swarmkit/v2/manager/orchestrator/restart"
@@ -13,6 +12,7 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 )
 
 func getRunnableSlotSlice(t *testing.T, s *store.MemoryStore, service *api.Service) []orchestrator.Slot {
@@ -21,13 +21,13 @@ func getRunnableSlotSlice(t *testing.T, s *store.MemoryStore, service *api.Servi
 		err   error
 	)
 	s.View(func(tx store.ReadTx) {
-		tasks, err = store.FindTasks(tx, store.ByServiceID(service.ID))
+		tasks, err = store.FindTasks(tx, store.ByServiceID(service.Id))
 	})
 	require.NoError(t, err)
 
 	runningSlots := make(map[uint64]orchestrator.Slot)
 	for _, t := range tasks {
-		if t.DesiredState <= api.TaskStateRunning {
+		if t.DesiredState <= api.TaskState_RUNNING {
 			runningSlots[t.Slot] = append(runningSlots[t.Slot], t)
 		}
 	}
@@ -46,13 +46,13 @@ func getRunningServiceTasks(t *testing.T, s *store.MemoryStore, service *api.Ser
 	)
 
 	s.View(func(tx store.ReadTx) {
-		tasks, err = store.FindTasks(tx, store.ByServiceID(service.ID))
+		tasks, err = store.FindTasks(tx, store.ByServiceID(service.Id))
 	})
 	assert.NoError(t, err)
 
 	running := []*api.Task{}
 	for _, task := range tasks {
-		if task.Status.State == api.TaskStateRunning {
+		if task.Status.GetState() == api.TaskState_RUNNING {
 			running = append(running, task)
 		}
 	}
@@ -71,11 +71,11 @@ func TestUpdater(t *testing.T) {
 	go func() {
 		for e := range watch {
 			task := e.(api.EventUpdateTask).Task
-			if task.Status.State == task.DesiredState {
+			if task.Status.GetState() == task.DesiredState {
 				continue
 			}
 			err := s.Update(func(tx store.Tx) error {
-				task = store.GetTask(tx, task.ID)
+				task = store.GetTask(tx, task.Id)
 				task.Status.State = task.DesiredState
 				return store.UpdateTask(tx, task)
 			})
@@ -86,17 +86,20 @@ func TestUpdater(t *testing.T) {
 	instances := 3
 	cluster := &api.Cluster{
 		// test cluster configuration propagation to task creation.
-		Spec: api.ClusterSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ClusterSpec{
+			Annotations: &api.Annotations{
 				Name: store.DefaultClusterName,
 			},
+			// Non-nullable embedded messages before the move to
+			// protoc-gen-go, so callers could always reach through them.
+			TaskDefaults: &api.TaskDefaults{},
 		},
 	}
 
 	service := &api.Service{
-		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -104,7 +107,7 @@ func TestUpdater(t *testing.T) {
 					Replicas: uint64(instances),
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Image: "v:1",
@@ -113,7 +116,7 @@ func TestUpdater(t *testing.T) {
 			},
 			Update: &api.UpdateConfig{
 				// avoid having Run block for a long time to watch for failures
-				Monitor: gogotypes.DurationProto(50 * time.Millisecond),
+				Monitor: durationpb.New(50 * time.Millisecond),
 			},
 		},
 	}
@@ -132,64 +135,64 @@ func TestUpdater(t *testing.T) {
 	originalTasks := getRunnableSlotSlice(t, s, service)
 	for _, slot := range originalTasks {
 		for _, task := range slot {
-			assert.Equal(t, "v:1", task.Spec.GetContainer().Image)
+			assert.Equal(t, "v:1", task.Spec.GetContainer().GetImage())
 			assert.Nil(t, task.LogDriver) // should be left alone
 		}
 	}
 
 	// Change the image and log driver to force an update.
-	service.Spec.Task.GetContainer().Image = "v:2"
-	service.Spec.Task.LogDriver = &api.Driver{Name: "tasklogdriver"}
+	service.Spec.GetTask().GetContainer().Image = "v:2"
+	service.Spec.GetTask().LogDriver = &api.Driver{Name: "tasklogdriver"}
 	updater := NewUpdater(s, restart.NewSupervisor(s), cluster, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
 	updatedTasks := getRunnableSlotSlice(t, s, service)
 	for _, slot := range updatedTasks {
 		for _, task := range slot {
-			assert.Equal(t, "v:2", task.Spec.GetContainer().Image)
-			assert.Equal(t, service.Spec.Task.LogDriver, task.LogDriver) // pick up from task
+			assert.Equal(t, "v:2", task.Spec.GetContainer().GetImage())
+			assert.Equal(t, service.Spec.GetTask().GetLogDriver(), task.LogDriver) // pick up from task
 		}
 	}
 
 	// Update the spec again to force an update.
-	service.Spec.Task.GetContainer().Image = "v:3"
+	service.Spec.GetTask().GetContainer().Image = "v:3"
 	cluster.Spec.TaskDefaults.LogDriver = &api.Driver{Name: "clusterlogdriver"} // make cluster default logdriver.
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
-		Monitor:     gogotypes.DurationProto(50 * time.Millisecond),
+		Monitor:     durationpb.New(50 * time.Millisecond),
 	}
 	updater = NewUpdater(s, restart.NewSupervisor(s), cluster, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
 	updatedTasks = getRunnableSlotSlice(t, s, service)
 	for _, slot := range updatedTasks {
 		for _, task := range slot {
-			assert.Equal(t, "v:3", task.Spec.GetContainer().Image)
-			assert.Equal(t, service.Spec.Task.LogDriver, task.LogDriver) // still pick up from task
+			assert.Equal(t, "v:3", task.Spec.GetContainer().GetImage())
+			assert.Equal(t, service.Spec.GetTask().GetLogDriver(), task.LogDriver) // still pick up from task
 		}
 	}
 
-	service.Spec.Task.GetContainer().Image = "v:4"
-	service.Spec.Task.LogDriver = nil // use cluster default now.
+	service.Spec.GetTask().GetContainer().Image = "v:4"
+	service.Spec.GetTask().LogDriver = nil // use cluster default now.
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
-		Delay:       10 * time.Millisecond,
-		Monitor:     gogotypes.DurationProto(50 * time.Millisecond),
+		Delay:       durationpb.New(10 * time.Millisecond),
+		Monitor:     durationpb.New(50 * time.Millisecond),
 	}
 	updater = NewUpdater(s, restart.NewSupervisor(s), cluster, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
 	updatedTasks = getRunnableSlotSlice(t, s, service)
 	for _, slot := range updatedTasks {
 		for _, task := range slot {
-			assert.Equal(t, "v:4", task.Spec.GetContainer().Image)
-			assert.Equal(t, cluster.Spec.TaskDefaults.LogDriver, task.LogDriver) // pick up from cluster
+			assert.Equal(t, "v:4", task.Spec.GetContainer().GetImage())
+			assert.Equal(t, cluster.Spec.GetTaskDefaults().GetLogDriver(), task.LogDriver) // pick up from cluster
 		}
 	}
 
-	service.Spec.Task.GetContainer().Image = "v:5"
+	service.Spec.GetTask().GetContainer().Image = "v:5"
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
-		Delay:       10 * time.Millisecond,
+		Delay:       durationpb.New(10 * time.Millisecond),
 		Order:       api.UpdateConfig_START_FIRST,
-		Monitor:     gogotypes.DurationProto(50 * time.Millisecond),
+		Monitor:     durationpb.New(50 * time.Millisecond),
 	}
 	updater = NewUpdater(s, restart.NewSupervisor(s), cluster, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
@@ -197,12 +200,12 @@ func TestUpdater(t *testing.T) {
 	assert.Equal(t, instances, len(updatedTasks))
 	for _, instance := range updatedTasks {
 		for _, task := range instance {
-			assert.Equal(t, "v:5", task.Spec.GetContainer().Image)
+			assert.Equal(t, "v:5", task.Spec.GetContainer().GetImage())
 		}
 	}
 
 	// Update pull options with new registry auth.
-	service.Spec.Task.GetContainer().PullOptions = &api.ContainerSpec_PullOptions{
+	service.Spec.GetTask().GetContainer().PullOptions = &api.ContainerSpec_PullOptions{
 		RegistryAuth: "opaque-token-1",
 	}
 	originalTasks = getRunnableSlotSlice(t, s, service)
@@ -215,13 +218,13 @@ func TestUpdater(t *testing.T) {
 	runnableTaskIDs := make(map[string]struct{}, len(updatedTasks))
 	for _, slot := range updatedTasks {
 		for _, task := range slot {
-			runnableTaskIDs[task.ID] = struct{}{}
+			runnableTaskIDs[task.Id] = struct{}{}
 		}
 	}
 	assert.Len(t, runnableTaskIDs, instances)
 	for _, slot := range originalTasks {
 		for _, task := range slot {
-			assert.Contains(t, runnableTaskIDs, task.ID)
+			assert.Contains(t, runnableTaskIDs, task.Id)
 		}
 	}
 
@@ -232,8 +235,8 @@ func TestUpdater(t *testing.T) {
 		for i, slot := range updatedTasks {
 			taskSlots[i] = make(orchestrator.Slot, len(slot))
 			for j, task := range slot {
-				task = store.GetTask(tx, task.ID)
-				task.DesiredState = api.TaskStateShutdown
+				task = store.GetTask(tx, task.Id)
+				task.DesiredState = api.TaskState_SHUTDOWN
 				task.Status.State = task.DesiredState
 				assert.NoError(t, store.UpdateTask(tx, task))
 				taskSlots[i][j] = task
@@ -243,7 +246,7 @@ func TestUpdater(t *testing.T) {
 	}))
 
 	// Update pull options again with a different registry auth.
-	service.Spec.Task.GetContainer().PullOptions = &api.ContainerSpec_PullOptions{
+	service.Spec.GetTask().GetContainer().PullOptions = &api.ContainerSpec_PullOptions{
 		RegistryAuth: "opaque-token-2",
 	}
 	updater = NewUpdater(s, restart.NewSupervisor(s), cluster, service)
@@ -264,11 +267,11 @@ func TestUpdaterPlacement(t *testing.T) {
 	go func() {
 		for e := range watch {
 			task := e.(api.EventUpdateTask).Task
-			if task.Status.State == task.DesiredState {
+			if task.Status.GetState() == task.DesiredState {
 				continue
 			}
 			err := s.Update(func(tx store.Tx) error {
-				task = store.GetTask(tx, task.ID)
+				task = store.GetTask(tx, task.Id)
 				task.Status.State = task.DesiredState
 				return store.UpdateTask(tx, task)
 			})
@@ -279,18 +282,21 @@ func TestUpdaterPlacement(t *testing.T) {
 	instances := 3
 	cluster := &api.Cluster{
 		// test cluster configuration propagation to task creation.
-		Spec: api.ClusterSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ClusterSpec{
+			Annotations: &api.Annotations{
 				Name: store.DefaultClusterName,
 			},
+			// Non-nullable embedded messages before the move to
+			// protoc-gen-go, so callers could always reach through them.
+			TaskDefaults: &api.TaskDefaults{},
 		},
 	}
 
 	service := &api.Service{
-		ID:          "id1",
+		Id:          "id1",
 		SpecVersion: &api.Version{Index: 1},
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -298,7 +304,7 @@ func TestUpdaterPlacement(t *testing.T) {
 					Replicas: uint64(instances),
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Image: "v:1",
@@ -307,12 +313,12 @@ func TestUpdaterPlacement(t *testing.T) {
 			},
 			Update: &api.UpdateConfig{
 				// avoid having Run block for a long time to watch for failures
-				Monitor: gogotypes.DurationProto(50 * time.Millisecond),
+				Monitor: durationpb.New(50 * time.Millisecond),
 			},
 		},
 	}
 
-	node := &api.Node{ID: "node1"}
+	node := &api.Node{Id: "node1"}
 
 	// Create the cluster, service, and tasks for the service.
 	err := s.Update(func(tx store.Tx) error {
@@ -332,17 +338,17 @@ func TestUpdaterPlacement(t *testing.T) {
 	for i, slot := range originalTasks {
 		originalTasksMaps[i] = make(map[string]*api.Task)
 		for _, task := range slot {
-			originalTasksMaps[i][task.GetID()] = task
-			assert.Equal(t, "v:1", task.Spec.GetContainer().Image)
-			assert.Nil(t, task.Spec.Placement)
+			originalTasksMaps[i][task.GetId()] = task
+			assert.Equal(t, "v:1", task.Spec.GetContainer().GetImage())
+			assert.Nil(t, task.Spec.GetPlacement())
 			originalTaskCount++
 		}
 	}
 
 	// Change the placement constraints
 	service.SpecVersion.Index++
-	service.Spec.Task.Placement = &api.Placement{}
-	service.Spec.Task.Placement.Constraints = append(service.Spec.Task.Placement.Constraints, "node.name=*")
+	service.Spec.GetTask().Placement = &api.Placement{}
+	service.Spec.GetTask().Placement.Constraints = append(service.Spec.GetTask().GetPlacement().Constraints, "node.name=*")
 	updater := NewUpdater(s, restart.NewSupervisor(s), cluster, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
 	updatedTasks := getRunnableSlotSlice(t, s, service)
@@ -352,7 +358,7 @@ func TestUpdaterPlacement(t *testing.T) {
 			for i, slot := range originalTasks {
 				originalTasksMaps[i] = make(map[string]*api.Task)
 				for _, tasko := range slot {
-					if task.GetID() == tasko.GetID() {
+					if task.GetId() == tasko.GetId() {
 						updatedTaskCount++
 					}
 				}
@@ -376,16 +382,16 @@ func TestUpdaterFailureAction(t *testing.T) {
 	go func() {
 		for e := range watch {
 			task := e.(api.EventUpdateTask).Task
-			if task.DesiredState == api.TaskStateRunning && task.Status.State != api.TaskStateFailed {
+			if task.DesiredState == api.TaskState_RUNNING && task.Status.GetState() != api.TaskState_FAILED {
 				err := s.Update(func(tx store.Tx) error {
-					task = store.GetTask(tx, task.ID)
-					task.Status.State = api.TaskStateFailed
+					task = store.GetTask(tx, task.Id)
+					task.Status.State = api.TaskState_FAILED
 					return store.UpdateTask(tx, task)
 				})
 				assert.NoError(t, err)
-			} else if task.DesiredState > api.TaskStateRunning {
+			} else if task.DesiredState > api.TaskState_RUNNING {
 				err := s.Update(func(tx store.Tx) error {
-					task = store.GetTask(tx, task.ID)
+					task = store.GetTask(tx, task.Id)
 					task.Status.State = task.DesiredState
 					return store.UpdateTask(tx, task)
 				})
@@ -396,17 +402,20 @@ func TestUpdaterFailureAction(t *testing.T) {
 
 	instances := 3
 	cluster := &api.Cluster{
-		Spec: api.ClusterSpec{
-			Annotations: api.Annotations{
+		Spec: &api.ClusterSpec{
+			Annotations: &api.Annotations{
 				Name: store.DefaultClusterName,
 			},
+			// Non-nullable embedded messages before the move to
+			// protoc-gen-go, so callers could always reach through them.
+			TaskDefaults: &api.TaskDefaults{},
 		},
 	}
 
 	service := &api.Service{
-		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Mode: &api.ServiceSpec_Replicated{
@@ -414,7 +423,7 @@ func TestUpdaterFailureAction(t *testing.T) {
 					Replicas: uint64(instances),
 				},
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Image: "v:1",
@@ -424,8 +433,8 @@ func TestUpdaterFailureAction(t *testing.T) {
 			Update: &api.UpdateConfig{
 				FailureAction: api.UpdateConfig_PAUSE,
 				Parallelism:   1,
-				Delay:         500 * time.Millisecond,
-				Monitor:       gogotypes.DurationProto(500 * time.Millisecond),
+				Delay:         durationpb.New(500 * time.Millisecond),
+				Monitor:       durationpb.New(500 * time.Millisecond),
 			},
 		},
 	}
@@ -443,11 +452,11 @@ func TestUpdaterFailureAction(t *testing.T) {
 	originalTasks := getRunnableSlotSlice(t, s, service)
 	for _, slot := range originalTasks {
 		for _, task := range slot {
-			assert.Equal(t, "v:1", task.Spec.GetContainer().Image)
+			assert.Equal(t, "v:1", task.Spec.GetContainer().GetImage())
 		}
 	}
 
-	service.Spec.Task.GetContainer().Image = "v:2"
+	service.Spec.GetTask().GetContainer().Image = "v:2"
 	updater := NewUpdater(s, restart.NewSupervisor(s), cluster, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
 	updatedTasks := getRunnableSlotSlice(t, s, service)
@@ -455,9 +464,9 @@ func TestUpdaterFailureAction(t *testing.T) {
 	v2Counter := 0
 	for _, slot := range updatedTasks {
 		for _, task := range slot {
-			if task.Spec.GetContainer().Image == "v:1" {
+			if task.Spec.GetContainer().GetImage() == "v:1" {
 				v1Counter++
-			} else if task.Spec.GetContainer().Image == "v:2" {
+			} else if task.Spec.GetContainer().GetImage() == "v:2" {
 				v2Counter++
 			}
 		}
@@ -466,7 +475,7 @@ func TestUpdaterFailureAction(t *testing.T) {
 	assert.Equal(t, 1, v2Counter)
 
 	s.View(func(tx store.ReadTx) {
-		service = store.GetService(tx, service.ID)
+		service = store.GetService(tx, service.Id)
 	})
 	assert.Equal(t, api.UpdateStatus_PAUSED, service.UpdateStatus.State)
 
@@ -478,9 +487,9 @@ func TestUpdaterFailureAction(t *testing.T) {
 	v2Counter = 0
 	for _, slot := range updatedTasks {
 		for _, task := range slot {
-			if task.Spec.GetContainer().Image == "v:1" {
+			if task.Spec.GetContainer().GetImage() == "v:1" {
 				v1Counter++
-			} else if task.Spec.GetContainer().Image == "v:2" {
+			} else if task.Spec.GetContainer().GetImage() == "v:2" {
 				v2Counter++
 			}
 		}
@@ -490,7 +499,7 @@ func TestUpdaterFailureAction(t *testing.T) {
 
 	// Switch to a service with FailureAction: CONTINUE
 	err = s.Update(func(tx store.Tx) error {
-		service = store.GetService(tx, service.ID)
+		service = store.GetService(tx, service.Id)
 		service.Spec.Update.FailureAction = api.UpdateConfig_CONTINUE
 		service.UpdateStatus = nil
 		assert.NoError(t, store.UpdateService(tx, service))
@@ -498,7 +507,7 @@ func TestUpdaterFailureAction(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	service.Spec.Task.GetContainer().Image = "v:3"
+	service.Spec.GetTask().GetContainer().Image = "v:3"
 	updater = NewUpdater(s, restart.NewSupervisor(s), cluster, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
 	updatedTasks = getRunnableSlotSlice(t, s, service)
@@ -506,9 +515,9 @@ func TestUpdaterFailureAction(t *testing.T) {
 	v3Counter := 0
 	for _, slot := range updatedTasks {
 		for _, task := range slot {
-			if task.Spec.GetContainer().Image == "v:2" {
+			if task.Spec.GetContainer().GetImage() == "v:2" {
 				v2Counter++
-			} else if task.Spec.GetContainer().Image == "v:3" {
+			} else if task.Spec.GetContainer().GetImage() == "v:3" {
 				v3Counter++
 			}
 		}
@@ -531,11 +540,11 @@ func TestUpdaterTaskTimeout(t *testing.T) {
 		for e := range watch {
 			task := e.(api.EventUpdateTask).Task
 			err := s.Update(func(tx store.Tx) error {
-				task = store.GetTask(tx, task.ID)
+				task = store.GetTask(tx, task.Id)
 				// Explicitly do not set task state to
 				// DEAD to trigger TaskTimeout
-				if task.DesiredState == api.TaskStateRunning && task.Status.State != api.TaskStateRunning {
-					task.Status.State = api.TaskStateRunning
+				if task.DesiredState == api.TaskState_RUNNING && task.Status.GetState() != api.TaskState_RUNNING {
+					task.Status.State = api.TaskState_RUNNING
 					return store.UpdateTask(tx, task)
 				}
 				return nil
@@ -546,12 +555,12 @@ func TestUpdaterTaskTimeout(t *testing.T) {
 
 	var instances uint64 = 3
 	service := &api.Service{
-		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Image: "v:1",
@@ -565,7 +574,7 @@ func TestUpdaterTaskTimeout(t *testing.T) {
 			},
 			Update: &api.UpdateConfig{
 				// avoid having Run block for a long time to watch for failures
-				Monitor: gogotypes.DurationProto(50 * time.Millisecond),
+				Monitor: durationpb.New(50 * time.Millisecond),
 			},
 		},
 	}
@@ -574,7 +583,7 @@ func TestUpdaterTaskTimeout(t *testing.T) {
 		assert.NoError(t, store.CreateService(tx, service))
 		for i := range instances {
 			task := orchestrator.NewTask(nil, service, uint64(i), "")
-			task.Status.State = api.TaskStateRunning
+			task.Status.State = api.TaskState_RUNNING
 			assert.NoError(t, store.CreateTask(tx, task))
 		}
 		return nil
@@ -584,13 +593,13 @@ func TestUpdaterTaskTimeout(t *testing.T) {
 	originalTasks := getRunnableSlotSlice(t, s, service)
 	for _, slot := range originalTasks {
 		for _, task := range slot {
-			assert.Equal(t, "v:1", task.Spec.GetContainer().Image)
+			assert.Equal(t, "v:1", task.Spec.GetContainer().GetImage())
 		}
 	}
 
 	before := time.Now()
 
-	service.Spec.Task.GetContainer().Image = "v:2"
+	service.Spec.GetTask().GetContainer().Image = "v:2"
 	updater := NewUpdater(s, restart.NewSupervisor(s), nil, service)
 	// Override the default (1 minute) to speed up the test.
 	updater.restarts.TaskTimeout = 100 * time.Millisecond
@@ -598,7 +607,7 @@ func TestUpdaterTaskTimeout(t *testing.T) {
 	updatedTasks := getRunnableSlotSlice(t, s, service)
 	for _, slot := range updatedTasks {
 		for _, task := range slot {
-			assert.Equal(t, "v:2", task.Spec.GetContainer().Image)
+			assert.Equal(t, "v:2", task.Spec.GetContainer().GetImage())
 		}
 	}
 
@@ -622,15 +631,15 @@ func TestUpdaterOrder(t *testing.T) {
 	go func() {
 		for e := range watch {
 			task := e.(api.EventUpdateTask).Task
-			if task.Status.State == task.DesiredState {
+			if task.Status.GetState() == task.DesiredState {
 				continue
 			}
-			if task.DesiredState == api.TaskStateShutdown {
+			if task.DesiredState == api.TaskState_SHUTDOWN {
 				// dont progress, simulate that task takes time to shutdown
 				continue
 			}
 			err := s.Update(func(tx store.Tx) error {
-				task = store.GetTask(tx, task.ID)
+				task = store.GetTask(tx, task.Id)
 				task.Status.State = task.DesiredState
 				return store.UpdateTask(tx, task)
 			})
@@ -640,16 +649,16 @@ func TestUpdaterOrder(t *testing.T) {
 
 	instances := 3
 	service := &api.Service{
-		ID: "id1",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			Task: api.TaskSpec{
+			Task: &api.TaskSpec{
 				Runtime: &api.TaskSpec_Container{
 					Container: &api.ContainerSpec{
 						Image:           "v:1",
-						StopGracePeriod: gogotypes.DurationProto(time.Hour),
+						StopGracePeriod: durationpb.New(time.Hour),
 					},
 				},
 			},
@@ -673,32 +682,32 @@ func TestUpdaterOrder(t *testing.T) {
 	originalTasks := getRunnableSlotSlice(t, s, service)
 	for _, instance := range originalTasks {
 		for _, task := range instance {
-			assert.Equal(t, "v:1", task.Spec.GetContainer().Image)
+			assert.Equal(t, "v:1", task.Spec.GetContainer().GetImage())
 			// progress task from New to Running
 			err := s.Update(func(tx store.Tx) error {
-				task = store.GetTask(tx, task.ID)
+				task = store.GetTask(tx, task.Id)
 				task.Status.State = task.DesiredState
 				return store.UpdateTask(tx, task)
 			})
 			assert.NoError(t, err)
 		}
 	}
-	service.Spec.Task.GetContainer().Image = "v:2"
+	service.Spec.GetTask().GetContainer().Image = "v:2"
 	service.Spec.Update = &api.UpdateConfig{
 		Parallelism: 1,
 		Order:       api.UpdateConfig_START_FIRST,
-		Delay:       10 * time.Millisecond,
-		Monitor:     gogotypes.DurationProto(50 * time.Millisecond),
+		Delay:       durationpb.New(10 * time.Millisecond),
+		Monitor:     durationpb.New(50 * time.Millisecond),
 	}
 	updater := NewUpdater(s, restart.NewSupervisor(s), nil, service)
 	updater.Run(ctx, getRunnableSlotSlice(t, s, service))
 	allTasks := getRunningServiceTasks(t, s, service)
 	assert.Equal(t, instances*2, len(allTasks))
 	for _, task := range allTasks {
-		if task.Spec.GetContainer().Image == "v:1" {
-			assert.Equal(t, task.DesiredState, api.TaskStateShutdown)
-		} else if task.Spec.GetContainer().Image == "v:2" {
-			assert.Equal(t, task.DesiredState, api.TaskStateRunning)
+		if task.Spec.GetContainer().GetImage() == "v:1" {
+			assert.Equal(t, task.DesiredState, api.TaskState_SHUTDOWN)
+		} else if task.Spec.GetContainer().GetImage() == "v:2" {
+			assert.Equal(t, task.DesiredState, api.TaskState_RUNNING)
 		}
 	}
 }

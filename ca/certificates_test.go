@@ -258,8 +258,8 @@ func TestGetRemoteCA(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
 		cluster := store.GetCluster(tx, tc.Organization)
-		cluster.RootCA.CACert = comboCertBundle
-		cluster.RootCA.CAKey = s.Key
+		cluster.RootCa.CaCert = comboCertBundle
+		cluster.RootCa.CaKey = s.Key
 		return store.UpdateCluster(tx, cluster)
 	}))
 	require.NoError(t, testutils.PollFunc(nil, func() error {
@@ -350,13 +350,13 @@ func TestRequestAndSaveNewCertificatesWithIntermediates(t *testing.T) {
 	t.Parallel()
 
 	// use a RootCA with an intermediate
-	apiRootCA := api.RootCA{
-		CACert: cautils.ECDSACertChain[2],
-		CAKey:  cautils.ECDSACertChainKeys[2],
+	apiRootCA := &api.RootCA{
+		CaCert: cautils.ECDSACertChain[2],
+		CaKey:  cautils.ECDSACertChainKeys[2],
 		RootRotation: &api.RootRotation{
-			CACert:            cautils.ECDSACertChain[1],
-			CAKey:             cautils.ECDSACertChainKeys[1],
-			CrossSignedCACert: concat([]byte("   "), cautils.ECDSACertChain[1]),
+			CaCert:            cautils.ECDSACertChain[1],
+			CaKey:             cautils.ECDSACertChainKeys[1],
+			CrossSignedCaCert: concat([]byte("   "), cautils.ECDSACertChain[1]),
 		},
 	}
 	tempdir := t.TempDir()
@@ -401,6 +401,9 @@ func TestRequestAndSaveNewCertificatesWithKEKUpdate(t *testing.T) {
 	// be encrypted with that kek
 	require.NoError(t, tc.MemoryStore.Update(func(tx store.Tx) error {
 		cluster := store.GetCluster(tx, tc.Organization)
+		if cluster.Spec.GetEncryptionConfig() == nil {
+			cluster.Spec.EncryptionConfig = &api.EncryptionConfig{}
+		}
 		cluster.Spec.EncryptionConfig.AutoLockManagers = true
 		cluster.UnlockKeys = []*api.EncryptionKey{{
 			Subsystem: ca.ManagerRole,
@@ -557,6 +560,8 @@ func TestGetRemoteSignedCertificateNodeInfo(t *testing.T) {
 // A CA Server implementation that doesn't actually sign anything - something else
 // will have to update the memory store to have a valid value for a node
 type nonSigningCAServer struct {
+	api.UnimplementedNodeCAServer
+
 	tc               *cautils.TestCA
 	server           *grpc.Server
 	addr             string
@@ -588,7 +593,7 @@ func (n *nonSigningCAServer) stop() {
 }
 
 func (n *nonSigningCAServer) getConnBroker() *connectionbroker.Broker {
-	return connectionbroker.New(remotes.NewRemotes(api.Peer{Addr: n.addr}))
+	return connectionbroker.New(remotes.NewRemotes(&api.Peer{Addr: n.addr}))
 }
 
 // only returns the status in the store
@@ -597,12 +602,12 @@ func (n *nonSigningCAServer) NodeCertificateStatus(ctx context.Context, request 
 	for {
 		var node *api.Node
 		n.tc.MemoryStore.View(func(tx store.ReadTx) {
-			node = store.GetNode(tx, request.NodeID)
+			node = store.GetNode(tx, request.NodeId)
 		})
-		if node != nil && node.Certificate.Status.State == api.IssuanceStateIssued {
+		if node != nil && node.Certificate.GetStatus().GetState() == api.IssuanceStatus_ISSUED {
 			return &api.NodeCertificateStatusResponse{
-				Status:      &node.Certificate.Status,
-				Certificate: &node.Certificate,
+				Status:      node.Certificate.GetStatus(),
+				Certificate: node.Certificate,
 			}, nil
 		}
 		select {
@@ -615,27 +620,27 @@ func (n *nonSigningCAServer) NodeCertificateStatus(ctx context.Context, request 
 
 func (n *nonSigningCAServer) IssueNodeCertificate(ctx context.Context, request *api.IssueNodeCertificateRequest) (*api.IssueNodeCertificateResponse, error) {
 	nodeID := identity.NewID()
-	role := api.NodeRoleWorker
+	role := api.NodeRole_WORKER
 	if n.tc.ManagerToken == request.Token {
-		role = api.NodeRoleManager
+		role = api.NodeRole_MANAGER
 	}
 
 	// Create a new node
 	err := n.tc.MemoryStore.Update(func(tx store.Tx) error {
 		node := &api.Node{
 			Role: role,
-			ID:   nodeID,
-			Certificate: api.Certificate{
-				CSR:  request.CSR,
-				CN:   nodeID,
+			Id:   nodeID,
+			Certificate: &api.Certificate{
+				Csr:  request.Csr,
+				Cn:   nodeID,
 				Role: role,
-				Status: api.IssuanceStatus{
-					State: api.IssuanceStatePending,
+				Status: &api.IssuanceStatus{
+					State: api.IssuanceStatus_PENDING,
 				},
 			},
-			Spec: api.NodeSpec{
+			Spec: &api.NodeSpec{
 				DesiredRole:  role,
-				Membership:   api.NodeMembershipAccepted,
+				Membership:   api.NodeSpec_ACCEPTED,
 				Availability: request.Availability,
 			},
 		}
@@ -646,8 +651,8 @@ func (n *nonSigningCAServer) IssueNodeCertificate(ctx context.Context, request *
 		return nil, err
 	}
 	return &api.IssueNodeCertificateResponse{
-		NodeID:         nodeID,
-		NodeMembership: api.NodeMembershipAccepted,
+		NodeId:         nodeID,
+		NodeMembership: api.NodeSpec_ACCEPTED,
 	}, nil
 }
 
@@ -689,7 +694,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	for node == nil {
 		event := <-updates // we want to skip the first node, which is the test CA
 		n := event.(api.EventCreateNode).Node.Copy()
-		if n.Certificate.Status.State == api.IssuanceStatePending {
+		if n.Certificate.GetStatus().GetState() == api.IssuanceStatus_PENDING {
 			node = n
 		}
 	}
@@ -716,7 +721,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 
 	// Directly update the status of the store
 	err = tc.MemoryStore.Update(func(tx store.Tx) error {
-		node.Certificate.Status.State = api.IssuanceStateIssued
+		node.Certificate.Status.State = api.IssuanceStatus_ISSUED
 		return store.UpdateNode(tx, node)
 	})
 	require.NoError(t, err)
@@ -751,34 +756,34 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 // fake remotes interface that just selects the remotes in order
 type fakeRemotes struct {
 	mu    sync.Mutex
-	peers []api.Peer
+	peers []*api.Peer
 }
 
-func (f *fakeRemotes) Weights() map[api.Peer]int {
+func (f *fakeRemotes) Weights() map[remotes.PeerKey]int {
 	panic("this is not called")
 }
 
-func (f *fakeRemotes) Select(...string) (api.Peer, error) {
+func (f *fakeRemotes) Select(...string) (*api.Peer, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if len(f.peers) > 0 {
 		return f.peers[0], nil
 	}
-	return api.Peer{}, fmt.Errorf("no more peers")
+	return &api.Peer{}, fmt.Errorf("no more peers")
 }
 
-func (f *fakeRemotes) Observe(peer api.Peer, weight int) {
+func (f *fakeRemotes) Observe(peer *api.Peer, weight int) {
 	panic("this is not called")
 }
 
 // just removes a peer if the weight is negative
-func (f *fakeRemotes) ObserveIfExists(peer api.Peer, weight int) {
+func (f *fakeRemotes) ObserveIfExists(peer *api.Peer, weight int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if weight < 0 {
-		var newPeers []api.Peer
+		var newPeers []*api.Peer
 		for _, p := range f.peers {
-			if p != peer {
+			if !p.EqualVT(peer) {
 				newPeers = append(newPeers, p)
 			}
 		}
@@ -786,7 +791,7 @@ func (f *fakeRemotes) ObserveIfExists(peer api.Peer, weight int) {
 	}
 }
 
-func (f *fakeRemotes) Remove(addrs ...api.Peer) {
+func (f *fakeRemotes) Remove(addrs ...*api.Peer) {
 	panic("this is not called")
 }
 
@@ -813,7 +818,7 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 	// create 2 CA servers referencing the same memory store, so we can have multiple connections
 	fakeSigningServers := []*nonSigningCAServer{newNonSigningCAServer(t, tc), newNonSigningCAServer(t, tc)}
 	multiBroker := connectionbroker.New(&fakeRemotes{
-		peers: []api.Peer{
+		peers: []*api.Peer{
 			{Addr: fakeSigningServers[0].addr},
 			{Addr: fakeSigningServers[1].addr},
 		},
@@ -874,7 +879,7 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 	// immediately without retrying with a new connection
 	fakeSigningServers[1] = newNonSigningCAServer(t, tc)
 	multiBroker = connectionbroker.New(&fakeRemotes{
-		peers: []api.Peer{
+		peers: []*api.Peer{
 			{Addr: fakeSigningServers[0].addr},
 			{Addr: fakeSigningServers[1].addr},
 		},
@@ -1206,9 +1211,9 @@ func TestRootCAWithCrossSignedIntermediates(t *testing.T) {
 
 	newRoot, err := ca.NewRootCA(fauxRootCert, fauxRootCert, cautils.ECDSACertChainKeys[1], ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
-	apiNewRoot := api.RootCA{
-		CACert: fauxRootCert,
-		CAKey:  cautils.ECDSACertChainKeys[1],
+	apiNewRoot := &api.RootCA{
+		CaCert: fauxRootCert,
+		CaKey:  cautils.ECDSACertChainKeys[1],
 	}
 
 	checkValidateAgainstAllRoots := func(cert []byte) {

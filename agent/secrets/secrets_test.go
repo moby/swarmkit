@@ -86,14 +86,14 @@ func TestTaskRestrictedSecretsProvider(t *testing.T) {
 	secretsManager := NewManager()
 	for _, testCase := range testCases {
 		t.Logf("secretID=%s, taskID=%s, taskSpecificID=%s", originalSecretID, taskID, taskSpecificID)
-		secretsManager.Add(api.Secret{
-			ID: testCase.secretID,
-			Spec: api.SecretSpec{
+		secretsManager.Add(&api.Secret{
+			Id: testCase.secretID,
+			Spec: &api.SecretSpec{
 				Data: []byte(testCase.value),
 			},
 		})
 		secretsGetter := Restrict(secretsManager, &api.Task{
-			ID: taskID,
+			Id: taskID,
 		})
 		(secretsGetter.(*taskRestrictedSecretsProvider)).secretIDs = testCase.secretIDs
 		secret, err := secretsGetter.Get(testCase.secretIDToGet)
@@ -105,8 +105,8 @@ func TestTaskRestrictedSecretsProvider(t *testing.T) {
 			assert.NoError(t, err, testCase.desc)
 			require.NotNil(t, secret, testCase.desc)
 			require.NotNil(t, secret.Spec, testCase.desc)
-			require.NotNil(t, secret.Spec.Data, testCase.desc)
-			assert.Equal(t, testCase.expected, string(secret.Spec.Data), testCase.desc)
+			require.NotNil(t, secret.Spec.GetData(), testCase.desc)
+			assert.Equal(t, testCase.expected, string(secret.Spec.GetData()), testCase.desc)
 		}
 		secretsManager.Reset()
 	}

@@ -6,7 +6,6 @@ import (
 	"sort"
 	"text/tabwriter"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/api"
 )
@@ -26,14 +25,8 @@ func (t tasksBySlot) Less(i, j int) bool {
 	}
 
 	// If same slot, sort by most recent.
-	it, err := gogotypes.TimestampFromProto(t[i].Meta.CreatedAt)
-	if err != nil {
-		panic(err)
-	}
-	jt, err := gogotypes.TimestampFromProto(t[j].Meta.CreatedAt)
-	if err != nil {
-		panic(err)
-	}
+	it := t[i].Meta.CreatedAt.AsTime()
+	jt := t[j].Meta.CreatedAt.AsTime()
 	return jt.Before(it)
 }
 
@@ -45,19 +38,19 @@ func Print(tasks []*api.Task, all bool, res *common.Resolver) {
 	common.PrintHeader(w, "Task ID", "Service", "Slot", "Image", "Desired State", "Last State", "Node")
 	sort.Stable(tasksBySlot(tasks))
 	for _, t := range tasks {
-		if !all && t.DesiredState > api.TaskStateRunning {
+		if !all && t.DesiredState > api.TaskState_RUNNING {
 			continue
 		}
 		c := t.Spec.GetContainer()
 		fmt.Fprintf(w, "%s\t%s\t%d\t%s\t%s\t%s %s\t%s\n",
-			t.ID,
-			t.ServiceAnnotations.Name,
+			t.Id,
+			t.GetServiceAnnotations().GetName(),
 			t.Slot,
 			c.Image,
 			t.DesiredState.String(),
-			t.Status.State.String(),
-			common.TimestampAgo(t.Status.Timestamp),
-			res.Resolve(api.Node{}, t.NodeID),
+			t.Status.GetState().String(),
+			common.TimestampAgo(t.Status.GetTimestamp()),
+			res.Resolve(api.Node{}, t.NodeId),
 		)
 	}
 }

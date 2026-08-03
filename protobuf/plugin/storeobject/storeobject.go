@@ -1,872 +1,773 @@
 package storeobject
 
 import (
+	"fmt"
 	"strings"
 
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
+	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/descriptorpb"
+
 	"github.com/moby/swarmkit/v2/protobuf/plugin"
 )
 
+var (
+	eventsPkg  = protogen.GoImportPath("github.com/docker/go-events")
+	stringsPkg = protogen.GoImportPath("strings")
+)
+
+// The identifiers below are declared in watch.proto and raft.proto, which
+// objects.proto does not import. They are therefore not reachable through this
+// file's descriptor and have to be spelled out. These are the stock
+// protoc-gen-go names for those enum values.
+const (
+	watchActionCreate = "WatchActionKind_WATCH_ACTION_CREATE"
+	watchActionUpdate = "WatchActionKind_WATCH_ACTION_UPDATE"
+	watchActionRemove = "WatchActionKind_WATCH_ACTION_REMOVE"
+
+	storeActionCreate = "StoreActionKind_STORE_ACTION_CREATE"
+	storeActionUpdate = "StoreActionKind_STORE_ACTION_UPDATE"
+	storeActionRemove = "StoreActionKind_STORE_ACTION_REMOVE"
+)
+
+// hostnameNamedObject is the one object whose watch "name" is not its
+// annotations name: a node is matched by the hostname its agent reports.
+//
 // FIXME(aaronl): Look at fields inside the descriptor instead of
 // special-casing based on name.
-var typesWithNoSpec = map[string]struct{}{
-	"Task":      {},
-	"Resource":  {},
-	"Extension": {},
+const hostnameNamedObject = "Node"
+
+// storeObject is a message that opted into the store_object option, resolved
+// down to the descriptor fields the generated code needs to touch.
+type storeObject struct {
+	msg *protogen.Message
+	sel *plugin.WatchSelectors
+
+	// name is the message's Go type name, e.g. "Node".
+	name string
+
+	// annPath is the field chain from the object to its Annotations message,
+	// either {annotations} or {spec, annotations}. Tasks, resources and
+	// extensions carry their annotations directly; every other object keeps
+	// them in its spec. Deriving the path from the descriptor replaces the
+	// hand-maintained list of "types with no spec" the gogo generator needed.
+	annPath []*protogen.Field
+
+	// hostnamePath is the field chain to the object's hostname, set only for
+	// hostnameNamedObject.
+	hostnamePath []*protogen.Field
 }
 
-type storeObjectGen struct {
-	*generator.Generator
-	generator.PluginImports
-	eventsPkg  generator.Single
-	stringsPkg generator.Single
+// Generate emits the store object, event and watch plumbing for every message
+// in f that carries the (docker.protobuf.plugin.store_object) option.
+func Generate(g *protogen.GeneratedFile, f *protogen.File) {
+	var objs []*storeObject
+	for _, m := range f.Messages {
+		objs = collect(objs, m)
+	}
+	if len(objs) == 0 {
+		return
+	}
+
+	for _, o := range objs {
+		o.genEventTypes(g)
+		o.genStoreObjectMethods(g)
+		o.genCheckFuncs(g)
+		o.genConvertWatch(g)
+		o.genIndexers(g)
+	}
+
+	genNewStoreAction(g, objs)
+	genEventFromStoreAction(g, objs)
+
+	// for watch API
+	genWatchMessageEvent(g, objs)
+	genConvertWatchArgs(g, objs)
 }
 
-func init() {
-	generator.RegisterPlugin(new(storeObjectGen))
+// collect appends m and its nested messages to objs, in declaration order,
+// keeping only the ones that enabled the store_object option.
+func collect(objs []*storeObject, m *protogen.Message) []*storeObject {
+	if o := newStoreObject(m); o != nil {
+		objs = append(objs, o)
+	}
+	for _, nested := range m.Messages {
+		objs = collect(objs, nested)
+	}
+	return objs
 }
 
-func (d *storeObjectGen) Name() string {
-	return "storeobject"
+// newStoreObject returns the resolved store object for m, or nil when m did
+// not enable the store_object option.
+func newStoreObject(m *protogen.Message) *storeObject {
+	// Map entries are synthesized messages with no Go type of their own.
+	if m.Desc.IsMapEntry() {
+		return nil
+	}
+	opts, _ := m.Desc.Options().(*descriptorpb.MessageOptions)
+	if opts == nil || !proto.HasExtension(opts, plugin.E_StoreObject) {
+		return nil
+	}
+	storeObj, ok := proto.GetExtension(opts, plugin.E_StoreObject).(*plugin.StoreObject)
+	if !ok || storeObj == nil {
+		return nil
+	}
+
+	o := &storeObject{
+		msg:  m,
+		sel:  storeObj.GetWatchSelectors(),
+		name: m.GoIdent.GoName,
+	}
+
+	// Annotations either sit on the object itself or one level down, in its
+	// spec.
+	if ann := field(m, "annotations"); ann != nil {
+		o.annPath = []*protogen.Field{ann}
+	} else if spec := field(m, "spec"); spec != nil && spec.Message != nil {
+		if ann := field(spec.Message, "annotations"); ann != nil {
+			o.annPath = []*protogen.Field{spec, ann}
+		}
+	}
+
+	if o.name == hostnameNamedObject {
+		desc := mustField(m, "description")
+		o.hostnamePath = []*protogen.Field{desc, mustField(desc.Message, "hostname")}
+	}
+
+	return o
 }
 
-func (d *storeObjectGen) Init(g *generator.Generator) {
-	d.Generator = g
+// field returns m's field with the given protobuf name, or nil when m does not
+// declare it.
+func field(m *protogen.Message, name string) *protogen.Field {
+	for _, f := range m.Fields {
+		if string(f.Desc.Name()) == name {
+			return f
+		}
+	}
+	return nil
 }
 
-func (d *storeObjectGen) genMsgStoreObject(m *generator.Descriptor, storeObject *plugin.StoreObject) {
-	ccTypeName := generator.CamelCaseSlice(m.TypeName())
+// mustField is field for the cases where the option asking for the field is
+// meaningless without it; a missing field is a bug in the .proto.
+func mustField(m *protogen.Message, name string) *protogen.Field {
+	f := field(m, name)
+	if f == nil {
+		panic(fmt.Sprintf("storeobject: message %s has no %q field", m.Desc.FullName(), name))
+	}
+	return f
+}
 
-	// Generate event types
+// getterChain builds a nil-safe accessor expression such as
+// "v1.GetSpec().GetAnnotations().GetName()".
+func getterChain(recv string, fields ...*protogen.Field) string {
+	var b strings.Builder
+	b.WriteString(recv)
+	for _, f := range fields {
+		b.WriteString(".Get")
+		b.WriteString(f.GoName)
+		b.WriteString("()")
+	}
+	return b.String()
+}
 
-	d.P("type ", ccTypeName, "CheckFunc func(t1, t2 *", ccTypeName, ") bool")
-	d.P()
+// fieldChain builds an assignable path such as "m.GetSpec().GetAnnotations().GetName()". Only
+// safe on values whose intermediate messages are known to be non-nil.
+func fieldChain(recv string, fields ...*protogen.Field) string {
+	parts := make([]string, 0, len(fields)+1)
+	parts = append(parts, recv)
+	for _, f := range fields {
+		parts = append(parts, f.GoName)
+	}
+	return strings.Join(parts, ".")
+}
 
-	// generate the event object type interface for this type
-	// event types implement some empty interfaces, for ease of use, like such:
-	//
-	//   type EventCreate interface {
-	//     IsEventCreatet() bool
-	//   }
-	//
-	//   type EventNode interface {
-	//     IsEventNode() bool
-	//   }
-	//
-	// then, each event has the corresponding interfaces implemented for its
-	// type. for example:
-	//
-	//   func (e EventCreateNode) IsEventCreate() bool {
-	//     return true
-	//   }
-	//
-	//   func (e EventCreateNode) IsEventNode() bool {
-	//     return true
-	//   }
-	//
-	// this lets the user filter events based on their interface type.
-	// note that the event type for each object type needs to be generated for
-	// each object. the event change type (Create/Update/Delete) is
-	// hand-written in the storeobject.go file because they are only needed
-	// once.
-	d.P("type Event", ccTypeName, " interface {")
-	d.In()
-	d.P("IsEvent", ccTypeName, "() bool")
-	d.Out()
-	d.P("}")
-	d.P()
+// annMsg returns the object's Annotations message descriptor.
+func (o *storeObject) annMsg() *protogen.Message {
+	return o.annPath[len(o.annPath)-1].Message
+}
 
-	for _, event := range []string{"Create", "Update", "Delete"} {
-		d.P("type Event", event, ccTypeName, " struct {")
-		d.In()
-		d.P(ccTypeName, " *", ccTypeName)
-		if event == "Update" {
-			d.P("Old", ccTypeName, " *", ccTypeName)
+// annPathTo returns the field chain from the object down to the named field of
+// its Annotations.
+func (o *storeObject) annPathTo(name string) []*protogen.Field {
+	path := make([]*protogen.Field, 0, len(o.annPath)+1)
+	path = append(path, o.annPath...)
+	return append(path, mustField(o.annMsg(), name))
+}
+
+// annGetter returns a nil-safe expression reading a field of recv's
+// Annotations.
+func (o *storeObject) annGetter(recv, name string) string {
+	return getterChain(recv, o.annPathTo(name)...)
+}
+
+// annField returns an assignable path to a field of recv's Annotations.
+func (o *storeObject) annField(recv, name string) string {
+	return fieldChain(recv, o.annPathTo(name)...)
+}
+
+func (o *storeObject) genEventTypes(g *protogen.GeneratedFile) {
+	n := o.name
+
+	g.P("type ", n, "CheckFunc func(t1, t2 *", n, ") bool")
+	g.P()
+
+	// Event types implement two empty interfaces so that a consumer can filter
+	// on either the object type or the change type:
+	//
+	//	type EventCreate interface { IsEventCreate() bool }
+	//	type EventNode interface { IsEventNode() bool }
+	//
+	// The object type interface is generated once per object here; the change
+	// type interfaces are hand-written in storeobject.go because they are only
+	// needed once.
+	g.P("type Event", n, " interface {")
+	g.P("IsEvent", n, "() bool")
+	g.P("}")
+	g.P()
+
+	event := g.QualifiedGoIdent(eventsPkg.Ident("Event"))
+
+	for _, change := range []string{"Create", "Update", "Delete"} {
+		g.P("type Event", change, n, " struct {")
+		g.P(n, " *", n)
+		if change == "Update" {
+			g.P("Old", n, " *", n)
 		}
-		d.P("Checks []", ccTypeName, "CheckFunc")
-		d.Out()
-		d.P("}")
-		d.P()
-		d.P("func (e Event", event, ccTypeName, ") Matches(apiEvent ", d.eventsPkg.Use(), ".Event) bool {")
-		d.In()
-		d.P("typedEvent, ok := apiEvent.(Event", event, ccTypeName, ")")
-		d.P("if !ok {")
-		d.In()
-		d.P("return false")
-		d.Out()
-		d.P("}")
-		d.P()
-		d.P("for _, check := range e.Checks {")
-		d.In()
-		d.P("if !check(e.", ccTypeName, ", typedEvent.", ccTypeName, ") {")
-		d.In()
-		d.P("return false")
-		d.Out()
-		d.P("}")
-		d.Out()
-		d.P("}")
-		d.P("return true")
-		d.Out()
-		d.P("}")
-		d.P()
+		g.P("Checks []", n, "CheckFunc")
+		g.P("}")
+		g.P()
 
-		// implement event change type interface (IsEventCreate)
-		d.P("func (e Event", event, ccTypeName, ") IsEvent", event, "() bool {")
-		d.In()
-		d.P("return true")
-		d.Out()
-		d.P("}")
-		d.P()
+		g.P("func (e Event", change, n, ") Matches(apiEvent ", event, ") bool {")
+		g.P("typedEvent, ok := apiEvent.(Event", change, n, ")")
+		g.P("if !ok {")
+		g.P("return false")
+		g.P("}")
+		g.P()
+		g.P("for _, check := range e.Checks {")
+		g.P("if !check(e.", n, ", typedEvent.", n, ") {")
+		g.P("return false")
+		g.P("}")
+		g.P("}")
+		g.P("return true")
+		g.P("}")
+		g.P()
 
-		// implement event object type interface (IsEventNode)
-		d.P("func (e Event", event, ccTypeName, ") IsEvent", ccTypeName, "() bool {")
-		d.In()
-		d.P("return true")
-		d.Out()
-		d.P("}")
-		d.P()
+		// Change type interface, e.g. IsEventCreate.
+		g.P("func (e Event", change, n, ") IsEvent", change, "() bool {")
+		g.P("return true")
+		g.P("}")
+		g.P()
+
+		// Object type interface, e.g. IsEventNode.
+		g.P("func (e Event", change, n, ") IsEvent", n, "() bool {")
+		g.P("return true")
+		g.P("}")
+		g.P()
+	}
+}
+
+func (o *storeObject) genStoreObjectMethods(g *protogen.GeneratedFile) {
+	n := o.name
+	meta := mustField(o.msg, "meta")
+
+	g.P("func (m *", n, ") CopyStoreObject() StoreObject {")
+	g.P("return m.Copy()")
+	g.P("}")
+	g.P()
+
+	// StoreObject's GetId and GetMeta are already satisfied by the getters
+	// protoc-gen-go emits for the id and meta fields, so declaring them here
+	// would be a duplicate method. Only the setter is missing.
+	g.P("func (m *", n, ") SetMeta(meta *", g.QualifiedGoIdent(meta.Message.GoIdent), ") {")
+	g.P("m.", meta.GoName, " = meta")
+	g.P("}")
+	g.P()
+
+	g.P("func (m *", n, ") EventCreate() Event {")
+	g.P("return EventCreate", n, "{", n, ": m}")
+	g.P("}")
+	g.P()
+
+	g.P("func (m *", n, ") EventUpdate(oldObject StoreObject) Event {")
+	g.P("if oldObject != nil {")
+	g.P("return EventUpdate", n, "{", n, ": m, Old", n, ": oldObject.(*", n, ")}")
+	g.P("} else {")
+	g.P("return EventUpdate", n, "{", n, ": m}")
+	g.P("}")
+	g.P("}")
+	g.P()
+
+	g.P("func (m *", n, ") EventDelete() Event {")
+	g.P("return EventDelete", n, "{", n, ": m}")
+	g.P("}")
+	g.P()
+}
+
+// genCheckFuncs emits one comparison function per enabled watch selector. The
+// functions are handed pairs of objects straight out of the store, so every hop
+// through a nullable submessage goes through a getter.
+func (o *storeObject) genCheckFuncs(g *protogen.GeneratedFile) {
+	n, sel := o.name, o.sel
+
+	check := func(suffix string, body func()) {
+		g.P("func ", n, "Check", suffix, "(v1, v2 *", n, ") bool {")
+		body()
+		g.P("}")
+		g.P()
 	}
 
-	// Generate methods for this type
-
-	d.P("func (m *", ccTypeName, ") CopyStoreObject() StoreObject {")
-	d.In()
-	d.P("return m.Copy()")
-	d.Out()
-	d.P("}")
-	d.P()
-
-	d.P("func (m *", ccTypeName, ") GetMeta() Meta {")
-	d.In()
-	d.P("return m.Meta")
-	d.Out()
-	d.P("}")
-	d.P()
-
-	d.P("func (m *", ccTypeName, ") SetMeta(meta Meta) {")
-	d.In()
-	d.P("m.Meta = meta")
-	d.Out()
-	d.P("}")
-	d.P()
-
-	d.P("func (m *", ccTypeName, ") GetID() string {")
-	d.In()
-	d.P("return m.ID")
-	d.Out()
-	d.P("}")
-	d.P()
-
-	d.P("func (m *", ccTypeName, ") EventCreate() Event {")
-	d.In()
-	d.P("return EventCreate", ccTypeName, "{", ccTypeName, ": m}")
-	d.Out()
-	d.P("}")
-	d.P()
-
-	d.P("func (m *", ccTypeName, ") EventUpdate(oldObject StoreObject) Event {")
-	d.In()
-	d.P("if oldObject != nil {")
-	d.In()
-	d.P("return EventUpdate", ccTypeName, "{", ccTypeName, ": m, Old", ccTypeName, ": oldObject.(*", ccTypeName, ")}")
-	d.Out()
-	d.P("} else {")
-	d.In()
-	d.P("return EventUpdate", ccTypeName, "{", ccTypeName, ": m}")
-	d.Out()
-	d.P("}")
-	d.Out()
-	d.P("}")
-	d.P()
-
-	d.P("func (m *", ccTypeName, ") EventDelete() Event {")
-	d.In()
-	d.P("return EventDelete", ccTypeName, "{", ccTypeName, ": m}")
-	d.Out()
-	d.P("}")
-	d.P()
-
-	// Generate event check functions
-
-	if storeObject.WatchSelectors.ID != nil && *storeObject.WatchSelectors.ID {
-		d.P("func ", ccTypeName, "CheckID(v1, v2 *", ccTypeName, ") bool {")
-		d.In()
-		d.P("return v1.ID == v2.ID")
-		d.Out()
-		d.P("}")
-		d.P()
+	// scalar emits a plain equality check on a top-level scalar field.
+	scalar := func(suffix, protoName string) {
+		f := mustField(o.msg, protoName)
+		check(suffix, func() {
+			g.P("return v1.", f.GoName, " == v2.", f.GoName)
+		})
 	}
 
-	if storeObject.WatchSelectors.IDPrefix != nil && *storeObject.WatchSelectors.IDPrefix {
-		d.P("func ", ccTypeName, "CheckIDPrefix(v1, v2 *", ccTypeName, ") bool {")
-		d.In()
-		d.P("return ", d.stringsPkg.Use(), ".HasPrefix(v2.ID, v1.ID)")
-		d.Out()
-		d.P("}")
-		d.P()
+	if sel.GetId() {
+		scalar("ID", "id")
 	}
 
-	if storeObject.WatchSelectors.Name != nil && *storeObject.WatchSelectors.Name {
-		d.P("func ", ccTypeName, "CheckName(v1, v2 *", ccTypeName, ") bool {")
-		d.In()
-		// Node is a special case
-		if *m.Name == "Node" {
-			d.P("if v1.Description == nil || v2.Description == nil {")
-			d.In()
-			d.P("return false")
-			d.Out()
-			d.P("}")
-			d.P("return v1.Description.Hostname == v2.Description.Hostname")
-		} else if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
-			d.P("return v1.Annotations.Name == v2.Annotations.Name")
-		} else {
-			d.P("return v1.Spec.Annotations.Name == v2.Spec.Annotations.Name")
-		}
-		d.Out()
-		d.P("}")
-		d.P()
+	if sel.GetIdPrefix() {
+		id := mustField(o.msg, "id")
+		check("IDPrefix", func() {
+			g.P("return ", g.QualifiedGoIdent(stringsPkg.Ident("HasPrefix")), "(v2.", id.GoName, ", v1.", id.GoName, ")")
+		})
 	}
 
-	if storeObject.WatchSelectors.NamePrefix != nil && *storeObject.WatchSelectors.NamePrefix {
-		d.P("func ", ccTypeName, "CheckNamePrefix(v1, v2 *", ccTypeName, ") bool {")
-		d.In()
-		// Node is a special case
-		if *m.Name == "Node" {
-			d.P("if v1.Description == nil || v2.Description == nil {")
-			d.In()
-			d.P("return false")
-			d.Out()
-			d.P("}")
-			d.P("return ", d.stringsPkg.Use(), ".HasPrefix(v2.Description.Hostname, v1.Description.Hostname)")
-		} else if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
-			d.P("return ", d.stringsPkg.Use(), ".HasPrefix(v2.Annotations.Name, v1.Annotations.Name)")
-		} else {
-			d.P("return ", d.stringsPkg.Use(), ".HasPrefix(v2.Spec.Annotations.Name, v1.Spec.Annotations.Name)")
-		}
-		d.Out()
-		d.P("}")
-		d.P()
+	if sel.GetName() {
+		check("Name", func() {
+			if o.hostnamePath != nil {
+				desc := o.hostnamePath[0]
+				g.P("if v1.", desc.GoName, " == nil || v2.", desc.GoName, " == nil {")
+				g.P("return false")
+				g.P("}")
+				g.P("return ", fieldChain("v1", o.hostnamePath...), " == ", fieldChain("v2", o.hostnamePath...))
+				return
+			}
+			g.P("return ", o.annGetter("v1", "name"), " == ", o.annGetter("v2", "name"))
+		})
 	}
 
-	if storeObject.WatchSelectors.Custom != nil && *storeObject.WatchSelectors.Custom {
-		d.P("func ", ccTypeName, "CheckCustom(v1, v2 *", ccTypeName, ") bool {")
-		d.In()
-		// Node is a special case
-		if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
-			d.P("return checkCustom(v1.Annotations, v2.Annotations)")
-		} else {
-			d.P("return checkCustom(v1.Spec.Annotations, v2.Spec.Annotations)")
-		}
-		d.Out()
-		d.P("}")
-		d.P()
+	if sel.GetNamePrefix() {
+		hasPrefix := g.QualifiedGoIdent(stringsPkg.Ident("HasPrefix"))
+		check("NamePrefix", func() {
+			if o.hostnamePath != nil {
+				desc := o.hostnamePath[0]
+				g.P("if v1.", desc.GoName, " == nil || v2.", desc.GoName, " == nil {")
+				g.P("return false")
+				g.P("}")
+				g.P("return ", hasPrefix, "(", fieldChain("v2", o.hostnamePath...), ", ", fieldChain("v1", o.hostnamePath...), ")")
+				return
+			}
+			g.P("return ", hasPrefix, "(", o.annGetter("v2", "name"), ", ", o.annGetter("v1", "name"), ")")
+		})
 	}
 
-	if storeObject.WatchSelectors.CustomPrefix != nil && *storeObject.WatchSelectors.CustomPrefix {
-		d.P("func ", ccTypeName, "CheckCustomPrefix(v1, v2 *", ccTypeName, ") bool {")
-		d.In()
-		// Node is a special case
-		if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
-			d.P("return checkCustomPrefix(v1.Annotations, v2.Annotations)")
-		} else {
-			d.P("return checkCustomPrefix(v1.Spec.Annotations, v2.Spec.Annotations)")
-		}
-		d.Out()
-		d.P("}")
-		d.P()
+	if sel.GetCustom() {
+		check("Custom", func() {
+			g.P("return checkCustom(", getterChain("v1", o.annPath...), ", ", getterChain("v2", o.annPath...), ")")
+		})
 	}
 
-	if storeObject.WatchSelectors.NodeID != nil && *storeObject.WatchSelectors.NodeID {
-		d.P("func ", ccTypeName, "CheckNodeID(v1, v2 *", ccTypeName, ") bool {")
-		d.In()
-		d.P("return v1.NodeID == v2.NodeID")
-		d.Out()
-		d.P("}")
-		d.P()
+	if sel.GetCustomPrefix() {
+		check("CustomPrefix", func() {
+			g.P("return checkCustomPrefix(", getterChain("v1", o.annPath...), ", ", getterChain("v2", o.annPath...), ")")
+		})
 	}
 
-	if storeObject.WatchSelectors.ServiceID != nil && *storeObject.WatchSelectors.ServiceID {
-		d.P("func ", ccTypeName, "CheckServiceID(v1, v2 *", ccTypeName, ") bool {")
-		d.In()
-		d.P("return v1.ServiceID == v2.ServiceID")
-		d.Out()
-		d.P("}")
-		d.P()
+	if sel.GetNodeId() {
+		scalar("NodeID", "node_id")
+	}
+	if sel.GetServiceId() {
+		scalar("ServiceID", "service_id")
+	}
+	if sel.GetSlot() {
+		scalar("Slot", "slot")
+	}
+	if sel.GetDesiredState() {
+		scalar("DesiredState", "desired_state")
+	}
+	if sel.GetRole() {
+		scalar("Role", "role")
 	}
 
-	if storeObject.WatchSelectors.Slot != nil && *storeObject.WatchSelectors.Slot {
-		d.P("func ", ccTypeName, "CheckSlot(v1, v2 *", ccTypeName, ") bool {")
-		d.In()
-		d.P("return v1.Slot == v2.Slot")
-		d.Out()
-		d.P("}")
-		d.P()
+	if sel.GetMembership() {
+		spec := mustField(o.msg, "spec")
+		membership := mustField(spec.Message, "membership")
+		check("Membership", func() {
+			g.P("return ", getterChain("v1", spec, membership), " == ", getterChain("v2", spec, membership))
+		})
 	}
 
-	if storeObject.WatchSelectors.DesiredState != nil && *storeObject.WatchSelectors.DesiredState {
-		d.P("func ", ccTypeName, "CheckDesiredState(v1, v2 *", ccTypeName, ") bool {")
-		d.In()
-		d.P("return v1.DesiredState == v2.DesiredState")
-		d.Out()
-		d.P("}")
-		d.P()
+	if sel.GetKind() {
+		scalar("Kind", "kind")
 	}
+}
 
-	if storeObject.WatchSelectors.Role != nil && *storeObject.WatchSelectors.Role {
-		d.P("func ", ccTypeName, "CheckRole(v1, v2 *", ccTypeName, ") bool {")
-		d.In()
-		d.P("return v1.Role == v2.Role")
-		d.Out()
-		d.P("}")
-		d.P()
-	}
+// genConvertWatch emits the Convert<Type>Watch function backing the watch API.
+// It folds a list of SelectBy filters into a single prototype object plus the
+// check functions comparing candidates against it.
+func (o *storeObject) genConvertWatch(g *protogen.GeneratedFile) {
+	n, sel := o.name, o.sel
 
-	if storeObject.WatchSelectors.Membership != nil && *storeObject.WatchSelectors.Membership {
-		d.P("func ", ccTypeName, "CheckMembership(v1, v2 *", ccTypeName, ") bool {")
-		d.In()
-		d.P("return v1.Spec.Membership == v2.Spec.Membership")
-		d.Out()
-		d.P("}")
-		d.P()
-	}
-
-	if storeObject.WatchSelectors.Kind != nil && *storeObject.WatchSelectors.Kind {
-		d.P("func ", ccTypeName, "CheckKind(v1, v2 *", ccTypeName, ") bool {")
-		d.In()
-		d.P("return v1.Kind == v2.Kind")
-		d.Out()
-		d.P("}")
-		d.P()
-	}
-
-	// Generate Convert*Watch function, for watch API.
-	if ccTypeName == "Resource" {
-		d.P("func ConvertResourceWatch(action WatchActionKind, filters []*SelectBy, kind string) ([]Event, error) {")
+	// The object addressed by kind (Resource) is the catch-all of the watch
+	// API and needs the kind threaded through.
+	if sel.GetKind() {
+		g.P("func Convert", n, "Watch(action WatchActionKind, filters []*SelectBy, kind string) ([]Event, error) {")
 	} else {
-		d.P("func Convert", ccTypeName, "Watch(action WatchActionKind, filters []*SelectBy) ([]Event, error) {")
+		g.P("func Convert", n, "Watch(action WatchActionKind, filters []*SelectBy) ([]Event, error) {")
 	}
-	d.In()
-	d.P("var (")
-	d.In()
-	d.P("m ", ccTypeName)
-	d.P("checkFuncs []", ccTypeName, "CheckFunc")
-	if storeObject.WatchSelectors.DesiredState != nil && *storeObject.WatchSelectors.DesiredState {
-		d.P("hasDesiredState bool")
-	}
-	if storeObject.WatchSelectors.Role != nil && *storeObject.WatchSelectors.Role {
-		d.P("hasRole bool")
-	}
-	if storeObject.WatchSelectors.Membership != nil && *storeObject.WatchSelectors.Membership {
-		d.P("hasMembership bool")
-	}
-	d.Out()
-	d.P(")")
-	if ccTypeName == "Resource" {
-		d.P("m.Kind = kind")
-		d.P("checkFuncs = append(checkFuncs, ResourceCheckKind)")
-	}
-	d.P()
-	d.P("for _, filter := range filters {")
-	d.In()
-	d.P("switch v := filter.By.(type) {")
 
-	if storeObject.WatchSelectors.ID != nil && *storeObject.WatchSelectors.ID {
-		d.P("case *SelectBy_ID:")
-		d.In()
-		d.P(`if m.ID != "" {`)
-		d.In()
-		d.P("return nil, errConflictingFilters")
-		d.Out()
-		d.P("}")
-		d.P("m.ID = v.ID")
-		d.P("checkFuncs = append(checkFuncs, ", ccTypeName, "CheckID)")
-		d.Out()
+	g.P("var (")
+	g.P("m ", n)
+	g.P("checkFuncs []", n, "CheckFunc")
+	// Enum selectors cannot use the zero value to detect a repeated filter,
+	// because the zero value is a legitimate selection.
+	if sel.GetDesiredState() {
+		g.P("hasDesiredState bool")
 	}
-	if storeObject.WatchSelectors.IDPrefix != nil && *storeObject.WatchSelectors.IDPrefix {
-		d.P("case *SelectBy_IDPrefix:")
-		d.In()
-		d.P(`if m.ID != "" {`)
-		d.In()
-		d.P("return nil, errConflictingFilters")
-		d.Out()
-		d.P("}")
-		d.P("m.ID = v.IDPrefix")
-		d.P("checkFuncs = append(checkFuncs, ", ccTypeName, "CheckIDPrefix)")
-		d.Out()
+	if sel.GetRole() {
+		g.P("hasRole bool")
 	}
-	if storeObject.WatchSelectors.Name != nil && *storeObject.WatchSelectors.Name {
-		d.P("case *SelectBy_Name:")
-		d.In()
-		if *m.Name == "Node" {
-			d.P("if m.Description != nil {")
-			d.In()
-			d.P("return nil, errConflictingFilters")
-			d.Out()
-			d.P("}")
-			d.P("m.Description = &NodeDescription{Hostname: v.Name}")
+	if sel.GetMembership() {
+		g.P("hasMembership bool")
+	}
+	g.P(")")
 
-		} else if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
-			d.P(`if m.Annotations.Name != "" {`)
-			d.In()
-			d.P("return nil, errConflictingFilters")
-			d.Out()
-			d.P("}")
-			d.P("m.Annotations.Name = v.Name")
-		} else {
-			d.P(`if m.Spec.Annotations.Name != "" {`)
-			d.In()
-			d.P("return nil, errConflictingFilters")
-			d.Out()
-			d.P("}")
-			d.P("m.Spec.Annotations.Name = v.Name")
+	// Submessages are nullable now, so the prototype needs its annotations
+	// (and the spec holding them) allocated before a filter can write there.
+	switch len(o.annPath) {
+	case 1:
+		ann := o.annPath[0]
+		g.P("m.", ann.GoName, " = &", g.QualifiedGoIdent(ann.Message.GoIdent), "{}")
+	case 2:
+		spec, ann := o.annPath[0], o.annPath[1]
+		g.P("m.", spec.GoName, " = &", g.QualifiedGoIdent(spec.Message.GoIdent), "{",
+			ann.GoName, ": &", g.QualifiedGoIdent(ann.Message.GoIdent), "{}}")
+	}
+
+	if sel.GetKind() {
+		g.P("m.", mustField(o.msg, "kind").GoName, " = kind")
+		g.P("checkFuncs = append(checkFuncs, ", n, "CheckKind)")
+	}
+	g.P()
+	g.P("for _, filter := range filters {")
+	g.P("switch v := filter.By.(type) {")
+
+	// conflict emits the guard rejecting a second filter of the same kind.
+	conflict := func(cond string) {
+		g.P("if ", cond, " {")
+		g.P("return nil, errConflictingFilters")
+		g.P("}")
+	}
+	appendChecks := func(suffixes ...string) {
+		names := make([]string, 0, len(suffixes))
+		for _, s := range suffixes {
+			names = append(names, n+"Check"+s)
 		}
-		d.P("checkFuncs = append(checkFuncs, ", ccTypeName, "CheckName)")
-		d.Out()
-	}
-	if storeObject.WatchSelectors.NamePrefix != nil && *storeObject.WatchSelectors.NamePrefix {
-		d.P("case *SelectBy_NamePrefix:")
-		d.In()
-		if *m.Name == "Node" {
-			d.P("if m.Description != nil {")
-			d.In()
-			d.P("return nil, errConflictingFilters")
-			d.Out()
-			d.P("}")
-			d.P("m.Description = &NodeDescription{Hostname: v.NamePrefix}")
-
-		} else if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
-			d.P(`if m.Annotations.Name != "" {`)
-			d.In()
-			d.P("return nil, errConflictingFilters")
-			d.Out()
-			d.P("}")
-			d.P("m.Annotations.Name = v.NamePrefix")
-		} else {
-			d.P(`if m.Spec.Annotations.Name != "" {`)
-			d.In()
-			d.P("return nil, errConflictingFilters")
-			d.Out()
-			d.P("}")
-			d.P("m.Spec.Annotations.Name = v.NamePrefix")
-		}
-		d.P("checkFuncs = append(checkFuncs, ", ccTypeName, "CheckNamePrefix)")
-		d.Out()
-	}
-	if storeObject.WatchSelectors.Custom != nil && *storeObject.WatchSelectors.Custom {
-		d.P("case *SelectBy_Custom:")
-		d.In()
-		if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
-			d.P(`if len(m.Annotations.Indices) != 0 {`)
-			d.In()
-			d.P("return nil, errConflictingFilters")
-			d.Out()
-			d.P("}")
-			d.P("m.Annotations.Indices = []IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}")
-		} else {
-			d.P(`if len(m.Spec.Annotations.Indices) != 0 {`)
-			d.In()
-			d.P("return nil, errConflictingFilters")
-			d.Out()
-			d.P("}")
-			d.P("m.Spec.Annotations.Indices = []IndexEntry{{Key: v.Custom.Index, Val: v.Custom.Value}}")
-		}
-		d.P("checkFuncs = append(checkFuncs, ", ccTypeName, "CheckCustom)")
-		d.Out()
-	}
-	if storeObject.WatchSelectors.CustomPrefix != nil && *storeObject.WatchSelectors.CustomPrefix {
-		d.P("case *SelectBy_CustomPrefix:")
-		d.In()
-		if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
-			d.P(`if len(m.Annotations.Indices) != 0 {`)
-			d.In()
-			d.P("return nil, errConflictingFilters")
-			d.Out()
-			d.P("}")
-			d.P("m.Annotations.Indices = []IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}")
-		} else {
-			d.P(`if len(m.Spec.Annotations.Indices) != 0 {`)
-			d.In()
-			d.P("return nil, errConflictingFilters")
-			d.Out()
-			d.P("}")
-			d.P("m.Spec.Annotations.Indices = []IndexEntry{{Key: v.CustomPrefix.Index, Val: v.CustomPrefix.Value}}")
-		}
-		d.P("checkFuncs = append(checkFuncs, ", ccTypeName, "CheckCustomPrefix)")
-		d.Out()
-	}
-	if storeObject.WatchSelectors.ServiceID != nil && *storeObject.WatchSelectors.ServiceID {
-		d.P("case *SelectBy_ServiceID:")
-		d.In()
-		d.P(`if m.ServiceID != "" {`)
-		d.In()
-		d.P("return nil, errConflictingFilters")
-		d.Out()
-		d.P("}")
-		d.P("m.ServiceID = v.ServiceID")
-		d.P("checkFuncs = append(checkFuncs, ", ccTypeName, "CheckServiceID)")
-		d.Out()
-	}
-	if storeObject.WatchSelectors.NodeID != nil && *storeObject.WatchSelectors.NodeID {
-		d.P("case *SelectBy_NodeID:")
-		d.In()
-		d.P(`if m.NodeID != "" {`)
-		d.In()
-		d.P("return nil, errConflictingFilters")
-		d.Out()
-		d.P("}")
-		d.P("m.NodeID = v.NodeID")
-		d.P("checkFuncs = append(checkFuncs, ", ccTypeName, "CheckNodeID)")
-		d.Out()
-	}
-	if storeObject.WatchSelectors.Slot != nil && *storeObject.WatchSelectors.Slot {
-		d.P("case *SelectBy_Slot:")
-		d.In()
-		d.P(`if m.Slot != 0 || m.ServiceID != "" {`)
-		d.In()
-		d.P("return nil, errConflictingFilters")
-		d.Out()
-		d.P("}")
-		d.P("m.ServiceID = v.Slot.ServiceID")
-		d.P("m.Slot = v.Slot.Slot")
-		d.P("checkFuncs = append(checkFuncs, ", ccTypeName, "CheckNodeID, ", ccTypeName, "CheckSlot)")
-		d.Out()
-	}
-	if storeObject.WatchSelectors.DesiredState != nil && *storeObject.WatchSelectors.DesiredState {
-		d.P("case *SelectBy_DesiredState:")
-		d.In()
-		d.P(`if hasDesiredState {`)
-		d.In()
-		d.P("return nil, errConflictingFilters")
-		d.Out()
-		d.P("}")
-		d.P("hasDesiredState = true")
-		d.P("m.DesiredState = v.DesiredState")
-		d.P("checkFuncs = append(checkFuncs, ", ccTypeName, "CheckDesiredState)")
-		d.Out()
-	}
-	if storeObject.WatchSelectors.Role != nil && *storeObject.WatchSelectors.Role {
-		d.P("case *SelectBy_Role:")
-		d.In()
-		d.P(`if hasRole {`)
-		d.In()
-		d.P("return nil, errConflictingFilters")
-		d.Out()
-		d.P("}")
-		d.P("hasRole = true")
-		d.P("m.Role = v.Role")
-		d.P("checkFuncs = append(checkFuncs, ", ccTypeName, "CheckRole)")
-		d.Out()
-	}
-	if storeObject.WatchSelectors.Membership != nil && *storeObject.WatchSelectors.Membership {
-		d.P("case *SelectBy_Membership:")
-		d.In()
-		d.P(`if hasMembership {`)
-		d.In()
-		d.P("return nil, errConflictingFilters")
-		d.Out()
-		d.P("}")
-		d.P("hasMembership = true")
-		d.P("m.Spec.Membership = v.Membership")
-		d.P("checkFuncs = append(checkFuncs, ", ccTypeName, "CheckMembership)")
-		d.Out()
+		g.P("checkFuncs = append(checkFuncs, ", strings.Join(names, ", "), ")")
 	}
 
-	d.P("}")
-	d.Out()
-	d.P("}")
-	d.P("var events []Event")
-	d.P("if (action & WatchActionKindCreate) != 0 {")
-	d.In()
-	d.P("events = append(events, EventCreate", ccTypeName, "{", ccTypeName, ": &m, Checks: checkFuncs})")
-	d.Out()
-	d.P("}")
-	d.P("if (action & WatchActionKindUpdate) != 0 {")
-	d.In()
-	d.P("events = append(events, EventUpdate", ccTypeName, "{", ccTypeName, ": &m, Checks: checkFuncs})")
-	d.Out()
-	d.P("}")
-	d.P("if (action & WatchActionKindRemove) != 0 {")
-	d.In()
-	d.P("events = append(events, EventDelete", ccTypeName, "{", ccTypeName, ": &m, Checks: checkFuncs})")
-	d.Out()
-	d.P("}")
-	d.P("if len(events) == 0 {")
-	d.In()
-	d.P("return nil, errUnrecognizedAction")
-	d.Out()
-	d.P("}")
-	d.P("return events, nil")
-	d.Out()
-	d.P("}")
-	d.P()
-
-	/*                switch v := filter.By.(type) {
-	default:
-	        return nil, status.Errorf(codes.InvalidArgument, "selector type %T is unsupported for tasks", filter.By)
+	if sel.GetId() {
+		id := mustField(o.msg, "id")
+		g.P("case *SelectBy_Id:")
+		conflict("m." + id.GoName + ` != ""`)
+		g.P("m.", id.GoName, " = v.Id")
+		appendChecks("ID")
 	}
-	*/
+	if sel.GetIdPrefix() {
+		id := mustField(o.msg, "id")
+		g.P("case *SelectBy_IdPrefix:")
+		conflict("m." + id.GoName + ` != ""`)
+		g.P("m.", id.GoName, " = v.IdPrefix")
+		appendChecks("IDPrefix")
+	}
+	if sel.GetName() {
+		g.P("case *SelectBy_Name:")
+		o.genNameFilter(g, "v.Name")
+		appendChecks("Name")
+	}
+	if sel.GetNamePrefix() {
+		g.P("case *SelectBy_NamePrefix:")
+		o.genNameFilter(g, "v.NamePrefix")
+		appendChecks("NamePrefix")
+	}
+	if sel.GetCustom() {
+		g.P("case *SelectBy_Custom:")
+		o.genCustomFilter(g, "v.Custom")
+		appendChecks("Custom")
+	}
+	if sel.GetCustomPrefix() {
+		g.P("case *SelectBy_CustomPrefix:")
+		o.genCustomFilter(g, "v.CustomPrefix")
+		appendChecks("CustomPrefix")
+	}
+	if sel.GetServiceId() {
+		serviceID := mustField(o.msg, "service_id")
+		g.P("case *SelectBy_ServiceId:")
+		conflict("m." + serviceID.GoName + ` != ""`)
+		g.P("m.", serviceID.GoName, " = v.ServiceId")
+		appendChecks("ServiceID")
+	}
+	if sel.GetNodeId() {
+		nodeID := mustField(o.msg, "node_id")
+		g.P("case *SelectBy_NodeId:")
+		conflict("m." + nodeID.GoName + ` != ""`)
+		g.P("m.", nodeID.GoName, " = v.NodeId")
+		appendChecks("NodeID")
+	}
+	if sel.GetSlot() {
+		slot := mustField(o.msg, "slot")
+		serviceID := mustField(o.msg, "service_id")
+		g.P("case *SelectBy_Slot:")
+		conflict("m." + slot.GoName + " != 0 || m." + serviceID.GoName + ` != ""`)
+		g.P("m.", serviceID.GoName, " = v.Slot.ServiceId")
+		g.P("m.", slot.GoName, " = v.Slot.Slot")
+		// NOTE: CheckNodeID rather than CheckServiceID is what the gogo
+		// generator emitted here; kept as-is to preserve watch behaviour.
+		appendChecks("NodeID", "Slot")
+	}
+	if sel.GetDesiredState() {
+		desiredState := mustField(o.msg, "desired_state")
+		g.P("case *SelectBy_DesiredState:")
+		conflict("hasDesiredState")
+		g.P("hasDesiredState = true")
+		g.P("m.", desiredState.GoName, " = v.DesiredState")
+		appendChecks("DesiredState")
+	}
+	if sel.GetRole() {
+		role := mustField(o.msg, "role")
+		g.P("case *SelectBy_Role:")
+		conflict("hasRole")
+		g.P("hasRole = true")
+		g.P("m.", role.GoName, " = v.Role")
+		appendChecks("Role")
+	}
+	if sel.GetMembership() {
+		spec := mustField(o.msg, "spec")
+		membership := mustField(spec.Message, "membership")
+		g.P("case *SelectBy_Membership:")
+		conflict("hasMembership")
+		g.P("hasMembership = true")
+		g.P(fieldChain("m", spec, membership), " = v.Membership")
+		appendChecks("Membership")
+	}
 
-	// Generate indexer by ID
+	g.P("}")
+	g.P("}")
+	g.P("var events []Event")
+	for _, ev := range []struct{ action, change string }{
+		{watchActionCreate, "Create"},
+		{watchActionUpdate, "Update"},
+		{watchActionRemove, "Delete"},
+	} {
+		g.P("if (action & ", ev.action, ") != 0 {")
+		g.P("events = append(events, Event", ev.change, n, "{", n, ": &m, Checks: checkFuncs})")
+		g.P("}")
+	}
+	g.P("if len(events) == 0 {")
+	g.P("return nil, errUnrecognizedAction")
+	g.P("}")
+	g.P("return events, nil")
+	g.P("}")
+	g.P()
+}
 
-	d.P("type ", ccTypeName, "IndexerByID struct{}")
-	d.P()
+// genNameFilter writes the name (or name prefix) held in expr into the
+// prototype object.
+func (o *storeObject) genNameFilter(g *protogen.GeneratedFile, expr string) {
+	if o.hostnamePath != nil {
+		desc, hostname := o.hostnamePath[0], o.hostnamePath[1]
+		g.P("if m.", desc.GoName, " != nil {")
+		g.P("return nil, errConflictingFilters")
+		g.P("}")
+		g.P("m.", desc.GoName, " = &", g.QualifiedGoIdent(desc.Message.GoIdent), "{", hostname.GoName, ": ", expr, "}")
+		return
+	}
+	g.P("if ", o.annField("m", "name"), ` != "" {`)
+	g.P("return nil, errConflictingFilters")
+	g.P("}")
+	g.P(o.annField("m", "name"), " = ", expr)
+}
 
-	d.genFromArgs(ccTypeName + "IndexerByID")
-	d.genPrefixFromArgs(ccTypeName + "IndexerByID")
+// genCustomFilter turns the SelectByCustom held in expr into a single index
+// entry on the prototype object.
+func (o *storeObject) genCustomFilter(g *protogen.GeneratedFile, expr string) {
+	entry := mustField(o.annMsg(), "indices").Message
+	g.P("if len(", o.annField("m", "indices"), ") != 0 {")
+	g.P("return nil, errConflictingFilters")
+	g.P("}")
+	g.P(o.annField("m", "indices"), " = []*", g.QualifiedGoIdent(entry.GoIdent), "{{",
+		mustField(entry, "key").GoName, ": ", expr, ".Index, ",
+		mustField(entry, "val").GoName, ": ", expr, ".Value}}")
+}
 
-	d.P("func (indexer ", ccTypeName, "IndexerByID) FromObject(obj interface{}) (bool, []byte, error) {")
-	d.In()
-	d.P("m := obj.(*", ccTypeName, ")")
+func (o *storeObject) genIndexers(g *protogen.GeneratedFile) {
+	n := o.name
+
+	g.P("type ", n, "IndexerByID struct{}")
+	g.P()
+	genFromArgs(g, n+"IndexerByID")
+	genPrefixFromArgs(g, n+"IndexerByID")
+	g.P("func (indexer ", n, "IndexerByID) FromObject(obj any) (bool, []byte, error) {")
+	g.P("m := obj.(*", n, ")")
 	// Add the null character as a terminator
-	d.P(`return true, []byte(m.ID + "\x00"), nil`)
-	d.Out()
-	d.P("}")
+	g.P(`return true, []byte(m.`, mustField(o.msg, "id").GoName, ` + "\x00"), nil`)
+	g.P("}")
 
-	// Generate indexer by name
-
-	d.P("type ", ccTypeName, "IndexerByName struct{}")
-	d.P()
-
-	d.genFromArgs(ccTypeName + "IndexerByName")
-	d.genPrefixFromArgs(ccTypeName + "IndexerByName")
-
-	d.P("func (indexer ", ccTypeName, "IndexerByName) FromObject(obj interface{}) (bool, []byte, error) {")
-	d.In()
-	d.P("m := obj.(*", ccTypeName, ")")
-	if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
-		d.P(`val := m.Annotations.Name`)
-	} else {
-		d.P(`val := m.Spec.Annotations.Name`)
-	}
+	g.P("type ", n, "IndexerByName struct{}")
+	g.P()
+	genFromArgs(g, n+"IndexerByName")
+	genPrefixFromArgs(g, n+"IndexerByName")
+	g.P("func (indexer ", n, "IndexerByName) FromObject(obj any) (bool, []byte, error) {")
+	g.P("m := obj.(*", n, ")")
+	g.P("val := ", o.annGetter("m", "name"))
 	// Add the null character as a terminator
-	d.P("return true, []byte(", d.stringsPkg.Use(), `.ToLower(val) + "\x00"), nil`)
-	d.Out()
-	d.P("}")
+	g.P("return true, []byte(", g.QualifiedGoIdent(stringsPkg.Ident("ToLower")), `(val) + "\x00"), nil`)
+	g.P("}")
 
-	// Generate custom indexer
-
-	d.P("type ", ccTypeName, "CustomIndexer struct{}")
-	d.P()
-
-	d.genFromArgs(ccTypeName + "CustomIndexer")
-	d.genPrefixFromArgs(ccTypeName + "CustomIndexer")
-
-	d.P("func (indexer ", ccTypeName, "CustomIndexer) FromObject(obj interface{}) (bool, [][]byte, error) {")
-	d.In()
-	d.P("m := obj.(*", ccTypeName, ")")
-	if _, hasNoSpec := typesWithNoSpec[*m.Name]; hasNoSpec {
-		d.P(`return customIndexer("", &m.Annotations)`)
-	} else {
-		d.P(`return customIndexer("", &m.Spec.Annotations)`)
-	}
-	d.Out()
-	d.P("}")
+	g.P("type ", n, "CustomIndexer struct{}")
+	g.P()
+	genFromArgs(g, n+"CustomIndexer")
+	genPrefixFromArgs(g, n+"CustomIndexer")
+	g.P("func (indexer ", n, "CustomIndexer) FromObject(obj any) (bool, [][]byte, error) {")
+	g.P("m := obj.(*", n, ")")
+	g.P(`return customIndexer("", `, getterChain("m", o.annPath...), ")")
+	g.P("}")
 }
 
-func (d *storeObjectGen) genFromArgs(indexerName string) {
-	d.P("func (indexer ", indexerName, ") FromArgs(args ...interface{}) ([]byte, error) {")
-	d.In()
-	d.P("return fromArgs(args...)")
-	d.Out()
-	d.P("}")
+func genFromArgs(g *protogen.GeneratedFile, indexerName string) {
+	g.P("func (indexer ", indexerName, ") FromArgs(args ...any) ([]byte, error) {")
+	g.P("return fromArgs(args...)")
+	g.P("}")
 }
 
-func (d *storeObjectGen) genPrefixFromArgs(indexerName string) {
-	d.P("func (indexer ", indexerName, ") PrefixFromArgs(args ...interface{}) ([]byte, error) {")
-	d.In()
-	d.P("return prefixFromArgs(args...)")
-	d.Out()
-	d.P("}")
-
+func genPrefixFromArgs(g *protogen.GeneratedFile, indexerName string) {
+	g.P("func (indexer ", indexerName, ") PrefixFromArgs(args ...any) ([]byte, error) {")
+	g.P("return prefixFromArgs(args...)")
+	g.P("}")
 }
 
-func (d *storeObjectGen) genNewStoreAction(topLevelObjs []string) {
-	// Generate NewStoreAction
-	d.P("func NewStoreAction(c Event) (StoreAction, error) {")
-	d.In()
-	d.P("var sa StoreAction")
-	d.P("switch v := c.(type) {")
-	for _, ccTypeName := range topLevelObjs {
-		d.P("case EventCreate", ccTypeName, ":")
-		d.In()
-		d.P("sa.Action = StoreActionKindCreate")
-		d.P("sa.Target = &StoreAction_", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}")
-		d.Out()
-		d.P("case EventUpdate", ccTypeName, ":")
-		d.In()
-		d.P("sa.Action = StoreActionKindUpdate")
-		d.P("sa.Target = &StoreAction_", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}")
-		d.Out()
-		d.P("case EventDelete", ccTypeName, ":")
-		d.In()
-		d.P("sa.Action = StoreActionKindRemove")
-		d.P("sa.Target = &StoreAction_", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}")
-		d.Out()
-	}
-	d.P("default:")
-	d.In()
-	d.P("return StoreAction{}, errUnknownStoreAction")
-	d.Out()
-	d.P("}")
-	d.P("return sa, nil")
-	d.Out()
-	d.P("}")
-	d.P()
-}
-
-func (d *storeObjectGen) genWatchMessageEvent(topLevelObjs []string) {
-	// Generate WatchMessageEvent
-	d.P("func WatchMessageEvent(c Event) *WatchMessage_Event {")
-	d.In()
-	d.P("switch v := c.(type) {")
-	for _, ccTypeName := range topLevelObjs {
-		d.P("case EventCreate", ccTypeName, ":")
-		d.In()
-		d.P("return &WatchMessage_Event{Action: WatchActionKindCreate, Object: &Object{Object: &Object_", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}}}")
-		d.Out()
-		d.P("case EventUpdate", ccTypeName, ":")
-		d.In()
-		d.P("if v.Old", ccTypeName, " != nil {")
-		d.In()
-		d.P("return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}}, OldObject: &Object{Object: &Object_", ccTypeName, "{", ccTypeName, ": v.Old", ccTypeName, "}}}")
-		d.Out()
-		d.P("} else {")
-		d.In()
-		d.P("return &WatchMessage_Event{Action: WatchActionKindUpdate, Object: &Object{Object: &Object_", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}}}")
-		d.Out()
-		d.P("}")
-		d.Out()
-		d.P("case EventDelete", ccTypeName, ":")
-		d.In()
-		d.P("return &WatchMessage_Event{Action: WatchActionKindRemove, Object: &Object{Object: &Object_", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}}}")
-		d.Out()
-	}
-	d.P("}")
-	d.P("return nil")
-	d.Out()
-	d.P("}")
-	d.P()
-}
-
-func (d *storeObjectGen) genEventFromStoreAction(topLevelObjs []string) {
-	// Generate EventFromStoreAction
-	d.P("func EventFromStoreAction(sa StoreAction, oldObject StoreObject) (Event, error) {")
-	d.In()
-	d.P("switch v := sa.Target.(type) {")
-	for _, ccTypeName := range topLevelObjs {
-		d.P("case *StoreAction_", ccTypeName, ":")
-		d.In()
-		d.P("switch sa.Action {")
-
-		d.P("case StoreActionKindCreate:")
-		d.In()
-		d.P("return EventCreate", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}, nil")
-		d.Out()
-
-		d.P("case StoreActionKindUpdate:")
-		d.In()
-		d.P("if oldObject != nil {")
-		d.In()
-		d.P("return EventUpdate", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, ", Old", ccTypeName, ": oldObject.(*", ccTypeName, ")}, nil")
-		d.Out()
-		d.P("} else {")
-		d.In()
-		d.P("return EventUpdate", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}, nil")
-		d.Out()
-		d.P("}")
-		d.Out()
-
-		d.P("case StoreActionKindRemove:")
-		d.In()
-		d.P("return EventDelete", ccTypeName, "{", ccTypeName, ": v.", ccTypeName, "}, nil")
-		d.Out()
-
-		d.P("}")
-		d.Out()
-	}
-	d.P("}")
-	d.P("return nil, errUnknownStoreAction")
-	d.Out()
-	d.P("}")
-	d.P()
-}
-
-func (d *storeObjectGen) genConvertWatchArgs(topLevelObjs []string) {
-	// Generate ConvertWatchArgs
-	d.P("func ConvertWatchArgs(entries []*WatchRequest_WatchEntry) ([]Event, error) {")
-	d.In()
-	d.P("var events []Event")
-	d.P("for _, entry := range entries {")
-	d.In()
-	d.P("var newEvents []Event")
-	d.P("var err error")
-	d.P("switch entry.Kind {")
-	d.P(`case "":`)
-	d.In()
-	d.P("return nil, errNoKindSpecified")
-	d.Out()
-	for _, ccTypeName := range topLevelObjs {
-		if ccTypeName == "Resource" {
-			d.P("default:")
-			d.In()
-			d.P("newEvents, err = ConvertResourceWatch(entry.Action, entry.Filters, entry.Kind)")
-			d.Out()
-		} else {
-			d.P(`case "`, strings.ToLower(ccTypeName), `":`)
-			d.In()
-			d.P("newEvents, err = Convert", ccTypeName, "Watch(entry.Action, entry.Filters)")
-			d.Out()
+// genNewStoreAction emits the Event to StoreAction conversion used when
+// proposing a transaction to raft.
+func genNewStoreAction(g *protogen.GeneratedFile, objs []*storeObject) {
+	// StoreAction is a protobuf message and must not be copied, so it is
+	// returned by pointer; InternalRaftRequest.Action is a []*StoreAction too.
+	g.P("func NewStoreAction(c Event) (*StoreAction, error) {")
+	g.P("var sa StoreAction")
+	g.P("switch v := c.(type) {")
+	for _, o := range objs {
+		n := o.name
+		for _, ev := range []struct{ change, action string }{
+			{"Create", storeActionCreate},
+			{"Update", storeActionUpdate},
+			{"Delete", storeActionRemove},
+		} {
+			g.P("case Event", ev.change, n, ":")
+			g.P("sa.Action = ", ev.action)
+			g.P("sa.Target = &StoreAction_", n, "{", n, ": v.", n, "}")
 		}
 	}
-	d.P("}")
-	d.P("if err != nil {")
-	d.In()
-	d.P("return nil, err")
-	d.Out()
-	d.P("}")
-	d.P("events = append(events, newEvents...)")
-
-	d.Out()
-	d.P("}")
-	d.P("return events, nil")
-	d.Out()
-	d.P("}")
-	d.P()
+	g.P("default:")
+	g.P("return nil, errUnknownStoreAction")
+	g.P("}")
+	g.P("return &sa, nil")
+	g.P("}")
+	g.P()
 }
 
-func (d *storeObjectGen) Generate(file *generator.FileDescriptor) {
-	d.PluginImports = generator.NewPluginImports(d.Generator)
-	d.eventsPkg = d.NewImport("github.com/docker/go-events")
-	d.stringsPkg = d.NewImport("strings")
+// genEventFromStoreAction emits the inverse of NewStoreAction, used when
+// replaying the raft log into the store.
+func genEventFromStoreAction(g *protogen.GeneratedFile, objs []*storeObject) {
+	g.P("func EventFromStoreAction(sa *StoreAction, oldObject StoreObject) (Event, error) {")
+	g.P("switch v := sa.GetTarget().(type) {")
+	for _, o := range objs {
+		n := o.name
+		g.P("case *StoreAction_", n, ":")
+		g.P("switch sa.GetAction() {")
 
-	var topLevelObjs []string
+		g.P("case ", storeActionCreate, ":")
+		g.P("return EventCreate", n, "{", n, ": v.", n, "}, nil")
 
-	for _, m := range file.Messages() {
-		if m.DescriptorProto.GetOptions().GetMapEntry() {
+		g.P("case ", storeActionUpdate, ":")
+		g.P("if oldObject != nil {")
+		g.P("return EventUpdate", n, "{", n, ": v.", n, ", Old", n, ": oldObject.(*", n, ")}, nil")
+		g.P("} else {")
+		g.P("return EventUpdate", n, "{", n, ": v.", n, "}, nil")
+		g.P("}")
+
+		g.P("case ", storeActionRemove, ":")
+		g.P("return EventDelete", n, "{", n, ": v.", n, "}, nil")
+
+		g.P("}")
+	}
+	g.P("}")
+	g.P("return nil, errUnknownStoreAction")
+	g.P("}")
+	g.P()
+}
+
+// genWatchMessageEvent emits the Event to wire message conversion for the watch
+// API.
+func genWatchMessageEvent(g *protogen.GeneratedFile, objs []*storeObject) {
+	g.P("func WatchMessageEvent(c Event) *WatchMessage_Event {")
+	g.P("switch v := c.(type) {")
+	for _, o := range objs {
+		n := o.name
+		object := "&Object{Object: &Object_" + n + "{" + n + ": v." + n + "}}"
+		oldObject := "&Object{Object: &Object_" + n + "{" + n + ": v.Old" + n + "}}"
+
+		g.P("case EventCreate", n, ":")
+		g.P("return &WatchMessage_Event{Action: ", watchActionCreate, ", Object: ", object, "}")
+
+		g.P("case EventUpdate", n, ":")
+		g.P("if v.Old", n, " != nil {")
+		g.P("return &WatchMessage_Event{Action: ", watchActionUpdate, ", Object: ", object, ", OldObject: ", oldObject, "}")
+		g.P("} else {")
+		g.P("return &WatchMessage_Event{Action: ", watchActionUpdate, ", Object: ", object, "}")
+		g.P("}")
+
+		g.P("case EventDelete", n, ":")
+		g.P("return &WatchMessage_Event{Action: ", watchActionRemove, ", Object: ", object, "}")
+	}
+	g.P("}")
+	g.P("return nil")
+	g.P("}")
+	g.P()
+}
+
+// genConvertWatchArgs emits the dispatcher turning a watch request into the
+// per-object matchers.
+func genConvertWatchArgs(g *protogen.GeneratedFile, objs []*storeObject) {
+	g.P("func ConvertWatchArgs(entries []*WatchRequest_WatchEntry) ([]Event, error) {")
+	g.P("var events []Event")
+	g.P("for _, entry := range entries {")
+	g.P("var newEvents []Event")
+	g.P("var err error")
+	g.P("switch entry.Kind {")
+	g.P(`case "":`)
+	g.P("return nil, errNoKindSpecified")
+	for _, o := range objs {
+		n := o.name
+		// The kind-addressed object is the fallback: any kind swarmkit does
+		// not know natively is a resource of that kind.
+		if o.sel.GetKind() {
+			g.P("default:")
+			g.P("newEvents, err = Convert", n, "Watch(entry.Action, entry.Filters, entry.Kind)")
 			continue
 		}
-
-		if m.Options == nil {
-			continue
-		}
-		storeObjIntf, err := proto.GetExtension(m.Options, plugin.E_StoreObject)
-		if err != nil {
-			// no StoreObject extension
-			continue
-		}
-
-		d.genMsgStoreObject(m, storeObjIntf.(*plugin.StoreObject))
-
-		topLevelObjs = append(topLevelObjs, generator.CamelCaseSlice(m.TypeName()))
+		g.P(`case "`, strings.ToLower(n), `":`)
+		g.P("newEvents, err = Convert", n, "Watch(entry.Action, entry.Filters)")
 	}
-
-	if len(topLevelObjs) != 0 {
-		d.genNewStoreAction(topLevelObjs)
-		d.genEventFromStoreAction(topLevelObjs)
-
-		// for watch API
-		d.genWatchMessageEvent(topLevelObjs)
-		d.genConvertWatchArgs(topLevelObjs)
-	}
+	g.P("}")
+	g.P("if err != nil {")
+	g.P("return nil, err")
+	g.P("}")
+	g.P("events = append(events, newEvents...)")
+	g.P("}")
+	g.P("return events, nil")
+	g.P("}")
+	g.P()
 }

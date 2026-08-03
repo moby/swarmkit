@@ -20,6 +20,7 @@ import (
 	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 var tc *cautils.TestCA
@@ -38,7 +39,7 @@ func TestMain(m *testing.M) {
 
 func newTestMember(id uint64) *membership.Member {
 	return &membership.Member{
-		RaftMember: &api.RaftMember{RaftID: id},
+		RaftMember: &api.RaftMember{RaftId: id},
 	}
 }
 
@@ -49,7 +50,7 @@ func newTestCluster(members []*membership.Member, removed []*membership.Member) 
 	}
 	for _, m := range removed {
 		c.AddMember(m)
-		c.RemoveMember(m.RaftID)
+		c.RemoveMember(m.RaftId)
 	}
 	return c
 }
@@ -73,8 +74,8 @@ func TestClusterMember(t *testing.T) {
 		if g := m != nil; g != tt.match {
 			t.Errorf("#%d: find member = %v, want %v", i, g, tt.match)
 		}
-		if m != nil && m.RaftID != tt.id {
-			t.Errorf("#%d: id = %x, want %x", i, m.RaftID, tt.id)
+		if m != nil && m.RaftId != tt.id {
+			t.Errorf("#%d: id = %x, want %x", i, m.RaftId, tt.id)
 		}
 	}
 }
@@ -82,11 +83,11 @@ func TestClusterMember(t *testing.T) {
 func TestMembers(t *testing.T) {
 	cls := membership.NewCluster()
 	defer cls.Clear()
-	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 1}})
-	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 5}})
-	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 20}})
-	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 50}})
-	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 10}})
+	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftId: 1}})
+	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftId: 5}})
+	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftId: 20}})
+	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftId: 50}})
+	cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftId: 10}})
 
 	assert.Len(t, cls.Members(), 5)
 }
@@ -102,7 +103,7 @@ func TestGetMember(t *testing.T) {
 
 	m := cls.GetMember(1)
 	assert.NotNil(t, m)
-	assert.Equal(t, m.RaftID, uint64(1))
+	assert.Equal(t, m.RaftId, uint64(1))
 
 	m = cls.GetMember(2)
 	assert.Nil(t, m)
@@ -121,12 +122,12 @@ func TestClusterAddMember(t *testing.T) {
 	cls := newTestCluster(members, removed)
 
 	// Cannot add a node present in the removed set
-	err := cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 2}})
+	err := cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftId: 2}})
 	assert.Error(t, err)
 	assert.Equal(t, err, membership.ErrIDRemoved)
 	assert.Nil(t, cls.GetMember(2))
 
-	err = cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftID: 3}})
+	err = cls.AddMember(&membership.Member{RaftMember: &api.RaftMember{RaftId: 3}})
 	assert.NoError(t, err)
 	assert.NotNil(t, cls.GetMember(3))
 }
@@ -194,58 +195,58 @@ func TestValidateConfigurationChange(t *testing.T) {
 	}
 	cls := newTestCluster(members, removed)
 
-	m := &api.RaftMember{RaftID: 1}
-	existingMember, err := m.Marshal()
+	m := &api.RaftMember{RaftId: 1}
+	existingMember, err := m.MarshalVT()
 	assert.NoError(t, err)
 	assert.NotNil(t, existingMember)
 
-	m = &api.RaftMember{RaftID: 7}
-	newMember, err := m.Marshal()
+	m = &api.RaftMember{RaftId: 7}
+	newMember, err := m.MarshalVT()
 	assert.NoError(t, err)
 	assert.NotNil(t, newMember)
 
-	m = &api.RaftMember{RaftID: 4}
-	removedMember, err := m.Marshal()
+	m = &api.RaftMember{RaftId: 4}
+	removedMember, err := m.MarshalVT()
 	assert.NoError(t, err)
 	assert.NotNil(t, removedMember)
 
 	n := &api.Node{}
-	node, err := n.Marshal()
+	node, err := n.MarshalVT()
 	assert.NoError(t, err)
 	assert.NotNil(t, node)
 
 	// Add node but ID exists
-	cc := raftpb.ConfChange{ID: 1, Type: raftpb.ConfChangeAddNode, NodeID: 1, Context: existingMember}
+	cc := &raftpb.ConfChange{Id: proto.Uint64(1), Type: raftpb.ConfChangeAddNode.Enum(), NodeId: proto.Uint64(1), Context: existingMember}
 	err = cls.ValidateConfigurationChange(cc)
 	assert.Error(t, err)
 	assert.Equal(t, err, membership.ErrIDExists)
 
 	// Any configuration change but ID in remove set
-	cc = raftpb.ConfChange{ID: 4, Type: raftpb.ConfChangeAddNode, NodeID: 4, Context: removedMember}
+	cc = &raftpb.ConfChange{Id: proto.Uint64(4), Type: raftpb.ConfChangeAddNode.Enum(), NodeId: proto.Uint64(4), Context: removedMember}
 	err = cls.ValidateConfigurationChange(cc)
 	assert.Error(t, err)
 	assert.Equal(t, err, membership.ErrIDRemoved)
 
 	// Remove Node but ID not found in memberlist
-	cc = raftpb.ConfChange{ID: 7, Type: raftpb.ConfChangeRemoveNode, NodeID: 7, Context: newMember}
+	cc = &raftpb.ConfChange{Id: proto.Uint64(7), Type: raftpb.ConfChangeRemoveNode.Enum(), NodeId: proto.Uint64(7), Context: newMember}
 	err = cls.ValidateConfigurationChange(cc)
 	assert.Error(t, err)
 	assert.Equal(t, err, membership.ErrIDNotFound)
 
 	// Update Node but ID not found in memberlist
-	cc = raftpb.ConfChange{ID: 7, Type: raftpb.ConfChangeUpdateNode, NodeID: 7, Context: newMember}
+	cc = &raftpb.ConfChange{Id: proto.Uint64(7), Type: raftpb.ConfChangeUpdateNode.Enum(), NodeId: proto.Uint64(7), Context: newMember}
 	err = cls.ValidateConfigurationChange(cc)
 	assert.Error(t, err)
 	assert.Equal(t, err, membership.ErrIDNotFound)
 
 	// Any configuration change but can't unmarshal config
-	cc = raftpb.ConfChange{ID: 7, Type: raftpb.ConfChangeAddNode, NodeID: 7, Context: []byte("abcdef")}
+	cc = &raftpb.ConfChange{Id: proto.Uint64(7), Type: raftpb.ConfChangeAddNode.Enum(), NodeId: proto.Uint64(7), Context: []byte("abcdef")}
 	err = cls.ValidateConfigurationChange(cc)
 	assert.Error(t, err)
 	assert.Equal(t, err, membership.ErrCannotUnmarshalConfig)
 
 	// Invalid configuration change
-	cc = raftpb.ConfChange{ID: 1, Type: 10, NodeID: 1, Context: newMember}
+	cc = &raftpb.ConfChange{Id: proto.Uint64(1), Type: raftpb.ConfChangeType(10).Enum(), NodeId: proto.Uint64(1), Context: newMember}
 	err = cls.ValidateConfigurationChange(cc)
 	assert.Error(t, err)
 	assert.Equal(t, err, membership.ErrConfigChangeInvalid)

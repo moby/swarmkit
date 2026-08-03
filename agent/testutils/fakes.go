@@ -17,6 +17,7 @@ import (
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 // TestExecutor is executor for integration tests
@@ -123,6 +124,8 @@ type SessionHandler func(*api.SessionRequest, api.Dispatcher_SessionServer) erro
 
 // MockDispatcher is a fake dispatcher that one agent at a time can connect to
 type MockDispatcher struct {
+	api.UnimplementedDispatcherServer
+
 	mu             sync.Mutex
 	sessionCh      chan *api.SessionMessage
 	openSession    *api.SessionRequest
@@ -155,7 +158,7 @@ func (m *MockDispatcher) Assignments(_ *api.AssignmentsRequest, stream api.Dispa
 
 // Heartbeat always successfully heartbeats
 func (m *MockDispatcher) Heartbeat(context.Context, *api.HeartbeatRequest) (*api.HeartbeatResponse, error) {
-	return &api.HeartbeatResponse{Period: time.Second * 5}, nil
+	return &api.HeartbeatResponse{Period: durationpb.New(time.Second * 5)}, nil
 }
 
 // Session allows a session to be established, and sends the node info
@@ -182,7 +185,7 @@ func (m *MockDispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Se
 
 	// send the initial message first
 	if err := stream.Send(&api.SessionMessage{
-		SessionID: sessionID,
+		SessionId: sessionID,
 		Managers: []*api.WeightedPeer{
 			{
 				Peer: &api.Peer{Addr: m.Addr},
@@ -196,7 +199,7 @@ func (m *MockDispatcher) Session(r *api.SessionRequest, stream api.Dispatcher_Se
 	for {
 		select {
 		case msg := <-m.sessionCh:
-			msg.SessionID = sessionID
+			msg.SessionId = sessionID
 			if err := stream.Send(msg); err != nil {
 				return err
 			}

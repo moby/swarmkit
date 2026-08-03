@@ -12,7 +12,7 @@ var (
 		Use:   "promote <node ID>",
 		Short: "Promote a node to a manager",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := changeNodeRole(cmd, args, api.NodeRoleManager); err != nil {
+			if err := changeNodeRole(cmd, args, api.NodeRole_MANAGER); err != nil {
 				if err == errNoChange {
 					return fmt.Errorf("Node %s is already a manager", args[0])
 				}

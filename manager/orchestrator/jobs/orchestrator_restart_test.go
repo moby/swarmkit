@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/docker/go-events"
-	gogotypes "github.com/gogo/protobuf/types"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/state/store"
@@ -50,9 +50,9 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 		Expect(s).ToNot(BeNil())
 
 		service = &api.Service{
-			ID: "norestartservice",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Id: "norestartservice",
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "norestartservice",
 				},
 				Mode: &api.ServiceSpec_ReplicatedJob{
@@ -61,10 +61,10 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 						TotalCompletions: uint64(1),
 					},
 				},
-				Task: api.TaskSpec{},
+				Task: &api.TaskSpec{},
 			},
 			JobStatus: &api.JobStatus{
-				JobIteration: api.Version{
+				JobIteration: &api.Version{
 					Index: 0,
 				},
 			},
@@ -82,8 +82,8 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 	})
 
 	It("should not restart tasks if the Condition is RestartOnNone", func() {
-		service.Spec.Task.Restart = &api.RestartPolicy{
-			Condition: api.RestartOnNone,
+		service.Spec.GetTask().Restart = &api.RestartPolicy{
+			Condition: api.RestartPolicy_NONE,
 		}
 		err := s.Update(func(tx store.Tx) error {
 			return store.CreateService(tx, service)
@@ -101,7 +101,7 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 		found := false
 		s.View(func(tx store.ReadTx) {
 			var tasks []*api.Task
-			tasks, err = store.FindTasks(tx, store.ByServiceID(service.ID))
+			tasks, err = store.FindTasks(tx, store.ByServiceID(service.Id))
 			if err != nil {
 				return
 			}
@@ -111,22 +111,22 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 			found = len(tasks) == 1 &&
 				tasks[0].JobIteration != nil &&
 				tasks[0].JobIteration.Index == 0 &&
-				tasks[0].Status.State == api.TaskStateNew &&
-				tasks[0].DesiredState == api.TaskStateCompleted
+				tasks[0].Status.GetState() == api.TaskState_NEW &&
+				tasks[0].DesiredState == api.TaskState_COMPLETE
 		})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(found).To(BeTrue())
 
 		// now, fail the task
 		err = s.Update(func(tx store.Tx) error {
-			tasks, err := store.FindTasks(tx, store.ByServiceID(service.ID))
+			tasks, err := store.FindTasks(tx, store.ByServiceID(service.Id))
 			if err != nil {
 				return err
 			}
 			if len(tasks) != 1 {
 				return fmt.Errorf("there should only be one task at this stage, but there are %v", len(tasks))
 			}
-			tasks[0].Status.State = api.TaskStateFailed
+			tasks[0].Status.State = api.TaskState_FAILED
 			return store.UpdateTask(tx, tasks[0])
 		})
 		Expect(err).ToNot(HaveOccurred())
@@ -135,7 +135,7 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 		// failed state goes through
 		passEventsUntil(o, func(event events.Event) bool {
 			updateEv, ok := event.(api.EventUpdateTask)
-			return ok && updateEv.Task.Status.State == api.TaskStateFailed
+			return ok && updateEv.Task.Status.GetState() == api.TaskState_FAILED
 		})
 
 		// now, having processed that event, we should verify that no new Task
@@ -143,19 +143,19 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 		count := 0
 		s.View(func(tx store.ReadTx) {
 			var tasks []*api.Task
-			tasks, err = store.FindTasks(tx, store.ByServiceID(service.ID))
+			tasks, err = store.FindTasks(tx, store.ByServiceID(service.Id))
 			count = len(tasks)
 		})
 		Expect(count).To(Equal(1))
 	})
 
 	It("should only restart tasks MaxAttempt times", func() {
-		service.Spec.Task.Restart = &api.RestartPolicy{
-			Condition:   api.RestartOnFailure,
+		service.Spec.GetTask().Restart = &api.RestartPolicy{
+			Condition:   api.RestartPolicy_ON_FAILURE,
 			MaxAttempts: 3,
 			// set a low but non-zero delay duration, so we avoid default
 			// duration, which may be long.
-			Delay: gogotypes.DurationProto(100 * time.Millisecond),
+			Delay: durationpb.New(100 * time.Millisecond),
 		}
 		err := s.Update(func(tx store.Tx) error {
 			return store.CreateService(tx, service)
@@ -171,7 +171,7 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 		// iteration that should not create a new task.
 		for range 3 {
 			err = s.Update(func(tx store.Tx) error {
-				tasks, err := store.FindTasks(tx, store.ByTaskState(api.TaskStateNew))
+				tasks, err := store.FindTasks(tx, store.ByTaskState(api.TaskState_NEW))
 				if err != nil {
 					return err
 				}
@@ -181,7 +181,7 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 				if len(tasks) > 1 {
 					return fmt.Errorf("too many new tasks, there are %v", len(tasks))
 				}
-				tasks[0].Status.State = api.TaskStateFailed
+				tasks[0].Status.State = api.TaskState_FAILED
 				return store.UpdateTask(tx, tasks[0])
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -196,13 +196,13 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 			passEventsUntil(o, func(event events.Event) bool {
 				updated, ok := event.(api.EventUpdateTask)
 				return ok &&
-					updated.Task.DesiredState == api.TaskStateCompleted &&
-					updated.OldTask.DesiredState == api.TaskStateReady
+					updated.Task.DesiredState == api.TaskState_COMPLETE &&
+					updated.OldTask.DesiredState == api.TaskState_READY
 			})
 		}
 
 		err = s.Update(func(tx store.Tx) error {
-			tasks, err := store.FindTasks(tx, store.ByTaskState(api.TaskStateNew))
+			tasks, err := store.FindTasks(tx, store.ByTaskState(api.TaskState_NEW))
 			if err != nil {
 				return err
 			}
@@ -212,7 +212,7 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 			if len(tasks) > 1 {
 				return fmt.Errorf("too many new tasks, there are %v", len(tasks))
 			}
-			tasks[0].Status.State = api.TaskStateFailed
+			tasks[0].Status.State = api.TaskState_FAILED
 			return store.UpdateTask(tx, tasks[0])
 		})
 
@@ -227,7 +227,7 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 		Expect(tasks).To(HaveLen(4))
 
 		for _, task := range tasks {
-			Expect(task.Status.State).To(Equal(api.TaskStateFailed))
+			Expect(task.Status.GetState()).To(Equal(api.TaskState_FAILED))
 		}
 	})
 })
@@ -235,13 +235,13 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 func serviceCreated(service *api.Service) func(events.Event) bool {
 	return func(event events.Event) bool {
 		create, ok := event.(api.EventCreateService)
-		return ok && create.Service.ID == service.ID
+		return ok && create.Service.Id == service.Id
 	}
 }
 
 func taskFailed(event events.Event) bool {
 	updated, ok := event.(api.EventUpdateTask)
 	return ok &&
-		updated.Task.Status.State == api.TaskStateFailed &&
-		updated.OldTask.Status.State == api.TaskStateNew
+		updated.Task.Status.GetState() == api.TaskState_FAILED &&
+		updated.OldTask.Status.GetState() == api.TaskState_NEW
 }

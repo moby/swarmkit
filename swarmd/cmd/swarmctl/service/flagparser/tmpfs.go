@@ -1,7 +1,6 @@
 package flagparser
 
 import (
-	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -35,7 +34,7 @@ func parseTmpfs(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 			}
 
 			m := api.Mount{
-				Type:   api.MountTypeTmpfs,
+				Type:   api.Mount_TMPFS,
 				Target: parts[0],
 			}
 
@@ -92,11 +91,11 @@ func parseTmpfs(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 						if err != nil {
 							return err
 						}
-						opts.Mode = os.FileMode(i)
+						opts.Mode = uint32(i)
 					case flag == "ro":
-						m.ReadOnly = true
+						m.Readonly = true
 					case flag == "rw":
-						m.ReadOnly = false
+						m.Readonly = false
 					case flag == "exec":
 						opts.Options = "exec"
 					case flag == "noexec":
@@ -108,7 +107,7 @@ func parseTmpfs(flags *pflag.FlagSet, spec *api.ServiceSpec) error {
 				m.TmpfsOptions = &opts
 			}
 
-			container.Mounts = append(container.Mounts, m)
+			container.Mounts = append(container.Mounts, &m)
 		}
 	}
 

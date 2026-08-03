@@ -15,9 +15,9 @@ import (
 // integer ID argument to differentiate them.
 func cannedVolume(id int) *api.Volume {
 	return &api.Volume{
-		ID: fmt.Sprintf("volumeID%d", id),
-		Spec: api.VolumeSpec{
-			Annotations: api.Annotations{
+		Id: fmt.Sprintf("volumeID%d", id),
+		Spec: &api.VolumeSpec{
+			Annotations: &api.Annotations{
 				Name: fmt.Sprintf("volume%d", id),
 			},
 			Group: "group",
@@ -25,12 +25,12 @@ func cannedVolume(id int) *api.Volume {
 				Name: "driver",
 			},
 			AccessMode: &api.VolumeAccessMode{
-				Scope:   api.VolumeScopeMultiNode,
-				Sharing: api.VolumeSharingAll,
+				Scope:   api.VolumeAccessMode_MULTI_NODE,
+				Sharing: api.VolumeAccessMode_ALL,
 			},
 		},
 		VolumeInfo: &api.VolumeInfo{
-			VolumeID: fmt.Sprintf("volumePlugin%d", id),
+			VolumeId: fmt.Sprintf("volumePlugin%d", id),
 		},
 	}
 }
@@ -60,11 +60,11 @@ var _ = Describe("volumeSet", func() {
 		It("should keep track of added volumes", func() {
 			Expect(vs.volumes).To(SatisfyAll(
 				HaveKeyWithValue(
-					v1.ID,
+					v1.Id,
 					volumeInfo{volume: v1, tasks: map[string]volumeUsage{}, nodes: map[string]int{}},
 				),
 				HaveKeyWithValue(
-					v2.ID,
+					v2.Id,
 					volumeInfo{volume: v2, tasks: map[string]volumeUsage{}, nodes: map[string]int{}},
 				),
 			))
@@ -73,37 +73,37 @@ var _ = Describe("volumeSet", func() {
 			z := struct{}{}
 			Expect(vs.byGroup).To(
 				HaveKeyWithValue(
-					"group", map[string]struct{}{v1.ID: z, v2.ID: z},
+					"group", map[string]struct{}{v1.Id: z, v2.Id: z},
 				),
 			)
 			Expect(vs.byName).To(SatisfyAll(
-				HaveKeyWithValue(v1.Spec.Annotations.Name, v1.ID),
-				HaveKeyWithValue(v2.Spec.Annotations.Name, v2.ID),
+				HaveKeyWithValue(v1.GetSpec().GetAnnotations().GetName(), v1.Id),
+				HaveKeyWithValue(v2.GetSpec().GetAnnotations().GetName(), v2.Id),
 			))
 		})
 
 		It("should remove volumes fully", func() {
-			vs.removeVolume(v1.ID)
+			vs.removeVolume(v1.Id)
 
 			Expect(vs.volumes).To(SatisfyAll(
 				HaveLen(1),
 				// don't need to check the value.
-				HaveKey(v2.ID),
+				HaveKey(v2.Id),
 			))
 			Expect(vs.byName).To(SatisfyAll(
 				HaveLen(1),
-				HaveKeyWithValue(v2.Spec.Annotations.Name, v2.ID),
+				HaveKeyWithValue(v2.GetSpec().GetAnnotations().GetName(), v2.Id),
 			))
 			// if the volume is the last one in the group, it should be removed.
 			Expect(vs.byGroup).To(SatisfyAll(
 				HaveLen(1),
-				HaveKeyWithValue("group", map[string]struct{}{v2.ID: {}}),
+				HaveKeyWithValue("group", map[string]struct{}{v2.Id: {}}),
 			))
 		})
 
 		It("should track tasks using a volume", func() {
-			vs.reserveVolume(v1.ID, "task1", "node1", true)
-			Expect(vs.volumes[v1.ID].tasks).To(SatisfyAll(
+			vs.reserveVolume(v1.Id, "task1", "node1", true)
+			Expect(vs.volumes[v1.Id].tasks).To(SatisfyAll(
 				HaveLen(1),
 				HaveKeyWithValue("task1", volumeUsage{nodeID: "node1", readOnly: true}),
 			))
@@ -111,36 +111,36 @@ var _ = Describe("volumeSet", func() {
 
 		It("should reserve all task volumes", func() {
 			task := &api.Task{
-				ID:     "task1",
-				NodeID: "node1",
+				Id:     "task1",
+				NodeId: "node1",
 				Volumes: []*api.VolumeAttachment{
 					{
-						ID:     v1.ID,
-						Source: v1.Spec.Group,
+						Id:     v1.Id,
+						Source: v1.Spec.GetGroup(),
 						Target: "/var/spool/mail",
 					}, {
-						ID:     v2.ID,
-						Source: v2.Spec.Annotations.Name,
+						Id:     v2.Id,
+						Source: v2.GetSpec().GetAnnotations().GetName(),
 						Target: "/srv/www",
 					},
 				},
-				Spec: api.TaskSpec{
+				Spec: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
-							Mounts: []api.Mount{
+							Mounts: []*api.Mount{
 								{
-									Type:   api.MountTypeCluster,
-									Source: v1.Spec.Group,
+									Type:   api.Mount_CLUSTER,
+									Source: v1.Spec.GetGroup(),
 									Target: "/var/spool/mail",
 								}, {
-									Type:   api.MountTypeBind,
+									Type:   api.Mount_BIND,
 									Source: "/var/run/docker.sock",
 									Target: "/var/run/docker.sock",
 								}, {
-									Type:     api.MountTypeCluster,
-									Source:   v2.Spec.Annotations.Name,
+									Type:     api.Mount_CLUSTER,
+									Source:   v2.GetSpec().GetAnnotations().GetName(),
 									Target:   "/srv/www",
-									ReadOnly: true,
+									Readonly: true,
 								},
 							},
 						},
@@ -150,11 +150,11 @@ var _ = Describe("volumeSet", func() {
 
 			vs.reserveTaskVolumes(task)
 
-			Expect(vs.volumes[v1.ID].tasks).To(SatisfyAll(
+			Expect(vs.volumes[v1.Id].tasks).To(SatisfyAll(
 				HaveLen(1),
 				HaveKeyWithValue("task1", volumeUsage{nodeID: "node1", readOnly: false}),
 			))
-			Expect(vs.volumes[v2.ID].tasks).To(SatisfyAll(
+			Expect(vs.volumes[v2.Id].tasks).To(SatisfyAll(
 				HaveLen(1),
 				HaveKeyWithValue("task1", volumeUsage{nodeID: "node1", readOnly: true}),
 			))
@@ -209,21 +209,21 @@ var _ = Describe("volumeSet", func() {
 				// if there is no access mode specified, set a default
 				if c.AccessMode == nil {
 					c.AccessMode = &api.VolumeAccessMode{
-						Scope:   api.VolumeScopeSingleNode,
-						Sharing: api.VolumeSharingAll,
+						Scope:   api.VolumeAccessMode_SINGLE_NODE,
+						Sharing: api.VolumeAccessMode_ALL,
 					}
 				}
 
 				v := &api.Volume{
-					ID: "someVolume",
-					Spec: api.VolumeSpec{
+					Id: "someVolume",
+					Spec: &api.VolumeSpec{
 						AccessMode: c.AccessMode,
 						Driver: &api.Driver{
 							Name: "somePlugin",
 						},
 					},
 					VolumeInfo: &api.VolumeInfo{
-						VolumeID: "somePluginVolumeID",
+						VolumeId: "somePluginVolumeID",
 						AccessibleTopology: []*api.Topology{
 							{Segments: map[string]string{"zone": "z1"}},
 						},
@@ -243,9 +243,9 @@ var _ = Describe("volumeSet", func() {
 				}
 
 				n := &api.Node{
-					ID: "someNode",
+					Id: "someNode",
 					Description: &api.NodeDescription{
-						CSIInfo: []*api.NodeCSIInfo{
+						CsiInfo: []*api.NodeCSIInfo{
 							{
 								PluginName:         "somePlugin",
 								AccessibleTopology: top,
@@ -254,20 +254,20 @@ var _ = Describe("volumeSet", func() {
 					},
 				}
 
-				ni := newNodeInfo(n, nil, api.Resources{})
+				ni := newNodeInfo(n, nil, &api.Resources{})
 
 				// if the volume is unused, do nothing.
 				switch c.InUse {
 				case WrongNode:
-					vs.reserveVolume(v.ID, "someTask", "someOtherNode", false)
+					vs.reserveVolume(v.Id, "someTask", "someOtherNode", false)
 				case OnlyReaders:
-					vs.reserveVolume(v.ID, "someTask", "someNode", true)
+					vs.reserveVolume(v.Id, "someTask", "someNode", true)
 				case Writer:
-					vs.reserveVolume(v.ID, "someTask", "someNode", true)
-					vs.reserveVolume(v.ID, "someWriter", "someNode", false)
+					vs.reserveVolume(v.Id, "someTask", "someNode", true)
+					vs.reserveVolume(v.Id, "someWriter", "someNode", false)
 				}
 
-				available := vs.checkVolume(v.ID, &ni, c.ReadOnly)
+				available := vs.checkVolume(v.Id, &ni, c.ReadOnly)
 				Expect(available).To(Equal(c.Expected))
 			},
 			Entry("volume outside of node topology", AvailabilityCase{
@@ -281,16 +281,16 @@ var _ = Describe("volumeSet", func() {
 			}),
 			Entry("volume is read only, mount is not", AvailabilityCase{
 				AccessMode: &api.VolumeAccessMode{
-					Scope:   api.VolumeScopeMultiNode,
-					Sharing: api.VolumeSharingReadOnly,
+					Scope:   api.VolumeAccessMode_MULTI_NODE,
+					Sharing: api.VolumeAccessMode_READ_ONLY,
 				},
 				InTopology: true,
 				ReadOnly:   false,
 			}),
 			Entry("volume is OneWriter, but already has a writer", AvailabilityCase{
 				AccessMode: &api.VolumeAccessMode{
-					Scope:   api.VolumeScopeMultiNode,
-					Sharing: api.VolumeSharingOneWriter,
+					Scope:   api.VolumeAccessMode_MULTI_NODE,
+					Sharing: api.VolumeAccessMode_ONE_WRITER,
 				},
 				InTopology: true,
 				ReadOnly:   false,
@@ -298,8 +298,8 @@ var _ = Describe("volumeSet", func() {
 			}),
 			Entry("volume is OneWriter, and has no writer", AvailabilityCase{
 				AccessMode: &api.VolumeAccessMode{
-					Scope:   api.VolumeScopeMultiNode,
-					Sharing: api.VolumeSharingOneWriter,
+					Scope:   api.VolumeAccessMode_MULTI_NODE,
+					Sharing: api.VolumeAccessMode_ONE_WRITER,
 				},
 				InTopology: true,
 				InUse:      OnlyReaders,
@@ -312,8 +312,8 @@ var _ = Describe("volumeSet", func() {
 			}),
 			Entry("the volume is in use on a different node, but the scope is multinode", AvailabilityCase{
 				AccessMode: &api.VolumeAccessMode{
-					Scope:   api.VolumeScopeMultiNode,
-					Sharing: api.VolumeSharingAll,
+					Scope:   api.VolumeAccessMode_MULTI_NODE,
+					Sharing: api.VolumeAccessMode_ALL,
 				},
 				InTopology: true,
 				InUse:      WrongNode,
@@ -321,8 +321,8 @@ var _ = Describe("volumeSet", func() {
 			}),
 			Entry("the volume is in use and cannot be shared", AvailabilityCase{
 				AccessMode: &api.VolumeAccessMode{
-					Scope:   api.VolumeScopeSingleNode,
-					Sharing: api.VolumeSharingNone,
+					Scope:   api.VolumeAccessMode_SINGLE_NODE,
+					Sharing: api.VolumeAccessMode_NONE,
 				},
 				InTopology: true,
 				InUse:      OnlyReaders,
@@ -331,8 +331,8 @@ var _ = Describe("volumeSet", func() {
 			}),
 			Entry("the volume is not in use and cannot be shared", AvailabilityCase{
 				AccessMode: &api.VolumeAccessMode{
-					Scope:   api.VolumeScopeSingleNode,
-					Sharing: api.VolumeSharingNone,
+					Scope:   api.VolumeAccessMode_SINGLE_NODE,
+					Sharing: api.VolumeAccessMode_NONE,
 				},
 				InTopology: true,
 				InUse:      Unused,
@@ -349,90 +349,90 @@ var _ = Describe("volumeSet", func() {
 
 			BeforeEach(func() {
 				n := &api.Node{
-					ID: "someNode",
+					Id: "someNode",
 					Description: &api.NodeDescription{
-						CSIInfo: []*api.NodeCSIInfo{
+						CsiInfo: []*api.NodeCSIInfo{
 							{
 								PluginName: "newPlugin",
-								NodeID:     "newPluginSomeNode",
+								NodeId:     "newPluginSomeNode",
 								// don't bother with topology for these tests.
 							},
 						},
 					},
 				}
-				ni := newNodeInfo(n, nil, api.Resources{})
+				ni := newNodeInfo(n, nil, &api.Resources{})
 				node = &ni
 
 				volumes = []*api.Volume{
 					{
-						ID: "volume1",
-						Spec: api.VolumeSpec{
-							Annotations: api.Annotations{
+						Id: "volume1",
+						Spec: &api.VolumeSpec{
+							Annotations: &api.Annotations{
 								Name: "volumeName1",
 							},
 							Driver: &api.Driver{
 								Name: "newPlugin",
 							},
 							AccessMode: &api.VolumeAccessMode{
-								Scope:   api.VolumeScopeSingleNode,
-								Sharing: api.VolumeSharingAll,
+								Scope:   api.VolumeAccessMode_SINGLE_NODE,
+								Sharing: api.VolumeAccessMode_ALL,
 							},
 						},
 						VolumeInfo: &api.VolumeInfo{
-							VolumeID: "newPluginVolume1",
+							VolumeId: "newPluginVolume1",
 						},
 					},
 					{
-						ID: "volume2",
-						Spec: api.VolumeSpec{
-							Annotations: api.Annotations{
+						Id: "volume2",
+						Spec: &api.VolumeSpec{
+							Annotations: &api.Annotations{
 								Name: "volumeName2",
 							},
 							Driver: &api.Driver{
 								Name: "newPlugin",
 							},
 							AccessMode: &api.VolumeAccessMode{
-								Scope:   api.VolumeScopeSingleNode,
-								Sharing: api.VolumeSharingAll,
+								Scope:   api.VolumeAccessMode_SINGLE_NODE,
+								Sharing: api.VolumeAccessMode_ALL,
 							},
 						},
 					},
 					{
-						ID: "volume3",
-						Spec: api.VolumeSpec{
-							Annotations: api.Annotations{
+						Id: "volume3",
+						Spec: &api.VolumeSpec{
+							Annotations: &api.Annotations{
 								Name: "volumeName3",
 							},
 							Driver: &api.Driver{
 								Name: "newPlugin",
 							},
 							AccessMode: &api.VolumeAccessMode{
-								Scope:   api.VolumeScopeSingleNode,
-								Sharing: api.VolumeSharingAll,
+								Scope:   api.VolumeAccessMode_SINGLE_NODE,
+								Sharing: api.VolumeAccessMode_ALL,
 							},
 							Group: "someVolumeGroup",
 						},
 						VolumeInfo: &api.VolumeInfo{
-							VolumeID: "newPluginVolume3",
+							VolumeId: "newPluginVolume3",
 						},
 					},
 					{
-						ID: "volume4",
-						Spec: api.VolumeSpec{
-							Annotations: api.Annotations{
+						Id: "volume4",
+						Spec: &api.VolumeSpec{
+							Annotations: &api.Annotations{
 								Name: "volumeName4",
 							},
 							Driver: &api.Driver{
 								Name: "newPlugin",
 							},
 							AccessMode: &api.VolumeAccessMode{
-								Scope:   api.VolumeScopeSingleNode,
-								Sharing: api.VolumeSharingAll,
+								Scope:   api.VolumeAccessMode_SINGLE_NODE,
+								Sharing: api.VolumeAccessMode_ALL,
 							},
 							Group: "someVolumeGroup",
 						},
 						VolumeInfo: &api.VolumeInfo{
-							VolumeID: "newPluginVolume4",
+							VolumeId: "newPluginVolume4",
 						},
 					},
 				}
@@ -444,7 +444,7 @@ var _ = Describe("volumeSet", func() {
 
 			It("should choose and return an available volume", func() {
 				mount := &api.Mount{
-					Type:   api.MountTypeCluster,
+					Type:   api.Mount_CLUSTER,
 					Source: "volumeName1",
 				}
 				volumeID := vs.isVolumeAvailableOnNode(mount, node)
@@ -453,7 +453,7 @@ var _ = Describe("volumeSet", func() {
 
 			It("should return an empty string if there are no available volumes", func() {
 				mount := &api.Mount{
-					Type:   api.MountTypeCluster,
+					Type:   api.Mount_CLUSTER,
 					Source: "volumeNameNotReal",
 				}
 				volumeID := vs.isVolumeAvailableOnNode(mount, node)
@@ -462,7 +462,7 @@ var _ = Describe("volumeSet", func() {
 
 			It("should specify one volume from a group, if the source is a group", func() {
 				mount := &api.Mount{
-					Type:   api.MountTypeCluster,
+					Type:   api.Mount_CLUSTER,
 					Source: "group:someVolumeGroup",
 				}
 				volumeID := vs.isVolumeAvailableOnNode(mount, node)
@@ -478,30 +478,30 @@ var _ = Describe("volumeSet", func() {
 			vs.addOrUpdateVolume(v2)
 			v3 := cannedVolume(3)
 			vs.addOrUpdateVolume(v3)
-			mounts := []api.Mount{
+			mounts := []*api.Mount{
 				{
-					Type:     api.MountTypeCluster,
+					Type:     api.Mount_CLUSTER,
 					Source:   "group:volumeGroup",
 					Target:   "/somedir",
-					ReadOnly: true,
+					Readonly: true,
 				}, {
-					Type:   api.MountTypeCluster,
-					Source: v2.Spec.Annotations.Name,
+					Type:   api.Mount_CLUSTER,
+					Source: v2.GetSpec().GetAnnotations().GetName(),
 					Target: "/someOtherDir",
 				}, {
-					Type:   api.MountTypeBind,
+					Type:   api.Mount_BIND,
 					Source: "/some/subdir",
 					Target: "/some/container/dir",
 				}, {
-					Type:   api.MountTypeCluster,
-					Source: v3.Spec.Annotations.Name,
+					Type:   api.Mount_CLUSTER,
+					Source: v3.GetSpec().GetAnnotations().GetName(),
 					Target: "/some/third/dir",
 				},
 			}
 
 			task := &api.Task{
-				ID: "taskID1",
-				Spec: api.TaskSpec{
+				Id: "taskID1",
+				Spec: &api.TaskSpec{
 					Runtime: &api.TaskSpec_Container{
 						Container: &api.ContainerSpec{
 							Mounts: mounts,
@@ -512,7 +512,7 @@ var _ = Describe("volumeSet", func() {
 
 			node := &NodeInfo{
 				Node: &api.Node{
-					ID:          "node1",
+					Id:          "node1",
 					Description: &api.NodeDescription{},
 				},
 			}
@@ -520,9 +520,9 @@ var _ = Describe("volumeSet", func() {
 			attachments, err := vs.chooseTaskVolumes(task, node)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(attachments).To(ConsistOf(
-				&api.VolumeAttachment{ID: v1.ID, Source: mounts[0].Source, Target: mounts[0].Target},
-				&api.VolumeAttachment{ID: v2.ID, Source: mounts[1].Source, Target: mounts[1].Target},
-				&api.VolumeAttachment{ID: v3.ID, Source: mounts[3].Source, Target: mounts[3].Target},
+				&api.VolumeAttachment{Id: v1.Id, Source: mounts[0].Source, Target: mounts[0].Target},
+				&api.VolumeAttachment{Id: v2.Id, Source: mounts[1].Source, Target: mounts[1].Target},
+				&api.VolumeAttachment{Id: v3.Id, Source: mounts[3].Source, Target: mounts[3].Target},
 			))
 		})
 	})
@@ -551,31 +551,31 @@ var _ = Describe("volumeSet", func() {
 				vs.addOrUpdateVolume(volumes[i])
 
 				nodes = append(nodes, &api.Node{
-					ID: fmt.Sprintf("node%d", i),
+					Id: fmt.Sprintf("node%d", i),
 				})
 
 				volumes[i].PublishStatus = []*api.VolumePublishStatus{
 					{
-						NodeID: nodes[i].ID,
+						NodeId: nodes[i].Id,
 						State:  api.VolumePublishStatus_PUBLISHED,
 					},
 				}
 
 				tasks = append(tasks, &api.Task{
-					ID:     fmt.Sprintf("task%d", i),
-					NodeID: nodes[i].ID,
-					Spec: api.TaskSpec{
+					Id:     fmt.Sprintf("task%d", i),
+					NodeId: nodes[i].Id,
+					Spec: &api.TaskSpec{
 						Runtime: &api.TaskSpec_Container{
 							Container: &api.ContainerSpec{
-								Mounts: []api.Mount{
+								Mounts: []*api.Mount{
 									{
-										Type:   api.MountTypeCluster,
-										Source: volumes[i].Spec.Annotations.Name,
+										Type:   api.Mount_CLUSTER,
+										Source: volumes[i].GetSpec().GetAnnotations().GetName(),
 										Target: "bar",
 									},
 									{
-										Type:   api.MountTypeCluster,
-										Source: allVolume.Spec.Annotations.Name,
+										Type:   api.Mount_CLUSTER,
+										Source: allVolume.GetSpec().GetAnnotations().GetName(),
 										Target: "baz",
 									},
 								},
@@ -584,18 +584,18 @@ var _ = Describe("volumeSet", func() {
 					},
 					Volumes: []*api.VolumeAttachment{
 						{
-							Source: volumes[i].Spec.Annotations.Name,
+							Source: volumes[i].GetSpec().GetAnnotations().GetName(),
 							Target: "bar",
-							ID:     volumes[i].ID,
+							Id:     volumes[i].Id,
 						}, {
-							Source: allVolume.Spec.Annotations.Name,
+							Source: allVolume.GetSpec().GetAnnotations().GetName(),
 							Target: "baz",
-							ID:     allVolume.ID,
+							Id:     allVolume.Id,
 						},
 					},
 				})
 				allVolume.PublishStatus = append(allVolume.PublishStatus, &api.VolumePublishStatus{
-					NodeID: nodes[i].ID,
+					NodeId: nodes[i].Id,
 					State:  api.VolumePublishStatus_PUBLISHED,
 				})
 			}
@@ -631,26 +631,26 @@ var _ = Describe("volumeSet", func() {
 
 		It("should have nodes reference counted correctly", func() {
 			for _, v := range volumes {
-				info := vs.volumes[v.ID]
+				info := vs.volumes[v.Id]
 
 				Expect(info.nodes).To(HaveLen(1))
 				Expect(info.volume.PublishStatus).ToNot(BeNil())
-				nid := info.volume.PublishStatus[0].NodeID
+				nid := info.volume.PublishStatus[0].NodeId
 				Expect(nid).ToNot(BeEmpty())
 				Expect(info.nodes[nid]).To(Equal(1))
 			}
 
-			allInfo := vs.volumes[allVolume.ID]
+			allInfo := vs.volumes[allVolume.Id]
 			Expect(allInfo.nodes).To(HaveLen(4))
 			Expect(allInfo.volume.PublishStatus).ToNot(BeNil())
 			for _, status := range allInfo.volume.PublishStatus {
-				Expect(allInfo.nodes[status.NodeID]).To(Equal(1))
+				Expect(allInfo.nodes[status.NodeId]).To(Equal(1))
 			}
 		})
 
 		It("should free volumes that are no longer needed", func() {
-			vs.releaseVolume(volumes[0].ID, tasks[0].ID)
-			vs.releaseVolume(allVolume.ID, tasks[0].ID)
+			vs.releaseVolume(volumes[0].Id, tasks[0].Id)
+			vs.releaseVolume(allVolume.Id, tasks[0].Id)
 
 			err := s.Batch(vs.freeVolumes)
 			Expect(err).ToNot(HaveOccurred())
@@ -662,15 +662,15 @@ var _ = Describe("volumeSet", func() {
 			Expect(freshVolumes).To(HaveLen(5))
 
 			for _, v := range freshVolumes {
-				switch v.ID {
-				case volumes[0].ID:
+				switch v.Id {
+				case volumes[0].Id:
 					Expect(v.PublishStatus).To(ConsistOf(&api.VolumePublishStatus{
 						State:  api.VolumePublishStatus_PENDING_NODE_UNPUBLISH,
-						NodeID: nodes[0].ID,
+						NodeId: nodes[0].Id,
 					}))
-				case allVolume.ID:
+				case allVolume.Id:
 					for _, status := range v.PublishStatus {
-						if status.NodeID == nodes[0].ID {
+						if status.NodeId == nodes[0].Id {
 							Expect(status.State).To(Equal(api.VolumePublishStatus_PENDING_NODE_UNPUBLISH))
 						} else {
 							Expect(status.State).To(Equal(api.VolumePublishStatus_PUBLISHED))

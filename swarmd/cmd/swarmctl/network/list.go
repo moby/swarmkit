@@ -48,14 +48,14 @@ var (
 				output = func(n *api.Network) {
 					spec := n.Spec
 					fmt.Fprintf(w, "%s\t%s\t%s\n",
-						n.ID,
-						spec.Annotations.Name,
+						n.Id,
+						spec.GetAnnotations().GetName(),
 						n.DriverState.Name,
 					)
 				}
 
 			} else {
-				output = func(n *api.Network) { fmt.Println(n.ID) }
+				output = func(n *api.Network) { fmt.Println(n.Id) }
 			}
 
 			for _, j := range r.Networks {

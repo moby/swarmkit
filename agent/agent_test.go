@@ -75,7 +75,7 @@ func TestAgentStartStop(t *testing.T) {
 	require.NoError(t, err)
 
 	addr := "localhost:4949"
-	remotes := remotes.NewRemotes(api.Peer{Addr: addr})
+	remotes := remotes.NewRemotes(&api.Peer{Addr: addr})
 
 	db, cleanup := storageTestEnv(t)
 	defer cleanup()
@@ -118,33 +118,33 @@ func TestHandleSessionMessageNetworkManagerChanges(t *testing.T) {
 	var messages = []*api.SessionMessage{
 		{
 			Managers: []*api.WeightedPeer{
-				{Peer: &api.Peer{NodeID: "node1", Addr: "10.0.0.1"}, Weight: 1.0}},
+				{Peer: &api.Peer{NodeId: "node1", Addr: "10.0.0.1"}, Weight: 1.0}},
 			NetworkBootstrapKeys: []*api.EncryptionKey{{}},
 		},
 		{
 			Managers: []*api.WeightedPeer{
-				{Peer: &api.Peer{NodeID: "node1", Addr: ""}, Weight: 1.0}},
+				{Peer: &api.Peer{NodeId: "node1", Addr: ""}, Weight: 1.0}},
 			NetworkBootstrapKeys: []*api.EncryptionKey{{}},
 		},
 		{
 			Managers: []*api.WeightedPeer{
-				{Peer: &api.Peer{NodeID: "node1", Addr: "10.0.0.1"}, Weight: 1.0}},
+				{Peer: &api.Peer{NodeId: "node1", Addr: "10.0.0.1"}, Weight: 1.0}},
 			NetworkBootstrapKeys: nil,
 		},
 		{
 			Managers: []*api.WeightedPeer{
-				{Peer: &api.Peer{NodeID: "", Addr: "10.0.0.1"}, Weight: 1.0}},
+				{Peer: &api.Peer{NodeId: "", Addr: "10.0.0.1"}, Weight: 1.0}},
 			NetworkBootstrapKeys: []*api.EncryptionKey{{}},
 		},
 		{
 			Managers: []*api.WeightedPeer{
-				{Peer: &api.Peer{NodeID: "node1", Addr: "10.0.0.1"}, Weight: 0.0}},
+				{Peer: &api.Peer{NodeId: "node1", Addr: "10.0.0.1"}, Weight: 0.0}},
 			NetworkBootstrapKeys: []*api.EncryptionKey{{}},
 		},
 	}
 
 	for _, m := range messages {
-		m.SessionID = currSession.SessionID
+		m.SessionId = currSession.SessionId
 		tester.dispatcher.SessionMessageChannel() <- m
 		select {
 		case nodeChange := <-nodeChangeCh:
@@ -191,18 +191,18 @@ func TestHandleSessionMessageNodeChanges(t *testing.T) {
 		},
 		{
 			msg: &api.SessionMessage{
-				Node:   &api.Node{ID: "something"},
+				Node:   &api.Node{Id: "something"},
 				RootCA: []byte("new root CA"),
 			},
 			change: &NodeChanges{
-				Node:     &api.Node{ID: "something"},
+				Node:     &api.Node{Id: "something"},
 				RootCert: []byte("new root CA"),
 			},
 			errorMsg: "the root cert and node both changed, but no notification of node change",
 		},
 		{
 			msg: &api.SessionMessage{
-				Node:   &api.Node{ID: "something"},
+				Node:   &api.Node{Id: "something"},
 				RootCA: tester.testCA.RootCA.Certs,
 			},
 			errorMsg: "while a node and root cert were provided, nothing has changed so no node changed",
@@ -210,7 +210,7 @@ func TestHandleSessionMessageNodeChanges(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		tc.msg.SessionID = currSession.SessionID
+		tc.msg.SessionId = currSession.SessionId
 		tester.dispatcher.SessionMessageChannel() <- tc.msg
 		if tc.change != nil {
 			select {
@@ -242,7 +242,7 @@ func TestNodeDescriptionsEqual(t *testing.T) {
 	t.Run("nil and empty repeated field", func(t *testing.T) {
 		a := &api.NodeDescription{}
 		b := &api.NodeDescription{
-			CSIInfo: []*api.NodeCSIInfo{},
+			CsiInfo: []*api.NodeCSIInfo{},
 		}
 
 		require.True(t, nodeDescriptionsEqual(a, b))
@@ -251,7 +251,7 @@ func TestNodeDescriptionsEqual(t *testing.T) {
 	t.Run("different repeated field", func(t *testing.T) {
 		a := &api.NodeDescription{}
 		b := &api.NodeDescription{
-			CSIInfo: []*api.NodeCSIInfo{
+			CsiInfo: []*api.NodeCSIInfo{
 				{PluginName: "plugin"},
 			},
 		}
@@ -273,7 +273,7 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 	currSession, closedSessions := tester.dispatcher.GetSessions()
 	require.NotNil(t, currSession)
 	require.NotNil(t, currSession.Description)
-	require.True(t, currSession.Description.FIPS)
+	require.True(t, currSession.Description.Fips)
 	require.Empty(t, closedSessions)
 
 	tester.executor.UpdateNodeDescription(&api.NodeDescription{
@@ -293,11 +293,11 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 	require.NotEqual(t, currSession, gotSession)
 	require.NotNil(t, gotSession.Description)
 	require.Equal(t, "testAgent", gotSession.Description.Hostname)
-	require.True(t, gotSession.Description.FIPS)
+	require.True(t, gotSession.Description.Fips)
 	currSession = gotSession
 
 	// If nothing changes, the session is not re-established
-	tlsCh <- gotSession.Description.TLSInfo
+	tlsCh <- gotSession.Description.TlsInfo
 	time.Sleep(1 * time.Second)
 	gotSession, closedSessions = tester.dispatcher.GetSessions()
 	require.Equal(t, currSession, gotSession)
@@ -322,8 +322,8 @@ func TestSessionRestartedOnNodeDescriptionChange(t *testing.T) {
 	require.NotEqual(t, currSession, gotSession)
 	require.NotNil(t, gotSession.Description)
 	require.Equal(t, "testAgent", gotSession.Description.Hostname)
-	require.Equal(t, newTLSInfo, gotSession.Description.TLSInfo)
-	require.True(t, gotSession.Description.FIPS)
+	require.True(t, newTLSInfo.EqualVT(gotSession.Description.TlsInfo))
+	require.True(t, gotSession.Description.Fips)
 }
 
 // If the dispatcher returns an error, if it times out, or if it's unreachable, no matter
@@ -367,7 +367,7 @@ func TestSessionReconnectsIfDispatcherErrors(t *testing.T) {
 		return nil
 	}, 2*time.Second))
 	tester.stopDispatcher()
-	tester.remotes.setPeer(api.Peer{Addr: anotherDispatcher.Addr})
+	tester.remotes.setPeer(&api.Peer{Addr: anotherDispatcher.Addr})
 	tester.agent.config.ConnBroker.SetLocalConn(nil)
 
 	// It should have connected with the second dispatcher 3 times - first because the first dispatcher died,
@@ -555,7 +555,7 @@ func agentTestEnv(t *testing.T, nodeChangeCh chan *NodeChanges, tlsChangeCh chan
 
 		broker.SetLocalConn(conn)
 	} else {
-		fr.setPeer(api.Peer{Addr: mockDispatcher.Addr})
+		fr.setPeer(&api.Peer{Addr: mockDispatcher.Addr})
 	}
 
 	db, cleanupStorage := storageTestEnv(t)
@@ -599,27 +599,27 @@ func agentTestEnv(t *testing.T, nodeChangeCh chan *NodeChanges, tlsChangeCh chan
 // it is switched out
 type fakeRemotes struct {
 	mu   sync.Mutex
-	peer api.Peer
+	peer *api.Peer
 }
 
-func (f *fakeRemotes) Weights() map[api.Peer]int {
+func (f *fakeRemotes) Weights() map[remotes.PeerKey]int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return map[api.Peer]int{f.peer: 1}
+	return map[remotes.PeerKey]int{remotes.NewPeerKey(f.peer): 1}
 }
 
-func (f *fakeRemotes) Select(...string) (api.Peer, error) {
+func (f *fakeRemotes) Select(...string) (*api.Peer, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.peer, nil
 }
 
 // do nothing
-func (f *fakeRemotes) Observe(peer api.Peer, weight int)         {}
-func (f *fakeRemotes) ObserveIfExists(peer api.Peer, weight int) {}
-func (f *fakeRemotes) Remove(addrs ...api.Peer)                  {}
+func (f *fakeRemotes) Observe(peer *api.Peer, weight int)         {}
+func (f *fakeRemotes) ObserveIfExists(peer *api.Peer, weight int) {}
+func (f *fakeRemotes) Remove(addrs ...*api.Peer)                  {}
 
-func (f *fakeRemotes) setPeer(p api.Peer) {
+func (f *fakeRemotes) setPeer(p *api.Peer) {
 	f.mu.Lock()
 	f.peer = p
 	f.mu.Unlock()

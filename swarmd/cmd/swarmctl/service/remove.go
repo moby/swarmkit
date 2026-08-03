@@ -33,7 +33,7 @@ var (
 				if err != nil {
 					return err
 				}
-				_, err = c.RemoveService(common.Context(cmd), &api.RemoveServiceRequest{ServiceID: service.ID})
+				_, err = c.RemoveService(common.Context(cmd), &api.RemoveServiceRequest{ServiceId: service.Id})
 				if err != nil {
 					return err
 				}

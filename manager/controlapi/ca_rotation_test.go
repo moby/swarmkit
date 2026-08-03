@@ -23,13 +23,13 @@ import (
 )
 
 type rootCARotationTestCase struct {
-	rootCA   api.RootCA
-	caConfig api.CAConfig
+	rootCA   *api.RootCA
+	caConfig *api.CAConfig
 
 	// what to expect if the validate and update succeeds - we can't always check that everything matches, for instance if
 	// random values for join tokens or cross signed certs, or generated root rotation cert/key,
 	// are expected
-	expectRootCA                api.RootCA
+	expectRootCA                *api.RootCA
 	expectJoinTokenChange       bool
 	expectGeneratedRootRotation bool
 	expectGeneratedCross        bool
@@ -39,11 +39,11 @@ type rootCARotationTestCase struct {
 	expectErrorString string
 }
 
-var initialLocalRootCA = api.RootCA{
-	CACert:     testutils.ECDSA256SHA256Cert,
-	CAKey:      testutils.ECDSA256Key,
-	CACertHash: "DEADBEEF",
-	JoinTokens: api.JoinTokens{
+var initialLocalRootCA = &api.RootCA{
+	CaCert:     testutils.ECDSA256SHA256Cert,
+	CaKey:      testutils.ECDSA256Key,
+	CaCertHash: "DEADBEEF",
+	JoinTokens: &api.JoinTokens{
 		Worker:  "SWMTKN-1-worker",
 		Manager: "SWMTKN-1-manager",
 	},
@@ -71,27 +71,29 @@ func getSecurityConfig(t *testing.T, localRootCA *ca.RootCA, cluster *api.Cluste
 
 func TestValidateCAConfigInvalidValues(t *testing.T) {
 	t.Parallel()
-	localRootCA, err := ca.NewRootCA(initialLocalRootCA.CACert, initialLocalRootCA.CACert, initialLocalRootCA.CAKey,
+	localRootCA, err := ca.NewRootCA(initialLocalRootCA.CaCert, initialLocalRootCA.CaCert, initialLocalRootCA.CaKey,
 		ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 
-	initialExternalRootCA := initialLocalRootCA
-	initialExternalRootCA.CAKey = nil
+	initialExternalRootCA := initialLocalRootCA.Copy()
+	initialExternalRootCA.CaKey = nil
 
 	crossSigned, err := localRootCA.CrossSignCACertificate(rotationCert)
 	require.NoError(t, err)
 
-	initExternalRootCAWithRotation := initialExternalRootCA
+	initExternalRootCAWithRotation := initialExternalRootCA.Copy()
 	initExternalRootCAWithRotation.RootRotation = &api.RootRotation{
-		CACert:            rotationCert,
-		CAKey:             rotationKey,
-		CrossSignedCACert: crossSigned,
+		CaCert:            rotationCert,
+		CaKey:             rotationKey,
+		CrossSignedCaCert: crossSigned,
 	}
 
-	initWithExternalRootRotation := initialLocalRootCA
+	// Copy: initialLocalRootCA is a shared package-level message now, so
+	// mutating it here would corrupt every other test in this package.
+	initWithExternalRootRotation := initialLocalRootCA.Copy()
 	initWithExternalRootRotation.RootRotation = &api.RootRotation{
-		CACert:            rotationCert,
-		CrossSignedCACert: crossSigned,
+		CaCert:            rotationCert,
+		CrossSignedCaCert: crossSigned,
 	}
 
 	// set up 2 external CAs that can be contacted for signing
@@ -101,7 +103,7 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 	defer initExtServer.Stop()
 
 	// we need to accept client certs from the original cert
-	rotationRootCA, err := ca.NewRootCA(append(initialLocalRootCA.CACert, rotationCert...), rotationCert, rotationKey,
+	rotationRootCA, err := ca.NewRootCA(append(initialLocalRootCA.CaCert, rotationCert...), rotationCert, rotationKey,
 		ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 	rotateExtServer, err := testutils.NewExternalSigningServer(rotationRootCA, tempdir)
@@ -111,23 +113,23 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 	for _, invalid := range []rootCARotationTestCase{
 		{
 			rootCA: initialLocalRootCA,
-			caConfig: api.CAConfig{
-				SigningCAKey: initialLocalRootCA.CAKey,
+			caConfig: &api.CAConfig{
+				SigningCaKey: initialLocalRootCA.CaKey,
 			},
 			expectErrorString: "the signing CA cert must also be provided",
 		},
 		{
 			rootCA: initExternalRootCAWithRotation, // even if a root rotation is already in progress, the current CA external URL must be present
-			caConfig: api.CAConfig{
-				ExternalCAs: []*api.ExternalCA{
+			caConfig: &api.CAConfig{
+				ExternalCas: []*api.ExternalCA{
 					{
-						URL:      initExtServer.URL,
-						CACert:   initialLocalRootCA.CACert,
+						Url:      initExtServer.URL,
+						CaCert:   initialLocalRootCA.CaCert,
 						Protocol: 3, // wrong protocol
 					},
 					{
-						URL:    initExtServer.URL,
-						CACert: rotationCert, // wrong cert
+						Url:    initExtServer.URL,
+						CaCert: rotationCert, // wrong cert
 					},
 				},
 			},
@@ -135,20 +137,20 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 		},
 		{
 			rootCA: initialExternalRootCA,
-			caConfig: api.CAConfig{
-				SigningCACert: rotationCert, // even if there's a desired cert, the current CA external URL must be present
-				ExternalCAs: []*api.ExternalCA{ // right certs, but invalid URLs in several ways
+			caConfig: &api.CAConfig{
+				SigningCaCert: rotationCert, // even if there's a desired cert, the current CA external URL must be present
+				ExternalCas: []*api.ExternalCA{ // right certs, but invalid URLs in several ways
 					{
-						URL:    rotateExtServer.URL,
-						CACert: initialExternalRootCA.CACert,
+						Url:    rotateExtServer.URL,
+						CaCert: initialExternalRootCA.CaCert,
 					},
 					{
-						URL:    "invalidurl",
-						CACert: initialExternalRootCA.CACert,
+						Url:    "invalidurl",
+						CaCert: initialExternalRootCA.CaCert,
 					},
 					{
-						URL:    "https://too:many:colons:1:2:3",
-						CACert: initialExternalRootCA.CACert,
+						Url:    "https://too:many:colons:1:2:3",
+						CaCert: initialExternalRootCA.CaCert,
 					},
 				},
 			},
@@ -156,16 +158,16 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 		},
 		{
 			rootCA: initialLocalRootCA,
-			caConfig: api.CAConfig{
-				SigningCACert: rotationCert,
-				ExternalCAs: []*api.ExternalCA{
+			caConfig: &api.CAConfig{
+				SigningCaCert: rotationCert,
+				ExternalCas: []*api.ExternalCA{
 					{
-						URL:      rotateExtServer.URL,
-						CACert:   rotationCert,
+						Url:      rotateExtServer.URL,
+						CaCert:   rotationCert,
 						Protocol: 3, // wrong protocol
 					},
 					{
-						URL: rotateExtServer.URL,
+						Url: rotateExtServer.URL,
 						// wrong cert because no cert is assumed to be the current root CA cert
 					},
 				},
@@ -174,20 +176,20 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 		},
 		{
 			rootCA: initialLocalRootCA,
-			caConfig: api.CAConfig{
-				SigningCACert: rotationCert,
-				ExternalCAs: []*api.ExternalCA{ // right certs, but invalid URLs in several ways
+			caConfig: &api.CAConfig{
+				SigningCaCert: rotationCert,
+				ExternalCas: []*api.ExternalCA{ // right certs, but invalid URLs in several ways
 					{
-						URL:    initExtServer.URL,
-						CACert: rotationCert,
+						Url:    initExtServer.URL,
+						CaCert: rotationCert,
 					},
 					{
-						URL:    "invalidurl",
-						CACert: rotationCert,
+						Url:    "invalidurl",
+						CaCert: rotationCert,
 					},
 					{
-						URL:    "https://too:many:colons:1:2:3",
-						CACert: initialExternalRootCA.CACert,
+						Url:    "https://too:many:colons:1:2:3",
+						CaCert: initialExternalRootCA.CaCert,
 					},
 				},
 			},
@@ -195,16 +197,16 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 		},
 		{
 			rootCA: initWithExternalRootRotation,
-			caConfig: api.CAConfig{ // no forceRotate change, no explicit signing cert change
-				ExternalCAs: []*api.ExternalCA{
+			caConfig: &api.CAConfig{ // no forceRotate change, no explicit signing cert change
+				ExternalCas: []*api.ExternalCA{
 					{
-						URL:      rotateExtServer.URL,
-						CACert:   rotationCert,
+						Url:      rotateExtServer.URL,
+						CaCert:   rotationCert,
 						Protocol: 3, // wrong protocol
 					},
 					{
-						URL:    rotateExtServer.URL,
-						CACert: initialLocalRootCA.CACert, // wrong cert
+						Url:    rotateExtServer.URL,
+						CaCert: initialLocalRootCA.CaCert, // wrong cert
 					},
 				},
 			},
@@ -212,16 +214,16 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 		},
 		{
 			rootCA: initWithExternalRootRotation,
-			caConfig: api.CAConfig{ // no forceRotate change, no explicit signing cert change
-				ExternalCAs: []*api.ExternalCA{
+			caConfig: &api.CAConfig{ // no forceRotate change, no explicit signing cert change
+				ExternalCas: []*api.ExternalCA{
 					{
-						URL:    initExtServer.URL,
-						CACert: rotationCert,
+						Url:    initExtServer.URL,
+						CaCert: rotationCert,
 						// right CA cert, but the server cert is not signed by this CA cert
 					},
 					{
-						URL:    "invalidurl",
-						CACert: rotationCert,
+						Url:    "invalidurl",
+						CaCert: rotationCert,
 						// right CA cert, but invalid URL
 					},
 				},
@@ -230,21 +232,21 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 		},
 		{
 			rootCA:            initialExternalRootCA,
-			caConfig:          api.CAConfig{}, // removing the current external CA is not supported
+			caConfig:          &api.CAConfig{}, // removing the current external CA is not supported
 			expectErrorString: "there must be at least one valid, reachable external CA corresponding to the current CA certificate",
 		},
 		{
 			rootCA: initialExternalRootCA,
-			caConfig: api.CAConfig{
-				SigningCACert: rotationCert,
-				ExternalCAs: []*api.ExternalCA{
+			caConfig: &api.CAConfig{
+				SigningCaCert: rotationCert,
+				ExternalCas: []*api.ExternalCA{
 					{
-						URL:    initExtServer.URL,
-						CACert: initialLocalRootCA.CACert, // current cert
+						Url:    initExtServer.URL,
+						CaCert: initialLocalRootCA.CaCert, // current cert
 					},
 					{
-						URL:    rotateExtServer.URL,
-						CACert: rotationCert, // new cert
+						Url:    rotateExtServer.URL,
+						CaCert: rotationCert, // new cert
 					},
 				},
 			},
@@ -252,16 +254,16 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 		},
 		{
 			rootCA: initialExternalRootCA,
-			caConfig: api.CAConfig{
-				SigningCACert: rotationCert,
-				ExternalCAs: []*api.ExternalCA{
+			caConfig: &api.CAConfig{
+				SigningCaCert: rotationCert,
+				ExternalCas: []*api.ExternalCA{
 					{
-						URL: initExtServer.URL,
+						Url: initExtServer.URL,
 						// no cert means the current cert
 					},
 					{
-						URL:    rotateExtServer.URL,
-						CACert: rotationCert, // new cert
+						Url:    rotateExtServer.URL,
+						CaCert: rotationCert, // new cert
 					},
 				},
 			},
@@ -269,26 +271,26 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 		},
 		{
 			rootCA: initialLocalRootCA,
-			caConfig: api.CAConfig{
-				SigningCACert: append(rotationCert, initialLocalRootCA.CACert...),
-				SigningCAKey:  rotationKey,
+			caConfig: &api.CAConfig{
+				SigningCaCert: append(rotationCert, initialLocalRootCA.CaCert...),
+				SigningCaKey:  rotationKey,
 			},
 			expectErrorString: "cannot contain multiple certificates",
 		},
 		{
 			rootCA: initialLocalRootCA,
-			caConfig: api.CAConfig{
-				SigningCACert: testutils.ReDateCert(t, rotationCert, rotationCert, rotationKey,
+			caConfig: &api.CAConfig{
+				SigningCaCert: testutils.ReDateCert(t, rotationCert, rotationCert, rotationKey,
 					time.Now().Add(-1*time.Minute), time.Now().Add(364*helpers.OneDay)),
-				SigningCAKey: rotationKey,
+				SigningCaKey: rotationKey,
 			},
 			expectErrorString: "expires too soon",
 		},
 		{
 			rootCA: initialLocalRootCA,
-			caConfig: api.CAConfig{
-				SigningCACert: initialLocalRootCA.CACert,
-				SigningCAKey:  testutils.ExpiredKey, // same cert but mismatching key
+			caConfig: &api.CAConfig{
+				SigningCaCert: initialLocalRootCA.CaCert,
+				SigningCaKey:  testutils.ExpiredKey, // same cert but mismatching key
 			},
 			expectErrorString: "certificate key mismatch",
 		},
@@ -296,17 +298,17 @@ func TestValidateCAConfigInvalidValues(t *testing.T) {
 			// this is just one class of failures caught by NewRootCA, not going to bother testing others, since they are
 			// extensively tested in NewRootCA
 			rootCA: initialLocalRootCA,
-			caConfig: api.CAConfig{
-				SigningCACert: testutils.ExpiredCert,
-				SigningCAKey:  testutils.ExpiredKey,
+			caConfig: &api.CAConfig{
+				SigningCaCert: testutils.ExpiredCert,
+				SigningCaKey:  testutils.ExpiredKey,
 			},
 			expectErrorString: "expired",
 		},
 	} {
 		cluster := &api.Cluster{
-			RootCA: invalid.rootCA,
-			Spec: api.ClusterSpec{
-				CAConfig: invalid.caConfig,
+			RootCa: invalid.rootCA,
+			Spec: &api.ClusterSpec{
+				CaConfig: invalid.caConfig,
 			},
 		}
 		secConfig := getSecurityConfig(t, &localRootCA, cluster)
@@ -325,9 +327,9 @@ func runValidTestCases(t *testing.T, testcases []*rootCARotationTestCase, localR
 	for _, valid := range testcases {
 		casectx := log.WithField(ctx, "testcase", valid.description)
 		cluster := &api.Cluster{
-			RootCA: *valid.rootCA.Copy(),
-			Spec: api.ClusterSpec{
-				CAConfig: valid.caConfig,
+			RootCa: valid.rootCA.Copy(),
+			Spec: &api.ClusterSpec{
+				CaConfig: valid.caConfig,
 			},
 		}
 		secConfig := getSecurityConfig(t, localRootCA, cluster)
@@ -335,7 +337,7 @@ func runValidTestCases(t *testing.T, testcases []*rootCARotationTestCase, localR
 		require.NoError(t, err, valid.description)
 
 		// ensure that the cluster was not mutated
-		require.Equal(t, valid.rootCA, cluster.RootCA)
+		require.Equal(t, valid.rootCA, cluster.RootCa)
 
 		// Because join tokens are random, we can't predict exactly what it is, so this needs to be manually checked
 		if valid.expectJoinTokenChange {
@@ -349,20 +351,20 @@ func runValidTestCases(t *testing.T, testcases []*rootCARotationTestCase, localR
 		// correctly generated.
 		if valid.expectGeneratedCross || valid.expectGeneratedRootRotation { // both generate cross signed certs
 			require.NotNil(t, result.RootRotation, valid.description)
-			require.NotEmpty(t, result.RootRotation.CrossSignedCACert, valid.description)
+			require.NotEmpty(t, result.RootRotation.CrossSignedCaCert, valid.description)
 
 			// make sure the cross-signed cert is signed by the current root CA (and not an intermediate, if a root rotation is in progress)
-			parsedCross, err := helpers.ParseCertificatePEM(result.RootRotation.CrossSignedCACert) // there should just be one
+			parsedCross, err := helpers.ParseCertificatePEM(result.RootRotation.CrossSignedCaCert) // there should just be one
 			require.NoError(t, err)
 
 			log.G(casectx).Debugf("localRootCA:%s", localRootCA.Certs)
-			log.G(casectx).Debugf("CACert:%s", result.RootRotation.CACert)
-			log.G(casectx).Debugf("CrossSigned:%s", result.RootRotation.CrossSignedCACert)
+			log.G(casectx).Debugf("CACert:%s", result.RootRotation.CaCert)
+			log.G(casectx).Debugf("CrossSigned:%s", result.RootRotation.CrossSignedCaCert)
 			_, err = parsedCross.Verify(x509.VerifyOptions{Roots: localRootCA.Pool})
 			assert.NoError(t, err, valid.description)
 
 			// if we are expecting generated certs or root rotation, we can expect the expected root CA has a root rotation
-			result.RootRotation.CrossSignedCACert = valid.expectRootCA.RootRotation.CrossSignedCACert
+			result.RootRotation.CrossSignedCaCert = valid.expectRootCA.RootRotation.CrossSignedCaCert
 		}
 
 		// If a root rotation cert is generated, we can't assert what the cert and key are.  So if we expect it to be generated,
@@ -373,7 +375,7 @@ func runValidTestCases(t *testing.T, testcases []*rootCARotationTestCase, localR
 			result.RootRotation = valid.expectRootCA.RootRotation
 		}
 
-		require.Equal(t, result, &valid.expectRootCA, valid.description)
+		require.True(t, result.EqualVT(valid.expectRootCA), valid.description)
 	}
 }
 
@@ -404,8 +406,8 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 	parsedKey, err := helpers.ParsePrivateKeyPEM(testutils.ECDSA256Key)
 	require.NoError(t, err)
 
-	initialExternalRootCA := initialLocalRootCA
-	initialExternalRootCA.CAKey = nil
+	initialExternalRootCA := initialLocalRootCA.Copy()
+	initialExternalRootCA.CaKey = nil
 
 	// set up 2 external CAs that can be contacted for signing
 	tempdir := t.TempDir()
@@ -415,7 +417,7 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 	require.NoError(t, initExtServer.EnableCASigning())
 
 	// we need to accept client certs from the original cert
-	rotationRootCA, err := ca.NewRootCA(append(initialLocalRootCA.CACert, rotationCert...), rotationCert, rotationKey,
+	rotationRootCA, err := ca.NewRootCA(append(initialLocalRootCA.CaCert, rotationCert...), rotationCert, rotationKey,
 		ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 	rotateExtServer, err := testutils.NewExternalSigningServer(rotationRootCA, tempdir)
@@ -423,21 +425,21 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 	defer rotateExtServer.Stop()
 	require.NoError(t, rotateExtServer.EnableCASigning())
 
-	getExpectedRootCA := func(hasKey bool) api.RootCA {
-		result := initialLocalRootCA
+	getExpectedRootCA := func(hasKey bool) *api.RootCA {
+		result := initialLocalRootCA.Copy()
 		result.LastForcedRotation = 5
-		result.JoinTokens = api.JoinTokens{}
+		result.JoinTokens = &api.JoinTokens{}
 		if !hasKey {
-			result.CAKey = nil
+			result.CaKey = nil
 		}
 		return result
 	}
-	getRootCAWithRotation := func(base api.RootCA, cert, key, cross []byte) api.RootCA {
-		init := base
+	getRootCAWithRotation := func(base *api.RootCA, cert, key, cross []byte) *api.RootCA {
+		init := base.Copy()
 		init.RootRotation = &api.RootRotation{
-			CACert:            cert,
-			CAKey:             key,
-			CrossSignedCACert: cross,
+			CaCert:            cert,
+			CaKey:             key,
+			CrossSignedCaCert: cross,
 		}
 		return init
 	}
@@ -447,7 +449,7 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 		{
 			description:  "no specified config changes results no root rotation",
 			rootCA:       initialLocalRootCA,
-			caConfig:     api.CAConfig{},
+			caConfig:     &api.CAConfig{},
 			expectRootCA: initialLocalRootCA,
 		},
 	}, &localRootCA)
@@ -457,9 +459,9 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 		{
 			description: "same desired cert and key as current Root CA results in no root rotation",
 			rootCA:      initialLocalRootCA,
-			caConfig: api.CAConfig{
-				SigningCACert: uglifyOnePEM(initialLocalRootCA.CACert),
-				SigningCAKey:  initialLocalRootCA.CAKey,
+			caConfig: &api.CAConfig{
+				SigningCaCert: uglifyOnePEM(initialLocalRootCA.CaCert),
+				SigningCaKey:  initialLocalRootCA.CaKey,
 				ForceRotate:   5,
 			},
 			expectRootCA: getExpectedRootCA(true),
@@ -467,9 +469,9 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 		{
 			description: "same desired cert as current Root CA but external->internal (remove external CA is ok) results in no root rotation and no key -> key",
 			rootCA:      initialExternalRootCA,
-			caConfig: api.CAConfig{
-				SigningCACert: uglifyOnePEM(initialLocalRootCA.CACert),
-				SigningCAKey:  initialLocalRootCA.CAKey,
+			caConfig: &api.CAConfig{
+				SigningCaCert: uglifyOnePEM(initialLocalRootCA.CaCert),
+				SigningCaKey:  initialLocalRootCA.CaKey,
 				ForceRotate:   5,
 			},
 			expectRootCA: getExpectedRootCA(true),
@@ -477,12 +479,12 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 		{
 			description: "same desired cert as current Root CA but internal->external results in no root rotation and key -> no key",
 			rootCA:      initialLocalRootCA,
-			caConfig: api.CAConfig{
-				SigningCACert: initialLocalRootCA.CACert,
-				ExternalCAs: []*api.ExternalCA{
+			caConfig: &api.CAConfig{
+				SigningCaCert: initialLocalRootCA.CaCert,
+				ExternalCas: []*api.ExternalCA{
 					{
-						URL:    initExtServer.URL,
-						CACert: uglifyOnePEM(initialLocalRootCA.CACert),
+						Url:    initExtServer.URL,
+						CaCert: uglifyOnePEM(initialLocalRootCA.CaCert),
 					},
 				},
 				ForceRotate: 5,
@@ -492,13 +494,13 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 		{
 			description: "same desired cert and key as current Root CA but adding an external CA results in no root rotation and no key change",
 			rootCA:      initialLocalRootCA,
-			caConfig: api.CAConfig{
-				SigningCACert: initialLocalRootCA.CACert,
-				SigningCAKey:  initialLocalRootCA.CAKey,
-				ExternalCAs: []*api.ExternalCA{
+			caConfig: &api.CAConfig{
+				SigningCaCert: initialLocalRootCA.CaCert,
+				SigningCaKey:  initialLocalRootCA.CaKey,
+				ExternalCas: []*api.ExternalCA{
 					{
-						URL:    initExtServer.URL,
-						CACert: uglifyOnePEM(initialLocalRootCA.CACert),
+						Url:    initExtServer.URL,
+						CaCert: uglifyOnePEM(initialLocalRootCA.CaCert),
 					},
 				},
 				ForceRotate: 5,
@@ -527,9 +529,9 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 		{
 			description: "same desired cert and key as current root rotation results in no change in root rotation",
 			rootCA:      getRootCAWithRotation(initialLocalRootCA, rotationCert, rotationKey, crossSigned),
-			caConfig: api.CAConfig{
-				SigningCACert: testutils.ECDSACertChain[2],
-				SigningCAKey:  testutils.ECDSACertChainKeys[2],
+			caConfig: &api.CAConfig{
+				SigningCaCert: testutils.ECDSACertChain[2],
+				SigningCaKey:  testutils.ECDSACertChainKeys[2],
 				ForceRotate:   5,
 			},
 			expectRootCA: getRootCAWithRotation(expectedBaseRootCA, rotationCert, rotationKey, crossSigned),
@@ -537,9 +539,9 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 		{
 			description: "same desired cert as current root rotation but external->internal results minor change in root rotation (no key -> key)",
 			rootCA:      getRootCAWithRotation(initialLocalRootCA, rotationCert, nil, crossSigned),
-			caConfig: api.CAConfig{
-				SigningCACert: testutils.ECDSACertChain[2],
-				SigningCAKey:  testutils.ECDSACertChainKeys[2],
+			caConfig: &api.CAConfig{
+				SigningCaCert: testutils.ECDSACertChain[2],
+				SigningCaKey:  testutils.ECDSACertChainKeys[2],
 				ForceRotate:   5,
 			},
 			expectRootCA: getRootCAWithRotation(expectedBaseRootCA, rotationCert, rotationKey, crossSigned),
@@ -547,13 +549,13 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 		{
 			description: "same desired cert as current root rotation but internal->external results minor change in root rotation (key -> no key)",
 			rootCA:      getRootCAWithRotation(initialLocalRootCA, rotationCert, rotationKey, crossSigned),
-			caConfig: api.CAConfig{
-				SigningCACert: testutils.ECDSACertChain[2],
+			caConfig: &api.CAConfig{
+				SigningCaCert: testutils.ECDSACertChain[2],
 				ForceRotate:   5,
-				ExternalCAs: []*api.ExternalCA{
+				ExternalCas: []*api.ExternalCA{
 					{
-						URL:    rotateExtServer.URL,
-						CACert: append(testutils.ECDSACertChain[2], ' '),
+						Url:    rotateExtServer.URL,
+						CaCert: append(testutils.ECDSACertChain[2], ' '),
 					},
 				},
 			},
@@ -573,8 +575,8 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 	require.NoError(t, err)
 	differentInitialCert, err := testutils.CreateCertFromSigner("otherRootCN", parsedKey)
 	require.NoError(t, err)
-	differentRootCA, err := ca.NewRootCA(append(initialLocalRootCA.CACert, differentInitialCert...), differentInitialCert,
-		initialLocalRootCA.CAKey, ca.DefaultNodeCertExpiration, nil)
+	differentRootCA, err := ca.NewRootCA(append(initialLocalRootCA.CaCert, differentInitialCert...), differentInitialCert,
+		initialLocalRootCA.CaKey, ca.DefaultNodeCertExpiration, nil)
 	require.NoError(t, err)
 	differentExtServer, err := testutils.NewExternalSigningServer(differentRootCA, tempdir)
 	require.NoError(t, err)
@@ -584,9 +586,9 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 		{
 			description: "desired cert being a renewed rotation RootCA cert + rotation key results in replaced root rotation because the cert has changed",
 			rootCA:      getRootCAWithRotation(initialLocalRootCA, rotationCert, rotationKey, crossSigned),
-			caConfig: api.CAConfig{
-				SigningCACert: uglifyOnePEM(renewedRotationCert),
-				SigningCAKey:  rotationKey,
+			caConfig: &api.CAConfig{
+				SigningCaCert: uglifyOnePEM(renewedRotationCert),
+				SigningCaKey:  rotationKey,
 				ForceRotate:   5,
 			},
 			expectRootCA:         getRootCAWithRotation(expectedBaseRootCA, renewedRotationCert, rotationKey, nil),
@@ -595,16 +597,16 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 		{
 			description: "desired cert being a different rotation rootCA cert results in replaced root rotation (only new external CA required, not old rotation external CA)",
 			rootCA:      getRootCAWithRotation(initialLocalRootCA, rotationCert, nil, crossSigned),
-			caConfig: api.CAConfig{
-				SigningCACert: uglifyOnePEM(differentInitialCert),
+			caConfig: &api.CAConfig{
+				SigningCaCert: uglifyOnePEM(differentInitialCert),
 				ForceRotate:   5,
-				ExternalCAs: []*api.ExternalCA{
+				ExternalCas: []*api.ExternalCA{
 					{
 						// we need a different external server, because otherwise the external server's cert will fail to validate
 						// (not signed by the right cert - note that there's a bug in go 1.7 where this is not needed, because the
 						// subject names of cert names aren't checked, but go 1.8 fixes this.)
-						URL:    differentExtServer.URL,
-						CACert: append([]byte("\n\t"), differentInitialCert...),
+						Url:    differentExtServer.URL,
+						CaCert: append([]byte("\n\t"), differentInitialCert...),
 					},
 				},
 			},
@@ -619,19 +621,19 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 		{
 			description:                 "generating cert and key results in root rotation",
 			rootCA:                      initialLocalRootCA,
-			caConfig:                    api.CAConfig{ForceRotate: 5},
+			caConfig:                    &api.CAConfig{ForceRotate: 5},
 			expectRootCA:                getRootCAWithRotation(getExpectedRootCA(true), nil, nil, nil),
 			expectGeneratedRootRotation: true,
 		},
 		{
 			description: "generating cert for external->internal results in root rotation",
 			rootCA:      initialExternalRootCA,
-			caConfig: api.CAConfig{
+			caConfig: &api.CAConfig{
 				ForceRotate: 5,
-				ExternalCAs: []*api.ExternalCA{
+				ExternalCas: []*api.ExternalCA{
 					{
-						URL:    initExtServer.URL,
-						CACert: uglifyOnePEM(initialExternalRootCA.CACert),
+						Url:    initExtServer.URL,
+						CaCert: uglifyOnePEM(initialExternalRootCA.CaCert),
 					},
 				},
 			},
@@ -641,14 +643,14 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 		{
 			description:                 "generating cert and key results in replacing root rotation",
 			rootCA:                      getRootCAWithRotation(initialLocalRootCA, rotationCert, rotationKey, crossSigned),
-			caConfig:                    api.CAConfig{ForceRotate: 5},
+			caConfig:                    &api.CAConfig{ForceRotate: 5},
 			expectRootCA:                getRootCAWithRotation(getExpectedRootCA(true), nil, nil, nil),
 			expectGeneratedRootRotation: true,
 		},
 		{
 			description:                 "generating cert and key results in replacing root rotation; external CAs required by old root rotation are no longer necessary",
 			rootCA:                      getRootCAWithRotation(initialLocalRootCA, rotationCert, nil, crossSigned),
-			caConfig:                    api.CAConfig{ForceRotate: 5},
+			caConfig:                    &api.CAConfig{ForceRotate: 5},
 			expectRootCA:                getRootCAWithRotation(getExpectedRootCA(true), nil, nil, nil),
 			expectGeneratedRootRotation: true,
 		},
@@ -665,11 +667,11 @@ func TestValidateCAConfigValidValues(t *testing.T) {
 		{
 			description: "no desired certificate specified, no force rotation: no change to external CA root (which has no outstanding rotation)",
 			rootCA:      initialExternalRootCA,
-			caConfig: api.CAConfig{
-				ExternalCAs: []*api.ExternalCA{
+			caConfig: &api.CAConfig{
+				ExternalCas: []*api.ExternalCA{
 					{
-						URL:    initExtServer.URL,
-						CACert: uglifyOnePEM(initialExternalRootCA.CACert),
+						Url:    initExtServer.URL,
+						CaCert: uglifyOnePEM(initialExternalRootCA.CaCert),
 					},
 				},
 			},

@@ -82,7 +82,7 @@ func newTestServer(t *testing.T) *testServer {
 		&api.CreateNetworkRequest{
 			Spec: &api.NetworkSpec{
 				Ingress: true,
-				Annotations: api.Annotations{
+				Annotations: &api.Annotations{
 					Name: "test-ingress",
 				},
 			},

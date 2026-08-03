@@ -34,7 +34,7 @@ func (m *ExternalCAOpt) Type() string {
 func (m *ExternalCAOpt) String() string {
 	externalCAs := []string{}
 	for _, externalCA := range m.values {
-		repr := fmt.Sprintf("%s: %s", externalCA.Protocol, externalCA.URL)
+		repr := fmt.Sprintf("%s: %s", externalCA.Protocol, externalCA.Url)
 		externalCAs = append(externalCAs, repr)
 	}
 	return strings.Join(externalCAs, ", ")
@@ -76,13 +76,13 @@ func parseExternalCA(caSpec string) (*api.ExternalCA, error) {
 		case "protocol":
 			hasProtocol = true
 			if strings.ToLower(value) == "cfssl" {
-				externalCA.Protocol = api.ExternalCA_CAProtocolCFSSL
+				externalCA.Protocol = api.ExternalCA_CFSSL
 			} else {
 				return nil, fmt.Errorf("unrecognized external CA protocol %s", value)
 			}
 		case "url":
 			hasURL = true
-			externalCA.URL = value
+			externalCA.Url = value
 		default:
 			externalCA.Options[key] = value
 		}

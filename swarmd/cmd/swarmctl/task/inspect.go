@@ -8,7 +8,6 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/swarmd/cmd/swarmctl/common"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/spf13/cobra"
@@ -17,33 +16,33 @@ import (
 func printTaskStatus(w io.Writer, t *api.Task) {
 	fmt.Fprintln(w, "Status\t")
 	fmt.Fprintf(w, "  Desired State\t: %s\n", t.DesiredState.String())
-	fmt.Fprintf(w, "  Last State\t: %s\n", t.Status.State.String())
-	if t.Status.Timestamp != nil {
-		fmt.Fprintf(w, "  Timestamp\t: %s\n", gogotypes.TimestampString(t.Status.Timestamp))
+	fmt.Fprintf(w, "  Last State\t: %s\n", t.Status.GetState().String())
+	if t.Status.GetTimestamp() != nil {
+		fmt.Fprintf(w, "  Timestamp\t: %s\n", common.TimestampString(t.Status.GetTimestamp()))
 	}
-	if t.Status.Message != "" {
-		fmt.Fprintf(w, "  Message\t: %s\n", t.Status.Message)
+	if t.Status.GetMessage() != "" {
+		fmt.Fprintf(w, "  Message\t: %s\n", t.Status.GetMessage())
 	}
-	if t.Status.Err != "" {
-		fmt.Fprintf(w, "  Error\t: %s\n", t.Status.Err)
+	if t.Status.GetErr() != "" {
+		fmt.Fprintf(w, "  Error\t: %s\n", t.Status.GetErr())
 	}
 	ctnr := t.Status.GetContainer()
 	if ctnr == nil {
 		return
 	}
-	if ctnr.ContainerID != "" {
-		fmt.Fprintf(w, "  ContainerID:\t: %s\n", ctnr.ContainerID)
+	if ctnr.ContainerId != "" {
+		fmt.Fprintf(w, "  ContainerID:\t: %s\n", ctnr.ContainerId)
 	}
-	if ctnr.PID != 0 {
-		fmt.Fprintf(w, "  Pid\t: %d\n", ctnr.PID)
+	if ctnr.Pid != 0 {
+		fmt.Fprintf(w, "  Pid\t: %d\n", ctnr.Pid)
 	}
-	if t.Status.State > api.TaskStateRunning {
+	if t.Status.GetState() > api.TaskState_RUNNING {
 		fmt.Fprintf(w, "  ExitCode\t: %d\n", ctnr.ExitCode)
 	}
 
-	if t.Status.PortStatus != nil && len(t.Status.PortStatus.Ports) > 0 {
+	if t.Status.GetPortStatus() != nil && len(t.Status.GetPortStatus().GetPorts()) > 0 {
 		ports := []string{}
-		for _, port := range t.Status.PortStatus.Ports {
+		for _, port := range t.Status.GetPortStatus().GetPorts() {
 			ports = append(ports, fmt.Sprintf("0.0.0.0:%d->%d/%s",
 				port.PublishedPort, port.TargetPort, strings.ToLower(port.Protocol.String())))
 		}
@@ -56,11 +55,11 @@ func printTaskSummary(task *api.Task, res *common.Resolver) {
 	w := tabwriter.NewWriter(os.Stdout, 8, 8, 8, ' ', 0)
 	defer w.Flush()
 
-	fmt.Fprintf(w, "ID\t: %s\n", task.ID)
+	fmt.Fprintf(w, "ID\t: %s\n", task.Id)
 	fmt.Fprintf(w, "Slot\t: %d\n", task.Slot)
-	fmt.Fprintf(w, "Service\t: %s\n", res.Resolve(api.Service{}, task.ServiceID))
+	fmt.Fprintf(w, "Service\t: %s\n", res.Resolve(api.Service{}, task.ServiceId))
 	printTaskStatus(w, task)
-	fmt.Fprintf(w, "Node\t: %s\n", res.Resolve(api.Node{}, task.NodeID))
+	fmt.Fprintf(w, "Node\t: %s\n", res.Resolve(api.Node{}, task.NodeId))
 
 	fmt.Fprintln(w, "Spec\t")
 	ctr := task.Spec.GetContainer()
@@ -73,7 +72,7 @@ func printTaskSummary(task *api.Task, res *common.Resolver) {
 		for _, sr := range ctr.Secrets {
 			var targetName, mode string
 			if sr.GetFile() != nil {
-				targetName = sr.GetFile().Name
+				targetName = sr.GetFile().GetName()
 				mode = "FILE"
 			}
 			fmt.Fprintf(w, "    [%s] %s:%s\n", mode, sr.SecretName, targetName)
@@ -84,7 +83,7 @@ func printTaskSummary(task *api.Task, res *common.Resolver) {
 		for _, cr := range ctr.Configs {
 			var targetName, mode string
 			if cr.GetFile() != nil {
-				targetName = cr.GetFile().Name
+				targetName = cr.GetFile().GetName()
 				mode = "FILE"
 			}
 			fmt.Fprintf(w, "    [%s] %s:%s\n", mode, cr.ConfigName, targetName)
@@ -110,7 +109,7 @@ var (
 				return err
 			}
 
-			t, err := c.GetTask(common.Context(cmd), &api.GetTaskRequest{TaskID: args[0]})
+			t, err := c.GetTask(common.Context(cmd), &api.GetTaskRequest{TaskId: args[0]})
 			if err != nil {
 				return err
 			}
@@ -119,7 +118,7 @@ var (
 			r, err := c.ListTasks(common.Context(cmd),
 				&api.ListTasksRequest{
 					Filters: &api.ListTasksRequest_Filters{
-						ServiceIDs: []string{task.ServiceID},
+						ServiceIds: []string{task.ServiceId},
 					},
 				})
 			if err != nil {

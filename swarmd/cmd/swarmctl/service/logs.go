@@ -42,13 +42,13 @@ var (
 				if err != nil {
 					return err
 				}
-				serviceIDs = append(serviceIDs, service.ID)
+				serviceIDs = append(serviceIDs, service.Id)
 			}
 
 			client := api.NewLogsClient(conn)
 			stream, err := client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
 				Selector: &api.LogSelector{
-					ServiceIDs: serviceIDs,
+					ServiceIds: serviceIDs,
 				},
 				Options: &api.LogSubscriptionOptions{
 					Follow: follow,
@@ -69,13 +69,13 @@ var (
 
 				for _, msg := range log.Messages {
 					out := os.Stdout
-					if msg.Stream == api.LogStreamStderr {
+					if msg.Stream == api.LogStream_LOG_STREAM_STDERR {
 						out = os.Stderr
 					}
 
 					fmt.Fprintf(out, "%s@%s❯ ",
-						r.Resolve(api.Task{}, msg.Context.TaskID),
-						r.Resolve(api.Node{}, msg.Context.NodeID),
+						r.Resolve(api.Task{}, msg.GetContext().GetTaskId()),
+						r.Resolve(api.Node{}, msg.GetContext().GetNodeId()),
 					)
 					out.Write(msg.Data) // assume new line?
 				}

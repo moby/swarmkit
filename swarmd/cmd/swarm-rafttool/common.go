@@ -91,15 +91,17 @@ func decryptRaftData(swarmdir, outdir, unlockKey string) error {
 		return err
 	}
 
-	var walsnap walpb.Snapshot
 	snap, err := storage.OriginalSnap.New(snapDir).Load()
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	if snap != nil {
-		walsnap.Index = snap.Metadata.Index
-		walsnap.Term = snap.Metadata.Term
-		walsnap.ConfState = &snap.Metadata.ConfState
+	// Index and Term have to be set explicitly, even when there is no snapshot
+	// yet: walpb.Snapshot is a proto2 message, and the WAL rejects a snapshot
+	// record whose index or term is absent (see walpb.ValidateSnapshotForWrite).
+	walsnap := walpb.Snapshot{
+		Index:     new(snap.GetMetadata().GetIndex()),
+		Term:      new(snap.GetMetadata().GetTerm()),
+		ConfState: snap.GetMetadata().GetConfState(),
 	}
 
 	walDir := filepath.Join(outdir, "wal-decrypted")
@@ -108,7 +110,7 @@ func decryptRaftData(swarmdir, outdir, unlockKey string) error {
 	}
 	return storage.MigrateWALs(context.Background(),
 		filepath.Join(swarmdir, "raft", "wal-v3-encrypted"), walDir,
-		storage.NewWALFactory(encryption.NoopCrypter, d), storage.OriginalWAL, walsnap)
+		storage.NewWALFactory(encryption.NoopCrypter, d), storage.OriginalWAL, &walsnap)
 }
 
 func downgradeKey(swarmdir, unlockKey string) error {

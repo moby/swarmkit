@@ -16,7 +16,7 @@ import (
 
 func createNetworkSpec(name string) *api.NetworkSpec {
 	return &api.NetworkSpec{
-		Annotations: api.Annotations{
+		Annotations: &api.Annotations{
 			Name: name,
 		},
 	}
@@ -32,8 +32,8 @@ func (s *Server) createInternalNetwork(ctx context.Context, request *api.CreateN
 	// TODO(mrjana): Consider using `Name` as a primary key to handle
 	// duplicate creations. See #65
 	n := &api.Network{
-		ID:   identity.NewID(),
-		Spec: *request.Spec,
+		Id:   identity.NewID(),
+		Spec: request.Spec,
 	}
 
 	err := s.store.Update(func(tx store.Tx) error {
@@ -50,14 +50,14 @@ func (s *Server) createInternalNetwork(ctx context.Context, request *api.CreateN
 
 func createServiceInNetworkSpec(name, image string, nwid string, instances uint64) *api.ServiceSpec {
 	return &api.ServiceSpec{
-		Annotations: api.Annotations{
+		Annotations: &api.Annotations{
 			Name: name,
 			Labels: map[string]string{
 				"common": "yes",
 				"unique": name,
 			},
 		},
-		Task: api.TaskSpec{
+		Task: &api.TaskSpec{
 			Runtime: &api.TaskSpec_Container{
 				Container: &api.ContainerSpec{
 					Image: image,
@@ -143,7 +143,7 @@ func TestCreateNetwork(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NotEqual(t, nr.Network, nil)
-	assert.NotEqual(t, nr.Network.ID, "")
+	assert.NotEqual(t, nr.Network.Id, "")
 }
 
 func TestGetNetwork(t *testing.T) {
@@ -154,9 +154,9 @@ func TestGetNetwork(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NotEqual(t, nr.Network, nil)
-	assert.NotEqual(t, nr.Network.ID, "")
+	assert.NotEqual(t, nr.Network.Id, "")
 
-	_, err = ts.Client.GetNetwork(context.Background(), &api.GetNetworkRequest{NetworkID: nr.Network.ID})
+	_, err = ts.Client.GetNetwork(context.Background(), &api.GetNetworkRequest{NetworkId: nr.Network.Id})
 	assert.NoError(t, err)
 }
 
@@ -168,9 +168,9 @@ func TestRemoveNetwork(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NotEqual(t, nr.Network, nil)
-	assert.NotEqual(t, nr.Network.ID, "")
+	assert.NotEqual(t, nr.Network.Id, "")
 
-	_, err = ts.Client.RemoveNetwork(context.Background(), &api.RemoveNetworkRequest{NetworkID: nr.Network.ID})
+	_, err = ts.Client.RemoveNetwork(context.Background(), &api.RemoveNetworkRequest{NetworkId: nr.Network.Id})
 	assert.NoError(t, err)
 }
 
@@ -182,9 +182,9 @@ func TestRemoveNetworkWithAttachedService(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NotEqual(t, nr.Network, nil)
-	assert.NotEqual(t, nr.Network.ID, "")
-	createServiceInNetwork(t, ts, "name", "image", nr.Network.ID, 1)
-	_, err = ts.Client.RemoveNetwork(context.Background(), &api.RemoveNetworkRequest{NetworkID: nr.Network.ID})
+	assert.NotEqual(t, nr.Network.Id, "")
+	createServiceInNetwork(t, ts, "name", "image", nr.Network.Id, 1)
+	_, err = ts.Client.RemoveNetwork(context.Background(), &api.RemoveNetworkRequest{NetworkId: nr.Network.Id})
 	assert.Error(t, err)
 }
 
@@ -210,22 +210,22 @@ func TestListNetworks(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.NotEqual(t, nr1.Network, nil)
-	assert.NotEqual(t, nr1.Network.ID, "")
+	assert.NotEqual(t, nr1.Network.Id, "")
 
 	nr2, err := ts.Client.CreateNetwork(context.Background(), &api.CreateNetworkRequest{
 		Spec: createNetworkSpec("listtestnet2"),
 	})
 	assert.NoError(t, err)
 	assert.NotEqual(t, nr2.Network, nil)
-	assert.NotEqual(t, nr2.Network.ID, "")
+	assert.NotEqual(t, nr2.Network.Id, "")
 
 	r, err := ts.Client.ListNetworks(context.Background(), &api.ListNetworksRequest{})
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(r.Networks)) // Account ingress network
 	for _, nw := range r.Networks {
-		if nw.Spec.Ingress {
+		if nw.Spec.GetIngress() {
 			continue
 		}
-		assert.True(t, nw.ID == nr1.Network.ID || nw.ID == nr2.Network.ID)
+		assert.True(t, nw.Id == nr1.Network.Id || nw.Id == nr2.Network.Id)
 	}
 }

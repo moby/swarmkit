@@ -18,17 +18,17 @@ func TestAssignVolume(t *testing.T) {
 	require.NoError(t, s.Update(func(tx store.Tx) error {
 		for _, s := range []*api.Secret{
 			{
-				ID: "secret1",
-				Spec: api.SecretSpec{
-					Annotations: api.Annotations{
+				Id: "secret1",
+				Spec: &api.SecretSpec{
+					Annotations: &api.Annotations{
 						Name: "secretName1",
 					},
 					Data: []byte("foo"),
 				},
 			}, {
-				ID: "secret2",
-				Spec: api.SecretSpec{
-					Annotations: api.Annotations{
+				Id: "secret2",
+				Spec: &api.SecretSpec{
+					Annotations: &api.Annotations{
 						Name: "secretName2",
 					},
 					Data: []byte("foo"),
@@ -41,9 +41,9 @@ func TestAssignVolume(t *testing.T) {
 		}
 
 		v := &api.Volume{
-			ID: "volume1",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Id: "volume1",
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "volumeName1",
 				},
 				Driver: &api.Driver{
@@ -61,15 +61,15 @@ func TestAssignVolume(t *testing.T) {
 			},
 			VolumeInfo: &api.VolumeInfo{
 				VolumeContext: map[string]string{"foo": "bar"},
-				VolumeID:      "volumeID1",
+				VolumeId:      "volumeID1",
 			},
 			PublishStatus: []*api.VolumePublishStatus{
 				{
-					NodeID: "node1",
+					NodeId: "node1",
 					State:  api.VolumePublishStatus_PENDING_PUBLISH,
 				},
 				{
-					NodeID:         "nodeNotThisOne",
+					NodeId:         "nodeNotThisOne",
 					State:          api.VolumePublishStatus_PUBLISHED,
 					PublishContext: map[string]string{"shouldnot": "bethisone"},
 				},
@@ -114,7 +114,7 @@ func TestAssignVolume(t *testing.T) {
 	require.NoError(t, s.Update(func(tx store.Tx) error {
 		nv = store.GetVolume(tx, "volume1")
 		for _, s := range nv.PublishStatus {
-			if s.NodeID == "node1" {
+			if s.NodeId == "node1" {
 				s.State = api.VolumePublishStatus_PUBLISHED
 				s.PublishContext = map[string]string{
 					"shouldbe": "thisone",
@@ -138,10 +138,10 @@ func TestAssignVolume(t *testing.T) {
 	var foundSecret1, foundSecret2 bool
 	for _, change := range m.Changes {
 		if vol, ok := change.Assignment.Item.(*api.Assignment_Volume); ok {
-			assert.Equal(t, change.Action, api.AssignmentChange_AssignmentActionUpdate)
+			assert.Equal(t, change.Action, api.AssignmentChange_UPDATE)
 			assert.Equal(t, vol.Volume, &api.VolumeAssignment{
-				ID:       "volume1",
-				VolumeID: "volumeID1",
+				Id:       "volume1",
+				VolumeId: "volumeID1",
 				Driver: &api.Driver{
 					Name: "driver",
 				},
@@ -156,18 +156,18 @@ func TestAssignVolume(t *testing.T) {
 			secretAssignment := change.Assignment.Item.(*api.Assignment_Secret)
 			// we don't need to test correctness of the assignment content,
 			// just that it's present
-			switch secretAssignment.Secret.ID {
+			switch secretAssignment.Secret.Id {
 			case "secret1":
 				foundSecret1 = true
 			case "secret2":
 				foundSecret2 = true
 			default:
-				t.Fatalf("found unexpected secret assignment %s", secretAssignment.Secret.ID)
+				t.Fatalf("found unexpected secret assignment %s", secretAssignment.Secret.Id)
 			}
 		}
 
 		// every one of these should be an Update change
-		assert.Equal(t, change.Action, api.AssignmentChange_AssignmentActionUpdate)
+		assert.Equal(t, change.Action, api.AssignmentChange_UPDATE)
 	}
 
 	assert.True(t, foundSecret1)
@@ -177,7 +177,7 @@ func TestAssignVolume(t *testing.T) {
 	require.NoError(t, s.Update(func(tx store.Tx) error {
 		v := store.GetVolume(tx, "volume1")
 		for _, status := range v.PublishStatus {
-			if status.NodeID == "node1" {
+			if status.NodeId == "node1" {
 				status.State = api.VolumePublishStatus_PENDING_NODE_UNPUBLISH
 			}
 		}
@@ -194,12 +194,12 @@ func TestAssignVolume(t *testing.T) {
 	m = as.message()
 	assert.Len(t, m.Changes, 1)
 
-	assert.Equal(t, m.Changes[0].Action, api.AssignmentChange_AssignmentActionRemove)
+	assert.Equal(t, m.Changes[0].Action, api.AssignmentChange_REMOVE)
 	v, ok := m.Changes[0].Assignment.Item.(*api.Assignment_Volume)
 	assert.True(t, ok)
 	assert.Equal(t, v.Volume, &api.VolumeAssignment{
-		ID:       "volume1",
-		VolumeID: "volumeID1",
+		Id:       "volume1",
+		VolumeId: "volumeID1",
 		Driver: &api.Driver{
 			Name: "driver",
 		},
@@ -216,7 +216,7 @@ func TestAssignVolume(t *testing.T) {
 	require.NoError(t, s.Update(func(tx store.Tx) error {
 		v := store.GetVolume(tx, "volume1")
 		for _, status := range v.PublishStatus {
-			if status.NodeID == "node1" {
+			if status.NodeId == "node1" {
 				status.State = api.VolumePublishStatus_PENDING_UNPUBLISH
 			}
 		}
@@ -234,16 +234,16 @@ func TestAssignVolume(t *testing.T) {
 	foundSecret2 = false
 
 	for _, change := range m.Changes {
-		assert.Equal(t, change.Action, api.AssignmentChange_AssignmentActionRemove)
+		assert.Equal(t, change.Action, api.AssignmentChange_REMOVE)
 		s, ok := change.Assignment.Item.(*api.Assignment_Secret)
 		assert.True(t, ok)
-		switch s.Secret.ID {
+		switch s.Secret.Id {
 		case "secret1":
 			foundSecret1 = true
 		case "secret2":
 			foundSecret2 = true
 		default:
-			t.Fatalf("found unexpected secret assignment %s", s.Secret.ID)
+			t.Fatalf("found unexpected secret assignment %s", s.Secret.Id)
 		}
 	}
 }

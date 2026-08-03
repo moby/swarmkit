@@ -28,11 +28,11 @@ var removeCmd = &cobra.Command{
 			return err
 		}
 
-		_, err = client.RemoveSecret(common.Context(cmd), &api.RemoveSecretRequest{SecretID: secret.ID})
+		_, err = client.RemoveSecret(common.Context(cmd), &api.RemoveSecretRequest{SecretId: secret.Id})
 		if err != nil {
 			return err
 		}
-		fmt.Println(secret.ID)
+		fmt.Println(secret.Id)
 		return nil
 	},
 }

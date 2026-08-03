@@ -24,7 +24,7 @@ func parseResourceCPU(flags *pflag.FlagSet, resources *api.Resources, name strin
 	if !cpuRat.IsInt() {
 		return fmt.Errorf("CPU value cannot have more than 9 decimal places: %s", cpu)
 	}
-	resources.NanoCPUs = cpuRat.Num().Int64()
+	resources.NanoCpus = cpuRat.Num().Int64()
 	return nil
 }
 

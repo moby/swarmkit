@@ -171,11 +171,11 @@ func (deallocator *Deallocator) processService(ctx context.Context, service *api
 	)
 
 	deallocator.store.View(func(tx store.ReadTx) {
-		tasks, err = store.FindTasks(tx, store.ByServiceID(service.ID))
+		tasks, err = store.FindTasks(tx, store.ByServiceID(service.Id))
 	})
 
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("failed to retrieve the list of tasks for service %v", service.ID)
+		log.G(ctx).WithError(err).Errorf("failed to retrieve the list of tasks for service %v", service.Id)
 		// if in doubt, let's proceed to clean up the service anyway
 		// better to clean up resources that shouldn't be cleaned up yet
 		// than ending up with a service and some resources lost in limbo forever
@@ -184,7 +184,7 @@ func (deallocator *Deallocator) processService(ctx context.Context, service *api
 		// no tasks remaining for this service, we can clean it up
 		return true, deallocator.deallocateService(ctx, service)
 	}
-	deallocator.services[service.ID] = &serviceWithTaskCounts{service: service, taskCount: len(tasks)}
+	deallocator.services[service.Id] = &serviceWithTaskCounts{service: service, taskCount: len(tasks)}
 	return false, nil
 }
 
@@ -192,10 +192,10 @@ func (deallocator *Deallocator) deallocateService(ctx context.Context, service *
 	err = deallocator.store.Update(func(tx store.Tx) error {
 		// first, let's delete the service
 		var ignoreServiceID *string
-		if err := store.DeleteService(tx, service.ID); err != nil {
+		if err := store.DeleteService(tx, service.Id); err != nil {
 			// all errors are just for logging here, we do a best effort at cleaning up everything we can
-			log.G(ctx).WithError(err).Errorf("failed to delete service record ID %v", service.ID)
-			ignoreServiceID = &service.ID
+			log.G(ctx).WithError(err).Errorf("failed to delete service record ID %v", service.Id)
+			ignoreServiceID = &service.Id
 		}
 
 		// then all of its networks, provided no other service uses them
@@ -216,7 +216,7 @@ func (deallocator *Deallocator) deallocateService(ctx context.Context, service *
 	})
 
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("DB error when deallocating service %v", service.ID)
+		log.G(ctx).WithError(err).Errorf("DB error when deallocating service %v", service.Id)
 	}
 	return
 }
@@ -235,18 +235,18 @@ func (deallocator *Deallocator) processNetwork(ctx context.Context, tx store.Tx,
 	}
 
 	updateFunc := func(t store.Tx) error {
-		services, err := store.FindServices(t, store.ByReferencedNetworkID(network.ID))
+		services, err := store.FindServices(t, store.ByReferencedNetworkID(network.Id))
 
 		if err != nil {
-			log.G(ctx).WithError(err).Errorf("could not fetch services using network ID %v", network.ID)
+			log.G(ctx).WithError(err).Errorf("could not fetch services using network ID %v", network.Id)
 			return err
 		}
 
 		noMoreServices := len(services) == 0 ||
-			len(services) == 1 && ignoreServiceID != nil && services[0].ID == *ignoreServiceID
+			len(services) == 1 && ignoreServiceID != nil && services[0].Id == *ignoreServiceID
 
 		if noMoreServices {
-			return store.DeleteNetwork(t, network.ID)
+			return store.DeleteNetwork(t, network.Id)
 		}
 		return nil
 	}
@@ -258,7 +258,7 @@ func (deallocator *Deallocator) processNetwork(ctx context.Context, tx store.Tx,
 	}
 
 	if err != nil {
-		log.G(ctx).WithError(err).Errorf("DB error when deallocating network ID %v", network.ID)
+		log.G(ctx).WithError(err).Errorf("DB error when deallocating network ID %v", network.Id)
 	}
 	return
 }
@@ -270,7 +270,7 @@ func (deallocator *Deallocator) processNetwork(ctx context.Context, tx store.Tx,
 func (deallocator *Deallocator) processNewEvent(ctx context.Context, event events.Event) (bool, error) {
 	switch typedEvent := event.(type) {
 	case api.EventDeleteTask:
-		serviceID := typedEvent.Task.ServiceID
+		serviceID := typedEvent.Task.ServiceId
 
 		if serviceWithCount, present := deallocator.services[serviceID]; present {
 			if serviceWithCount.taskCount <= 1 {

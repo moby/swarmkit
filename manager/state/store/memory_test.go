@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 	"testing"
@@ -14,30 +15,55 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
+
+// assertEqualMessage asserts that two protobuf messages have the same contents.
+//
+// assert.Equal cannot be used on generated messages: it falls back to
+// reflect.DeepEqual, which also walks their internal bookkeeping fields
+// (MessageState, sizeCache, unknownFields). Those are populated lazily and
+// independently of the message contents, so DeepEqual can report a difference
+// between two messages that are equal on the wire, and vice versa.
+func assertEqualMessage(t *testing.T, expected, actual proto.Message, msgAndArgs ...any) bool {
+	t.Helper()
+	if proto.Equal(expected, actual) {
+		return true
+	}
+	return assert.Fail(t, fmt.Sprintf("messages are not equal:\nexpected: %v\nactual  : %v", expected, actual), msgAndArgs...)
+}
+
+// assertNotEqualMessage is the inverse of [assertEqualMessage].
+func assertNotEqualMessage(t *testing.T, expected, actual proto.Message, msgAndArgs ...any) bool {
+	t.Helper()
+	if !proto.Equal(expected, actual) {
+		return true
+	}
+	return assert.Fail(t, fmt.Sprintf("messages are equal, but should not be: %v", expected), msgAndArgs...)
+}
 
 var (
 	clusterSet = []*api.Cluster{
 		{
-			ID: "id1",
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Id: "id1",
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 			},
 		},
 		{
-			ID: "id2",
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Id: "id2",
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 			},
 		},
 		{
-			ID: "id3",
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Id: "id3",
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: "name3",
 				},
 			},
@@ -45,9 +71,9 @@ var (
 	}
 	altClusterSet = []*api.Cluster{
 		{
-			ID: "alt-id1",
-			Spec: api.ClusterSpec{
-				Annotations: api.Annotations{
+			Id: "alt-id1",
+			Spec: &api.ClusterSpec{
+				Annotations: &api.Annotations{
 					Name: "alt-name1",
 				},
 			},
@@ -56,63 +82,63 @@ var (
 
 	nodeSet = []*api.Node{
 		{
-			ID: "id1",
-			Spec: api.NodeSpec{
-				Membership: api.NodeMembershipPending,
+			Id: "id1",
+			Spec: &api.NodeSpec{
+				Membership: api.NodeSpec_PENDING,
 			},
 			Description: &api.NodeDescription{
 				Hostname: "name1",
 			},
-			Role: api.NodeRoleManager,
+			Role: api.NodeRole_MANAGER,
 		},
 		{
-			ID: "id2",
-			Spec: api.NodeSpec{
-				Membership: api.NodeMembershipAccepted,
+			Id: "id2",
+			Spec: &api.NodeSpec{
+				Membership: api.NodeSpec_ACCEPTED,
 			},
 			Description: &api.NodeDescription{
 				Hostname: "name2",
 			},
-			Role: api.NodeRoleWorker,
+			Role: api.NodeRole_WORKER,
 		},
 		{
-			ID: "id3",
-			Spec: api.NodeSpec{
-				Membership: api.NodeMembershipAccepted,
+			Id: "id3",
+			Spec: &api.NodeSpec{
+				Membership: api.NodeSpec_ACCEPTED,
 			},
 			Description: &api.NodeDescription{
 				// intentionally conflicting hostname
 				Hostname: "name2",
 			},
-			Role: api.NodeRoleWorker,
+			Role: api.NodeRole_WORKER,
 		},
 	}
 	altNodeSet = []*api.Node{
 		{
-			ID: "alt-id1",
-			Spec: api.NodeSpec{
-				Membership: api.NodeMembershipPending,
+			Id: "alt-id1",
+			Spec: &api.NodeSpec{
+				Membership: api.NodeSpec_PENDING,
 			},
 			Description: &api.NodeDescription{
 				Hostname: "alt-name1",
 			},
-			Role: api.NodeRoleManager,
+			Role: api.NodeRole_MANAGER,
 		},
 	}
 
 	serviceSet = []*api.Service{
 		{
-			ID: "id1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Id: "id1",
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 			},
 		},
 		{
-			ID: "id2",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Id: "id2",
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 				Mode: &api.ServiceSpec_Global{
@@ -121,9 +147,9 @@ var (
 			},
 		},
 		{
-			ID: "id3",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Id: "id3",
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "name3",
 				},
 			},
@@ -131,9 +157,9 @@ var (
 	}
 	altServiceSet = []*api.Service{
 		{
-			ID: "alt-id1",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Id: "alt-id1",
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "alt-name1",
 				},
 			},
@@ -142,73 +168,73 @@ var (
 
 	taskSet = []*api.Task{
 		{
-			ID: "id1",
-			Annotations: api.Annotations{
+			Id: "id1",
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name1",
 			},
-			DesiredState: api.TaskStateRunning,
-			NodeID:       nodeSet[0].ID,
+			DesiredState: api.TaskState_RUNNING,
+			NodeId:       nodeSet[0].Id,
 		},
 		{
-			ID: "id2",
-			Annotations: api.Annotations{
+			Id: "id2",
+			Annotations: &api.Annotations{
 				Name: "name2.1",
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name2",
 			},
-			DesiredState: api.TaskStateRunning,
-			ServiceID:    serviceSet[0].ID,
+			DesiredState: api.TaskState_RUNNING,
+			ServiceId:    serviceSet[0].Id,
 		},
 		{
-			ID: "id3",
-			Annotations: api.Annotations{
+			Id: "id3",
+			Annotations: &api.Annotations{
 				Name: "name2.2",
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "name2",
 			},
-			DesiredState: api.TaskStateShutdown,
+			DesiredState: api.TaskState_SHUTDOWN,
 		},
 	}
 	altTaskSet = []*api.Task{
 		{
-			ID: "alt-id1",
-			Annotations: api.Annotations{
+			Id: "alt-id1",
+			Annotations: &api.Annotations{
 				Name: "alt-name1",
 			},
-			ServiceAnnotations: api.Annotations{
+			ServiceAnnotations: &api.Annotations{
 				Name: "alt-name1",
 			},
-			DesiredState: api.TaskStateRunning,
-			NodeID:       altNodeSet[0].ID,
+			DesiredState: api.TaskState_RUNNING,
+			NodeId:       altNodeSet[0].Id,
 		},
 	}
 
 	networkSet = []*api.Network{
 		{
-			ID: "id1",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Id: "id1",
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 			},
 		},
 		{
-			ID: "id2",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Id: "id2",
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 			},
 		},
 		{
-			ID: "id3",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Id: "id3",
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "name3",
 				},
 			},
@@ -216,9 +242,9 @@ var (
 	}
 	altNetworkSet = []*api.Network{
 		{
-			ID: "alt-id1",
-			Spec: api.NetworkSpec{
-				Annotations: api.Annotations{
+			Id: "alt-id1",
+			Spec: &api.NetworkSpec{
+				Annotations: &api.Annotations{
 					Name: "alt-name1",
 				},
 			},
@@ -227,25 +253,25 @@ var (
 
 	configSet = []*api.Config{
 		{
-			ID: "id1",
-			Spec: api.ConfigSpec{
-				Annotations: api.Annotations{
+			Id: "id1",
+			Spec: &api.ConfigSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 			},
 		},
 		{
-			ID: "id2",
-			Spec: api.ConfigSpec{
-				Annotations: api.Annotations{
+			Id: "id2",
+			Spec: &api.ConfigSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 			},
 		},
 		{
-			ID: "id3",
-			Spec: api.ConfigSpec{
-				Annotations: api.Annotations{
+			Id: "id3",
+			Spec: &api.ConfigSpec{
+				Annotations: &api.Annotations{
 					Name: "name3",
 				},
 			},
@@ -253,9 +279,9 @@ var (
 	}
 	altConfigSet = []*api.Config{
 		{
-			ID: "alt-id1",
-			Spec: api.ConfigSpec{
-				Annotations: api.Annotations{
+			Id: "alt-id1",
+			Spec: &api.ConfigSpec{
+				Annotations: &api.Annotations{
 					Name: "alt-name1",
 				},
 			},
@@ -264,25 +290,25 @@ var (
 
 	secretSet = []*api.Secret{
 		{
-			ID: "id1",
-			Spec: api.SecretSpec{
-				Annotations: api.Annotations{
+			Id: "id1",
+			Spec: &api.SecretSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 			},
 		},
 		{
-			ID: "id2",
-			Spec: api.SecretSpec{
-				Annotations: api.Annotations{
+			Id: "id2",
+			Spec: &api.SecretSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 			},
 		},
 		{
-			ID: "id3",
-			Spec: api.SecretSpec{
-				Annotations: api.Annotations{
+			Id: "id3",
+			Spec: &api.SecretSpec{
+				Annotations: &api.Annotations{
 					Name: "name3",
 				},
 			},
@@ -290,9 +316,9 @@ var (
 	}
 	altSecretSet = []*api.Secret{
 		{
-			ID: "alt-id1",
-			Spec: api.SecretSpec{
-				Annotations: api.Annotations{
+			Id: "alt-id1",
+			Spec: &api.SecretSpec{
+				Annotations: &api.Annotations{
 					Name: "alt-name1",
 				},
 			},
@@ -301,28 +327,28 @@ var (
 
 	extensionSet = []*api.Extension{
 		{
-			ID: "id1",
-			Annotations: api.Annotations{
+			Id: "id1",
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 		},
 		{
-			ID: "id2",
-			Annotations: api.Annotations{
+			Id: "id2",
+			Annotations: &api.Annotations{
 				Name: "name2",
 			},
 		},
 		{
-			ID: "id3",
-			Annotations: api.Annotations{
+			Id: "id3",
+			Annotations: &api.Annotations{
 				Name: "name3",
 			},
 		},
 	}
 	altExtensionSet = []*api.Extension{
 		{
-			ID: "alt-id1",
-			Annotations: api.Annotations{
+			Id: "alt-id1",
+			Annotations: &api.Annotations{
 				Name: "alt-name1",
 			},
 		},
@@ -330,22 +356,22 @@ var (
 
 	resourceSet = []*api.Resource{
 		{
-			ID: "id1",
-			Annotations: api.Annotations{
+			Id: "id1",
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 			Kind: "name1", // corresponds to extension id1
 		},
 		{
-			ID: "id2",
-			Annotations: api.Annotations{
+			Id: "id2",
+			Annotations: &api.Annotations{
 				Name: "name2",
 			},
 			Kind: "name2", // corresponds to extension id2
 		},
 		{
-			ID: "id3",
-			Annotations: api.Annotations{
+			Id: "id3",
+			Annotations: &api.Annotations{
 				Name: "name3",
 			},
 			Kind: "name3", // corresponds to extension id3
@@ -353,8 +379,8 @@ var (
 	}
 	altResourceSet = []*api.Resource{
 		{
-			ID: "alt-id1",
-			Annotations: api.Annotations{
+			Id: "alt-id1",
+			Annotations: &api.Annotations{
 				Name: "alt-name1",
 			},
 			Kind: "alt-name1", // corresponds to extension alt-id1
@@ -362,9 +388,9 @@ var (
 	}
 	volumeSet = []*api.Volume{
 		{
-			ID: "id1",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Id: "id1",
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "name1",
 				},
 				Driver: &api.Driver{
@@ -373,9 +399,9 @@ var (
 			},
 		},
 		{
-			ID: "id2",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Id: "id2",
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "name2",
 				},
 				Driver: &api.Driver{
@@ -384,9 +410,9 @@ var (
 			},
 		},
 		{
-			ID: "id3",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Id: "id3",
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "name3",
 				},
 				Driver: &api.Driver{
@@ -397,9 +423,9 @@ var (
 	}
 	altVolumeSet = []*api.Volume{
 		{
-			ID: "alt-id1",
-			Spec: api.VolumeSpec{
-				Annotations: api.Annotations{
+			Id: "alt-id1",
+			Spec: &api.VolumeSpec{
+				Annotations: &api.Annotations{
 					Name: "alt-name1",
 				},
 				Driver: &api.Driver{
@@ -492,9 +518,9 @@ func TestStoreNode(t *testing.T) {
 	assert.NoError(t, err)
 
 	s.View(func(readTx ReadTx) {
-		assert.Equal(t, nodeSet[0], GetNode(readTx, "id1"))
-		assert.Equal(t, nodeSet[1], GetNode(readTx, "id2"))
-		assert.Equal(t, nodeSet[2], GetNode(readTx, "id3"))
+		assertEqualMessage(t, nodeSet[0], GetNode(readTx, "id1"))
+		assertEqualMessage(t, nodeSet[1], GetNode(readTx, "id2"))
+		assertEqualMessage(t, nodeSet[2], GetNode(readTx, "id3"))
 
 		foundNodes, err := FindNodes(readTx, ByName("name1"))
 		assert.NoError(t, err)
@@ -513,34 +539,34 @@ func TestStoreNode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 3)
 
-		foundNodes, err = FindNodes(readTx, ByRole(api.NodeRoleManager))
+		foundNodes, err = FindNodes(readTx, ByRole(api.NodeRole_MANAGER))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
 
-		foundNodes, err = FindNodes(readTx, ByRole(api.NodeRoleWorker))
+		foundNodes, err = FindNodes(readTx, ByRole(api.NodeRole_WORKER))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 2)
 
-		foundNodes, err = FindNodes(readTx, ByMembership(api.NodeMembershipPending))
+		foundNodes, err = FindNodes(readTx, ByMembership(api.NodeSpec_PENDING))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
 
-		foundNodes, err = FindNodes(readTx, ByMembership(api.NodeMembershipAccepted))
+		foundNodes, err = FindNodes(readTx, ByMembership(api.NodeSpec_ACCEPTED))
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 2)
 	})
 
 	// Update.
 	update := &api.Node{
-		ID: "id3",
+		Id: "id3",
 		Description: &api.NodeDescription{
 			Hostname: "name3",
 		},
 	}
 	err = s.Update(func(tx Tx) error {
-		assert.NotEqual(t, update, GetNode(tx, "id3"))
+		assertNotEqualMessage(t, update, GetNode(tx, "id3"))
 		assert.NoError(t, UpdateNode(tx, update))
-		assert.Equal(t, update, GetNode(tx, "id3"))
+		assertEqualMessage(t, update, GetNode(tx, "id3"))
 
 		foundNodes, err := FindNodes(tx, ByName("name2"))
 		assert.NoError(t, err)
@@ -549,9 +575,9 @@ func TestStoreNode(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, foundNodes, 1)
 
-		invalidUpdate := *nodeSet[0]
-		invalidUpdate.ID = "invalid"
-		assert.Error(t, UpdateNode(tx, &invalidUpdate), "invalid IDs should be rejected")
+		invalidUpdate := nodeSet[0].Copy()
+		invalidUpdate.Id = "invalid"
+		assert.Error(t, UpdateNode(tx, invalidUpdate), "invalid IDs should be rejected")
 
 		// Delete
 		assert.NotNil(t, GetNode(tx, "id1"))
@@ -582,9 +608,9 @@ func TestStoreService(t *testing.T) {
 	err := s.Update(func(tx Tx) error {
 		assert.Equal(t,
 			CreateService(tx, &api.Service{
-				ID: "id1",
-				Spec: api.ServiceSpec{
-					Annotations: api.Annotations{
+				Id: "id1",
+				Spec: &api.ServiceSpec{
+					Annotations: &api.Annotations{
 						Name: "name4",
 					},
 				},
@@ -592,9 +618,9 @@ func TestStoreService(t *testing.T) {
 
 		assert.Equal(t,
 			CreateService(tx, &api.Service{
-				ID: "id4",
-				Spec: api.ServiceSpec{
-					Annotations: api.Annotations{
+				Id: "id4",
+				Spec: &api.ServiceSpec{
+					Annotations: &api.Annotations{
 						Name: "name1",
 					},
 				},
@@ -602,9 +628,9 @@ func TestStoreService(t *testing.T) {
 
 		assert.Equal(t,
 			CreateService(tx, &api.Service{
-				ID: "id4",
-				Spec: api.ServiceSpec{
-					Annotations: api.Annotations{
+				Id: "id4",
+				Spec: &api.ServiceSpec{
+					Annotations: &api.Annotations{
 						Name: "NAME1",
 					},
 				},
@@ -614,9 +640,9 @@ func TestStoreService(t *testing.T) {
 	assert.NoError(t, err)
 
 	s.View(func(readTx ReadTx) {
-		assert.Equal(t, serviceSet[0], GetService(readTx, "id1"))
-		assert.Equal(t, serviceSet[1], GetService(readTx, "id2"))
-		assert.Equal(t, serviceSet[2], GetService(readTx, "id3"))
+		assertEqualMessage(t, serviceSet[0], GetService(readTx, "id1"))
+		assertEqualMessage(t, serviceSet[1], GetService(readTx, "id2"))
+		assertEqualMessage(t, serviceSet[2], GetService(readTx, "id3"))
 
 		foundServices, err := FindServices(readTx, ByNamePrefix("name1"))
 		assert.NoError(t, err)
@@ -647,20 +673,20 @@ func TestStoreService(t *testing.T) {
 			"foo": "bar",
 		}
 
-		assert.NotEqual(t, update, GetService(tx, update.ID))
+		assertNotEqualMessage(t, update, GetService(tx, update.Id))
 		assert.NoError(t, UpdateService(tx, update))
-		assert.Equal(t, update, GetService(tx, update.ID))
+		assertEqualMessage(t, update, GetService(tx, update.Id))
 
 		// Name conflict.
-		update = GetService(tx, update.ID)
+		update = GetService(tx, update.Id)
 		update.Spec.Annotations.Name = "name2"
 		assert.Equal(t, UpdateService(tx, update), ErrNameConflict, "duplicate names should be rejected")
-		update = GetService(tx, update.ID)
+		update = GetService(tx, update.Id)
 		update.Spec.Annotations.Name = "NAME2"
 		assert.Equal(t, UpdateService(tx, update), ErrNameConflict, "duplicate check should be case insensitive")
 
 		// Name change.
-		update = GetService(tx, update.ID)
+		update = GetService(tx, update.Id)
 		foundServices, err := FindServices(tx, ByNamePrefix("name1"))
 		assert.NoError(t, err)
 		assert.Len(t, foundServices, 1)
@@ -679,7 +705,7 @@ func TestStoreService(t *testing.T) {
 
 		// Invalid update.
 		invalidUpdate := serviceSet[0].Copy()
-		invalidUpdate.ID = "invalid"
+		invalidUpdate.Id = "invalid"
 		assert.Error(t, UpdateService(tx, invalidUpdate), "invalid IDs should be rejected")
 
 		return nil
@@ -724,9 +750,9 @@ func TestStoreNetwork(t *testing.T) {
 	assert.NoError(t, err)
 
 	s.View(func(readTx ReadTx) {
-		assert.Equal(t, networkSet[0], GetNetwork(readTx, "id1"))
-		assert.Equal(t, networkSet[1], GetNetwork(readTx, "id2"))
-		assert.Equal(t, networkSet[2], GetNetwork(readTx, "id3"))
+		assertEqualMessage(t, networkSet[0], GetNetwork(readTx, "id1"))
+		assertEqualMessage(t, networkSet[1], GetNetwork(readTx, "id2"))
+		assertEqualMessage(t, networkSet[2], GetNetwork(readTx, "id3"))
 
 		foundNetworks, err := FindNetworks(readTx, ByName("name1"))
 		assert.NoError(t, err)
@@ -778,9 +804,9 @@ func TestStoreTask(t *testing.T) {
 	assert.NoError(t, err)
 
 	s.View(func(readTx ReadTx) {
-		assert.Equal(t, taskSet[0], GetTask(readTx, "id1"))
-		assert.Equal(t, taskSet[1], GetTask(readTx, "id2"))
-		assert.Equal(t, taskSet[2], GetTask(readTx, "id3"))
+		assertEqualMessage(t, taskSet[0], GetTask(readTx, "id1"))
+		assertEqualMessage(t, taskSet[1], GetTask(readTx, "id2"))
+		assertEqualMessage(t, taskSet[2], GetTask(readTx, "id3"))
 
 		foundTasks, err := FindTasks(readTx, ByNamePrefix("name1"))
 		assert.NoError(t, err)
@@ -792,50 +818,50 @@ func TestStoreTask(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 0)
 
-		foundTasks, err = FindTasks(readTx, ByNodeID(nodeSet[0].ID))
+		foundTasks, err = FindTasks(readTx, ByNodeID(nodeSet[0].Id))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
-		assert.Equal(t, foundTasks[0], taskSet[0])
+		assertEqualMessage(t, foundTasks[0], taskSet[0])
 		foundTasks, err = FindTasks(readTx, ByNodeID("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 0)
 
-		foundTasks, err = FindTasks(readTx, ByServiceID(serviceSet[0].ID))
+		foundTasks, err = FindTasks(readTx, ByServiceID(serviceSet[0].Id))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
-		assert.Equal(t, foundTasks[0], taskSet[1])
+		assertEqualMessage(t, foundTasks[0], taskSet[1])
 		foundTasks, err = FindTasks(readTx, ByServiceID("invalid"))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 0)
 
-		foundTasks, err = FindTasks(readTx, ByDesiredState(api.TaskStateRunning))
+		foundTasks, err = FindTasks(readTx, ByDesiredState(api.TaskState_RUNNING))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 2)
-		assert.Equal(t, foundTasks[0].DesiredState, api.TaskStateRunning)
-		assert.Equal(t, foundTasks[0].DesiredState, api.TaskStateRunning)
-		foundTasks, err = FindTasks(readTx, ByDesiredState(api.TaskStateShutdown))
+		assert.Equal(t, foundTasks[0].DesiredState, api.TaskState_RUNNING)
+		assert.Equal(t, foundTasks[0].DesiredState, api.TaskState_RUNNING)
+		foundTasks, err = FindTasks(readTx, ByDesiredState(api.TaskState_SHUTDOWN))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
-		assert.Equal(t, foundTasks[0], taskSet[2])
-		foundTasks, err = FindTasks(readTx, ByDesiredState(api.TaskStatePending))
+		assertEqualMessage(t, foundTasks[0], taskSet[2])
+		foundTasks, err = FindTasks(readTx, ByDesiredState(api.TaskState_PENDING))
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 0)
 	})
 
 	// Update.
 	update := &api.Task{
-		ID: "id3",
-		Annotations: api.Annotations{
+		Id: "id3",
+		Annotations: &api.Annotations{
 			Name: "name3",
 		},
-		ServiceAnnotations: api.Annotations{
+		ServiceAnnotations: &api.Annotations{
 			Name: "name3",
 		},
 	}
 	err = s.Update(func(tx Tx) error {
-		assert.NotEqual(t, update, GetTask(tx, "id3"))
+		assertNotEqualMessage(t, update, GetTask(tx, "id3"))
 		assert.NoError(t, UpdateTask(tx, update))
-		assert.Equal(t, update, GetTask(tx, "id3"))
+		assertEqualMessage(t, update, GetTask(tx, "id3"))
 
 		foundTasks, err := FindTasks(tx, ByNamePrefix("name2"))
 		assert.NoError(t, err)
@@ -844,9 +870,9 @@ func TestStoreTask(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, foundTasks, 1)
 
-		invalidUpdate := *taskSet[0]
-		invalidUpdate.ID = "invalid"
-		assert.Error(t, UpdateTask(tx, &invalidUpdate), "invalid IDs should be rejected")
+		invalidUpdate := taskSet[0].Copy()
+		invalidUpdate.Id = "invalid"
+		assert.Error(t, UpdateTask(tx, invalidUpdate), "invalid IDs should be rejected")
 
 		// Delete
 		assert.NotNil(t, GetTask(tx, "id1"))
@@ -924,24 +950,24 @@ func TestStoreSnapshot(t *testing.T) {
 	assert.NoError(t, err)
 
 	s2.View(func(tx2 ReadTx) {
-		assert.Equal(t, nodeSet[0], GetNode(tx2, "id1"))
-		assert.Equal(t, nodeSet[1], GetNode(tx2, "id2"))
-		assert.Equal(t, nodeSet[2], GetNode(tx2, "id3"))
+		assertEqualMessage(t, nodeSet[0], GetNode(tx2, "id1"))
+		assertEqualMessage(t, nodeSet[1], GetNode(tx2, "id2"))
+		assertEqualMessage(t, nodeSet[2], GetNode(tx2, "id3"))
 
-		assert.Equal(t, serviceSet[0], GetService(tx2, "id1"))
-		assert.Equal(t, serviceSet[1], GetService(tx2, "id2"))
-		assert.Equal(t, serviceSet[2], GetService(tx2, "id3"))
+		assertEqualMessage(t, serviceSet[0], GetService(tx2, "id1"))
+		assertEqualMessage(t, serviceSet[1], GetService(tx2, "id2"))
+		assertEqualMessage(t, serviceSet[2], GetService(tx2, "id3"))
 
-		assert.Equal(t, taskSet[0], GetTask(tx2, "id1"))
-		assert.Equal(t, taskSet[1], GetTask(tx2, "id2"))
-		assert.Equal(t, taskSet[2], GetTask(tx2, "id3"))
+		assertEqualMessage(t, taskSet[0], GetTask(tx2, "id1"))
+		assertEqualMessage(t, taskSet[1], GetTask(tx2, "id2"))
+		assertEqualMessage(t, taskSet[2], GetTask(tx2, "id3"))
 	})
 
 	// Create node
 	createNode := &api.Node{
-		ID: "id4",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Id: "id4",
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "name4",
 			},
 		},
@@ -957,14 +983,14 @@ func TestStoreSnapshot(t *testing.T) {
 	<-watcher // consume commit event
 
 	s2.View(func(tx2 ReadTx) {
-		assert.Equal(t, createNode, GetNode(tx2, "id4"))
+		assertEqualMessage(t, createNode, GetNode(tx2, "id4"))
 	})
 
 	// Update node
 	updateNode := &api.Node{
-		ID: "id3",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Id: "id3",
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "name3",
 			},
 		},
@@ -980,7 +1006,7 @@ func TestStoreSnapshot(t *testing.T) {
 	<-watcher // consume commit event
 
 	s2.View(func(tx2 ReadTx) {
-		assert.Equal(t, updateNode, GetNode(tx2, "id3"))
+		assertEqualMessage(t, updateNode, GetNode(tx2, "id3"))
 	})
 
 	err = s1.Update(func(tx1 Tx) error {
@@ -999,9 +1025,9 @@ func TestStoreSnapshot(t *testing.T) {
 
 	// Create service
 	createService := &api.Service{
-		ID: "id4",
-		Spec: api.ServiceSpec{
-			Annotations: api.Annotations{
+		Id: "id4",
+		Spec: &api.ServiceSpec{
+			Annotations: &api.Annotations{
 				Name: "name4",
 			},
 		},
@@ -1017,14 +1043,14 @@ func TestStoreSnapshot(t *testing.T) {
 	<-watcher // consume commit event
 
 	s2.View(func(tx2 ReadTx) {
-		assert.Equal(t, createService, GetService(tx2, "id4"))
+		assertEqualMessage(t, createService, GetService(tx2, "id4"))
 	})
 
 	// Update service
 	updateService := serviceSet[2].Copy()
 	updateService.Spec.Annotations.Name = "new-name"
 	err = s1.Update(func(tx1 Tx) error {
-		assert.NotEqual(t, updateService, GetService(tx1, updateService.ID))
+		assertNotEqualMessage(t, updateService, GetService(tx1, updateService.Id))
 		assert.NoError(t, UpdateService(tx1, updateService))
 		return nil
 	})
@@ -1034,7 +1060,7 @@ func TestStoreSnapshot(t *testing.T) {
 	<-watcher // consume commit event
 
 	s2.View(func(tx2 ReadTx) {
-		assert.Equal(t, updateService, GetService(tx2, "id3"))
+		assertEqualMessage(t, updateService, GetService(tx2, "id3"))
 	})
 
 	err = s1.Update(func(tx1 Tx) error {
@@ -1053,8 +1079,8 @@ func TestStoreSnapshot(t *testing.T) {
 
 	// Create task
 	createTask := &api.Task{
-		ID: "id4",
-		ServiceAnnotations: api.Annotations{
+		Id: "id4",
+		ServiceAnnotations: &api.Annotations{
 			Name: "name4",
 		},
 	}
@@ -1069,13 +1095,13 @@ func TestStoreSnapshot(t *testing.T) {
 	<-watcher // consume commit event
 
 	s2.View(func(tx2 ReadTx) {
-		assert.Equal(t, createTask, GetTask(tx2, "id4"))
+		assertEqualMessage(t, createTask, GetTask(tx2, "id4"))
 	})
 
 	// Update task
 	updateTask := &api.Task{
-		ID: "id3",
-		ServiceAnnotations: api.Annotations{
+		Id: "id3",
+		ServiceAnnotations: &api.Annotations{
 			Name: "name3",
 		},
 	}
@@ -1089,7 +1115,7 @@ func TestStoreSnapshot(t *testing.T) {
 	<-watcher // consume commit event
 
 	s2.View(func(tx2 ReadTx) {
-		assert.Equal(t, updateTask, GetTask(tx2, "id3"))
+		assertEqualMessage(t, updateTask, GetTask(tx2, "id3"))
 	})
 
 	err = s1.Update(func(tx1 Tx) error {
@@ -1119,16 +1145,22 @@ func TestCustomIndex(t *testing.T) {
 		assert.Len(t, allNodes, len(nodeSet))
 
 		for _, n := range allNodes {
-			switch n.ID {
+			// Annotations is a message pointer now, and the fixtures leave it
+			// unset, so allocate it before adding the indices.
+			switch n.Id {
 			case "id2":
-				n.Spec.Annotations.Indices = []api.IndexEntry{
-					{Key: "nodesbefore", Val: "id1"},
+				n.Spec.Annotations = &api.Annotations{
+					Indices: []*api.IndexEntry{
+						{Key: "nodesbefore", Val: "id1"},
+					},
 				}
 				assert.NoError(t, UpdateNode(tx, n))
 			case "id3":
-				n.Spec.Annotations.Indices = []api.IndexEntry{
-					{Key: "nodesbefore", Val: "id1"},
-					{Key: "nodesbefore", Val: "id2"},
+				n.Spec.Annotations = &api.Annotations{
+					Indices: []*api.IndexEntry{
+						{Key: "nodesbefore", Val: "id1"},
+						{Key: "nodesbefore", Val: "id2"},
+					},
 				}
 				assert.NoError(t, UpdateNode(tx, n))
 			}
@@ -1141,7 +1173,7 @@ func TestCustomIndex(t *testing.T) {
 		foundNodes, err := FindNodes(readTx, ByCustom("", "nodesbefore", "id2"))
 		require.NoError(t, err)
 		require.Len(t, foundNodes, 1)
-		assert.Equal(t, "id3", foundNodes[0].ID)
+		assert.Equal(t, "id3", foundNodes[0].Id)
 
 		foundNodes, err = FindNodes(readTx, ByCustom("", "nodesbefore", "id1"))
 		require.NoError(t, err)
@@ -1168,7 +1200,7 @@ func TestFailedTransaction(t *testing.T) {
 	// Create one node
 	err := s.Update(func(tx Tx) error {
 		n := &api.Node{
-			ID: "id1",
+			Id: "id1",
 			Description: &api.NodeDescription{
 				Hostname: "name1",
 			},
@@ -1182,7 +1214,7 @@ func TestFailedTransaction(t *testing.T) {
 	// Create a second node, but then roll back the transaction
 	err = s.Update(func(tx Tx) error {
 		n := &api.Node{
-			ID: "id2",
+			Id: "id2",
 			Description: &api.NodeDescription{
 				Hostname: "name2",
 			},
@@ -1217,9 +1249,9 @@ func TestVersion(t *testing.T) {
 
 	// Create one node
 	n := &api.Node{
-		ID: "id1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 		},
@@ -1234,19 +1266,21 @@ func TestVersion(t *testing.T) {
 	n.Spec.Annotations.Name = "name2"
 	err = s.Update(func(tx Tx) error {
 		assert.NoError(t, UpdateNode(tx, n))
-		retrievedNode = GetNode(tx, n.ID)
+		retrievedNode = GetNode(tx, n.Id)
 		return nil
 	})
 	assert.NoError(t, err)
 
 	// Make sure the store is updating our local copy with the version.
-	assert.Equal(t, n.Meta.Version, retrievedNode.Meta.Version)
+	// Version is a message pointer now, so compare the index it carries rather
+	// than the pointers.
+	assert.Equal(t, n.Meta.Version.GetIndex(), retrievedNode.Meta.Version.GetIndex())
 
 	// Try again, this time using the retrieved node.
 	retrievedNode.Spec.Annotations.Name = "name2"
 	err = s.Update(func(tx Tx) error {
 		assert.NoError(t, UpdateNode(tx, retrievedNode))
-		retrievedNode2 = GetNode(tx, n.ID)
+		retrievedNode2 = GetNode(tx, n.Id)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -1281,9 +1315,9 @@ func TestTimestamps(t *testing.T) {
 
 	// Create one node
 	n := &api.Node{
-		ID: "id1",
-		Spec: api.NodeSpec{
-			Annotations: api.Annotations{
+		Id: "id1",
+		Spec: &api.NodeSpec{
+			Annotations: &api.Annotations{
 				Name: "name1",
 			},
 		},
@@ -1298,27 +1332,29 @@ func TestTimestamps(t *testing.T) {
 	assert.NotZero(t, n.Meta.CreatedAt)
 	assert.NotZero(t, n.Meta.UpdatedAt)
 	// Since this is a new node, CreatedAt should equal UpdatedAt.
-	assert.Equal(t, n.Meta.CreatedAt, n.Meta.UpdatedAt)
+	// Timestamps are messages now, so compare the instants they denote rather
+	// than the pointers.
+	assert.Equal(t, n.Meta.CreatedAt.AsTime(), n.Meta.UpdatedAt.AsTime())
 
 	// Fetch the node from the store and make sure timestamps match.
 	s.View(func(tx ReadTx) {
-		retrievedNode = GetNode(tx, n.ID)
+		retrievedNode = GetNode(tx, n.Id)
 	})
-	assert.Equal(t, retrievedNode.Meta.CreatedAt, n.Meta.CreatedAt)
-	assert.Equal(t, retrievedNode.Meta.UpdatedAt, n.Meta.UpdatedAt)
+	assert.Equal(t, retrievedNode.Meta.CreatedAt.AsTime(), n.Meta.CreatedAt.AsTime())
+	assert.Equal(t, retrievedNode.Meta.UpdatedAt.AsTime(), n.Meta.UpdatedAt.AsTime())
 
 	// Make an update.
 	retrievedNode.Spec.Annotations.Name = "name2"
 	err = s.Update(func(tx Tx) error {
 		assert.NoError(t, UpdateNode(tx, retrievedNode))
-		updatedNode = GetNode(tx, n.ID)
+		updatedNode = GetNode(tx, n.Id)
 		return nil
 	})
 	assert.NoError(t, err)
 
 	// Ensure `CreatedAt` is the same after the update and `UpdatedAt` got updated.
-	assert.Equal(t, updatedNode.Meta.CreatedAt, n.Meta.CreatedAt)
-	assert.NotEqual(t, updatedNode.Meta.CreatedAt, updatedNode.Meta.UpdatedAt)
+	assert.Equal(t, updatedNode.Meta.CreatedAt.AsTime(), n.Meta.CreatedAt.AsTime())
+	assert.NotEqual(t, updatedNode.Meta.CreatedAt.AsTime(), updatedNode.Meta.UpdatedAt.AsTime())
 }
 
 func TestBatch(t *testing.T) {
@@ -1332,9 +1368,9 @@ func TestBatch(t *testing.T) {
 	err := s.Batch(func(batch *Batch) error {
 		for i := range 2*MaxChangesPerTransaction + 5 {
 			n := &api.Node{
-				ID: "id" + strconv.Itoa(i),
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Id: "id" + strconv.Itoa(i),
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: "name" + strconv.Itoa(i),
 					},
 				},
@@ -1393,9 +1429,9 @@ func TestBatchFailure(t *testing.T) {
 	err := s.Batch(func(batch *Batch) error {
 		for i := 0; ; i++ {
 			n := &api.Node{
-				ID: "id" + strconv.Itoa(i),
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Id: "id" + strconv.Itoa(i),
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: "name" + strconv.Itoa(i),
 					},
 				},
@@ -1450,27 +1486,29 @@ func TestStoreSaveRestore(t *testing.T) {
 	// updated on restore), as well as one extraneous object (which should be deleted
 	// on restore).  We also want to bump the version on all the ones that will be
 	// updated just to make sure that restoration works.
-	version := api.Version{Index: 100}
+	// Version is a message pointer now, so hand every object its own instance
+	// rather than sharing a single one between them.
+	version := func() *api.Version { return &api.Version{Index: 100} }
 	c := clusterSet[0].Copy()
-	c.Meta.Version = version
+	c.Meta.Version = version()
 	n := nodeSet[0].Copy()
-	n.Meta.Version = version
+	n.Meta.Version = version()
 	s := serviceSet[0].Copy()
-	s.Meta.Version = version
+	s.Meta.Version = version()
 	task := taskSet[0].Copy()
-	task.Meta.Version = version
+	task.Meta.Version = version()
 	nw := networkSet[0].Copy()
-	nw.Meta.Version = version
+	nw.Meta.Version = version()
 	cf := configSet[0].Copy()
-	cf.Meta.Version = version
+	cf.Meta.Version = version()
 	sk := secretSet[0].Copy()
-	sk.Meta.Version = version
+	sk.Meta.Version = version()
 	ext := extensionSet[0].Copy()
-	ext.Meta.Version = version
+	ext.Meta.Version = version()
 	r := resourceSet[0].Copy()
-	r.Meta.Version = version
+	r.Meta.Version = version()
 	v := volumeSet[0].Copy()
-	v.Meta.Version = version
+	v.Meta.Version = version()
 	populateTestStore(t, s2,
 		append(altClusterSet, c),
 		append(altNodeSet, n),
@@ -1499,69 +1537,69 @@ func TestStoreSaveRestore(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, allClusters, len(clusterSet))
 		for i := range allClusters {
-			assert.Equal(t, allClusters[i], clusterSet[i])
+			assertEqualMessage(t, allClusters[i], clusterSet[i])
 		}
 
 		allTasks, err := FindTasks(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allTasks, len(taskSet))
 		for i := range allTasks {
-			assert.Equal(t, allTasks[i], taskSet[i])
+			assertEqualMessage(t, allTasks[i], taskSet[i])
 		}
 
 		allNodes, err := FindNodes(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allNodes, len(nodeSet))
 		for i := range allNodes {
-			assert.Equal(t, allNodes[i], nodeSet[i])
+			assertEqualMessage(t, allNodes[i], nodeSet[i])
 		}
 
 		allNetworks, err := FindNetworks(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allNetworks, len(networkSet))
 		for i := range allNetworks {
-			assert.Equal(t, allNetworks[i], networkSet[i])
+			assertEqualMessage(t, allNetworks[i], networkSet[i])
 		}
 
 		allServices, err := FindServices(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allServices, len(serviceSet))
 		for i := range allServices {
-			assert.Equal(t, allServices[i], serviceSet[i])
+			assertEqualMessage(t, allServices[i], serviceSet[i])
 		}
 
 		allConfigs, err := FindConfigs(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allConfigs, len(configSet))
 		for i := range allConfigs {
-			assert.Equal(t, allConfigs[i], configSet[i])
+			assertEqualMessage(t, allConfigs[i], configSet[i])
 		}
 
 		allSecrets, err := FindSecrets(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allSecrets, len(secretSet))
 		for i := range allSecrets {
-			assert.Equal(t, allSecrets[i], secretSet[i])
+			assertEqualMessage(t, allSecrets[i], secretSet[i])
 		}
 
 		allExtensions, err := FindExtensions(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allExtensions, len(extensionSet))
 		for i := range allExtensions {
-			assert.Equal(t, allExtensions[i], extensionSet[i])
+			assertEqualMessage(t, allExtensions[i], extensionSet[i])
 		}
 
 		allResources, err := FindResources(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allResources, len(resourceSet))
 		for i := range allResources {
-			assert.Equal(t, allResources[i], resourceSet[i])
+			assertEqualMessage(t, allResources[i], resourceSet[i])
 		}
 		allVolumes, err := FindVolumes(tx, All)
 		assert.NoError(t, err)
 		assert.Len(t, allVolumes, len(volumeSet))
 		for i := range allVolumes {
-			assert.Equal(t, allVolumes[i], volumeSet[i])
+			assertEqualMessage(t, allVolumes[i], volumeSet[i])
 		}
 	})
 
@@ -1705,10 +1743,10 @@ waitForAllEvents:
 		assert.Equal(t, len(expected), len(changes))
 		expectedIDs := make(map[string]struct{})
 		for _, s := range expected {
-			expectedIDs[s.GetID()] = struct{}{}
+			expectedIDs[s.GetId()] = struct{}{}
 		}
 		for _, s := range changes {
-			_, ok := expectedIDs[s.GetID()]
+			_, ok := expectedIDs[s.GetId()]
 			assert.True(t, ok)
 		}
 	}
@@ -1802,18 +1840,18 @@ func TestWatchFrom(t *testing.T) {
 	for i := range 5 {
 		err := s.Batch(func(batch *Batch) error {
 			node := &api.Node{
-				ID: "id" + strconv.Itoa(i),
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Id: "id" + strconv.Itoa(i),
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: "name" + strconv.Itoa(i),
 					},
 				},
 			}
 
 			service := &api.Service{
-				ID: "id" + strconv.Itoa(i),
-				Spec: api.ServiceSpec{
-					Annotations: api.Annotations{
+				Id: "id" + strconv.Itoa(i),
+				Spec: &api.ServiceSpec{
+					Annotations: &api.Annotations{
 						Name: "name" + strconv.Itoa(i),
 					},
 				},
@@ -1849,9 +1887,9 @@ func TestWatchFrom(t *testing.T) {
 			}
 
 			if i == 0 {
-				assert.Equal(t, "id3", nodeEvent.Node.ID)
+				assert.Equal(t, "id3", nodeEvent.Node.Id)
 			} else {
-				assert.Equal(t, "id4", nodeEvent.Node.ID)
+				assert.Equal(t, "id4", nodeEvent.Node.Id)
 			}
 		case <-time.After(time.Second):
 			t.Fatal("timed out waiting for event")
@@ -1876,7 +1914,7 @@ func TestWatchFrom(t *testing.T) {
 		if !ok {
 			t.Fatal("wrong event type - expected service create")
 		}
-		assert.Equal(t, "id4", serviceEvent.Service.ID)
+		assert.Equal(t, "id4", serviceEvent.Service.Id)
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for event")
 	}
@@ -1892,18 +1930,18 @@ func TestWatchFrom(t *testing.T) {
 	// Create some new objects and make sure they show up in the watches.
 	assert.NoError(t, s.Update(func(tx Tx) error {
 		node := &api.Node{
-			ID: "newnode",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Id: "newnode",
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "newnode",
 				},
 			},
 		}
 
 		service := &api.Service{
-			ID: "newservice",
-			Spec: api.ServiceSpec{
-				Annotations: api.Annotations{
+			Id: "newservice",
+			Spec: &api.ServiceSpec{
+				Annotations: &api.Annotations{
 					Name: "newservice",
 				},
 			},
@@ -1920,7 +1958,7 @@ func TestWatchFrom(t *testing.T) {
 		if !ok {
 			t.Fatalf("wrong event type - expected node create, got %T", event)
 		}
-		assert.Equal(t, "newnode", nodeEvent.Node.ID)
+		assert.Equal(t, "newnode", nodeEvent.Node.Id)
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for event")
 	}
@@ -1939,7 +1977,7 @@ func TestWatchFrom(t *testing.T) {
 		if !ok {
 			t.Fatalf("wrong event type - expected service create, got %T", event)
 		}
-		assert.Equal(t, "newservice", serviceEvent.Service.ID)
+		assert.Equal(t, "newservice", serviceEvent.Service.Id)
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for event")
 	}
@@ -1954,9 +1992,9 @@ func TestWatchFrom(t *testing.T) {
 
 	assert.NoError(t, s.Update(func(tx Tx) error {
 		node := &api.Node{
-			ID: "newnode2",
-			Spec: api.NodeSpec{
-				Annotations: api.Annotations{
+			Id: "newnode2",
+			Spec: &api.NodeSpec{
+				Annotations: &api.Annotations{
 					Name: "newnode2",
 				},
 			},
@@ -1972,7 +2010,7 @@ func TestWatchFrom(t *testing.T) {
 		if !ok {
 			t.Fatalf("wrong event type - expected node create, got %T", event)
 		}
-		assert.Equal(t, "newnode2", nodeEvent.Node.ID)
+		assert.Equal(t, "newnode2", nodeEvent.Node.Id)
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for event")
 	}
@@ -2011,9 +2049,9 @@ func setupNodes(b *testing.B, n int) (*MemoryStore, []string) {
 	_ = s.Update(func(tx1 Tx) error {
 		for i := range n {
 			_ = CreateNode(tx1, &api.Node{
-				ID: nodeIDs[i],
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Id: nodeIDs[i],
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: "name" + strconv.Itoa(i),
 					},
 				},
@@ -2035,9 +2073,9 @@ func BenchmarkUpdateNode(b *testing.B) {
 	_ = s.Update(func(tx1 Tx) error {
 		for i := range b.N {
 			_ = UpdateNode(tx1, &api.Node{
-				ID: nodeIDs[i%benchmarkNumNodes],
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Id: nodeIDs[i%benchmarkNumNodes],
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
 					},
 				},
@@ -2053,9 +2091,9 @@ func BenchmarkUpdateNodeTransaction(b *testing.B) {
 	for i := range b.N {
 		_ = s.Update(func(tx1 Tx) error {
 			_ = UpdateNode(tx1, &api.Node{
-				ID: nodeIDs[i%benchmarkNumNodes],
-				Spec: api.NodeSpec{
-					Annotations: api.Annotations{
+				Id: nodeIDs[i%benchmarkNumNodes],
+				Spec: &api.NodeSpec{
+					Annotations: &api.Annotations{
 						Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(i),
 					},
 				},
@@ -2119,9 +2157,9 @@ func BenchmarkNodeConcurrency(b *testing.B) {
 			for i := range b.N {
 				_ = s.Update(func(tx1 Tx) error {
 					_ = UpdateNode(tx1, &api.Node{
-						ID: nodeIDs[i%benchmarkNumNodes],
-						Spec: api.NodeSpec{
-							Annotations: api.Annotations{
+						Id: nodeIDs[i%benchmarkNumNodes],
+						Spec: &api.NodeSpec{
+							Annotations: &api.Annotations{
 								Name: nodeIDs[i%benchmarkNumNodes] + "_" + strconv.Itoa(c) + "_" + strconv.Itoa(i),
 							},
 						},

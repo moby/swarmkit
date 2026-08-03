@@ -15,9 +15,9 @@ import (
 	"github.com/docker/docker/api/types/events"
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/pkg/errors"
 	"golang.org/x/time/rate"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
@@ -457,7 +457,7 @@ func (r *controller) waitReady(pctx context.Context) error {
 	}
 }
 
-func (r *controller) Logs(ctx context.Context, publisher exec.LogPublisher, options api.LogSubscriptionOptions) error {
+func (r *controller) Logs(ctx context.Context, publisher exec.LogPublisher, options *api.LogSubscriptionOptions) error {
 	if err := r.checkClosed(); err != nil {
 		return err
 	}
@@ -477,9 +477,9 @@ func (r *controller) Logs(ctx context.Context, publisher exec.LogPublisher, opti
 		// ability coalesce messages.
 		limiter = rate.NewLimiter(rate.Every(time.Second), 10<<20) // 10 MB/s
 		msgctx  = api.LogContext{
-			NodeID:    r.task.NodeID,
-			ServiceID: r.task.ServiceID,
-			TaskID:    r.task.ID,
+			NodeId:    r.task.NodeId,
+			ServiceId: r.task.ServiceId,
+			TaskId:    r.task.Id,
 		}
 	)
 
@@ -519,13 +519,13 @@ func (r *controller) Logs(ctx context.Context, publisher exec.LogPublisher, opti
 			return errors.Wrap(err, "failed to parse timestamp")
 		}
 
-		tsp, err := gogotypes.TimestampProto(ts)
-		if err != nil {
+		tsp := timestamppb.New(ts)
+		if err := tsp.CheckValid(); err != nil {
 			return errors.Wrap(err, "failed to convert timestamp")
 		}
 
-		if err := publisher.Publish(ctx, api.LogMessage{
-			Context:   msgctx,
+		if err := publisher.Publish(ctx, &api.LogMessage{
+			Context:   &msgctx,
 			Timestamp: tsp,
 			Stream:    api.LogStream(stream),
 
@@ -623,8 +623,8 @@ func makeExitError(ctnr types.ContainerJSON) error {
 
 func parseContainerStatus(ctnr types.ContainerJSON) (*api.ContainerStatus, error) {
 	status := &api.ContainerStatus{
-		ContainerID: ctnr.ID,
-		PID:         int32(ctnr.State.Pid),
+		ContainerId: ctnr.ID,
+		Pid:         int32(ctnr.State.Pid),
 		ExitCode:    int32(ctnr.State.ExitCode),
 	}
 
@@ -662,11 +662,11 @@ func parsePortMap(portMap nat.PortMap) ([]*api.PortConfig, error) {
 		var protocol api.PortConfig_Protocol
 		switch strings.ToLower(parts[1]) {
 		case "tcp":
-			protocol = api.ProtocolTCP
+			protocol = api.PortConfig_TCP
 		case "udp":
-			protocol = api.ProtocolUDP
+			protocol = api.PortConfig_UDP
 		case "sctp":
-			protocol = api.ProtocolSCTP
+			protocol = api.PortConfig_SCTP
 		default:
 			return nil, fmt.Errorf("invalid protocol: %s", parts[1])
 		}
@@ -680,7 +680,7 @@ func parsePortMap(portMap nat.PortMap) ([]*api.PortConfig, error) {
 			// TODO(aluzzardi): We're losing the port `name` here since
 			// there's no way to retrieve it back from the Engine.
 			exposedPorts = append(exposedPorts, &api.PortConfig{
-				PublishMode:   api.PublishModeHost,
+				PublishMode:   api.PortConfig_HOST,
 				Protocol:      protocol,
 				TargetPort:    uint32(port),
 				PublishedPort: uint32(hostPort),

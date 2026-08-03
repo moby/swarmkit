@@ -9,14 +9,14 @@ import (
 
 func TestUpdatePortsInHostPublishMode(t *testing.T) {
 	service := api.Service{
-		Spec: api.ServiceSpec{
+		Spec: &api.ServiceSpec{
 			Endpoint: &api.EndpointSpec{
 				Ports: []*api.PortConfig{
 					{
-						Protocol:      api.ProtocolTCP,
+						Protocol:      api.PortConfig_TCP,
 						TargetPort:    80,
 						PublishedPort: 10000,
-						PublishMode:   api.PublishModeHost,
+						PublishMode:   api.PortConfig_HOST,
 					},
 				},
 			},
@@ -24,10 +24,10 @@ func TestUpdatePortsInHostPublishMode(t *testing.T) {
 		Endpoint: &api.Endpoint{
 			Ports: []*api.PortConfig{
 				{
-					Protocol:      api.ProtocolTCP,
+					Protocol:      api.PortConfig_TCP,
 					TargetPort:    80,
 					PublishedPort: 15000,
-					PublishMode:   api.PublishModeHost,
+					PublishMode:   api.PortConfig_HOST,
 				},
 			},
 		},

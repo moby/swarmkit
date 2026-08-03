@@ -39,7 +39,7 @@ var (
 			}
 
 			_, err = c.RemoveNode(common.Context(cmd), &api.RemoveNodeRequest{
-				NodeID: node.ID,
+				NodeId: node.Id,
 				Force:  force,
 			})
 
