@@ -10,12 +10,14 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/ca/testutils"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/protobuf/ptypes"
+	grpcutils "github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -819,4 +821,44 @@ func newLogMessage(msgctx *api.LogContext, format string, vs ...any) *api.LogMes
 		Timestamp: ptypes.MustTimestampProto(time.Now()),
 		Data:      fmt.Appendf(nil, format, vs...),
 	}
+}
+
+// TestLogBrokerPublishNoContext ensures that a published log message without
+// a log context is rejected instead of crashing the broker. LogMessage.Context
+// was non-nullable before the migration to the standard protobuf runtime, so
+// it can now legally arrive as nil from a rogue or buggy client.
+func TestLogBrokerPublishNoContext(t *testing.T) {
+	ctx, ca, _, serverAddr, brokerAddr, done := testLogBrokerEnv(t)
+	defer done()
+
+	client, clientDone := testLogClient(t, serverAddr)
+	defer clientDone()
+	brokerClient, agentSecurity, brokerClientDone := testBrokerClient(t, ca, brokerAddr)
+	defer brokerClientDone()
+
+	subStream, err := brokerClient.ListenSubscriptions(ctx, &api.ListenSubscriptionsRequest{})
+	require.NoError(t, err)
+
+	_, err = client.SubscribeLogs(ctx, &api.SubscribeLogsRequest{
+		Options: &api.LogSubscriptionOptions{
+			Follow: true,
+		},
+		Selector: &api.LogSelector{
+			NodeIds: []string{agentSecurity.ServerTLSCreds.NodeID()},
+		},
+	})
+	require.NoError(t, err)
+
+	sub, err := subStream.Recv()
+	require.NoError(t, err)
+
+	publisher, err := brokerClient.PublishLogs(ctx)
+	require.NoError(t, err)
+	require.NoError(t, publisher.Send(&api.PublishLogsMessage{
+		SubscriptionId: sub.Id,
+		Messages:       []*api.LogMessage{{Data: []byte("no context")}},
+	}))
+	_, err = publisher.CloseAndRecv()
+	require.Error(t, err, "a log message without a context must be rejected")
+	require.Equal(t, codes.PermissionDenied, grpcutils.ErrorCode(err))
 }
