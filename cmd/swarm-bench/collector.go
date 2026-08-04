@@ -22,7 +22,7 @@ type Collector struct {
 // once they come online.
 func (c *Collector) Listen(port int) error {
 	var err error
-	c.ln, err = net.Listen("tcp", ":"+strconv.Itoa(port))
+	c.ln, err = (&net.ListenConfig{}).Listen(context.Background(), "tcp", ":"+strconv.Itoa(port))
 	return err
 }
 
