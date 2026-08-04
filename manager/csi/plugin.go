@@ -101,20 +101,30 @@ func (p *plugin) connect(ctx context.Context) error {
 	p.cc = cc
 
 	// first, probe the plugin, to ensure that it exists and is ready to go
-	idc := csi.NewIdentityClient(cc)
-	p.idClient = idc
+	p.idClient = csi.NewIdentityClient(cc)
 
 	// controllerClient may not do anything if the plugin does not support
 	// the controller service, but it should not be an error to create it now
 	// anyway
 	p.controllerClient = csi.NewControllerClient(cc)
 
-	return p.init(ctx)
+	if err := p.init(ctx); err != nil {
+		_ = cc.Close()
+		p.cc = nil
+		p.idClient = nil
+		p.controllerClient = nil
+		return err
+	}
+
+	return nil
 }
 
 // init checks uses the identity service to check the properties of the plugin,
 // most importantly, its capabilities.
 func (p *plugin) init(ctx context.Context) error {
+	if p.idClient == nil {
+		return errors.New("identity client is not initialized")
+	}
 	probe, err := p.idClient.Probe(ctx, &csi.ProbeRequest{})
 	if err != nil {
 		return err
@@ -143,6 +153,9 @@ func (p *plugin) init(ctx context.Context) error {
 	}
 
 	if p.controller {
+		if p.controllerClient == nil {
+			return errors.New("controller client is not initialized")
+		}
 		cCapResp, err := p.controllerClient.ControllerGetCapabilities(
 			ctx, &csi.ControllerGetCapabilitiesRequest{},
 		)
