@@ -44,7 +44,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.13.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/container-storage-interface/spec v1.2.0 // indirect
+	github.com/container-storage-interface/spec v1.10.0 // indirect
 	github.com/containerd/containerd v1.7.29 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
