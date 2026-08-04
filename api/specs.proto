@@ -375,6 +375,13 @@ message ContainerSpec {
 	// OOmScoreAdj defines the relative value used for destroying a container during an OOM
 	// Values are between -1000 and 1000
 	int64 oom_score_adj = 30;
+
+	message DeviceMapping {
+		string pathOnHost = 1;
+		string pathInContainer = 2;
+		string cgroupPermissions = 3;
+	}
+	repeated DeviceMapping Devices = 31;
 }
 
 // EndpointSpec defines the properties that can be configured to
