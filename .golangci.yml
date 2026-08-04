@@ -23,7 +23,6 @@ linters:
     staticcheck:
       checks:
         - all
-        - -QF1007
         - -QF1008
         - -QF1010
         - -QF1011
