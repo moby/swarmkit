@@ -263,11 +263,8 @@ func (np *nodePlugin) NodeUnstageVolume(ctx context.Context, req *api.VolumeAssi
 
 	// we must unpublish before we unstage. verify here that the volume is not
 	// published.
-	if v, ok := np.volumeMap[req.ID]; ok {
-		if v.isPublished {
-			return status.Errorf(codes.FailedPrecondition, "Volume %s is not unpublished", req.ID)
-		}
-		return nil
+	if v, ok := np.volumeMap[req.ID]; ok && v.isPublished {
+		return status.Errorf(codes.FailedPrecondition, "Volume %s is not unpublished", req.ID)
 	}
 
 	_, err = c.NodeUnstageVolume(ctx, &csi.NodeUnstageVolumeRequest{
