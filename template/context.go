@@ -97,6 +97,57 @@ func (ctx *Context) Expand(s string) (string, error) {
 	return buf.String(), nil
 }
 
+// ControlContext contains field that can be used for templating
+// in the control plane.
+type ControlContext struct {
+	Service struct {
+		ID     string
+		Name   string
+		Labels map[string]string
+	}
+	Task struct {
+		ID   string
+		Name string
+		Slot string
+	}
+}
+
+// Expand treats the string s as a template and populates it with values from
+// the context.
+func (ctx *ControlContext) Expand(s string) (string, error) {
+	tmpl, err := newTemplate(s, nil)
+	if err != nil {
+		return s, err
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, ctx); err != nil {
+		return s, err
+	}
+
+	return buf.String(), nil
+}
+
+// NewControlContext returns template context for templating in the control plane (no node info available)
+func NewControlContext(t *api.Task) (ctx Context) {
+	ctx.Service.ID = t.ServiceID
+	ctx.Service.Name = t.ServiceAnnotations.Name
+	ctx.Service.Labels = t.ServiceAnnotations.Labels
+
+	ctx.Node.ID = t.NodeID
+
+	ctx.Task.ID = t.ID
+	ctx.Task.Name = naming.Task(t)
+
+	if t.Slot != 0 {
+		ctx.Task.Slot = fmt.Sprint(t.Slot)
+	} else {
+		ctx.Task.Slot = ""
+	}
+
+	return
+}
+
 // PayloadContext provides a context for expanding a config or secret payload.
 // NOTE: Be very careful adding any fields to this structure with types
 // that have methods defined on them. The template would be able to
