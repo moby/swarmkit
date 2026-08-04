@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/moby/swarmkit/v2/log"
@@ -247,12 +246,12 @@ func ListWALs(dirpath string) ([]string, error) {
 
 	var wals []string
 	for _, dirent := range dirents {
-		if strings.HasSuffix(dirent.Name(), ".wal") {
-			wals = append(wals, dirent.Name())
+		if dirent.IsDir() {
+			continue
+		}
+		if name := dirent.Name(); strings.HasSuffix(name, ".wal") {
+			wals = append(wals, name)
 		}
 	}
-
-	// Sort WAL filenames in lexical order
-	sort.Sort(sort.StringSlice(wals))
 	return wals, nil
 }
