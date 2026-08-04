@@ -582,12 +582,9 @@ func (a *Agent) Publisher(ctx context.Context, subscriptionID string) (exec.LogP
 	// These should only be best effort and really just buffer until a session is
 	// ready. Ideally, they would use a separate connection completely.
 
-	var (
-		err       error
-		publisher api.LogBroker_PublishLogsClient
-	)
-
-	err = a.withSession(ctx, func(session *session) error {
+	var publisher api.LogBroker_PublishLogsClient
+	err := a.withSession(ctx, func(session *session) error {
+		var err error
 		publisher, err = api.NewLogBrokerClient(session.conn.ClientConn).PublishLogs(ctx)
 		return err
 	})
@@ -602,9 +599,9 @@ func (a *Agent) Publisher(ctx context.Context, subscriptionID string) (exec.LogP
 			SubscriptionID: subscriptionID,
 			Close:          true,
 		})
-		// close the stream forreal. ignore the return value and the error,
+		// close the stream for real. ignore the return value and the error,
 		// because we don't care.
-		publisher.CloseAndRecv()
+		_, _ = publisher.CloseAndRecv()
 	}
 
 	return exec.LogPublisherFunc(func(ctx context.Context, message api.LogMessage) error {

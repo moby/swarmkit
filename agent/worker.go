@@ -5,6 +5,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/docker/go-events"
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
@@ -595,7 +596,16 @@ func (w *worker) updateTaskStatus(ctx context.Context, tx *bolt.Tx, taskID strin
 
 // Subscribe to log messages matching the subscription.
 func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMessage) error {
-	log.G(ctx).Debugf("Received subscription %s (selector: %v)", subscription.ID, subscription.Selector)
+	var options api.LogSubscriptionOptions
+	if subscription.Options != nil {
+		options = *subscription.Options
+	}
+
+	log.G(ctx).WithFields(log.Fields{
+		"id":       subscription.ID,
+		"selector": subscription.Selector,
+		"follow":   options.Follow,
+	}).Debug("Received subscription")
 
 	publisher, cancel, err := w.publisherProvider.Publisher(ctx, subscription.ID)
 	if err != nil {
@@ -612,56 +622,63 @@ func (w *worker) Subscribe(ctx context.Context, subscription *api.SubscriptionMe
 			slices.Contains(sel.NodeIDs, t.NodeID)
 	}
 
-	var wg sync.WaitGroup
-	w.mu.Lock()
+	var ch <-chan events.Event
+	if options.Follow {
+		// Start watching before collecting the current task managers so that
+		// tasks added while taking the snapshot are queued for processing.
+		ch = w.taskevents.CallbackWatchContext(ctx, events.MatcherFunc(func(v events.Event) bool {
+			task, ok := v.(*api.Task)
+			return ok && match(task)
+		}))
+	}
+
+	w.mu.RLock()
+	taskManagers := make([]*taskManager, 0, len(w.taskManagers))
 	for _, tm := range w.taskManagers {
 		if match(tm.task) {
-			wg.Go(func() {
-				tm.Logs(ctx, *subscription.Options, publisher)
-			})
+			taskManagers = append(taskManagers, tm)
 		}
 	}
-	w.mu.Unlock()
+	w.mu.RUnlock()
+	var wg sync.WaitGroup
 
-	// If follow mode is disabled, wait for the current set of matched tasks
-	// to finish publishing logs, then close the subscription by returning.
-	if subscription.Options == nil || !subscription.Options.Follow {
-		waitCh := make(chan struct{})
-		go func() {
-			defer close(waitCh)
-			wg.Wait()
-		}()
-
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-waitCh:
-			return nil
+	// A task may be present in the initial snapshot and also be delivered by
+	// the watcher. Start at most one log stream per task for this subscription.
+	started := make(map[string]struct{})
+	startLogs := func(tm *taskManager) {
+		taskID := tm.task.ID
+		if _, ok := started[taskID]; ok {
+			return
 		}
+		started[taskID] = struct{}{}
+
+		wg.Go(func() {
+			tm.Logs(ctx, options, publisher)
+		})
+	}
+	for _, tm := range taskManagers {
+		startLogs(tm)
 	}
 
-	// In follow mode, watch for new tasks. Don't close the subscription
-	// until it's cancelled.
-	ch, cancel := w.taskevents.Watch()
-	defer cancel()
-	for {
-		select {
-		case v := <-ch:
+	// In follow mode, watch for new matching tasks until the subscription
+	// context is cancelled.
+	if options.Follow {
+		for v := range ch {
 			task := v.(*api.Task)
-			if match(task) {
-				w.mu.RLock()
-				tm, ok := w.taskManagers[task.ID]
-				w.mu.RUnlock()
-				if !ok {
-					continue
-				}
 
-				go tm.Logs(ctx, *subscription.Options, publisher)
+			w.mu.RLock()
+			tm, ok := w.taskManagers[task.ID]
+			w.mu.RUnlock()
+			if !ok {
+				continue
 			}
-		case <-ctx.Done():
-			return ctx.Err()
+
+			startLogs(tm)
 		}
 	}
+
+	wg.Wait()
+	return ctx.Err()
 }
 
 func (w *worker) Wait(ctx context.Context) error {
