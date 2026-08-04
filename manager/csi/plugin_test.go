@@ -257,7 +257,6 @@ var _ = Describe("Plugin manager", func() {
 
 			request := plugin.makeControllerPublishVolumeRequest(v, "swarmNode1")
 
-			Expect(request).ToNot(BeNil())
 			Expect(request.VolumeId).To(Equal("volumePluginID1"))
 			Expect(request.NodeId).To(Equal("csiNode1"))
 			Expect(request.Secrets).To(SatisfyAll(
@@ -400,7 +399,6 @@ var _ = Describe("Plugin manager", func() {
 
 		It("should make a csi.ControllerUnpublishVolumeRequest for the given volume", func() {
 			request := plugin.makeControllerUnpublishVolumeRequest(v, "swarmNode1")
-			Expect(request).ToNot(BeNil())
 			Expect(request.VolumeId).To(Equal("volumePluginID1"))
 			Expect(request.NodeId).To(Equal("csiNode1"))
 			Expect(request.Secrets).To(SatisfyAll(

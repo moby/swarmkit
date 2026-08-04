@@ -208,6 +208,9 @@ func (p *plugin) DeleteVolume(ctx context.Context, v *api.Volume) error {
 // the Node with the given swarmkit ID. It returns a map, which is the
 // PublishContext for this Volume on this Node.
 func (p *plugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string) (map[string]string, error) {
+	if v.VolumeInfo == nil {
+		return nil, errors.New("VolumeInfo must not be nil")
+	}
 	if !p.publisher {
 		return nil, nil
 	}
@@ -234,6 +237,9 @@ func (p *plugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string
 // Volume from the Node with the given swarmkit ID. It returns an error if the
 // unpublish does not succeed
 func (p *plugin) UnpublishVolume(ctx context.Context, v *api.Volume, nodeID string) error {
+	if v.VolumeInfo == nil {
+		return errors.New("VolumeInfo must not be nil")
+	}
 	if !p.publisher {
 		return nil
 	}
@@ -315,34 +321,24 @@ func (p *plugin) makeSecrets(v *api.Volume) map[string]string {
 }
 
 func (p *plugin) makeControllerPublishVolumeRequest(v *api.Volume, nodeID string) *csi.ControllerPublishVolumeRequest {
-	if v.VolumeInfo == nil {
-		return nil
-	}
-
-	secrets := p.makeSecrets(v)
-	capability := capability.MakeCapability(v.Spec.AccessMode)
-	capability.AccessType = &csi.VolumeCapability_Mount{
+	csiCap := capability.MakeCapability(v.Spec.AccessMode)
+	csiCap.AccessType = &csi.VolumeCapability_Mount{
 		Mount: &csi.VolumeCapability_MountVolume{},
 	}
 	return &csi.ControllerPublishVolumeRequest{
 		VolumeId:         v.VolumeInfo.VolumeID,
 		NodeId:           p.swarmToCSI[nodeID],
-		Secrets:          secrets,
-		VolumeCapability: capability,
+		Secrets:          p.makeSecrets(v),
+		VolumeCapability: csiCap,
 		VolumeContext:    v.VolumeInfo.VolumeContext,
 	}
 }
 
 func (p *plugin) makeControllerUnpublishVolumeRequest(v *api.Volume, nodeID string) *csi.ControllerUnpublishVolumeRequest {
-	if v.VolumeInfo == nil {
-		return nil
-	}
-
-	secrets := p.makeSecrets(v)
 	return &csi.ControllerUnpublishVolumeRequest{
 		VolumeId: v.VolumeInfo.VolumeID,
 		NodeId:   p.swarmToCSI[nodeID],
-		Secrets:  secrets,
+		Secrets:  p.makeSecrets(v),
 	}
 }
 
