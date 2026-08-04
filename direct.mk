@@ -17,7 +17,7 @@ BINARIES=$(addprefix bin/,$(COMMANDS))
 SWARMD_COMMANDS=swarmd swarmctl swarm-rafttool
 SWARMD_BINARIES=$(addprefix swarmd/bin/,$(SWARMD_COMMANDS))
 
-VERSIONPKG := $(shell go list ./version)
+VERSIONPKG := $(shell go -C ./swarmd list ./version)
 GO_LDFLAGS=-ldflags "-X $(VERSIONPKG).Version=$(VERSION)"
 GO_TESTFLAGS=--timeout=20m $(RACE)
 
