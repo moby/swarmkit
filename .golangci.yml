@@ -13,12 +13,33 @@ linters:
     - misspell
     - modernize
     - revive
+    - staticcheck
     - unconvert
     - unused
   settings:
     govet:
       enable:
         - nilness
+    staticcheck:
+      checks:
+        - all
+        - -QF1003
+        - -QF1007
+        - -QF1008
+        - -QF1010
+        - -QF1011
+        - -S1023
+        - -S1032
+        - -S1039
+        - -SA1019
+        - -SA1029
+        - -SA2001
+        - -SA4005
+        - -SA4006
+        - -SA4010
+        - -ST1005
+        - -ST1016
+        - -ST1023
   exclusions:
     generated: lax
     presets:

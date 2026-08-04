@@ -285,7 +285,7 @@ func TestRemotesPractical(t *testing.T) {
 	expected, delta := selections/len(peers), int(tolerance*float64(selections))
 	low, high := expected-delta, expected+delta
 	for peer, count := range seen {
-		if !(count >= low && count <= high) {
+		if count < low || count > high {
 			t.Fatalf("weighted selection not balanced: %v selected %v/%v, expected range %v, %v", peer, count, selections, low, high)
 		}
 	}
@@ -317,7 +317,7 @@ func TestRemotesPractical(t *testing.T) {
 			}
 		}
 
-		if !(count >= low && count <= high) {
+		if count < low || count > high {
 			t.Fatalf("weighted selection not balanced: %v selected %v/%v, expected range %v, %v", peer, count, selections, low, high)
 		}
 	}
