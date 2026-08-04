@@ -34,7 +34,7 @@ func TestGetRootCACertificate(t *testing.T) {
 	defer tc.Stop()
 
 	resp, err := tc.CAClients[0].GetRootCACertificate(tc.Context, &api.GetRootCACertificateRequest{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, resp.Certificate)
 }
 
@@ -43,7 +43,7 @@ func TestRestartRootCA(t *testing.T) {
 	defer tc.Stop()
 
 	_, err := tc.NodeCAClients[0].NodeCertificateStatus(tc.Context, &api.NodeCertificateStatusRequest{NodeID: "foo"})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 
 	tc.CAServer.Stop()
@@ -52,7 +52,7 @@ func TestRestartRootCA(t *testing.T) {
 	<-tc.CAServer.Ready()
 
 	_, err = tc.NodeCAClients[0].NodeCertificateStatus(tc.Context, &api.NodeCertificateStatusRequest{NodeID: "foo"})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, testutils.ErrorCode(err))
 }
 
@@ -61,11 +61,11 @@ func TestIssueNodeCertificate(t *testing.T) {
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Token: tc.WorkerToken}
 	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
 	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
@@ -83,11 +83,11 @@ func TestForceRotationIsNoop(t *testing.T) {
 
 	// Get a new Certificate issued
 	csr, _, err := ca.GenerateNewCSR()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Token: tc.WorkerToken}
 	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
 	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
@@ -108,7 +108,7 @@ func TestForceRotationIsNoop(t *testing.T) {
 		node.Certificate.Status.State = api.IssuanceStateRotate
 		return store.UpdateNode(tx, node)
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Wait a bit and check that the certificate hasn't changed/been reissued
 	time.Sleep(250 * time.Millisecond)
@@ -129,7 +129,7 @@ func TestIssueNodeCertificateBrokenCA(t *testing.T) {
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tc.ExternalSigningServer.Flake()
 
@@ -139,7 +139,7 @@ func TestIssueNodeCertificateBrokenCA(t *testing.T) {
 	}()
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Token: tc.WorkerToken}
 	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
 	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
@@ -158,7 +158,7 @@ func TestIssueNodeCertificateWithInvalidCSR(t *testing.T) {
 
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: []byte("random garbage"), Token: tc.WorkerToken}
 	issueResponse, err := tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
 	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
@@ -175,12 +175,12 @@ func TestIssueNodeCertificateWorkerRenewal(t *testing.T) {
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	role := api.NodeRoleWorker
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	issueResponse, err := tc.NodeCAClients[1].IssueNodeCertificate(tc.Context, issueRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
 	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
@@ -197,7 +197,7 @@ func TestIssueNodeCertificateManagerRenewal(t *testing.T) {
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, csr)
 
 	role := api.NodeRoleManager
@@ -220,7 +220,7 @@ func TestIssueNodeCertificateWorkerFromDifferentOrgRenewal(t *testing.T) {
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Since we're using a client that has a different Organization, this request will be treated
 	// as a new certificate request, not allowing auto-renewal. Therefore, the request will fail.
@@ -234,18 +234,18 @@ func TestNodeCertificateRenewalsDoNotRequireToken(t *testing.T) {
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	role := api.NodeRoleManager
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	issueResponse, err := tc.NodeCAClients[2].IssueNodeCertificate(tc.Context, issueRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, issueResponse.NodeID)
 	assert.Equal(t, api.NodeMembershipAccepted, issueResponse.NodeMembership)
 
 	statusRequest := &api.NodeCertificateStatusRequest{NodeID: issueResponse.NodeID}
 	statusResponse, err := tc.NodeCAClients[2].NodeCertificateStatus(tc.Context, statusRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, api.IssuanceStateIssued, statusResponse.Status.State)
 	assert.NotNil(t, statusResponse.Certificate.Certificate)
 	assert.Equal(t, role, statusResponse.Certificate.Role)
@@ -272,35 +272,35 @@ func TestNewNodeCertificateRequiresToken(t *testing.T) {
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Issuance fails if no secret is provided
 	role := api.NodeRoleManager
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
-	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
+	require.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	role = api.NodeRoleWorker
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
-	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
+	require.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	// Issuance fails if wrong secret is provided
 	role = api.NodeRoleManager
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
-	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
+	require.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	role = api.NodeRoleWorker
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
-	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
+	require.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	// Issuance succeeds if correct token is provided
 	role = api.NodeRoleManager
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: tc.ManagerToken}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	role = api.NodeRoleWorker
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: tc.WorkerToken}
@@ -334,18 +334,18 @@ func TestNewNodeCertificateRequiresToken(t *testing.T) {
 	}))
 
 	// Old token should fail
-	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
+	require.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	role = api.NodeRoleWorker
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: tc.WorkerToken}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
-	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
+	require.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	// New token should succeed
 	role = api.NodeRoleManager
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: newManagerToken}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	role = api.NodeRoleWorker
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: newWorkerToken}
@@ -358,13 +358,13 @@ func TestNewNodeCertificateBadToken(t *testing.T) {
 	defer tc.Stop()
 
 	csr, _, err := ca.GenerateNewCSR()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Issuance fails if wrong secret is provided
 	role := api.NodeRoleManager
 	issueRequest := &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: "invalid-secret"}
 	_, err = tc.NodeCAClients[0].IssueNodeCertificate(tc.Context, issueRequest)
-	assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
+	require.EqualError(t, err, "rpc error: code = InvalidArgument desc = A valid join token is necessary to join this cluster")
 
 	role = api.NodeRoleWorker
 	issueRequest = &api.IssueNodeCertificateRequest{CSR: csr, Role: role, Token: "invalid-secret"}
@@ -480,7 +480,7 @@ func TestServerExternalCAGetsTLSKeypairUpdates(t *testing.T) {
 		}
 		return nil
 	}, 2*time.Second))
-	require.Contains(t, errors.Cause(err).Error(), "remote error: tls: expired certificate")
+	require.ErrorContains(t, errors.Cause(err), "remote error: tls: expired certificate")
 }
 
 func TestCAServerUpdateRootCA(t *testing.T) {
@@ -1149,7 +1149,7 @@ func TestRootRotationReconciliationNoChanges(t *testing.T) {
 		}
 		s, err := rt.tc.CAServer.RootCA().Signer()
 		require.NoError(t, err, testcase.descr)
-		require.Equal(t, s.Key, expectedKey, testcase.descr)
+		require.Equal(t, expectedKey, s.Key, testcase.descr)
 	}
 }
 
