@@ -10,19 +10,16 @@ import (
 	"testing"
 	"time"
 
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
-
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	containertypes "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/events"
-	"github.com/docker/docker/api/types/network"
 	gogotypes "github.com/gogo/protobuf/types"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/events"
+	"github.com/moby/moby/client"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/log"
-	"github.com/stretchr/testify/assert"
 )
 
 const tenSecond = 10
@@ -36,19 +33,19 @@ func TestControllerPrepare(t *testing.T) {
 		assert.Equal(t, 1, client.calls["ContainerCreate"])
 	}()
 
-	client.ImagePullFn = func(_ context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error) {
+	client.ImagePullFn = func(_ context.Context, refStr string, options client.ImagePullOptions) (io.ReadCloser, error) {
 		if refStr == config.image() {
 			return io.NopCloser(bytes.NewBuffer([]byte{})), nil
 		}
 		panic("unexpected call of ImagePull")
 	}
 
-	client.ContainerCreateFn = func(_ context.Context, cConfig *containertypes.Config, hConfig *containertypes.HostConfig, nConfig *network.NetworkingConfig, platform *v1.Platform, containerName string) (containertypes.CreateResponse, error) {
-		if reflect.DeepEqual(*cConfig, *config.config()) &&
-			reflect.DeepEqual(*hConfig, *config.hostConfig()) &&
-			reflect.DeepEqual(*nConfig, *config.networkingConfig()) &&
-			containerName == config.name() {
-			return containertypes.CreateResponse{ID: "container-id-" + task.ID}, nil
+	client.ContainerCreateFn = func(_ context.Context, options client.ContainerCreateOptions) (client.ContainerCreateResult, error) {
+		if reflect.DeepEqual(*options.Config, *config.config()) &&
+			reflect.DeepEqual(*options.HostConfig, *config.hostConfig()) &&
+			reflect.DeepEqual(*options.NetworkingConfig, *config.networkingConfig()) &&
+			options.Name == config.name() {
+			return client.ContainerCreateResult{ID: "container-id-" + task.ID}, nil
 		}
 		panic("unexpected call to ContainerCreate")
 	}
@@ -66,25 +63,25 @@ func TestControllerPrepareAlreadyPrepared(t *testing.T) {
 		assert.Equal(t, 1, client.calls["ContainerInspect"])
 	}()
 
-	client.ImagePullFn = func(_ context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error) {
+	client.ImagePullFn = func(_ context.Context, refStr string, options client.ImagePullOptions) (io.ReadCloser, error) {
 		if refStr == config.image() {
 			return io.NopCloser(bytes.NewBuffer([]byte{})), nil
 		}
 		panic("unexpected call of ImagePull")
 	}
 
-	client.ContainerCreateFn = func(_ context.Context, cConfig *containertypes.Config, hostConfig *containertypes.HostConfig, networking *network.NetworkingConfig, platform *v1.Platform, containerName string) (containertypes.CreateResponse, error) {
-		if reflect.DeepEqual(*cConfig, *config.config()) &&
-			reflect.DeepEqual(*networking, *config.networkingConfig()) &&
-			containerName == config.name() {
-			return containertypes.CreateResponse{}, fmt.Errorf("Conflict. The name")
+	client.ContainerCreateFn = func(_ context.Context, options client.ContainerCreateOptions) (client.ContainerCreateResult, error) {
+		if reflect.DeepEqual(*options.Config, *config.config()) &&
+			reflect.DeepEqual(*options.NetworkingConfig, *config.networkingConfig()) &&
+			options.Name == config.name() {
+			return client.ContainerCreateResult{}, fmt.Errorf("Conflict. The name")
 		}
 		panic("unexpected call of ContainerCreate")
 	}
 
-	client.ContainerInspectFn = func(_ context.Context, containerName string) (types.ContainerJSON, error) {
+	client.ContainerInspectFn = func(_ context.Context, containerName string) (container.InspectResponse, error) {
 		if containerName == config.name() {
-			return types.ContainerJSON{}, nil
+			return container.InspectResponse{}, nil
 		}
 		panic("unexpected call of ContainerInspect")
 	}
@@ -104,21 +101,19 @@ func TestControllerStart(t *testing.T) {
 		assert.Equal(t, 1, client.calls["ContainerStart"])
 	}()
 
-	client.ContainerInspectFn = func(_ context.Context, containerName string) (types.ContainerJSON, error) {
+	client.ContainerInspectFn = func(_ context.Context, containerName string) (container.InspectResponse, error) {
 		if containerName == config.name() {
-			return types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					State: &types.ContainerState{
-						Status: "created",
-					},
+			return container.InspectResponse{
+				State: &container.State{
+					Status: "created",
 				},
 			}, nil
 		}
 		panic("unexpected call of ContainerInspect")
 	}
 
-	client.ContainerStartFn = func(_ context.Context, containerName string, options types.ContainerStartOptions) error {
-		if containerName == config.name() && reflect.DeepEqual(options, types.ContainerStartOptions{}) {
+	client.ContainerStartFn = func(_ context.Context, containerName string, options client.ContainerStartOptions) error {
+		if containerName == config.name() && reflect.DeepEqual(options, client.ContainerStartOptions{}) {
 			return nil
 		}
 		panic("unexpected call of ContainerStart")
@@ -135,13 +130,11 @@ func TestControllerStartAlreadyStarted(t *testing.T) {
 		assert.Equal(t, 1, client.calls["ContainerInspect"])
 	}()
 
-	client.ContainerInspectFn = func(_ context.Context, containerName string) (types.ContainerJSON, error) {
+	client.ContainerInspectFn = func(_ context.Context, containerName string) (container.InspectResponse, error) {
 		if containerName == config.name() {
-			return types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					State: &types.ContainerState{
-						Status: "notcreated", // can be anything but created
-					},
+			return container.InspectResponse{
+				State: &container.State{
+					Status: "notcreated", // can be anything but created
 				},
 			}, nil
 		}
@@ -163,29 +156,25 @@ func TestControllerWait(t *testing.T) {
 		assert.Equal(t, 1, client.calls["Events"])
 	}()
 
-	client.ContainerInspectFn = func(_ context.Context, container string) (types.ContainerJSON, error) {
-		if client.calls["ContainerInspect"] == 1 && container == config.name() {
-			return types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					State: &types.ContainerState{
-						Status: "running",
-					},
+	client.ContainerInspectFn = func(_ context.Context, ctrID string) (container.InspectResponse, error) {
+		if client.calls["ContainerInspect"] == 1 && ctrID == config.name() {
+			return container.InspectResponse{
+				State: &container.State{
+					Status: "running",
 				},
 			}, nil
-		} else if client.calls["ContainerInspect"] == 2 && container == config.name() {
-			return types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					State: &types.ContainerState{
-						Status: "stopped", // can be anything but created
-					},
+		} else if client.calls["ContainerInspect"] == 2 && ctrID == config.name() {
+			return container.InspectResponse{
+				State: &container.State{
+					Status: "stopped", // can be anything but created
 				},
 			}, nil
 		}
 		panic("unexpected call of ContainerInspect")
 	}
 
-	client.EventsFn = func(_ context.Context, options types.EventsOptions) (<-chan events.Message, <-chan error) {
-		if reflect.DeepEqual(options, types.EventsOptions{
+	client.EventsFn = func(_ context.Context, options client.EventsListOptions) client.EventsResult {
+		if reflect.DeepEqual(options, client.EventsListOptions{
 			Since:   "0",
 			Filters: config.eventFilter(),
 		}) {
@@ -206,29 +195,27 @@ func TestControllerWaitUnhealthy(t *testing.T) {
 		assert.Equal(t, 1, client.calls["Events"])
 		assert.Equal(t, 1, client.calls["ContainerStop"])
 	}()
-	client.ContainerInspectFn = func(_ context.Context, containerName string) (types.ContainerJSON, error) {
+	client.ContainerInspectFn = func(_ context.Context, containerName string) (container.InspectResponse, error) {
 		if containerName == config.name() {
-			return types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					State: &types.ContainerState{
-						Status: "running",
-					},
+			return container.InspectResponse{
+				State: &container.State{
+					Status: "running",
 				},
 			}, nil
 		}
 		panic("unexpected call ContainerInspect")
 	}
-	evs, errs := makeEvents(t, config, events.ActionCreate, events.ActionHealthStatusUnhealthy)
-	client.EventsFn = func(_ context.Context, options types.EventsOptions) (<-chan events.Message, <-chan error) {
-		if reflect.DeepEqual(options, types.EventsOptions{
+	res := makeEvents(t, config, events.ActionCreate, events.ActionHealthStatusUnhealthy)
+	client.EventsFn = func(_ context.Context, options client.EventsListOptions) client.EventsResult {
+		if reflect.DeepEqual(options, client.EventsListOptions{
 			Since:   "0",
 			Filters: config.eventFilter(),
 		}) {
-			return evs, errs
+			return res
 		}
 		panic("unexpected call of Events")
 	}
-	client.ContainerStopFn = func(_ context.Context, containerName string, options container.StopOptions) error {
+	client.ContainerStopFn = func(_ context.Context, containerName string, options client.ContainerStopOptions) error {
 		if containerName == config.name() && *options.Timeout == tenSecond {
 			return nil
 		}
@@ -247,32 +234,28 @@ func TestControllerWaitExitError(t *testing.T) {
 		assert.Equal(t, 1, client.calls["Events"])
 	}()
 
-	client.ContainerInspectFn = func(_ context.Context, containerName string) (types.ContainerJSON, error) {
+	client.ContainerInspectFn = func(_ context.Context, containerName string) (container.InspectResponse, error) {
 		if client.calls["ContainerInspect"] == 1 && containerName == config.name() {
-			return types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					State: &types.ContainerState{
-						Status: "running",
-					},
+			return container.InspectResponse{
+				State: &container.State{
+					Status: "running",
 				},
 			}, nil
 		} else if client.calls["ContainerInspect"] == 2 && containerName == config.name() {
-			return types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					ID: "cid",
-					State: &types.ContainerState{
-						Status:   "exited", // can be anything but created
-						ExitCode: 1,
-						Pid:      1,
-					},
+			return container.InspectResponse{
+				ID: "cid",
+				State: &container.State{
+					Status:   "exited", // can be anything but created
+					ExitCode: 1,
+					Pid:      1,
 				},
 			}, nil
 		}
 		panic("unexpected call of ContainerInspect")
 	}
 
-	client.EventsFn = func(_ context.Context, options types.EventsOptions) (<-chan events.Message, <-chan error) {
-		if reflect.DeepEqual(options, types.EventsOptions{
+	client.EventsFn = func(_ context.Context, options client.EventsListOptions) client.EventsResult {
+		if reflect.DeepEqual(options, client.EventsListOptions{
 			Since:   "0",
 			Filters: config.eventFilter(),
 		}) {
@@ -302,13 +285,11 @@ func TestControllerWaitExitedClean(t *testing.T) {
 		assert.Equal(t, 1, client.calls["ContainerInspect"])
 	}()
 
-	client.ContainerInspectFn = func(_ context.Context, container string) (types.ContainerJSON, error) {
-		if container == config.name() {
-			return types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					State: &types.ContainerState{
-						Status: "exited",
-					},
+	client.ContainerInspectFn = func(_ context.Context, ctrID string) (container.InspectResponse, error) {
+		if ctrID == config.name() {
+			return container.InspectResponse{
+				State: &container.State{
+					Status: "exited",
 				},
 			}, nil
 		}
@@ -327,16 +308,14 @@ func TestControllerWaitExitedError(t *testing.T) {
 		assert.Equal(t, 1, client.calls["ContainerInspect"])
 	}()
 
-	client.ContainerInspectFn = func(_ context.Context, containerName string) (types.ContainerJSON, error) {
+	client.ContainerInspectFn = func(_ context.Context, containerName string) (container.InspectResponse, error) {
 		if containerName == config.name() {
-			return types.ContainerJSON{
-				ContainerJSONBase: &types.ContainerJSONBase{
-					ID: "cid",
-					State: &types.ContainerState{
-						Status:   "exited",
-						ExitCode: 1,
-						Pid:      1,
-					},
+			return container.InspectResponse{
+				ID: "cid",
+				State: &container.State{
+					Status:   "exited",
+					ExitCode: 1,
+					Pid:      1,
 				},
 			}, nil
 		}
@@ -355,7 +334,7 @@ func TestControllerShutdown(t *testing.T) {
 		assert.Equal(t, 1, client.calls["ContainerStop"])
 	}()
 
-	client.ContainerStopFn = func(_ context.Context, containerName string, option container.StopOptions) error {
+	client.ContainerStopFn = func(_ context.Context, containerName string, option client.ContainerStopOptions) error {
 		if containerName == config.name() && *option.Timeout == tenSecond {
 			return nil
 		}
@@ -392,15 +371,15 @@ func TestControllerRemove(t *testing.T) {
 		assert.Equal(t, 1, client.calls["ContainerRemove"])
 	}()
 
-	client.ContainerStopFn = func(_ context.Context, container string, option container.StopOptions) error {
+	client.ContainerStopFn = func(_ context.Context, container string, option client.ContainerStopOptions) error {
 		if container == config.name() && *option.Timeout == tenSecond {
 			return nil
 		}
 		panic("unexpected call of ContainerStop")
 	}
 
-	client.ContainerRemoveFn = func(_ context.Context, container string, options types.ContainerRemoveOptions) error {
-		if container == config.name() && reflect.DeepEqual(options, types.ContainerRemoveOptions{
+	client.ContainerRemoveFn = func(_ context.Context, container string, options client.ContainerRemoveOptions) error {
+		if container == config.name() && reflect.DeepEqual(options, client.ContainerRemoveOptions{
 			RemoveVolumes: true,
 			Force:         true,
 		}) {
@@ -464,7 +443,7 @@ func genTask(t *testing.T) *api.Task {
 	}
 }
 
-func makeEvents(t *testing.T, container *containerConfig, actions ...events.Action) (<-chan events.Message, <-chan error) {
+func makeEvents(t *testing.T, container *containerConfig, actions ...events.Action) client.EventsResult {
 	t.Helper()
 	evs := make(chan events.Message, len(actions))
 	for _, action := range actions {
@@ -481,5 +460,8 @@ func makeEvents(t *testing.T, container *containerConfig, actions ...events.Acti
 	}
 	close(evs)
 
-	return evs, nil
+	return client.EventsResult{
+		Messages: evs,
+		Err:      nil,
+	}
 }
