@@ -483,11 +483,12 @@ func testHA(t *testing.T, useSpecVersion bool) {
 	nodesWith3T1Tasks := 0
 	nodesWith4T1Tasks := 0
 	for nodeID, taskCount := range t1Assignments {
-		if taskCount == 3 {
+		switch taskCount {
+		case 3:
 			nodesWith3T1Tasks++
-		} else if taskCount == 4 {
+		case 4:
 			nodesWith4T1Tasks++
-		} else {
+		default:
 			t.Fatalf("unexpected number of tasks %d on node %s", taskCount, nodeID)
 		}
 	}
@@ -564,11 +565,12 @@ func testHA(t *testing.T, useSpecVersion bool) {
 	nodesWith4T1Tasks = 0
 	nodesWith5T1Tasks := 0
 	for nodeID, taskCount := range t1Assignments {
-		if taskCount == 4 {
+		switch taskCount {
+		case 4:
 			nodesWith4T1Tasks++
-		} else if taskCount == 5 {
+		case 5:
 			nodesWith5T1Tasks++
-		} else {
+		default:
 			t.Fatalf("unexpected number of tasks %d on node %s", taskCount, nodeID)
 		}
 	}
@@ -1070,7 +1072,8 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 	// The remaining 7 tasks should be spread across rack1 and rack2 of
 	// az2.
 
-	if t1Assignments["id2"]+t1Assignments["id3"]+t1Assignments["id4"] == 4 {
+	switch t1Assignments["id2"] + t1Assignments["id3"] + t1Assignments["id4"] {
+	case 4:
 		// If rack1 gets 4 and rack2 gets 3, then one of id[2-4] will have two
 		// tasks and the others will have one.
 		if t1Assignments["id2"] == 2 {
@@ -1092,7 +1095,7 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 			assert.Equal(t, 2, t1Assignments["id5"])
 			assert.Equal(t, 1, t1Assignments["id6"])
 		}
-	} else if t1Assignments["id2"]+t1Assignments["id3"]+t1Assignments["id4"] == 3 {
+	case 3:
 		// If rack2 gets 4 and rack1 gets 3, then id[2-4] will each get
 		// 1 task and id[5-6] will each get 2 tasks.
 		assert.Equal(t, 1, t1Assignments["id2"])
@@ -1100,7 +1103,7 @@ func testMultiplePreferences(t *testing.T, useSpecVersion bool) {
 		assert.Equal(t, 1, t1Assignments["id4"])
 		assert.Equal(t, 2, t1Assignments["id5"])
 		assert.Equal(t, 2, t1Assignments["id6"])
-	} else {
+	default:
 		t.Fatal("unexpected task layout")
 	}
 }

@@ -879,10 +879,11 @@ func (m *Manager) handleLeadershipEvents(ctx context.Context, leadershipCh chan 
 			}
 			newState := leadershipEvent.(raft.LeadershipState)
 
-			if newState == raft.IsLeader {
+			switch newState {
+			case raft.IsLeader:
 				m.becomeLeader(ctx)
 				leaderMetric.Set(1)
-			} else if newState == raft.IsFollower {
+			case raft.IsFollower:
 				m.becomeFollower()
 				leaderMetric.Set(0)
 			}
