@@ -5,6 +5,7 @@ package api
 
 import (
 	context "context"
+	errors "errors"
 	fmt "fmt"
 	proto "github.com/gogo/protobuf/proto"
 	github_com_moby_swarmkit_v2_api_deepcopy "github.com/moby/swarmkit/v2/api/deepcopy"
@@ -2159,7 +2160,7 @@ func (p *raftProxyRaftServer) ProcessRaftMessage(ctx context.Context, r *Process
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -2180,7 +2181,7 @@ func (p *raftProxyRaftServer) ProcessRaftMessage(ctx context.Context, r *Process
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.ProcessRaftMessage(ctx, r)
 			}
 			return nil, err
@@ -2203,7 +2204,7 @@ func (p *raftProxyRaftServer) StreamRaftMessage(stream Raft_StreamRaftMessageSer
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return err
@@ -2228,7 +2229,7 @@ func (p *raftProxyRaftServer) StreamRaftMessage(stream Raft_StreamRaftMessageSer
 
 	for {
 		msg, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -2251,7 +2252,7 @@ func (p *raftProxyRaftServer) ResolveAddress(ctx context.Context, r *ResolveAddr
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -2272,7 +2273,7 @@ func (p *raftProxyRaftServer) ResolveAddress(ctx context.Context, r *ResolveAddr
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.ResolveAddress(ctx, r)
 			}
 			return nil, err
@@ -2358,7 +2359,7 @@ func (p *raftProxyRaftMembershipServer) Join(ctx context.Context, r *JoinRequest
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -2379,7 +2380,7 @@ func (p *raftProxyRaftMembershipServer) Join(ctx context.Context, r *JoinRequest
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.Join(ctx, r)
 			}
 			return nil, err
@@ -2393,7 +2394,7 @@ func (p *raftProxyRaftMembershipServer) Leave(ctx context.Context, r *LeaveReque
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -2414,7 +2415,7 @@ func (p *raftProxyRaftMembershipServer) Leave(ctx context.Context, r *LeaveReque
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.Leave(ctx, r)
 			}
 			return nil, err

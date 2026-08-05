@@ -1,9 +1,11 @@
 package template
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
-	"github.com/pkg/errors"
 )
 
 type templatedSecretGetter struct {
@@ -34,7 +36,7 @@ func (t templatedSecretGetter) Get(secretID string) (*api.Secret, error) {
 
 	newSpec, err := ExpandSecretSpec(secret, t.node, t.t, t.dependencies)
 	if err != nil {
-		return secret, errors.Wrapf(err, "failed to expand templated secret %s", secretID)
+		return secret, fmt.Errorf("failed to expand templated secret %s: %w", secretID, err)
 	}
 
 	secretCopy := *secret
@@ -87,7 +89,7 @@ func (t templatedConfigGetter) GetAndFlagSecretData(configID string) (*api.Confi
 
 	newSpec, sensitive, err := ExpandConfigSpec(config, t.node, t.t, t.dependencies)
 	if err != nil {
-		return config, false, errors.Wrapf(err, "failed to expand templated config %s", configID)
+		return config, false, fmt.Errorf("failed to expand templated config %s: %w", configID, err)
 	}
 
 	configCopy := *config

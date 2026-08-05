@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"errors"
 	"net"
 	"testing"
 
@@ -256,7 +255,7 @@ func TestWorkerAssign(t *testing.T) {
 		for _, volume := range testcase.expectedVolumes {
 			_, err := executor.Volumes().Get(volume.VolumeID)
 			assert.Error(t, err)
-			assert.True(t, errors.Is(err, exec.ErrDependencyNotReady))
+			assert.ErrorIs(t, err, exec.ErrDependencyNotReady)
 		}
 	}
 }
@@ -387,7 +386,7 @@ func TestWorkerWait(t *testing.T) {
 	for _, volume := range expectedVolumes {
 		_, err := executor.Volumes().Get(volume.VolumeID)
 		assert.Error(t, err)
-		assert.True(t, errors.Is(err, exec.ErrDependencyNotReady))
+		assert.ErrorIs(t, err, exec.ErrDependencyNotReady)
 	}
 
 	err := worker.Assign(ctx, nil)
@@ -766,7 +765,7 @@ func TestWorkerUpdate(t *testing.T) {
 			_, err := executor.Volumes().Get(volume.VolumeID)
 			// volumes should not be ready yet, so we expect an error.
 			assert.Error(t, err)
-			assert.True(t, errors.Is(err, exec.ErrDependencyNotReady), "error: %v", err)
+			assert.ErrorIs(t, err, exec.ErrDependencyNotReady)
 		}
 	}
 }

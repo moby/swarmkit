@@ -7,6 +7,7 @@ run:
 linters: 
   default: none
   enable:
+    - errorlint
     - ginkgolinter
     - govet
     - ineffassign
@@ -19,6 +20,14 @@ linters:
     govet:
       enable:
         - nilness
+    revive:
+      enable-all-rules: false
+      enable-default-rules: true
+      max-open-files: 2048
+      rules:
+        - name: errorf
+        - name: unnecessary-format
+        - name: use-errors-new
   exclusions:
     generated: lax
     presets:
@@ -32,21 +41,10 @@ linters:
         text: stutters
       - linters:
           - revive
-        text: empty-block
-      - linters:
-          - revive
-        text: superfluous-else
-      - linters:
-          - revive
-        text: unused-parameter
-      - linters:
-          - revive
         text: redefines-builtin-id
-      - linters:
-          - revive
-        text: if-return
     paths:
       - .*\.pb\.go$
+    warn-unused: true
 
 formatters:
   enable:
@@ -54,8 +52,7 @@ formatters:
     - goimports
   exclusions:
     generated: lax
-    paths:
-      - .*\.pb\.go$
+    warn-unused: true
 
 issues:
   max-issues-per-linter: 0

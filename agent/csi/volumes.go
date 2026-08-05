@@ -2,6 +2,7 @@ package csi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -131,7 +132,7 @@ func (r *volumes) Get(volumeID string) (string, error) {
 	if vs, ok := r.volumes[volumeID]; ok {
 		if vs.remove {
 			// TODO(dperny): use a structured error
-			return "", fmt.Errorf("volume being removed")
+			return "", errors.New("volume being removed")
 		}
 
 		if p, err := r.plugins.Get(vs.volume.Driver.Name); err == nil {

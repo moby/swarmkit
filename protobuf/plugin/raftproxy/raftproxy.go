@@ -120,7 +120,7 @@ func (g *raftProxyGen) genClientStreamingMethod(s *descriptor.ServiceDescriptorP
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return err
@@ -145,7 +145,7 @@ func (g *raftProxyGen) genClientStreamingMethod(s *descriptor.ServiceDescriptorP
 	g.gen.P(`
 	for {
 		msg, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -174,7 +174,7 @@ func (g *raftProxyGen) genServerStreamingMethod(s *descriptor.ServiceDescriptorP
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return err
@@ -199,7 +199,7 @@ func (g *raftProxyGen) genServerStreamingMethod(s *descriptor.ServiceDescriptorP
 	g.gen.P(`
 	for {
 		msg, err := clientStream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -222,7 +222,7 @@ func (g *raftProxyGen) genClientServerStreamingMethod(s *descriptor.ServiceDescr
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return err
@@ -247,7 +247,7 @@ func (g *raftProxyGen) genClientServerStreamingMethod(s *descriptor.ServiceDescr
 	g.gen.P(`errc := make(chan error, 1)
 	go func() {
 		msg, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			close(errc)
 			return
 		}
@@ -263,7 +263,7 @@ func (g *raftProxyGen) genClientServerStreamingMethod(s *descriptor.ServiceDescr
 	g.gen.P(`
 	for {
 		msg, err := clientStream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -283,7 +283,7 @@ func (g *raftProxyGen) genSimpleMethod(s *descriptor.ServiceDescriptorProto, m *
 	g.gen.P(`
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -304,7 +304,7 @@ func (g *raftProxyGen) genSimpleMethod(s *descriptor.ServiceDescriptorProto, m *
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.` + m.GetName() + `(ctx, r)
 			}
 			return nil, err
@@ -384,4 +384,5 @@ func (g *raftProxyGen) GenerateImports(file *generator.FileDescriptor) {
 	g.gen.PrintImport("peer", "google.golang.org/grpc/peer")
 	// don't conflict with import added by ptypes
 	g.gen.PrintImport("rafttime", "time")
+	g.gen.PrintImport("errors", "errors")
 }

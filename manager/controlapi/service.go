@@ -751,7 +751,7 @@ func (s *Server) CreateService(_ context.Context, request *api.CreateServiceRequ
 	}
 
 	if allocator.IsIngressNetworkNeeded(service) {
-		if _, err := allocator.GetIngressNetwork(s.store); err == allocator.ErrNoIngress {
+		if _, err := allocator.GetIngressNetwork(s.store); errors.Is(err, allocator.ErrNoIngress) {
 			return nil, status.Errorf(codes.FailedPrecondition, "service needs ingress network, but no ingress network is present")
 		}
 	}
@@ -770,13 +770,13 @@ func (s *Server) CreateService(_ context.Context, request *api.CreateServiceRequ
 
 		return store.CreateService(tx, service)
 	})
-	switch err {
-	case store.ErrNameConflict:
+	switch {
+	case errors.Is(err, store.ErrNameConflict):
 		// Enhance the name-confict error to include the service name. The original
 		// `ErrNameConflict` error-message is included for backward-compatibility
 		// with older consumers of the API performing string-matching.
 		return nil, status.Errorf(codes.AlreadyExists, "%s: service %s already exists", err.Error(), request.Spec.Annotations.Name)
-	case nil:
+	case err == nil:
 		return &api.CreateServiceResponse{Service: service}, nil
 	default:
 		return nil, err
@@ -919,7 +919,7 @@ func (s *Server) UpdateService(_ context.Context, request *api.UpdateServiceRequ
 		}
 
 		if allocator.IsIngressNetworkNeeded(service) {
-			if _, err := allocator.GetIngressNetwork(s.store); err == allocator.ErrNoIngress {
+			if _, err := allocator.GetIngressNetwork(s.store); errors.Is(err, allocator.ErrNoIngress) {
 				return status.Errorf(codes.FailedPrecondition, "service needs ingress network, but no ingress network is present")
 			}
 		}
@@ -948,7 +948,7 @@ func (s *Server) RemoveService(_ context.Context, request *api.RemoveServiceRequ
 		return store.DeleteService(tx, request.ServiceID)
 	})
 	if err != nil {
-		if err == store.ErrNotExist {
+		if errors.Is(err, store.ErrNotExist) {
 			return nil, status.Errorf(codes.NotFound, "service %s not found", request.ServiceID)
 		}
 		return nil, err
@@ -997,8 +997,8 @@ func (s *Server) ListServices(_ context.Context, request *api.ListServicesReques
 		}
 	})
 	if err != nil {
-		switch err {
-		case store.ErrInvalidFindBy:
+		switch {
+		case errors.Is(err, store.ErrInvalidFindBy):
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		default:
 			return nil, err

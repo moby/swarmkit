@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/moby/swarmkit/v2/api"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRemotesSimple(t *testing.T) {
@@ -59,9 +60,7 @@ func TestRemotesEmpty(t *testing.T) {
 	remotes := NewRemotes()
 
 	_, err := remotes.Select()
-	if err != errRemotesUnavailable {
-		t.Fatalf("unexpected return from Select: %v", err)
-	}
+	require.ErrorIs(t, err, errRemotesUnavailable, "unexpected return from Select")
 
 }
 
@@ -72,9 +71,7 @@ func TestRemotesExclude(t *testing.T) {
 
 	// exclude all
 	_, err := remotes.Select(excludes...)
-	if err != errRemotesUnavailable {
-		t.Fatal("select an excluded peer")
-	}
+	require.ErrorIs(t, err, errRemotesUnavailable, "select an excluded peer")
 
 	// exclude one peer
 	for range len(peers) * 10 {

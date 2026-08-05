@@ -3,6 +3,7 @@ package controlapi
 import (
 	"context"
 	"crypto/subtle"
+	"errors"
 	"strings"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -168,10 +169,10 @@ func (s *Server) CreateSecret(ctx context.Context, request *api.CreateSecretRequ
 		return store.CreateSecret(tx, secret)
 	})
 
-	switch err {
-	case store.ErrNameConflict:
+	switch {
+	case errors.Is(err, store.ErrNameConflict):
 		return nil, status.Errorf(codes.AlreadyExists, "secret %s already exists", request.Spec.Annotations.Name)
-	case nil:
+	case err == nil:
 		secret.Spec.Data = nil // clean the actual secret data so it's never returned
 		log.G(ctx).WithFields(log.Fields{
 			"secret.Name": request.Spec.Annotations.Name,
@@ -225,10 +226,10 @@ func (s *Server) RemoveSecret(ctx context.Context, request *api.RemoveSecretRequ
 
 		return store.DeleteSecret(tx, request.SecretID)
 	})
-	switch err {
-	case store.ErrNotExist:
+	switch {
+	case errors.Is(err, store.ErrNotExist):
 		return nil, status.Errorf(codes.NotFound, "secret %s not found", request.SecretID)
-	case nil:
+	case err == nil:
 		log.G(ctx).WithFields(log.Fields{
 			"secret.ID": request.SecretID,
 			"method":    "RemoveSecret",

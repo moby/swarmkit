@@ -2,6 +2,7 @@ package controlapi
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -32,10 +33,10 @@ func (s *Server) CreateExtension(ctx context.Context, request *api.CreateExtensi
 		return store.CreateExtension(tx, extension)
 	})
 
-	switch err {
-	case store.ErrNameConflict:
+	switch {
+	case errors.Is(err, store.ErrNameConflict):
 		return nil, status.Errorf(codes.AlreadyExists, "extension %s already exists", request.Annotations.Name)
-	case nil:
+	case err == nil:
 		log.G(ctx).WithFields(log.Fields{
 			"extension.Name": request.Annotations.Name,
 			"method":         "CreateExtension",
@@ -116,10 +117,10 @@ func (s *Server) RemoveExtension(ctx context.Context, request *api.RemoveExtensi
 
 		return store.DeleteExtension(tx, request.ExtensionID)
 	})
-	switch err {
-	case store.ErrNotExist:
+	switch {
+	case errors.Is(err, store.ErrNotExist):
 		return nil, status.Errorf(codes.NotFound, "extension %s not found", request.ExtensionID)
-	case nil:
+	case err == nil:
 		log.G(ctx).WithFields(log.Fields{
 			"extension.ID": request.ExtensionID,
 			"method":       "RemoveExtension",

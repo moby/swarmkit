@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,7 +25,6 @@ import (
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -153,7 +153,8 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 	})
 	require.NoError(t, err)
 	_, _, err = node.loadSecurityConfig(context.Background(), paths)
-	require.IsType(t, x509.UnknownAuthorityError{}, errors.Cause(err))
+	var uae x509.UnknownAuthorityError
+	require.ErrorAs(t, err, &uae)
 
 	// Convert to PKCS1 and require FIPS
 	require.NoError(t, krw.DowngradeKey())
@@ -168,7 +169,7 @@ func TestLoadSecurityConfigLoadFromDisk(t *testing.T) {
 	})
 	require.NoError(t, err)
 	_, _, err = node.loadSecurityConfig(context.Background(), paths)
-	require.Equal(t, keyutils.ErrFIPSUnsupportedKeyFormat, errors.Cause(err))
+	require.ErrorIs(t, err, keyutils.ErrFIPSUnsupportedKeyFormat)
 }
 
 // If there is no CA, and a join addr is provided, one is downloaded from the

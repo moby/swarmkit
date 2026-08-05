@@ -240,7 +240,7 @@ func (c *testCluster) RemoveNode(id string, graceful bool) error {
 	// demote before removal
 	if node.IsManager() {
 		if err := c.SetNodeRole(id, api.NodeRoleWorker); err != nil {
-			return fmt.Errorf("demote manager: %v", err)
+			return fmt.Errorf("demote manager: %w", err)
 		}
 
 	}
@@ -252,7 +252,7 @@ func (c *testCluster) RemoveNode(id string, graceful bool) error {
 		if err := testutils.PollFuncWithTimeout(nil, func() error {
 			resp, err := c.api.GetNode(context.Background(), &api.GetNodeRequest{NodeID: id})
 			if err != nil {
-				return fmt.Errorf("get node: %v", err)
+				return fmt.Errorf("get node: %w", err)
 			}
 			if resp.Node.Status.State != api.NodeStatus_DOWN {
 				return fmt.Errorf("node %s is still not down", id)
@@ -263,7 +263,7 @@ func (c *testCluster) RemoveNode(id string, graceful bool) error {
 		}
 	}
 	if _, err := c.api.RemoveNode(context.Background(), &api.RemoveNodeRequest{NodeID: id, Force: !graceful}); err != nil {
-		return fmt.Errorf("remove node: %v", err)
+		return fmt.Errorf("remove node: %w", err)
 	}
 	return nil
 }

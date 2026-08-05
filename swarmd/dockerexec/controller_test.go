@@ -23,6 +23,7 @@ import (
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const tenSecond = 10
@@ -90,9 +91,7 @@ func TestControllerPrepareAlreadyPrepared(t *testing.T) {
 	}
 
 	// ensure idempotence
-	if err := ctlr.Prepare(ctx); err != exec.ErrTaskPrepared {
-		t.Fatalf("expected error %v, got %v", exec.ErrTaskPrepared, err)
-	}
+	require.ErrorIs(t, ctlr.Prepare(ctx), exec.ErrTaskPrepared)
 }
 
 func TestControllerStart(t *testing.T) {
@@ -149,9 +148,7 @@ func TestControllerStartAlreadyStarted(t *testing.T) {
 	}
 
 	// ensure idempotence
-	if err := ctlr.Start(ctx); err != exec.ErrTaskStarted {
-		t.Fatalf("expected error %v, got %v", exec.ErrTaskPrepared, err)
-	}
+	require.ErrorIs(t, ctlr.Start(ctx), exec.ErrTaskStarted)
 }
 
 func TestControllerWait(t *testing.T) {

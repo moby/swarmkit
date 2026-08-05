@@ -1,20 +1,20 @@
 package ca
 
 import (
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 
-	"crypto/tls"
-
 	"github.com/moby/swarmkit/v2/ca/keyutils"
 	"github.com/moby/swarmkit/v2/ca/pkcs8"
 	"github.com/moby/swarmkit/v2/ioutils"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -195,7 +195,7 @@ func (k *KeyReadWriter) Read() ([]byte, []byte, error) {
 	if k.headersObj != nil {
 		newHeaders, err := k.headersObj.UnmarshalHeaders(keyBlock.Headers, k.kekData)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "unable to read TLS key headers")
+			return nil, nil, fmt.Errorf("unable to read TLS key headers: %w", err)
 		}
 		k.headersObj = newHeaders
 	}
@@ -385,7 +385,7 @@ func (k *KeyReadWriter) readKey() (*pem.Block, error) {
 	}
 
 	derBytes, err := k.keyFormatter.DecryptPEMBlock(keyBlock, k.kekData.KEK)
-	if err == keyutils.ErrFIPSUnsupportedKeyFormat {
+	if errors.Is(err, keyutils.ErrFIPSUnsupportedKeyFormat) {
 		return nil, err
 	} else if err != nil {
 		return nil, ErrInvalidKEK{Wrapped: err}

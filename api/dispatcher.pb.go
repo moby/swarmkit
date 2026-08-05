@@ -5,6 +5,7 @@ package api
 
 import (
 	context "context"
+	errors "errors"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
@@ -2525,7 +2526,7 @@ func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return err
@@ -2550,7 +2551,7 @@ func (p *raftProxyDispatcherServer) Session(r *SessionRequest, stream Dispatcher
 
 	for {
 		msg, err := clientStream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -2567,7 +2568,7 @@ func (p *raftProxyDispatcherServer) Heartbeat(ctx context.Context, r *HeartbeatR
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -2588,7 +2589,7 @@ func (p *raftProxyDispatcherServer) Heartbeat(ctx context.Context, r *HeartbeatR
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.Heartbeat(ctx, r)
 			}
 			return nil, err
@@ -2602,7 +2603,7 @@ func (p *raftProxyDispatcherServer) UpdateTaskStatus(ctx context.Context, r *Upd
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -2623,7 +2624,7 @@ func (p *raftProxyDispatcherServer) UpdateTaskStatus(ctx context.Context, r *Upd
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.UpdateTaskStatus(ctx, r)
 			}
 			return nil, err
@@ -2637,7 +2638,7 @@ func (p *raftProxyDispatcherServer) UpdateVolumeStatus(ctx context.Context, r *U
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -2658,7 +2659,7 @@ func (p *raftProxyDispatcherServer) UpdateVolumeStatus(ctx context.Context, r *U
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.UpdateVolumeStatus(ctx, r)
 			}
 			return nil, err
@@ -2681,7 +2682,7 @@ func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_Tas
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return err
@@ -2706,7 +2707,7 @@ func (p *raftProxyDispatcherServer) Tasks(r *TasksRequest, stream Dispatcher_Tas
 
 	for {
 		msg, err := clientStream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -2732,7 +2733,7 @@ func (p *raftProxyDispatcherServer) Assignments(r *AssignmentsRequest, stream Di
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return err
@@ -2757,7 +2758,7 @@ func (p *raftProxyDispatcherServer) Assignments(r *AssignmentsRequest, stream Di
 
 	for {
 		msg, err := clientStream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

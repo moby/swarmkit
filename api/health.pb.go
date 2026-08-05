@@ -5,6 +5,7 @@ package api
 
 import (
 	context "context"
+	errors "errors"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
@@ -445,7 +446,7 @@ func (p *raftProxyHealthServer) Check(ctx context.Context, r *HealthCheckRequest
 
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return nil, err
@@ -466,7 +467,7 @@ func (p *raftProxyHealthServer) Check(ctx context.Context, r *HealthCheckRequest
 		}
 		conn, err := p.pollNewLeaderConn(ctx)
 		if err != nil {
-			if err == raftselector.ErrIsLeader {
+			if errors.Is(err, raftselector.ErrIsLeader) {
 				return p.local.Check(ctx, r)
 			}
 			return nil, err

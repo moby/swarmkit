@@ -1,7 +1,7 @@
 package dispatcher
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/equality"
@@ -446,7 +446,7 @@ func (a *assignmentSet) message() api.AssignmentsMessage {
 func (a *assignmentSet) secret(readTx store.ReadTx, task *api.Task, secretID string) (*api.Secret, bool, error) {
 	secret := store.GetSecret(readTx, secretID)
 	if secret == nil {
-		return nil, false, fmt.Errorf("secret not found")
+		return nil, false, errors.New("secret not found")
 	}
 	if secret.Spec.Driver == nil {
 		return secret, false, nil

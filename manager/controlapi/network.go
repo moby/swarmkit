@@ -2,6 +2,7 @@ package controlapi
 
 import (
 	"context"
+	"errors"
 	"net"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -118,7 +119,7 @@ func (s *Server) CreateNetwork(_ context.Context, request *api.CreateNetworkRequ
 		if request.Spec.Ingress {
 			if n, err := allocator.GetIngressNetwork(s.store); err == nil {
 				return status.Errorf(codes.AlreadyExists, "ingress network (%s) is already present", n.ID)
-			} else if err != allocator.ErrNoIngress {
+			} else if !errors.Is(err, allocator.ErrNoIngress) {
 				return status.Errorf(codes.Internal, "failed ingress network presence check: %v", err)
 			}
 		}
@@ -187,7 +188,7 @@ func (s *Server) RemoveNetwork(_ context.Context, request *api.RemoveNetworkRequ
 	}
 
 	if err := rm(n.ID); err != nil {
-		if err == store.ErrNotExist {
+		if errors.Is(err, store.ErrNotExist) {
 			return nil, status.Errorf(codes.NotFound, "network %s not found", request.NetworkID)
 		}
 		return nil, err

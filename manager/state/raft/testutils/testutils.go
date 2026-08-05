@@ -2,6 +2,8 @@ package testutils
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net"
 	"os"
 	"reflect"
@@ -19,7 +21,6 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state/raft"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	etcdraft "go.etcd.io/raft/v3"
@@ -584,7 +585,7 @@ func CheckValue(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *TestNo
 				return
 			}
 			if len(allNodes) != 1 {
-				err = errors.Errorf("expected 1 node, got %d nodes", len(allNodes))
+				err = fmt.Errorf("expected 1 node, got %d nodes", len(allNodes))
 				return
 			}
 			if !reflect.DeepEqual(allNodes[0], createdNode) {
@@ -607,7 +608,7 @@ func CheckNoValue(t *testing.T, clockSource *fakeclock.FakeClock, raftNode *Test
 				return
 			}
 			if len(allNodes) != 0 {
-				err = errors.Errorf("expected no nodes, got %d", len(allNodes))
+				err = fmt.Errorf("expected no nodes, got %d", len(allNodes))
 			}
 		})
 		return err
@@ -631,16 +632,16 @@ func CheckValuesOnNodes(t *testing.T, clockSource *fakeclock.FakeClock, checkNod
 				for i, id := range ids {
 					n := store.GetNode(tx, id)
 					if n == nil {
-						err = errors.Errorf("node %s not found on %d (iteration %d)", id, checkNodeID, iteration)
+						err = fmt.Errorf("node %s not found on %d (iteration %d)", id, checkNodeID, iteration)
 						return
 					}
 					if !reflect.DeepEqual(values[i], n) {
-						err = errors.Errorf("node %s did not match expected value on %d (iteration %d)", id, checkNodeID, iteration)
+						err = fmt.Errorf("node %s did not match expected value on %d (iteration %d)", id, checkNodeID, iteration)
 						return
 					}
 				}
 				if len(allNodes) != len(ids) {
-					err = errors.Errorf("expected %d nodes, got %d (iteration %d)", len(ids), len(allNodes), iteration)
+					err = fmt.Errorf("expected %d nodes, got %d (iteration %d)", len(ids), len(allNodes), iteration)
 					return
 				}
 			})

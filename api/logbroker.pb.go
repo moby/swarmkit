@@ -5,6 +5,7 @@ package api
 
 import (
 	context "context"
+	errors "errors"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
@@ -1798,7 +1799,7 @@ func (p *raftProxyLogsServer) SubscribeLogs(r *SubscribeLogsRequest, stream Logs
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return err
@@ -1823,7 +1824,7 @@ func (p *raftProxyLogsServer) SubscribeLogs(r *SubscribeLogsRequest, stream Logs
 
 	for {
 		msg, err := clientStream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -1921,7 +1922,7 @@ func (p *raftProxyLogBrokerServer) ListenSubscriptions(r *ListenSubscriptionsReq
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return err
@@ -1946,7 +1947,7 @@ func (p *raftProxyLogBrokerServer) ListenSubscriptions(r *ListenSubscriptionsReq
 
 	for {
 		msg, err := clientStream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -1972,7 +1973,7 @@ func (p *raftProxyLogBrokerServer) PublishLogs(stream LogBroker_PublishLogsServe
 	ctx := stream.Context()
 	conn, err := p.connSelector.LeaderConn(ctx)
 	if err != nil {
-		if err == raftselector.ErrIsLeader {
+		if errors.Is(err, raftselector.ErrIsLeader) {
 			ctx, err = p.runCtxMods(ctx, p.localCtxMods)
 			if err != nil {
 				return err
@@ -1997,7 +1998,7 @@ func (p *raftProxyLogBrokerServer) PublishLogs(stream LogBroker_PublishLogsServe
 
 	for {
 		msg, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

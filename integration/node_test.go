@@ -133,9 +133,9 @@ func (n *testNode) stop() error {
 		os.Stderr.Write(buf)
 
 		if isManager {
-			return fmt.Errorf("error stop manager %s: %v", n.node.NodeID(), err)
+			return fmt.Errorf("error stop manager %s: %w", n.node.NodeID(), err)
 		}
-		return fmt.Errorf("error stop worker %s: %v", n.node.NodeID(), err)
+		return fmt.Errorf("error stop worker %s: %w", n.node.NodeID(), err)
 	}
 	return nil
 }

@@ -2,6 +2,7 @@ package transport
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"slices"
@@ -107,7 +108,7 @@ func (r *mockRaft) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) er
 	var err error
 	for {
 		recvdMsg, err = stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		} else if err != nil {
 			log.G(context.Background()).WithError(err).Error("error while reading from stream")
@@ -135,7 +136,7 @@ func (r *mockRaft) StreamRaftMessage(stream api.Raft_StreamRaftMessageServer) er
 	}
 
 	// We should have the complete snapshot. Verify and process.
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		if assembledMessage.Message.Type == raftpb.MsgSnap {
 			if !verifySnapshot(assembledMessage.Message) {
 				log.G(context.Background()).Error("snapshot data mismatch")
