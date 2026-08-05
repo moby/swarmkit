@@ -24,7 +24,6 @@ linters:
       checks:
         - all
         - -QF1008 # Omit embedded fields from selector expression; https://staticcheck.dev/docs/checks/#QF1008
-        - -QF1010 # FIXME: Convert slice of bytes to string when printing it; https://staticcheck.dev/docs/checks/#QF1010
         - -SA1019 # FIXME: Using a deprecated function, variable, constant or field; https://staticcheck.dev/docs/checks/#SA1019
         - -SA1029 # FIXME: Inappropriate key in call to context.WithValue; https://staticcheck.dev/docs/checks/#SA1029
         - -SA2001 # FIXME: Empty critical section; https://staticcheck.dev/docs/checks/#SA2001
