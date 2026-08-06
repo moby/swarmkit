@@ -513,7 +513,7 @@ type CertificateRequestConfig struct {
 
 // CreateSecurityConfig creates a new key and cert for this node, either locally
 // or via a remote CA.
-func (rootCA RootCA) CreateSecurityConfig(ctx context.Context, krw *KeyReadWriter, config CertificateRequestConfig) (*SecurityConfig, func() error, error) {
+func (rca RootCA) CreateSecurityConfig(ctx context.Context, krw *KeyReadWriter, config CertificateRequestConfig) (*SecurityConfig, func() error, error) {
 	ctx = log.WithModule(ctx, "tls")
 
 	// Create a new random ID for this certificate
@@ -524,13 +524,13 @@ func (rootCA RootCA) CreateSecurityConfig(ctx context.Context, krw *KeyReadWrite
 	}
 
 	proposedRole := ManagerRole
-	tlsKeyPair, issuerInfo, err := rootCA.IssueAndSaveNewCertificates(krw, cn, proposedRole, org)
+	tlsKeyPair, issuerInfo, err := rca.IssueAndSaveNewCertificates(krw, cn, proposedRole, org)
 	switch errors.Cause(err) {
 	case ErrNoValidSigner:
 		config.RetryInterval = GetCertRetryInterval
 		// Request certificate issuance from a remote CA.
 		// Last argument is nil because at this point we don't have any valid TLS creds
-		tlsKeyPair, issuerInfo, err = rootCA.RequestAndSaveNewCertificates(ctx, krw, config)
+		tlsKeyPair, issuerInfo, err = rca.RequestAndSaveNewCertificates(ctx, krw, config)
 		if err != nil {
 			log.G(ctx).WithError(err).Error("failed to request and save new certificate")
 			return nil, nil, err
@@ -548,7 +548,7 @@ func (rootCA RootCA) CreateSecurityConfig(ctx context.Context, krw *KeyReadWrite
 		return nil, nil, err
 	}
 
-	secConfig, cleanup, err := NewSecurityConfig(&rootCA, krw, tlsKeyPair, issuerInfo)
+	secConfig, cleanup, err := NewSecurityConfig(&rca, krw, tlsKeyPair, issuerInfo)
 	if err == nil {
 		log.G(ctx).WithFields(log.Fields{
 			"node.id":   secConfig.ClientTLSCreds.NodeID(),
@@ -685,8 +685,8 @@ func NewClientTLSConfig(certs []tls.Certificate, rootCAPool *x509.CertPool, serv
 
 // NewClientTLSCredentials returns GRPC credentials for a TLS GRPC client, given a tls.Certificate
 // a PEM-Encoded root CA Certificate, and the name of the remote server the client wants to connect to.
-func (rootCA *RootCA) NewClientTLSCredentials(cert *tls.Certificate, serverName string) (*MutableTLSCreds, error) {
-	tlsConfig, err := NewClientTLSConfig([]tls.Certificate{*cert}, rootCA.Pool, serverName)
+func (rca *RootCA) NewClientTLSCredentials(cert *tls.Certificate, serverName string) (*MutableTLSCreds, error) {
+	tlsConfig, err := NewClientTLSConfig([]tls.Certificate{*cert}, rca.Pool, serverName)
 	if err != nil {
 		return nil, err
 	}
@@ -698,8 +698,8 @@ func (rootCA *RootCA) NewClientTLSCredentials(cert *tls.Certificate, serverName 
 
 // NewServerTLSCredentials returns GRPC credentials for a TLS GRPC client, given a tls.Certificate
 // a PEM-Encoded root CA Certificate, and the name of the remote server the client wants to connect to.
-func (rootCA *RootCA) NewServerTLSCredentials(cert *tls.Certificate) (*MutableTLSCreds, error) {
-	tlsConfig, err := NewServerTLSConfig([]tls.Certificate{*cert}, rootCA.Pool)
+func (rca *RootCA) NewServerTLSCredentials(cert *tls.Certificate) (*MutableTLSCreds, error) {
+	tlsConfig, err := NewServerTLSConfig([]tls.Certificate{*cert}, rca.Pool)
 	if err != nil {
 		return nil, err
 	}
