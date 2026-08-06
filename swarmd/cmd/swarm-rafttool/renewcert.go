@@ -31,9 +31,9 @@ func renewCerts(swarmdir, unlockKey string) error {
 	// We need to make sure when renewing that we provide the same CN (node ID),
 	// OU (role), and org (swarm cluster ID) when getting a new certificate
 	var (
-		cn  string = certificates[0].Subject.CommonName
-		ou  string = certificates[0].Subject.OrganizationalUnit[0]
-		org string = certificates[0].Subject.Organization[0]
+		cn  = certificates[0].Subject.CommonName
+		ou  = certificates[0].Subject.OrganizationalUnit[0]
+		org = certificates[0].Subject.Organization[0]
 	)
 
 	// Load up the raft data on disk

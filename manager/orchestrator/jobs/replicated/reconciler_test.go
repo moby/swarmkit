@@ -50,7 +50,7 @@ func (u uniqueSlotsMatcher) FailureMessage(_ any) string {
 }
 
 func (u uniqueSlotsMatcher) NegatedFailureMessage(_ any) string {
-	return fmt.Sprintf("expected tasks to have duplicate slots")
+	return "expected tasks to have duplicate slots"
 }
 
 func HaveUniqueSlots() types.GomegaMatcher {

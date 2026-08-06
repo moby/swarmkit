@@ -208,5 +208,4 @@ func (vq *VolumeQueue) Stop() {
 	for _, entry := range vq.outstanding {
 		entry.cancel()
 	}
-	return
 }

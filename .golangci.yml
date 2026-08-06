@@ -13,12 +13,24 @@ linters:
     - misspell
     - modernize
     - revive
+    - staticcheck
     - unconvert
     - unused
   settings:
     govet:
       enable:
         - nilness
+    staticcheck:
+      checks:
+        - all
+        - -QF1008 # Omit embedded fields from selector expression; https://staticcheck.dev/docs/checks/#QF1008
+        - -SA1019 # FIXME: Using a deprecated function, variable, constant or field; https://staticcheck.dev/docs/checks/#SA1019
+        - -SA1029 # FIXME: Inappropriate key in call to context.WithValue; https://staticcheck.dev/docs/checks/#SA1029
+        - -SA2001 # FIXME: Empty critical section; https://staticcheck.dev/docs/checks/#SA2001
+        - -SA4005 # FIXME: Field assignment that will never be observed; https://staticcheck.dev/docs/checks/#SA4005
+        - -SA4006 # FIXME: A value assigned to a variable is never read before being overwritten; https://staticcheck.dev/docs/checks/#SA4006
+        - -SA4010 # FIXME: The result of append will never be observed anywhere; https://staticcheck.dev/docs/checks/#SA4010
+        - -ST1005 # Incorrectly formatted error string; https://staticcheck.dev/docs/checks/#ST1005
   exclusions:
     generated: lax
     presets:

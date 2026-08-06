@@ -186,13 +186,9 @@ func (r *Supervisor) Restart(ctx context.Context, tx store.Tx, cluster *api.Clus
 		}
 	}
 
-	waitStop := true
-
 	// Normally we wait for the old task to stop running, but we skip this
 	// if the old task is already dead or the node it's assigned to is down.
-	if (n != nil && n.Status.State == api.NodeStatus_DOWN) || t.Status.State > api.TaskStateRunning {
-		waitStop = false
-	}
+	waitStop := (n == nil || n.Status.State != api.NodeStatus_DOWN) && (t.Status.State <= api.TaskStateRunning)
 
 	if err := store.CreateTask(tx, restartTask); err != nil {
 		log.G(ctx).WithError(err).WithField("task.id", restartTask.ID).Error("task create failed")
