@@ -40,6 +40,7 @@ func (f *fakeSecretProvider) GetSecret(id string) *api.Secret {
 
 // fakeIdentityClient implements the csi IdentityClient interface.
 type fakeIdentityClient struct {
+	csi.IdentityClient
 	caps []*csi.PluginCapability
 }
 
@@ -66,10 +67,6 @@ func newFakeIdentityClient() *fakeIdentityClient {
 	}
 }
 
-func (f *fakeIdentityClient) GetPluginInfo(ctx context.Context, _ *csi.GetPluginInfoRequest, _ ...grpc.CallOption) (*csi.GetPluginInfoResponse, error) {
-	return &csi.GetPluginInfoResponse{Name: "plugin", VendorVersion: "1"}, nil
-}
-
 func (f *fakeIdentityClient) GetPluginCapabilities(ctx context.Context, _ *csi.GetPluginCapabilitiesRequest, _ ...grpc.CallOption) (*csi.GetPluginCapabilitiesResponse, error) {
 	return &csi.GetPluginCapabilitiesResponse{
 		Capabilities: f.caps,
@@ -85,6 +82,7 @@ func (f *fakeIdentityClient) Probe(ctx context.Context, in *csi.ProbeRequest, _ 
 }
 
 type fakeControllerClient struct {
+	csi.ControllerClient
 	volumes    map[string]*csi.Volume
 	namesToIds map[string]string
 	publisher  bool
