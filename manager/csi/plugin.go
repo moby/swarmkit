@@ -208,6 +208,11 @@ func (p *plugin) DeleteVolume(ctx context.Context, v *api.Volume) error {
 // the Node with the given swarmkit ID. It returns a map, which is the
 // PublishContext for this Volume on this Node.
 func (p *plugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string) (map[string]string, error) {
+	c, err := p.Client(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if !p.publisher {
 		return nil, nil
 	}
@@ -218,10 +223,6 @@ func (p *plugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string
 	}
 
 	req := p.makeControllerPublishVolumeRequest(v, nodeID)
-	c, err := p.Client(ctx)
-	if err != nil {
-		return nil, err
-	}
 	resp, err := c.ControllerPublishVolume(ctx, req)
 
 	if err != nil {
@@ -234,15 +235,16 @@ func (p *plugin) PublishVolume(ctx context.Context, v *api.Volume, nodeID string
 // Volume from the Node with the given swarmkit ID. It returns an error if the
 // unpublish does not succeed
 func (p *plugin) UnpublishVolume(ctx context.Context, v *api.Volume, nodeID string) error {
+	c, err := p.Client(ctx)
+	if err != nil {
+		return err
+	}
+
 	if !p.publisher {
 		return nil
 	}
 
 	req := p.makeControllerUnpublishVolumeRequest(v, nodeID)
-	c, err := p.Client(ctx)
-	if err != nil {
-		return err
-	}
 
 	// response of the RPC intentionally left blank
 	_, err = c.ControllerUnpublishVolume(ctx, req)
