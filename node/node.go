@@ -24,7 +24,6 @@ import (
 	"github.com/moby/swarmkit/v2/ca/keyutils"
 	"github.com/moby/swarmkit/v2/connectionbroker"
 	"github.com/moby/swarmkit/v2/identity"
-	"github.com/moby/swarmkit/v2/ioutils"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager"
 	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
@@ -32,6 +31,7 @@ import (
 	"github.com/moby/swarmkit/v2/node/plugin"
 	"github.com/moby/swarmkit/v2/remotes"
 	"github.com/moby/swarmkit/v2/xnet"
+	"github.com/moby/sys/atomicwriter"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	bolt "go.etcd.io/bbolt"
@@ -1246,7 +1246,7 @@ func (s *persistentRemotes) save() error {
 		return err
 	}
 	s.lastSavedState = remotes
-	return ioutils.AtomicWriteFile(s.storePath, dt, 0o600)
+	return atomicwriter.WriteFile(s.storePath, dt, 0o600)
 }
 
 // WaitSelect waits until at least one remote becomes available and then selects one.

@@ -1,6 +1,7 @@
 package ca
 
 import (
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"os"
@@ -9,11 +10,9 @@ import (
 	"strings"
 	"sync"
 
-	"crypto/tls"
-
 	"github.com/moby/swarmkit/v2/ca/keyutils"
 	"github.com/moby/swarmkit/v2/ca/pkcs8"
-	"github.com/moby/swarmkit/v2/ioutils"
+	"github.com/moby/sys/atomicwriter"
 	"github.com/pkg/errors"
 )
 
@@ -208,7 +207,7 @@ func (k *KeyReadWriter) Read() ([]byte, []byte, error) {
 	switch {
 	case err == nil:
 		_, err = tls.X509KeyPair(cert, keyBytes)
-	case os.IsNotExist(err): //continue to try temp location
+	case os.IsNotExist(err): // continue to try temp location
 		break
 	default:
 		return nil, nil, err
@@ -284,7 +283,7 @@ func (k *KeyReadWriter) ViewAndUpdateHeaders(cb func(PEMKeyHeaders) (PEMKeyHeade
 	headers[versionHeader] = strconv.FormatUint(k.kekData.Version, 10)
 	keyBlock.Headers = headers
 
-	if err = ioutils.AtomicWriteFile(k.paths.Key, pem.EncodeToMemory(keyBlock), keyPerms); err != nil {
+	if err = atomicwriter.WriteFile(k.paths.Key, pem.EncodeToMemory(keyBlock), keyPerms); err != nil {
 		return err
 	}
 	k.headersObj = pkh
@@ -315,7 +314,7 @@ func (k *KeyReadWriter) Write(certBytes, plaintextKeyBytes []byte, kekData *KEKD
 	// temp path first.  This is because we want to have only a single copy of the key
 	// for rotation and header modification.
 	tmpPaths := k.genTempPaths()
-	if err := ioutils.AtomicWriteFile(tmpPaths.Cert, certBytes, certPerms); err != nil {
+	if err := atomicwriter.WriteFile(tmpPaths.Cert, certBytes, certPerms); err != nil {
 		return err
 	}
 
@@ -430,7 +429,7 @@ func (k *KeyReadWriter) writeKey(keyBlock *pem.Block, kekData KEKData, pkh PEMKe
 	}
 	keyBlock.Headers[versionHeader] = strconv.FormatUint(kekData.Version, 10)
 
-	if err := ioutils.AtomicWriteFile(k.paths.Key, pem.EncodeToMemory(keyBlock), keyPerms); err != nil {
+	if err := atomicwriter.WriteFile(k.paths.Key, pem.EncodeToMemory(keyBlock), keyPerms); err != nil {
 		return err
 	}
 	k.kekData = kekData
@@ -477,7 +476,7 @@ func (k *KeyReadWriter) DowngradeKey() error {
 	mergePEMHeaders(newBlock.Headers, oldBlock.Headers)
 
 	// do not use krw.Write as it will convert the key to pkcs8
-	return ioutils.AtomicWriteFile(k.paths.Key, pem.EncodeToMemory(newBlock), keyPerms)
+	return atomicwriter.WriteFile(k.paths.Key, pem.EncodeToMemory(newBlock), keyPerms)
 }
 
 // merges one set of PEM headers onto another, excepting for key encryption value

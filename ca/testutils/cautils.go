@@ -21,11 +21,11 @@ import (
 	"github.com/moby/swarmkit/v2/ca/pkcs8"
 	"github.com/moby/swarmkit/v2/connectionbroker"
 	"github.com/moby/swarmkit/v2/identity"
-	"github.com/moby/swarmkit/v2/ioutils"
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	stateutils "github.com/moby/swarmkit/v2/manager/state/testutils"
 	"github.com/moby/swarmkit/v2/remotes"
+	"github.com/moby/sys/atomicwriter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -173,7 +173,7 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 	}
 
 	// Write the root certificate to disk, using decent permissions
-	err = ioutils.AtomicWriteFile(paths.RootCA.Cert, apiRootCA.CACert, 0o644)
+	err = atomicwriter.WriteFile(paths.RootCA.Cert, apiRootCA.CACert, 0o644)
 	if t != nil {
 		require.NoError(t, err)
 	}
