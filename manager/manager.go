@@ -170,6 +170,12 @@ type Manager struct {
 	dekRotator             *RaftDEKManager
 	roleManager            *roleManager
 
+	// becomeFollowerCleanups holds the teardown for each leader-only
+	// component started by becomeLeader, registered with onBecomeFollower
+	// next to the code that starts it. becomeFollower runs and clears it.
+	// Guarded by mu.
+	becomeFollowerCleanups []func()
+
 	cancelFunc context.CancelFunc
 
 	// mu is a general mutex used to coordinate starting/stopping and
@@ -1062,6 +1068,10 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 				log.G(ctx).WithError(err).Error("keymanager failed with an error")
 			}
 		}(m.keyManager)
+		m.onBecomeFollower(func() {
+			m.keyManager.Stop()
+			m.keyManager = nil
+		})
 	}
 
 	go func(d *dispatcher.Dispatcher) {
@@ -1080,16 +1090,23 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 			log.G(ctx).WithError(err).Error("Dispatcher exited with an error")
 		}
 	}(m.dispatcher)
+	// The dispatcher, logbroker and CA server are gRPC services that are
+	// registered when creating the manager and would need to be re-registered
+	// if they were recreated. For simplicity, they are stopped but not nilled
+	// out.
+	m.onBecomeFollower(func() { m.dispatcher.Stop() })
 
 	if err := m.logbroker.Start(ctx); err != nil {
 		log.G(ctx).WithError(err).Error("LogBroker failed to start")
 	}
+	m.onBecomeFollower(func() { m.logbroker.Stop() })
 
 	go func(server *ca.Server) {
 		if err := server.Run(ctx); err != nil {
 			log.G(ctx).WithError(err).Error("CA signer exited with an error")
 		}
 	}(m.caserver)
+	m.onBecomeFollower(func() { m.caserver.Stop() })
 
 	// Start all sub-components in separate goroutines.
 	// TODO(aluzzardi): This should have some kind of error handling so that
@@ -1100,6 +1117,10 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 				log.G(ctx).WithError(err).Error("allocator exited with an error")
 			}
 		}(m.allocator)
+		m.onBecomeFollower(func() {
+			m.allocator.Stop()
+			m.allocator = nil
+		})
 	}
 
 	go func(scheduler *scheduler.Scheduler) {
@@ -1107,24 +1128,44 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 			log.G(ctx).WithError(err).Error("scheduler exited with an error")
 		}
 	}(m.scheduler)
+	m.onBecomeFollower(func() {
+		m.scheduler.Stop()
+		m.scheduler = nil
+	})
 
 	go func(constraintEnforcer *constraintenforcer.ConstraintEnforcer) {
 		constraintEnforcer.Run()
 	}(m.constraintEnforcer)
+	m.onBecomeFollower(func() {
+		m.constraintEnforcer.Stop()
+		m.constraintEnforcer = nil
+	})
 
 	go func(volumeEnforcer *volumeenforcer.VolumeEnforcer) {
 		volumeEnforcer.Run()
 	}(m.volumeEnforcer)
+	m.onBecomeFollower(func() {
+		m.volumeEnforcer.Stop()
+		m.volumeEnforcer = nil
+	})
 
 	go func(taskReaper *taskreaper.TaskReaper) {
 		taskReaper.Run(ctx)
 	}(m.taskReaper)
+	m.onBecomeFollower(func() {
+		m.taskReaper.Stop()
+		m.taskReaper = nil
+	})
 
 	go func(orchestrator *replicated.Orchestrator) {
 		if err := orchestrator.Run(ctx); err != nil {
 			log.G(ctx).WithError(err).Error("replicated orchestrator exited with an error")
 		}
 	}(m.replicatedOrchestrator)
+	m.onBecomeFollower(func() {
+		m.replicatedOrchestrator.Stop()
+		m.replicatedOrchestrator = nil
+	})
 
 	go func(orchestrator *jobs.Orchestrator) {
 		// jobs orchestrator does not return errors.
@@ -1136,59 +1177,44 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 			log.G(ctx).WithError(err).Error("global orchestrator exited with an error")
 		}
 	}(m.globalOrchestrator)
+	m.onBecomeFollower(func() {
+		m.globalOrchestrator.Stop()
+		m.globalOrchestrator = nil
+	})
 
 	go func(roleManager *roleManager) {
 		roleManager.Run(ctx)
 	}(m.roleManager)
+	m.onBecomeFollower(func() {
+		m.roleManager.Stop()
+		m.roleManager = nil
+	})
 
 	go func(volumeManager *csi.Manager) {
 		volumeManager.Run(ctx)
 	}(m.volumeManager)
+	m.onBecomeFollower(func() {
+		m.volumeManager.Stop()
+		m.volumeManager = nil
+	})
 }
 
-// becomeFollower shuts down the subsystems that are only run by the leader.
+// becomeFollower shuts down the subsystems that are only run by the leader,
+// by running the teardowns that becomeLeader registered with onBecomeFollower.
 func (m *Manager) becomeFollower() {
-	// The following components are gRPC services that are
-	// registered when creating the manager and will need
-	// to be re-registered if they are recreated.
-	// For simplicity, they are not nilled out.
-	m.dispatcher.Stop()
-	m.logbroker.Stop()
-	m.caserver.Stop()
-
-	if m.allocator != nil {
-		m.allocator.Stop()
-		m.allocator = nil
+	cleanups := m.becomeFollowerCleanups
+	m.becomeFollowerCleanups = nil
+	for _, f := range cleanups {
+		f()
 	}
+}
 
-	m.constraintEnforcer.Stop()
-	m.constraintEnforcer = nil
-
-	m.volumeEnforcer.Stop()
-	m.volumeEnforcer = nil
-
-	m.replicatedOrchestrator.Stop()
-	m.replicatedOrchestrator = nil
-
-	m.globalOrchestrator.Stop()
-	m.globalOrchestrator = nil
-
-	m.taskReaper.Stop()
-	m.taskReaper = nil
-
-	m.scheduler.Stop()
-	m.scheduler = nil
-
-	m.roleManager.Stop()
-	m.roleManager = nil
-
-	if m.keyManager != nil {
-		m.keyManager.Stop()
-		m.keyManager = nil
-	}
-
-	m.volumeManager.Stop()
-	m.volumeManager = nil
+// onBecomeFollower registers f to run when this manager loses leadership.
+// becomeLeader calls it immediately after the code that starts each
+// leader-only component, so that a component cannot be started on the leader
+// without its shutdown being written alongside.
+func (m *Manager) onBecomeFollower(f func()) {
+	m.becomeFollowerCleanups = append(m.becomeFollowerCleanups, f)
 }
 
 // defaultClusterObject creates a default cluster.
