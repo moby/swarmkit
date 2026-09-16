@@ -1171,6 +1171,10 @@ func (m *Manager) becomeLeader(ctx context.Context) {
 		// jobs orchestrator does not return errors.
 		orchestrator.Run(ctx)
 	}(m.jobsOrchestrator)
+	m.onBecomeFollower(func() {
+		m.jobsOrchestrator.Stop()
+		m.jobsOrchestrator = nil
+	})
 
 	go func(globalOrchestrator *global.Orchestrator) {
 		if err := globalOrchestrator.Run(ctx); err != nil {
