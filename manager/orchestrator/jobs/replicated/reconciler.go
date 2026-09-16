@@ -39,7 +39,7 @@ func NewReconciler(store *store.MemoryStore, restart restartSupervisor) *Reconci
 // checking to see if new replicas should be created. reconcileService returns
 // an error if there is some case prevent it from correctly reconciling the
 // service.
-func (r *Reconciler) ReconcileService(id string) error {
+func (r *Reconciler) ReconcileService(ctx context.Context, id string) error {
 	var (
 		service *api.Service
 		tasks   []*api.Task
@@ -235,8 +235,7 @@ func (r *Reconciler) ReconcileService(id string) error {
 					return nil
 				}
 
-				// TODO(dperny): pass in context from above
-				return r.restart.Restart(context.Background(), tx, cluster, service, *t)
+				return r.restart.Restart(ctx, tx, cluster, service, *t)
 			}); err != nil {
 				return err
 			}

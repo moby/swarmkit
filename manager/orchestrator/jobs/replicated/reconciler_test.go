@@ -153,7 +153,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				err = r.ReconcileService(serviceID)
+				err = r.ReconcileService(context.Background(), serviceID)
 				Expect(err).ToNot(HaveOccurred())
 
 				// verify there are maxConcurrent tasks
@@ -177,7 +177,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 					return store.UpdateService(tx, service)
 				})
 				Expect(err).ToNot(HaveOccurred())
-				err = r.ReconcileService(serviceID)
+				err = r.ReconcileService(context.Background(), serviceID)
 				Expect(err).ToNot(HaveOccurred())
 
 				// fetch the tasks before we get to the test case itself,
@@ -231,7 +231,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				reconcileErr = r.ReconcileService(serviceID)
+				reconcileErr = r.ReconcileService(context.Background(), serviceID)
 			})
 
 			When("the job has no tasks yet created", func() {
@@ -516,7 +516,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			reconcileErr := r.ReconcileService("someService")
+			reconcileErr := r.ReconcileService(context.Background(), "someService")
 			Expect(reconcileErr).To(HaveOccurred())
 			Expect(reconcileErr.Error()).To(ContainSubstring("underflow"))
 		})
