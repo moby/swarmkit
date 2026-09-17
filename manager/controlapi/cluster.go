@@ -50,7 +50,7 @@ func validateClusterSpec(spec *api.ClusterSpec) error {
 	// TODO(diogo): Add a global list of acceptance algorithms. We only support bcrypt for now.
 	if len(spec.AcceptancePolicy.Policies) > 0 {
 		for _, policy := range spec.AcceptancePolicy.Policies {
-			if policy.Secret != nil && strings.ToLower(policy.Secret.Alg) != "bcrypt" {
+			if policy.Secret != nil && !strings.EqualFold(policy.Secret.Alg, "bcrypt") {
 				return status.Errorf(codes.InvalidArgument, "hashing algorithm is not supported: %s", policy.Secret.Alg)
 			}
 		}

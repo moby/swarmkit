@@ -332,15 +332,16 @@ func (u *Updater) worker(ctx context.Context, queue <-chan orchestrator.Slot, up
 				}
 			}
 		}
-		if runningTask != nil {
+		switch {
+		case runningTask != nil:
 			if err := u.useExistingTask(ctx, slot, runningTask); err != nil {
 				log.G(ctx).WithError(err).Error("update failed")
 			}
-		} else if cleanTask != nil {
+		case cleanTask != nil:
 			if err := u.useExistingTask(ctx, slot, cleanTask); err != nil {
 				log.G(ctx).WithError(err).Error("update failed")
 			}
-		} else {
+		default:
 			updated := orchestrator.NewTask(u.cluster, u.newService, slot[0].Slot, "")
 			if orchestrator.IsGlobalService(u.newService) {
 				updated = orchestrator.NewTask(u.cluster, u.newService, slot[0].Slot, slot[0].NodeID)
