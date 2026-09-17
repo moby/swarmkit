@@ -7,7 +7,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/bits-and-blooms/bitset v1.25.0
 	github.com/cloudflare/cfssl v1.6.4
-	github.com/container-storage-interface/spec v1.2.0
+	github.com/container-storage-interface/spec v1.10.0
 	github.com/distribution/reference v0.5.0
 	github.com/docker/go-events v0.1.0
 	github.com/docker/go-metrics v0.1.0
