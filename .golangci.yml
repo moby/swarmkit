@@ -12,6 +12,7 @@ linters:
     - ineffassign
     - misspell
     - modernize
+    - noctx
     - revive
     - unconvert
     - unused

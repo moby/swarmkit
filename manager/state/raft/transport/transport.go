@@ -351,8 +351,8 @@ func (t *Transport) dial(addr string) (*grpc.ClientConn, error) {
 	// gRPC dialer connects to proxy first. Provide a custom dialer here avoid that.
 	// TODO(anshul) Add an option to configure this.
 	grpcOptions = append(grpcOptions,
-		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("tcp", addr, timeout)
+		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
+			return (&net.Dialer{}).DialContext(ctx, "tcp", addr)
 		}))
 
 	// TODO(dperny): this changes the max received message size for outgoing

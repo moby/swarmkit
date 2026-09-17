@@ -154,11 +154,18 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 	}
 
 	var (
+		ctx                   context.Context
 		externalSigningServer *ExternalSigningServer
 		externalCAs           []*api.ExternalCA
 		err                   error
 		rootCA                ca.RootCA
 	)
+
+	if t != nil {
+		ctx = t.Context()
+	} else {
+		ctx = context.Background()
+	}
 
 	if apiRootCA.RootRotation != nil {
 		rootCA, err = ca.NewRootCA(
@@ -230,7 +237,7 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 		assert.NoError(t, err)
 	}
 
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	l, err := (&net.ListenConfig{}).Listen(ctx, "tcp", "127.0.0.1:0")
 	if t != nil {
 		assert.NoError(t, err)
 	}

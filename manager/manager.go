@@ -401,7 +401,7 @@ func (m *Manager) BindRemote(ctx context.Context, addrs RemoteAddrs) error {
 		advertiseAddr = net.JoinHostPort("0.0.0.0", advertiseAddrPort)
 	}
 
-	l, err := net.Listen("tcp", addrs.ListenAddr)
+	l, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", addrs.ListenAddr)
 	if err != nil {
 		return errors.Wrap(err, "failed to listen on remote API address")
 	}
