@@ -150,13 +150,13 @@ func (k *KeyManager) rotateKey(ctx context.Context) error {
 	// agents to communicate without disruption on key change.
 	for subsys, keys := range subsysKeys {
 		if len(keys) == keyringSize {
-			min := 0
+			minimum := 0
 			for i, key := range keys[1:] {
-				if key.LamportTime < keys[min].LamportTime {
-					min = i
+				if key.LamportTime < keys[minimum].LamportTime {
+					minimum = i
 				}
 			}
-			keys = append(keys[0:min], keys[min+1:]...)
+			keys = append(keys[0:minimum], keys[minimum+1:]...)
 		}
 		keys = append(keys, k.allocateKey(ctx, subsys))
 		subsysKeys[subsys] = keys
