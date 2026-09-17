@@ -56,8 +56,8 @@ github.com/docker/go-metrics
 # github.com/dustin/go-humanize v1.0.1
 ## explicit; go 1.16
 github.com/dustin/go-humanize
-# github.com/fernet/fernet-go v0.0.0-20211208181803-9f70042a33ee
-## explicit
+# github.com/fernet/fernet-go v0.0.0-20240119011108-303da6aec611
+## explicit; go 1.18
 github.com/fernet/fernet-go
 # github.com/fsnotify/fsnotify v1.6.0
 ## explicit; go 1.16

@@ -11,7 +11,7 @@ require (
 	github.com/distribution/reference v0.5.0
 	github.com/docker/go-events v0.1.0
 	github.com/docker/go-metrics v0.1.0
-	github.com/fernet/fernet-go v0.0.0-20211208181803-9f70042a33ee
+	github.com/fernet/fernet-go v0.0.0-20240119011108-303da6aec611
 	github.com/gogo/protobuf v1.3.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hashicorp/go-memdb v1.3.2

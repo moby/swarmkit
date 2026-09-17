@@ -48,10 +48,10 @@ require (
 	github.com/containerd/containerd v1.7.29 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
-	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
+	github.com/docker/go-events v0.1.0 // indirect
 	github.com/docker/go-metrics v0.1.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/fernet/fernet-go v0.0.0-20211208181803-9f70042a33ee // indirect
+	github.com/fernet/fernet-go v0.0.0-20240119011108-303da6aec611 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
