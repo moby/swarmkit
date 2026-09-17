@@ -28,7 +28,7 @@ func printConfigSummary(config *api.Config) {
 	common.FprintfIfNotEmpty(w, "Created\t: %s\n", gogotypes.TimestampString(config.Meta.CreatedAt))
 
 	fmt.Print(w, "Payload:\n\n")
-	fmt.Println(w, config.Spec.Data)
+	fmt.Println(w, string(config.Spec.Data))
 }
 
 var (

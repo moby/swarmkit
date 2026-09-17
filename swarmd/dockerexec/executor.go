@@ -66,9 +66,10 @@ func (e *executor) Describe(ctx context.Context) (*api.NodeDescription, error) {
 			for _, typ := range plgn.Config.Interface.Types {
 				if typ.Prefix == "docker" && plgn.Enabled {
 					plgnTyp := typ.Capability
-					if typ.Capability == "volumedriver" {
+					switch typ.Capability {
+					case "volumedriver":
 						plgnTyp = "Volume"
-					} else if typ.Capability == "networkdriver" {
+					case "networkdriver":
 						plgnTyp = "Network"
 					}
 					plugins[api.PluginDescription{

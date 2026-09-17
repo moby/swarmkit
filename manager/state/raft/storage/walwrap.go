@@ -253,6 +253,6 @@ func ListWALs(dirpath string) ([]string, error) {
 	}
 
 	// Sort WAL filenames in lexical order
-	sort.Sort(sort.StringSlice(wals))
+	sort.Strings(wals)
 	return wals, nil
 }

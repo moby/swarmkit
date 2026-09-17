@@ -182,11 +182,12 @@ func TestReadyRunning(t *testing.T) {
 		return nil
 	}
 	ctlr.WaitFn = func(ctx context.Context) error {
-		if ctlr.calls["Wait"] == 1 {
+		switch ctlr.calls["Wait"] {
+		case 1:
 			return context.Canceled
-		} else if ctlr.calls["Wait"] == 2 {
+		case 2:
 			return nil
-		} else {
+		default:
 			panic("unexpected call!")
 		}
 	}
@@ -298,11 +299,12 @@ func TestAlreadyStarted(t *testing.T) {
 		return ErrTaskStarted
 	}
 	ctlr.WaitFn = func(ctx context.Context) error {
-		if ctlr.calls["Wait"] == 1 {
+		switch ctlr.calls["Wait"] {
+		case 1:
 			return context.Canceled
-		} else if ctlr.calls["Wait"] == 2 {
+		case 2:
 			return newExitError(1)
-		} else {
+		default:
 			panic("unexpected call!")
 		}
 	}

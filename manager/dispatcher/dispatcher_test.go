@@ -514,11 +514,12 @@ func TestAssignmentsSecretDriver(t *testing.T) {
 	_, _, secretChanges, _ := splitChanges(resp.Changes)
 	assert.Len(t, secretChanges, 2)
 	for _, s := range secretChanges {
-		if s.ID == "driverSecret" {
+		switch s.ID {
+		case "driverSecret":
 			assert.Equal(t, secretValue, s.Spec.Data)
-		} else if s.ID == "driverDoNotReuseSecret" {
+		case "driverDoNotReuseSecret":
 			assert.Fail(t, "Secret with DoNotReuse==true should not retain its original ID in the assignment", "%s != %s", "driverDoNotReuseSecret", s.ID)
-		} else {
+		default:
 			taskSpecificID := fmt.Sprintf("%s.%s", "driverDoNotReuseSecret", task.ID)
 			assert.Equal(t, taskSpecificID, s.ID)
 			assert.Equal(t, doNotReuseSecretValue, s.Spec.Data)
