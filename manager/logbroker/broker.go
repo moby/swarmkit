@@ -23,6 +23,28 @@ var (
 	errNotRunning     = errors.New("broker is not running")
 )
 
+const (
+	// subscriptionQueueLimit bounds how many subscription events may be
+	// buffered for a single ListenSubscriptions watcher.
+	//
+	// A watcher stops draining its channel whenever stream.Send blocks, which
+	// happens when the agent's gRPC stream stalls -- an unresponsive or
+	// partitioned node, for example. Without a limit, every subscription
+	// published from that point on is retained by the watcher's queue, along
+	// with its SubscriptionMessage, LogSelector, LogSubscriptionOptions and
+	// cancel context, even after the subscription has been unregistered.
+	//
+	// Tearing the watcher down instead is recoverable: ListenSubscriptions
+	// returns an error, the agent reconnects, and watchSubscriptions replays
+	// the currently registered subscriptions for that node.
+	subscriptionQueueLimit = 1000
+
+	// logQueueLimit bounds how many log messages may be buffered for a single
+	// SubscribeLogs client. A client that cannot keep up has its log stream
+	// terminated rather than growing the manager's heap without bound.
+	logQueueLimit = 10000
+)
+
 type logMessage struct {
 	*api.PublishLogsMessage
 	completed bool
@@ -65,8 +87,12 @@ func (lb *LogBroker) Start(ctx context.Context) error {
 	}
 
 	lb.pctx, lb.cancelAll = context.WithCancel(ctx)
-	lb.logQueue = watch.NewQueue()
-	lb.subscriptionQueue = watch.NewQueue()
+	// Both queues are bounded and close their output channel on teardown, so a
+	// consumer that stops draining is disconnected instead of being buffered
+	// without bound. Callers must handle a closed channel; see SubscribeLogs
+	// and ListenSubscriptions.
+	lb.logQueue = watch.NewQueue(watch.WithLimit(logQueueLimit), watch.WithCloseOutChan())
+	lb.subscriptionQueue = watch.NewQueue(watch.WithLimit(subscriptionQueueLimit), watch.WithCloseOutChan())
 	lb.registeredSubscriptions = make(map[string]*subscription)
 	lb.subscriptionsByNode = make(map[string]map[*subscription]struct{})
 	return nil
@@ -257,7 +283,13 @@ func (lb *LogBroker) SubscribeLogs(request *api.SubscribeLogsRequest, stream api
 			return ctx.Err()
 		case <-pctx.Done():
 			return pctx.Err()
-		case event := <-publishCh:
+		case event, ok := <-publishCh:
+			if !ok {
+				// The queue tore the watcher down because this client fell
+				// further behind than logQueueLimit.
+				logger.Error("log stream terminated: client is too far behind")
+				return status.Errorf(codes.ResourceExhausted, "log stream terminated: client is too far behind")
+			}
 			publish := event.(*logMessage)
 			if publish.completed {
 				return publish.err
@@ -349,7 +381,15 @@ func (lb *LogBroker) ListenSubscriptions(_ *api.ListenSubscriptionsRequest, stre
 	// Send down new subscriptions.
 	for {
 		select {
-		case v := <-subscriptionCh:
+		case v, ok := <-subscriptionCh:
+			if !ok {
+				// The queue tore the watcher down because this node fell
+				// further behind than subscriptionQueueLimit. Returning an
+				// error lets the agent reconnect, at which point
+				// watchSubscriptions replays the current subscriptions.
+				logger.Error("subscription stream terminated: node is too far behind")
+				return status.Errorf(codes.ResourceExhausted, "subscription stream terminated: node is too far behind")
+			}
 			sub := v.(*subscription)
 
 			if sub.Closed() {
