@@ -755,4 +755,58 @@ var _ = Describe("Manager", func() {
 			Expect(vm.pendingVolumes.Outstanding()).To(Equal(1))
 		})
 	})
+
+  	Describe("plugin name canonicalization", func() {
+		It("should reuse the same plugin instance for tagged and untagged names", func() {
+			pluginGetter.Plugins["plug1"] = &testutils.FakePlugin{
+				PluginName: "plug1",
+				PluginAddr: &net.UnixAddr{
+					Net:  "unix",
+					Name: "unix:///whatever.sock",
+				},
+			}
+
+			node := &api.Node{
+				ID: "nodeA",
+				Description: &api.NodeDescription{
+					CSIInfo: []*api.NodeCSIInfo{{
+						PluginName: "plug1", // node reports untagged name
+						NodeID:     "plug1NodeA",
+					}},
+				},
+			}
+
+			volume := &api.Volume{
+				ID: "volumeA",
+				Spec: api.VolumeSpec{
+					Annotations: api.Annotations{Name: "volumeA"},
+					Driver: &api.Driver{
+						Name: "plug1:latest", // volume uses tagged name
+					},
+				},
+				VolumeInfo: &api.VolumeInfo{
+					VolumeContext: map[string]string{},
+					VolumeID:      "plug1VolA",
+				},
+				PublishStatus: []*api.VolumePublishStatus{{
+					NodeID: "nodeA",
+					State:  api.VolumePublishStatus_PENDING_PUBLISH,
+				}},
+			}
+
+			err := s.Update(func(tx store.Tx) error {
+				Expect(store.CreateNode(tx, node)).To(Succeed())
+				Expect(store.CreateVolume(tx, volume)).To(Succeed())
+				return nil
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			vm.init(context.Background())
+			vm.processVolume(ctx, volume.ID, 0)
+
+			Expect(pluginMaker.plugins).To(HaveKey("plug1"))
+			// verify that publish succeeded and reused same fakePlugin instance
+			Expect(pluginMaker.plugins["plug1"].volumesPublished[volume.ID]).To(ContainElement("nodeA"))
+		})
+	})
 })
