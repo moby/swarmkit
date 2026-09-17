@@ -135,7 +135,7 @@ func TestExternalCASignRequestTimesOut(t *testing.T) {
 
 	select {
 	case err = <-signDone:
-		require.Contains(t, err.Error(), context.DeadlineExceeded.Error())
+		require.ErrorContains(t, err, context.DeadlineExceeded.Error())
 	case <-time.After(3 * time.Second):
 		require.FailNow(t, "call to external CA signing should have timed out after 1 second - it's been 3")
 	}
@@ -198,8 +198,7 @@ func TestExternalCASignRequestSizeLimit(t *testing.T) {
 
 	select {
 	case err = <-signDone:
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "unable to parse JSON response")
+		require.ErrorContains(t, err, "unable to parse JSON response")
 	case <-time.After(2 * time.Second):
 		require.FailNow(t, "call to external CA signing should have failed by now")
 	}
