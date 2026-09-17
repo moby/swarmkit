@@ -212,7 +212,10 @@ func (s *Server) removeNetwork(id string) error {
 		}
 
 		for _, t := range tasks {
-			if t.DesiredState <= api.TaskStateRunning && t.Status.State <= api.TaskStateRunning {
+			// we don't care about the desired state of the task, only its
+			// actual state. even if a task WILL be terminal, if it isn't yet,
+			// then it is still using resources.
+			if t.Status.State <= api.TaskStateRunning {
 				return status.Errorf(codes.FailedPrecondition, "network %s is in use by task %s", id, t.ID)
 			}
 		}
