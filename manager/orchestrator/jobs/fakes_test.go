@@ -36,7 +36,7 @@ type fakeReconciler struct {
 // ReconcileService implements the reconciler's ReconcileService method, but
 // just records what arguments it has been passed, and maybe also returns an
 // error if desired.
-func (f *fakeReconciler) ReconcileService(id string) error {
+func (f *fakeReconciler) ReconcileService(_ context.Context, id string) error {
 	f.Lock()
 	defer f.Unlock()
 	f.servicesReconciled = append(f.servicesReconciled, id)

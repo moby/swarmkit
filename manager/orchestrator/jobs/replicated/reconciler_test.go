@@ -153,7 +153,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				err = r.ReconcileService(serviceID)
+				err = r.ReconcileService(context.Background(), serviceID)
 				Expect(err).ToNot(HaveOccurred())
 
 				// verify there are maxConcurrent tasks
@@ -177,7 +177,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 					return store.UpdateService(tx, service)
 				})
 				Expect(err).ToNot(HaveOccurred())
-				err = r.ReconcileService(serviceID)
+				err = r.ReconcileService(context.Background(), serviceID)
 				Expect(err).ToNot(HaveOccurred())
 
 				// fetch the tasks before we get to the test case itself,
@@ -231,7 +231,7 @@ var _ = Describe("Replicated Job reconciler", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				reconcileErr = r.ReconcileService(serviceID)
+				reconcileErr = r.ReconcileService(context.Background(), serviceID)
 			})
 
 			When("the job has no tasks yet created", func() {
@@ -481,12 +481,77 @@ var _ = Describe("Replicated Job reconciler", func() {
 			})
 		})
 
-		It("should return an underflow error if there are more running tasks than TotalCompletions", func() {
+		It("should create no tasks, and no error, if there are more running tasks than TotalCompletions", func() {
 			// this is an error condition which should not happen in real life,
 			// but i want to make sure that we can't accidentally start
-			// creating nearly the maximum 64-bit unsigned int number of tasks.
+			// creating nearly the maximum 64-bit unsigned int number of tasks,
+			// and that overshooting TotalCompletions does not wedge
+			// reconciliation for the service permanently.
 			maxConcurrent := uint64(10)
 			totalCompletions := uint64(20)
+			var oldTaskID string
+			err := s.Update(func(tx store.Tx) error {
+				service := &api.Service{
+					ID: "someService",
+					Spec: api.ServiceSpec{
+						Mode: &api.ServiceSpec_ReplicatedJob{
+							ReplicatedJob: &api.ReplicatedJob{
+								MaxConcurrent:    maxConcurrent,
+								TotalCompletions: totalCompletions,
+							},
+						},
+					},
+					JobStatus: &api.JobStatus{
+						JobIteration: api.Version{Index: 1},
+					},
+				}
+				if err := store.CreateService(tx, service); err != nil {
+					return err
+				}
+
+				for range totalCompletions + 10 {
+					task := orchestrator.NewTask(nil, service, 0, "")
+					task.JobIteration = &api.Version{Index: 1}
+					task.DesiredState = api.TaskStateCompleted
+
+					if err := store.CreateTask(tx, task); err != nil {
+						return err
+					}
+				}
+
+				// a task left over from the previous iteration of the job. the
+				// reconcile pass is expected to mark it for removal, which
+				// happens after the point where an overshoot used to return
+				// early.
+				oldTask := orchestrator.NewTask(nil, service, 0, "")
+				oldTask.JobIteration = &api.Version{Index: 0}
+				oldTask.DesiredState = api.TaskStateCompleted
+				oldTaskID = oldTask.ID
+				return store.CreateTask(tx, oldTask)
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			reconcileErr := r.ReconcileService(context.Background(), "someService")
+			Expect(reconcileErr).ToNot(HaveOccurred())
+
+			s.View(func(tx store.ReadTx) {
+				tasks, err := store.FindTasks(tx, store.ByServiceID("someService"))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(tasks).To(HaveLen(int(totalCompletions + 10 + 1)))
+
+				// the rest of the reconcile pass still runs: the task from the
+				// previous iteration is marked for removal.
+				oldTask := store.GetTask(tx, oldTaskID)
+				Expect(oldTask).ToNot(BeNil())
+				Expect(oldTask.DesiredState).To(Equal(api.TaskStateRemove))
+			})
+		})
+
+		It("should not restart failed tasks once TotalCompletions has been reached", func() {
+			// restarting a failed task after the job has met its goal would
+			// push the number of completions past what was asked for.
+			maxConcurrent := uint64(1)
+			totalCompletions := uint64(2)
 			err := s.Update(func(tx store.Tx) error {
 				service := &api.Service{
 					ID: "someService",
@@ -503,22 +568,31 @@ var _ = Describe("Replicated Job reconciler", func() {
 					return err
 				}
 
-				for range totalCompletions + 10 {
-					task := orchestrator.NewTask(nil, service, 0, "")
+				for i := range totalCompletions {
+					task := orchestrator.NewTask(nil, service, i, "")
 					task.JobIteration = &api.Version{}
 					task.DesiredState = api.TaskStateCompleted
+					task.Status.State = api.TaskStateCompleted
 
 					if err := store.CreateTask(tx, task); err != nil {
 						return err
 					}
 				}
-				return nil
+
+				// a surplus task that failed. the job is already done, so it
+				// must not be handed to the restart supervisor.
+				failed := orchestrator.NewTask(nil, service, totalCompletions, "")
+				failed.JobIteration = &api.Version{}
+				failed.DesiredState = api.TaskStateCompleted
+				failed.Status.State = api.TaskStateFailed
+				return store.CreateTask(tx, failed)
 			})
 			Expect(err).ToNot(HaveOccurred())
 
-			reconcileErr := r.ReconcileService("someService")
-			Expect(reconcileErr).To(HaveOccurred())
-			Expect(reconcileErr.Error()).To(ContainSubstring("underflow"))
+			reconcileErr := r.ReconcileService(context.Background(), "someService")
+			Expect(reconcileErr).ToNot(HaveOccurred())
+
+			Expect(f.tasks).To(BeEmpty())
 		})
 	})
 })

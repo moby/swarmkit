@@ -2,9 +2,9 @@ package replicated
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/orchestrator"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 )
@@ -39,7 +39,7 @@ func NewReconciler(store *store.MemoryStore, restart restartSupervisor) *Reconci
 // checking to see if new replicas should be created. reconcileService returns
 // an error if there is some case prevent it from correctly reconciling the
 // service.
-func (r *Reconciler) ReconcileService(id string) error {
+func (r *Reconciler) ReconcileService(ctx context.Context, id string) error {
 	var (
 		service *api.Service
 		tasks   []*api.Task
@@ -157,31 +157,39 @@ func (r *Reconciler) ReconcileService(id string) error {
 	rj := service.Spec.GetReplicatedJob()
 
 	// possibleNewTasks gives us the upper bound for how many tasks we'll
-	// create. also, ugh, subtracting uints. there's no way this can ever go
-	// wrong.
-	possibleNewTasks := rj.MaxConcurrent - runningTasks
+	// create. subtractions here are saturating: if more tasks exist than the
+	// service asks for, we want to create none, not to underflow.
+	possibleNewTasks := subOrZero(rj.MaxConcurrent, runningTasks)
 
 	// allowedNewTasks is how many tasks we could create, if there were no
 	// restriction on maximum concurrency. This is the total number of tasks
 	// we want completed, minus the tasks that are already completed, minus
 	// the tasks that are in progress.
-	//
-	// seriously, ugh, subtracting unsigned ints. totally a fine and not at all
-	// risky operation, with no possibility for catastrophe
-	allowedNewTasks := rj.TotalCompletions - completeTasks - runningTasks
+	allowedNewTasks := subOrZero(subOrZero(rj.TotalCompletions, completeTasks), runningTasks)
 
 	// the lower number of allowedNewTasks and possibleNewTasks is how many we
 	// can create.
 	actualNewTasks := min(possibleNewTasks, allowedNewTasks)
 
-	// this check might seem odd, but it protects us from an underflow of the
-	// above subtractions, which, again, is a totally impossible thing that can
-	// never happen, ever, obviously.
-	if actualNewTasks > rj.TotalCompletions {
-		return fmt.Errorf(
-			"uint64 underflow, we're not going to create %v tasks",
-			actualNewTasks,
-		)
+	// a job that has overshot its TotalCompletions is not something we can
+	// undo, but it is also not a reason to stop reconciling: the removal of
+	// tasks belonging to older job iterations, and the restarting of failed
+	// tasks, both still need to happen. log it and carry on creating zero new
+	// tasks.
+	if completeTasks+runningTasks > rj.TotalCompletions {
+		log.G(ctx).WithFields(log.Fields{
+			"service.id":       service.ID,
+			"job.iteration":    jobVersion,
+			"tasks.complete":   completeTasks,
+			"tasks.running":    runningTasks,
+			"totalCompletions": rj.TotalCompletions,
+		}).Warn("replicated job has more tasks than TotalCompletions; creating no new tasks")
+	}
+
+	if completeTasks >= rj.TotalCompletions {
+		// The job has already reached its goal. Restarting any failed tasks
+		// now would risk overshooting the desired number of completions.
+		restartTasks = nil
 	}
 
 	// finally, we can create these tasks. do this in a batch operation, to
@@ -235,8 +243,7 @@ func (r *Reconciler) ReconcileService(id string) error {
 					return nil
 				}
 
-				// TODO(dperny): pass in context from above
-				return r.restart.Restart(context.Background(), tx, cluster, service, *t)
+				return r.restart.Restart(ctx, tx, cluster, service, *t)
 			}); err != nil {
 				return err
 			}
@@ -289,4 +296,13 @@ func (r *Reconciler) SlotTuple(t *api.Task) orchestrator.SlotTuple {
 		ServiceID: t.ServiceID,
 		Slot:      t.Slot,
 	}
+}
+
+// subOrZero subtracts b from a, returning 0 rather than underflowing when b is
+// greater than a.
+func subOrZero(a, b uint64) uint64 {
+	if b > a {
+		return 0
+	}
+	return a - b
 }
