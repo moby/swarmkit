@@ -55,7 +55,7 @@ func testDownloadRootCASuccess(t *testing.T, fips bool) {
 	require.True(t, strings.HasPrefix(token, prefix))
 
 	// Remove the CA cert
-	assert.NoError(t, os.RemoveAll(tc.Paths.RootCA.Cert))
+	require.NoError(t, os.RemoveAll(tc.Paths.RootCA.Cert))
 
 	rootCA, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, token, tc.ConnBroker)
 	require.NoError(t, err)
@@ -66,7 +66,7 @@ func testDownloadRootCASuccess(t *testing.T, fips bool) {
 	require.Equal(t, tc.RootCA.Certs, rootCA.Certs)
 
 	// Remove the CA cert
-	assert.NoError(t, os.RemoveAll(tc.Paths.RootCA.Cert))
+	require.NoError(t, os.RemoveAll(tc.Paths.RootCA.Cert))
 
 	// downloading without a join token also succeeds
 	rootCA, err = ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, "", tc.ConnBroker)
@@ -83,7 +83,7 @@ func TestDownloadRootCAWrongCAHash(t *testing.T) {
 	defer tc.Stop()
 
 	// Remove the CA cert
-	assert.NoError(t, os.RemoveAll(tc.Paths.RootCA.Cert))
+	require.NoError(t, os.RemoveAll(tc.Paths.RootCA.Cert))
 
 	// invalid token
 	for _, invalid := range []string{
@@ -93,8 +93,7 @@ func TestDownloadRootCAWrongCAHash(t *testing.T) {
 		"SWMTKN-0-1fhvpatk6ms36i3uc64tsv1ybyuxkb899zbjpq4ib64qwbibz4-1g3as27iwmko5yqh1byv868hx", // invalid version
 	} {
 		_, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, invalid, tc.ConnBroker)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "invalid join token")
+		require.ErrorContains(t, err, "invalid join token")
 	}
 
 	// invalid hash token - can get the wrong hash from both version 1 and version 2
@@ -103,8 +102,7 @@ func TestDownloadRootCAWrongCAHash(t *testing.T) {
 		"SWMTKN-2-0-1kxftv4ofnc6mt30lmgipg6ngf9luhwqopfk1tz6bdmnkubg0e-4myj5xihyto11dg1cn55w8p61",
 	} {
 		_, err := ca.DownloadRootCA(tc.Context, tc.Paths.RootCA, wrongToken, tc.ConnBroker)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "remote CA does not match fingerprint.")
+		require.ErrorContains(t, err, "remote CA does not match fingerprint.")
 	}
 }
 
@@ -114,14 +112,14 @@ func TestCreateSecurityConfigEmptyDir(t *testing.T) {
 	}
 	tc := cautils.NewTestCA(t)
 	defer tc.Stop()
-	assert.NoError(t, tc.CAServer.Stop())
+	require.NoError(t, tc.CAServer.Stop())
 
 	// Remove all the contents from the temp dir and try again with a new node
 	for _, org := range []string{
 		"",
 		"my_org",
 	} {
-		assert.NoError(t, os.RemoveAll(tc.TempDir))
+		require.NoError(t, os.RemoveAll(tc.TempDir))
 		krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 		nodeConfig, cancel, err := tc.RootCA.CreateSecurityConfig(tc.Context, krw,
 			ca.CertificateRequestConfig{
@@ -140,7 +138,7 @@ func TestCreateSecurityConfigEmptyDir(t *testing.T) {
 		}
 
 		root, err := helpers.ParseCertificatePEM(tc.RootCA.Certs)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		issuerInfo := nodeConfig.IssuerInfo()
 		assert.NotNil(t, issuerInfo)
@@ -186,9 +184,9 @@ func TestCreateSecurityConfigNoCerts(t *testing.T) {
 
 	// Remove only the node certificates form the directory, get a new rootCA, and attest that we get
 	// new certificates that are issued by the remote CA
-	assert.NoError(t, os.RemoveAll(tc.Paths.Node.Cert))
+	require.NoError(t, os.RemoveAll(tc.Paths.Node.Cert))
 	rootCA, err := ca.GetLocalRootCA(tc.Paths.RootCA)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	validateNodeConfig(&rootCA)
 }
 
@@ -267,7 +265,7 @@ func TestLoadSecurityConfigInvalidCert(t *testing.T) {
 	err := os.WriteFile(tc.Paths.Node.Cert, []byte(`-----BEGIN CERTIFICATE-----\n
 some random garbage\n
 -----END CERTIFICATE-----`), 0o644)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 
@@ -286,7 +284,7 @@ func TestLoadSecurityConfigInvalidKey(t *testing.T) {
 	err := os.WriteFile(tc.Paths.Node.Key, []byte(`-----BEGIN PRIVATE KEY-----\n
 some random garbage\n
 -----END PRIVATE KEY-----`), 0o644)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	krw := ca.NewKeyReadWriter(tc.Paths.Node, nil, nil)
 
@@ -830,13 +828,13 @@ func TestRenewTLSConfigUpdateRootCARace(t *testing.T) {
 				s = *signer
 			}
 			updatedRootCA, err := ca.NewRootCA(append(rootCA.Certs, cert...), s.Cert, s.Key, ca.DefaultNodeCertExpiration, nil)
-			require.NoError(t, err)
-			require.NoError(t, secConfig.UpdateRootCA(&updatedRootCA))
+			assert.NoError(t, err)
+			assert.NoError(t, secConfig.UpdateRootCA(&updatedRootCA))
 		}()
 
 		go func() {
 			defer close(done2)
-			require.NoError(t, ca.RenewTLSConfigNow(ctx, secConfig, tc.ConnBroker, tc.Paths.RootCA))
+			assert.NoError(t, ca.RenewTLSConfigNow(ctx, secConfig, tc.ConnBroker, tc.Paths.RootCA))
 		}()
 
 		<-done1
@@ -862,7 +860,7 @@ func writeAlmostExpiringCertToDisk(t *testing.T, tc *cautils.TestCA, cn, ou, org
 	// Because of the default backdate of 5 minutes, this issues certificates
 	// valid for 1 minute.
 	newRootCA, err := ca.NewRootCA(tc.RootCA.Certs, s.Cert, s.Key, ca.DefaultNodeCertExpiration, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	newSigner, err := newRootCA.Signer()
 	require.NoError(t, err)
 	newSigner.SetPolicy(&cfconfig.Signing{
@@ -890,7 +888,7 @@ func TestRenewTLSConfigWorker(t *testing.T) {
 	// Get a new nodeConfig with a TLS cert that has the default Cert duration, but overwrite
 	// the cert on disk with one that expires in 1 minute
 	nodeConfig, err := tc.WriteNewNodeConfig(ca.WorkerRole)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	c := nodeConfig.ClientTLSCreds
 	writeAlmostExpiringCertToDisk(t, tc, c.NodeID(), c.Role(), c.Organization())
 
@@ -900,13 +898,13 @@ func TestRenewTLSConfigWorker(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestRenewTLSConfig timed-out")
 	case certUpdate := <-updates:
-		assert.NoError(t, certUpdate.Err)
+		require.NoError(t, certUpdate.Err)
 		assert.NotNil(t, certUpdate)
 		assert.Equal(t, ca.WorkerRole, certUpdate.Role)
 	}
 
 	root, err := helpers.ParseCertificatePEM(tc.RootCA.Certs)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	issuerInfo := nodeConfig.IssuerInfo()
 	assert.NotNil(t, issuerInfo)
@@ -926,7 +924,7 @@ func TestRenewTLSConfigManager(t *testing.T) {
 	// Get a new nodeConfig with a TLS cert that has the default Cert duration, but overwrite
 	// the cert on disk with one that expires in 1 minute
 	nodeConfig, err := tc.WriteNewNodeConfig(ca.WorkerRole)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	c := nodeConfig.ClientTLSCreds
 	writeAlmostExpiringCertToDisk(t, tc, c.NodeID(), c.Role(), c.Organization())
 
@@ -936,13 +934,13 @@ func TestRenewTLSConfigManager(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestRenewTLSConfig timed-out")
 	case certUpdate := <-updates:
-		assert.NoError(t, certUpdate.Err)
+		require.NoError(t, certUpdate.Err)
 		assert.NotNil(t, certUpdate)
 		assert.Equal(t, ca.WorkerRole, certUpdate.Role)
 	}
 
 	root, err := helpers.ParseCertificatePEM(tc.RootCA.Certs)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	issuerInfo := nodeConfig.IssuerInfo()
 	assert.NotNil(t, issuerInfo)
@@ -962,7 +960,7 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 	// Get a new nodeConfig with a TLS cert that has the default Cert duration, but overwrite
 	// the cert on disk with one that expires in 1 minute
 	nodeConfig, err := tc.WriteNewNodeConfig(ca.WorkerRole)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	c := nodeConfig.ClientTLSCreds
 	writeAlmostExpiringCertToDisk(t, tc, c.NodeID(), c.Role(), c.Organization())
 
@@ -972,7 +970,7 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 		assert.NotNil(t, node)
 		return store.DeleteNode(tx, nodeConfig.ClientTLSCreds.NodeID())
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	renewer := ca.NewTLSRenewer(nodeConfig, tc.ConnBroker, tc.Paths.RootCA)
 	updates := renewer.Start(ctx)
@@ -980,7 +978,6 @@ func TestRenewTLSConfigWithNoNode(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		assert.Fail(t, "TestRenewTLSConfig timed-out")
 	case certUpdate := <-updates:
-		assert.Error(t, certUpdate.Err)
-		assert.Contains(t, certUpdate.Err.Error(), "not found when attempting to renew certificate")
+		assert.ErrorContains(t, certUpdate.Err, "not found when attempting to renew certificate")
 	}
 }
