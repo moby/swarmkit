@@ -59,6 +59,7 @@ func AddServiceFlags(flags *pflag.FlagSet) {
 	flags.StringSlice("volume", nil, "define a volume mount")
 	flags.StringSlice("tmpfs", nil, "define a tmpfs mount")
 	flags.StringSlice("npipe", nil, "define a npipe mount")
+	flags.StringSlice("device", nil, "device options")
 
 	flags.String("log-driver", "", "specify a log driver")
 	flags.StringSlice("log-opt", nil, "log driver options, as key value pairs")
@@ -148,6 +149,10 @@ func Merge(cmd *cobra.Command, spec *api.ServiceSpec, c api.ControlClient) error
 	}
 
 	if err := parseNpipe(flags, spec); err != nil {
+		return err
+	}
+
+	if err := parseDevice(flags, spec); err != nil {
 		return err
 	}
 
