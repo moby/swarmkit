@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	enginecontainer "github.com/docker/docker/api/types/container"
-	enginemount "github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/go-units"
 	gogotypes "github.com/gogo/protobuf/types"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/mount"
+
 	"github.com/moby/swarmkit/v2/api"
 )
 
@@ -17,24 +17,24 @@ func TestVolumesAndBinds(t *testing.T) {
 	type testCase struct {
 		explain string
 		config  api.Mount
-		x       enginemount.Mount
+		x       mount.Mount
 	}
 
 	cases := []testCase{
 		{"Simple bind mount", api.Mount{Type: api.MountTypeBind, Source: "/banana", Target: "/kerfluffle"},
-			enginemount.Mount{Type: enginemount.TypeBind, Source: "/banana", Target: "/kerfluffle"}},
+			mount.Mount{Type: mount.TypeBind, Source: "/banana", Target: "/kerfluffle"}},
 		{"Bind mound with propagation", api.Mount{Type: api.MountTypeBind, Source: "/banana", Target: "/kerfluffle", BindOptions: &api.Mount_BindOptions{Propagation: api.MountPropagationRPrivate}},
-			enginemount.Mount{Type: enginemount.TypeBind, Source: "/banana", Target: "/kerfluffle", BindOptions: &enginemount.BindOptions{Propagation: enginemount.PropagationRPrivate}}},
+			mount.Mount{Type: mount.TypeBind, Source: "/banana", Target: "/kerfluffle", BindOptions: &mount.BindOptions{Propagation: mount.PropagationRPrivate}}},
 		{"Simple volume with source", api.Mount{Type: api.MountTypeVolume, Source: "banana", Target: "/kerfluffle"},
-			enginemount.Mount{Type: enginemount.TypeVolume, Source: "banana", Target: "/kerfluffle"}},
+			mount.Mount{Type: mount.TypeVolume, Source: "banana", Target: "/kerfluffle"}},
 		{"Volume with options", api.Mount{Type: api.MountTypeVolume, Source: "banana", Target: "/kerfluffle", VolumeOptions: &api.Mount_VolumeOptions{NoCopy: true}},
-			enginemount.Mount{Type: enginemount.TypeVolume, Source: "banana", Target: "/kerfluffle", VolumeOptions: &enginemount.VolumeOptions{NoCopy: true}}},
+			mount.Mount{Type: mount.TypeVolume, Source: "banana", Target: "/kerfluffle", VolumeOptions: &mount.VolumeOptions{NoCopy: true}}},
 		{"Volume with no source", api.Mount{Type: api.MountTypeVolume, Target: "/kerfluffle"},
-			enginemount.Mount{Type: enginemount.TypeVolume, Target: "/kerfluffle"}},
+			mount.Mount{Type: mount.TypeVolume, Target: "/kerfluffle"}},
 		{"Named pipe using Windows format", api.Mount{Type: api.MountTypeNamedPipe, Source: `\\.\pipe\foo`, Target: `\\.\pipe\foo`},
-			enginemount.Mount{Type: enginemount.TypeNamedPipe, Source: `\\.\pipe\foo`, Target: `\\.\pipe\foo`}},
+			mount.Mount{Type: mount.TypeNamedPipe, Source: `\\.\pipe\foo`, Target: `\\.\pipe\foo`}},
 		{"Named pipe using Unix format", api.Mount{Type: api.MountTypeNamedPipe, Source: "//./pipe/foo", Target: "//./pipe/foo"},
-			enginemount.Mount{Type: enginemount.TypeNamedPipe, Source: "//./pipe/foo", Target: "//./pipe/foo"}},
+			mount.Mount{Type: mount.TypeNamedPipe, Source: "//./pipe/foo", Target: "//./pipe/foo"}},
 	}
 
 	for _, c := range cases {
@@ -60,12 +60,12 @@ func TestVolumesAndBinds(t *testing.T) {
 			t.Log(c.explain)
 			t.Logf("expected: %+v, got: %+v", c.x, mounts[0])
 			switch c.x.Type {
-			case enginemount.TypeVolume:
+			case mount.TypeVolume:
 				t.Logf("expected volume opts: %+v, got: %+v", c.x.VolumeOptions, mounts[0].VolumeOptions)
 				if c.x.VolumeOptions.DriverConfig != nil {
 					t.Logf("expected volume driver config: %+v, got: %+v", c.x.VolumeOptions.DriverConfig, mounts[0].VolumeOptions.DriverConfig)
 				}
-			case enginemount.TypeBind:
+			case mount.TypeBind:
 				t.Logf("expected bind opts: %+v, got: %+v", c.x.BindOptions, mounts[0].BindOptions)
 			}
 			t.Fail()
@@ -127,7 +127,7 @@ func TestHealthcheck(t *testing.T) {
 		},
 	}
 	config := c.config()
-	expected := &enginecontainer.HealthConfig{
+	expected := &container.HealthConfig{
 		Test:          []string{"a", "b", "c"},
 		Interval:      time.Second,
 		Timeout:       time.Minute,
@@ -274,7 +274,7 @@ func TestCapabilityAdd(t *testing.T) {
 		},
 	}
 
-	expected := strslice.StrSlice{"CAP_NET_RAW", "CAP_SYS_CHROOT"}
+	expected := []string{"CAP_NET_RAW", "CAP_SYS_CHROOT"}
 	actual := c.hostConfig().CapAdd
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("expected %s, got %s", expected, actual)
@@ -294,7 +294,7 @@ func TestCapabilityDrop(t *testing.T) {
 		},
 	}
 
-	expected := strslice.StrSlice{"CAP_KILL"}
+	expected := []string{"CAP_KILL"}
 	actual := c.hostConfig().CapDrop
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("expected %s, got %s", expected, actual)
