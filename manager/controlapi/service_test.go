@@ -10,6 +10,7 @@ import (
 
 	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
+	"github.com/moby/swarmkit/v2/api/genericresource"
 	"github.com/moby/swarmkit/v2/identity"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
@@ -174,11 +175,14 @@ func TestValidateResources(t *testing.T) {
 	bad := []*api.Resources{
 		{MemoryBytes: 1},
 		{NanoCPUs: 42},
+		// tasks can only request discrete generic resources
+		{Generic: genericresource.NewSet("gpu", "UUID1")},
 	}
 
 	good := []*api.Resources{
 		{MemoryBytes: 4096 * 1024 * 1024},
 		{NanoCPUs: 1e9},
+		{Generic: []*api.GenericResource{genericresource.NewDiscrete("gpu", 2)}},
 	}
 
 	for _, b := range bad {
@@ -196,6 +200,7 @@ func TestValidateResourceRequirements(t *testing.T) {
 	bad := []*api.ResourceRequirements{
 		{Limits: &api.Resources{MemoryBytes: 1}},
 		{Reservations: &api.Resources{MemoryBytes: 1}},
+		{Reservations: &api.Resources{Generic: genericresource.NewSet("gpu", "UUID1")}},
 	}
 	good := []*api.ResourceRequirements{
 		{Limits: &api.Resources{NanoCPUs: 1e9}},
