@@ -230,6 +230,91 @@ var _ = Describe("Jobs RestartSupervisor Integration", func() {
 			Expect(task.Status.State).To(Equal(api.TaskStateFailed))
 		}
 	})
+
+	It("should only restart global job tasks MaxAttempts times", func() {
+		service.Spec.Mode = &api.ServiceSpec_GlobalJob{
+			GlobalJob: &api.GlobalJob{},
+		}
+		service.Spec.Task.Restart = &api.RestartPolicy{
+			Condition:   api.RestartOnFailure,
+			MaxAttempts: 3,
+			// set a low but non-zero delay duration, so we avoid default
+			// duration, which may be long.
+			Delay: gogotypes.DurationProto(100 * time.Millisecond),
+		}
+		err := s.Update(func(tx store.Tx) error {
+			if err := store.CreateNode(tx, &api.Node{
+				ID: "node1",
+				Spec: api.NodeSpec{
+					Availability: api.NodeAvailabilityActive,
+				},
+				Status: api.NodeStatus{
+					State: api.NodeStatus_READY,
+				},
+			}); err != nil {
+				return err
+			}
+			return store.CreateService(tx, service)
+		})
+		Expect(err).ToNot(HaveOccurred())
+
+		passEventsUntil(o, serviceCreated(service))
+
+		// fail the original task and its first 2 replacements, waiting each
+		// time for the replacement task to be started.
+		for range 3 {
+			err = s.Update(func(tx store.Tx) error {
+				tasks, err := store.FindTasks(tx, store.ByTaskState(api.TaskStateNew))
+				if err != nil {
+					return err
+				}
+				if len(tasks) != 1 {
+					return fmt.Errorf("expected 1 new task, there are %v", len(tasks))
+				}
+				tasks[0].Status.State = api.TaskStateFailed
+				return store.UpdateTask(tx, tasks[0])
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			passEventsUntil(o, taskFailed)
+
+			passEventsUntil(o, func(event events.Event) bool {
+				updated, ok := event.(api.EventUpdateTask)
+				return ok &&
+					updated.Task.DesiredState == api.TaskStateCompleted &&
+					updated.OldTask.DesiredState == api.TaskStateReady
+			})
+		}
+
+		// fail the third replacement. MaxAttempts is used up, so no new
+		// task may be created.
+		err = s.Update(func(tx store.Tx) error {
+			tasks, err := store.FindTasks(tx, store.ByTaskState(api.TaskStateNew))
+			if err != nil {
+				return err
+			}
+			if len(tasks) != 1 {
+				return fmt.Errorf("expected 1 new task, there are %v", len(tasks))
+			}
+			tasks[0].Status.State = api.TaskStateFailed
+			return store.UpdateTask(tx, tasks[0])
+		})
+		Expect(err).ToNot(HaveOccurred())
+
+		passEventsUntil(o, taskFailed)
+
+		var tasks []*api.Task
+		s.View(func(tx store.ReadTx) {
+			tasks, err = store.FindTasks(tx, store.All)
+		})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(tasks).To(HaveLen(4))
+
+		for _, task := range tasks {
+			Expect(task.NodeID).To(Equal("node1"))
+			Expect(task.Status.State).To(Equal(api.TaskStateFailed))
+		}
+	})
 })
 
 func serviceCreated(service *api.Service) func(events.Event) bool {
