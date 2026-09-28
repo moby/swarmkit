@@ -5,6 +5,7 @@ import (
 	"net"
 	"testing"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/testutils"
 
@@ -25,6 +26,30 @@ func newVolumeClient(name string, nodeID string) *nodePlugin {
 	fakeNodeClient := newFakeNodeClient(true, nodeID)
 	n.nodeClient = fakeNodeClient
 	return n
+}
+
+func TestMakeNodeInfo(t *testing.T) {
+	csiNodeInfo := &csi.NodeGetInfoResponse{
+		NodeId:            "node-1",
+		MaxVolumesPerNode: 26,
+		AccessibleTopology: &csi.Topology{
+			Segments: map[string]string{
+				"topology.kubernetes.io/zone": "eu-central-1a",
+			},
+		},
+	}
+
+	expected := &api.NodeCSIInfo{
+		NodeID:            "node-1",
+		MaxVolumesPerNode: 26,
+		AccessibleTopology: &api.Topology{
+			Segments: map[string]string{
+				"topology.kubernetes.io/zone": "eu-central-1a",
+			},
+		},
+	}
+
+	assert.Equal(t, expected, makeNodeInfo(csiNodeInfo))
 }
 
 func TestNodeStageVolume(t *testing.T) {
