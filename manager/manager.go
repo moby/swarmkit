@@ -174,7 +174,8 @@ type Manager struct {
 
 	// mu is a general mutex used to coordinate starting/stopping and
 	// leadership events.
-	mu sync.Mutex
+	mu        sync.Mutex
+	renewalWG sync.WaitGroup
 	// addrMu is a mutex that protects config.ControlAPI and config.RemoteAPI
 	addrMu sync.Mutex
 
@@ -722,6 +723,7 @@ func (m *Manager) Stop(ctx context.Context, clearData bool) {
 	}
 	m.cancelFunc()
 	<-m.raftNode.Done()
+	m.waitForRenewals()
 
 	timer := time.AfterFunc(stopTimeout, func() {
 		m.server.Stop()
@@ -739,6 +741,25 @@ func (m *Manager) Stop(ctx context.Context, clearData bool) {
 
 	log.G(ctx).Info("Manager shut down")
 	// mutex is released and Run can return now
+}
+
+func (m *Manager) startTrackedRenewal(renewal func()) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.stopped {
+		return false
+	}
+
+	m.renewalWG.Add(1)
+	go func() {
+		defer m.renewalWG.Done()
+		renewal()
+	}()
+	return true
+}
+
+func (m *Manager) waitForRenewals() {
+	m.renewalWG.Wait()
 }
 
 func (m *Manager) updateKEK(ctx context.Context, cluster *api.Cluster) error {
@@ -767,7 +788,7 @@ func (m *Manager) updateKEK(ctx context.Context, cluster *api.Cluster) error {
 	if unlockedToLocked {
 		// a best effort attempt to update the TLS certificate - if it fails, it'll be updated the next time it renews;
 		// don't wait because it might take a bit
-		go func() {
+		m.startTrackedRenewal(func() {
 			insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
 
 			conn, err := grpc.Dial(
@@ -793,7 +814,7 @@ func (m *Manager) updateKEK(ctx context.Context, cluster *api.Cluster) error {
 			if err := ca.RenewTLSConfigNow(ctx, securityConfig, connBroker, m.config.RootCAPaths); err != nil {
 				logger.WithError(err).Error("failed to download new TLS certificate after locking the cluster")
 			}
-		}()
+		})
 	}
 	return nil
 }
