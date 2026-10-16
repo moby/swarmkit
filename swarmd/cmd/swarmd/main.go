@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/signal"
 
-	prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/moby/moby/client"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/genericresource"
@@ -189,8 +188,13 @@ var (
 			}
 
 			if metricsAddr != "" {
-				// This allows to measure latency distribution.
-				prometheus.EnableHandlingTimeHistogram()
+				// TODO: Restore optional gRPC handling-time histograms.
+				// The new Prometheus provider requires configuring histograms when
+				// creating the collector. Enabling them globally would also affect
+				// SwarmKit consumers such as Docker Engine.
+				//
+				// // This allows to measure latency distribution.
+				// grpc_prometheus.EnableHandlingTimeHistogram()
 
 				l, err := net.Listen("tcp", metricsAddr)
 				if err != nil {
