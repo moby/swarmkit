@@ -13,11 +13,15 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-
 	cfconfig "github.com/cloudflare/cfssl/config"
 	"github.com/cloudflare/cfssl/helpers"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	cautils "github.com/moby/swarmkit/v2/ca/testutils"
@@ -25,9 +29,6 @@ import (
 	"github.com/moby/swarmkit/v2/manager/state"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/testutils"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestDownloadRootCASuccess(t *testing.T) {
@@ -396,7 +397,7 @@ func tlsGRPCDial(ctx context.Context, address string, creds credentials.Transpor
 		address,
 		grpc.WithBlock(),
 		grpc.WithTimeout(10*time.Second),
-		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDialer(func(address string, timeout time.Duration) (net.Conn, error) {
 			ctx, cancel := context.WithTimeout(ctx, timeout)
 			defer cancel()

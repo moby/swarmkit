@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
@@ -68,7 +69,9 @@ func newTestServer(t *testing.T) *testServer {
 		_ = ts.grpcServer.Serve(lis)
 	}()
 
-	conn, err := grpc.Dial(temp.Name(), grpc.WithInsecure(), grpc.WithTimeout(10*time.Second),
+	conn, err := grpc.Dial(temp.Name(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTimeout(10*time.Second),
 		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
 			return net.DialTimeout("unix", addr, timeout)
 		}))

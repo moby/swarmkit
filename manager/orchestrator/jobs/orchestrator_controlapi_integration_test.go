@@ -1,15 +1,15 @@
 package jobs
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"context"
 	"net"
 	"os"
 	"time"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/manager/controlapi"
@@ -87,7 +87,7 @@ var _ = Describe("Integration between the controlapi and jobs orchestrator", fun
 			// block on making this connection, to avoid the tests failing for
 			// funny reasons related to this connection being established async
 			grpc.WithBlock(),
-			grpc.WithInsecure(),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
 		Expect(err).ToNot(HaveOccurred())
 

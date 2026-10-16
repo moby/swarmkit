@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -70,7 +71,9 @@ func newTestServer(t *testing.T) *testServer {
 		_ = ts.grpcServer.Serve(lis)
 	}()
 
-	conn, err := grpc.Dial(temp.Name(), grpc.WithInsecure(), grpc.WithTimeout(10*time.Second),
+	conn, err := grpc.Dial(temp.Name(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTimeout(10*time.Second),
 		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
 			return net.DialTimeout("unix", addr, timeout)
 		}))
