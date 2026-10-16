@@ -768,17 +768,12 @@ func (m *Manager) updateKEK(ctx context.Context, cluster *api.Cluster) error {
 		// a best effort attempt to update the TLS certificate - if it fails, it'll be updated the next time it renews;
 		// don't wait because it might take a bit
 		go func() {
-			insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
-
 			conn, err := grpc.Dial(
 				m.config.ControlAPI,
 				grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
 				grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
-				grpc.WithTransportCredentials(insecureCreds),
-				grpc.WithDialer(
-					func(addr string, timeout time.Duration) (net.Conn, error) {
-						return xnet.DialTimeoutLocal(addr, timeout)
-					}),
+				grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})),
+				grpc.WithContextDialer(xnet.DialContextLocal),
 				grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
 			)
 			if err != nil {

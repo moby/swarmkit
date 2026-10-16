@@ -13,6 +13,7 @@ import (
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	stateutils "github.com/moby/swarmkit/v2/manager/state/testutils"
+	"github.com/moby/swarmkit/v2/xnet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -74,9 +75,8 @@ func newTestServer(t *testing.T) *testServer {
 	conn, err := grpc.Dial(temp.Name(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithTimeout(10*time.Second),
-		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("unix", addr, timeout)
-		}))
+		grpc.WithContextDialer(xnet.DialContextLocal),
+	)
 	assert.NoError(t, err)
 	ts.clientConn = conn
 
