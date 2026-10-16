@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/pkg/errors"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
@@ -17,6 +16,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/moby/swarmkit/v2/internal/grpcmetrics"
 	"github.com/moby/swarmkit/v2/log"
 )
 
@@ -335,8 +335,8 @@ func (t *Transport) longestActive() (*peer, error) {
 
 func (t *Transport) dial(addr string) (*grpc.ClientConn, error) {
 	grpcOptions := []grpc.DialOption{
-		grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
-		grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
+		grpc.WithUnaryInterceptor(grpcmetrics.Client.UnaryClientInterceptor()),
+		grpc.WithStreamInterceptor(grpcmetrics.Client.StreamClientInterceptor()),
 		grpc.WithBackoffMaxDelay(8 * time.Second),
 	}
 	if t.config.Credentials != nil {
