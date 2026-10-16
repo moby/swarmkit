@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"math"
-	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -914,10 +913,7 @@ func (n *Node) initManagerConnection(ctx context.Context, ready chan<- struct{})
 	insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
 	opts = append(opts, grpc.WithTransportCredentials(insecureCreds))
 	addr := n.config.ListenControlAPI
-	opts = append(opts, grpc.WithDialer(
-		func(addr string, timeout time.Duration) (net.Conn, error) {
-			return xnet.DialTimeoutLocal(addr, timeout)
-		}))
+	opts = append(opts, grpc.WithContextDialer(xnet.DialContextLocal))
 	conn, err := grpc.Dial(addr, opts...)
 	if err != nil {
 		return err

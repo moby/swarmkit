@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"math/rand"
-	"net"
 	"sync"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/moby/swarmkit/v2/log"
 	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/moby/swarmkit/v2/testutils"
+	"github.com/moby/swarmkit/v2/xnet"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -410,10 +410,7 @@ func (c *testCluster) GetUnlockKey() (string, error) {
 	opts := []grpc.DialOption{}
 	insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
 	opts = append(opts, grpc.WithTransportCredentials(insecureCreds))
-	opts = append(opts, grpc.WithDialer(
-		func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("unix", addr, timeout)
-		}))
+	opts = append(opts, grpc.WithContextDialer(xnet.DialContextLocal))
 	conn, err := grpc.Dial(c.RandomManager().config.ListenControlAPI, opts...)
 	if err != nil {
 		return "", err
