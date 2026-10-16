@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/moby/swarmkit/v2/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/moby/swarmkit/v2/testutils"
 )
 
 type testRouteGuide struct{}
@@ -44,7 +45,10 @@ func TestSimpleRedirect(t *testing.T) {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	addr := l.Addr().String()
-	conn, err := grpc.Dial(addr, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+	conn, err := grpc.Dial(addr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTimeout(5*time.Second),
+	)
 	require.NoError(t, err)
 	defer conn.Close()
 

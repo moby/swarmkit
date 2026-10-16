@@ -9,14 +9,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/ca/testutils"
 	"github.com/moby/swarmkit/v2/manager/state/store"
 	"github.com/moby/swarmkit/v2/protobuf/ptypes"
-	"github.com/stretchr/testify/require"
 )
 
 func TestLogBrokerLogs(t *testing.T) {
@@ -780,12 +781,12 @@ func testLogBrokerEnv(t *testing.T) (context.Context, *testutils.TestCA, *LogBro
 
 func testLogClient(t *testing.T, addr string) (api.LogsClient, func()) {
 	// Log client
-	logCc, err := grpc.Dial(addr, grpc.WithInsecure())
+	logCc, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("error dialing local server: %v", err)
 	}
 	return api.NewLogsClient(logCc), func() {
-		logCc.Close()
+		_ = logCc.Close()
 	}
 }
 

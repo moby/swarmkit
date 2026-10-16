@@ -10,13 +10,14 @@ import (
 	"time"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-
-	"github.com/moby/swarmkit/v2/log"
 	"github.com/pkg/errors"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/moby/swarmkit/v2/log"
 )
 
 // ErrIsNotFound indicates that peer was never added to transport.
@@ -341,7 +342,7 @@ func (t *Transport) dial(addr string) (*grpc.ClientConn, error) {
 	if t.config.Credentials != nil {
 		grpcOptions = append(grpcOptions, grpc.WithTransportCredentials(t.config.Credentials))
 	} else {
-		grpcOptions = append(grpcOptions, grpc.WithInsecure())
+		grpcOptions = append(grpcOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
 	if t.config.SendTimeout > 0 {

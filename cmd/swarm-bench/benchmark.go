@@ -9,6 +9,7 @@ import (
 
 	"github.com/moby/swarmkit/v2/api"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // Config holds the benchmarking configuration.
@@ -90,7 +91,7 @@ func (b *Benchmark) spec() *api.ServiceSpec {
 }
 
 func (b *Benchmark) launch(ctx context.Context) (*api.Service, error) {
-	conn, err := grpc.Dial(b.cfg.Manager, grpc.WithInsecure())
+	conn, err := grpc.Dial(b.cfg.Manager, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
