@@ -8,28 +8,28 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/events"
-	engineapi "github.com/docker/docker/client"
 	gogotypes "github.com/gogo/protobuf/types"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/events"
+	"github.com/moby/moby/client"
+	"github.com/pkg/errors"
+	"golang.org/x/time/rate"
+
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/log"
-	"github.com/pkg/errors"
-	"golang.org/x/time/rate"
 )
 
 // containerAdapter conducts remote operations for a container. All calls
 // are mostly naked calls to the client API, seeded with information from
 // containerConfig.
 type containerAdapter struct {
-	client    engineapi.APIClient
+	client    client.APIClient
 	container *containerConfig
 	secrets   exec.SecretGetter
 }
 
-func newContainerAdapter(client engineapi.APIClient, nodeDescription *api.NodeDescription, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
+func newContainerAdapter(client client.APIClient, nodeDescription *api.NodeDescription, task *api.Task, secrets exec.SecretGetter) (*containerAdapter, error) {
 	ctnr, err := newContainerConfig(nodeDescription, task)
 	if err != nil {
 		return nil, err
@@ -42,16 +42,16 @@ func newContainerAdapter(client engineapi.APIClient, nodeDescription *api.NodeDe
 	}, nil
 }
 
-func noopPrivilegeFn() (string, error) { return "", nil }
+func noopPrivilegeFn(context.Context) (string, error) { return "", nil }
 
-func (c *containerConfig) imagePullOptions() types.ImagePullOptions {
+func (c *containerConfig) imagePullOptions() client.ImagePullOptions {
 	var registryAuth string
 
 	if c.spec().PullOptions != nil {
 		registryAuth = c.spec().PullOptions.RegistryAuth
 	}
 
-	return types.ImagePullOptions{
+	return client.ImagePullOptions{
 		// if the image needs to be pulled, the auth config will be retrieved and updated
 		RegistryAuth:  registryAuth,
 		PrivilegeFunc: noopPrivilegeFn,
@@ -130,7 +130,7 @@ func (c *containerAdapter) createNetworks(ctx context.Context) error {
 
 func (c *containerAdapter) removeNetworks(ctx context.Context) error {
 	for _, nid := range c.container.networks() {
-		if err := c.client.NetworkRemove(ctx, nid); err != nil {
+		if _, err := c.client.NetworkRemove(ctx, nid, client.NetworkRemoveOptions{}); err != nil {
 			if isActiveEndpointError(err) {
 				continue
 			}
@@ -144,24 +144,28 @@ func (c *containerAdapter) removeNetworks(ctx context.Context) error {
 }
 
 func (c *containerAdapter) create(ctx context.Context) error {
-	_, err := c.client.ContainerCreate(ctx,
-		c.container.config(),
-		c.container.hostConfig(),
-		c.container.networkingConfig(),
-		nil,
-		c.container.name(),
-	)
+	_, err := c.client.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config:           c.container.config(),
+		HostConfig:       c.container.hostConfig(),
+		NetworkingConfig: c.container.networkingConfig(),
+		Name:             c.container.name(),
+	})
 
 	return err
 }
 
 func (c *containerAdapter) start(ctx context.Context) error {
 	// TODO(nishanttotla): Consider adding checkpoint handling later
-	return c.client.ContainerStart(ctx, c.container.name(), types.ContainerStartOptions{})
+	_, err := c.client.ContainerStart(ctx, c.container.name(), client.ContainerStartOptions{})
+	return err
 }
 
-func (c *containerAdapter) inspect(ctx context.Context) (types.ContainerJSON, error) {
-	return c.client.ContainerInspect(ctx, c.container.name())
+func (c *containerAdapter) inspect(ctx context.Context) (container.InspectResponse, error) {
+	res, err := c.client.ContainerInspect(ctx, c.container.name(), client.ContainerInspectOptions{})
+	if err != nil {
+		return container.InspectResponse{}, err
+	}
+	return res.Container, nil
 }
 
 // events issues a call to the events API and returns a channel with all
@@ -180,7 +184,7 @@ func (c *containerAdapter) events(ctx context.Context) (<-chan events.Message, <
 	log.G(ctx).Debugf("waiting on events")
 	// TODO(stevvooe): For long running tasks, it is likely that we will have
 	// to restart this under failure.
-	eventCh, errCh := c.client.Events(ctx, types.EventsOptions{
+	res := c.client.Events(ctx, client.EventsListOptions{
 		Since:   "0",
 		Filters: c.container.eventFilter(),
 	})
@@ -190,13 +194,13 @@ func (c *containerAdapter) events(ctx context.Context) (<-chan events.Message, <
 
 		for {
 			select {
-			case msg := <-eventCh:
+			case msg := <-res.Messages:
 				select {
 				case eventsq <- msg:
 				case <-ctx.Done():
 					return
 				}
-			case err := <-errCh:
+			case err := <-res.Err:
 				log.G(ctx).WithError(err).Error("error from events stream")
 				return
 			case <-ctx.Done():
@@ -220,18 +224,21 @@ func (c *containerAdapter) shutdown(ctx context.Context) error {
 		stopgraceFromProto, _ := gogotypes.DurationFromProto(spec.StopGracePeriod)
 		stopgraceSeconds = int(stopgraceFromProto.Seconds())
 	}
-	return c.client.ContainerStop(ctx, c.container.name(), container.StopOptions{Timeout: &stopgraceSeconds})
+	_, err := c.client.ContainerStop(ctx, c.container.name(), client.ContainerStopOptions{Timeout: &stopgraceSeconds})
+	return err
 }
 
 func (c *containerAdapter) terminate(ctx context.Context) error {
-	return c.client.ContainerKill(ctx, c.container.name(), "")
+	_, err := c.client.ContainerKill(ctx, c.container.name(), client.ContainerKillOptions{})
+	return err
 }
 
 func (c *containerAdapter) remove(ctx context.Context) error {
-	return c.client.ContainerRemove(ctx, c.container.name(), types.ContainerRemoveOptions{
+	_, err := c.client.ContainerRemove(ctx, c.container.name(), client.ContainerRemoveOptions{
 		RemoveVolumes: true,
 		Force:         true,
 	})
+	return err
 }
 
 func (c *containerAdapter) createVolumes(ctx context.Context) error {
@@ -268,7 +275,7 @@ func (c *containerAdapter) logs(ctx context.Context, options api.LogSubscription
 		return nil, errors.New("logs not supported on services with TTY")
 	}
 
-	apiOptions := types.ContainerLogsOptions{
+	apiOptions := client.ContainerLogsOptions{
 		Follow:     options.Follow,
 		Timestamps: true,
 		Details:    false,

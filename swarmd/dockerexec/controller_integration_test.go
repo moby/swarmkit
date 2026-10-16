@@ -5,11 +5,12 @@ import (
 	"flag"
 	"testing"
 
-	engineapi "github.com/docker/docker/client"
+	"github.com/moby/moby/client"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/moby/swarmkit/v2/agent/exec"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/genericresource"
-	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -36,12 +37,9 @@ func TestControllerFlowIntegration(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	client, err := engineapi.NewClientWithOpts(
-		engineapi.WithHost(dockerTestAddr),
-		engineapi.WithAPIVersionNegotiation(),
-	)
+	apiClient, err := client.New(client.WithHost(dockerTestAddr))
 	assert.NoError(t, err)
-	assert.NotNil(t, client)
+	assert.NotNil(t, apiClient)
 
 	available := genericresource.NewSet("apple", "blue", "red")
 	available = append(available, genericresource.NewDiscrete("orange", 3))
@@ -82,7 +80,7 @@ func TestControllerFlowIntegration(t *testing.T) {
 		return nil
 	})
 
-	ctlr, err := newController(client, nil, task, nil)
+	ctlr, err := newController(apiClient, nil, task, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, ctlr)
 	assert.NoError(t, ctlr.Prepare(ctx))
