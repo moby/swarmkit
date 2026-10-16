@@ -3,8 +3,8 @@
 package xnet
 
 import (
+	"context"
 	"net"
-	"time"
 )
 
 // ListenLocal opens a local socket for control communication
@@ -13,8 +13,8 @@ func ListenLocal(socket string) (net.Listener, error) {
 	return net.Listen("unix", socket)
 }
 
-// DialTimeoutLocal is a DialTimeout function for local sockets
-func DialTimeoutLocal(socket string, timeout time.Duration) (net.Conn, error) {
-	// on unix, we dial a unix socket
-	return net.DialTimeout("unix", socket, timeout)
+// DialContextLocal connects to a local socket using the provided context.
+// On Unix, it connects to a Unix domain socket; on Windows, to a named pipe.
+func DialContextLocal(ctx context.Context, socket string) (net.Conn, error) {
+	return (&net.Dialer{}).DialContext(ctx, "unix", socket)
 }

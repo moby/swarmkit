@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"sync"
 	"testing"
@@ -545,13 +544,10 @@ func agentTestEnv(t *testing.T, nodeChangeCh chan *NodeChanges, tlsChangeCh chan
 		conn, err := grpc.Dial(
 			mockDispatcher.Addr,
 			grpc.WithTransportCredentials(insecureCreds),
-			grpc.WithDialer(
-				func(addr string, timeout time.Duration) (net.Conn, error) {
-					return xnet.DialTimeoutLocal(addr, timeout)
-				}),
+			grpc.WithContextDialer(xnet.DialContextLocal),
 		)
 		require.NoError(t, err)
-		cleanup = append(cleanup, func() { conn.Close() })
+		cleanup = append(cleanup, func() { _ = conn.Close() })
 
 		broker.SetLocalConn(conn)
 	} else {
