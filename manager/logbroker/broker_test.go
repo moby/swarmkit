@@ -11,7 +11,6 @@ import (
 
 	"google.golang.org/grpc"
 
-	gogotypes "github.com/gogo/protobuf/types"
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/ca/testutils"
@@ -804,13 +803,6 @@ func testBrokerClient(t *testing.T, tca *testutils.TestCA, addr string) (api.Log
 
 	return api.NewLogBrokerClient(cc), securityConfig, func() {
 		cc.Close()
-	}
-}
-
-func printLogMessages(msgs ...api.LogMessage) {
-	for _, msg := range msgs {
-		ts, _ := gogotypes.TimestampFromProto(msg.Timestamp)
-		fmt.Printf("%v %v %s\n", msg.Context, ts, string(msg.Data))
 	}
 }
 
