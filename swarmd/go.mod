@@ -7,7 +7,6 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gogo/protobuf v1.3.2
-	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/moby/moby/api v1.55.0
 	github.com/moby/moby/client v0.5.1
 	github.com/moby/swarmkit/v2 v2.1.2
@@ -57,6 +56,8 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/certificate-transparency-go v1.3.2 // indirect
+	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.0.1 // indirect
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-memdb v1.3.2 // indirect
