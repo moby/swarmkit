@@ -3,9 +3,7 @@ package common
 import (
 	"context"
 	"crypto/tls"
-	"net"
 	"strings"
-	"time"
 
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/xnet"
@@ -36,10 +34,7 @@ func DialConn(cmd *cobra.Command) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{}
 	insecureCreds := credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})
 	opts = append(opts, grpc.WithTransportCredentials(insecureCreds))
-	opts = append(opts, grpc.WithDialer(
-		func(addr string, timeout time.Duration) (net.Conn, error) {
-			return xnet.DialTimeoutLocal(addr, timeout)
-		}))
+	opts = append(opts, grpc.WithContextDialer(xnet.DialContextLocal))
 	conn, err := grpc.Dial(addr, opts...)
 	if err != nil {
 		return nil, err

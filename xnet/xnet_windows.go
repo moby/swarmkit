@@ -3,8 +3,8 @@
 package xnet
 
 import (
+	"context"
 	"net"
-	"time"
 
 	"github.com/Microsoft/go-winio"
 )
@@ -24,8 +24,8 @@ func ListenLocal(socket string) (net.Listener, error) {
 	return winio.ListenPipe(socket, &c)
 }
 
-// DialTimeoutLocal is a DialTimeout function for local sockets
-func DialTimeoutLocal(socket string, timeout time.Duration) (net.Conn, error) {
-	// On windows, we dial a named pipe
-	return winio.DialPipe(socket, &timeout)
+// DialContextLocal connects to a local socket or named pipe,
+// respecting the context's cancellation and deadline.
+func DialContextLocal(ctx context.Context, socket string) (net.Conn, error) {
+	return winio.DialPipeContext(ctx, socket)
 }
