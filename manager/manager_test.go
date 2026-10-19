@@ -432,3 +432,19 @@ func TestManagerLockUnlock(t *testing.T) {
 	// error.
 	<-done
 }
+
+// TestBecomeFollowerRunsRegisteredCleanups checks the registry that pairs each
+// leader-only component's start with its stop. Cleanups run once, in
+// registration order, and a second demotion runs nothing.
+func TestBecomeFollowerRunsRegisteredCleanups(t *testing.T) {
+	m := &Manager{}
+	var ran []string
+	m.onBecomeFollower(func() { ran = append(ran, "first") })
+	m.onBecomeFollower(func() { ran = append(ran, "second") })
+
+	m.becomeFollower()
+	require.Equal(t, []string{"first", "second"}, ran)
+
+	m.becomeFollower()
+	require.Equal(t, []string{"first", "second"}, ran)
+}

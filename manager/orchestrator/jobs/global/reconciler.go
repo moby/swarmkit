@@ -35,7 +35,7 @@ func NewReconciler(store *store.MemoryStore, restart restartSupervisor) *Reconci
 }
 
 // ReconcileService reconciles one global job service.
-func (r *Reconciler) ReconcileService(id string) error {
+func (r *Reconciler) ReconcileService(ctx context.Context, id string) error {
 	var (
 		service *api.Service
 		cluster *api.Cluster
@@ -199,9 +199,7 @@ func (r *Reconciler) ReconcileService(id string) error {
 				}
 
 				// Finally, restart it
-				// TODO(dperny): pass in context to ReconcileService, so we can
-				// pass it in here.
-				return r.restart.Restart(context.Background(), tx, cluster, service, *t)
+				return r.restart.Restart(ctx, tx, cluster, service, *t)
 			}); err != nil {
 				// TODO(dperny): probably should log like in the other
 				// orchestrators instead of returning here.
