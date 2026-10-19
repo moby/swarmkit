@@ -4,7 +4,6 @@ ARG GO_VERSION=1.25
 ARG BASE_DEBIAN_DISTRO="bookworm"
 ARG GOLANG_IMAGE="golang:${GO_VERSION}-${BASE_DEBIAN_DISTRO}"
 
-ARG PROTOC_VERSION=3.14.0
 ARG GOLANGCI_LINT_VERSION=v2.12.2
 
 # gobase
@@ -57,15 +56,8 @@ RUN --mount=type=bind,target=. \
 
 FROM gobase AS generate-base
 RUN apt-get --no-install-recommends install -y unzip
-ARG PROTOC_VERSION
-ARG TARGETOS
-ARG TARGETARCH
-RUN <<EOT
-  set -e
-  arch=$(echo $TARGETARCH | sed -e s/amd64/x86_64/ -e s/arm64/aarch_64/)
-  wget -q https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-${TARGETOS}-${arch}.zip
-  unzip protoc-${PROTOC_VERSION}-${TARGETOS}-${arch}.zip -d /usr/local
-EOT
+RUN --mount=type=bind,source=direct.mk,target=direct.mk \
+    make --file=direct.mk install-protoc
 
 FROM generate-base AS generate-build
 RUN --mount=type=bind,target=.,rw \

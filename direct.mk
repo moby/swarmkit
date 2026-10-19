@@ -23,6 +23,12 @@ GO_TESTFLAGS=--timeout=20m $(RACE)
 
 GOBIN=$(shell go env GOPATH)/bin
 
+# Version of protoc used to generate protobuf bindings.
+PROTOC_VERSION=3.14.0
+PROTOC_OS=$(shell uname -s | sed -e s/Linux/linux/ -e s/Darwin/osx/)
+PROTOC_ARCH=$(shell uname -m | sed -e s/aarch64/aarch_64/ -e s/ppc64le/ppcle_64/ -e 's/i[3-6]86/x86_32/')
+PROTOC_URL=https://github.com/protocolbuffers/protobuf/releases/download/v$(PROTOC_VERSION)/protoc-$(PROTOC_VERSION)-$(PROTOC_OS)-$(PROTOC_ARCH).zip
+
 .DEFAULT_GOAL = all
 .PHONY: all
 all: check binaries test integration-tests swarmd-tests ## run check, build the binaries and run the tests
@@ -44,6 +50,16 @@ setup: ## install dependencies
 	# install golangci-lint to ./bin/golangci-lint
 	@curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/v2.1.5/install.sh | sh -s v2.1.5
 	@go install tool github.com/containerd/protobuild
+
+.PHONY: install-protoc
+install-protoc: ## install protoc and protobuf include files into DESTDIR
+	@echo "🐳 $@"
+	@tmp=$$(mktemp -d) && trap 'rm -rf "$$tmp"' EXIT && \
+		curl -fsSL -o "$$tmp/protoc.zip" $(PROTOC_URL) && \
+		unzip -q -d "$$tmp" "$$tmp/protoc.zip" 'bin/*' 'include/*' && \
+		chmod -R a+rX "$$tmp/bin" "$$tmp/include" && \
+		mkdir -p $(DESTDIR) && \
+		cp -R "$$tmp/bin" "$$tmp/include" $(DESTDIR)/
 
 .PHONY: generate
 generate: protos

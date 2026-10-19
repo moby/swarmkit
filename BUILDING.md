@@ -87,19 +87,24 @@ make go-mod-vendor
 
 ### Regenerating protobuf bindings
 
-This requires that you have [Protobuf 3.x or
-higher](https://developers.google.com/protocol-buffers/docs/downloads). Once
-that is installed the bindings can be regenerated with:
+This requires `protoc`, the protobuf compiler. Generated code depends on the
+`protoc` version, so use the same version as CI does. To install it (along with
+the standard protobuf definitions) into `/usr/local`, run:
+
+```
+sudo make install-protoc
+```
+
+Alternatively, install it elsewhere using `DESTDIR`, e.g.
+`make install-protoc DESTDIR=$HOME/.local`, and make sure `$DESTDIR/bin` is in
+your `PATH`.
+
+Once `protoc` is installed, the bindings can be regenerated with:
 
 ```
 make setup
 make generate
 ```
-
-NB: As of version 3.0.0-7 the Debian `protobuf-compiler` package lacks
-a dependency on `libprotobuf-dev` which contains some standard proto
-definitions, be sure to install both packages. This is [Debian bug
-#842158](https://bugs.debian.org/842158).
 
 ### Build in a container instead of your local environment
 
