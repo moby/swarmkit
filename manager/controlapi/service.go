@@ -45,7 +45,7 @@ func validateResources(r *api.Resources) error {
 		return status.Errorf(codes.InvalidArgument, "invalid memory value %d: Must be at least 4MiB", r.MemoryBytes)
 	}
 	if err := genericresource.ValidateTask(r); err != nil {
-		return nil
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 	return nil
 }
