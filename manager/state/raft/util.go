@@ -22,7 +22,7 @@ func dial(addr string, _ string, creds credentials.TransportCredentials, timeout
 		grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
 		grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
 		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("tcp", addr, timeout)
+			return (&net.Dialer{Timeout: timeout}).DialContext(context.Background(), "tcp", addr)
 		}),
 	}
 

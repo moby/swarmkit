@@ -117,7 +117,7 @@ func validateExternalCAURL(dialer *net.Dialer, tlsOpts *tls.Config, caURL string
 		port = "443"
 	}
 
-	conn, err := tls.DialWithDialer(dialer, "tcp", net.JoinHostPort(host, port), tlsOpts)
+	conn, err := (&tls.Dialer{NetDialer: dialer, Config: tlsOpts}).DialContext(context.Background(), "tcp", net.JoinHostPort(host, port))
 	if conn != nil {
 		conn.Close()
 	}

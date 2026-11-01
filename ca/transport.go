@@ -87,7 +87,7 @@ func (c *MutableTLSCreds) ClientHandshake(ctx context.Context, addr string, rawC
 	var err error
 	errChannel := make(chan error, 1)
 	go func() {
-		errChannel <- conn.Handshake()
+		errChannel <- conn.HandshakeContext(ctx)
 	}()
 	select {
 	case err = <-errChannel:
@@ -106,7 +106,7 @@ func (c *MutableTLSCreds) ServerHandshake(rawConn net.Conn) (net.Conn, credentia
 	c.Lock()
 	conn := tls.Server(rawConn, c.config)
 	c.Unlock()
-	if err := conn.Handshake(); err != nil {
+	if err := conn.HandshakeContext(context.Background()); err != nil {
 		rawConn.Close()
 		return nil, nil, err
 	}
