@@ -217,22 +217,22 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 
 	managerConfig, qClose1, err := genSecurityConfig(s, rootCA, krw, ca.ManagerRole, organization, "", External)
 	if t != nil {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	managerDiffOrgConfig, qClose2, err := genSecurityConfig(s, rootCA, krw, ca.ManagerRole, "swarm-test-org-2", "", External)
 	if t != nil {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	workerConfig, qClose3, err := genSecurityConfig(s, rootCA, krw, ca.WorkerRole, organization, "", External)
 	if t != nil {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if t != nil {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	baseOpts := []grpc.DialOption{grpc.WithTimeout(10 * time.Second)}
@@ -243,22 +243,22 @@ func newTestCA(t *testing.T, tempBaseDir string, apiRootCA api.RootCA, krwGenera
 
 	conn1, err := grpc.Dial(l.Addr().String(), insecureClientOpts...)
 	if t != nil {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	conn2, err := grpc.Dial(l.Addr().String(), clientOpts...)
 	if t != nil {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	conn3, err := grpc.Dial(l.Addr().String(), managerOpts...)
 	if t != nil {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	conn4, err := grpc.Dial(l.Addr().String(), managerDiffOrgOpts...)
 	if t != nil {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	serverOpts := []grpc.ServerOption{grpc.Creds(managerConfig.ServerTLSCreds)}
