@@ -208,7 +208,7 @@ func (k *KeyReadWriter) Read() ([]byte, []byte, error) {
 	switch {
 	case err == nil:
 		_, err = tls.X509KeyPair(cert, keyBytes)
-	case os.IsNotExist(err): //continue to try temp location
+	case os.IsNotExist(err): // continue to try temp location
 		break
 	default:
 		return nil, nil, err

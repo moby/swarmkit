@@ -405,10 +405,8 @@ func (lb *LogBroker) PublishLogs(stream api.LogBroker_PublishLogsServer) (err er
 			if currentSubscription == nil {
 				return status.Errorf(codes.NotFound, "unknown subscription ID")
 			}
-		} else {
-			if logMsg.SubscriptionID != currentSubscription.ID() {
-				return status.Errorf(codes.InvalidArgument, "different subscription IDs in the same session")
-			}
+		} else if logMsg.SubscriptionID != currentSubscription.ID() {
+			return status.Errorf(codes.InvalidArgument, "different subscription IDs in the same session")
 		}
 
 		// if we have a close message, close out the subscription
