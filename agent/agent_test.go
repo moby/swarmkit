@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -587,8 +588,8 @@ func agentTestEnv(t *testing.T, nodeChangeCh chan *NodeChanges, tlsChangeCh chan
 		testCA:         tc,
 		cleanup: func() {
 			// go in reverse order
-			for i := len(cleanup) - 1; i >= 0; i-- {
-				cleanup[i]()
+			for _, v := range slices.Backward(cleanup) {
+				v()
 			}
 		},
 		remotes: fr,

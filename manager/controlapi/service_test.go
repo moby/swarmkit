@@ -350,11 +350,11 @@ func TestValidateContainerSpec(t *testing.T) {
 				Image: "image",
 				Healthcheck: &api.HealthConfig{
 					Test:          []string{"curl 127.0.0.1:3000"},
-					Interval:      gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
-					Timeout:       gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
-					Retries:       -1,                                                       // invalid negative integer
-					StartPeriod:   gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
-					StartInterval: gogotypes.DurationProto(time.Duration(-1 * time.Second)), // invalid negative duration
+					Interval:      gogotypes.DurationProto(-1 * time.Second), // invalid negative duration
+					Timeout:       gogotypes.DurationProto(-1 * time.Second), // invalid negative duration
+					Retries:       -1,                                        // invalid negative integer
+					StartPeriod:   gogotypes.DurationProto(-1 * time.Second), // invalid negative duration
+					StartInterval: gogotypes.DurationProto(-1 * time.Second), // invalid negative duration
 				},
 			},
 		},
@@ -397,11 +397,11 @@ func TestValidateContainerSpec(t *testing.T) {
 				},
 				Healthcheck: &api.HealthConfig{
 					Test:          []string{"curl 127.0.0.1:3000"},
-					Interval:      gogotypes.DurationProto(time.Duration(1 * time.Second)),
-					Timeout:       gogotypes.DurationProto(time.Duration(3 * time.Second)),
+					Interval:      gogotypes.DurationProto(1 * time.Second),
+					Timeout:       gogotypes.DurationProto(3 * time.Second),
 					Retries:       5,
-					StartPeriod:   gogotypes.DurationProto(time.Duration(1 * time.Second)),
-					StartInterval: gogotypes.DurationProto(time.Duration(1 * time.Second)),
+					StartPeriod:   gogotypes.DurationProto(1 * time.Second),
+					StartInterval: gogotypes.DurationProto(1 * time.Second),
 				},
 			},
 		},
@@ -526,19 +526,19 @@ func TestValidateServiceSpecJobsDifference(t *testing.T) {
 func TestValidateRestartPolicy(t *testing.T) {
 	bad := []*api.RestartPolicy{
 		{
-			Delay:  gogotypes.DurationProto(time.Duration(-1 * time.Second)),
-			Window: gogotypes.DurationProto(time.Duration(-1 * time.Second)),
+			Delay:  gogotypes.DurationProto(-1 * time.Second),
+			Window: gogotypes.DurationProto(-1 * time.Second),
 		},
 		{
-			Delay:  gogotypes.DurationProto(time.Duration(20 * time.Second)),
-			Window: gogotypes.DurationProto(time.Duration(-4 * time.Second)),
+			Delay:  gogotypes.DurationProto(20 * time.Second),
+			Window: gogotypes.DurationProto(-4 * time.Second),
 		},
 	}
 
 	good := []*api.RestartPolicy{
 		{
-			Delay:  gogotypes.DurationProto(time.Duration(10 * time.Second)),
-			Window: gogotypes.DurationProto(time.Duration(1 * time.Second)),
+			Delay:  gogotypes.DurationProto(10 * time.Second),
+			Window: gogotypes.DurationProto(1 * time.Second),
 		},
 	}
 
@@ -557,15 +557,15 @@ func TestValidateUpdate(t *testing.T) {
 	bad := []*api.UpdateConfig{
 		{Delay: -1 * time.Second},
 		{Delay: -1000 * time.Second},
-		{Monitor: gogotypes.DurationProto(time.Duration(-1 * time.Second))},
-		{Monitor: gogotypes.DurationProto(time.Duration(-1000 * time.Second))},
+		{Monitor: gogotypes.DurationProto(-1 * time.Second)},
+		{Monitor: gogotypes.DurationProto(-1000 * time.Second)},
 		{MaxFailureRatio: -0.1},
 		{MaxFailureRatio: 1.1},
 	}
 
 	good := []*api.UpdateConfig{
 		{Delay: time.Second},
-		{Monitor: gogotypes.DurationProto(time.Duration(time.Second))},
+		{Monitor: gogotypes.DurationProto(time.Second)},
 		{MaxFailureRatio: 0.5},
 	}
 
@@ -595,7 +595,7 @@ func TestCreateService(t *testing.T) {
 	// test port conflicts
 	spec = createSpec("name2", "image", 1)
 	spec.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
-		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.ProtocolTCP},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
 	assert.NoError(t, err)
@@ -603,7 +603,7 @@ func TestCreateService(t *testing.T) {
 
 	spec2 := createSpec("name3", "image", 1)
 	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
-		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.ProtocolTCP},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
 	assert.Error(t, err)
@@ -612,14 +612,14 @@ func TestCreateService(t *testing.T) {
 	// test no port conflicts when no publish port is specified
 	spec3 := createSpec("name4", "image", 1)
 	spec3.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
-		{TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+		{TargetPort: uint32(9000), Protocol: api.ProtocolTCP},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec3})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, r.Service.ID)
 	spec4 := createSpec("name5", "image", 1)
 	spec4.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
-		{TargetPort: uint32(9001), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+		{TargetPort: uint32(9001), Protocol: api.ProtocolTCP},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec4})
 	assert.NoError(t, err)
@@ -627,7 +627,7 @@ func TestCreateService(t *testing.T) {
 	// ensure no port conflict when different protocols are used
 	spec = createSpec("name6", "image", 1)
 	spec.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
-		{PublishedPort: uint32(9100), TargetPort: uint32(9100), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+		{PublishedPort: uint32(9100), TargetPort: uint32(9100), Protocol: api.ProtocolTCP},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
 	assert.NoError(t, err)
@@ -635,7 +635,7 @@ func TestCreateService(t *testing.T) {
 
 	spec2 = createSpec("name7", "image", 1)
 	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
-		{PublishedPort: uint32(9100), TargetPort: uint32(9100), Protocol: api.PortConfig_Protocol(api.ProtocolUDP)},
+		{PublishedPort: uint32(9100), TargetPort: uint32(9100), Protocol: api.ProtocolUDP},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
 	assert.NoError(t, err)
@@ -643,7 +643,7 @@ func TestCreateService(t *testing.T) {
 	// ensure no port conflict when host ports overlap
 	spec = createSpec("name8", "image", 1)
 	spec.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
-		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9101), TargetPort: uint32(9101), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9101), TargetPort: uint32(9101), Protocol: api.ProtocolTCP},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
 	assert.NoError(t, err)
@@ -651,7 +651,7 @@ func TestCreateService(t *testing.T) {
 
 	spec2 = createSpec("name9", "image", 1)
 	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
-		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9101), TargetPort: uint32(9101), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9101), TargetPort: uint32(9101), Protocol: api.ProtocolTCP},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
 	assert.NoError(t, err)
@@ -659,7 +659,7 @@ func TestCreateService(t *testing.T) {
 	// ensure port conflict when host ports overlaps with ingress port (host port first)
 	spec = createSpec("name10", "image", 1)
 	spec.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
-		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9102), TargetPort: uint32(9102), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9102), TargetPort: uint32(9102), Protocol: api.ProtocolTCP},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
 	assert.NoError(t, err)
@@ -667,7 +667,7 @@ func TestCreateService(t *testing.T) {
 
 	spec2 = createSpec("name11", "image", 1)
 	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
-		{PublishMode: api.PublishModeIngress, PublishedPort: uint32(9102), TargetPort: uint32(9102), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+		{PublishMode: api.PublishModeIngress, PublishedPort: uint32(9102), TargetPort: uint32(9102), Protocol: api.ProtocolTCP},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
 	assert.Error(t, err)
@@ -676,7 +676,7 @@ func TestCreateService(t *testing.T) {
 	// ensure port conflict when host ports overlaps with ingress port (ingress port first)
 	spec = createSpec("name12", "image", 1)
 	spec.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
-		{PublishMode: api.PublishModeIngress, PublishedPort: uint32(9103), TargetPort: uint32(9103), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+		{PublishMode: api.PublishModeIngress, PublishedPort: uint32(9103), TargetPort: uint32(9103), Protocol: api.ProtocolTCP},
 	}}
 	r, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec})
 	assert.NoError(t, err)
@@ -684,7 +684,7 @@ func TestCreateService(t *testing.T) {
 
 	spec2 = createSpec("name13", "image", 1)
 	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
-		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9103), TargetPort: uint32(9103), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+		{PublishMode: api.PublishModeHost, PublishedPort: uint32(9103), TargetPort: uint32(9103), Protocol: api.ProtocolTCP},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
 	assert.Error(t, err)
@@ -1009,7 +1009,7 @@ func TestUpdateService(t *testing.T) {
 	// test port conflicts
 	spec2 := createSpec("name2", "image", 1)
 	spec2.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
-		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.ProtocolTCP},
 	}}
 	_, err = ts.Client.CreateService(context.Background(), &api.CreateServiceRequest{Spec: spec2})
 	assert.NoError(t, err)
@@ -1019,7 +1019,7 @@ func TestUpdateService(t *testing.T) {
 	assert.NoError(t, err)
 
 	spec3.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
-		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+		{PublishedPort: uint32(9000), TargetPort: uint32(9000), Protocol: api.ProtocolTCP},
 	}}
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      rs.Service.ID,
@@ -1029,7 +1029,7 @@ func TestUpdateService(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, codes.InvalidArgument, testutils.ErrorCode(err))
 	spec3.Endpoint = &api.EndpointSpec{Ports: []*api.PortConfig{
-		{PublishedPort: uint32(9001), TargetPort: uint32(9000), Protocol: api.PortConfig_Protocol(api.ProtocolTCP)},
+		{PublishedPort: uint32(9001), TargetPort: uint32(9000), Protocol: api.ProtocolTCP},
 	}}
 	_, err = ts.Client.UpdateService(context.Background(), &api.UpdateServiceRequest{
 		ServiceID:      rs.Service.ID,

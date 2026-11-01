@@ -567,7 +567,7 @@ type nonSigningCAServer struct {
 	tc               *cautils.TestCA
 	server           *grpc.Server
 	addr             string
-	nodeStatusCalled int64
+	nodeStatusCalled atomic.Int64
 }
 
 func newNonSigningCAServer(t *testing.T, tc *cautils.TestCA) *nonSigningCAServer {
@@ -600,7 +600,7 @@ func (n *nonSigningCAServer) getConnBroker() *connectionbroker.Broker {
 
 // only returns the status in the store
 func (n *nonSigningCAServer) NodeCertificateStatus(ctx context.Context, request *api.NodeCertificateStatusRequest) (*api.NodeCertificateStatusResponse, error) {
-	atomic.AddInt64(&n.nodeStatusCalled, 1)
+	n.nodeStatusCalled.Add(1)
 	for {
 		var node *api.Node
 		n.tc.MemoryStore.View(func(tx store.ReadTx) {
@@ -703,7 +703,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 
 	// wait for the calls to NodeCertificateStatus to begin on the first signing server before we start timing
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
-		if atomic.LoadInt64(&fakeCAServer.nodeStatusCalled) == 0 {
+		if fakeCAServer.nodeStatusCalled.Load() == 0 {
 			return fmt.Errorf("waiting for NodeCertificateStatus to be called")
 		}
 		return nil
@@ -719,7 +719,7 @@ func TestGetRemoteSignedCertificateWithPending(t *testing.T) {
 	case <-time.After(2500 * time.Millisecond):
 		// good, it's still polling so we can proceed with the test
 	}
-	require.True(t, atomic.LoadInt64(&fakeCAServer.nodeStatusCalled) > 1, "expected NodeCertificateStatus to have been polled more than once")
+	require.True(t, fakeCAServer.nodeStatusCalled.Load() > 1, "expected NodeCertificateStatus to have been polled more than once")
 
 	// Directly update the status of the store
 	err = tc.MemoryStore.Update(func(tx store.Tx) error {
@@ -843,7 +843,7 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 
 	// wait for the calls to NodeCertificateStatus to begin on the first signing server
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
-		if atomic.LoadInt64(&fakeSigningServers[0].nodeStatusCalled) == 0 {
+		if fakeSigningServers[0].nodeStatusCalled.Load() == 0 {
 			return fmt.Errorf("waiting for NodeCertificateStatus to be called")
 		}
 		return nil
@@ -861,7 +861,7 @@ func TestGetRemoteSignedCertificateConnectionErrors(t *testing.T) {
 
 	// wait for the calls to NodeCertificateStatus to begin on the second signing server
 	require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
-		if atomic.LoadInt64(&fakeSigningServers[1].nodeStatusCalled) == 0 {
+		if fakeSigningServers[1].nodeStatusCalled.Load() == 0 {
 			return fmt.Errorf("waiting for NodeCertificateStatus to be called")
 		}
 		return nil
