@@ -1986,22 +1986,23 @@ func (suite *testSuite) TestServicePortAllocationIsRepeatable() {
 }
 
 func isValidNode(t assert.TestingT, originalNode, updatedNode *api.Node, networks []string) bool {
+	if !assert.NotNil(t, updatedNode) {
+		return false
+	}
 
 	if !assert.Equal(t, originalNode.ID, updatedNode.ID) {
 		return false
 	}
 
-	if !assert.Equal(t, len(updatedNode.Attachments), len(networks)) {
-		return false
-	}
-
+	var attached []string
 	for _, na := range updatedNode.Attachments {
 		if !assert.Equal(t, len(na.Addresses), 1) {
 			return false
 		}
+		attached = append(attached, na.Network.ID)
 	}
 
-	return true
+	return assert.ElementsMatch(t, networks, attached, "networks attached to node %s", updatedNode.ID)
 }
 
 func isValidNetwork(t assert.TestingT, n *api.Network) bool {
@@ -2076,9 +2077,8 @@ func watchNode(t *testing.T, watch chan events.Event, expectTimeout bool,
 	fn func(t assert.TestingT, originalNode, updatedNode *api.Node, networks []string) bool,
 	originalNode *api.Node,
 	networks []string) {
+	var node *api.Node
 	for {
-
-		var node *api.Node
 		select {
 		case event := <-watch:
 			if n, ok := event.(api.EventUpdateNode); ok {
@@ -2097,7 +2097,9 @@ func watchNode(t *testing.T, watch chan events.Event, expectTimeout bool,
 
 		case <-time.After(getWatchTimeout(expectTimeout)):
 			if !expectTimeout {
-				fn(t, originalNode, node, networks)
+				if fn != nil && node != nil {
+					fn(t, originalNode, node, networks)
+				}
 				t.Fatal("timed out before watchNode found expected node state", string(debug.Stack()))
 			}
 
@@ -2107,8 +2109,8 @@ func watchNode(t *testing.T, watch chan events.Event, expectTimeout bool,
 }
 
 func watchNetwork(t *testing.T, watch chan events.Event, expectTimeout bool, fn func(t assert.TestingT, n *api.Network) bool) {
+	var network *api.Network
 	for {
-		var network *api.Network
 		select {
 		case event := <-watch:
 			if n, ok := event.(api.EventUpdateNetwork); ok {
@@ -2127,7 +2129,9 @@ func watchNetwork(t *testing.T, watch chan events.Event, expectTimeout bool, fn 
 
 		case <-time.After(getWatchTimeout(expectTimeout)):
 			if !expectTimeout {
-				fn(t, network)
+				if fn != nil && network != nil {
+					fn(t, network)
+				}
 				t.Fatal("timed out before watchNetwork found expected network state", string(debug.Stack()))
 			}
 
