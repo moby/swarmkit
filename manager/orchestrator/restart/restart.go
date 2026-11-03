@@ -19,6 +19,25 @@ import (
 
 const defaultOldTaskTimeout = time.Minute
 
+// buffer added to stop grace period to account for SIGKILL and state reporting
+const stopGracePeriodBuffer = 5 * time.Second
+
+func stopGracePeriod(ctx context.Context, t *api.Task) (time.Duration, bool) {
+	container := t.Spec.GetContainer()
+	if container == nil || container.StopGracePeriod == nil {
+		return 0, false
+	}
+	grace, err := gogotypes.DurationFromProto(container.StopGracePeriod)
+	if err != nil {
+		log.G(ctx).WithError(err).WithField("task.id", t.ID).Error("invalid stop grace period")
+		return 0, false
+	}
+	if grace <= 0 {
+		return 0, false
+	}
+	return grace, true
+}
+
 type restartedInstance struct {
 	timestamp time.Time
 }
@@ -485,7 +504,18 @@ func (r *Supervisor) DelayStart(ctx context.Context, _ store.Tx, oldTask *api.Ta
 			close(doneCh)
 		}()
 
-		oldTaskTimer := time.NewTimer(r.TaskTimeout)
+		// if task specifies a StopGracePeriod larger than TaskTimeout, wait for it
+		// so stop-first doesn't start the new task before the old one stops.
+		oldTaskTimeout := r.TaskTimeout
+		if waitForTask {
+			if grace, ok := stopGracePeriod(ctx, oldTask); ok {
+				if budget := grace + stopGracePeriodBuffer; budget > oldTaskTimeout {
+					oldTaskTimeout = budget
+				}
+			}
+		}
+
+		oldTaskTimer := time.NewTimer(oldTaskTimeout)
 		defer oldTaskTimer.Stop()
 
 		// Wait for the delay to elapse, if one is specified.

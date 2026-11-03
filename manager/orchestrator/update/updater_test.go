@@ -702,3 +702,128 @@ func TestUpdaterOrder(t *testing.T) {
 		}
 	}
 }
+
+// TestUpdaterStopGracePeriod tests that stop-first updates respect the old task's
+// stop grace period before releasing the replacement (#3274).
+func TestUpdaterStopGracePeriod(t *testing.T) {
+	ctx := context.Background()
+	s := store.NewMemoryStore(nil)
+	assert.NotNil(t, s)
+	defer s.Close()
+
+	// simulate slow shutdown: don't progress old task to shutdown yet
+	watch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateTask{})
+	defer cancel()
+	go func() {
+		for e := range watch {
+			task := e.(api.EventUpdateTask).Task
+			_ = s.Update(func(tx store.Tx) error {
+				task = store.GetTask(tx, task.ID)
+				if task == nil {
+					return nil
+				}
+				if task.DesiredState == api.TaskStateRunning && task.Status.State != api.TaskStateRunning {
+					task.Status.State = api.TaskStateRunning
+					return store.UpdateTask(tx, task)
+				}
+				return nil
+			})
+		}
+	}()
+
+	const (
+		stopGracePeriod = 2 * time.Second
+		taskTimeout     = 50 * time.Millisecond
+		observeAfter    = 500 * time.Millisecond
+	)
+
+	service := &api.Service{
+		ID: "id1",
+		Spec: api.ServiceSpec{
+			Annotations: api.Annotations{
+				Name: "name1",
+			},
+			Task: api.TaskSpec{
+				Runtime: &api.TaskSpec_Container{
+					Container: &api.ContainerSpec{
+						Image:           "v:1",
+						StopGracePeriod: gogotypes.DurationProto(stopGracePeriod),
+					},
+				},
+			},
+			Mode: &api.ServiceSpec_Replicated{
+				Replicated: &api.ReplicatedService{
+					Replicas: 1,
+				},
+			},
+			Update: &api.UpdateConfig{
+				Order:   api.UpdateConfig_STOP_FIRST,
+				Monitor: gogotypes.DurationProto(50 * time.Millisecond),
+			},
+		},
+	}
+
+	err := s.Update(func(tx store.Tx) error {
+		assert.NoError(t, store.CreateService(tx, service))
+		task := orchestrator.NewTask(nil, service, 0, "")
+		task.Status.State = api.TaskStateRunning
+		assert.NoError(t, store.CreateTask(tx, task))
+		return nil
+	})
+	assert.NoError(t, err)
+
+	originalSlots := getRunnableSlotSlice(t, s, service)
+	require.Len(t, originalSlots, 1)
+	require.Len(t, originalSlots[0], 1)
+	oldTaskID := originalSlots[0][0].ID
+
+	service.Spec.Task.GetContainer().Image = "v:2"
+	updater := NewUpdater(s, restart.NewSupervisor(s), nil, service)
+	updater.restarts.TaskTimeout = taskTimeout
+
+	runDone := make(chan struct{})
+	go func() {
+		defer close(runDone)
+		updater.Run(ctx, originalSlots)
+	}()
+
+	// replacement should still be in READY since grace period has not elapsed
+	time.Sleep(observeAfter)
+
+	var replacement *api.Task
+	s.View(func(tx store.ReadTx) {
+		tasks, err := store.FindTasks(tx, store.ByServiceID(service.ID))
+		require.NoError(t, err)
+		for _, task := range tasks {
+			if task.ID != oldTaskID {
+				replacement = task
+			}
+		}
+	})
+	require.NotNil(t, replacement, "updater should have created a replacement task")
+	assert.Equal(t, "v:2", replacement.Spec.GetContainer().Image)
+	assert.Equal(t, api.TaskStateReady, replacement.DesiredState)
+
+	// finish stopping old task; updater should proceed immediately
+	err = s.Update(func(tx store.Tx) error {
+		task := store.GetTask(tx, oldTaskID)
+		require.NotNil(t, task)
+		task.Status.State = api.TaskStateShutdown
+		return store.UpdateTask(tx, task)
+	})
+	assert.NoError(t, err)
+
+	select {
+	case <-runDone:
+	case <-time.After(stopGracePeriod):
+		t.Fatal("updater did not proceed after the old task stopped")
+	}
+
+	updatedSlots := getRunnableSlotSlice(t, s, service)
+	require.Len(t, updatedSlots, 1)
+	for _, slot := range updatedSlots {
+		for _, task := range slot {
+			assert.Equal(t, "v:2", task.Spec.GetContainer().Image)
+		}
+	}
+}
