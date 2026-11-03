@@ -171,13 +171,21 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			break
 		}
 
-		if err := a.store.Batch(func(batch *store.Batch) error {
+		err := a.store.Batch(func(batch *store.Batch) error {
 			return a.commitAllocatedNetwork(ctx, batch, n)
-		}); err != nil {
+		})
+		if err != nil {
 			log.G(ctx).WithError(err).Errorf("Failed to commit allocation for network %s", n.ID)
 		}
 		if IsIngressNetwork(n) {
 			nc.ingressNetwork = n
+			// Nodes which have already been allocated need a load
+			// balancer attachment on the new ingress network.
+			if err == nil {
+				if err := a.allocateNodes(ctx, false); err != nil {
+					log.G(ctx).WithError(err).Errorf("Failed to allocate nodes on ingress network %s", n.ID)
+				}
+			}
 		}
 	case api.EventDeleteNetwork:
 		n := v.Network.Copy()
