@@ -2,6 +2,8 @@ package allocator
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"testing"
 
 	"github.com/moby/swarmkit/v2/api"
@@ -26,17 +28,23 @@ func TestNodeAllocatorIngressMock(t *testing.T) {
 
 // mockNetworkProvider is a [networkallocator.Provider] for
 // mockNetworkAllocator.
-type mockNetworkProvider struct{}
+type mockNetworkProvider struct {
+	// failAllocate maps a network ID to the number of times the
+	// allocators it creates fail to allocate that network before
+	// succeeding.
+	failAllocate map[string]int
+}
 
 var _ networkallocator.Provider = mockNetworkProvider{}
 
-func (mockNetworkProvider) NewAllocator(*networkallocator.Config) (networkallocator.NetworkAllocator, error) {
+func (np mockNetworkProvider) NewAllocator(*networkallocator.Config) (networkallocator.NetworkAllocator, error) {
 	return &mockNetworkAllocator{
-		networks:    make(map[string]int),
-		nextHost:    make(map[string]int),
-		services:    make(map[string]struct{}),
-		tasks:       make(map[string]struct{}),
-		attachments: make(map[[2]string]struct{}),
+		failAllocate: maps.Clone(np.failAllocate),
+		networks:     make(map[string]int),
+		nextHost:     make(map[string]int),
+		services:     make(map[string]struct{}),
+		tasks:        make(map[string]struct{}),
+		attachments:  make(map[[2]string]struct{}),
 	}, nil
 }
 
@@ -55,6 +63,9 @@ func (mockNetworkProvider) ValidateIPAMDriver(*api.Driver) error           { ret
 // keeps addresses which are already set, so that the allocator can restore
 // its state at init.
 type mockNetworkAllocator struct {
+	// failAllocate maps a network ID to the number of times left that
+	// Allocate fails for that network.
+	failAllocate map[string]int
 	// networks maps the ID of each allocated network to its subnet number.
 	networks   map[string]int
 	nextSubnet int
@@ -77,6 +88,10 @@ func (na *mockNetworkAllocator) IsAllocated(n *api.Network) bool {
 func (na *mockNetworkAllocator) Allocate(n *api.Network) error {
 	if na.IsAllocated(n) {
 		return fmt.Errorf("network %s is already allocated", n.ID)
+	}
+	if na.failAllocate[n.ID] > 0 {
+		na.failAllocate[n.ID]--
+		return fmt.Errorf("mock failure allocating network %s", n.ID)
 	}
 	na.nextSubnet++
 	na.networks[n.ID] = na.nextSubnet
@@ -104,7 +119,27 @@ func (na *mockNetworkAllocator) IsServiceAllocated(s *api.Service, _ ...func(*ne
 	return ok
 }
 
+// AllocateService gives each of s's virtual IPs an address. Like the real
+// network allocator, it drops a virtual IP on a network which is neither
+// allocated nor attached to s's tasks.
 func (na *mockNetworkAllocator) AllocateService(s *api.Service) error {
+	if s.Endpoint != nil {
+		vips := s.Endpoint.VirtualIPs[:0]
+		for _, vip := range s.Endpoint.VirtualIPs {
+			_, allocated := na.networks[vip.NetworkID]
+			attached := slices.ContainsFunc(s.Spec.Task.Networks, func(n *api.NetworkAttachmentConfig) bool {
+				return n.Target == vip.NetworkID
+			})
+			if !allocated && !attached {
+				continue
+			}
+			if err := na.allocateAddress(vip.NetworkID, &vip.Addr); err != nil {
+				return err
+			}
+			vips = append(vips, vip)
+		}
+		s.Endpoint.VirtualIPs = vips
+	}
 	na.services[s.ID] = struct{}{}
 	return nil
 }
@@ -121,7 +156,7 @@ func (na *mockNetworkAllocator) IsTaskAllocated(t *api.Task) bool {
 
 func (na *mockNetworkAllocator) AllocateTask(t *api.Task) error {
 	for _, a := range t.Networks {
-		if err := na.allocateAddress(a); err != nil {
+		if err := na.allocateAttachment(a); err != nil {
 			return err
 		}
 	}
@@ -135,7 +170,7 @@ func (na *mockNetworkAllocator) DeallocateTask(t *api.Task) error {
 }
 
 func (na *mockNetworkAllocator) AllocateAttachment(node *api.Node, a *api.NetworkAttachment) error {
-	if err := na.allocateAddress(a); err != nil {
+	if err := na.allocateAttachment(a); err != nil {
 		return err
 	}
 	na.attachments[[2]string{node.ID, a.Network.ID}] = struct{}{}
@@ -152,16 +187,30 @@ func (na *mockNetworkAllocator) IsAttachmentAllocated(node *api.Node, a *api.Net
 	return ok
 }
 
-// allocateAddress gives a an address on its network unless it already has
-// one.
-func (na *mockNetworkAllocator) allocateAddress(a *api.NetworkAttachment) error {
-	subnet, ok := na.networks[a.Network.ID]
-	if !ok {
-		return fmt.Errorf("network %s is not allocated", a.Network.ID)
+// allocateAttachment gives a an address on its network unless it already
+// has one.
+func (na *mockNetworkAllocator) allocateAttachment(a *api.NetworkAttachment) error {
+	var addr string
+	if len(a.Addresses) > 0 {
+		addr = a.Addresses[0]
 	}
-	if len(a.Addresses) == 0 {
-		na.nextHost[a.Network.ID]++
-		a.Addresses = []string{fmt.Sprintf("10.0.%d.%d/24", subnet, na.nextHost[a.Network.ID]+1)}
+	if err := na.allocateAddress(a.Network.ID, &addr); err != nil {
+		return err
+	}
+	a.Addresses = []string{addr}
+	return nil
+}
+
+// allocateAddress sets *addr to the next address on network nwID unless it
+// is already set.
+func (na *mockNetworkAllocator) allocateAddress(nwID string, addr *string) error {
+	subnet, ok := na.networks[nwID]
+	if !ok {
+		return fmt.Errorf("network %s is not allocated", nwID)
+	}
+	if *addr == "" {
+		na.nextHost[nwID]++
+		*addr = fmt.Sprintf("10.0.%d.%d/24", subnet, na.nextHost[nwID]+1)
 	}
 	return nil
 }
