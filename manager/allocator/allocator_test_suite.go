@@ -1439,6 +1439,119 @@ func (suite *testSuite) TestNodeAllocator() {
 	isValidNode(suite.T(), node1, node1FromStore, []string{"ingress", "overlayID1"})
 }
 
+func ingressNetwork(id string) *api.Network {
+	return &api.Network{
+		ID: id,
+		Spec: api.NetworkSpec{
+			Annotations: api.Annotations{Name: id},
+			Ingress:     true,
+		},
+	}
+}
+
+// TestNodeAllocatorIngressReplaced checks that nodes get an attachment on an
+// ingress network that replaces a deleted one.
+func (suite *testSuite) TestNodeAllocatorIngressReplaced() {
+	s := store.NewMemoryStore(nil)
+	suite.NotNil(s)
+	defer s.Close()
+
+	a := suite.newAllocator(s)
+
+	// node1 runs no tasks, node2 runs a task attached to overlay1.
+	node1 := &api.Node{ID: "nodeID1"}
+	node2 := &api.Node{ID: "nodeID2"}
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.CreateNetwork(tx, ingressNetwork("ingress-old")))
+		suite.NoError(store.CreateNetwork(tx, &api.Network{
+			ID:   "overlay1",
+			Spec: api.NetworkSpec{Annotations: api.Annotations{Name: "overlay1"}},
+		}))
+		suite.NoError(store.CreateNode(tx, node1))
+		suite.NoError(store.CreateNode(tx, node2))
+		return store.CreateTask(tx, &api.Task{
+			ID:           "task1",
+			NodeID:       node2.ID,
+			DesiredState: api.TaskStateRunning,
+			Spec: api.TaskSpec{
+				Networks: []*api.NetworkAttachmentConfig{{Target: "overlay1"}},
+			},
+		})
+	}))
+
+	netWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
+	defer cancel()
+
+	defer suite.startAllocator(a)()
+
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork) // ingress-old
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork) // overlay1
+	waitNodeAttachments(suite.T(), s, node1, []string{"ingress-old"})
+	waitNodeAttachments(suite.T(), s, node2, []string{"ingress-old", "overlay1"})
+
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		return store.DeleteNetwork(tx, "ingress-old")
+	}))
+	watchNetwork(suite.T(), netWatch, false, nil) // delete event
+	waitNodeAttachments(suite.T(), s, node1, []string{})
+	waitNodeAttachments(suite.T(), s, node2, []string{"overlay1"})
+
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		return store.CreateNetwork(tx, ingressNetwork("ingress-new"))
+	}))
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork) // ingress-new
+	waitNodeAttachments(suite.T(), s, node1, []string{"ingress-new"})
+	waitNodeAttachments(suite.T(), s, node2, []string{"ingress-new", "overlay1"})
+}
+
+// TestNodeAllocatorIngressCreated checks that nodes get an attachment on an
+// ingress network created after the allocator started without one.
+func (suite *testSuite) TestNodeAllocatorIngressCreated() {
+	s := store.NewMemoryStore(nil)
+	suite.NotNil(s)
+	defer s.Close()
+
+	a := suite.newAllocator(s)
+
+	// node1 runs no tasks, so allocating it at init commits nothing. node2
+	// runs a task attached to overlay1.
+	node1 := &api.Node{ID: "nodeID1"}
+	node2 := &api.Node{ID: "nodeID2"}
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		suite.NoError(store.CreateNetwork(tx, &api.Network{
+			ID:   "overlay1",
+			Spec: api.NetworkSpec{Annotations: api.Annotations{Name: "overlay1"}},
+		}))
+		suite.NoError(store.CreateNode(tx, node1))
+		suite.NoError(store.CreateNode(tx, node2))
+		return store.CreateTask(tx, &api.Task{
+			ID:           "task1",
+			NodeID:       node2.ID,
+			DesiredState: api.TaskStateRunning,
+			Spec: api.TaskSpec{
+				Networks: []*api.NetworkAttachmentConfig{{Target: "overlay1"}},
+			},
+		})
+	}))
+
+	netWatch, cancel := state.Watch(s.WatchQueue(), api.EventUpdateNetwork{}, api.EventDeleteNetwork{})
+	defer cancel()
+
+	defer suite.startAllocator(a)()
+
+	// The allocator commits overlay1 at init, after it has looked for an
+	// ingress network, so an ingress network created from here on is
+	// allocated from its create event.
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork) // overlay1
+
+	suite.NoError(s.Update(func(tx store.Tx) error {
+		return store.CreateNetwork(tx, ingressNetwork("ingress"))
+	}))
+	watchNetwork(suite.T(), netWatch, false, isValidNetwork) // ingress
+	waitNodeAttachments(suite.T(), s, node1, []string{"ingress"})
+	waitNodeAttachments(suite.T(), s, node2, []string{"ingress", "overlay1"})
+}
+
 // TestNodeAttachmentOnLeadershipChange tests that a Node which is only partly
 // allocated during a leadership change is correctly allocated afterward
 func (suite *testSuite) TestNodeAttachmentOnLeadershipChange() {
@@ -1986,22 +2099,36 @@ func (suite *testSuite) TestServicePortAllocationIsRepeatable() {
 }
 
 func isValidNode(t assert.TestingT, originalNode, updatedNode *api.Node, networks []string) bool {
+	if !assert.NotNil(t, updatedNode) {
+		return false
+	}
 
 	if !assert.Equal(t, originalNode.ID, updatedNode.ID) {
 		return false
 	}
 
-	if !assert.Equal(t, len(updatedNode.Attachments), len(networks)) {
-		return false
-	}
-
+	var attached []string
 	for _, na := range updatedNode.Attachments {
 		if !assert.Equal(t, len(na.Addresses), 1) {
 			return false
 		}
+		attached = append(attached, na.Network.ID)
 	}
 
-	return true
+	return assert.ElementsMatch(t, networks, attached, "networks attached to node %s", updatedNode.ID)
+}
+
+// waitNodeAttachments waits until the node in store s has valid attachments
+// on exactly the given networks.
+func waitNodeAttachments(t *testing.T, s *store.MemoryStore, node *api.Node, networks []string) {
+	t.Helper()
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		var n *api.Node
+		s.View(func(tx store.ReadTx) {
+			n = store.GetNode(tx, node.ID)
+		})
+		isValidNode(c, node, n, networks)
+	}, getWatchTimeout(false), 10*time.Millisecond)
 }
 
 func isValidNetwork(t assert.TestingT, n *api.Network) bool {
@@ -2076,9 +2203,8 @@ func watchNode(t *testing.T, watch chan events.Event, expectTimeout bool,
 	fn func(t assert.TestingT, originalNode, updatedNode *api.Node, networks []string) bool,
 	originalNode *api.Node,
 	networks []string) {
+	var node *api.Node
 	for {
-
-		var node *api.Node
 		select {
 		case event := <-watch:
 			if n, ok := event.(api.EventUpdateNode); ok {
@@ -2097,7 +2223,9 @@ func watchNode(t *testing.T, watch chan events.Event, expectTimeout bool,
 
 		case <-time.After(getWatchTimeout(expectTimeout)):
 			if !expectTimeout {
-				fn(t, originalNode, node, networks)
+				if fn != nil && node != nil {
+					fn(t, originalNode, node, networks)
+				}
 				t.Fatal("timed out before watchNode found expected node state", string(debug.Stack()))
 			}
 
@@ -2107,8 +2235,8 @@ func watchNode(t *testing.T, watch chan events.Event, expectTimeout bool,
 }
 
 func watchNetwork(t *testing.T, watch chan events.Event, expectTimeout bool, fn func(t assert.TestingT, n *api.Network) bool) {
+	var network *api.Network
 	for {
-		var network *api.Network
 		select {
 		case event := <-watch:
 			if n, ok := event.(api.EventUpdateNetwork); ok {
@@ -2127,7 +2255,9 @@ func watchNetwork(t *testing.T, watch chan events.Event, expectTimeout bool, fn 
 
 		case <-time.After(getWatchTimeout(expectTimeout)):
 			if !expectTimeout {
-				fn(t, network)
+				if fn != nil && network != nil {
+					fn(t, network)
+				}
 				t.Fatal("timed out before watchNetwork found expected network state", string(debug.Stack()))
 			}
 

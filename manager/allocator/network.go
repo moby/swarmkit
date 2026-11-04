@@ -160,10 +160,16 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 		if nc.nwkAllocator.IsAllocated(n) {
 			break
 		}
-		if IsIngressNetwork(n) && nc.ingressNetwork != nil {
-			log.G(ctx).Errorf("Cannot allocate ingress network %s (%s) because another ingress network is already present: %s (%s)",
-				n.ID, n.Spec.Annotations.Name, nc.ingressNetwork.ID, nc.ingressNetwork.Spec.Annotations.Name)
-			break
+		if IsIngressNetwork(n) {
+			if nc.ingressNetwork != nil {
+				log.G(ctx).Errorf("Cannot allocate ingress network %s (%s) because another ingress network is already present: %s (%s)",
+					n.ID, n.Spec.Annotations.Name, nc.ingressNetwork.ID, nc.ingressNetwork.Spec.Annotations.Name)
+				break
+			}
+			// As at init, record the ingress network before allocating
+			// it, so that services and tasks are attached to it while a
+			// failed allocation is retried.
+			nc.ingressNetwork = n
 		}
 
 		if err := a.allocateNetwork(ctx, n); err != nil {
@@ -175,9 +181,14 @@ func (a *Allocator) doNetworkAlloc(ctx context.Context, ev events.Event) {
 			return a.commitAllocatedNetwork(ctx, batch, n)
 		}); err != nil {
 			log.G(ctx).WithError(err).Errorf("Failed to commit allocation for network %s", n.ID)
+			break
 		}
 		if IsIngressNetwork(n) {
-			nc.ingressNetwork = n
+			// Nodes which have already been allocated need a load
+			// balancer attachment on the new ingress network.
+			if err := a.allocateNodes(ctx, false); err != nil {
+				log.G(ctx).WithError(err).Errorf("Failed to allocate nodes on ingress network %s", n.ID)
+			}
 		}
 	case api.EventDeleteNetwork:
 		n := v.Network.Copy()
@@ -1177,6 +1188,12 @@ func (a *Allocator) allocateService(_ context.Context, s *api.Service, existingA
 			if nc.ingressNetwork == nil {
 				return fmt.Errorf("ingress network is missing")
 			}
+			// The network allocator drops a virtual IP on a network it
+			// has not allocated, so wait for the ingress network.
+			if !nc.nwkAllocator.IsAllocated(nc.ingressNetwork) {
+				nc.unallocatedServices[s.ID] = s
+				return fmt.Errorf("ingress network %s is not allocated", nc.ingressNetwork.ID)
+			}
 			var found bool
 			for _, vip := range s.Endpoint.VirtualIPs {
 				if vip.NetworkID == nc.ingressNetwork.ID {
@@ -1289,6 +1306,13 @@ func (a *Allocator) commitAllocatedNetwork(ctx context.Context, batch *store.Bat
 		}
 
 		return err
+	}
+
+	// Attach nodes and tasks to the ingress network as allocated, not to
+	// a copy from before allocation.
+	nc := a.netCtx
+	if IsIngressNetwork(n) && (nc.ingressNetwork == nil || nc.ingressNetwork.ID == n.ID) {
+		nc.ingressNetwork = n
 	}
 
 	return nil
@@ -1412,6 +1436,7 @@ func (a *Allocator) procUnallocatedNetworks(ctx context.Context) {
 		return
 	}
 
+	var ingressAllocated bool
 	err := a.store.Batch(func(batch *store.Batch) error {
 		for _, n := range allocatedNetworks {
 			if err := a.commitAllocatedNetwork(ctx, batch, n); err != nil {
@@ -1419,6 +1444,9 @@ func (a *Allocator) procUnallocatedNetworks(ctx context.Context) {
 				continue
 			}
 			delete(nc.unallocatedNetworks, n.ID)
+			if IsIngressNetwork(n) {
+				ingressAllocated = true
+			}
 		}
 		return nil
 	})
@@ -1430,6 +1458,15 @@ func (a *Allocator) procUnallocatedNetworks(ctx context.Context) {
 		// but since the transaction has failed, we requeue them here.
 		for _, n := range allocatedNetworks {
 			nc.unallocatedNetworks[n.ID] = n
+		}
+		return
+	}
+
+	// Nodes which have already been allocated need a load balancer
+	// attachment on the ingress network.
+	if ingressAllocated {
+		if err := a.allocateNodes(ctx, false); err != nil {
+			log.G(ctx).WithError(err).Error("Failed to allocate nodes on ingress network")
 		}
 	}
 }
