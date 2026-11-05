@@ -943,7 +943,9 @@ func (s *Scheduler) noSuitableNode(ctx context.Context, taskGroup map[string]*ap
 		newT.Status.Timestamp = ptypes.MustTimestampProto(time.Now())
 		sv := service.SpecVersion
 		tv := newT.SpecVersion
-		if sv != nil && tv != nil && sv.Index > tv.Index {
+		// A metadata-only service update can leave a valid task on an older
+		// revision. Keep retrying it until the orchestrator requests shutdown.
+		if sv != nil && tv != nil && sv.Index > tv.Index && t.DesiredState >= api.TaskStateShutdown {
 			log.G(ctx).WithField("task.id", t.ID).Debug(
 				"task belongs to old revision of service",
 			)
