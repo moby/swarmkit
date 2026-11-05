@@ -157,7 +157,7 @@ var _ = Describe("Global Job Reconciler", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 
-			err = r.ReconcileService(serviceID)
+			err = r.ReconcileService(context.Background(), serviceID)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -175,7 +175,7 @@ var _ = Describe("Global Job Reconciler", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				err = r.ReconcileService(serviceID)
+				err = r.ReconcileService(context.Background(), serviceID)
 				Expect(err).ToNot(HaveOccurred())
 
 				s.View(func(tx store.ReadTx) {

@@ -23,7 +23,7 @@ import (
 type Reconciler interface {
 	taskinit.InitHandler
 
-	ReconcileService(id string) error
+	ReconcileService(ctx context.Context, id string) error
 }
 
 // Orchestrator is the combined orchestrator controlling both Global and
@@ -134,7 +134,7 @@ func (o *Orchestrator) init(ctx context.Context) {
 
 	for _, service := range services {
 		if orchestrator.IsReplicatedJob(service) {
-			if err := o.replicatedReconciler.ReconcileService(service.ID); err != nil {
+			if err := o.replicatedReconciler.ReconcileService(ctx, service.ID); err != nil {
 				log.G(ctx).WithField(
 					"service.id", service.ID,
 				).WithError(err).Error("error reconciling replicated job")
@@ -142,7 +142,7 @@ func (o *Orchestrator) init(ctx context.Context) {
 		}
 
 		if orchestrator.IsGlobalJob(service) {
-			if err := o.globalReconciler.ReconcileService(service.ID); err != nil {
+			if err := o.globalReconciler.ReconcileService(ctx, service.ID); err != nil {
 				log.G(ctx).WithField(
 					"service.id", service.ID,
 				).WithError(err).Error("error reconciling global job")
@@ -226,7 +226,7 @@ func (o *Orchestrator) handleEvent(ctx context.Context, event events.Event) {
 	}
 
 	if orchestrator.IsReplicatedJob(service) {
-		if err := o.replicatedReconciler.ReconcileService(service.ID); err != nil {
+		if err := o.replicatedReconciler.ReconcileService(ctx, service.ID); err != nil {
 			log.G(ctx).WithField(
 				"service.id", service.ID,
 			).WithError(err).Error("error reconciling replicated job")
@@ -234,7 +234,7 @@ func (o *Orchestrator) handleEvent(ctx context.Context, event events.Event) {
 	}
 
 	if orchestrator.IsGlobalJob(service) {
-		if err := o.globalReconciler.ReconcileService(service.ID); err != nil {
+		if err := o.globalReconciler.ReconcileService(ctx, service.ID); err != nil {
 			log.G(ctx).WithField(
 				"service.id", service.ID,
 			).WithError(err).Error("error reconciling global job")
