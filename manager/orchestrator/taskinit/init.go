@@ -25,26 +25,33 @@ type InitHandler interface {
 // not have finished processing their updates and left them in an inconsistent state.
 func CheckTasks(ctx context.Context, s *store.MemoryStore, readTx store.ReadTx, initHandler InitHandler, startSupervisor restart.SupervisorInterface) error {
 	instances := make(map[orchestrator.SlotTuple][]*api.Task)
-	err := s.Batch(func(batch *store.Batch) error {
-		tasks, err := store.FindTasks(readTx, store.All)
-		if err != nil {
-			return err
+	tasks, err := store.FindTasks(readTx, store.All)
+	if err != nil {
+		return err
+	}
+
+	// Delete orphaned tasks in separate transactions. Their full task objects
+	// are included in the replicated delete actions, so several large tasks can
+	// exceed the Raft transaction limit when removed in a single batch.
+	for _, t := range tasks {
+		if t.ServiceID == "" || store.GetService(readTx, t.ServiceID) != nil {
+			continue
 		}
+		if err := s.Update(func(tx store.Tx) error {
+			return store.DeleteTask(tx, t.ID)
+		}); err != nil {
+			log.G(ctx).WithError(err).WithField("task.id", t.ID).Error("failed to delete task")
+		}
+	}
+
+	err = s.Batch(func(batch *store.Batch) error {
 		for _, t := range tasks {
 			if t.ServiceID == "" {
 				continue
 			}
-
 			// TODO(aluzzardi): We should NOT retrieve the service here.
 			service := store.GetService(readTx, t.ServiceID)
 			if service == nil {
-				// Service was deleted
-				err := batch.Update(func(tx store.Tx) error {
-					return store.DeleteTask(tx, t.ID)
-				})
-				if err != nil {
-					log.G(ctx).WithError(err).Error("failed to delete task")
-				}
 				continue
 			}
 			if !initHandler.IsRelatedService(service) {
