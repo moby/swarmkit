@@ -215,6 +215,42 @@ func TestManager(t *testing.T) {
 	<-done
 }
 
+func TestManagerWaitsForTrackedCertificateRenewal(t *testing.T) {
+	m := &Manager{}
+	renewalStarted := make(chan struct{})
+	releaseRenewal := make(chan struct{})
+
+	require.True(t, m.startTrackedRenewal(func() {
+		close(renewalStarted)
+		<-releaseRenewal
+	}))
+	<-renewalStarted
+
+	m.mu.Lock()
+	m.stopped = true
+	m.mu.Unlock()
+	require.False(t, m.startTrackedRenewal(func() {}))
+
+	renewalsDone := make(chan struct{})
+	go func() {
+		m.waitForRenewals()
+		close(renewalsDone)
+	}()
+
+	select {
+	case <-renewalsDone:
+		t.Fatal("shutdown completed before the certificate renewal")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	close(releaseRenewal)
+	select {
+	case <-renewalsDone:
+	case <-time.After(10 * time.Second):
+		t.Fatal("certificate renewal did not finish")
+	}
+}
+
 // Tests locking and unlocking the manager and key rotations
 func TestManagerLockUnlock(t *testing.T) {
 	temp, err := os.CreateTemp("", "test-manager-lock")
