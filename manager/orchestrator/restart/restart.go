@@ -248,9 +248,9 @@ func (r *Supervisor) shouldRestart(ctx context.Context, t *api.Task, service *ap
 		ServiceID: t.ServiceID,
 	}
 
-	// Slot is not meaningful for "global" tasks, so they need to be
-	// indexed by NodeID.
-	if orchestrator.IsGlobalService(service) {
+	// Slot is not meaningful for "global" tasks (global services and global
+	// jobs), so they need to be indexed by NodeID.
+	if orchestrator.IsGlobalService(service) || orchestrator.IsGlobalJob(service) {
 		instanceTuple.NodeID = t.NodeID
 	}
 
