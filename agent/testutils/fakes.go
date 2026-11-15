@@ -233,17 +233,18 @@ func NewMockDispatcher(t *testing.T, secConfig *ca.SecurityConfig, local bool) (
 		addr    string
 		cleanup func()
 	)
+	lc := &net.ListenConfig{}
 	if local {
 		tempDir, err := os.MkdirTemp("", "local-dispatcher-socket")
 		require.NoError(t, err)
 		addr = filepath.Join(tempDir, "socket")
-		l, err = net.Listen("unix", addr)
+		l, err = lc.Listen(t.Context(), "unix", addr)
 		require.NoError(t, err)
 		cleanup = func() {
 			os.RemoveAll(tempDir)
 		}
 	} else {
-		l, err = net.Listen("tcp", "127.0.0.1:0")
+		l, err = lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
 		require.NoError(t, err)
 		addr = l.Addr().String()
 	}

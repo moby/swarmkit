@@ -4,6 +4,7 @@
 package connectionbroker
 
 import (
+	"context"
 	"net"
 	"sync"
 	"time"
@@ -69,7 +70,7 @@ func (b *Broker) SelectRemote(dialOpts ...grpc.DialOption) (*Conn, error) {
 		grpc.WithUnaryInterceptor(grpcmetrics.Client.UnaryClientInterceptor()),
 		grpc.WithStreamInterceptor(grpcmetrics.Client.StreamClientInterceptor()),
 		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-			return net.DialTimeout("tcp", addr, timeout)
+			return (&net.Dialer{Timeout: timeout}).DialContext(context.Background(), "tcp", addr)
 		}))
 
 	cc, err := grpc.Dial(peer.Addr, dialOpts...)
