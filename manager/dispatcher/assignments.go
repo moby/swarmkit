@@ -2,7 +2,6 @@ package dispatcher
 
 import (
 	"fmt"
-
 	"github.com/moby/swarmkit/v2/api"
 	"github.com/moby/swarmkit/v2/api/equality"
 	"github.com/moby/swarmkit/v2/api/validation"
@@ -267,6 +266,7 @@ func (a *assignmentSet) addOrUpdateTask(readTx store.ReadTx, t *api.Task) bool {
 		// agent even if nothing else has changed.
 		if equality.TasksEqualStable(oldTask, t) && t.Status.State > api.TaskStateAssigned {
 			// this update should not trigger a task change for the agent
+
 			a.tasksMap[t.ID] = t
 			// If this task got updated to a final state, let's release
 			// the dependencies that are being used by the task
