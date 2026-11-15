@@ -368,7 +368,7 @@ func TestUpdateVolumeInvalidFields(t *testing.T) {
 			name: "Secrets",
 			apply: func(spec *api.VolumeSpec) {
 				spec.Secrets = []*api.VolumeSecret{
-					&api.VolumeSecret{Key: "mykey", Secret: "mysecret"},
+					{Key: "mykey", Secret: "mysecret"},
 				}
 			},
 		}, {
