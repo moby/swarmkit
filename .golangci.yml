@@ -8,6 +8,7 @@ linters:
   default: none
   enable:
     - ginkgolinter
+    - gocritic
     - govet
     - ineffassign
     - misspell
@@ -16,6 +17,35 @@ linters:
     - unconvert
     - unused
   settings:
+    gocritic:
+      disabled-checks:
+        - appendAssign
+        - appendCombine
+        - assignOp
+        - badLock
+        - builtinShadow
+        - commentedOutCode
+        - deferInLoop
+        - emptyStringTest
+        - evalOrder
+        - exposedSyncMutex
+        - hugeParam
+        - importShadow
+        - nestingReduce
+        - nilValReturn
+        - octalLiteral
+        - paramTypeCombine
+        - rangeValCopy
+        - regexpSimplify
+        - singleCaseSwitch
+        - sloppyReassign
+        - typeAssertChain
+        - unlabelStmt
+        - unlambda
+        - unnamedResult
+        - whyNoLint
+        - yodaStyleExpr
+      enable-all: true
     govet:
       enable:
         - nilness

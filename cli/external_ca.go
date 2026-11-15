@@ -75,7 +75,7 @@ func parseExternalCA(caSpec string) (*api.ExternalCA, error) {
 		switch strings.ToLower(key) {
 		case "protocol":
 			hasProtocol = true
-			if strings.ToLower(value) == "cfssl" {
+			if strings.EqualFold(value, "cfssl") {
 				externalCA.Protocol = api.ExternalCA_CAProtocolCFSSL
 			} else {
 				return nil, fmt.Errorf("unrecognized external CA protocol %s", value)

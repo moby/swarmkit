@@ -139,13 +139,11 @@ func (r *Reconciler) ReconcileService(id string) error {
 						restartTasks = append(restartTasks, task.ID)
 					}
 				}
-			} else {
+			} else if task.Status.State <= api.TaskStateRunning && task.DesiredState != api.TaskStateRemove {
 				// tasks belonging to a previous iteration of the job may
 				// exist. if any such tasks exist, they should have their task
 				// state set to Remove
-				if task.Status.State <= api.TaskStateRunning && task.DesiredState != api.TaskStateRemove {
-					removeTasks = append(removeTasks, task.ID)
-				}
+				removeTasks = append(removeTasks, task.ID)
 			}
 		}
 	}

@@ -95,15 +95,16 @@ func (t *TLSRenewer) Start(ctx context.Context) <-chan CertificateUpdate {
 			} else {
 				// If we have an expired certificate, try to renew immediately: the hope that this is a temporary clock skew, or
 				// we can issue our own TLS certs.
-				if validUntil.Before(time.Now()) {
+				switch {
+				case validUntil.Before(time.Now()):
 					logger.Warn("the current TLS certificate is expired, so an attempt to renew it will be made immediately")
 					// retry immediately(ish) with exponential backoff
 					retry = expBackoff.Proceed(nil)
-				} else if forceRetry {
+				case forceRetry:
 					// A forced renewal was requested, but did not succeed yet.
 					// retry immediately(ish) with exponential backoff
 					retry = expBackoff.Proceed(nil)
-				} else {
+				default:
 					// Random retry time between 50% and 80% of the total time to expiration
 					retry = calculateRandomExpiry(validFrom, validUntil)
 				}
