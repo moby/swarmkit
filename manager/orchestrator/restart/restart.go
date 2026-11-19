@@ -427,28 +427,37 @@ func (r *Supervisor) RecordRestartHistory(tuple orchestrator.SlotTuple, replacem
 // DelayStart starts a timer that moves the task from READY to RUNNING once:
 // - The restart delay has elapsed (if applicable)
 // - The old task that it's replacing has stopped running (or this times out)
-// It must be called during an Update transaction to ensure that it does not
-// miss events. The purpose of the store.Tx argument is to avoid accidental
-// calls outside an Update transaction.
+// It must be called while the caller holds the store's write lock (inside a
+// Batch or an Update transaction). The purpose of the store.Tx argument is to
+// avoid accidental calls outside an Update transaction.
+//
+// DelayStart replaces any pending delay for newTaskID without waiting for the
+// superseded goroutine to finish. Waiting here would deadlock: a superseded
+// goroutine that has passed its timers may be blocked acquiring the store's
+// write lock, which this caller holds. The guarantee that a superseded
+// goroutine never touches the task rests on the write-lock requirement above:
+// since every caller of DelayStart holds the lock, a replacement can never
+// run concurrently with a superseded goroutine's store transaction, and the
+// superseded goroutine observes its cancellation in the transaction callback
+// below and skips StartNow.
+//
+// The returned channel is closed by the registered goroutine when it finishes
+// (after starting the task or giving up). For a superseded delay this
+// happens asynchronously; callers must not rely on prompt closure.
 func (r *Supervisor) DelayStart(ctx context.Context, _ store.Tx, oldTask *api.Task, newTaskID string, delay time.Duration, waitStop bool) <-chan struct{} {
 	ctx, cancel := context.WithCancel(context.Background())
 	doneCh := make(chan struct{})
 
+	// Atomically cancel and remove any pending delay for this task and
+	// register the replacement. Nothing waits for the superseded
+	// goroutine here (see the doc comment above).
 	r.mu.Lock()
-	for {
-		oldDelay, ok := r.delays[newTaskID]
-		if !ok {
-			break
-		}
+	if oldDelay, ok := r.delays[newTaskID]; ok {
 		oldDelay.cancel()
-		r.mu.Unlock()
-		// Note that this channel read should only block for a very
-		// short time, because we cancelled the existing delay and
-		// that should cause it to stop immediately.
-		<-oldDelay.doneCh
-		r.mu.Lock()
+		delete(r.delays, newTaskID)
 	}
-	r.delays[newTaskID] = &delayedStart{cancel: cancel, doneCh: doneCh}
+	delayed := &delayedStart{cancel: cancel, doneCh: doneCh}
+	r.delays[newTaskID] = delayed
 	r.mu.Unlock()
 
 	var watch chan events.Event
@@ -480,7 +489,11 @@ func (r *Supervisor) DelayStart(ctx context.Context, _ store.Tx, oldTask *api.Ta
 		defer func() {
 			cancelWatch()
 			r.mu.Lock()
-			delete(r.delays, newTaskID)
+			// Only remove the entry if it is still ours: a replacement
+			// may have registered a newer delay for this task.
+			if current, ok := r.delays[newTaskID]; ok && current == delayed {
+				delete(r.delays, newTaskID)
+			}
 			r.mu.Unlock()
 			close(doneCh)
 		}()
@@ -506,7 +519,27 @@ func (r *Supervisor) DelayStart(ctx context.Context, _ store.Tx, oldTask *api.Ta
 			}
 		}
 
+		// Fast path: this delay may have been superseded while we were
+		// waiting for the write lock. Avoid the transaction entirely in
+		// that case.
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		err := r.store.Update(func(tx store.Tx) error {
+			// This delay may have been superseded by a newer
+			// DelayStart for the same task while we were waiting for
+			// the write lock. Do not start the task in that case; the
+			// newer delay owns it. The cancellation is guaranteed to
+			// be visible here: the replacement ran while holding the
+			// write lock, before this transaction could acquire it.
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+			}
 			err := r.StartNow(tx, newTaskID)
 			if err != nil {
 				log.G(ctx).WithError(err).WithField("task.id", newTaskID).Error("moving task out of delayed state failed")
