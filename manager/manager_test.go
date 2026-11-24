@@ -19,6 +19,7 @@ import (
 	"github.com/moby/swarmkit/v2/ca"
 	"github.com/moby/swarmkit/v2/ca/keyutils"
 	cautils "github.com/moby/swarmkit/v2/ca/testutils"
+	"github.com/moby/swarmkit/v2/manager/allocator/networkallocator"
 	"github.com/moby/swarmkit/v2/manager/dispatcher"
 	"github.com/moby/swarmkit/v2/manager/encryption"
 	"github.com/moby/swarmkit/v2/manager/state/raft/storage"
@@ -213,6 +214,91 @@ func TestManager(t *testing.T) {
 	// all this happened before WaitForLeader completed, so don't check the
 	// error.
 	<-done
+}
+
+func TestForceNewClusterAppliesVXLANUDPPortToLocalNode(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		recoveryPort  uint32
+		wantVXLANPort uint32
+	}{
+		{name: "use cluster port", wantVXLANPort: 7789},
+		{name: "apply requested port", recoveryPort: 7790, wantVXLANPort: 7790},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testCA := cautils.NewTestCA(t)
+			defer testCA.Stop()
+
+			securityConfig, err := testCA.NewNodeConfig(ca.ManagerRole)
+			require.NoError(t, err)
+
+			stateDir := t.TempDir()
+			controlAPI := filepath.Join(t.TempDir(), "control.sock")
+			newManager := func(forceNewCluster bool, vxlanPort uint32) *Manager {
+				m, err := New(&Config{
+					RemoteAPI:       &RemoteAddrs{ListenAddr: "127.0.0.1:0"},
+					ControlAPI:      controlAPI,
+					StateDir:        stateDir,
+					SecurityConfig:  securityConfig,
+					RootCAPaths:     testCA.Paths.RootCA,
+					ForceNewCluster: forceNewCluster,
+					NetworkConfig:   &networkallocator.Config{VXLANUDPPort: vxlanPort},
+				})
+				require.NoError(t, err)
+				return m
+			}
+			waitForNetworkPort := func(m *Manager, want uint32) {
+				require.NoError(t, testutils.PollFuncWithTimeout(nil, func() error {
+					var node *api.Node
+					m.raftNode.MemoryStore().View(func(tx store.ReadTx) {
+						node = store.GetNode(tx, securityConfig.ClientTLSCreds.NodeID())
+					})
+					if node == nil {
+						return fmt.Errorf("manager node is not in the store")
+					}
+					if node.VXLANUDPPort != want {
+						return fmt.Errorf("manager node VXLAN UDP port is %d, want %d", node.VXLANUDPPort, want)
+					}
+					return nil
+				}, 10*time.Second))
+			}
+			startManager := func(m *Manager) chan error {
+				done := make(chan error, 1)
+				go func() { done <- m.Run(testCA.Context) }()
+				return done
+			}
+			stopManager := func(m *Manager, done chan error) {
+				m.Stop(testCA.Context, false)
+				err := <-done
+				require.True(t, err == nil || errors.Is(err, context.Canceled), "unexpected manager run error: %v", err)
+			}
+
+			m := newManager(false, 7789)
+			done := startManager(m)
+			waitForNetworkPort(m, 7789)
+
+			// Simulate a stale local node record while the cluster retains the
+			// configured data path port.
+			require.NoError(t, m.raftNode.MemoryStore().Update(func(tx store.Tx) error {
+				node := store.GetNode(tx, securityConfig.ClientTLSCreds.NodeID())
+				node.VXLANUDPPort = 4789
+				return store.UpdateNode(tx, node)
+			}))
+			stopManager(m, done)
+
+			m = newManager(true, tc.recoveryPort)
+			done = startManager(m)
+			defer stopManager(m, done)
+			waitForNetworkPort(m, tc.wantVXLANPort)
+
+			var cluster *api.Cluster
+			m.raftNode.MemoryStore().View(func(tx store.ReadTx) {
+				cluster = store.GetCluster(tx, securityConfig.ClientTLSCreds.Organization())
+			})
+			require.NotNil(t, cluster)
+			require.Equal(t, tc.wantVXLANPort, cluster.VXLANUDPPort)
+		})
+	}
 }
 
 // Tests locking and unlocking the manager and key rotations
